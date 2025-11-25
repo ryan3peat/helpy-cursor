@@ -196,13 +196,22 @@ const App: React.FC = () => {
     }
   };
 
-  const handleAddItem = async (item: ShoppingItem) => {
-    if (!hid) return;
+  const handleAddItem = async (item: ShoppingItem): Promise<void> => {
+    if (!hid) {
+      throw new Error('No household ID');
+    }
+    
     try {
+      console.log('🟢 Adding shopping item:', item);
+      
+      // Remove id - let Supabase generate UUID
       const { id, ...itemWithoutId } = item;
+      
       await addItem(hid, 'shopping', itemWithoutId as any);
+      console.log('✅ Shopping item saved');
     } catch (error) {
       console.error('❌ Failed to add shopping item:', error);
+      throw error; // Re-throw so ShoppingList can handle rollback
     }
   };
 

@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="color-scheme" content="light">
+    <title>Helpy</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              brand: {
+                primary: '#4e649b',
+                secondary: '#647ac0',
+                accent: '#f7f7f7',
+                text: '#1a1a1a',
+                muted: '#888888',
+              }
+            },
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+            },
+            animation: {
+              'fade-in': 'fadeIn 0.5s ease-out',
+              'slide-up': 'slideUp 0.3s ease-out',
+              'morph': 'morph 2s ease-in-out infinite alternate',
+            },
+            keyframes: {
+              fadeIn: {
+                '0%': { opacity: '0' },
+                '100%': { opacity: '1' },
+              },
+              slideUp: {
+                '0%': { transform: 'translateY(20px)', opacity: '0' },
+                '100%': { transform: 'translateY(0)', opacity: '1' },
+              },
+              morph: {
+                '0%': { borderRadius: '60% 40% 30% 70% / 60% 30% 70% 40%' },
+                '50%': { borderRadius: '30% 60% 70% 40% / 50% 60% 30% 60%' },
+                '100%': { borderRadius: '60% 40% 30% 70% / 60% 30% 70% 40%' },
+              }
+            }
+          },
+        },
+      }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+      :root {
+        color-scheme: light;
+      }
+      body {
+        font-family: 'Inter', sans-serif;
+        background-color: #f3f4f6; /* fallback */
+        -webkit-tap-highlight-color: transparent;
+      }
+      /* Custom Gradient Background */
+      .app-background {
+        background: linear-gradient(180deg, #eef2ff 0%, #f8fafc 100%);
+        min-height: 100vh;
+      }
+      /* Glassmorphism */
+      .glass-surface {
+        background: rgba(255, 255, 255, 0.75);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+      }
+      /* Hide scrollbar for clean UI but allow scroll */
+      .no-scrollbar::-webkit-scrollbar {
+        display: none;
+      }
+      .no-scrollbar {
+        -ms-overflow-style: none;  /* IE and Edge */
+        scrollbar-width: none;  /* Firefox */
+      }
+      
+      /* Smooth Collapse Animation Class */
+      .item-enter {
+        max-height: 0;
+        opacity: 0;
+        overflow: hidden;
+        transition: max-height 0.3s ease-out, opacity 0.3s ease-out;
+      }
+      .item-enter-active {
+        max-height: 100px;
+        opacity: 1;
+      }
+      .item-exit {
+        max-height: 100px;
+        opacity: 1;
+        overflow: hidden;
+        transition: max-height 0.3s ease-in, opacity 0.2s ease-in;
+      }
+      .item-exit-active {
+        max-height: 0;
+        opacity: 0;
+        padding: 0 !important;
+        margin: 0 !important;
+        border: none !important;
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.554.0",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
+    "recharts": "https://aistudiocdn.com/recharts@^3.4.1",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body>
+    <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>

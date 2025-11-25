@@ -1,0 +1,447 @@
+
+import React, { useState, useMemo, useEffect } from 'react';
+import { Plus, Trash2, CheckCircle2, Circle, ChevronDown, ChevronRight, X, Check } from 'lucide-react';
+import { ShoppingItem, ShoppingCategory, BaseViewProps } from '../types';
+
+interface ShoppingListProps extends BaseViewProps {
+  items: ShoppingItem[];
+  onAdd: (item: ShoppingItem) => void;
+  onUpdate: (id: string, data: Partial<ShoppingItem>) => void;
+  onDelete: (id: string) => void;
+}
+
+const ShoppingList: React.FC<ShoppingListProps> = ({ items, onAdd, onUpdate, onDelete, t }) => {
+  const [filter, setFilter] = useState<ShoppingCategory | 'All'>('All');
+  const [isAdding, setIsAdding] = useState(false);
+  const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
+    
+  // Add Item State
+  const [newItemName, setNewItemName] = useState('');
+  const [newItemAmount, setNewItemAmount] = useState('');
+  const [newItemUnit, setNewItemUnit] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<ShoppingCategory>(filter === 'All' ? ShoppingCategory.SUPERMARKET : filter);
+  const [showCompleted, setShowCompleted] = useState(false);
+
+  // Input Refs for focus management
+  const nameInputRef = React.useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (filter !== 'All') {
+      setSelectedCategory(filter);
+    }
+  }, [filter]);
+
+  // --- Helper: Get Translated Label ---
+  const getCategoryLabel = (cat: ShoppingCategory | 'All') => {
+    if (cat === 'All') return t['filter.all'];
+    if (cat === ShoppingCategory.SUPERMARKET) return t['category.supermarket'];
+    if (cat === ShoppingCategory.WET_MARKET) return t['category.wet_market'];
+    if (cat === ShoppingCategory.OTHERS) return t['category.others'];
+    return cat;
+  };
+
+  // --- Derived Data ---
+
+  const filteredItems = useMemo(() => {
+    let filtered = items;
+    if (filter !== 'All') {
+      filtered = items.filter(i => i.category === filter);
+    }
+    // Remove items being deleted (OPTIMISTIC UPDATE)
+    return filtered.filter(i => !deletingIds.has(i.id));
+  }, [items, filter, deletingIds]); // Add deletingIds to dependencies
+
+  const activeItems = filteredItems.filter(i => !i.completed);
+  const completedItems = filteredItems.filter(i => i.completed);
+
+  // 2. Generate Suggestions based on history (frequency of names in completed items)
+  const suggestions = useMemo(() => {
+    const counts: Record<string, number> = {};
+    const activeNames = new Set(items.filter(i => !i.completed).map(i => i.name.toLowerCase()));
+
+    items.forEach(item => {
+      const lowerName = item.name.toLowerCase();
+      // Only suggest if not currently active
+      if (!activeNames.has(lowerName)) {
+        counts[item.name] = (counts[item.name] || 0) + 1;
+      }
+    });
+
+    return Object.entries(counts)
+      .sort(([, a], [, b]) => b - a) // Sort by frequency desc
+      .slice(0, 5) // Top 5
+      .map(([name]) => name);
+  }, [items]);
+
+  // --- Handlers ---
+
+  const handleAddItem = () => {
+    if (!newItemName.trim()) {
+      setIsAdding(false);
+      return;
+    }
+
+    const qtyString = newItemAmount 
+      ? `${newItemAmount} ${newItemUnit}`.trim() 
+      : '1';
+
+    const newItem: ShoppingItem = {
+      id: Date.now().toString(),
+      name: newItemName,
+      category: selectedCategory,
+      quantity: qtyString,
+      completed: false,
+    };
+
+    onAdd(newItem);
+    resetForm();
+  };
+
+  const handleSuggestionClick = (suggestionName: string) => {
+    const newItem: ShoppingItem = {
+      id: Date.now().toString(),
+      name: suggestionName,
+      category: selectedCategory,
+      quantity: '1',
+      completed: false,
+      addedBy: '1'
+    };
+    onAdd(newItem);
+  };
+
+  const resetForm = () => {
+    setNewItemName('');
+    setNewItemAmount('');
+    setNewItemUnit('');
+    setSelectedCategory(filter === 'All' ? ShoppingCategory.SUPERMARKET : filter);
+    setIsAdding(false);
+  };
+
+  const handleClearCompleted = async () => {
+    if (!window.confirm(t['common.confirm_clear'])) return;
+    
+    // 1. Mark all completed items as deleting
+    const idsToDelete = completedItems.map(item => item.id);
+    setDeletingIds(prev => {
+      const next = new Set(prev);
+      idsToDelete.forEach(id => next.add(id));
+      return next;
+    });
+    
+    // 2. Delete all items in parallel
+    const deletePromises = completedItems.map(item => 
+      onDelete(item.id).catch(error => {
+        console.error(`❌ Failed to delete ${item.name}:`, error);
+        return item.id; // Return failed ID
+      })
+    );
+    
+    try {
+      const results = await Promise.allSettled(deletePromises);
+      
+      // 3. Check for failures and rollback those items
+      const failedIds = results
+        .map((result, index) => 
+          result.status === 'rejected' ? completedItems[index].id : null
+        )
+        .filter(Boolean) as string[];
+      
+      if (failedIds.length > 0) {
+        // Rollback failed deletes
+        setDeletingIds(prev => {
+          const next = new Set(prev);
+          failedIds.forEach(id => next.delete(id));
+          return next;
+        });
+        alert(`Failed to delete ${failedIds.length} item(s). Please try again.`);
+      }
+    } catch (error) {
+      // Rollback all if something unexpected happens
+      setDeletingIds(prev => {
+        const next = new Set(prev);
+        idsToDelete.forEach(id => next.delete(id));
+        return next;
+      });
+      console.error('❌ Clear all failed:', error);
+      alert('Failed to clear items. Please try again.');
+    }
+  };
+
+  const getCategoryColor = (cat: ShoppingCategory) => {
+    switch (cat) {
+      case ShoppingCategory.SUPERMARKET: return 'text-blue-500 bg-blue-50 border-blue-200';
+      case ShoppingCategory.WET_MARKET: return 'text-green-600 bg-green-50 border-green-200';
+      case ShoppingCategory.OTHERS: return 'text-gray-500 bg-gray-100 border-gray-200';
+    }
+  };
+
+  const getCategoryDot = (cat: ShoppingCategory) => {
+    switch (cat) {
+      case ShoppingCategory.SUPERMARKET: return 'bg-blue-500';
+      case ShoppingCategory.WET_MARKET: return 'bg-green-500';
+      case ShoppingCategory.OTHERS: return 'bg-gray-400';
+    }
+  };
+
+  const getUncheckedCount = (cat: ShoppingCategory | 'All') => {
+    if (cat === 'All') return items.filter(i => !i.completed).length;
+    return items.filter(i => !i.completed && i.category === cat).length;
+  };
+
+  return (
+    <div className="flex flex-col h-full bg-gray-50 animate-slide-up relative">
+      {/* Header & Filters */}
+      <div className="sticky top-0 z-10 bg-gray-50/95 backdrop-blur-sm pt-16 pb-2 px-4 border-b border-gray-200/50">
+        <div className="mb-4">
+          <h1 className="text-3xl font-bold text-brand-text">{t['shopping.title']}</h1>
+        </div>
+        
+        {/* Filter Pills */}
+        <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2">
+          {(['All', ...Object.values(ShoppingCategory)] as const).map(cat => {
+            const count = getUncheckedCount(cat);
+            const isSelected = filter === cat;
+            
+            return (
+              <button
+                key={cat}
+                onClick={() => setFilter(cat)}
+                className={`px-5 py-2 rounded-full text-sm transition-all whitespace-nowrap flex items-center gap-2 border ${
+                  isSelected 
+                    ? 'bg-brand-primary text-white border-brand-primary shadow-md font-medium' 
+                    : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50 font-normal'
+                }`}
+              >
+                <span>{getCategoryLabel(cat)}</span>
+                <span className={`font-bold ${isSelected ? 'text-white/90' : 'text-gray-400'}`}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Main List Area */}
+      <div className="flex-1 overflow-y-auto p-4 pb-32 space-y-6">
+        
+        {/* Active Items Group */}
+        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+          {activeItems.map((item, index) => (
+            <div 
+              key={item.id}
+              className={`flex items-start gap-3 p-4 transition-colors hover:bg-gray-50 ${index !== activeItems.length - 1 ? 'border-b border-gray-100' : ''}`}
+            >
+              <button 
+                onClick={() => onUpdate(item.id, { completed: true })}
+                className="mt-0.5 text-gray-300 hover:text-brand-primary transition-colors"
+              >
+                <Circle size={22} />
+              </button>
+              
+              <div className="flex-1 min-w-0">
+                <div className="flex justify-between items-start">
+                  <span className="font-medium text-gray-800 text-sm leading-tight">{item.name}</span>
+                  {/* Info Badge */}
+                  <div className="flex flex-col items-end">
+                    {item.quantity && item.quantity !== '1' && (
+                        <span className="text-sm font-medium text-gray-400">{item.quantity}</span>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className={`w-1.5 h-1.5 rounded-full ${getCategoryDot(item.category)}`} />
+                  <span className="text-sm font-medium text-gray-400">{getCategoryLabel(item.category)}</span>
+                </div>
+              </div>
+            </div>
+          ))}
+
+          {/* Empty State in Active List */}
+          {activeItems.length === 0 && !isAdding && (
+             <div className="p-8 text-center text-gray-400">
+                <p className="text-sm">{t['shopping.no_items']}</p>
+             </div>
+          )}
+
+          {/* "Add New Item" Area - Attached to the bottom of the active list card */}
+          {isAdding ? (
+            <div className="p-4 bg-gray-50/50 border-t border-gray-100 animate-fade-in">
+              <div className="flex items-center gap-3 mb-3">
+                <Circle size={22} className="text-gray-300 shrink-0" />
+                <input 
+                  ref={nameInputRef}
+                  type="text"
+                  placeholder={t['shopping.item_name']}
+                  value={newItemName}
+                  onChange={e => setNewItemName(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleAddItem()}
+                  className="bg-transparent text-sm font-medium text-gray-800 placeholder-gray-400 outline-none flex-1 w-full"
+                />
+                
+                {/* Action Buttons */}
+                <div className="flex items-center gap-4">
+                  <button 
+                    onClick={resetForm} 
+                    className="p-1.5 rounded-full bg-gray-200 text-gray-500 hover:bg-red-100 hover:text-red-500 transition-colors"
+                  >
+                    <X size={18} />
+                  </button>
+                  <button 
+                    onClick={handleAddItem} 
+                    className="p-1.5 rounded-full bg-brand-primary text-white shadow-sm hover:bg-brand-secondary transition-colors"
+                  >
+                    <Check size={18} />
+                  </button>
+                </div>
+              </div>
+
+              <div className="pl-9 space-y-4">
+                {/* Inputs Row */}
+                <div className="flex gap-3">
+                   <input 
+                     type="number" 
+                     placeholder="1"
+                     value={newItemAmount}
+                     onChange={e => setNewItemAmount(e.target.value)}
+                     className="w-24 bg-white rounded-lg border border-gray-200 p-2 text-center text-sm outline-none focus:border-brand-primary transition-colors"
+                   />
+                   <input 
+                     type="text"
+                     placeholder={t['shopping.unit_placeholder']}
+                     value={newItemUnit}
+                     onChange={e => setNewItemUnit(e.target.value)}
+                     className="flex-1 bg-white rounded-lg border border-gray-200 p-2 px-3 text-sm outline-none focus:border-brand-primary transition-colors"
+                   />
+                </div>
+
+                {/* Category Pills */}
+                <div className="flex flex-wrap gap-2">
+
+                  {Object.values(ShoppingCategory).map(cat => (
+                    <button
+                      key={cat}
+                      onClick={() => setSelectedCategory(cat)}
+                      className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-all ${
+                        selectedCategory === cat 
+                          ? getCategoryColor(cat) + ' ring-1 ring-offset-1 ring-gray-200'
+                          : 'bg-white text-gray-500 border-transparent hover:bg-gray-100'
+                      }`}
+                    >
+                      {getCategoryLabel(cat)}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Suggestions */}
+                {suggestions.length > 0 && (
+                  <div className="pt-2 border-t border-gray-200/50">
+                    <p className="text-sm font-bold text-gray-400 mb-2">{t['shopping.quick_add']}</p>
+                    <div className="flex flex-wrap gap-2">
+                      {suggestions.map((s, i) => (
+                        <button
+                          key={i}
+                          onClick={() => handleSuggestionClick(s)}
+                          className="px-2 py-1 bg-white border border-gray-200 rounded-md text-sm text-gray-600 hover:border-brand-primary hover:text-brand-primary transition-colors"
+                        >
+                          + {s}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <button 
+              onClick={() => setIsAdding(true)}
+              className="w-full p-4 flex items-center gap-3 text-gray-400 hover:bg-gray-50 hover:text-gray-600 transition-colors border-t border-gray-100"
+            >
+              <Plus size={22} />
+              <span className="font-medium text-sm">{t['shopping.new_item']}</span>
+            </button>
+          )}
+        </div>
+
+        {/* Completed Section */}
+        {completedItems.length > 0 && (
+          <div className="mt-6">
+             <div 
+                onClick={() => setShowCompleted(!showCompleted)}
+                className="flex items-center justify-between mb-2 px-2 cursor-pointer"
+             >
+                <div className="flex items-center gap-2">
+                    {showCompleted ? <ChevronDown size={16} className="text-gray-400"/> : <ChevronRight size={16} className="text-gray-400"/>}
+                    <h3 className="text-sm font-bold text-gray-500">
+                        {t['shopping.completed']} ({completedItems.length})
+                    </h3>
+                </div>
+                {showCompleted && (
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); handleClearCompleted(); }}
+                        className="text-red-400 text-sm font-bold px-2 py-1 rounded hover:bg-red-50 transition-colors"
+                    >
+                        {t['shopping.clear_all']}
+                    </button>
+                )}
+             </div>
+             
+             {showCompleted && (
+                <div className="bg-gray-100/50 rounded-2xl overflow-hidden border border-gray-200/50">
+                    {completedItems.map((item, index) => (
+                        <div 
+                            key={item.id}
+                            className={`flex items-center gap-3 p-4 ${index !== completedItems.length - 1 ? 'border-b border-gray-200/50' : ''}`}
+                        >
+                            <button 
+                                onClick={() => onUpdate(item.id, { completed: false })}
+                                className="text-green-500"
+                            >
+                                <CheckCircle2 size={22} />
+                            </button>
+                            <div className="flex-1 opacity-50">
+                                <span className="font-medium text-gray-700 line-through text-sm">{item.name}</span>
+                                <div className="flex items-center gap-2 text-sm text-gray-500">
+                                    {item.quantity && item.quantity !== '1' && <span>{item.quantity} • </span>}
+                                    <span>{getCategoryLabel(item.category)}</span>
+                                </div>
+                            </div>
+                            <button 
+                                onClick={async () => {
+                                  // 1. Optimistic update - hide item immediately
+                                  setDeletingIds(prev => new Set(prev).add(item.id));
+
+                                  try {
+                                    // 2. Call Supabase delete
+                                    await onDelete(item.id);
+                                    // 3. Success - Supabase realtime will sync eventually
+                                    //    We can remove from deletingIds once realtime confirms
+                                    //    But no need - item won't be in 'items' anymore
+                                  } catch (error) {
+                                    // 4. Failed - restore item to UI
+                                    setDeletingIds(prev => {
+                                      const next = new Set(prev);
+                                      next.delete(item.id);
+                                      return next;
+                                    });
+                                    console.error('❌ Delete failed:', error);
+                                    alert('Failed to delete item. Please try again.');
+                                  }
+                                }}
+                                className="text-gray-400 hover:text-red-500 transition-colors"
+                              >
+                                <Trash2 size={18} />
+                            </button>
+                        </div>
+                    ))}
+                </div>
+             )}
+          </div>
+        )}
+
+      </div>
+    </div>
+  );
+};
+
+export default ShoppingList;

@@ -1,0 +1,7 @@
+{
+  "name": "Helpy",
+  "description": "A mobile-first command center for multi-generational households to manage tasks, shopping, meals, and expenses.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}

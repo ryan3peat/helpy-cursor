@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Camera, Upload, PieChart as PieIcon, List, X, Image as ImageIcon } from 'lucide-react';
 import { Expense, TranslationDictionary, BaseViewProps } from '../types';
@@ -127,7 +126,7 @@ const Expenses: React.FC<ExpensesProps> = ({ expenses, onAdd, t, currentLang }) 
                 </div>
                 <div>
                   <p className="font-bold text-gray-800">{expense.merchant}</p>
-                  <p className="text-xs text-gray-400">{expense.category} • {new Date(expense.date).toLocaleDateString(currentLang === 'en' ? 'en-GB' : currentLang, { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                  <p className="text-xs text-gray-400">{expense.category} â€¢ {new Date(expense.date).toLocaleDateString(currentLang === 'en' ? 'en-GB' : currentLang, { day: 'numeric', month: 'short', year: 'numeric' })}</p>
                 </div>
               </div>
               <span className="font-bold text-lg text-gray-800">-${expense.amount.toFixed(2)}</span>

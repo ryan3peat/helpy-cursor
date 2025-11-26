@@ -11,7 +11,6 @@ interface LayoutProps {
 }
 
 const Layout: React.FC<LayoutProps> = ({ children, activeView, onNavigate, t }) => {
-  
   const navItems: NavItem[] = [
     { id: 'dashboard', label: t['nav.home'], icon: <Home size={24} /> },
     { id: 'shopping', label: t['nav.shop'], icon: <ShoppingCart size={24} /> },
@@ -22,15 +21,16 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, onNavigate, t }) 
   ];
 
   return (
-    <div className="app-background h-[100dvh] max-w-md mx-auto relative shadow-2xl overflow-hidden flex flex-col">
+    <div className="flex flex-col min-h-screen">
       {/* Main Content Area */}
-      <main className="flex-1 overflow-hidden relative w-full">
-        {children}
-      </main>
+      <div className="flex-1">{children}</div>
 
       {/* Bottom Navigation */}
-      <nav className="absolute bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-gray-200 pb-safe pt-2 px-2 z-40">
-        <div className="flex justify-between items-center h-16">
+      <nav
+        className="fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 z-50"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }} // ✅ Safe area support
+      >
+        <div className="flex justify-around py-2">
           {navItems.map((item) => {
             const isActive = activeView === item.id;
             return (
@@ -41,12 +41,8 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, onNavigate, t }) 
                   isActive ? 'text-brand-primary -translate-y-1' : 'text-gray-400'
                 }`}
               >
-                <div className={`p-1 rounded-full transition-all ${isActive ? 'bg-blue-50' : ''}`}>
-                    {item.icon}
-                </div>
-                <span className={`text-[10px] font-medium mt-1 ${isActive ? 'opacity-100' : 'opacity-0 hidden'}`}>
-                  {item.label}
-                </span>
+                {item.icon}
+                <span className="text-xs">{item.label}</span>
               </button>
             );
           })}

@@ -410,6 +410,7 @@ const App: React.FC = () => {
         return (
             <Expenses 
                 expenses={expenses} 
+                householdId={hid}
                 onAdd={handleAddExpense}
                 t={translations}
                 currentLang={lang}

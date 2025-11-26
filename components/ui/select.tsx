@@ -1,27 +1,34 @@
 
-// components/ui/select.tsx
-import React from "react";
+import * as React from "react";
 
-// Temporary simple Select (you can replace with Radix Select):
-export const Select: React.FC<{
-  value: string;
-  onValueChange: (v: string) => void;
-  children: React.ReactNode;
-}> = ({ value, onValueChange, children }) => (
-  <div data-role="select">{children}</div>
+// Simple, non-accessible stub to satisfy TS types while you build UI.
+// Later, replace with Radix Select for full behavior.
+export const Select = ({ children, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
+  <div {...props}>{children}</div>
 );
 
-// Helpers used by your dialog:
-export const SelectTrigger: React.FC<React.HTMLAttributes<HTMLButtonElement>> = ({ className, ...rest }) => (
-  <button {...rest} className={`rounded-md border px-3 py-2 ${className ?? ""}`} />
+export const SelectTrigger = React.forwardRef<HTMLButtonElement, React.ButtonHTMLAttributes<HTMLButtonElement>>(
+  ({ children, ...props }, ref) => (
+    <button ref={ref} type="button" {...props}>
+      {children}
+    </button>
+  )
 );
-export const SelectContent: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({ className, ...rest }) => (
-  <div {...rest} className={`rounded-md border bg-white shadow ${className ?? ""}`} />
+SelectTrigger.displayName = "SelectTrigger";
+
+export const SelectContent = ({ children, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
+  <div {...props}>{children}</div>
 );
-export const SelectItem: React.FC<{ value: string } & React.HTMLAttributes<HTMLDivElement>> = ({ value, className, ...rest }) => (
-  <div {...rest} data-value={value} className={`cursor-pointer px-3 py-2 hover:bg-gray-100 ${className ?? ""}`} />
+
+export const SelectItem = ({ children, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
+  <div role="option" {...props}>
+    {children}
+  </div>
 );
-export const SelectSeparator: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({ className, ...rest }) => (
-  <div {...rest} className={`my-1 border-t ${className ?? ""}`} />
+
+export const SelectSeparator = (props: React.HTMLAttributes<HTMLHRElement>) => <hr {...props} />;
+
+// ---- Fix: support placeholder prop ----
+export const SelectValue = ({ children, placeholder }: { children?: React.ReactNode; placeholder?: string }) => (
+  <span>{children ?? placeholder ?? null}</span>
 );
-export const SelectValue: React.FC = () => <span />;

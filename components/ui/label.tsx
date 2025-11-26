@@ -1,6 +1,9 @@
+import * as React from "react";
+import { cn } from "@/lib/utils";
 
-// components/ui/label.tsx
-import React from "react";
-export const Label: React.FC<React.LabelHTMLAttributes<HTMLLabelElement>> = ({ className, ...rest }) => (
-  <label {...rest} className={`text-sm font-medium ${className ?? ""}`} />
+export const Label = React.forwardRef<HTMLLabelElement, React.LabelHTMLAttributes<HTMLLabelElement>>(
+  ({ className, ...props }, ref) => (
+    <label ref={ref} className={cn("text-sm font-medium", className)} {...props} />
+  )
 );
+Label.displayName = "Label";

@@ -1,19 +1,21 @@
 import React, { useState, useRef } from 'react';
-import { Camera, Upload, PieChart as PieIcon, List, X, Image as ImageIcon } from 'lucide-react';
+import { Camera, PieChart as PieIcon, List, X, Image as ImageIcon, AlertCircle } from 'lucide-react';
 import { Expense, TranslationDictionary, BaseViewProps } from '../types';
 import { EXPENSE_CATEGORIES } from '../constants';
-import { parseReceipt } from '../services/geminiService';
+import { processReceiptFull } from '../services/receiptService';
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 interface ExpensesProps extends BaseViewProps {
   expenses: Expense[];
+  householdId: string;
   onAdd: (expense: Expense) => void;
 }
 
-const Expenses: React.FC<ExpensesProps> = ({ expenses, onAdd, t, currentLang }) => {
+const Expenses: React.FC<ExpensesProps> = ({ expenses, householdId, onAdd, t, currentLang }) => {
   const [view, setView] = useState<'list' | 'chart'>('chart');
   const [isScanning, setIsScanning] = useState(false);
   const [showScanOptions, setShowScanOptions] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -24,31 +26,47 @@ const Expenses: React.FC<ExpensesProps> = ({ expenses, onAdd, t, currentLang }) 
 
     setShowScanOptions(false);
     setIsScanning(true);
+    setError(null);
 
-    // Convert to base64
-    const reader = new FileReader();
-    reader.onloadend = async () => {
-      const base64 = reader.result as string;
-      const base64Data = base64.split(',')[1]; // remove prefix
+    try {
+      // Convert to base64
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
 
-      const result = await parseReceipt(base64Data);
+      // Remove data URI prefix
+      const base64Data = base64.split(',')[1];
+      const fileType = file.type.split('/')[1] || 'jpeg';
 
+      // Process with Vision API
+      const { receiptId, imageUrl, parsed } = await processReceiptFull(
+        householdId,
+        base64Data,
+        fileType
+      );
+
+      // Create expense from parsed data
       const newExpense: Expense = {
         id: Date.now().toString(),
-        amount: result.total,
-        merchant: result.merchant,
-        category: result.category,
-        date: result.date,
-        receiptUrl: base64
+        amount: parsed.total,
+        merchant: parsed.merchant,
+        category: parsed.category,
+        date: parsed.date,
+        receiptUrl: imageUrl,
       };
 
       onAdd(newExpense);
+
+    } catch (err) {
+      console.error('Receipt processing failed:', err);
+      setError(err instanceof Error ? err.message : 'Failed to process receipt');
+    } finally {
       setIsScanning(false);
-    };
-    reader.readAsDataURL(file);
-    
-    // Clear input so same file can be selected again if needed
-    e.target.value = '';
+      e.target.value = '';
+    }
   };
 
   // Chart Data Preparation
@@ -78,6 +96,23 @@ const Expenses: React.FC<ExpensesProps> = ({ expenses, onAdd, t, currentLang }) 
           </button>
         </div>
       </div>
+
+      {/* Error Display */}
+      {error && (
+        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
+          <AlertCircle className="text-red-500 flex-shrink-0 mt-0.5" size={20} />
+          <div className="flex-1">
+            <p className="text-red-800 font-medium">Scan Failed</p>
+            <p className="text-red-600 text-sm">{error}</p>
+          </div>
+          <button 
+            onClick={() => setError(null)}
+            className="text-red-400 hover:text-red-600"
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
 
       {/* Total Card */}
       <div className="bg-brand-primary text-white p-6 rounded-2xl shadow-lg mb-6 relative overflow-hidden">
@@ -126,7 +161,7 @@ const Expenses: React.FC<ExpensesProps> = ({ expenses, onAdd, t, currentLang }) 
                 </div>
                 <div>
                   <p className="font-bold text-gray-800">{expense.merchant}</p>
-                  <p className="text-xs text-gray-400">{expense.category} â€¢ {new Date(expense.date).toLocaleDateString(currentLang === 'en' ? 'en-GB' : currentLang, { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                  <p className="text-xs text-gray-400">{expense.category} • {new Date(expense.date).toLocaleDateString(currentLang === 'en' ? 'en-GB' : currentLang, { day: 'numeric', month: 'short', year: 'numeric' })}</p>
                 </div>
               </div>
               <span className="font-bold text-lg text-gray-800">-${expense.amount.toFixed(2)}</span>

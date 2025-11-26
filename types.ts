@@ -100,22 +100,3 @@ export interface BaseViewProps {
   t: TranslationDictionary;
   currentLang: string;
 }
-
-// src/types/schema.ts
-export type School = {
-  id: string;
-  providerType: string;
-  name: string;
-  address: string;
-  phone?: string;
-  note?: string;
-};
-
-export type ShoppingProvider = {
-  id: string;
-  providerType: string;
-  name: string;
-  address: string;
-  phone?: string;
-  note?: string;
-};

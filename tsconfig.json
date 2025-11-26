@@ -18,8 +18,8 @@
 
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"],
-      "@shared/*": ["src/types/*"]
+      "@/*": ["./*"],
+      "@src/*": ["./src/*"]
     },
     "types": ["node", "vite/client"]
   }

@@ -361,6 +361,7 @@ const App: React.FC = () => {
             tasks={tasks} 
             meals={meals}
             users={users}
+            expenses={expenses}
             onNavigate={handleNavigate}
             familyNotes={familyNotes}
             onUpdateNotes={handleUpdateNotes}

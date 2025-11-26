@@ -179,3 +179,48 @@ export async function processReceiptFull(
     throw error;
   }
 }
+
+export async function deleteReceiptByExpenseId(expenseId: string): Promise<void> {
+  // Fetch receipts linked to the expense
+  const { data, error } = await supabase
+    .from('receipts')
+    .select('id, image_path')
+    .eq('expense_id', expenseId);
+
+  if (error) {
+    throw new Error(`Failed to fetch receipts for deletion: ${error.message}`);
+  }
+  if (!data || data.length === 0) return;
+
+  // Remove storage objects
+  const paths = data.map((r: { image_path: string }) => r.image_path).filter(Boolean);
+  if (paths.length > 0) {
+    const { error: storageError } = await supabase.storage.from('receipts').remove(paths);
+    if (storageError) {
+      // Non-fatal: log but continue to delete DB rows
+      console.warn('Storage remove warning:', storageError.message);
+    }
+  }
+
+  // Remove DB rows
+  const ids = data.map((r: { id: string }) => r.id);
+  const { error: deleteError } = await supabase.from('receipts').delete().in('id', ids);
+  if (deleteError) {
+    throw new Error(`Failed to delete receipt rows: ${deleteError.message}`);
+  }
+}
+
+/**
+ * Unlink receipt(s) from an expense without deleting the receipt rows/images.
+ * Use this if you want to keep the receipt but remove its association.
+ */
+export async function unlinkReceiptFromExpenseByExpenseId(expenseId: string): Promise<void> {
+  const { error } = await supabase
+    .from('receipts')
+    .update({ expense_id: null })
+    .eq('expense_id', expenseId);
+
+  if (error) {
+    throw new Error(`Failed to unlink receipt from expense: ${error.message}`);
+  }
+}

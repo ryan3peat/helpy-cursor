@@ -113,6 +113,7 @@ export interface Database {
           completed: boolean
           recurrence: Json | null
           created_at: string
+          category: string
         }
         Insert: {
           id?: string
@@ -124,6 +125,7 @@ export interface Database {
           completed?: boolean
           recurrence?: Json | null
           created_at?: string
+          category?: string
         }
         Update: {
           id?: string
@@ -135,6 +137,7 @@ export interface Database {
           completed?: boolean
           recurrence?: Json | null
           created_at?: string
+          category?: string
         }
       }
       meals: {

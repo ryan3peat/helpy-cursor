@@ -1,9 +1,12 @@
+// services/inviteService.ts
+// Frontend service for calling invite API endpoints
+// NO email required - uses shareable link approach
 
 import type { User } from '../types';
 
 /**
  * Create an invitation for a new household member
- * Calls the backend API which uses Clerk to send the invite email
+ * Returns a shareable link - NO email sent
  */
 export async function createInvite(params: {
   name: string;
@@ -11,7 +14,8 @@ export async function createInvite(params: {
   householdId: string;
   inviterId: string;
 }): Promise<{ user: User; inviteLink: string }> {
-  const baseUrl = import.meta.env.VITE_API_BASE_URL; // ✅ Use env variable for production
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
+  
   const response = await fetch(`${baseUrl}/api/invite`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -19,15 +23,7 @@ export async function createInvite(params: {
   });
 
   if (!response.ok) {
-    // ✅ Handle non-JSON error responses gracefully
-    let errorMessage = 'Failed to create invite';
-    try {
-      const error = await response.json();
-      errorMessage = error.message || error.error || errorMessage;
-    } catch {
-      const text = await response.text();
-      if (text) errorMessage = text;
-    }
+    const errorMessage = await extractErrorMessage(response, 'Failed to create invite');
     throw new Error(errorMessage);
   }
 
@@ -35,13 +31,15 @@ export async function createInvite(params: {
 }
 
 /**
- * Resend an invitation that may have expired or wasn't received
+ * Resend/regenerate an invitation link
+ * Extends expiration and returns new link
  */
 export async function resendInvite(
   userId: string,
   householdId: string
 ): Promise<{ inviteLink: string }> {
-  const baseUrl = import.meta.env.VITE_API_BASE_URL; // ✅ Use env variable for production
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
+  
   const response = await fetch(`${baseUrl}/api/invite/resend`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -49,16 +47,21 @@ export async function resendInvite(
   });
 
   if (!response.ok) {
-    let errorMessage = 'Failed to resend invite';
-    try {
-      const error = await response.json();
-      errorMessage = error.message || error.error || errorMessage;
-    } catch {
-      const text = await response.text();
-      if (text) errorMessage = text;
-    }
+    const errorMessage = await extractErrorMessage(response, 'Failed to resend invite');
     throw new Error(errorMessage);
   }
 
   return response.json();
+}
+
+/**
+ * Safely extract error message from response
+ */
+async function extractErrorMessage(response: Response, fallback: string): Promise<string> {
+  try {
+    const data = await response.json();
+    return data.error || data.message || fallback;
+  } catch {
+    return `${fallback} (HTTP ${response.status})`;
+  }
 }

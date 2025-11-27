@@ -26,8 +26,8 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
       console.log('🔍 Checking for user:', clerkUser.id);
       
       // ============================================================
-      // STEP 1: Check if this user came from an invitation
-      // Clerk stores metadata we set during invitation in publicMetadata
+      // STEP 1: Check if this user came from a Clerk invitation
+      // (Kept for backwards compatibility)
       // ============================================================
       const metadata = clerkUser.publicMetadata as {
         supabaseUserId?: string;
@@ -36,16 +36,15 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
       } | undefined;
 
       if (metadata?.supabaseUserId && metadata?.householdId) {
-        console.log('📨 User came from invitation, activating pending user...');
+        console.log('📨 User came from Clerk invitation, activating pending user...');
         console.log('📨 Metadata:', metadata);
 
-        // Update the pending user record to active and link clerk_id
         const { data: activatedUser, error: activateError } = await supabase
           .from('users')
           .update({ 
             status: 'active',
             clerk_id: clerkUser.id,
-            invite_expires_at: null // Clear expiration
+            invite_expires_at: null
           })
           .eq('id', metadata.supabaseUserId)
           .eq('household_id', metadata.householdId)
@@ -54,7 +53,6 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
 
         if (activateError) {
           console.error('❌ Failed to activate invited user:', activateError);
-          // Fall through to check if user exists by clerk_id
         } else if (activatedUser) {
           console.log('✅ Invited user activated:', activatedUser);
           onLogin({
@@ -69,6 +67,83 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
             status: 'active'
           });
           return;
+        }
+      }
+
+      // ============================================================
+      // STEP 1.5: Check URL for invite parameters (SHAREABLE LINK FLOW)
+      // This handles the flow where admin shares a link without email
+      // ============================================================
+      const urlParams = new URLSearchParams(window.location.search);
+      const hashParams = new URLSearchParams(window.location.hash.split('?')[1] || '');
+      
+      // Check both query params and hash params (Clerk uses hash routing)
+      const isInvite = urlParams.get('invite') === 'true' || hashParams.get('invite') === 'true';
+      const hid = urlParams.get('hid') || hashParams.get('hid');
+      const uid = urlParams.get('uid') || hashParams.get('uid');
+
+      if (isInvite && hid && uid) {
+        console.log('🔗 Invite URL detected:', { hid, uid });
+
+        const { data: pendingUser, error: pendingError } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', uid)
+          .eq('household_id', hid)
+          .eq('status', 'pending')
+          .maybeSingle();
+
+        if (pendingUser && !pendingError) {
+          // Check if invite hasn't expired
+          const expiresAt = pendingUser.invite_expires_at;
+          if (expiresAt && new Date(expiresAt) < new Date()) {
+            console.log('⏰ Invitation expired');
+            alert('This invitation has expired. Please ask for a new invite link.');
+            // Clear URL params and continue to regular signup
+            window.history.replaceState({}, '', window.location.pathname);
+          } else {
+            // Activate the pending user and link to Clerk account
+            const { data: activatedUser, error: activateError } = await supabase
+              .from('users')
+              .update({ 
+                status: 'active',
+                clerk_id: clerkUser.id,
+                email: clerkUser.primaryEmailAddress?.emailAddress || pendingUser.email,
+                invite_expires_at: null,
+                name: clerkUser.fullName || clerkUser.firstName || pendingUser.name,
+                avatar: clerkUser.imageUrl || pendingUser.avatar
+              })
+              .eq('id', uid)
+              .eq('household_id', hid)
+              .select()
+              .single();
+
+            if (!activateError && activatedUser) {
+              console.log('✅ Invited user activated via URL:', activatedUser);
+              
+              // Clear the invite params from URL
+              window.history.replaceState({}, '', window.location.pathname);
+              
+              onLogin({
+                id: activatedUser.clerk_id || activatedUser.id,
+                householdId: activatedUser.household_id,
+                email: activatedUser.email,
+                name: activatedUser.name,
+                role: activatedUser.role,
+                avatar: activatedUser.avatar,
+                allergies: activatedUser.allergies || [],
+                preferences: activatedUser.preferences || [],
+                status: 'active'
+              });
+              return;
+            } else {
+              console.error('❌ Failed to activate via URL:', activateError);
+            }
+          }
+        } else {
+          console.log('⚠️ No pending user found for invite params, may already be activated');
+          // Clear URL params and continue to regular flow
+          window.history.replaceState({}, '', window.location.pathname);
         }
       }
 
@@ -132,7 +207,6 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                 status: 'active',
                 clerk_id: clerkUser.id,
                 invite_expires_at: null,
-                // Update name and avatar from Clerk profile
                 name: clerkUser.fullName || clerkUser.firstName || pendingUser.name,
                 avatar: clerkUser.imageUrl || pendingUser.avatar
               })
@@ -190,7 +264,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
           email: clerkUser.primaryEmailAddress?.emailAddress || '',
           name: clerkUser.fullName || clerkUser.firstName || 'User',
           role: 'Admin',
-          avatar: clerkUser.imageUrl || `https://picsum.photos/200/200?random=${Date.now()}`,
+          avatar: clerkUser.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${clerkUser.firstName || 'User'}`,
           allergies: [],
           preferences: [],
           status: 'active'

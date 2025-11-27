@@ -178,7 +178,7 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
                   : "bg-gray-100 text-gray-600 hover:bg-gray-200"
               }`}
             >
-              {getCategoryLabel(cat)}
+              {getCategoryLabel(cat as string)}
             </button>
           ))}
         </div>

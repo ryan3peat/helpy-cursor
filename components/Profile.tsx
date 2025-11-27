@@ -5,6 +5,7 @@ import {
   CreditCard, Shield, Lock, Crown, Mail, Share2
 } from 'lucide-react';
 import { User, UserRole, BaseViewProps } from '../types';
+import { createInvite } from '../services/inviteService';
 
 interface ProfileProps extends BaseViewProps {
   users: User[];
@@ -40,7 +41,6 @@ const Profile: React.FC<ProfileProps> = ({
 
   // Add User Form State
   const [newName, setNewName] = useState('');
-  const [newEmail, setNewEmail] = useState('');
   const [newRole, setNewRole] = useState<UserRole>(UserRole.CHILD);
 
   // Settings State
@@ -62,6 +62,11 @@ const Profile: React.FC<ProfileProps> = ({
 
   const selectedUser = users.find(u => u.id === selectedUserId) || users[0];
 
+  const resetForm = () => {
+    setNewName('');
+    setNewRole(UserRole.CHILD);
+  };
+
   // --- Helper Functions ---
   const getRoleBadgeColor = (role: UserRole) => {
     switch (role) {
@@ -77,33 +82,43 @@ const Profile: React.FC<ProfileProps> = ({
   const handleAddUser = async () => {
     if (!newName.trim()) return;
 
-    const finalEmail = newEmail.trim() || `${newName.toLowerCase().replace(/\s/g, '')}@${currentUser.householdId}.helpy`;
-    const newUser: Omit<User, 'id'> = {
-      householdId: currentUser.householdId,
-      name: newName,
-      email: finalEmail,
-      role: newRole,
-      avatar: `https://picsum.photos/200/200?random=${Date.now()}`,
-      allergies: [],
-      preferences: [],
-      status: newRole === UserRole.CHILD ? 'active' : 'pending',
-      expiresAt: newRole === UserRole.CHILD ? null : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
-    };
-
-    const createdUser = await onAdd(newUser);
-    if (createdUser && newRole !== UserRole.CHILD) {
-      const baseUrl = window.location.origin;
-      const link = `${baseUrl}/invite?hid=${currentUser.householdId}&uid=${createdUser.id}`;
-      setInviteLink(link);
+    // For CHILD: Add directly to Supabase (no Clerk invite needed)
+    if (newRole === UserRole.CHILD) {
+      const childUser: Omit<User, 'id'> = {
+        householdId: currentUser.householdId,
+        name: newName,
+        email: `${newName.toLowerCase().replace(/\s/g, '')}@${currentUser.householdId}.helpy`,
+        role: newRole,
+        avatar: `https://picsum.photos/200/200?random=${Date.now()}`,
+        allergies: [],
+        preferences: [],
+        status: 'active',
+        expiresAt: null
+      };
+      await onAdd(childUser);
+      setIsAddModalOpen(false);
+      resetForm();
+      return;
     }
 
-    setIsAddModalOpen(false);
-    setNewName('');
-    setNewEmail('');
-    setNewRole(UserRole.CHILD);
+    try {
+      const { user, inviteLink: link } = await createInvite({
+        name: newName,
+        role: newRole,
+        householdId: currentUser.householdId,
+        inviterId: currentUser.id
+      });
+      
+      setInviteLink(link); // Show the invite modal
+      setIsAddModalOpen(false);
+      resetForm();
+    } catch (error: any) {
+      console.error('Failed to create invite:', error);
+      alert(`Failed to create invite: ${error.message}`);
+    }
   };
-
-  const handleDeleteUser = (id: string) => {
+  
+    const handleDeleteUser = (id: string) => {
     if (users.length <= 1) return;
     onDelete(id);
     if (selectedUserId === id) {
@@ -637,16 +652,6 @@ const Profile: React.FC<ProfileProps> = ({
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
                   placeholder="e.g. Sarah"
-                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-brand-primary outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">Email (optional for adults)</label>
-                <input
-                  type="email"
-                  value={newEmail}
-                  onChange={(e) => setNewEmail(e.target.value)}
-                  placeholder="email@example.com"
                   className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-brand-primary outline-none"
                 />
               </div>

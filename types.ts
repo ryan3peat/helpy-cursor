@@ -16,6 +16,8 @@ export interface User {
   avatar?: string;
   allergies?: string[];
   preferences?: string[];
+  status: 'active' | 'pending'; // ✅ Add this
+  expiresAt?: string | null; 
   email?: string;
   password?: string;
   pin?: string;

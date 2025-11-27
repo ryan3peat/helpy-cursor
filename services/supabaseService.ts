@@ -14,6 +14,49 @@ const COLLECTION_MAP: Record<string, string> = {
   'sections': 'sections'
 };
 
+// Cache to store clerk_id -> supabase uuid mapping
+const userIdCache: Record<string, string> = {};
+
+/**
+ * Get the actual Supabase UUID for a user given their clerk_id
+ * Why: The app uses clerk_id as user.id, but Supabase needs the actual UUID for updates
+ */
+async function getSupabaseUserId(clerkId: string, householdId: string): Promise<string | null> {
+  // Check cache first
+  if (userIdCache[clerkId]) {
+    console.log(`🔄 Found cached UUID for ${clerkId}: ${userIdCache[clerkId]}`);
+    return userIdCache[clerkId];
+  }
+  
+  console.log(`🔍 Looking up Supabase UUID for clerk_id: ${clerkId}`);
+  
+  // Query Supabase to find the user's actual UUID by matching clerk_id as text
+  const { data, error } = await supabase
+    .from('users')
+    .select('id, clerk_id')
+    .eq('household_id', householdId);
+  
+  if (error) {
+    console.error('❌ Error querying users:', error);
+    return null;
+  }
+  
+  // Find the user whose clerk_id matches (comparing as strings)
+  const user = data?.find(u => String(u.clerk_id) === String(clerkId));
+  
+  if (!user) {
+    console.error('❌ Could not find user with clerk_id:', clerkId);
+    console.log('📋 Available users:', data);
+    return null;
+  }
+  
+  console.log(`✅ Found UUID ${user.id} for clerk_id ${clerkId}`);
+  
+  // Cache for future use
+  userIdCache[clerkId] = user.id;
+  return user.id;
+}
+
 /**
  * Subscribe to real-time changes in a collection
  * Why: Keeps UI synced when data changes (e.g., another family member adds item)
@@ -38,7 +81,7 @@ export function subscribeToCollection(
         return;
       }
       console.log(`✅ Initial ${collection} data:`, data);
-      callback(convertSupabaseData(data || []));
+      callback(convertSupabaseData(data || [], collection));
     });
 
   // Subscribe to changes
@@ -65,7 +108,7 @@ export function subscribeToCollection(
           .eq('household_id', householdId)
           .then(({ data }) => {
             console.log(`🔔 Refetched ${collection}:`, data);
-            if (data) callback(convertSupabaseData(data));
+            if (data) callback(convertSupabaseData(data, collection));
           });
       }
     )
@@ -87,7 +130,7 @@ export function subscribeToCollection(
 export async function addItem(
   householdId: string,
   collection: string,
-  item: Omit<DataItem, 'id'>  // ← Already excludes 'id' in type
+  item: Omit<DataItem, 'id'>
 ): Promise<DataItem> {
   const tableName = COLLECTION_MAP[collection];
   
@@ -116,12 +159,12 @@ export async function addItem(
     throw error;
   }
   
-  return convertSupabaseData([data])[0];
+  return convertSupabaseData([data], collection)[0];
 }
 
 /**
  * Update an existing item
- * Why: Modify records (e.g., mark task complete)
+ * Why: Modify records (e.g., mark task complete, update user profile)
  */
 export async function updateItem(
   householdId: string,
@@ -131,13 +174,44 @@ export async function updateItem(
 ): Promise<void> {
   const tableName = COLLECTION_MAP[collection];
   
-  const { error } = await supabase
+  console.log(`🔄 Updating ${collection} item:`, id, updates);
+  
+  const snakeCaseUpdates = convertToSnakeCase(updates);
+  console.log('🔄 Snake case updates:', snakeCaseUpdates);
+  
+  let actualId = id;
+  
+  // For users, we need to find the actual Supabase UUID
+  // because the app uses clerk_id as the user's id
+  if (collection === 'users') {
+    const supabaseId = await getSupabaseUserId(id, householdId);
+    if (!supabaseId) {
+      console.error('❌ Could not find Supabase UUID for user:', id);
+      throw new Error(`User not found: ${id}`);
+    }
+    actualId = supabaseId;
+    console.log(`🔄 Resolved clerk_id ${id} to Supabase UUID ${actualId}`);
+  }
+  
+  const { error, data } = await supabase
     .from(tableName)
-    .update(convertToSnakeCase(updates))
-    .eq('id', id)
-    .eq('household_id', householdId);
+    .update(snakeCaseUpdates)
+    .eq('id', actualId)
+    .eq('household_id', householdId)
+    .select();
 
-  if (error) throw error;
+  console.log('🔄 Update response:', { data, error });
+
+  if (error) {
+    console.error('❌ Update failed:', error);
+    throw error;
+  }
+  
+  if (!data || data.length === 0) {
+    console.warn('⚠️ No rows updated - item may not exist or wrong ID');
+  } else {
+    console.log('✅ Update successful');
+  }
 }
 
 /**
@@ -153,10 +227,23 @@ export async function deleteItem(
   
   console.log(`🗑️ Deleting ${collection} item:`, id);
   
+  let actualId = id;
+  
+  // For users, resolve clerk_id to Supabase UUID
+  if (collection === 'users') {
+    const supabaseId = await getSupabaseUserId(id, householdId);
+    if (!supabaseId) {
+      console.error('❌ Could not find Supabase UUID for user:', id);
+      throw new Error(`User not found: ${id}`);
+    }
+    actualId = supabaseId;
+    console.log(`🗑️ Resolved clerk_id ${id} to Supabase UUID ${actualId}`);
+  }
+  
   const { error, count } = await supabase
     .from(tableName)
-    .delete({ count: 'exact' }) // Get count of deleted rows
-    .eq('id', id)
+    .delete({ count: 'exact' })
+    .eq('id', actualId)
     .eq('household_id', householdId);
 
   if (error) {
@@ -168,6 +255,8 @@ export async function deleteItem(
     console.warn('⚠️ No rows deleted - item may not exist');
   } else {
     console.log('✅ Delete successful');
+    // Clear from cache
+    delete userIdCache[id];
   }
 }
 
@@ -231,92 +320,91 @@ export function subscribeToNotes(
  * Authentication functions
  */
 export async function registerUser(
-    name: string,
-    email: string,
-    password: string
-  ): Promise<User> {
-    console.log('🔵 registerUser called', { name, email });
-    
-    // 1. Create household FIRST (doesn't need auth)
-    console.log('🔵 Creating household');
-    const { data: householdData, error: householdError } = await supabase
-      .from('households')
-      .insert([{ name: `${name}'s Home` }])
-      .select()
-      .single();
+  name: string,
+  email: string,
+  password: string
+): Promise<User> {
+  console.log('🔵 registerUser called', { name, email });
   
-    console.log('🔵 Household response:', { householdData, householdError });
-    
-    if (householdError) {
-      console.error('🔴 Household creation failed:', householdError);
-      throw new Error(`Failed to create household: ${householdError.message}`);
-    }
+  // 1. Create household FIRST (doesn't need auth)
+  console.log('🔵 Creating household');
+  const { data: householdData, error: householdError } = await supabase
+    .from('households')
+    .insert([{ name: `${name}'s Home` }])
+    .select()
+    .single();
+
+  console.log('🔵 Household response:', { householdData, householdError });
   
-    // 2. Create auth user in Supabase Auth
-    console.log('🔵 Creating auth user');
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          name: name,
-          household_id: householdData.id
-        }
-      }
-    });
-  
-    console.log('🔵 Auth response:', { authData, authError });
-    
-    if (authError) {
-      console.error('🔴 Auth creation failed:', authError);
-      throw new Error(`Failed to create auth user: ${authError.message}`);
-    }
-    
-    if (!authData.user) {
-      throw new Error('User creation failed - no user returned');
-    }
-  
-    // 3. Create user profile in users table
-    console.log('🔵 Creating user profile');
-    const newUser = {
-      id: authData.user.id,
-      household_id: householdData.id,
-      email,
-      name,
-      role: 'Admin',
-      avatar: `https://picsum.photos/200/200?random=${Date.now()}`,
-      allergies: [],
-      preferences: []
-    };
-  
-    const { data: userData, error: userError } = await supabase
-      .from('users')
-      .insert([newUser])
-      .select()
-      .single();
-  
-    console.log('🔵 User profile response:', { userData, userError });
-    
-    if (userError) {
-      console.error('🔴 User profile creation failed:', userError);
-      throw new Error(`Failed to create user profile: ${userError.message}`);
-    }
-    
-    console.log('🟢 Registration complete:', userData);
-    
-    // Convert from snake_case to camelCase
-    return {
-      id: userData.id,
-      householdId: userData.household_id,
-      email: userData.email,
-      name: userData.name,
-      role: userData.role as any,
-      avatar: userData.avatar,
-      allergies: userData.allergies || [],
-      preferences: userData.preferences || []
-    } as User;
+  if (householdError) {
+    console.error('🔴 Household creation failed:', householdError);
+    throw new Error(`Failed to create household: ${householdError.message}`);
   }
 
+  // 2. Create auth user in Supabase Auth
+  console.log('🔵 Creating auth user');
+  const { data: authData, error: authError } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      data: {
+        name: name,
+        household_id: householdData.id
+      }
+    }
+  });
+
+  console.log('🔵 Auth response:', { authData, authError });
+  
+  if (authError) {
+    console.error('🔴 Auth creation failed:', authError);
+    throw new Error(`Failed to create auth user: ${authError.message}`);
+  }
+  
+  if (!authData.user) {
+    throw new Error('User creation failed - no user returned');
+  }
+
+  // 3. Create user profile in users table
+  console.log('🔵 Creating user profile');
+  const newUser = {
+    id: authData.user.id,
+    household_id: householdData.id,
+    email,
+    name,
+    role: 'Admin',
+    avatar: `https://picsum.photos/200/200?random=${Date.now()}`,
+    allergies: [],
+    preferences: []
+  };
+
+  const { data: userData, error: userError } = await supabase
+    .from('users')
+    .insert([newUser])
+    .select()
+    .single();
+
+  console.log('🔵 User profile response:', { userData, userError });
+  
+  if (userError) {
+    console.error('🔴 User profile creation failed:', userError);
+    throw new Error(`Failed to create user profile: ${userError.message}`);
+  }
+  
+  console.log('🟢 Registration complete:', userData);
+  
+  // Convert from snake_case to camelCase
+  return {
+    id: userData.id,
+    householdId: userData.household_id,
+    email: userData.email,
+    name: userData.name,
+    role: userData.role as any,
+    avatar: userData.avatar,
+    allergies: userData.allergies || [],
+    preferences: userData.preferences || []
+  } as User;
+}
 
 export async function authenticateUser(
   email: string,
@@ -336,7 +424,7 @@ export async function authenticateUser(
     .eq('id', authData.user.id)
     .single();
 
-  return userData ? convertSupabaseData([userData])[0] as User : null;
+  return userData ? convertSupabaseData([userData], 'users')[0] as User : null;
 }
 
 export async function authenticateWithPin(
@@ -350,7 +438,7 @@ export async function authenticateWithPin(
     .eq('pin', pin)
     .single();
 
-  return data ? convertSupabaseData([data])[0] as User : null;
+  return data ? convertSupabaseData([data], 'users')[0] as User : null;
 }
 
 export async function getUser(
@@ -364,7 +452,7 @@ export async function getUser(
     .eq('household_id', householdId)
     .single();
 
-  return data ? convertSupabaseData([data])[0] as User : null;
+  return data ? convertSupabaseData([data], 'users')[0] as User : null;
 }
 
 export async function completeInviteRegistration(
@@ -390,7 +478,7 @@ export async function completeInviteRegistration(
     .single();
 
   if (updateError) throw updateError;
-  return convertSupabaseData([userData])[0] as User;
+  return convertSupabaseData([userData], 'users')[0] as User;
 }
 
 // HELPER FUNCTIONS
@@ -398,14 +486,29 @@ export async function completeInviteRegistration(
 /**
  * Convert Supabase snake_case to camelCase
  * Why: Your app uses camelCase (householdId), Supabase uses snake_case (household_id)
+ * 
+ * For users: Uses clerk_id as the id if it exists (for Clerk auth users)
+ * Also caches the clerk_id -> UUID mapping for future updates
  */
-function convertSupabaseData(data: any[]): DataItem[] {
+function convertSupabaseData(data: any[], collection?: string): DataItem[] {
   return data.map(item => {
     const converted: any = {};
     for (const key in item) {
       const camelKey = key.replace(/_([a-z])/g, (g) => g[1].toUpperCase());
       converted[camelKey] = item[key];
     }
+    
+    // For users with clerk_id, use it as the app's user id
+    // This maintains consistency with how Auth.tsx sets up the user
+    if (collection === 'users' && item.clerk_id) {
+      // Cache the mapping so we can resolve it later for updates
+      userIdCache[item.clerk_id] = item.id;
+      console.log(`📝 Cached mapping: clerk_id ${item.clerk_id} -> UUID ${item.id}`);
+      
+      // Use clerk_id as the user's id in the app
+      converted.id = item.clerk_id;
+    }
+    
     return converted;
   });
 }
@@ -417,6 +520,7 @@ function convertSupabaseData(data: any[]): DataItem[] {
 function convertToSnakeCase(obj: any): any {
   const converted: any = {};
   for (const key in obj) {
+    // Skip converting 'id' for users since we handle it specially
     const snakeKey = key.replace(/([A-Z])/g, '_$1').toLowerCase();
     converted[snakeKey] = obj[key];
   }

@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { School } from "@src/types/school";
+import type { School } from "@/src/types/school";
 
 type EditSchoolDialogProps = {
   open: boolean;

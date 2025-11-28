@@ -1,7 +1,7 @@
 
 import * as React from "react";
 import { Button } from "@/components/ui/button";
-import type { School } from "@src/types/school";
+import type { School } from "@/src/types/school";
 
 interface SchoolCardProps {
   school: School;

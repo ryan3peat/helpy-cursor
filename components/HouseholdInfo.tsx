@@ -14,7 +14,7 @@ import {
 import { Section, BaseViewProps } from "@/types";
 
 // ---- Schools UI & types ----
-import type { School } from "@src/types/school";
+import type { School } from "@/src/types/school";
 import { Button } from "@/components/ui/button";
 import SchoolCard from "@/components/ui/schools/SchoolCard";
 import CreateSchoolDialog from "@/components/ui/schools/CreateSchoolDialog";

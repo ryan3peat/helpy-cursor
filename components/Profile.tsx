@@ -119,13 +119,34 @@ const Profile: React.FC<ProfileProps> = ({
   };
   
   const handleDeleteUser = async (id: string) => {
-    if (users.length <= 1) return;
+    if (users.length <= 1) {
+      alert('Cannot delete the last family member.');
+      return;
+    }
     
-    // Add confirmation dialog
-    const confirmDelete = window.confirm('Are you sure you want to remove this family member?');
+    // Find the user to get their details for the confirmation message
+    const userToDelete = users.find(u => u.id === id);
+    if (!userToDelete) {
+      alert('User not found.');
+      return;
+    }
+    
+    // Add confirmation dialog with user name
+    const confirmDelete = window.confirm(
+      `Are you sure you want to remove ${userToDelete.name} from your household?`
+    );
     if (!confirmDelete) return;
     
     try {
+      // CRITICAL: onDelete expects the user's ID 
+      // This ID should match what's stored in your Supabase profiles table
+      console.log('Deleting user:', {
+        userId: id,
+        userName: userToDelete.name,
+        userEmail: userToDelete.email,
+        userRole: userToDelete.role
+      });
+      
       await onDelete(id);
       
       // Update selected user after deletion
@@ -133,11 +154,15 @@ const Profile: React.FC<ProfileProps> = ({
         const remaining = users.filter(u => u.id !== id);
         if (remaining.length > 0) setSelectedUserId(remaining[0].id);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Delete failed:', error);
-      alert('Failed to delete family member. Please try again.');
+      
+      // Provide more specific error message
+      const errorMessage = error?.message || 'Failed to delete family member. Please try again.';
+      alert(`Error: ${errorMessage}`);
     }
   };
+
 
   const handleOpenEdit = () => {
     if (!selectedUser) return;

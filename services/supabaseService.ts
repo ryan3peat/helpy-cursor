@@ -93,30 +93,34 @@ export function subscribeToCollection(
       callback(convertSupabaseData(data || [], collection));
     });
 
-  // Set up real-time subscription
+    // Set up real-time subscription
   const subscription = supabase
-    .channel(`${tableName}-${householdId}`)
-    .on(
-      'postgres_changes',
-      {
-        event: '*',
-        schema: 'public',
-        table: tableName,
-        filter: `household_id=eq.${householdId}`
-      },
-      (payload: any) => {
-        console.log(`🔄 Real-time update on ${tableName}:`, payload.eventType);
-        // Re-fetch all data on any change
-        supabase
-          .from(tableName)
-          .select('*')
-          .eq('household_id', householdId)
-          .then(({ data }) => {
-            callback(convertSupabaseData(data || [], collection));
-          });
-      }
-    )
-    .subscribe();
+  .channel(`${tableName}-${householdId}`)
+  .on(
+    'postgres_changes',
+    {
+      event: '*',
+      schema: 'public',
+      table: tableName,
+      filter: `household_id=eq.${householdId}`
+    },
+    (payload: any) => {
+      console.log(`🔄 Real-time ${payload.eventType} on ${tableName}`);
+    
+      // CRITICAL FIX: Refetch all data on ANY change
+      supabase
+        .from(tableName)
+        .select('*')
+        .eq('household_id', householdId)
+        .then(({ data }) => {
+          console.log(`📥 Refetched ${data?.length || 0} items after ${payload.eventType}`);
+          callback(convertSupabaseData(data || [], collection));
+        });
+    }
+  )
+  .subscribe((status) => {
+    console.log(`📡 Subscription status for ${tableName}:`, status);
+  });
 
   // Return unsubscribe function
   return () => {

@@ -24,23 +24,34 @@ const InviteSetup: React.FC<InviteSetupProps> = ({ householdId, userId, onComple
 
   useEffect(() => {
     let mounted = true;
-
+  
     async function loadUser() {
       setLoading(true);
       setError("");
-
+  
       if (!isSignedIn || !clerkUserId) {
-        // Redirect to Clerk sign-in with return URL
         redirectToSignIn({ redirectUrl: window.location.href });
         return;
       }
-
+  
       try {
         const data = await getUser(householdId, userId);
         if (!mounted) return;
-
-        if (data && data.status === "pending" && new Date(data.expiresAt) > new Date()) {
-          setInvitedUser(data);
+  
+        // ✅ If user is already active, complete immediately
+        if (data && data.status === "active") {
+          window.history.replaceState({}, '', window.location.pathname);
+          onComplete(data);
+          return;
+        }
+  
+        // Check pending status and expiration
+        if (data && data.status === "pending") {
+          if (data.expiresAt && new Date(data.expiresAt) < new Date()) {
+            setError("Invitation expired. Please request a new invite link.");
+          } else {
+            setInvitedUser(data);
+          }
         } else {
           setError("Invitation invalid or expired.");
         }
@@ -50,12 +61,10 @@ const InviteSetup: React.FC<InviteSetupProps> = ({ householdId, userId, onComple
         if (mounted) setLoading(false);
       }
     }
-
+  
     loadUser();
-    return () => {
-      mounted = false;
-    };
-  }, [householdId, userId, isSignedIn, clerkUserId, redirectToSignIn]);
+    return () => { mounted = false; };
+  }, [householdId, userId, isSignedIn, clerkUserId, redirectToSignIn, onComplete]);
 
   async function handleAcceptInvite() {
     setError("");
@@ -66,6 +75,10 @@ const InviteSetup: React.FC<InviteSetupProps> = ({ householdId, userId, onComple
     setIsSubmitting(true);
     try {
       const finalUser = await completeInviteRegistration(householdId, userId, clerkUserId);
+      
+      // ✅ CRITICAL: Clear the invite params from URL BEFORE calling onComplete
+      window.history.replaceState({}, '', window.location.pathname);
+      
       onComplete(finalUser);
     } catch (e: any) {
       const msg = (e?.message as string) ?? "Failed to complete registration.";

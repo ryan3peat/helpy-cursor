@@ -101,6 +101,16 @@ const App: React.FC = () => {
     return () => window.removeEventListener('hashchange', checkInvite);
   }, []);
 
+  // In App.tsx, add this useEffect after the invite detection useEffect:
+
+useEffect(() => {
+  // If user is logged in and we still have invite params, clear them
+  if (currentUser && inviteParams) {
+    window.history.replaceState({}, '', window.location.pathname);
+    setInviteParams(null);
+  }
+}, [currentUser, inviteParams]);
+
   // Global Data State
   const [users, setUsers] = useState<User[]>([]);
   const [householdSections, setHouseholdSections] = useState<Section[]>([]);

@@ -118,12 +118,24 @@ const Profile: React.FC<ProfileProps> = ({
     }
   };
   
-    const handleDeleteUser = (id: string) => {
+  const handleDeleteUser = async (id: string) => {
     if (users.length <= 1) return;
-    onDelete(id);
-    if (selectedUserId === id) {
-      const remaining = users.filter(u => u.id !== id);
-      if (remaining.length > 0) setSelectedUserId(remaining[0].id);
+    
+    // Add confirmation dialog
+    const confirmDelete = window.confirm('Are you sure you want to remove this family member?');
+    if (!confirmDelete) return;
+    
+    try {
+      await onDelete(id);
+      
+      // Update selected user after deletion
+      if (selectedUserId === id) {
+        const remaining = users.filter(u => u.id !== id);
+        if (remaining.length > 0) setSelectedUserId(remaining[0].id);
+      }
+    } catch (error) {
+      console.error('Delete failed:', error);
+      alert('Failed to delete family member. Please try again.');
     }
   };
 

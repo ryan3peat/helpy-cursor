@@ -1,28 +1,38 @@
-
+// services/userService.ts
+import { supabase } from './supabase';
 import type { User } from "../types";
-import { UserRole } from "../types";
-
-// Default role for invited users if not specified
-const DEFAULT_ROLE: UserRole = UserRole.SPOUSE; // or HELPER based on your logic
 
 /**
  * Fetch invited user details from Supabase
- * Validate status and expiration in real implementation
  */
 export async function getUser(
   householdId: string,
   userId: string
 ): Promise<User | null> {
-  // TODO: Replace with Supabase query:
-  // SELECT * FROM users WHERE householdId = $1 AND id = $2
+  const { data, error } = await supabase
+    .from('users')
+    .select('*')
+    .eq('id', userId)
+    .eq('household_id', householdId)
+    .maybeSingle();
+
+  if (error || !data) {
+    console.error('getUser error:', error);
+    return null;
+  }
+
+  // Convert snake_case to camelCase
   return {
-    id: userId,
-    email: "placeholder@example.com",
-    householdId,
-    name: "Invited User",
-    role: DEFAULT_ROLE,
-    status: "pending", // ✅ Added
-    expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // ✅ Added
+    id: data.id,
+    email: data.email,
+    householdId: data.household_id,
+    name: data.name,
+    role: data.role,
+    status: data.status,
+    avatar: data.avatar,
+    allergies: data.allergies || [],
+    preferences: data.preferences || [],
+    expiresAt: data.invite_expires_at
   };
 }
 
@@ -34,15 +44,32 @@ export async function completeInviteRegistration(
   userId: string,
   clerkId: string
 ): Promise<User> {
-  // TODO: Replace with Supabase update:
-  // UPDATE users SET status = 'active', clerkId = $3 WHERE id = $2 AND householdId = $1
+  const { data, error } = await supabase
+    .from('users')
+    .update({ 
+      status: 'active',
+      clerk_id: clerkId,
+      invite_expires_at: null
+    })
+    .eq('id', userId)
+    .eq('household_id', householdId)
+    .select()
+    .single();
+
+  if (error || !data) {
+    throw new Error(error?.message || 'Failed to activate user');
+  }
+
   return {
-    id: userId,
-    email: "placeholder@example.com",
-    householdId,
-    name: "Member",
-    role: DEFAULT_ROLE,
-    status: "active", // ✅ Updated
-    expiresAt: null // ✅ Invite no longer needed
+    id: data.clerk_id || data.id,
+    email: data.email,
+    householdId: data.household_id,
+    name: data.name,
+    role: data.role,
+    status: 'active',
+    avatar: data.avatar,
+    allergies: data.allergies || [],
+    preferences: data.preferences || [],
+    expiresAt: null
   };
 }

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useClerk } from '@clerk/clerk-react'; // ADD THIS IMPORT
 import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
 import ShoppingList from './components/ShoppingList';
@@ -23,6 +24,7 @@ import {
 } from './services/supabaseService';
 
 const App: React.FC = () => {
+  const { signOut } = useClerk(); // ADD THIS HOOK
   const [showIntro, setShowIntro] = useState(true);
   const [activeView, setActiveView] = useState('dashboard');
 
@@ -34,7 +36,6 @@ const App: React.FC = () => {
   // Invite Logic
   const [inviteParams, setInviteParams] = useState<{ hid: string; uid: string } | null>(null);
 
-  // ✅ FIX: Ref to track if login has been processed (prevents race conditions)
   const loginProcessedRef = useRef(false);
 
   // Authentication State
@@ -46,110 +47,67 @@ const App: React.FC = () => {
   // Onboarding State
   const [onboardingStep, setOnboardingStep] = useState<number>(() => {
     const saved = localStorage.getItem('helpy_onboarding_step');
-    return saved ? parseInt(saved) : 0;
+    return saved ? parseInt(saved, 10) : 1;
   });
 
   useEffect(() => {
-    localStorage.setItem('helpy_onboarding_step', onboardingStep.toString());
+    localStorage.setItem('helpy_onboarding_step', String(onboardingStep));
   }, [onboardingStep]);
 
-  // Translation Effect
+  // Check for invite params on mount
   useEffect(() => {
-    const loadTranslations = async () => {
-      if (lang === 'en') {
-        setTranslations(BASE_TRANSLATIONS);
-        return;
-      }
-      setIsTranslating(true);
-      try {
-        // @ts-ignore - Translation function not implemented yet
-        const t = await getAppTranslations(lang, BASE_TRANSLATIONS);
-        setTranslations(t);
-      } catch (e) {
-        console.error('Failed to load translations', e);
-        setTranslations(BASE_TRANSLATIONS);
-      } finally {
-        setIsTranslating(false);
-      }
-    };
-    loadTranslations();
-    localStorage.setItem('helpy_lang', lang);
-  }, [lang]);
+    const urlParams = new URLSearchParams(window.location.search);
+    const hashParams = new URLSearchParams(window.location.hash.split('?')[1]);
+    const inviteFlag = urlParams.get('invite') || hashParams.get('invite');
+    const hid = urlParams.get('hid') || hashParams.get('hid');
+    const uid = urlParams.get('uid') || hashParams.get('uid');
+    if (inviteFlag === 'true' && hid && uid) {
+      setInviteParams({ hid, uid });
+    }
+  }, []);
 
-  // ✅ Invite detection effect
-  useEffect(() => {
-    const checkInvite = () => {
-      // Skip if user is logged in OR if login is being processed
-      if (currentUser || loginProcessedRef.current) return;
-      
-      const params = new URLSearchParams(window.location.search);
-      const hash = window.location.hash;
-      let hid = params.get('hid');
-      let uid = params.get('uid');
-      let isInvite = params.get('invite') === 'true';
-
-      if (!isInvite && hash.includes('invite')) {
-        const hashParts = hash.split('?');
-        if (hashParts.length > 1) {
-          const hashParams = new URLSearchParams(hashParts[1]);
-          hid = hashParams.get('hid');
-          uid = hashParams.get('uid');
-          isInvite = true;
-        }
-      }
-
-      if (isInvite && hid && uid) {
-        setInviteParams({ hid, uid });
-        setShowIntro(false);
-      }
-    };
-
-    checkInvite();
-    window.addEventListener('hashchange', checkInvite);
-    return () => window.removeEventListener('hashchange', checkInvite);
-  }, [currentUser]);
-
-  // ✅ FIX: Memoized handleLogin with useCallback to prevent reference changes
-  // This is critical because InviteSetup has onComplete in its useEffect dependencies
   const handleLogin = useCallback((user: User) => {
-    // Guard against multiple calls (race condition protection)
     if (loginProcessedRef.current) {
-      console.log('⚠️ handleLogin already processed, skipping duplicate call');
       return;
     }
     loginProcessedRef.current = true;
-
-    console.log('✅ handleLogin called for user:', user.name);
-
-    // Clear URL and invite params FIRST (synchronously)
-    const newUrl = window.location.href.split('#')[0].split('?')[0];
+    const newUrl = window.location.pathname + window.location.hash.split('?')[0];
     window.history.replaceState({}, document.title, newUrl);
-    
-    // Clear invite params immediately
     setInviteParams(null);
-
-    // Then set user and update state
     setCurrentUser(user);
     localStorage.setItem('helpy_current_session_user', JSON.stringify(user));
     setShowIntro(false);
     setActiveView('dashboard');
-
-    // Reset the ref after a short delay to allow for future logins (e.g., after logout)
     setTimeout(() => {
       loginProcessedRef.current = false;
     }, 1000);
-  }, []); // Empty deps = stable reference
-
-  const handleLogout = useCallback(() => {
-    // Reset the login processed ref on logout
-    loginProcessedRef.current = false;
-    
-    setCurrentUser(null);
-    localStorage.removeItem('helpy_current_session_user');
-    setActiveView('dashboard');
-    setUsers([]);
-    setShowIntro(true);
   }, []);
+
+  const handleLogout = useCallback(async () => {
+    try {
+      // 1. Sign out from Clerk first
+      await signOut();
+      
+      // 2. Reset the login processed ref
+      loginProcessedRef.current = false;
+      
+      // 3. Clear local state
+      setCurrentUser(null);
+      localStorage.removeItem('helpy_current_session_user');
+      setActiveView('dashboard');
+      setUsers([]);
+      setShowIntro(true);
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Even if Clerk logout fails, clear local state
+      loginProcessedRef.current = false;
+      setCurrentUser(null);
+      localStorage.removeItem('helpy_current_session_user');
+      setActiveView('dashboard');
+      setUsers([]);
+      setShowIntro(true);
+    }
+  }, [signOut]);
 
   // Navigation
   const handleNavigate = (view: string) => {
@@ -203,50 +161,103 @@ const App: React.FC = () => {
 
   const hid = currentUser?.householdId ?? '';
 
-  // CRUD Handlers
-  const handleAddUser = async (user: Omit<User, 'id'>) => {
-    if (!hid) return undefined;
-    const mappedUser = {
-      household_id: user.householdId,
-      name: user.name,
-      email: user.email ?? null,
-      role: user.role,
-      avatar: user.avatar,
-      allergies: user.allergies,
-      preferences: user.preferences,
-      status: user.status ?? 'active'
-    };
-    try {
-      const newItem = await addItem(hid, 'users', mappedUser);
-      return newItem as User;
-    } catch (error) {
-      console.error('❌ Failed to add user:', error);
-      return undefined;
-    }
+  const handleAddShoppingItem = async (item: Omit<ShoppingItem, 'id'>) => {
+    if (!hid) return;
+    await addItem(hid, 'shopping', item);
+  };
+
+  const handleUpdateShoppingItem = async (id: string, data: Partial<ShoppingItem>) => {
+    if (!hid) return;
+    await updateItem(hid, 'shopping', id, data);
+  };
+
+  const handleDeleteShoppingItem = async (id: string) => {
+    if (!hid) return;
+    await deleteItem(hid, 'shopping', id);
+  };
+
+  const handleAddTask = async (task: Omit<Task, 'id'>) => {
+    if (!hid) return;
+    await addItem(hid, 'tasks', task);
+  };
+
+  const handleUpdateTask = async (id: string, data: Partial<Task>) => {
+    if (!hid) return;
+    await updateItem(hid, 'tasks', id, data);
+  };
+
+  const handleDeleteTask = async (id: string) => {
+    if (!hid) return;
+    await deleteItem(hid, 'tasks', id);
+  };
+
+  const handleAddMeal = async (meal: Omit<Meal, 'id'>) => {
+    if (!hid) return;
+    await addItem(hid, 'meals', meal);
+  };
+
+  const handleUpdateMeal = async (id: string, data: Partial<Meal>) => {
+    if (!hid) return;
+    await updateItem(hid, 'meals', id, data);
+  };
+
+  const handleDeleteMeal = async (id: string) => {
+    if (!hid) return;
+    await deleteItem(hid, 'meals', id);
+  };
+
+  const handleAddExpense = async (expense: Omit<Expense, 'id'>) => {
+    if (!hid) return;
+    await addItem(hid, 'expenses', expense);
+  };
+
+  const handleUpdateExpense = async (id: string, data: Partial<Expense>) => {
+    if (!hid) return;
+    await updateItem(hid, 'expenses', id, data);
+  };
+
+  const handleDeleteExpense = async (id: string) => {
+    if (!hid) return;
+    await deleteItem(hid, 'expenses', id);
+  };
+
+  const handleAddSection = async (section: Omit<Section, 'id'>) => {
+    if (!hid) return;
+    await addItem(hid, 'sections', section);
+  };
+
+  const handleUpdateSection = async (id: string, data: Partial<Section>) => {
+    if (!hid) return;
+    await updateItem(hid, 'sections', id, data);
+  };
+
+  const handleDeleteSection = async (id: string) => {
+    if (!hid) return;
+    await deleteItem(hid, 'sections', id);
+  };
+
+  const handleAddUser = async (user: Omit<User, 'id'>): Promise<User | undefined> => {
+    if (!hid) return;
+    const result = await addItem(hid, 'users', user);
+    return result ? (result as User) : undefined;
   };
 
   const handleUpdateUser = async (id: string, data: Partial<User>) => {
     if (!hid) return;
-    try {
-      await updateItem(hid, 'users', id, data);
-    } catch (error) {
-      console.error('❌ Failed to update user:', error);
-    }
+    await updateItem(hid, 'users', id, data);
   };
 
   const handleDeleteUser = async (id: string) => {
     if (!hid) return;
-    try {
-      await deleteItem(hid, 'users', id);
-    } catch (error) {
-      console.error('❌ Failed to delete user:', error);
-    }
+    await deleteItem(hid, 'users', id);
   };
 
-  // Other handlers remain unchanged...
+  const handleSaveFamilyNotes = async (notes: string) => {
+    if (!hid) return;
+    await saveFamilyNotes(hid, notes);
+  };
 
   const renderView = () => {
-    if (!currentUser) return null;
     switch (activeView) {
       case 'dashboard':
         return (
@@ -258,8 +269,8 @@ const App: React.FC = () => {
             expenses={expenses}
             onNavigate={handleNavigate}
             familyNotes={familyNotes}
-            onUpdateNotes={setFamilyNotes}
-            currentUser={currentUser}
+            onUpdateNotes={handleSaveFamilyNotes}
+            currentUser={currentUser!}
             t={translations}
             currentLang={lang}
             onLanguageChange={setLang}
@@ -267,15 +278,67 @@ const App: React.FC = () => {
           />
         );
       case 'shopping':
-        return <ShoppingList items={shoppingItems} onAdd={() => {}} onUpdate={() => {}} onDelete={() => {}} t={translations} currentLang={lang} />;
+        return (
+          <ShoppingList
+            items={shoppingItems}
+            users={users}
+            onAdd={handleAddShoppingItem}
+            onUpdate={handleUpdateShoppingItem}
+            onDelete={handleDeleteShoppingItem}
+            currentUser={currentUser!}
+            t={translations}
+          />
+        );
       case 'tasks':
-        return <Tasks tasks={tasks} users={users} onAdd={() => {}} onUpdate={() => {}} onDelete={() => {}} t={translations} currentLang={lang} />;
+        return (
+          <Tasks
+            tasks={tasks}
+            users={users}
+            onAdd={handleAddTask}
+            onUpdate={handleUpdateTask}
+            onDelete={handleDeleteTask}
+            currentUser={currentUser!}
+            t={translations}
+          />
+        );
       case 'meals':
-        return <Meals meals={meals} users={users} onAdd={() => {}} onUpdate={() => {}} onDelete={() => {}} t={translations} currentLang={lang} />;
+        return (
+          <Meals
+            meals={meals}
+            users={users}
+            onAdd={handleAddMeal}
+            onUpdate={handleUpdateMeal}
+            onDelete={handleDeleteMeal}
+            currentUser={currentUser!}
+            t={translations}
+          />
+        );
       case 'expenses':
-        return <Expenses expenses={expenses} householdId={hid} onAdd={() => {}} t={translations} currentLang={lang} />;
+        return (
+          <Expenses
+            expenses={expenses}
+            users={users}
+            onAdd={handleAddExpense}
+            onUpdate={handleUpdateExpense}
+            onDelete={handleDeleteExpense}
+            currentUser={currentUser!}
+            t={translations}
+            currentLang={lang}
+          />
+        );
       case 'info':
-        return <HouseholdInfo sections={householdSections} onAdd={() => {}} onUpdate={() => {}} onDelete={() => {}} t={translations} currentLang={lang} />;
+        return (
+          <HouseholdInfo
+            sections={householdSections}
+            familyNotes={familyNotes}
+            onAddSection={handleAddSection}
+            onUpdateSection={handleUpdateSection}
+            onDeleteSection={handleDeleteSection}
+            onSaveFamilyNotes={handleSaveFamilyNotes}
+            currentUser={currentUser!}
+            t={translations}
+          />
+        );
       case 'profile':
         return (
           <Profile
@@ -283,8 +346,8 @@ const App: React.FC = () => {
             onAdd={handleAddUser}
             onUpdate={handleUpdateUser}
             onDelete={handleDeleteUser}
-            onBack={() => handleNavigate('dashboard')}
-            currentUser={currentUser}
+            onBack={() => setActiveView('dashboard')}
+            currentUser={currentUser!}
             onLogout={handleLogout}
             t={translations}
             currentLang={lang}
@@ -295,8 +358,6 @@ const App: React.FC = () => {
     }
   };
 
-  // ✅ FIX: Additional guard - if login is being processed, show loading
-  // This prevents InviteSetup from re-rendering during the transition
   if (loginProcessedRef.current && !currentUser) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-brand-primary to-brand-secondary">
@@ -308,17 +369,14 @@ const App: React.FC = () => {
     );
   }
 
-  // Invite Setup View
   if (inviteParams && !currentUser) {
     return <InviteSetup householdId={inviteParams.hid} userId={inviteParams.uid} onComplete={handleLogin} />;
   }
 
-  // Auth View
   if (!currentUser) {
     return <Auth onLogin={handleLogin} />;
   }
 
-  // Main App View
   return (
     <>
       {showIntro && <IntroAnimation onComplete={() => setShowIntro(false)} />}

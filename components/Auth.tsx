@@ -1,7 +1,9 @@
-import React from 'react';
+// components/Auth.tsx
+import React, { useState } from 'react';
 import { SignIn, useUser } from '@clerk/clerk-react';
 import { supabase } from '../services/supabase';
 import { User } from '../types';
+import SignUp from './SignUp';
 
 interface AuthProps {
   onLogin: (user: User) => void;
@@ -10,6 +12,7 @@ interface AuthProps {
 const Auth: React.FC<AuthProps> = ({ onLogin }) => {
   const { user, isLoaded } = useUser();
   const [isCreatingUser, setIsCreatingUser] = React.useState(false);
+  const [showSignUp, setShowSignUp] = useState(false);
   const hasCheckedUser = React.useRef(false);
 
   React.useEffect(() => {
@@ -206,18 +209,16 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
               .update({ 
                 status: 'active',
                 clerk_id: clerkUser.id,
-                invite_expires_at: null,
-                name: clerkUser.fullName || clerkUser.firstName || pendingUser.name,
-                avatar: clerkUser.imageUrl || pendingUser.avatar
+                invite_expires_at: null
               })
               .eq('id', pendingUser.id)
               .select()
               .single();
 
             if (!activateError && activatedUser) {
-              console.log('✅ Pending user activated by email match:', activatedUser);
+              console.log('✅ Pending user activated by email:', activatedUser);
               onLogin({
-                id: activatedUser.clerk_id || activatedUser.id,
+                id: activatedUser.clerk_id,
                 householdId: activatedUser.household_id,
                 email: activatedUser.email,
                 name: activatedUser.name,
@@ -234,17 +235,13 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
       }
 
       // ============================================================
-      // STEP 4: Brand new user - create household and user record
+      // STEP 4: Create new household and user (first-time signup)
       // ============================================================
-      console.log('🆕 Creating new user');
+      console.log('👤 New user, creating household and user...');
 
-      // Create household
-      const { data: household, error: householdError } = await supabase
+      const { data: newHousehold, error: householdError } = await supabase
         .from('households')
-        .insert([{ 
-          name: `${clerkUser.firstName || 'Family'}'s Home`,
-          family_notes: ''
-        }])
+        .insert([{ name: `${clerkUser.firstName || 'User'}'s Family` }])
         .select()
         .single();
 
@@ -253,14 +250,13 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
         throw householdError;
       }
 
-      console.log('✅ Household created:', household.id);
+      console.log('✅ Household created:', newHousehold);
 
-      // Create user
       const { data: createdUser, error: userError } = await supabase
         .from('users')
         .insert([{
+          household_id: newHousehold.id,
           clerk_id: clerkUser.id,
-          household_id: household.id,
           email: clerkUser.primaryEmailAddress?.emailAddress || '',
           name: clerkUser.fullName || clerkUser.firstName || 'User',
           role: 'Admin',
@@ -300,6 +296,11 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
       setIsCreatingUser(false);
     }
   };
+
+  // Show custom signup page
+  if (showSignUp) {
+    return <SignUp onBackToSignIn={() => setShowSignUp(false)} />;
+  }
 
   // Loading state while creating user
   if (isCreatingUser) {
@@ -349,8 +350,21 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
             }
           }}
           routing="hash"
-          signUpUrl="#/sign-up"
+          signUpUrl={null}
         />
+        
+        {/* Custom Sign Up Button */}
+        <div className="mt-4 text-center">
+          <p className="text-sm text-white/80">
+            Don't have an account?{' '}
+            <button
+              onClick={() => setShowSignUp(true)}
+              className="font-bold text-white hover:underline"
+            >
+              Sign up
+            </button>
+          </p>
+        </div>
       </div>
 
       {/* Footer */}

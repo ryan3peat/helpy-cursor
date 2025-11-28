@@ -1,7 +1,7 @@
 
 // services/schoolService.ts
 import { createClient } from "@supabase/supabase-js";
-import type { School } from "@src/types/school";
+import type { School } from "@/src/types/school";
 
 /**
  * Create Supabase client

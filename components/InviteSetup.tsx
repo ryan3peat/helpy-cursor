@@ -1,10 +1,12 @@
 
 // components/InviteSetup.tsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Loader2, ChevronRight } from "lucide-react";
 import { useUser, useClerk } from "@clerk/clerk-react";
 import type { User } from "../types";
 import { getUser, completeInviteRegistration } from "@/services/userService";
+
+console.log('🔄 InviteSetup rendered');
 
 interface InviteSetupProps {
   householdId: string;
@@ -21,11 +23,15 @@ const InviteSetup: React.FC<InviteSetupProps> = ({ householdId, userId, onComple
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const hasCompleted = useRef(false);
+
 
   useEffect(() => {
     let mounted = true;
   
     async function loadUser() {
+      if (hasCompleted.current) return;
+
       setLoading(true);
       setError("");
   
@@ -37,9 +43,11 @@ const InviteSetup: React.FC<InviteSetupProps> = ({ householdId, userId, onComple
       try {
         const data = await getUser(householdId, userId);
         if (!mounted) return;
-  
-        // ✅ If user is already active, complete immediately
+
+                  // ✅ If user is already active, complete immediately
         if (data && data.status === "active") {
+          if (hasCompleted.current) return; // Double-check
+          hasCompleted.current = true;
           window.history.replaceState({}, '', window.location.pathname);
           onComplete(data);
           return;
@@ -67,6 +75,8 @@ const InviteSetup: React.FC<InviteSetupProps> = ({ householdId, userId, onComple
   }, [householdId, userId, isSignedIn, clerkUserId, redirectToSignIn, onComplete]);
 
   async function handleAcceptInvite() {
+    if (hasCompleted.current) return;
+
     setError("");
     if (!clerkUserId) {
       setError("No authenticated user found. Please sign in.");
@@ -75,6 +85,8 @@ const InviteSetup: React.FC<InviteSetupProps> = ({ householdId, userId, onComple
     setIsSubmitting(true);
     try {
       const finalUser = await completeInviteRegistration(householdId, userId, clerkUserId);
+
+      hasCompleted.current = true;
       
       // ✅ CRITICAL: Clear the invite params from URL BEFORE calling onComplete
       window.history.replaceState({}, '', window.location.pathname);

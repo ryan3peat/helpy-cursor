@@ -18,22 +18,25 @@ const COLLECTION_MAP: Record<string, string> = {
 const userIdCache: Record<string, string> = {};
 
 /**
- * Get the actual Supabase UUID for a user given their clerk_id
- * Why: The app uses clerk_id as user.id, but Supabase needs the actual UUID for updates
+ * Get the actual Supabase UUID for a user
+ * 
+ * UPDATED: Now handles both:
+ * 1. Active users: looks up by clerk_id
+ * 2. Pending users: the ID IS already the Supabase UUID (no clerk_id yet)
  */
-async function getSupabaseUserId(clerkId: string, householdId: string): Promise<string | null> {
+async function getSupabaseUserId(id: string, householdId: string): Promise<string | null> {
   // Check cache first
-  if (userIdCache[clerkId]) {
-    console.log(`🔄 Found cached UUID for ${clerkId}: ${userIdCache[clerkId]}`);
-    return userIdCache[clerkId];
+  if (userIdCache[id]) {
+    console.log(`🔄 Found cached UUID for ${id}: ${userIdCache[id]}`);
+    return userIdCache[id];
   }
   
-  console.log(`🔍 Looking up Supabase UUID for clerk_id: ${clerkId}`);
+  console.log(`🔍 Looking up Supabase UUID for id: ${id}`);
   
-  // Query Supabase to find the user's actual UUID by matching clerk_id as text
+  // Query all users in household
   const { data, error } = await supabase
     .from('users')
-    .select('id, clerk_id')
+    .select('id, clerk_id, status')
     .eq('household_id', householdId);
   
   if (error) {
@@ -41,20 +44,26 @@ async function getSupabaseUserId(clerkId: string, householdId: string): Promise<
     return null;
   }
   
-  // Find the user whose clerk_id matches (comparing as strings)
-  const user = data?.find(u => String(u.clerk_id) === String(clerkId));
-  
-  if (!user) {
-    console.error('❌ Could not find user with clerk_id:', clerkId);
-    console.log('📋 Available users:', data);
-    return null;
+  // First, check if this ID matches a clerk_id (active users)
+  const userByClerkId = data?.find(u => String(u.clerk_id) === String(id));
+  if (userByClerkId) {
+    console.log(`✅ Found UUID ${userByClerkId.id} for clerk_id ${id}`);
+    userIdCache[id] = userByClerkId.id;
+    return userByClerkId.id;
   }
   
-  console.log(`✅ Found UUID ${user.id} for clerk_id ${clerkId}`);
+  // Second, check if this ID is already a Supabase UUID (pending users)
+  const userByUuid = data?.find(u => String(u.id) === String(id));
+  if (userByUuid) {
+    console.log(`✅ ID ${id} is already a Supabase UUID (status: ${userByUuid.status})`);
+    // Cache it mapped to itself for consistency
+    userIdCache[id] = id;
+    return id;
+  }
   
-  // Cache for future use
-  userIdCache[clerkId] = user.id;
-  return user.id;
+  console.error('❌ Could not find user with id:', id);
+  console.log('📋 Available users:', data);
+  return null;
 }
 
 /**
@@ -68,7 +77,7 @@ export function subscribeToCollection(
 ): () => void {
   const tableName = COLLECTION_MAP[collection];
   
-  console.log(`🔔 Subscribing to ${collection} (table: ${tableName})`);
+  console.log(`🔔 Subscribing to ${tableName} for household ${householdId}`);
   
   // Initial fetch
   supabase
@@ -77,74 +86,73 @@ export function subscribeToCollection(
     .eq('household_id', householdId)
     .then(({ data, error }) => {
       if (error) {
-        console.error(`❌ Error fetching ${collection}:`, error);
+        console.error(`❌ Initial fetch error for ${tableName}:`, error);
         return;
       }
-      console.log(`✅ Initial ${collection} data:`, data);
+      console.log(`📥 Initial ${tableName} data:`, data?.length, 'items');
       callback(convertSupabaseData(data || [], collection));
     });
 
-  // Subscribe to changes
-  const channelName = `${tableName}-${householdId}`;
-  console.log(`🔔 Creating channel: ${channelName}`);
-  
+  // Set up real-time subscription
   const subscription = supabase
-    .channel(channelName)
+    .channel(`${tableName}-${householdId}`)
     .on(
       'postgres_changes',
       {
-        event: '*', // Listen to INSERT, UPDATE, DELETE
+        event: '*',
         schema: 'public',
         table: tableName,
         filter: `household_id=eq.${householdId}`
       },
-      (payload) => {
-        console.log(`🔔 ${collection} changed:`, payload);
-        
-        // Refetch on any change
+      (payload: any) => {
+        console.log(`🔄 Real-time update on ${tableName}:`, payload.eventType);
+        // Re-fetch all data on any change
         supabase
           .from(tableName)
           .select('*')
           .eq('household_id', householdId)
           .then(({ data }) => {
-            console.log(`🔔 Refetched ${collection}:`, data);
-            if (data) callback(convertSupabaseData(data, collection));
+            callback(convertSupabaseData(data || [], collection));
           });
       }
     )
-    .subscribe((status) => {
-      console.log(`🔔 ${collection} subscription status:`, status);
-    });
+    .subscribe();
 
   // Return unsubscribe function
   return () => {
-    console.log(`🔔 Unsubscribing from ${collection}`);
+    console.log(`🔕 Unsubscribing from ${tableName}`);
     subscription.unsubscribe();
   };
 }
 
 /**
  * Add a new item to a collection
- * Why: Creates new records (e.g., add shopping item)
+ * Why: Create new records (e.g., add shopping item, create task)
  */
 export async function addItem(
   householdId: string,
   collection: string,
-  item: Omit<DataItem, 'id'>
+  item: Partial<DataItem>
 ): Promise<DataItem> {
   const tableName = COLLECTION_MAP[collection];
   
-  console.log('🟡 Supabase addItem called');
-  console.log('🟡 item:', item);
+  console.log(`➕ Adding to ${collection}:`, item);
   
-  // Remove id and addedBy if they exist
-  const { id, addedBy, ...cleanItem } = item as any;
+  // Convert camelCase to snake_case for Supabase
+  const snakeCaseItem = convertToSnakeCase(item);
   
-  const snakeCaseItem = convertToSnakeCase(cleanItem);
-  console.log('🟡 Cleaned item:', snakeCaseItem);
+  // Ensure household_id is set
+  const finalData = {
+    ...snakeCaseItem,
+    household_id: householdId
+  };
   
-  const finalData = { ...snakeCaseItem, household_id: householdId };
-  console.log('🟡 Final data:', finalData);
+  // Remove id if undefined (let Supabase generate it)
+  if (finalData.id === undefined) {
+    delete finalData.id;
+  }
+  
+  console.log('🟡 Sending to Supabase:', finalData);
   
   const { data, error } = await supabase
     .from(tableName)
@@ -182,7 +190,7 @@ export async function updateItem(
   let actualId = id;
   
   // For users, we need to find the actual Supabase UUID
-  // because the app uses clerk_id as the user's id
+  // This handles both active users (clerk_id) and pending users (uuid)
   if (collection === 'users') {
     const supabaseId = await getSupabaseUserId(id, householdId);
     if (!supabaseId) {
@@ -190,7 +198,7 @@ export async function updateItem(
       throw new Error(`User not found: ${id}`);
     }
     actualId = supabaseId;
-    console.log(`🔄 Resolved clerk_id ${id} to Supabase UUID ${actualId}`);
+    console.log(`🔄 Resolved id ${id} to Supabase UUID ${actualId}`);
   }
   
   const { error, data } = await supabase
@@ -229,7 +237,7 @@ export async function deleteItem(
   
   let actualId = id;
   
-  // For users, resolve clerk_id to Supabase UUID
+  // For users, resolve to Supabase UUID
   if (collection === 'users') {
     const supabaseId = await getSupabaseUserId(id, householdId);
     if (!supabaseId) {
@@ -237,7 +245,7 @@ export async function deleteItem(
       throw new Error(`User not found: ${id}`);
     }
     actualId = supabaseId;
-    console.log(`🗑️ Resolved clerk_id ${id} to Supabase UUID ${actualId}`);
+    console.log(`🗑️ Resolved id ${id} to Supabase UUID ${actualId}`);
   }
   
   const { error, count } = await supabase
@@ -373,7 +381,7 @@ export async function registerUser(
     email,
     name,
     role: 'Admin',
-    avatar: `https://picsum.photos/200/200?random=${Date.now()}`,
+    avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`,
     allergies: [],
     preferences: []
   };
@@ -485,10 +493,10 @@ export async function completeInviteRegistration(
 
 /**
  * Convert Supabase snake_case to camelCase
- * Why: Your app uses camelCase (householdId), Supabase uses snake_case (household_id)
  * 
- * For users: Uses clerk_id as the id if it exists (for Clerk auth users)
- * Also caches the clerk_id -> UUID mapping for future updates
+ * For users:
+ * - Active users (with clerk_id): uses clerk_id as the app's user id
+ * - Pending users (no clerk_id): keeps Supabase UUID as the id
  */
 function convertSupabaseData(data: any[], collection?: string): DataItem[] {
   return data.map(item => {
@@ -499,14 +507,19 @@ function convertSupabaseData(data: any[], collection?: string): DataItem[] {
     }
     
     // For users with clerk_id, use it as the app's user id
-    // This maintains consistency with how Auth.tsx sets up the user
-    if (collection === 'users' && item.clerk_id) {
-      // Cache the mapping so we can resolve it later for updates
-      userIdCache[item.clerk_id] = item.id;
-      console.log(`📝 Cached mapping: clerk_id ${item.clerk_id} -> UUID ${item.id}`);
-      
-      // Use clerk_id as the user's id in the app
-      converted.id = item.clerk_id;
+    // For pending users (no clerk_id), keep the Supabase UUID
+    if (collection === 'users') {
+      if (item.clerk_id) {
+        // Active user - use clerk_id as app id
+        userIdCache[item.clerk_id] = item.id;
+        console.log(`📝 Cached mapping: clerk_id ${item.clerk_id} -> UUID ${item.id}`);
+        converted.id = item.clerk_id;
+      } else {
+        // Pending user - keep Supabase UUID as id
+        // Also cache it to itself so lookups work
+        userIdCache[item.id] = item.id;
+        console.log(`📝 Pending user: keeping UUID ${item.id} as id`);
+      }
     }
     
     return converted;
@@ -520,7 +533,6 @@ function convertSupabaseData(data: any[], collection?: string): DataItem[] {
 function convertToSnakeCase(obj: any): any {
   const converted: any = {};
   for (const key in obj) {
-    // Skip converting 'id' for users since we handle it specially
     const snakeKey = key.replace(/([A-Z])/g, '_$1').toLowerCase();
     converted[snakeKey] = obj[key];
   }

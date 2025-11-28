@@ -1,5 +1,3 @@
-
-// components/InviteSetup.tsx
 import React, { useEffect, useState, useRef } from "react";
 import { Loader2, ChevronRight } from "lucide-react";
 import { useUser, useClerk } from "@clerk/clerk-react";
@@ -15,7 +13,8 @@ interface InviteSetupProps {
 }
 
 const InviteSetup: React.FC<InviteSetupProps> = ({ householdId, userId, onComplete }) => {
-  const { user: clerkUser, isSignedIn } = useUser();
+  // 1. ✅ FIX: Destructure isLoaded to know when Clerk is ready
+  const { user: clerkUser, isSignedIn, isLoaded } = useUser();
   const { redirectToSignIn } = useClerk();
   const clerkUserId = clerkUser?.id ?? null;
 
@@ -25,8 +24,10 @@ const InviteSetup: React.FC<InviteSetupProps> = ({ householdId, userId, onComple
   const [isSubmitting, setIsSubmitting] = useState(false);
   const hasCompleted = useRef(false);
 
-
   useEffect(() => {
+    // 2. ✅ FIX: Stop immediately if Clerk hasn't loaded yet
+    if (!isLoaded) return;
+
     let mounted = true;
   
     async function loadUser() {
@@ -35,6 +36,7 @@ const InviteSetup: React.FC<InviteSetupProps> = ({ householdId, userId, onComple
       setLoading(true);
       setError("");
   
+      // Now safe to check isSignedIn because we know isLoaded is true
       if (!isSignedIn || !clerkUserId) {
         redirectToSignIn({ redirectUrl: window.location.href });
         return;
@@ -44,9 +46,9 @@ const InviteSetup: React.FC<InviteSetupProps> = ({ householdId, userId, onComple
         const data = await getUser(householdId, userId);
         if (!mounted) return;
 
-                  // ✅ If user is already active, complete immediately
+        // If user is already active, complete immediately
         if (data && data.status === "active") {
-          if (hasCompleted.current) return; // Double-check
+          if (hasCompleted.current) return; 
           hasCompleted.current = true;
           window.history.replaceState({}, '', window.location.pathname);
           onComplete(data);
@@ -72,7 +74,7 @@ const InviteSetup: React.FC<InviteSetupProps> = ({ householdId, userId, onComple
   
     loadUser();
     return () => { mounted = false; };
-  }, [householdId, userId, isSignedIn, clerkUserId, redirectToSignIn, onComplete]);
+  }, [householdId, userId, isSignedIn, clerkUserId, redirectToSignIn, onComplete, isLoaded]); // 3. ✅ FIX: Add isLoaded to dependencies
 
   async function handleAcceptInvite() {
     if (hasCompleted.current) return;
@@ -88,7 +90,7 @@ const InviteSetup: React.FC<InviteSetupProps> = ({ householdId, userId, onComple
 
       hasCompleted.current = true;
       
-      // ✅ CRITICAL: Clear the invite params from URL BEFORE calling onComplete
+      // Clear the invite params from URL
       window.history.replaceState({}, '', window.location.pathname);
       
       onComplete(finalUser);
@@ -145,4 +147,3 @@ const InviteSetup: React.FC<InviteSetupProps> = ({ householdId, userId, onComple
 };
 
 export default InviteSetup;
-

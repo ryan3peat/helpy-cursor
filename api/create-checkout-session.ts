@@ -3,7 +3,7 @@ import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-12-18.acacia',
+  apiVersion: '2025-11-17.clover',
 });
 
 const supabase = createClient(
@@ -53,13 +53,16 @@ export default async function handler(req: any, res: any) {
         .eq('id', householdId);
     }
 
+    // Use environment variable with fallback
+    const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://helpy-psi.vercel.app';
+
     // Create Checkout Session
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       mode: 'subscription',
       line_items: [{ price: PRICE_IDS[priceKey], quantity: 1 }],
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/profile?session_id={CHECKOUT_SESSION_ID}&success=true`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/profile?canceled=true`,
+      success_url: `${APP_URL}/?session_id={CHECKOUT_SESSION_ID}&success=true`,
+      cancel_url: `${APP_URL}/?canceled=true`,
       metadata: {
         household_id: householdId,
         plan: priceKey.split('_')[0], // 'core' or 'pro'

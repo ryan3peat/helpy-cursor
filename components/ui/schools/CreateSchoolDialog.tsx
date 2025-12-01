@@ -14,7 +14,7 @@ import {
 import { Section, BaseViewProps } from "@/types";
 
 // ---- Schools UI & types ----
-import type { School } from "@src/types/school";
+import type { School } from "@/src/types/school";
 import { Button } from "@/components/ui/button";
 import SchoolCard from "@/components/ui/schools/SchoolCard";
 import CreateSchoolDialog from "@/components/ui/schools/CreateSchoolDialog";
@@ -178,7 +178,7 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
                   : "bg-gray-100 text-gray-600 hover:bg-gray-200"
               }`}
             >
-              {getCategoryLabel(cat)}
+              {getCategoryLabel(cat as string)}
             </button>
           ))}
         </div>

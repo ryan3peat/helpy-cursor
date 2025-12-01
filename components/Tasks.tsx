@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Plus, Circle, CheckCircle2, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
-import { Database } from '../src/types/supabase';
+import { Database } from '@/src/types/supabase';
 
 type Task = Database['public']['Tables']['tasks']['Row'];
 

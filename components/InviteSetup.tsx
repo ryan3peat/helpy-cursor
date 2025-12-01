@@ -1,10 +1,10 @@
-
-// components/InviteSetup.tsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Loader2, ChevronRight } from "lucide-react";
 import { useUser, useClerk } from "@clerk/clerk-react";
 import type { User } from "../types";
 import { getUser, completeInviteRegistration } from "@/services/userService";
+
+console.log('🔄 InviteSetup rendered');
 
 interface InviteSetupProps {
   householdId: string;
@@ -13,7 +13,8 @@ interface InviteSetupProps {
 }
 
 const InviteSetup: React.FC<InviteSetupProps> = ({ householdId, userId, onComplete }) => {
-  const { user: clerkUser, isSignedIn } = useUser();
+  // 1. ✅ FIX: Destructure isLoaded to know when Clerk is ready
+  const { user: clerkUser, isSignedIn, isLoaded } = useUser();
   const { redirectToSignIn } = useClerk();
   const clerkUserId = clerkUser?.id ?? null;
 
@@ -21,26 +22,46 @@ const InviteSetup: React.FC<InviteSetupProps> = ({ householdId, userId, onComple
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const hasCompleted = useRef(false);
 
   useEffect(() => {
-    let mounted = true;
+    // 2. ✅ FIX: Stop immediately if Clerk hasn't loaded yet
+    if (!isLoaded) return;
 
+    let mounted = true;
+  
     async function loadUser() {
+      if (hasCompleted.current) return;
+
       setLoading(true);
       setError("");
-
+  
+      // Now safe to check isSignedIn because we know isLoaded is true
       if (!isSignedIn || !clerkUserId) {
-        // Redirect to Clerk sign-in with return URL
         redirectToSignIn({ redirectUrl: window.location.href });
         return;
       }
-
+  
       try {
         const data = await getUser(householdId, userId);
         if (!mounted) return;
 
-        if (data && data.status === "pending" && new Date(data.expiresAt) > new Date()) {
-          setInvitedUser(data);
+        // If user is already active, complete immediately
+        if (data && data.status === "active") {
+          if (hasCompleted.current) return; 
+          hasCompleted.current = true;
+          window.history.replaceState({}, '', window.location.pathname);
+          onComplete(data);
+          return;
+        }
+  
+        // Check pending status and expiration
+        if (data && data.status === "pending") {
+          if (data.expiresAt && new Date(data.expiresAt) < new Date()) {
+            setError("Invitation expired. Please request a new invite link.");
+          } else {
+            setInvitedUser(data);
+          }
         } else {
           setError("Invitation invalid or expired.");
         }
@@ -50,14 +71,14 @@ const InviteSetup: React.FC<InviteSetupProps> = ({ householdId, userId, onComple
         if (mounted) setLoading(false);
       }
     }
-
+  
     loadUser();
-    return () => {
-      mounted = false;
-    };
-  }, [householdId, userId, isSignedIn, clerkUserId, redirectToSignIn]);
+    return () => { mounted = false; };
+  }, [householdId, userId, isSignedIn, clerkUserId, redirectToSignIn, onComplete, isLoaded]); // 3. ✅ FIX: Add isLoaded to dependencies
 
   async function handleAcceptInvite() {
+    if (hasCompleted.current) return;
+
     setError("");
     if (!clerkUserId) {
       setError("No authenticated user found. Please sign in.");
@@ -66,6 +87,12 @@ const InviteSetup: React.FC<InviteSetupProps> = ({ householdId, userId, onComple
     setIsSubmitting(true);
     try {
       const finalUser = await completeInviteRegistration(householdId, userId, clerkUserId);
+
+      hasCompleted.current = true;
+      
+      // Clear the invite params from URL
+      window.history.replaceState({}, '', window.location.pathname);
+      
       onComplete(finalUser);
     } catch (e: any) {
       const msg = (e?.message as string) ?? "Failed to complete registration.";
@@ -120,4 +147,3 @@ const InviteSetup: React.FC<InviteSetupProps> = ({ householdId, userId, onComple
 };
 
 export default InviteSetup;
-

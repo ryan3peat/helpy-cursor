@@ -1,11 +1,13 @@
 // api/stripe-webhook.ts
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
-import { buffer } from 'micro';
 
 export const config = { api: { bodyParser: false } };
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: '2025-11-17.clover',
+});
+
 const supabase = createClient(
   process.env.SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -22,15 +24,16 @@ export default async function handler(req: any, res: any) {
     return res.status(405).end();
   }
 
-  const buf = await buffer(req);
-  const sig = req.headers['stripe-signature'];
+  // Get raw body for Stripe signature verification
+  const buf = Buffer.from(await req.text());
+  const sig = req.headers.get('stripe-signature');
 
   let event: Stripe.Event;
 
   try {
     event = stripe.webhooks.constructEvent(
       buf,
-      sig,
+      sig!,
       process.env.STRIPE_WEBHOOK_SECRET!
     );
   } catch (err: any) {
@@ -43,19 +46,22 @@ export default async function handler(req: any, res: any) {
   const householdId = dataObject.metadata?.household_id;
   
   if (householdId) {
-    await supabase.from('subscription_events').insert({
-      household_id: householdId,
-      stripe_event_id: event.id,
-      event_type: event.type,
-      data: dataObject,
-    }).catch(console.error);
+    try {
+      await supabase.from('subscription_events').insert({
+        household_id: householdId,
+        stripe_event_id: event.id,
+        event_type: event.type,
+        data: dataObject,
+      });
+    } catch (error) {
+      console.error('Error logging event:', error);
+    }
   }
 
   // Handle events per Stripe's minimum requirements
   switch (event.type) {
     case 'checkout.session.completed': {
       // Payment successful, subscription created
-      // Provision the subscription and save customer ID
       const session = event.data.object as Stripe.Checkout.Session;
       const plan = session.metadata?.plan as 'core' | 'pro';
       const period = session.metadata?.period;
@@ -78,20 +84,24 @@ export default async function handler(req: any, res: any) {
 
     case 'invoice.paid': {
       // Continue provisioning as payments continue
-      // Store status to avoid rate limits when checking access
-      const invoice = event.data.object as Stripe.Invoice;
-      if (invoice.subscription) {
-        const subscription = await stripe.subscriptions.retrieve(
-          invoice.subscription as string
-        );
-        const hid = subscription.metadata?.household_id;
-        if (hid) {
-          await supabase.from('households').update({
-            subscription_status: 'active',
-            subscription_current_period_end: new Date(
-              subscription.current_period_end * 1000
-            ).toISOString(),
-          }).eq('id', hid);
+      const invoice = event.data.object as any; // Use 'any' to avoid type issues
+      const subscriptionId = invoice.subscription;
+
+      if (subscriptionId && typeof subscriptionId === 'string') {
+        try {
+          const subscription = (await stripe.subscriptions.retrieve(subscriptionId)) as Stripe.Subscription;
+          const hid = subscription.metadata?.household_id;
+          
+          if (hid) {
+            await supabase.from('households').update({
+              subscription_status: 'active',
+              subscription_current_period_end: new Date(
+                (subscription as any).current_period_end * 1000
+              ).toISOString(),
+            }).eq('id', hid);
+          }
+        } catch (error) {
+          console.error('Error retrieving subscription:', error);
         }
       }
       break;
@@ -99,17 +109,21 @@ export default async function handler(req: any, res: any) {
 
     case 'invoice.payment_failed': {
       // Payment failed - subscription becomes past_due
-      // Notify customer to update payment method via portal
-      const invoice = event.data.object as Stripe.Invoice;
-      if (invoice.subscription) {
-        const subscription = await stripe.subscriptions.retrieve(
-          invoice.subscription as string
-        );
-        const hid = subscription.metadata?.household_id;
-        if (hid) {
-          await supabase.from('households').update({
-            subscription_status: 'past_due',
-          }).eq('id', hid);
+      const invoice = event.data.object as any; // Use 'any' to avoid type issues
+      const subscriptionId = invoice.subscription;
+
+      if (subscriptionId && typeof subscriptionId === 'string') {
+        try {
+          const subscription = (await stripe.subscriptions.retrieve(subscriptionId)) as Stripe.Subscription;
+          const hid = subscription.metadata?.household_id;
+          
+          if (hid) {
+            await supabase.from('households').update({
+              subscription_status: 'past_due',
+            }).eq('id', hid);
+          }
+        } catch (error) {
+          console.error('Error retrieving subscription:', error);
         }
       }
       break;
@@ -119,6 +133,7 @@ export default async function handler(req: any, res: any) {
       // Subscription canceled - revert to free tier
       const subscription = event.data.object as Stripe.Subscription;
       const hid = subscription.metadata?.household_id;
+      
       if (hid) {
         await supabase.from('households').update({
           subscription_status: 'canceled',
@@ -135,5 +150,5 @@ export default async function handler(req: any, res: any) {
       console.log(`Unhandled event type: ${event.type}`);
   }
 
-  res.status(200).json({ received: true });
+  return res.status(200).json({ received: true });
 }

@@ -11,6 +11,10 @@ export interface User {
   id: string;
   householdId: string;
   name: string;
+  firstName?: string;
+  lastName?: string;
+  phoneNumber?: string;
+  countryCode?: string;
   role: UserRole;
   avatar?: string;
   allergies?: string[];
@@ -20,6 +24,7 @@ export interface User {
   email?: string;
   password?: string;
   pin?: string;
+  notificationsEnabled?: boolean;
 }
 
 export interface Section {

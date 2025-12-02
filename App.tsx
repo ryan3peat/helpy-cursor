@@ -146,7 +146,33 @@ const App: React.FC = () => {
     if (!currentUser || !currentUser.householdId) return;
     const hid = currentUser.householdId;
     
-    const unsubUsers = subscribeToCollection(hid, 'users', (data) => setUsers(data as User[]));
+    const unsubUsers = subscribeToCollection(hid, 'users', (data) => {
+      // Deduplicate users by id to prevent duplicates
+      const uniqueUsers = Array.from(new Map(data.map(u => [u.id, u])).values());
+      
+      // Also deduplicate by name+role+householdId for pending users to prevent race conditions
+      const finalUsers = uniqueUsers.reduce((acc: User[], user: User) => {
+        const duplicate = acc.find(u => 
+          u.name === user.name && 
+          u.role === user.role && 
+          u.householdId === user.householdId &&
+          u.status === 'pending' &&
+          u.id !== user.id
+        );
+        if (!duplicate) {
+          acc.push(user);
+        } else {
+          // Keep the one with the real ID (not temp ID)
+          if (!user.id.startsWith('temp-') && duplicate.id.startsWith('temp-')) {
+            const index = acc.indexOf(duplicate);
+            acc[index] = user;
+          }
+        }
+        return acc;
+      }, []);
+      
+      setUsers(finalUsers as User[]);
+    });
     const unsubTodoItems = subscribeToCollection(hid, 'todo_items', (data) => setTodoItems(data as ToDoItem[]));
     const unsubMeals = subscribeToCollection(hid, 'meals', (data) => setMeals(data as Meal[]));
     const unsubExpenses = subscribeToCollection(hid, 'expenses', (data) => setExpenses(data as Expense[]));
@@ -229,20 +255,47 @@ const App: React.FC = () => {
     await deleteItem(hid, 'expenses', id);
   };
 
-  // User CRUD Handlers
+  // User CRUD Handlers (with optimistic updates for instant UI)
   const handleAddUser = async (user: Omit<User, 'id'>): Promise<User | undefined> => {
     if (!hid) return;
-    const result = await addItem(hid, 'users', user);
-    return result ? (result as User) : undefined;
+    
+    // Create temporary ID to prevent duplicates during subscription updates
+    const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const tempUser: User = { ...user, id: tempId };
+    
+    // Optimistic update with temporary ID
+    setUsers(prev => {
+      // Check if user already exists (by name and role to prevent duplicates)
+      const exists = prev.some(u => 
+        u.name === user.name && 
+        u.role === user.role && 
+        u.householdId === user.householdId &&
+        u.status === 'pending'
+      );
+      if (exists) return prev;
+      return [...prev, tempUser];
+    });
+    
+    try {
+      const result = await addItem(hid, 'users', user);
+      // Subscription will replace temp user with real user
+      return result ? (result as User) : undefined;
+    } catch (error) {
+      // Remove temp user on error
+      setUsers(prev => prev.filter(u => u.id !== tempId));
+      throw error;
+    }
   };
 
   const handleUpdateUser = async (id: string, data: Partial<User>) => {
     if (!hid) return;
+    setUsers(prev => prev.map(u => u.id === id ? { ...u, ...data } : u));  // Optimistic
     await updateItem(hid, 'users', id, data);
   };
 
   const handleDeleteUser = async (id: string) => {
     if (!hid) return;
+    setUsers(prev => prev.filter(u => u.id !== id));  // Optimistic
     await deleteItem(hid, 'users', id);
   };
 

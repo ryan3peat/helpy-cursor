@@ -318,6 +318,7 @@ button:focus-visible {
 
 .bottom-sheet-content {
   animation: sheet-slide-up 0.4s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+  overflow-x: hidden;
 }
 
 /* Safe area for devices with home indicators */

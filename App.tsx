@@ -210,8 +210,9 @@ const App: React.FC = () => {
     await addItem(hid, 'expenses', expense);
   };
 
-  const handleUpdateExpense = async (id: string, data: Partial<Expense>) => {
+  const handleUpdateExpense = async (expense: Expense) => {
     if (!hid) return;
+    const { id, ...data } = expense;
     setExpenses(prev => prev.map(e => e.id === id ? { ...e, ...data } : e));  // Optimistic
     await updateItem(hid, 'expenses', id, data);
   };

@@ -731,7 +731,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                   <ArrowLeft size={20} />
               </button>
 
-                <div className="p-5 space-y-4 max-h-[50vh] overflow-y-auto">
+                <div className="p-5 space-y-4 max-h-[50vh] overflow-y-auto overflow-x-hidden">
                   {/* Amount - Auto-focused */}
                   <div>
                     <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
@@ -751,7 +751,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                         setEditAmount(formatted);
                       }}
                       placeholder="0.00"
-                      className="w-full px-4 py-4 rounded-xl bg-secondary border border-border focus:border-foreground outline-none transition-all text-display"
+                      className="w-full px-4 py-4 rounded-xl bg-muted border border-border focus:border-foreground outline-none transition-all text-display"
                     />
             </div>
 
@@ -765,7 +765,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                       value={editMerchant}
                       onChange={(e) => setEditMerchant(e.target.value)}
                       placeholder="Where did you spend?"
-                      className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-foreground outline-none transition-all text-body"
+                      className="w-full px-4 py-3 rounded-lg bg-muted border border-border focus:border-foreground outline-none transition-all text-body"
                     />
                   </div>
 
@@ -778,7 +778,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                       <select
                         value={editCategory}
                         onChange={(e) => setEditCategory(e.target.value)}
-                        className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-foreground outline-none transition-all text-body"
+                        className="w-full px-4 py-3 rounded-lg bg-muted border border-border focus:border-foreground outline-none transition-all text-body"
                       >
                         {EXPENSE_CATEGORIES.map((cat) => (
                           <option key={cat} value={cat}>
@@ -795,7 +795,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                         type="date"
                         value={editDate}
                         onChange={(e) => setEditDate(e.target.value)}
-                        className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-foreground outline-none transition-all text-body"
+                        className="w-full px-4 py-3 rounded-lg bg-muted border border-border focus:border-foreground outline-none transition-all text-body"
                       />
                     </div>
                   </div>
@@ -837,7 +837,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                   <ArrowLeft size={20} />
                 </button>
 
-                <div className="p-5 space-y-4 max-h-[50vh] overflow-y-auto">
+                <div className="p-5 space-y-4 max-h-[50vh] overflow-y-auto overflow-x-hidden">
             {/* Receipt Thumbnail */}
                   <div className="rounded-xl overflow-hidden border border-border">
               <img src={pendingReceipt.thumbnailBase64} alt="Receipt" className="w-full h-32 object-cover" />
@@ -861,7 +861,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                     setEditAmount(formatted);
                   }}
                   placeholder="0.00"
-                      className="w-full px-4 py-4 rounded-xl bg-secondary border border-border focus:border-foreground outline-none transition-all text-display"
+                      className="w-full px-4 py-4 rounded-xl bg-muted border border-border focus:border-foreground outline-none transition-all text-display"
                 />
               </div>
 
@@ -875,7 +875,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                   value={editMerchant}
                   onChange={(e) => setEditMerchant(e.target.value)}
                   placeholder="Store name"
-                      className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-foreground outline-none transition-all text-body"
+                      className="w-full px-4 py-3 rounded-lg bg-muted border border-border focus:border-foreground outline-none transition-all text-body"
                 />
               </div>
 
@@ -888,7 +888,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                 <select
                   value={editCategory}
                   onChange={(e) => setEditCategory(e.target.value)}
-                        className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-foreground outline-none transition-all text-body"
+                        className="w-full px-4 py-3 rounded-lg bg-muted border border-border focus:border-foreground outline-none transition-all text-body"
                 >
                   {EXPENSE_CATEGORIES.map((cat) => (
                     <option key={cat} value={cat}>
@@ -905,7 +905,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                   type="date"
                   value={editDate}
                   onChange={(e) => setEditDate(e.target.value)}
-                        className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-foreground outline-none transition-all text-body"
+                        className="w-full px-4 py-3 rounded-lg bg-muted border border-border focus:border-foreground outline-none transition-all text-body"
                 />
                     </div>
               </div>
@@ -962,7 +962,7 @@ const Expenses: React.FC<ExpensesProps> = ({
             </div>
 
             {/* Scrollable Content */}
-            <div className="flex-1 overflow-y-auto min-h-0 p-5 space-y-4">
+            <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 p-5 space-y-4">
               {/* Receipt Thumbnail */}
               <div className="rounded-xl overflow-hidden border border-border">
                 {selectedExpense.receiptUrl ? (
@@ -972,66 +972,76 @@ const Expenses: React.FC<ExpensesProps> = ({
                     className="w-full max-h-64 object-contain bg-secondary"
                   />
                 ) : (
-                  <div className="w-full h-40 bg-secondary flex items-center justify-center text-muted-foreground">
+                  <div className="w-full h-28 bg-secondary flex items-center justify-center text-muted-foreground">
                     No receipt image
                   </div>
                 )}
               </div>
 
-              {/* Amount */}
-              <div className="flex items-center justify-between">
-                <span className="text-body text-muted-foreground">Amount</span>
-                <span className="text-title text-foreground">${selectedExpense.amount.toFixed(2)}</span>
-              </div>
+              {/* Amount - only show when not editing */}
+              {!isEditingExisting && (
+                <div className="flex items-center justify-between">
+                  <span className="text-body text-muted-foreground">Amount</span>
+                  <span className="text-title text-foreground">${selectedExpense.amount.toFixed(2)}</span>
+                </div>
+              )}
 
               {/* Edit Form - inside scroll for form fields only */}
               {isEditingExisting && (
                 <div className="space-y-4 border-t border-border pt-4">
+                  {/* Amount - Full width, prominent */}
                   <div>
                     <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
-                      Merchant
+                      Amount
                     </label>
                     <input
-                      className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-foreground outline-none transition-all text-body"
-                      value={exMerchant}
-                      onChange={(e) => setExMerchant(e.target.value)}
+                      type="text"
+                      inputMode="decimal"
+                      className="w-full px-4 py-4 rounded-xl bg-muted border border-border focus:border-foreground outline-none transition-all text-display"
+                      value={exAmount}
+                      onChange={(e) => {
+                        // Only allow digits and one decimal point
+                        const value = e.target.value.replace(/[^\d.]/g, '');
+                        // Prevent multiple decimal points
+                        const parts = value.split('.');
+                        const formatted = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : value;
+                        setExAmount(formatted);
+                      }}
+                      placeholder="0.00"
                     />
                   </div>
+
+                  {/* Shop Name - Full width */}
                   <div>
                     <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
-                      Category
+                      Shop Name
                     </label>
-                    <select
-                      className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-foreground outline-none transition-all text-body"
-                      value={exCategory}
-                      onChange={(e) => setExCategory(e.target.value)}
-                    >
-                      {EXPENSE_CATEGORIES.map((c) => (
-                        <option key={c} value={c}>
-                          {c}
-                        </option>
-                      ))}
-                    </select>
+                    <input
+                      type="text"
+                      className="w-full px-4 py-3 rounded-lg bg-muted border border-border focus:border-foreground outline-none transition-all text-body"
+                      value={exMerchant}
+                      onChange={(e) => setExMerchant(e.target.value)}
+                      placeholder="Where did you spend?"
+                    />
                   </div>
+
+                  {/* Category & Date - Side by side */}
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
-                        Amount
+                        Category
                       </label>
-                      <input
-                        type="text"
-                        inputMode="decimal"
-                        className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-foreground outline-none transition-all text-body"
-                        value={exAmount}
-                        onChange={(e) => {
-                          // Only allow digits and one decimal point
-                          const value = e.target.value.replace(/[^\d.]/g, '');
-                          // Prevent multiple decimal points
-                          const parts = value.split('.');
-                          const formatted = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : value;
-                          setExAmount(formatted);
-                        }}
-                      />
+                      <select
+                        className="w-full px-4 py-3 rounded-lg bg-muted border border-border focus:border-foreground outline-none transition-all text-body"
+                        value={exCategory}
+                        onChange={(e) => setExCategory(e.target.value)}
+                      >
+                        {EXPENSE_CATEGORIES.map((c) => (
+                          <option key={c} value={c}>
+                            {c}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                     <div>
                       <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
@@ -1039,7 +1049,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                       </label>
                       <input
                         type="date"
-                        className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-foreground outline-none transition-all text-body"
+                        className="w-full px-4 py-3 rounded-lg bg-muted border border-border focus:border-foreground outline-none transition-all text-body"
                         value={exDate}
                         onChange={(e) => setExDate(e.target.value)}
                       />

@@ -28,7 +28,7 @@ interface DashboardProps {
   meals: Meal[];
   users: User[];
   expenses: Expense[];
-  onNavigate: (view: string) => void;
+  onNavigate: (view: string, data?: { section?: string }) => void;
   familyNotes: string;
   onUpdateNotes: (notes: string) => void;
   currentUser: User;
@@ -370,7 +370,7 @@ const Dashboard: React.FC<DashboardProps> = ({
           icon={ShoppingCart}
           label={t['dashboard.items_needed']}
           colorClass="text-primary"
-          onClick={() => onNavigate('todo')}
+          onClick={() => onNavigate('todo', { section: 'shopping' })}
         />
         <StatCard
           title={t['dashboard.tasks']}
@@ -378,7 +378,7 @@ const Dashboard: React.FC<DashboardProps> = ({
           icon={Calendar}
           label={t['dashboard.todo']}
           colorClass="text-primary"
-          onClick={() => onNavigate('todo')}
+          onClick={() => onNavigate('todo', { section: 'task' })}
         />
         <div className="col-span-2">
           <StatCard

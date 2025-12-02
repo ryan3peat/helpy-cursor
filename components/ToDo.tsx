@@ -33,6 +33,7 @@ interface ToDoProps extends BaseViewProps {
   onAdd: (item: ToDoItem) => Promise<void>;
   onUpdate: (id: string, data: Partial<ToDoItem>) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
+  initialSection?: 'shopping' | 'task';
 }
 
 const SHOPPING_CATEGORIES = Object.values(ShoppingCategory);
@@ -160,6 +161,7 @@ const ToDo: React.FC<ToDoProps> = ({
   onUpdate,
   onDelete,
   t,
+  initialSection,
 }) => {
   // ─────────────────────────────────────────────────────────────────
   // Scroll Header Hook
@@ -170,7 +172,7 @@ const ToDo: React.FC<ToDoProps> = ({
   // State
   // ─────────────────────────────────────────────────────────────────
   
-  const [activeSection, setActiveSection] = useState<ToDoType>('shopping');
+  const [activeSection, setActiveSection] = useState<ToDoType>(initialSection || 'shopping');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [isAddingInline, setIsAddingInline] = useState(false);
   const [inlineInputValue, setInlineInputValue] = useState('');

@@ -78,6 +78,11 @@ const Meals: React.FC<MealsProps> = ({
   // Ref: Track if we should auto-scroll (only on view change or Today click)
   const shouldAutoScroll = useRef(false);
 
+  // Auto-scroll to today on mount (when navigating from Dashboard)
+  useEffect(() => {
+    shouldAutoScroll.current = true;
+  }, []);
+
   const mealTypes = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER, MealType.SNACKS];
   const langCode = currentLang === 'en' ? 'en-GB' : currentLang;
 

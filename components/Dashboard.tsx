@@ -4,8 +4,6 @@ import {
   ShoppingCart,
   Calendar,
   DollarSign,
-  Utensils,
-  ChevronRight,
   Pencil,
   Check,
   X,
@@ -15,7 +13,6 @@ import {
   Sun,
   Moon,
   Cookie,
-  Users,
   Baby,
   User as UserIcon,
   Plus,
@@ -95,22 +92,12 @@ const Dashboard: React.FC<DashboardProps> = ({
   // --- Meal Logic ---
   const getTodayDateKey = () => {
     const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    return d.toISOString().split('T')[0];
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   };
   const todayStr = getTodayDateKey();
-
-  const getUpcomingMeal = () => {
-    const upcoming = meals.filter(m => m.date >= todayStr);
-    upcoming.sort((a, b) => {
-      if (a.date !== b.date) return a.date.localeCompare(b.date);
-      const order = { [MealType.BREAKFAST]: 1, [MealType.LUNCH]: 2, [MealType.DINNER]: 3, [MealType.SNACKS]: 4 };
-      return (order[a.type] ?? 0) - (order[b.type] ?? 0);
-    });
-    return upcoming[0];
-  };
-  const nextMeal = getUpcomingMeal();
-  const nextMealLabel = nextMeal ? (t[`meal.type.${nextMeal.type.toLowerCase()}`] ?? nextMeal.type) : '';
 
   const getTodaysRemainingMeals = () => {
     const now = new Date();
@@ -208,7 +195,7 @@ const Dashboard: React.FC<DashboardProps> = ({
           paddingBottom: isScrolled ? '12px' : '16px'
         }}
       >
-        <div className="flex justify-between items-end">
+        <div className="flex justify-between items-center">
           <div 
             className="transition-transform duration-300 origin-left will-change-transform"
             style={{ transform: isScrolled ? 'scale(0.65)' : 'scale(1)' }}
@@ -409,58 +396,6 @@ const Dashboard: React.FC<DashboardProps> = ({
           />
         </div>
       </div>
-
-      {/* Upcoming Meal */}
-      {nextMeal && nextMeal.date > todayStr && (
-        <div>
-          <div className="flex justify-between items-center mb-3 px-1">
-            <h2 className="font-bold text-lg text-foreground">{t['dashboard.up_next']}</h2>
-            <button onClick={() => onNavigate('meals')} className="text-primary text-sm font-bold hover:underline">
-              {t['dashboard.view_schedule']}
-            </button>
-          </div>
-          <div
-            onClick={() => onNavigate('meals')}
-            className="group bg-card p-1 rounded-2xl shadow-sm border border-border cursor-pointer active:scale-[0.98] transition-all hover:shadow-md hover:border-foreground/20"
-          >
-            <div className="flex gap-4 p-3">
-              <div className="flex flex-col items-center justify-center w-14 h-14 bg-[#EDE7F6] rounded-xl text-[#7E57C2] shrink-0 border border-[#7E57C2]/20">
-                <span className="text-xs font-bold">{new Date(nextMeal.date).toLocaleDateString(currentLang === 'en' ? 'en-GB' : currentLang, { weekday: 'short' })}</span>
-                <span className="text-lg font-bold leading-none">{new Date(nextMeal.date).getDate()}</span>
-              </div>
-              <div className="flex-1 min-w-0 py-0.5">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-xs font-bold text-[#7E57C2]">
-                    {nextMealLabel}
-                  </span>
-                </div>
-                <h3 className="font-bold text-foreground text-base truncate">{nextMeal.description}</h3>
-                <div className="flex items-center gap-2 mt-2">
-                  <div className="flex -space-x-2">
-                    {nextMeal.forUserIds.map((uid, idx) => {
-                      const u = users.find(user => user.id === uid);
-                      if (!u || idx > 4) return null;
-                      return (
-                        <div key={uid} className="w-5 h-5 rounded-full border-2 border-card bg-muted overflow-hidden">
-                          <img src={u.avatar} alt={u.name} className="w-full h-full object-cover" />
-                        </div>
-                      );
-                    })}
-                    </div>
-                    <span className="text-xs font-medium text-muted-foreground">
-                      {nextMeal.forUserIds.length === users.length
-                        ? t['dashboard.everyone']
-                        : `${nextMeal.forUserIds.length} ${t['dashboard.eating']}`}
-                    </span>
-                    </div>
-                    </div>
-                    <div className="flex items-center justify-center px-2 text-muted-foreground group-hover:text-primary transition-colors">
-                      <ChevronRight size={20} />
-                    </div>
-                    </div>
-                    </div>
-                    </div>
-                    )}
 
       {/* Footer */}
         <div className="helpy-footer">

@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useClerk } from '@clerk/clerk-react';
 import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
 import ToDo from './components/ToDo';
@@ -12,120 +13,228 @@ import OnboardingOverlay from './components/OnboardingOverlay';
 import InviteSetup from './components/InviteSetup';
 import { ToDoItem, Meal, Expense, User, TranslationDictionary } from './types';
 import { BASE_TRANSLATIONS } from './constants';
-
-import { 
-  subscribeToCollection, 
-  addItem, 
-  updateItem, 
-  deleteItem, 
-  saveFamilyNotes, 
+import {
+  subscribeToCollection,
+  addItem,
+  updateItem,
+  deleteItem,
+  saveFamilyNotes,
   subscribeToNotes
 } from './services/supabaseService';
 
 const App: React.FC = () => {
+  const { signOut } = useClerk();
   const [showIntro, setShowIntro] = useState(true);
   const [activeView, setActiveView] = useState('dashboard');
 
-  // Localization
-  const [lang, setLang] = useState<string>(() => localStorage.getItem('helpy_lang') || 'en');
+  // Localization State
+  const [lang, setLang] = useState<string>(() => localStorage.getItem('helpy_lang') ?? 'en');
   const [translations, setTranslations] = useState<TranslationDictionary>(BASE_TRANSLATIONS);
   const [isTranslating, setIsTranslating] = useState(false);
 
-  // Authentication
+  // Invite Logic
+  const [inviteParams, setInviteParams] = useState<{ hid: string; uid: string } | null>(null);
+
+  const loginProcessedRef = useRef(false);
+
+  // Authentication State
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
     const saved = localStorage.getItem('helpy_current_session_user');
     return saved ? JSON.parse(saved) : null;
   });
 
-  // Onboarding
+  // Onboarding State
   const [onboardingStep, setOnboardingStep] = useState<number>(() => {
     const saved = localStorage.getItem('helpy_onboarding_step');
-    return saved ? parseInt(saved) : 0;
+    return saved ? parseInt(saved, 10) : 1;
   });
 
   useEffect(() => {
-    localStorage.setItem('helpy_onboarding_step', onboardingStep.toString());
+    localStorage.setItem('helpy_onboarding_step', String(onboardingStep));
   }, [onboardingStep]);
 
-  const advanceOnboarding = () => setOnboardingStep(step => step + 1);
+  // Check for invite params on mount
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const hashParams = new URLSearchParams(window.location.hash.split('?')[1]);
+    const inviteFlag = urlParams.get('invite') || hashParams.get('invite');
+    const hid = urlParams.get('hid') || hashParams.get('hid');
+    const uid = urlParams.get('uid') || hashParams.get('uid');
+    if (inviteFlag === 'true' && hid && uid) {
+      setInviteParams({ hid, uid });
+    }
+  }, []);
+
+  const handleLogin = useCallback((user: User) => {
+    if (loginProcessedRef.current) {
+      return;
+    }
+    loginProcessedRef.current = true;
+    const newUrl = window.location.pathname + window.location.hash.split('?')[0];
+    window.history.replaceState({}, document.title, newUrl);
+    setInviteParams(null);
+    setCurrentUser(user);
+    localStorage.setItem('helpy_current_session_user', JSON.stringify(user));
+    setShowIntro(false);
+    setActiveView('dashboard');
+    setTimeout(() => {
+      loginProcessedRef.current = false;
+    }, 1000);
+  }, []);
+
+  const handleLogout = useCallback(async () => {
+    try {
+      await signOut();
+      loginProcessedRef.current = false;
+      setCurrentUser(null);
+      localStorage.removeItem('helpy_current_session_user');
+      setActiveView('dashboard');
+      setUsers([]);
+      setShowIntro(true);
+    } catch (error) {
+      console.error('Logout error:', error);
+      loginProcessedRef.current = false;
+      setCurrentUser(null);
+      localStorage.removeItem('helpy_current_session_user');
+      setActiveView('dashboard');
+      setUsers([]);
+      setShowIntro(true);
+    }
+  }, [signOut]);
+
+  // Navigation
+  const handleNavigate = (view: string) => {
+    setActiveView(view);
+    if (onboardingStep === 1 && view === 'profile') {
+      setOnboardingStep(2);
+    }
+  };
+
+  const advanceOnboarding = () => {
+    if (onboardingStep === 1) {
+      setActiveView('profile');
+      setOnboardingStep(2);
+      return;
+    }
+    setOnboardingStep(0);
+  };
+
   const skipOnboarding = () => setOnboardingStep(0);
 
-  // Household data
-  const hid = currentUser?.householdId || '';
-
+  // Global Data State
   const [users, setUsers] = useState<User[]>([]);
   const [todoItems, setTodoItems] = useState<ToDoItem[]>([]);
-  
+  const [meals, setMeals] = useState<Meal[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [familyNotes, setFamilyNotes] = useState('');
+
   // Ensure currentUser is always in the users array (for assignee selection)
   useEffect(() => {
     if (currentUser && !users.find(u => u.id === currentUser.id)) {
       setUsers(prev => prev.length > 0 ? prev : [currentUser]);
     }
   }, [currentUser, users]);
-  const [meals, setMeals] = useState<Meal[]>([]);
-  const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [familyNotes, setFamilyNotes] = useState('');
 
-  // Supabase subscriptions
+  // Supabase Subscriptions
   useEffect(() => {
-    if (!hid) return;
+    if (!currentUser || !currentUser.householdId) return;
+    const hid = currentUser.householdId;
+    
+    const unsubUsers = subscribeToCollection(hid, 'users', (data) => setUsers(data as User[]));
+    const unsubTodoItems = subscribeToCollection(hid, 'todo_items', (data) => setTodoItems(data as ToDoItem[]));
+    const unsubMeals = subscribeToCollection(hid, 'meals', (data) => setMeals(data as Meal[]));
+    const unsubExpenses = subscribeToCollection(hid, 'expenses', (data) => setExpenses(data as Expense[]));
+    const unsubNotes = subscribeToNotes(hid, (note) => setFamilyNotes(note));
+    
+    return () => {
+      unsubUsers();
+      unsubTodoItems();
+      unsubMeals();
+      unsubExpenses();
+      unsubNotes();
+    };
+  }, [currentUser]);
 
-    const unsubs: (() => void)[] = [];
+  const hid = currentUser?.householdId ?? '';
 
-    unsubs.push(subscribeToCollection(hid, 'users', (data) => setUsers(data as User[])));
-    unsubs.push(subscribeToCollection(hid, 'todo_items', (data) => setTodoItems(data as ToDoItem[])));
-    unsubs.push(subscribeToCollection(hid, 'meals', (data) => {
-      // Keep mock data if Supabase returns empty
-      if (data && data.length > 0) {
-        setMeals(data as Meal[]);
-      }
-    }));
-    unsubs.push(subscribeToCollection(hid, 'expenses', (data) => setExpenses(data as Expense[])));
-    unsubs.push(subscribeToNotes(hid, setFamilyNotes));
-
-    return () => unsubs.forEach((u) => u());
-  }, [hid]);
-
-  // Navigation
-  const handleNavigate = (view: string) => setActiveView(view);
-
-  // CRUD Handlers for ToDo items (local state)
+  // ToDo CRUD Handlers
   const handleAddTodoItem = async (item: ToDoItem) => {
+    if (!hid) return item;
     const newItem = { ...item, id: `todo-${Date.now()}` };
     setTodoItems(prev => [newItem, ...prev]);
+    await addItem(hid, 'todo_items', item);
     return newItem;
   };
-  
+
   const handleUpdateTodoItem = async (id: string, data: Partial<ToDoItem>) => {
+    if (!hid) return;
     setTodoItems(prev => prev.map(item => 
       item.id === id ? { ...item, ...data } : item
     ));
+    await updateItem(hid, 'todo_items', id, data);
   };
-  
+
   const handleDeleteTodoItem = async (id: string) => {
+    if (!hid) return;
     setTodoItems(prev => prev.filter(item => item.id !== id));
+    await deleteItem(hid, 'todo_items', id);
   };
 
-  const handleAddMeal = async (meal: Meal) => addItem(hid, 'meals', meal);
-  const handleUpdateMeal = (id: string, data: Partial<Meal>) => updateItem(hid, 'meals', id, data);
-  const handleDeleteMeal = (id: string) => deleteItem(hid, 'meals', id);
-
-  const handleAddExpense = async (expense: Expense) => addItem(hid, 'expenses', expense);
-
-  const handleUpdateNotes = (notes: string) => saveFamilyNotes(hid, notes);
-
-  // Authentication
-  const handleLogin = (user: User) => {
-    setCurrentUser(user);
-    localStorage.setItem('helpy_current_session_user', JSON.stringify(user));
+  // Meal CRUD Handlers
+  const handleAddMeal = async (meal: Meal) => {
+    if (!hid) return;
+    await addItem(hid, 'meals', meal);
   };
 
-  const handleLogout = () => {
-    setCurrentUser(null);
-    localStorage.removeItem('helpy_current_session_user');
+  const handleUpdateMeal = async (id: string, data: Partial<Meal>) => {
+    if (!hid) return;
+    await updateItem(hid, 'meals', id, data);
   };
 
-  // View Selection
+  const handleDeleteMeal = async (id: string) => {
+    if (!hid) return;
+    await deleteItem(hid, 'meals', id);
+  };
+
+  // Expense CRUD Handlers
+  const handleAddExpense = async (expense: Expense) => {
+    if (!hid) return;
+    await addItem(hid, 'expenses', expense);
+  };
+
+  const handleUpdateExpense = async (id: string, data: Partial<Expense>) => {
+    if (!hid) return;
+    await updateItem(hid, 'expenses', id, data);
+  };
+
+  const handleDeleteExpense = async (id: string) => {
+    if (!hid) return;
+    await deleteItem(hid, 'expenses', id);
+  };
+
+  // User CRUD Handlers
+  const handleAddUser = async (user: Omit<User, 'id'>): Promise<User | undefined> => {
+    if (!hid) return;
+    const result = await addItem(hid, 'users', user);
+    return result ? (result as User) : undefined;
+  };
+
+  const handleUpdateUser = async (id: string, data: Partial<User>) => {
+    if (!hid) return;
+    await updateItem(hid, 'users', id, data);
+  };
+
+  const handleDeleteUser = async (id: string) => {
+    if (!hid) return;
+    await deleteItem(hid, 'users', id);
+  };
+
+  // Notes Handler
+  const handleSaveFamilyNotes = async (notes: string) => {
+    if (!hid) return;
+    await saveFamilyNotes(hid, notes);
+  };
+
   const renderView = () => {
     switch (activeView) {
       case 'dashboard':
@@ -137,7 +246,7 @@ const App: React.FC = () => {
             expenses={expenses}
             onNavigate={handleNavigate}
             familyNotes={familyNotes}
-            onUpdateNotes={handleUpdateNotes}
+            onUpdateNotes={handleSaveFamilyNotes}
             currentUser={currentUser!}
             t={translations}
             currentLang={lang}
@@ -178,8 +287,11 @@ const App: React.FC = () => {
         return (
           <Expenses
             expenses={expenses}
-            householdId={hid}
+            users={users}
             onAdd={handleAddExpense}
+            onUpdate={handleUpdateExpense}
+            onDelete={handleDeleteExpense}
+            currentUser={currentUser!}
             t={translations}
             currentLang={lang}
           />
@@ -200,11 +312,11 @@ const App: React.FC = () => {
         return (
           <Profile
             users={users}
-            onAdd={() => {}}
-            onUpdate={() => {}}
-            onDelete={() => {}}
-            onBack={() => handleNavigate('dashboard')}
-            currentUser={currentUser}
+            onAdd={handleAddUser}
+            onUpdate={handleUpdateUser}
+            onDelete={handleDeleteUser}
+            onBack={() => setActiveView('dashboard')}
+            currentUser={currentUser!}
             onLogout={handleLogout}
             t={translations}
             currentLang={lang}
@@ -216,13 +328,28 @@ const App: React.FC = () => {
     }
   };
 
-  // Login first
-  if (!currentUser) return <Auth onLogin={handleLogin} />;
+  if (loginProcessedRef.current && !currentUser) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-brand-primary to-brand-secondary">
+        <div className="text-white text-center">
+          <div className="w-16 h-16 border-4 border-white/30 border-t-white rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-lg font-bold">Completing setup...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (inviteParams && !currentUser) {
+    return <InviteSetup householdId={inviteParams.hid} userId={inviteParams.uid} onComplete={handleLogin} />;
+  }
+
+  if (!currentUser) {
+    return <Auth onLogin={handleLogin} />;
+  }
 
   return (
     <>
       {showIntro && <IntroAnimation onComplete={() => setShowIntro(false)} />}
-
       {onboardingStep > 0 && (
         <OnboardingOverlay
           step={onboardingStep}
@@ -232,7 +359,6 @@ const App: React.FC = () => {
           t={translations}
         />
       )}
-
       <Layout activeView={activeView} onNavigate={handleNavigate} t={translations}>
         {renderView()}
       </Layout>

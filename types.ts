@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 export enum UserRole {
@@ -16,6 +15,8 @@ export interface User {
   avatar?: string;
   allergies?: string[];
   preferences?: string[];
+  status?: 'active' | 'pending'; // Made optional - defaults to 'active'
+  expiresAt?: string | null; 
   email?: string;
   password?: string;
   pin?: string;

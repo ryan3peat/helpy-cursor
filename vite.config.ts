@@ -14,4 +14,13 @@ export default defineConfig({
       '@src': path.resolve(__dirname, 'src'),
     },
   },
+  server: {
+    proxy: {
+      // ✅ Proxy API calls to Vercel local server
+      '/api': {
+        target: 'http://localhost:5173', // Vercel dev server
+        changeOrigin: true,
+      },
+    },
+  },
 });

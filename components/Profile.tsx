@@ -1,11 +1,12 @@
-
 import React, { useState, useRef } from 'react';
-import { User, UserRole, BaseViewProps } from '../types';
-import { 
-  AlertCircle, Heart, Settings, Plus, Trash2, X, Save, Camera, 
-  Image as ImageIcon, LogOut, Copy, Check, ChevronLeft, ChevronRight, 
-  CreditCard, Shield, Lock, Crown, Mail 
+import {
+  AlertCircle, Heart, Settings, Plus, Trash2, X, Save, Camera,
+  Image as ImageIcon, LogOut, Copy, Check, ChevronLeft, ChevronRight,
+  CreditCard, Shield, Lock, Crown, Mail, Share2
 } from 'lucide-react';
+import { User, UserRole, BaseViewProps } from '../types';
+import { createInvite } from '../services/inviteService';
+import { createCheckoutSession, createPortalSession } from '../services/stripeService';
 
 interface ProfileProps extends BaseViewProps {
   users: User[];
@@ -17,7 +18,9 @@ interface ProfileProps extends BaseViewProps {
   onLogout: () => void;
 }
 
-const Profile: React.FC<ProfileProps> = ({ users, onAdd, onUpdate, onDelete, onBack, currentUser, onLogout, t }) => {
+const Profile: React.FC<ProfileProps> = ({
+  users, onAdd, onUpdate, onDelete, onBack, currentUser, onLogout, t
+}) => {
   // Navigation State
   const [activeSection, setActiveSection] = useState<'main' | 'settings' | 'plan' | 'security' | 'payment'>('main');
 
@@ -29,7 +32,7 @@ const Profile: React.FC<ProfileProps> = ({ users, onAdd, onUpdate, onDelete, onB
   const [isCopied, setIsCopied] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
-  // Edit Profile Form
+  // Edit Profile Form State
   const [editName, setEditName] = useState('');
   const [editRole, setEditRole] = useState<UserRole>(UserRole.CHILD);
   const [editAllergies, setEditAllergies] = useState<string[]>([]);
@@ -37,13 +40,20 @@ const Profile: React.FC<ProfileProps> = ({ users, onAdd, onUpdate, onDelete, onB
   const [newAllergyInput, setNewAllergyInput] = useState('');
   const [newPreferenceInput, setNewPreferenceInput] = useState('');
 
-  // Add User Form
+  // Add User Form State
   const [newName, setNewName] = useState('');
-  const [newEmail, setNewEmail] = useState('');
   const [newRole, setNewRole] = useState<UserRole>(UserRole.CHILD);
 
   // Settings State
-  const [selectedPlan, setSelectedPlan] = useState<'free' | 'plus' | 'family'>('free');
+  const [selectedPlan, setSelectedPlan] = useState<'free' | 'core' | 'pro'>('free');
+  const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
+  const [isLoading, setIsLoading] = useState(false);
+  const [subscriptionInfo, setSubscriptionInfo] = useState<{
+    plan: string;
+    status: string;
+    periodEnd?: string;
+  } | null>(null);
+  
   const [securityData, setSecurityData] = useState({
     email: currentUser.email || '',
     currentPassword: '',
@@ -58,9 +68,48 @@ const Profile: React.FC<ProfileProps> = ({ users, onAdd, onUpdate, onDelete, onB
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
-  
+
   const selectedUser = users.find(u => u.id === selectedUserId) || users[0];
 
+  const resetForm = () => {
+    setNewName('');
+    setNewRole(UserRole.CHILD);
+  };
+
+  // Stripe Checkout Handler
+  const handleSelectPlan = async (plan: 'core' | 'pro', period: 'monthly' | 'yearly') => {
+    try {
+      setIsLoading(true);
+      const checkoutUrl = await createCheckoutSession(
+        currentUser.householdId,
+        plan,
+        period,
+        currentUser.email || ''
+      );
+      
+      // Redirect to Stripe Checkout
+      window.location.href = checkoutUrl;
+    } catch (error) {
+      console.error('Checkout error:', error);
+      alert(error instanceof Error ? error.message : 'Failed to start checkout. Please try again.');
+      setIsLoading(false);
+    }
+  };
+
+  // Stripe Portal Handler (for managing existing subscription)
+  const handleManageSubscription = async () => {
+    try {
+      setIsLoading(true);
+      const portalUrl = await createPortalSession(currentUser.householdId);
+      window.location.href = portalUrl;
+    } catch (error) {
+      console.error('Portal error:', error);
+      alert(error instanceof Error ? error.message : 'Failed to open subscription management.');
+      setIsLoading(false);
+    }
+  };
+
+  // --- Helper Functions ---
   // Colors based on brand palette: #3EAFD2, #FF9800, #7E57C2, #4CAF50, #F06292, #AB47BC, #757575
   const getRoleBadgeColor = (role: UserRole) => {
     switch (role) {
@@ -74,80 +123,68 @@ const Profile: React.FC<ProfileProps> = ({ users, onAdd, onUpdate, onDelete, onB
 
   const handleAddUser = async () => {
     if (!newName.trim()) return;
-    
-    const finalEmail = newEmail.trim() || `${newName.toLowerCase().replace(/\s/g, '')}@${currentUser.householdId}.helpy`;
-
     const newUser: Omit<User, 'id'> = {
       householdId: currentUser.householdId,
+      email: '',
       name: newName,
-      email: finalEmail,
       role: newRole,
-      avatar: `https://picsum.photos/200/200?random=${Date.now()}`,
+      avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(newName)}`,
       allergies: [],
-      preferences: []
+      preferences: [],
+      status: 'pending'
     };
-    
     const createdUser = await onAdd(newUser);
-    
     if (createdUser) {
-        let baseUrl = window.location.href.split('?')[0].split('#')[0];
-        if (baseUrl.startsWith('blob:') || window.location.protocol === 'blob:') {
-            const origin = window.location.origin;
-            baseUrl = (origin && origin !== 'null') ? origin : 'https://helpy-app.web.app';
-            if (!baseUrl.endsWith('/')) baseUrl += '/';
-        }
-        const link = `${baseUrl}#invite?hid=${currentUser.householdId}&uid=${createdUser.id}`;
-        setInviteLink(link);
+      const link = await createInvite({
+        name: newName,
+        role: newRole,
+        householdId: currentUser.householdId,
+        inviterId: currentUser.id
+      });
+      setInviteLink(link.inviteLink);
     }
-
+    resetForm();
     setIsAddModalOpen(false);
-    setNewName('');
-    setNewEmail('');
-    setNewRole(UserRole.CHILD);
-  };
-
-  const copyInviteLink = () => {
-    if (inviteLink) {
-        navigator.clipboard.writeText(inviteLink);
-        setIsCopied(true);
-        setTimeout(() => setIsCopied(false), 2000);
-    }
   };
 
   const handleDeleteUser = (id: string) => {
-    if (users.length <= 1) return; 
-    onDelete(id);
-    if (selectedUserId === id) {
-       const remaining = users.filter(u => u.id !== id);
-       if (remaining.length > 0) setSelectedUserId(remaining[0].id);
+    if (window.confirm(t['profile.confirmDelete'] || 'Delete this user?')) {
+      onDelete(id);
+      if (selectedUserId === id) {
+        setSelectedUserId(currentUser.id);
+      }
     }
   };
 
-  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        onUpdate(selectedUserId, { avatar: reader.result as string });
-        setShowPhotoOptions(false);
-      };
-      reader.readAsDataURL(file);
+  const handleReinvite = async (userId: string) => {
+    try {
+      const { resendInvite } = await import('../services/inviteService');
+      const result = await resendInvite(userId, currentUser.householdId);
+      setInviteLink(result.inviteLink);
+      setIsCopied(false);
+    } catch (error) {
+      console.error('Failed to resend invite:', error);
+      alert('Failed to generate new invite link');
     }
+  };
+
+  const handleCopyInvite = () => {
+    if (!inviteLink) return;
+    navigator.clipboard.writeText(inviteLink);
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 2000);
   };
 
   const handleOpenEdit = () => {
-    if (!selectedUser) return;
     setEditName(selectedUser.name);
     setEditRole(selectedUser.role);
     setEditAllergies([...(selectedUser.allergies || [])]);
     setEditPreferences([...(selectedUser.preferences || [])]);
-    setNewAllergyInput('');
-    setNewPreferenceInput('');
     setIsEditModalOpen(true);
   };
 
   const handleSaveEdit = () => {
-    onUpdate(selectedUserId, {
+    onUpdate(selectedUser.id, {
       name: editName,
       role: editRole,
       allergies: editAllergies,
@@ -157,133 +194,644 @@ const Profile: React.FC<ProfileProps> = ({ users, onAdd, onUpdate, onDelete, onB
   };
 
   const addAllergy = () => {
-    if (newAllergyInput.trim()) {
+    if (newAllergyInput.trim() && !editAllergies.includes(newAllergyInput.trim())) {
       setEditAllergies([...editAllergies, newAllergyInput.trim()]);
       setNewAllergyInput('');
     }
   };
 
+  const removeAllergy = (item: string) => {
+    setEditAllergies(editAllergies.filter(a => a !== item));
+  };
+
   const addPreference = () => {
-    if (newPreferenceInput.trim()) {
+    if (newPreferenceInput.trim() && !editPreferences.includes(newPreferenceInput.trim())) {
       setEditPreferences([...editPreferences, newPreferenceInput.trim()]);
       setNewPreferenceInput('');
     }
   };
 
-  // --- Settings Renderers ---
+  const removePreference = (item: string) => {
+    setEditPreferences(editPreferences.filter(p => p !== item));
+  };
 
   const renderSettingsHeader = (title: string, onBackOverride?: () => void) => (
-    <div className="flex items-center gap-3 mb-6">
-      <button 
-        onClick={onBackOverride || (() => setActiveSection('settings'))}
-        className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
+    <div className="fixed top-0 left-0 right-0 bg-white border-b border-gray-200 px-4 py-4 flex items-center gap-3 z-10">
+      <button
+        onClick={onBackOverride || (() => setActiveSection('main'))}
+        className="p-2 hover:bg-gray-100 rounded-full transition-colors"
       >
-        <ChevronLeft size={20} className="text-gray-600" />
+        <ChevronLeft size={24} className="text-gray-700" />
       </button>
       <h2 className="text-xl font-bold text-gray-800">{title}</h2>
     </div>
   );
 
-  if (activeSection === 'plan') {
+  // =====================================================
+  // MAIN PROFILE VIEW
+  // =====================================================
+  if (activeSection === 'main') {
     return (
-      <div className="px-4 pt-16 pb-24 h-full animate-slide-up flex flex-col">
-        {renderSettingsHeader('Change Plan')}
-        <div className="space-y-4">
-          {[
-            { id: 'free', name: 'Basic', price: 'Free', features: ['Up to 4 Members', 'Basic AI Suggestions'] },
-            { id: 'plus', name: 'Helpy Plus', price: '$4.99/mo', features: ['Up to 8 Members', 'Advanced Receipt Scan', 'Priority Support'] },
-            { id: 'family', name: 'Family Pro', price: '$9.99/mo', features: ['Unlimited Members', 'Full AI Features', 'Export Data'] },
-          ].map((p) => (
-            <button
-              key={p.id}
-              onClick={() => setSelectedPlan(p.id as any)}
-              className={`w-full p-4 rounded-2xl border-2 transition-all text-left flex justify-between items-center ${
-                selectedPlan === p.id ? 'border-brand-primary bg-[#E6F7FB]/50' : 'border-gray-100 bg-white'
-              }`}
-            >
+      <div className="h-full overflow-y-auto pb-24 bg-gradient-to-b from-gray-50 to-white">
+        {/* Header with Logout */}
+        <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+          <button onClick={onBack} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+            <ChevronLeft size={24} className="text-gray-700" />
+          </button>
+          <h1 className="text-xl font-bold text-gray-800">{t['nav.profile']}</h1>
+          <button
+            onClick={onLogout}
+            className="flex items-center gap-2 px-3 py-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-colors"
+          >
+            <LogOut size={18} />
+            <span className="text-sm font-semibold">{t['profile.logout']}</span>
+          </button>
+        </div>
+
+        <div className="px-4 pt-6 space-y-6">
+          {/* Invite Link Modal */}
+          {inviteLink && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-fade-in">
+              <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl animate-slide-up">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-bold text-gray-800">Invitation Link</h3>
+                  <button onClick={() => setInviteLink(null)} className="p-2 hover:bg-gray-100 rounded-full">
+                    <X size={20} />
+                  </button>
+                </div>
+                <p className="text-sm text-gray-600 mb-4">Share this link with the new member:</p>
+                <div className="bg-gray-50 p-3 rounded-xl mb-4 break-all text-sm font-mono text-gray-700">
+                  {inviteLink}
+                </div>
+                <button
+                  onClick={handleCopyInvite}
+                  className="w-full bg-brand-primary text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-brand-secondary transition-colors"
+                >
+                  {isCopied ? <Check size={18} /> : <Copy size={18} />}
+                  {isCopied ? 'Copied!' : 'Copy Link'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* User Carousel */}
+          <div className="bg-gradient-to-br from-brand-primary to-brand-secondary rounded-3xl p-6 shadow-lg">
+            <h2 className="text-white text-lg font-bold mb-4">{t['profile.familyMembers']}</h2>
+            <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
+              {users.map((user) => {
+                const isCurrent = user.id === currentUser.id;
+                const isSelected = user.id === selectedUserId;
+                return (
+                  <div
+                    key={user.id}
+                    onClick={() => setSelectedUserId(user.id)}
+                    className={`flex flex-col items-center gap-2 cursor-pointer transition-all ${isSelected ? 'scale-110' : 'scale-95 opacity-60'
+                      }`}
+                  >
+                    <div className={`w-16 h-16 rounded-full overflow-hidden border-4 ${isSelected ? 'border-white shadow-xl' : 'border-white/50'
+                      }`}>
+                      <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
+                    </div>
+                    <span className={`text-xs font-medium ${isSelected ? 'text-white' : 'text-white/70'}`}>
+                      {user.name.split(' ')[0]} {isCurrent ? '(You)' : ''}
+                    </span>
+                    {user.status === 'pending' && (
+                      <span className="text-[10px] text-orange-300 font-bold">Pending</span>
+                    )}
+                  </div>
+                );
+              })}
+              <div
+                onClick={() => setIsAddModalOpen(true)}
+                className="flex flex-col items-center gap-2 cursor-pointer scale-95 opacity-60 hover:opacity-100 transition-opacity"
+              >
+                <div id="onboarding-add-member-btn" className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center border-2 border-white/50">
+                  <Plus size={24} className="text-white" />
+                </div>
+                <span className="text-xs font-medium text-white/70">{t['common.add']}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Selected User Profile Card */}
+          {selectedUser && (
+            <div className="bg-white rounded-3xl shadow-sm p-6 mb-6 animate-fade-in relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-4 flex gap-2">
+                {selectedUser.id !== currentUser.id && (
+                  <button
+                    onClick={() => handleDeleteUser(selectedUser.id)}
+                    className="p-2 text-red-300 hover:text-red-500 bg-red-50 rounded-full transition-colors"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                )}
+                <button
+                  onClick={handleOpenEdit}
+                  className="p-2 text-gray-400 hover:text-brand-primary bg-gray-50 rounded-full"
+                >
+                  <Settings size={18} />
+                </button>
+                {selectedUser.status === 'pending' && (
+                  <button
+                    onClick={() => handleReinvite(selectedUser.id)}
+                    className="p-2 text-blue-500 hover:text-blue-700 bg-blue-50 rounded-full transition-colors"
+                  >
+                    <Share2 size={18} />
+                  </button>
+                )}
+              </div>
+
+              <div className="flex items-center gap-4 mb-6">
+                <div className="relative group">
+                  <div
+                    className="w-20 h-20 rounded-2xl overflow-hidden shadow-md bg-gray-100 cursor-pointer"
+                    onClick={() => setShowPhotoOptions(true)}
+                  >
+                    <img src={selectedUser.avatar} alt={selectedUser.name} className="w-full h-full object-cover" />
+                  </div>
+                  <button
+                    onClick={() => setShowPhotoOptions(true)}
+                    className="absolute -bottom-1 -right-1 bg-brand-primary text-white p-1.5 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <Camera size={14} />
+                  </button>
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-gray-800">{selectedUser.name}</h3>
+                  <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold mt-1 ${getRoleBadgeColor(selectedUser.role)}`}>
+                    {selectedUser.role}
+                  </span>
+                </div>
+              </div>
+
+              {/* Allergies */}
+              <div className="mb-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertCircle size={16} className="text-red-500" />
+                  <h4 className="text-sm font-bold text-gray-700">{t['profile.allergies']}</h4>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {selectedUser.allergies && selectedUser.allergies.length > 0 ? (
+                    selectedUser.allergies.map((allergy) => (
+                      <span key={allergy} className="px-3 py-1 bg-red-50 text-red-700 rounded-full text-xs font-medium">
+                        {allergy}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-xs text-gray-400 italic">{t['profile.none']}</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Preferences */}
               <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className={`font-bold text-lg ${selectedPlan === p.id ? 'text-brand-primary' : 'text-gray-800'}`}>{p.name}</span>
-                  {selectedPlan === p.id && <span className="bg-brand-primary text-white text-[10px] font-bold px-2 py-0.5 rounded-full">Active</span>}
+                <div className="flex items-center gap-2 mb-2">
+                  <Heart size={16} className="text-pink-500" />
+                  <h4 className="text-sm font-bold text-gray-700">{t['profile.preferences']}</h4>
                 </div>
-                <p className="text-gray-500 text-sm font-medium mb-2">{p.price}</p>
-                <div className="space-y-1">
-                   {p.features.map(f => <p key={f} className="text-xs text-gray-400 flex items-center gap-1"><Check size={10}/> {f}</p>)}
+                <div className="flex flex-wrap gap-2">
+                  {selectedUser.preferences && selectedUser.preferences.length > 0 ? (
+                    selectedUser.preferences.map((pref) => (
+                      <span key={pref} className="px-3 py-1 bg-pink-50 text-pink-700 rounded-full text-xs font-medium">
+                        {pref}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-xs text-gray-400 italic">{t['profile.none']}</span>
+                  )}
                 </div>
               </div>
-              <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${selectedPlan === p.id ? 'border-brand-primary bg-brand-primary text-white' : 'border-gray-200'}`}>
-                 {selectedPlan === p.id && <Check size={14} strokeWidth={3} />}
+            </div>
+          )}
+
+          {/* Quick Settings Button */}
+          <button
+            onClick={() => setActiveSection('settings')}
+            className="w-full bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between hover:bg-gray-50 transition-all active:scale-[0.99]"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-brand-primary to-brand-secondary rounded-xl flex items-center justify-center">
+                <Settings size={20} className="text-white" />
               </div>
-            </button>
-          ))}
+              <div className="text-left">
+                <p className="font-bold text-gray-800">Settings</p>
+                <p className="text-xs text-gray-500">Manage your account</p>
+              </div>
+            </div>
+            <ChevronRight size={20} className="text-gray-400" />
+          </button>
         </div>
-        <div className="mt-auto pt-4">
-           <button onClick={() => setActiveSection('settings')} className="w-full bg-brand-primary text-white py-4 rounded-xl font-bold shadow-lg hover:bg-brand-secondary transition-colors">
-             Update Plan
-           </button>
-        </div>
+
+        {/* Add User Modal */}
+        {isAddModalOpen && (
+          <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50 animate-fade-in">
+            <div className="bg-white rounded-t-3xl w-full max-w-lg p-6 animate-slide-up shadow-2xl">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold text-gray-800">{t['profile.addMember']}</h3>
+                <button onClick={() => setIsAddModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-full">
+                  <X size={24} />
+                </button>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">{t['common.name']}</label>
+                  <input
+                    type="text"
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-primary"
+                    placeholder="Enter name"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">{t['profile.role']}</label>
+                  <select
+                    value={newRole}
+                    onChange={(e) => setNewRole(e.target.value as UserRole)}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-primary"
+                  >
+                    <option value={UserRole.SPOUSE}>Spouse</option>
+                    <option value={UserRole.HELPER}>Helper</option>
+                    <option value={UserRole.CHILD}>Child</option>
+                  </select>
+                </div>
+                <button
+                  onClick={handleAddUser}
+                  className="w-full bg-brand-primary text-white py-4 rounded-xl font-bold shadow-lg hover:bg-brand-secondary transition-colors"
+                >
+                  {t['common.add']}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Edit User Modal */}
+        {isEditModalOpen && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-fade-in overflow-y-auto">
+            <div className="bg-white rounded-3xl w-full max-w-lg p-6 animate-slide-up shadow-2xl my-8">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold text-gray-800">Edit Profile</h3>
+                <button onClick={() => setIsEditModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-full">
+                  <X size={24} />
+                </button>
+              </div>
+
+              <div className="space-y-6 max-h-[70vh] overflow-y-auto">
+                {/* Name */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Name</label>
+                  <input
+                    type="text"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-primary"
+                  />
+                </div>
+
+                {/* Role */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Role</label>
+                  <select
+                    value={editRole}
+                    onChange={(e) => setEditRole(e.target.value as UserRole)}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-primary"
+                  >
+                    <option value={UserRole.MASTER}>Master</option>
+                    <option value={UserRole.SPOUSE}>Spouse</option>
+                    <option value={UserRole.HELPER}>Helper</option>
+                    <option value={UserRole.CHILD}>Child</option>
+                  </select>
+                </div>
+
+                {/* Allergies */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Allergies</label>
+                  <div className="flex gap-2 mb-2">
+                    <input
+                      type="text"
+                      value={newAllergyInput}
+                      onChange={(e) => setNewAllergyInput(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && addAllergy()}
+                      className="flex-1 px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-primary"
+                      placeholder="Add allergy"
+                    />
+                    <button onClick={addAllergy} className="px-4 py-2 bg-brand-primary text-white rounded-xl font-semibold">
+                      <Plus size={18} />
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {editAllergies.map((allergy) => (
+                      <span key={allergy} className="px-3 py-1 bg-red-50 text-red-700 rounded-full text-xs font-medium flex items-center gap-1">
+                        {allergy}
+                        <button onClick={() => removeAllergy(allergy)} className="hover:bg-red-200 rounded-full p-0.5">
+                          <X size={12} />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Preferences */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Preferences</label>
+                  <div className="flex gap-2 mb-2">
+                    <input
+                      type="text"
+                      value={newPreferenceInput}
+                      onChange={(e) => setNewPreferenceInput(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && addPreference()}
+                      className="flex-1 px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-primary"
+                      placeholder="Add preference"
+                    />
+                    <button onClick={addPreference} className="px-4 py-2 bg-brand-primary text-white rounded-xl font-semibold">
+                      <Plus size={18} />
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {editPreferences.map((pref) => (
+                      <span key={pref} className="px-3 py-1 bg-pink-50 text-pink-700 rounded-full text-xs font-medium flex items-center gap-1">
+                        {pref}
+                        <button onClick={() => removePreference(pref)} className="hover:bg-pink-200 rounded-full p-0.5">
+                          <X size={12} />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-6 flex gap-3">
+                <button
+                  onClick={() => setIsEditModalOpen(false)}
+                  className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-200 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveEdit}
+                  className="flex-1 bg-brand-primary text-white py-3 rounded-xl font-bold hover:bg-brand-secondary transition-colors"
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Photo Options Modal */}
+        {showPhotoOptions && (
+          <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50 animate-fade-in">
+            <div className="bg-white rounded-t-3xl w-full max-w-lg p-6 animate-slide-up">
+              <h3 className="text-lg font-bold text-gray-800 mb-4">Change Photo</h3>
+              <div className="space-y-3">
+                <button
+                  onClick={() => {
+                    cameraInputRef.current?.click();
+                    setShowPhotoOptions(false);
+                  }}
+                  className="w-full flex items-center gap-3 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors"
+                >
+                  <Camera size={20} className="text-gray-600" />
+                  <span className="font-semibold text-gray-700">Take Photo</span>
+                </button>
+                <button
+                  onClick={() => {
+                    fileInputRef.current?.click();
+                    setShowPhotoOptions(false);
+                  }}
+                  className="w-full flex items-center gap-3 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors"
+                >
+                  <ImageIcon size={20} className="text-gray-600" />
+                  <span className="font-semibold text-gray-700">Choose from Library</span>
+                </button>
+                <button
+                  onClick={() => setShowPhotoOptions(false)}
+                  className="w-full p-4 bg-gray-100 rounded-xl font-semibold text-gray-700 hover:bg-gray-200 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <input ref={fileInputRef} type="file" accept="image/*" className="hidden" />
+        <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" />
       </div>
     );
   }
 
+  // =====================================================
+  // PLAN SELECTION VIEW
+  // =====================================================
+  if (activeSection === 'plan') {
+    const plans = [
+      {
+        id: 'free',
+        name: 'Free',
+        monthlyPrice: 0,
+        yearlyPrice: 0,
+        features: ['Up to 4 family members', 'Basic features'],
+        highlight: false
+      },
+      {
+        id: 'core',
+        name: 'Core',
+        monthlyPrice: 88,
+        yearlyPrice: 850,
+        features: ['Up to 6 family members', '2 helpers', 'Receipt scanning', 'Priority support'],
+        highlight: false
+      },
+      {
+        id: 'pro',
+        name: 'Pro',
+        monthlyPrice: 118,
+        yearlyPrice: 1080,
+        features: ['Up to 10 family members', 'Unlimited helpers', 'Advanced AI', 'Data export', 'Premium support'],
+        highlight: true
+      }
+    ];
+
+    return (
+      <div className="px-4 pt-16 pb-24 h-full animate-slide-up flex flex-col overflow-y-auto">
+        {renderSettingsHeader('Choose Your Plan')}
+
+        {/* Billing Period Toggle */}
+        <div className="mt-6 mb-6 flex justify-center">
+          <div className="bg-gray-100 rounded-full p-1 inline-flex">
+            <button
+              onClick={() => setBillingPeriod('monthly')}
+              className={`px-6 py-2 rounded-full font-semibold text-sm transition-all ${
+                billingPeriod === 'monthly'
+                  ? 'bg-white text-brand-primary shadow-sm'
+                  : 'text-gray-600'
+              }`}
+            >
+              Monthly
+            </button>
+            <button
+              onClick={() => setBillingPeriod('yearly')}
+              className={`px-6 py-2 rounded-full font-semibold text-sm transition-all ${
+                billingPeriod === 'yearly'
+                  ? 'bg-white text-brand-primary shadow-sm'
+                  : 'text-gray-600'
+              }`}
+            >
+              Yearly
+              <span className="ml-1 text-xs text-green-600">Save 20%</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Plan Cards */}
+        <div className="space-y-4 mb-6">
+          {plans.map((p) => {
+            const price = billingPeriod === 'monthly' ? p.monthlyPrice : p.yearlyPrice;
+            const isCurrentPlan = selectedPlan === p.id;
+            const isFree = p.id === 'free';
+
+            return (
+              <div
+                key={p.id}
+                className={`bg-white rounded-2xl p-6 border-2 transition-all ${
+                  p.highlight
+                    ? 'border-brand-primary shadow-lg'
+                    : isCurrentPlan
+                    ? 'border-brand-primary'
+                    : 'border-gray-200'
+                }`}
+              >
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-800">{p.name}</h3>
+                    <div className="flex items-baseline gap-1 mt-1">
+                      <span className="text-3xl font-bold text-gray-900">
+                        ${price}
+                      </span>
+                      {!isFree && (
+                        <span className="text-gray-500 text-sm">
+                          /{billingPeriod === 'monthly' ? 'mo' : 'yr'}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  {p.highlight && (
+                    <span className="bg-brand-primary text-white text-xs font-bold px-3 py-1 rounded-full">
+                      Popular
+                    </span>
+                  )}
+                </div>
+
+                <ul className="space-y-2 mb-6">
+                  {p.features.map((feature, idx) => (
+                    <li key={idx} className="flex items-center gap-2 text-sm text-gray-600">
+                      <Check size={16} className="text-green-500 flex-shrink-0" />
+                      {feature}
+                    </li>
+                  ))}
+                </ul>
+
+                {!isFree ? (
+                  <button
+                    onClick={() => handleSelectPlan(p.id as 'core' | 'pro', billingPeriod)}
+                    disabled={isLoading}
+                    className={`w-full py-3 rounded-xl font-bold transition-all ${
+                      isCurrentPlan
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        : 'bg-brand-primary text-white hover:bg-brand-secondary'
+                    }`}
+                  >
+                    {isLoading ? 'Processing...' : isCurrentPlan ? 'Current Plan' : 'Select Plan'}
+                  </button>
+                ) : (
+                  <div className="w-full py-3 text-center text-gray-500 text-sm font-semibold">
+                    Always Free
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Manage Subscription Button (if they have an active subscription) */}
+        {subscriptionInfo?.status === 'active' && (
+          <button
+            onClick={handleManageSubscription}
+            disabled={isLoading}
+            className="w-full bg-gray-100 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
+          >
+            {isLoading ? 'Loading...' : 'Manage Subscription'}
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  // =====================================================
+  // SECURITY VIEW
+  // =====================================================
   if (activeSection === 'security') {
     return (
       <div className="px-4 pt-16 pb-24 h-full animate-slide-up flex flex-col">
         {renderSettingsHeader('Update Credentials')}
         <div className="space-y-6 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
           <div className="space-y-1">
-             <label className="text-xs font-bold text-gray-500 ml-1">Email Address</label>
-             <div className="relative">
-               <input 
-                  type="email" 
-                  value={securityData.email} 
-                  onChange={e => setSecurityData({...securityData, email: e.target.value})}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-800 font-medium focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 outline-none pl-10"
-               />
-               <Mail size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-             </div>
+            <label className="text-xs font-bold text-gray-500 ml-1">Email Address</label>
+            <div className="relative">
+              <input
+                type="email"
+                value={securityData.email}
+                onChange={e => setSecurityData({ ...securityData, email: e.target.value })}
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-800 font-medium focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 outline-none pl-10"
+              />
+              <Mail size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            </div>
           </div>
           <div className="space-y-1">
-             <label className="text-xs font-bold text-gray-500 ml-1">Current Password</label>
-             <div className="relative">
-               <input 
-                  type="password" 
-                  placeholder="••••••••"
-                  value={securityData.currentPassword} 
-                  onChange={e => setSecurityData({...securityData, currentPassword: e.target.value})}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-800 font-medium focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 outline-none pl-10"
-               />
-               <Lock size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-             </div>
+            <label className="text-xs font-bold text-gray-500 ml-1">Current Password</label>
+            <div className="relative">
+              <input
+                type="password"
+                placeholder="••••••••"
+                value={securityData.currentPassword}
+                onChange={e => setSecurityData({ ...securityData, currentPassword: e.target.value })}
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-800 font-medium focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 outline-none pl-10"
+              />
+              <Lock size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            </div>
           </div>
           <div className="space-y-1">
-             <label className="text-xs font-bold text-gray-500 ml-1">New Password</label>
-             <div className="relative">
-               <input 
-                  type="password" 
-                  placeholder="••••••••"
-                  value={securityData.newPassword} 
-                  onChange={e => setSecurityData({...securityData, newPassword: e.target.value})}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-800 font-medium focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 outline-none pl-10"
-               />
-               <Lock size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-             </div>
+            <label className="text-xs font-bold text-gray-500 ml-1">New Password</label>
+            <div className="relative">
+              <input
+                type="password"
+                placeholder="••••••••"
+                value={securityData.newPassword}
+                onChange={e => setSecurityData({ ...securityData, newPassword: e.target.value })}
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-800 font-medium focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 outline-none pl-10"
+              />
+              <Lock size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            </div>
           </div>
         </div>
         <div className="mt-auto pt-4">
-           <button onClick={() => setActiveSection('settings')} className="w-full bg-brand-primary text-white py-4 rounded-xl font-bold shadow-lg hover:bg-brand-secondary transition-colors">
-             Save Changes
-           </button>
+          <button onClick={() => setActiveSection('settings')} className="w-full bg-brand-primary text-white py-4 rounded-xl font-bold shadow-lg hover:bg-brand-secondary transition-colors">
+            Save Changes
+          </button>
         </div>
       </div>
     );
   }
 
+  // =====================================================
+  // PAYMENT VIEW
+  // =====================================================
   if (activeSection === 'payment') {
     return (
       <div className="px-4 pt-16 pb-24 h-full animate-slide-up flex flex-col">
         {renderSettingsHeader('Payment Method')}
-        
+
         {/* Card Preview */}
         <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl p-6 text-white shadow-xl mb-8 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-5 rounded-full -translate-y-1/2 translate-x-1/2"></div>
@@ -292,82 +840,79 @@ const Profile: React.FC<ProfileProps> = ({ users, onAdd, onUpdate, onDelete, onB
             <span className="text-xs font-mono bg-white/10 px-2 py-1 rounded">DEBIT</span>
           </div>
           <div className="text-xl font-mono tracking-widest mb-4">
-             {paymentData.cardNumber || '•••• •••• •••• ••••'}
+            {paymentData.cardNumber || '•••• •••• •••• ••••'}
           </div>
-          <div className="flex justify-between items-end">
-             <div>
-                <p className="text-[10px] opacity-60 font-bold tracking-wider">CARD HOLDER</p>
-                <p className="text-sm font-medium tracking-wide uppercase">{paymentData.name || 'YOUR NAME'}</p>
-             </div>
-             <div>
-                <p className="text-[10px] opacity-60 font-bold tracking-wider">EXPIRES</p>
-                <p className="text-sm font-medium tracking-wide">{paymentData.expiry || 'MM/YY'}</p>
-             </div>
+          <div className="flex justify-between text-sm">
+            <span className="opacity-70">{paymentData.name || 'CARDHOLDER'}</span>
+            <span className="opacity-70">{paymentData.expiry || 'MM/YY'}</span>
           </div>
         </div>
 
         <div className="space-y-4 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
           <div className="space-y-1">
-             <label className="text-xs font-bold text-gray-500 ml-1">Card Number</label>
-             <input 
-                type="text" 
-                placeholder="0000 0000 0000 0000"
-                maxLength={19}
-                value={paymentData.cardNumber} 
-                onChange={e => setPaymentData({...paymentData, cardNumber: e.target.value})}
-                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-800 font-mono text-sm focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 outline-none"
-             />
+            <label className="text-xs font-bold text-gray-500 ml-1">Card Number</label>
+            <input
+              type="text"
+              placeholder="1234 5678 9012 3456"
+              maxLength={19}
+              value={paymentData.cardNumber}
+              onChange={e => setPaymentData({ ...paymentData, cardNumber: e.target.value })}
+              className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-800 font-mono text-sm focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 outline-none"
+            />
           </div>
-          <div className="flex gap-4">
-            <div className="space-y-1 flex-1">
-               <label className="text-xs font-bold text-gray-500 ml-1">Expiry</label>
-               <input 
-                  type="text" 
-                  placeholder="MM/YY"
-                  maxLength={5}
-                  value={paymentData.expiry} 
-                  onChange={e => setPaymentData({...paymentData, expiry: e.target.value})}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-800 font-mono text-sm focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 outline-none"
-               />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-gray-500 ml-1">Expiry</label>
+              <input
+                type="text"
+                placeholder="MM/YY"
+                maxLength={5}
+                value={paymentData.expiry}
+                onChange={e => setPaymentData({ ...paymentData, expiry: e.target.value })}
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-800 font-mono text-sm focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 outline-none"
+              />
             </div>
-            <div className="space-y-1 w-24">
-               <label className="text-xs font-bold text-gray-500 ml-1">CVC</label>
-               <input 
-                  type="text" 
-                  placeholder="123"
-                  maxLength={3}
-                  value={paymentData.cvc} 
-                  onChange={e => setPaymentData({...paymentData, cvc: e.target.value})}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-800 font-mono text-sm focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 outline-none"
-               />
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-gray-500 ml-1">CVC</label>
+              <input
+                type="text"
+                placeholder="123"
+                maxLength={3}
+                value={paymentData.cvc}
+                onChange={e => setPaymentData({ ...paymentData, cvc: e.target.value })}
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-800 font-mono text-sm focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 outline-none"
+              />
             </div>
           </div>
           <div className="space-y-1">
-             <label className="text-xs font-bold text-gray-500 ml-1">Cardholder Name</label>
-             <input 
-                type="text" 
-                placeholder="Name on card"
-                value={paymentData.name} 
-                onChange={e => setPaymentData({...paymentData, name: e.target.value})}
-                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-800 font-medium text-sm focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 outline-none"
-             />
+            <label className="text-xs font-bold text-gray-500 ml-1">Cardholder Name</label>
+            <input
+              type="text"
+              placeholder="Name on card"
+              value={paymentData.name}
+              onChange={e => setPaymentData({ ...paymentData, name: e.target.value })}
+              className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-800 font-medium text-sm focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 outline-none"
+            />
           </div>
         </div>
 
         <div className="mt-auto pt-4">
-           <button onClick={() => setActiveSection('settings')} className="w-full bg-brand-primary text-white py-4 rounded-xl font-bold shadow-lg hover:bg-brand-secondary transition-colors">
-             Save Payment Method
-           </button>
+          <button onClick={() => setActiveSection('settings')} className="w-full bg-brand-primary text-white py-4 rounded-xl font-bold shadow-lg hover:bg-brand-secondary transition-colors">
+            Save Payment Method
+          </button>
         </div>
       </div>
     );
   }
 
+  // =====================================================
+  // SETTINGS MENU VIEW
+  // =====================================================
   if (activeSection === 'settings') {
     return (
       <div className="px-4 pt-16 pb-24 h-full animate-slide-up flex flex-col">
         {renderSettingsHeader('Settings', () => setActiveSection('main'))}
-        
+
         <div className="space-y-3">
           {[
             { id: 'plan', label: 'Change Plan', icon: Crown, desc: 'Manage your subscription' },
@@ -379,16 +924,16 @@ const Profile: React.FC<ProfileProps> = ({ users, onAdd, onUpdate, onDelete, onB
               onClick={() => setActiveSection(item.id as any)}
               className="w-full bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between hover:bg-gray-50 transition-all active:scale-[0.99]"
             >
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full bg-[#E6F7FB] text-[#3EAFD2] flex items-center justify-center">
-                  <item.icon size={20} />
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-brand-primary to-brand-secondary rounded-xl flex items-center justify-center">
+                  <item.icon size={20} className="text-white" />
                 </div>
                 <div className="text-left">
-                  <h3 className="font-bold text-gray-800 text-sm">{item.label}</h3>
-                  <p className="text-xs text-gray-400">{item.desc}</p>
+                  <p className="font-bold text-gray-800">{item.label}</p>
+                  <p className="text-xs text-gray-500">{item.desc}</p>
                 </div>
               </div>
-              <ChevronRight size={18} className="text-gray-300" />
+              <ChevronRight size={20} className="text-gray-400" />
             </button>
           ))}
         </div>
@@ -396,450 +941,7 @@ const Profile: React.FC<ProfileProps> = ({ users, onAdd, onUpdate, onDelete, onB
     );
   }
 
-  // --- Main Profile View (Default) ---
-
-  return (
-    <div className="px-4 pt-16 pb-24 animate-slide-up page-content relative">
-      {/* Header */}
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-brand-text">{t['profile.title']}</h1>
-        <div className="flex gap-2">
-          <button 
-            onClick={() => setActiveSection('settings')}
-            className="p-2 rounded-full bg-white shadow-sm border border-gray-100 text-gray-500 hover:text-brand-primary hover:bg-gray-50 transition-colors"
-          >
-            <Settings size={20} />
-          </button>
-          <button 
-            onClick={onBack}
-            className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
-          >
-            <span className="text-sm font-bold text-gray-500 px-2">{t['profile.back']}</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Family Carousel */}
-      <div className="mb-8">
-        <div className="flex gap-4 overflow-x-auto no-scrollbar py-2 px-1 items-start">
-          {users.map(user => {
-            const isSelected = user.id === selectedUserId;
-            const isCurrent = user.id === currentUser.id;
-            return (
-              <div 
-                key={user.id}
-                onClick={() => setSelectedUserId(user.id)}
-                className={`flex flex-col items-center gap-2 cursor-pointer transition-all duration-300 ${isSelected ? 'scale-105 opacity-100' : 'scale-95 opacity-60'}`}
-              >
-                <div className={`w-16 h-16 rounded-full p-1 relative ${isSelected ? 'bg-brand-primary' : 'bg-transparent'}`}>
-                  <img 
-                    src={user.avatar} 
-                    alt={user.name} 
-                    className="w-full h-full rounded-full object-cover border-2 border-white" 
-                  />
-                  {isCurrent && (
-                    <div className="absolute bottom-0 right-0 w-4 h-4 bg-[#4CAF50] border-2 border-white rounded-full"></div>
-                  )}
-                </div>
-                <span className={`text-xs font-medium whitespace-nowrap ${isSelected ? 'text-brand-primary' : 'text-gray-500'}`}>
-                  {user.name.split(' ')[0]} {isCurrent ? '(You)' : ''}
-                </span>
-              </div>
-            );
-          })}
-          <div 
-            onClick={() => setIsAddModalOpen(true)}
-            className="flex flex-col items-center gap-2 cursor-pointer scale-95 opacity-60 hover:opacity-100 transition-opacity"
-          >
-             <div id="onboarding-add-member-btn" className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center border-2 border-white">
-                <Plus size={24} className="text-gray-500" />
-             </div>
-             <span className="text-xs font-medium text-gray-500">{t['common.add']}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Selected User Profile Card */}
-      {selectedUser && (
-        <div className="bg-white rounded-3xl shadow-sm p-6 mb-6 animate-fade-in relative overflow-hidden">
-          <div className="absolute top-0 right-0 p-4 flex gap-2">
-             {selectedUser.id !== currentUser.id && (
-               <button 
-                  onClick={() => handleDeleteUser(selectedUser.id)}
-                  className="p-2 text-red-300 hover:text-red-500 bg-red-50 rounded-full transition-colors"
-               >
-                  <Trash2 size={18} />
-               </button>
-             )}
-             <button 
-                onClick={handleOpenEdit}
-                className="p-2 text-gray-400 hover:text-brand-primary bg-gray-50 rounded-full"
-             >
-                <Settings size={18} />
-             </button>
-          </div>
-          
-          <div className="flex items-center gap-4 mb-6">
-            <div className="relative group">
-                <div 
-                    className="w-20 h-20 rounded-2xl overflow-hidden shadow-md bg-gray-100 cursor-pointer"
-                    onClick={() => setShowPhotoOptions(true)}
-                >
-                   <img src={selectedUser.avatar} alt={selectedUser.name} className="w-full h-full object-cover" />
-                </div>
-                <button 
-                    onClick={() => setShowPhotoOptions(true)}
-                    className="absolute -bottom-2 -right-2 p-2 bg-white rounded-full shadow-md text-gray-600 hover:text-brand-primary transition-colors border border-gray-100 z-10"
-                >
-                    <Camera size={14} />
-                </button>
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-gray-800">{selectedUser.name}</h2>
-              <span className={`inline-block mt-1 px-3 py-1 rounded-full text-[10px] font-bold tracking-wide ${getRoleBadgeColor(selectedUser.role)}`}>
-                {selectedUser.role}
-              </span>
-              {selectedUser.email && (
-                 <p className="text-xs text-gray-400 mt-1">{selectedUser.email}</p>
-              )}
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <div>
-              <div className="flex items-center gap-2 mb-2 text-red-500 font-semibold text-sm">
-                 <AlertCircle size={16} />
-                 <span>{t['profile.allergies']}</span>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {selectedUser.allergies && selectedUser.allergies.length > 0 ? (
-                  selectedUser.allergies.map((allergy, i) => (
-                    <span key={i} className="bg-red-50 text-red-600 border border-red-100 px-3 py-1 rounded-lg text-xs font-medium">
-                      {allergy}
-                    </span>
-                  ))
-                ) : (
-                  <span className="text-xs text-gray-400 italic">{t['profile.none_added']}</span>
-                )}
-              </div>
-            </div>
-
-            <div>
-              <div className="flex items-center gap-2 mb-2 text-[#4CAF50] font-semibold text-sm">
-                 <Heart size={16} />
-                 <span>{t['profile.preferences']}</span>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {selectedUser.preferences && selectedUser.preferences.length > 0 ? (
-                  selectedUser.preferences.map((pref, i) => (
-                    <span key={i} className="bg-[#E8F5E9] text-[#4CAF50] border border-[#4CAF50]/20 px-3 py-1 rounded-lg text-xs font-medium">
-                      {pref}
-                    </span>
-                  ))
-                ) : (
-                  <span className="text-xs text-gray-400 italic">{t['profile.none_added']}</span>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-      
-      <button 
-        onClick={onLogout}
-        className="mt-4 mb-6 w-full py-3 rounded-xl border-2 border-red-100 text-red-500 font-bold text-sm flex items-center justify-center gap-2 hover:bg-red-50 transition-colors"
-      >
-        <LogOut size={18} />
-        {t['profile.logout']}
-      </button>
-
-      {/* Footer */}
-      <div className="helpy-footer">
-        <span className="helpy-logo">helpy</span>
-      </div>
-
-      {/* Add User Modal */}
-      {isAddModalOpen && (
-        <div className="fixed inset-0 bg-black/50 z-[80] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
-            <div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-xl animate-slide-up">
-                <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-xl font-bold text-gray-800">{t['profile.add_member']}</h3>
-                    <button 
-                        onClick={() => setIsAddModalOpen(false)}
-                        className="p-2 bg-gray-100 rounded-full text-gray-500 hover:bg-gray-200"
-                    >
-                        <X size={20} />
-                    </button>
-                </div>
-
-                <div className="space-y-4">
-                    <div>
-                        <label className="block text-xs font-bold text-gray-500 mb-1">Name</label>
-                        <input 
-                            type="text"
-                            value={newName}
-                            onChange={(e) => setNewName(e.target.value)}
-                            placeholder="Name (e.g. Uncle Bob)"
-                            className="w-full bg-gray-50 border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-brand-primary outline-none font-semibold text-gray-800"
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-xs font-bold text-gray-500 mb-1">Email (Optional)</label>
-                        <input 
-                            type="email"
-                            value={newEmail}
-                            onChange={(e) => setNewEmail(e.target.value)}
-                            placeholder="For login (Optional)"
-                            className="w-full bg-gray-50 border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-brand-primary outline-none text-gray-800"
-                        />
-                        <p className="text-[10px] text-gray-400 mt-1 ml-1">Required for them to login on their own device.</p>
-                    </div>
-                    <div>
-                        <label className="block text-xs font-bold text-gray-500 mb-1">Role</label>
-                        <div className="grid grid-cols-2 gap-2">
-                            {Object.values(UserRole).map(role => (
-                                <button
-                                    key={role}
-                                    onClick={() => setNewRole(role)}
-                                    className={`py-2 px-3 rounded-xl text-xs font-bold transition-colors ${
-                                        newRole === role 
-                                        ? 'bg-brand-primary text-white' 
-                                        : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                                    }`}
-                                >
-                                    {role}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-
-                <div className="mt-8">
-                    <button 
-                        onClick={handleAddUser}
-                        disabled={!newName.trim()}
-                        className="w-full bg-brand-primary text-white py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-brand-secondary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        <Save size={18} />
-                        {t['profile.add_member']}
-                    </button>
-                </div>
-            </div>
-        </div>
-      )}
-
-      {/* Invite Link Modal */}
-      {inviteLink && (
-        <div className="fixed inset-0 bg-black/60 z-[90] flex items-center justify-center p-4 backdrop-blur-md animate-fade-in">
-            <div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl animate-slide-up">
-                <div className="flex flex-col items-center text-center mb-6">
-                    <div className="w-16 h-16 bg-[#E8F5E9] rounded-full flex items-center justify-center text-[#4CAF50] mb-4">
-                        <Check size={32} />
-                    </div>
-                    <h3 className="text-2xl font-bold text-gray-800">Member Added!</h3>
-                    <p className="text-gray-500 text-sm mt-2">
-                        Share this link with them so they can set their PIN and join the household.
-                    </p>
-                </div>
-
-                <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 flex items-center gap-3 mb-6 overflow-hidden">
-                    <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium text-gray-400 mb-1">{t['profile.invite_link']}</p>
-                        <p className="text-sm font-semibold text-brand-primary truncate">{inviteLink}</p>
-                    </div>
-                </div>
-
-                <button 
-                    onClick={copyInviteLink}
-                    className={`w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all ${isCopied ? 'bg-[#4CAF50] text-white' : 'bg-brand-primary text-white hover:bg-brand-secondary'}`}
-                >
-                    {isCopied ? <Check size={18} /> : <Copy size={18} />}
-                    {isCopied ? t['profile.copied'] : t['profile.copy_link']}
-                </button>
-                
-                <button 
-                    onClick={() => setInviteLink(null)}
-                    className="w-full mt-3 py-3 rounded-xl text-gray-400 font-bold text-sm hover:bg-gray-50"
-                >
-                    {t['common.cancel']}
-                </button>
-            </div>
-        </div>
-      )}
-
-      {/* Edit User Modal */}
-      {isEditModalOpen && (
-        <div className="fixed inset-0 bg-black/50 z-[80] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
-            <div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-xl animate-slide-up flex flex-col max-h-[90vh]">
-                <div className="flex justify-between items-center mb-6 shrink-0">
-                    <h3 className="text-xl font-bold text-gray-800">{t['profile.edit_profile']}</h3>
-                    <button 
-                        onClick={() => setIsEditModalOpen(false)}
-                        className="p-2 bg-gray-100 rounded-full text-gray-500 hover:bg-gray-200"
-                    >
-                        <X size={20} />
-                    </button>
-                </div>
-
-                <div className="space-y-6 overflow-y-auto px-1 flex-1">
-                    <div className="space-y-3">
-                        <div>
-                            <label className="block text-xs font-bold text-gray-500 mb-1">Name</label>
-                            <input 
-                                type="text"
-                                value={editName}
-                                onChange={(e) => setEditName(e.target.value)}
-                                className="w-full bg-gray-50 border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-brand-primary outline-none font-semibold text-gray-800"
-                            />
-                        </div>
-                         <div>
-                            <label className="block text-xs font-bold text-gray-500 mb-1">Role</label>
-                            <div className="grid grid-cols-2 gap-2">
-                                {Object.values(UserRole).map(role => (
-                                    <button
-                                        key={role}
-                                        onClick={() => setEditRole(role)}
-                                        className={`py-2 px-3 rounded-xl text-xs font-bold transition-colors ${
-                                            editRole === role 
-                                            ? 'bg-brand-primary text-white' 
-                                            : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                                        }`}
-                                    >
-                                        {role}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-
-                    <div>
-                        <div className="flex items-center gap-2 mb-2 text-red-500 font-semibold text-sm">
-                            <AlertCircle size={16} />
-                            <span>{t['profile.allergies']}</span>
-                        </div>
-                        <div className="flex gap-2 mb-3">
-                            <input 
-                                type="text"
-                                value={newAllergyInput}
-                                onChange={(e) => setNewAllergyInput(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && addAllergy()}
-                                placeholder="Add allergy..."
-                                className="flex-1 bg-gray-50 border-none rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-red-200 outline-none"
-                            />
-                            <button onClick={addAllergy} className="bg-red-100 text-red-600 p-2 rounded-xl hover:bg-red-200">
-                                <Plus size={20} />
-                            </button>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                            {editAllergies.map((item, i) => (
-                                <span key={i} className="bg-red-50 text-red-600 border border-red-100 pl-3 pr-1 py-1 rounded-lg text-xs font-medium flex items-center gap-1">
-                                    {item}
-                                    <button onClick={() => setEditAllergies(prev => prev.filter((_, idx) => idx !== i))} className="p-0.5 hover:bg-red-100 rounded-full">
-                                        <X size={14} />
-                                    </button>
-                                </span>
-                            ))}
-                            {editAllergies.length === 0 && <span className="text-xs text-gray-400 italic">{t['profile.none_added']}</span>}
-                        </div>
-                    </div>
-
-                    <div>
-                        <div className="flex items-center gap-2 mb-2 text-[#4CAF50] font-semibold text-sm">
-                            <Heart size={16} />
-                            <span>{t['profile.preferences']}</span>
-                        </div>
-                        <div className="flex gap-2 mb-3">
-                            <input 
-                                type="text"
-                                value={newPreferenceInput}
-                                onChange={(e) => setNewPreferenceInput(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && addPreference()}
-                                placeholder="Add preference..."
-                                className="flex-1 bg-gray-50 border-none rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-[#4CAF50]/30 outline-none"
-                            />
-                            <button onClick={addPreference} className="bg-[#E8F5E9] text-[#4CAF50] p-2 rounded-xl hover:bg-[#4CAF50]/20">
-                                <Plus size={20} />
-                            </button>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                             {editPreferences.map((item, i) => (
-                                <span key={i} className="bg-[#E8F5E9] text-[#4CAF50] border border-[#4CAF50]/20 pl-3 pr-1 py-1 rounded-lg text-xs font-medium flex items-center gap-1">
-                                    {item}
-                                    <button onClick={() => setEditPreferences(prev => prev.filter((_, idx) => idx !== i))} className="p-0.5 hover:bg-[#4CAF50]/20 rounded-full">
-                                        <X size={14} />
-                                    </button>
-                                </span>
-                            ))}
-                            {editPreferences.length === 0 && <span className="text-xs text-gray-400 italic">{t['profile.none_added']}</span>}
-                        </div>
-                    </div>
-                </div>
-
-                <div className="mt-6 pt-4 border-t border-gray-100 shrink-0">
-                    <button 
-                        onClick={handleSaveEdit}
-                        className="w-full bg-brand-primary text-white py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-brand-secondary transition-colors"
-                    >
-                        <Save size={18} />
-                        {t['meals.save_changes']}
-                    </button>
-                </div>
-            </div>
-        </div>
-      )}
-
-      {/* Photo Options Modal */}
-      {showPhotoOptions && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
-            <div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-xl animate-slide-up">
-                <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-xl font-bold text-gray-800">{t['profile.change_photo']}</h3>
-                    <button 
-                        onClick={() => setShowPhotoOptions(false)}
-                        className="p-2 bg-gray-100 rounded-full text-gray-500 hover:bg-gray-200"
-                    >
-                        <X size={20} />
-                    </button>
-                </div>
-                
-                <div className="space-y-3">
-                    <button 
-                        onClick={() => cameraInputRef.current?.click()}
-                        className="w-full py-4 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center gap-3 font-bold text-gray-700 hover:bg-gray-100 transition-colors"
-                    >
-                        <Camera size={20} />
-                        {t['profile.take_photo']}
-                    </button>
-                    <button 
-                        onClick={() => fileInputRef.current?.click()}
-                        className="w-full py-4 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center gap-3 font-bold text-gray-700 hover:bg-gray-100 transition-colors"
-                    >
-                        <ImageIcon size={20} />
-                        {t['profile.choose_library']}
-                    </button>
-                </div>
-                
-                <input 
-                    type="file" 
-                    ref={cameraInputRef} 
-                    accept="image/*" 
-                    capture="user"
-                    className="hidden" 
-                    onChange={handlePhotoSelect}
-                />
-                <input 
-                    type="file" 
-                    ref={fileInputRef} 
-                    accept="image/*" 
-                    className="hidden" 
-                    onChange={handlePhotoSelect}
-                />
-            </div>
-        </div>
-      )}
-
-    </div>
-  );
+  return null;
 };
 
 export default Profile;

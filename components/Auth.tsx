@@ -1,7 +1,9 @@
-import React from 'react';
-import { SignIn, SignUp, useUser } from '@clerk/clerk-react';
+// components/Auth.tsx
+import React, { useState } from 'react';
+import { SignIn, useUser } from '@clerk/clerk-react';
 import { supabase } from '../services/supabase';
 import { User } from '../types';
+import SignUp from './SignUp';
 
 interface AuthProps {
   onLogin: (user: User) => void;
@@ -10,6 +12,7 @@ interface AuthProps {
 const Auth: React.FC<AuthProps> = ({ onLogin }) => {
   const { user, isLoaded } = useUser();
   const [isCreatingUser, setIsCreatingUser] = React.useState(false);
+  const [showSignUp, setShowSignUp] = useState(false);
   const hasCheckedUser = React.useRef(false);
 
   React.useEffect(() => {
@@ -25,14 +28,138 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
     try {
       console.log('🔍 Checking for user:', clerkUser.id);
       
-      // 1. Check if user exists
+      // ============================================================
+      // STEP 1: Check if this user came from a Clerk invitation
+      // (Kept for backwards compatibility)
+      // ============================================================
+      const metadata = clerkUser.publicMetadata as {
+        supabaseUserId?: string;
+        householdId?: string;
+        role?: string;
+      } | undefined;
+
+      if (metadata?.supabaseUserId && metadata?.householdId) {
+        console.log('📨 User came from Clerk invitation, activating pending user...');
+        console.log('📨 Metadata:', metadata);
+
+        const { data: activatedUser, error: activateError } = await supabase
+          .from('users')
+          .update({ 
+            status: 'active',
+            clerk_id: clerkUser.id,
+            invite_expires_at: null
+          })
+          .eq('id', metadata.supabaseUserId)
+          .eq('household_id', metadata.householdId)
+          .select()
+          .single();
+
+        if (activateError) {
+          console.error('❌ Failed to activate invited user:', activateError);
+        } else if (activatedUser) {
+          console.log('✅ Invited user activated:', activatedUser);
+          onLogin({
+            id: activatedUser.clerk_id || activatedUser.id,
+            householdId: activatedUser.household_id,
+            email: activatedUser.email,
+            name: activatedUser.name,
+            role: activatedUser.role,
+            avatar: activatedUser.avatar,
+            allergies: activatedUser.allergies || [],
+            preferences: activatedUser.preferences || [],
+            status: 'active'
+          });
+          return;
+        }
+      }
+
+      // ============================================================
+      // STEP 1.5: Check URL for invite parameters (SHAREABLE LINK FLOW)
+      // This handles the flow where admin shares a link without email
+      // ============================================================
+      const urlParams = new URLSearchParams(window.location.search);
+      const hashParams = new URLSearchParams(window.location.hash.split('?')[1] || '');
+      
+      // Check both query params and hash params (Clerk uses hash routing)
+      const isInvite = urlParams.get('invite') === 'true' || hashParams.get('invite') === 'true';
+      const hid = urlParams.get('hid') || hashParams.get('hid');
+      const uid = urlParams.get('uid') || hashParams.get('uid');
+
+      if (isInvite && hid && uid) {
+        console.log('🔗 Invite URL detected:', { hid, uid });
+
+        const { data: pendingUser, error: pendingError } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', uid)
+          .eq('household_id', hid)
+          .eq('status', 'pending')
+          .maybeSingle();
+
+        if (pendingUser && !pendingError) {
+          // Check if invite hasn't expired
+          const expiresAt = pendingUser.invite_expires_at;
+          if (expiresAt && new Date(expiresAt) < new Date()) {
+            console.log('⏰ Invitation expired');
+            alert('This invitation has expired. Please ask for a new invite link.');
+            // Clear URL params and continue to regular signup
+            window.history.replaceState({}, '', window.location.pathname);
+          } else {
+            // Activate the pending user and link to Clerk account
+            const { data: activatedUser, error: activateError } = await supabase
+              .from('users')
+              .update({ 
+                status: 'active',
+                clerk_id: clerkUser.id,
+                email: clerkUser.primaryEmailAddress?.emailAddress || pendingUser.email,
+                invite_expires_at: null,
+                name: clerkUser.fullName || clerkUser.firstName || pendingUser.name,
+                avatar: clerkUser.imageUrl || pendingUser.avatar
+              })
+              .eq('id', uid)
+              .eq('household_id', hid)
+              .select()
+              .single();
+
+            if (!activateError && activatedUser) {
+              console.log('✅ Invited user activated via URL:', activatedUser);
+              
+              // Clear the invite params from URL
+              window.history.replaceState({}, '', window.location.pathname);
+              
+              onLogin({
+                id: activatedUser.clerk_id || activatedUser.id,
+                householdId: activatedUser.household_id,
+                email: activatedUser.email,
+                name: activatedUser.name,
+                role: activatedUser.role,
+                avatar: activatedUser.avatar,
+                allergies: activatedUser.allergies || [],
+                preferences: activatedUser.preferences || [],
+                status: 'active'
+              });
+              return;
+            } else {
+              console.error('❌ Failed to activate via URL:', activateError);
+            }
+          }
+        } else {
+          console.log('⚠️ No pending user found for invite params, may already be activated');
+          // Clear URL params and continue to regular flow
+          window.history.replaceState({}, '', window.location.pathname);
+        }
+      }
+
+      // ============================================================
+      // STEP 2: Check if user already exists (regular login)
+      // ============================================================
       const { data: existingUser, error: checkError } = await supabase
         .from('users')
         .select('*')
         .eq('clerk_id', clerkUser.id)
         .maybeSingle();
 
-      console.log('📊 Existing user:', existingUser);
+      console.log('📊 Existing user check:', existingUser);
 
       if (checkError) {
         console.error('❌ Check error:', checkError);
@@ -48,20 +175,73 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
           role: existingUser.role,
           avatar: existingUser.avatar,
           allergies: existingUser.allergies || [],
-          preferences: existingUser.preferences || []
+          preferences: existingUser.preferences || [],
+          status: existingUser.status || 'active'
         });
         return;
       }
 
-      console.log('🆕 Creating new user');
+      // ============================================================
+      // STEP 3: Check if there's a pending user with matching email
+      // This handles cases where invitation metadata wasn't passed through
+      // ============================================================
+      const clerkEmail = clerkUser.primaryEmailAddress?.emailAddress;
+      if (clerkEmail) {
+        const { data: pendingUser, error: pendingError } = await supabase
+          .from('users')
+          .select('*')
+          .eq('email', clerkEmail)
+          .eq('status', 'pending')
+          .maybeSingle();
 
-      // 2. Create household
-      const { data: household, error: householdError } = await supabase
+        if (pendingUser && !pendingError) {
+          console.log('📨 Found pending user by email, activating...');
+          
+          // Check if invite hasn't expired
+          const expiresAt = pendingUser.invite_expires_at;
+          if (expiresAt && new Date(expiresAt) < new Date()) {
+            console.log('⏰ Invitation expired');
+            // Continue to create new user instead
+          } else {
+            // Activate the pending user
+            const { data: activatedUser, error: activateError } = await supabase
+              .from('users')
+              .update({ 
+                status: 'active',
+                clerk_id: clerkUser.id,
+                invite_expires_at: null
+              })
+              .eq('id', pendingUser.id)
+              .select()
+              .single();
+
+            if (!activateError && activatedUser) {
+              console.log('✅ Pending user activated by email:', activatedUser);
+              onLogin({
+                id: activatedUser.clerk_id,
+                householdId: activatedUser.household_id,
+                email: activatedUser.email,
+                name: activatedUser.name,
+                role: activatedUser.role,
+                avatar: activatedUser.avatar,
+                allergies: activatedUser.allergies || [],
+                preferences: activatedUser.preferences || [],
+                status: 'active'
+              });
+              return;
+            }
+          }
+        }
+      }
+
+      // ============================================================
+      // STEP 4: Create new household and user (first-time signup)
+      // ============================================================
+      console.log('👤 New user, creating household and user...');
+
+      const { data: newHousehold, error: householdError } = await supabase
         .from('households')
-        .insert([{ 
-          name: `${clerkUser.firstName || 'Family'}'s Home`,
-          family_notes: ''
-        }])
+        .insert([{ name: `${clerkUser.firstName || 'User'}'s Family` }])
         .select()
         .single();
 
@@ -70,20 +250,20 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
         throw householdError;
       }
 
-      console.log('✅ Household created:', household.id);
+      console.log('✅ Household created:', newHousehold);
 
-      // 3. Create user
       const { data: createdUser, error: userError } = await supabase
         .from('users')
         .insert([{
+          household_id: newHousehold.id,
           clerk_id: clerkUser.id,
-          household_id: household.id,
           email: clerkUser.primaryEmailAddress?.emailAddress || '',
           name: clerkUser.fullName || clerkUser.firstName || 'User',
           role: 'Admin',
-          avatar: clerkUser.imageUrl || `https://picsum.photos/200/200?random=${Date.now()}`,
+          avatar: clerkUser.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${clerkUser.firstName || 'User'}`,
           allergies: [],
-          preferences: []
+          preferences: [],
+          status: 'active'
         }])
         .select()
         .single();
@@ -95,7 +275,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
 
       console.log('✅ User created:', createdUser);
 
-      // 4. Login
+      // Login
       onLogin({
         id: createdUser.clerk_id,
         householdId: createdUser.household_id,
@@ -104,7 +284,8 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
         role: createdUser.role,
         avatar: createdUser.avatar,
         allergies: createdUser.allergies || [],
-        preferences: createdUser.preferences || []
+        preferences: createdUser.preferences || [],
+        status: 'active'
       });
     } catch (error: any) {
       console.error('❌ Failed to create user:', error);
@@ -115,6 +296,11 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
       setIsCreatingUser(false);
     }
   };
+
+  // Show custom signup page
+  if (showSignUp) {
+    return <SignUp onBackToSignIn={() => setShowSignUp(false)} />;
+  }
 
   // Loading state while creating user
   if (isCreatingUser) {
@@ -164,8 +350,21 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
             }
           }}
           routing="hash"
-          signUpUrl="#/sign-up"
+          signUpUrl={null}
         />
+        
+        {/* Custom Sign Up Button */}
+        <div className="mt-4 text-center">
+          <p className="text-sm text-white/80">
+            Don't have an account?{' '}
+            <button
+              onClick={() => setShowSignUp(true)}
+              className="font-bold text-white hover:underline"
+            >
+              Sign up
+            </button>
+          </p>
+        </div>
       </div>
 
       {/* Footer */}

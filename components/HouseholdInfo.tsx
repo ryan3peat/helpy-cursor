@@ -840,7 +840,7 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
       {!isHelper && (
         <button
           onClick={activeSection === "essentialInfo" ? handleAddEssentialClick : handleAddTrainingClick}
-          className={`fixed bottom-24 right-6 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-all flex items-center justify-center z-30 hover:scale-105 active:scale-95 ${
+          className={`fixed bottom-24 right-6 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-colors flex items-center justify-center z-30 ${
             (isEssentialModalOpen || isTrainingModalOpen || viewingTrainingModule) ? 'fab-hiding' : ''
           }`}
           aria-label={activeSection === "essentialInfo" ? "Add Essential Info" : "Add Training Module"}
@@ -958,10 +958,10 @@ const EssentialInfoCard: React.FC<EssentialInfoCardProps> = ({
       {item.phone && (
         <button
           onClick={onCall}
-          className="w-full text-left flex items-center gap-2 py-1.5 hover:text-[#4CAF50] transition-colors group"
+          className="w-full text-left flex items-center gap-2 py-1.5 hover:text-primary transition-colors group"
         >
-          <Phone size={16} className="text-muted-foreground group-hover:text-[#4CAF50] flex-shrink-0" />
-          <span className="text-body text-foreground group-hover:text-[#4CAF50]">
+          <Phone size={16} className="text-muted-foreground group-hover:text-primary flex-shrink-0" />
+          <span className="text-body text-foreground group-hover:text-primary">
             {item.countryCode} {item.phone}
           </span>
         </button>
@@ -1002,7 +1002,7 @@ const TrainingCard: React.FC<TrainingCardProps> = ({
     : module.category;
 
   return (
-    <div className="bg-card rounded-xl p-5 shadow-sm border border-border hover:shadow-md transition-shadow">
+    <div className="bg-card rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
       {/* Header */}
       <div className="flex items-start justify-between mb-3">
         <div className="flex-1">
@@ -1082,7 +1082,7 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
   onDelete,
 }) => {
   return (
-    <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-end justify-center bottom-sheet-backdrop">
+    <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
       <div className="bg-card w-full max-w-lg rounded-t-2xl shadow-2xl overflow-hidden bottom-sheet-content relative">
         {/* Close Button */}
         <button 
@@ -1225,12 +1225,6 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
             </button>
           )}
           <button
-            onClick={onClose}
-            className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body hover:bg-secondary/80 transition-colors"
-          >
-            Cancel
-          </button>
-          <button
             onClick={onSave}
             className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body hover:bg-primary/90 transition-colors shadow-sm"
           >
@@ -1265,7 +1259,7 @@ const TrainingModal: React.FC<TrainingModalProps> = ({
   onDelete,
 }) => {
   return (
-    <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-end justify-center bottom-sheet-backdrop">
+    <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
       <div className="bg-card w-full max-w-lg rounded-t-2xl shadow-2xl overflow-hidden bottom-sheet-content relative">
         {/* Close Button */}
         <button 
@@ -1381,12 +1375,6 @@ const TrainingModal: React.FC<TrainingModalProps> = ({
             </button>
           )}
           <button
-            onClick={onClose}
-            className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body hover:bg-secondary/80 transition-colors"
-          >
-            Cancel
-          </button>
-          <button
             onClick={onSave}
             className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body hover:bg-primary/90 transition-colors shadow-sm"
           >
@@ -1422,7 +1410,7 @@ const TrainingViewModal: React.FC<TrainingViewModalProps> = ({
     : module.category;
 
   return (
-    <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-end justify-center bottom-sheet-backdrop">
+    <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
       <div className="bg-card w-full max-w-lg rounded-t-2xl shadow-2xl overflow-hidden bottom-sheet-content relative">
         {/* Close Button */}
         <button 

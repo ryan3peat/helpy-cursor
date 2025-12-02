@@ -886,17 +886,11 @@ const Meals: React.FC<MealsProps> = ({
                                           setQuickJoinPopoverDate(null);
                                         }}
                                         disabled={alreadyExists}
-                                        className={`w-12 h-12 flex items-center justify-center rounded-xl border-2 bg-card transition-all duration-200 ${
+                                        className={`w-12 h-12 flex items-center justify-center rounded-xl border-2 bg-card transition-colors ${
                                           alreadyExists 
                                             ? 'opacity-30 cursor-not-allowed border-muted text-muted-foreground' 
                                             : color
                                         }`}
-                                        style={{
-                                          animation: 'mealButtonPop 200ms ease-out forwards',
-                                          animationDelay: `${index * 50}ms`,
-                                          opacity: 0,
-                                          transform: 'scale(0.8)'
-                                        }}
                                         title={alreadyExists ? `${getMealLabel(type)} already exists` : getMealLabel(type)}
                                       >
                                         {icon}
@@ -1135,7 +1129,7 @@ const Meals: React.FC<MealsProps> = ({
                   <button
                     key={type}
                     onClick={() => setModalType(type)}
-                    className={`py-2.5 rounded-xl border-2 transition-all flex flex-col items-center justify-center gap-1 ${
+                    className={`py-2.5 rounded-xl border-2 transition-colors flex flex-col items-center justify-center gap-1 ${
                       isSelected
                         ? 'bg-primary/10 border-primary text-primary'
                         : 'bg-card border-border text-muted-foreground hover:border-foreground/20'
@@ -1196,7 +1190,7 @@ const Meals: React.FC<MealsProps> = ({
                     <button
                       onClick={handleAiSuggest}
                       disabled={loadingAi}
-                    className="absolute bottom-2 right-2 p-2 bg-card shadow-sm border border-border rounded-full text-primary hover:text-primary/80 hover:scale-105 transition-all disabled:opacity-50"
+                    className="absolute bottom-2 right-2 p-2 bg-card shadow-sm border border-border rounded-full text-primary hover:text-primary/80 transition-colors disabled:opacity-50"
                       title={t['meals.suggest_ai']}
                     >
                     {loadingAi ? (

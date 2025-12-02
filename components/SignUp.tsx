@@ -75,24 +75,26 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
   if (verificationStep) {
     return (
       <div className="min-h-screen w-full flex flex-col items-center justify-center p-6" style={{ backgroundColor: '#3EAFD2' }}>
-        {/* Logo Area */}
-        <div className="mb-8 text-center">
-          <h1 
-            className="text-5xl text-white mb-3"
-            style={{ fontFamily: "'Peanut Butter', cursive" }}
-          >
-            helpy
-          </h1>
-          <p className="text-white/90 text-sm font-medium italic">
-            "I just want you to know<br />I'm real grateful you're here"
-          </p>
-          <p className="text-white/70 text-xs mt-1 font-medium">
-            — Aibileen Clark, The Help
-          </p>
-        </div>
+        {/* Single container for logo + form to ensure alignment */}
+        <div className="w-full max-w-md flex flex-col items-center">
+          {/* Logo Area */}
+          <div className="mb-8 text-center w-full">
+            <h1 
+              className="text-5xl text-white mb-3"
+              style={{ fontFamily: "'Peanut Butter', cursive" }}
+            >
+              helpy
+            </h1>
+            <p className="text-white/90 text-sm font-medium">
+              <span className="font-bold" style={{ fontFamily: 'Georgia, serif' }}>"</span>I just want you to know<br />I'm real grateful you're here<span className="font-bold" style={{ fontFamily: 'Georgia, serif' }}>"</span>
+            </p>
+            <p className="text-white/70 text-xs mt-1 font-medium">
+              Aibileen Clark, The Help
+            </p>
+          </div>
 
-        <div className="w-full max-w-md">
-          <div className="bg-white shadow-lg rounded-2xl p-6">
+          <div className="w-full">
+            <div className="bg-white shadow-lg rounded-2xl p-6">
             <h2 className="text-xl font-bold text-[#474747] text-center mb-2">Verify Your Email</h2>
             <p className="text-gray-500 text-sm text-center mb-5">
               We sent a code to {formData.email}
@@ -143,6 +145,7 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
               </button>
             </form>
           </div>
+          </div>
         </div>
       </div>
     );
@@ -150,25 +153,27 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
 
   return (
     <div className="min-h-screen w-full flex flex-col items-center justify-center p-6" style={{ backgroundColor: '#3EAFD2' }}>
-      {/* Logo Area */}
-      <div className="mb-8 text-center">
-        <h1 
-          className="text-5xl text-white mb-3"
-          style={{ fontFamily: "'Peanut Butter', cursive" }}
-        >
-          helpy
-        </h1>
-        <p className="text-white/90 text-sm font-medium italic">
-          "I just want you to know<br />I'm real grateful you're here"
-        </p>
-        <p className="text-white/70 text-xs mt-1 font-medium">
-          — Aibileen Clark, The Help
-        </p>
-      </div>
+      {/* Single container for logo + form to ensure alignment */}
+      <div className="w-full max-w-md flex flex-col items-center">
+        {/* Logo Area */}
+        <div className="mb-8 text-center w-full">
+          <h1 
+            className="text-5xl text-white mb-3"
+            style={{ fontFamily: "'Peanut Butter', cursive" }}
+          >
+            helpy
+          </h1>
+          <p className="text-white/90 text-sm font-medium">
+            <span className="font-bold" style={{ fontFamily: 'Georgia, serif' }}>"</span>I just want you to know<br />I'm real grateful you're here<span className="font-bold" style={{ fontFamily: 'Georgia, serif' }}>"</span>
+          </p>
+          <p className="text-white/70 text-xs mt-1 font-medium">
+            Aibileen Clark, The Help
+          </p>
+        </div>
 
-      {/* Sign Up Form */}
-      <div className="w-full max-w-md">
-        <div className="bg-white shadow-lg rounded-2xl p-6">
+        {/* Sign Up Form */}
+        <div className="w-full">
+          <div className="bg-white shadow-lg rounded-2xl p-6">
           <button
             onClick={onBackToSignIn}
             className="flex items-center gap-2 text-gray-500 hover:text-[#3EAFD2] mb-4 transition-colors"
@@ -291,6 +296,7 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
               </button>
             </p>
           </div>
+        </div>
         </div>
       </div>
 

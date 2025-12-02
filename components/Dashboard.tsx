@@ -242,7 +242,7 @@ const Dashboard: React.FC<DashboardProps> = ({
       </header>
 
       {/* Content */}
-      <div className="px-5 space-y-6">
+      <div className="px-5 space-y-5">
 
       {/* Family Notes */}
       <div className="relative group">
@@ -363,7 +363,7 @@ const Dashboard: React.FC<DashboardProps> = ({
       </div>
 
       {/* Stat Cards */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-5">
         <StatCard
           title={t['dashboard.shopping']}
           count={shoppingCount}
@@ -380,22 +380,22 @@ const Dashboard: React.FC<DashboardProps> = ({
           colorClass="text-primary"
           onClick={() => onNavigate('todo', { section: 'task' })}
         />
-        <div className="col-span-2">
-          <StatCard
-            title={t['dashboard.expenses']}
-            count={
-              <div className="flex items-baseline gap-0.5">
-                <span className="text-sm font-bold text-muted-foreground align-top">$</span>
-                <span>{totalExpenses.toFixed(2)}</span>
-              </div>
-            }
-            icon={DollarSign}
-            label={new Date().toLocaleDateString(currentLang === 'en' ? 'en-US' : currentLang, { month: 'short', year: 'numeric' })}
-            colorClass="text-primary"
-            onClick={() => onNavigate('expenses')}
-          />
-        </div>
       </div>
+
+      {/* Expenses */}
+      <StatCard
+        title={t['dashboard.expenses']}
+        count={
+          <div className="flex items-baseline gap-0.5">
+            <span className="text-sm font-bold text-muted-foreground align-top">$</span>
+            <span>{totalExpenses.toFixed(2)}</span>
+          </div>
+        }
+        icon={DollarSign}
+        label={new Date().toLocaleDateString(currentLang === 'en' ? 'en-US' : currentLang, { month: 'short', year: 'numeric' })}
+        colorClass="text-primary"
+        onClick={() => onNavigate('expenses')}
+      />
 
       {/* Footer */}
         <div className="helpy-footer">

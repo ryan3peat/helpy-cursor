@@ -318,25 +318,27 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
   return (
     <div className="min-h-screen w-full flex flex-col items-center justify-center p-6" style={{ backgroundColor: '#3EAFD2' }}>
       
-      {/* Logo Area */}
-      <div className="mb-8 text-center">
-        <h1 
-          className="text-5xl text-white mb-3"
-          style={{ fontFamily: "'Peanut Butter', cursive" }}
-        >
-          helpy
-        </h1>
-        <p className="text-white/90 text-sm font-medium italic">
-          "I just want you to know<br />I'm real grateful you're here"
-        </p>
-        <p className="text-white/70 text-xs mt-1 font-medium">
-          — Aibileen Clark, The Help
-        </p>
-      </div>
-
-      {/* Clerk Auth Component */}
+      {/* Single container for logo + auth to ensure alignment */}
       <div className="w-full max-w-md">
-        <SignIn 
+        {/* Logo Area */}
+        <div className="mb-8 text-center">
+          <h1 
+            className="text-5xl text-white mb-3"
+            style={{ fontFamily: "'Peanut Butter', 'Plus Jakarta Sans', Inter, -apple-system, BlinkMacSystemFont, sans-serif" }}
+          >
+            helpy
+          </h1>
+          <p className="text-white/90 text-sm font-medium">
+            "I just want you to know<br />I'm real grateful you're here"
+          </p>
+          <p className="text-white/70 text-xs mt-1 font-medium">
+            Aibileen Clark, The Help
+          </p>
+        </div>
+
+        {/* Clerk Auth Component */}
+        <div className="w-full">
+          <SignIn 
           appearance={{
             variables: {
               colorPrimary: '#3EAFD2',
@@ -352,7 +354,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
             },
             elements: {
               rootBox: "w-full",
-              cardBox: "shadow-lg rounded-2xl overflow-hidden",
+              cardBox: "w-full shadow-lg rounded-2xl overflow-hidden",
               card: "bg-white rounded-2xl border-0 shadow-none p-6",
               headerTitle: "text-xl font-bold text-[#474747]",
               headerSubtitle: "text-sm text-gray-500",
@@ -383,6 +385,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
               Sign up
             </button>
           </p>
+        </div>
         </div>
       </div>
 

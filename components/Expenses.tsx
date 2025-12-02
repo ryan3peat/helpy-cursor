@@ -10,6 +10,7 @@ import {
   Edit,
   Trash2,
   Receipt,
+  ReceiptText,
   Pencil,
   Plus,
   ArrowLeft,
@@ -19,8 +20,6 @@ import {
   Heart,
   PartyPopper,
   MoreHorizontal,
-  TrendingUp,
-  LayoutList,
   ChevronLeft,
   ChevronRight,
   ChevronDown,
@@ -37,7 +36,7 @@ import {
   deleteReceiptByExpenseId,
 } from '../services/receiptService';
 import { processReceipt, ParsedReceipt } from '../services/visionService';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, Legend } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 
 // Expense Category Config (colors and icons)
 type ExpenseCategoryConfig = {
@@ -77,10 +76,6 @@ interface PendingReceipt {
 // Sheet stages for the two-stage progressive design
 type AddExpenseStage = 'closed' | 'options' | 'manual' | 'ocr';
 
-// Summary view types
-type SummaryViewType = 'breakdown' | 'trend';
-type TrendPeriod = 3 | 6 | 12;
-
 const Expenses: React.FC<ExpensesProps> = ({
   expenses,
   householdId,
@@ -93,10 +88,6 @@ const Expenses: React.FC<ExpensesProps> = ({
   const [view, setView] = useState<'list' | 'chart'>('list');
   const [isScanning, setIsScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // Summary View State
-  const [summaryView, setSummaryView] = useState<SummaryViewType>('breakdown');
-  const [trendPeriod, setTrendPeriod] = useState<TrendPeriod>(3);
 
   // Month/Year Selection State
   const now = new Date();
@@ -356,59 +347,6 @@ const Expenses: React.FC<ExpensesProps> = ({
     }).filter((d) => d.amount > 0).sort((a, b) => b.amount - a.amount);
   }, [filteredExpenses]);
 
-  // Monthly trend data for stacked bar chart (ending at selected month)
-  const trendData = useMemo(() => {
-    const months: { month: string; year: number; monthNum: number; [key: string]: number | string }[] = [];
-    
-    // Generate month labels for the selected period, ending at selected month
-    for (let i = trendPeriod - 1; i >= 0; i--) {
-      let targetMonth = selectedMonth - i;
-      let targetYear = selectedYear;
-      
-      // Handle year rollover (going backwards)
-      while (targetMonth < 0) {
-        targetMonth += 12;
-        targetYear -= 1;
-      }
-      
-      const monthKey = `${MONTH_NAMES[targetMonth]} '${String(targetYear).slice(-2)}`;
-      const monthData: { month: string; year: number; monthNum: number; [key: string]: number | string } = { 
-        month: monthKey,
-        year: targetYear,
-        monthNum: targetMonth,
-      };
-      
-      // Initialize all categories to 0
-      EXPENSE_CATEGORIES.forEach(cat => {
-        monthData[cat] = 0;
-      });
-      
-      months.push(monthData);
-    }
-    
-    // Populate with expense data - parse date string directly to avoid timezone issues
-    localExpenses.forEach((expense) => {
-      const [year, month] = expense.date.split('-').map(Number);
-      const expenseMonth = month - 1; // Convert to 0-indexed
-      
-      const monthEntry = months.find(m => m.year === year && m.monthNum === expenseMonth);
-      if (monthEntry && expense.category) {
-        monthEntry[expense.category] = (monthEntry[expense.category] as number || 0) + expense.amount;
-      }
-    });
-    
-    return months;
-  }, [localExpenses, trendPeriod, selectedMonth, selectedYear]);
-
-  // Legacy chart data (keeping for reference)
-  const chartData = EXPENSE_CATEGORIES.map((cat) => ({
-    name: cat.split(' ')[0],
-    amount: localExpenses
-      .filter((e) => e.category === cat)
-      .reduce((sum, e) => sum + e.amount, 0),
-  })).filter((d) => d.amount > 0);
-
-  const COLORS = ['hsl(198, 23%, 50%)', 'hsl(198, 23%, 60%)', 'hsl(198, 23%, 70%)', 'hsl(198, 23%, 80%)', 'hsl(0, 0%, 60%)', 'hsl(0, 0%, 70%)'];
 
   // Total for selected month
   const totalAmount = filteredExpenses.reduce((acc, curr) => acc + curr.amount, 0);
@@ -537,68 +475,58 @@ const Expenses: React.FC<ExpensesProps> = ({
           {/* Summary View */}
           {view === 'chart' ? (
             <div className="space-y-4">
-              {/* Summary View Toggle */}
-              <div className="flex items-center justify-between">
-                <div
-                  className="relative rounded-full overflow-hidden inline-flex"
-                  style={{ backgroundColor: 'hsl(var(--muted))' }}
-                >
-                  <div className="flex p-1">
-        <button
-                      onClick={() => setSummaryView('breakdown')}
-                      className={`px-4 py-2.5 rounded-full text-body whitespace-nowrap transition-all flex items-center gap-2 ${
-                        summaryView === 'breakdown'
-                          ? 'bg-card text-primary shadow-sm'
-                          : 'text-muted-foreground hover:text-foreground'
-                      }`}
-                    >
-                      <LayoutList size={16} />
-                      Breakdown
-                    </button>
-                    <button
-                      onClick={() => setSummaryView('trend')}
-                      className={`px-4 py-2.5 rounded-full text-body whitespace-nowrap transition-all flex items-center gap-2 ${
-                        summaryView === 'trend'
-                          ? 'bg-card text-primary shadow-sm'
-                          : 'text-muted-foreground hover:text-foreground'
-                      }`}
-                    >
-                      <TrendingUp size={16} />
-                      Trend
-        </button>
-                  </div>
-      </div>
-
-                {/* Period Selector (only for Trend view) */}
-                {summaryView === 'trend' && (
-                  <div
-                    className="relative rounded-full overflow-hidden inline-flex"
-                    style={{ backgroundColor: 'hsl(var(--muted))' }}
-                  >
-                    <div className="flex p-1">
-                      {([3, 6, 12] as TrendPeriod[]).map((period) => (
-                        <button
-                          key={period}
-                          onClick={() => setTrendPeriod(period)}
-                          className={`px-3 py-2 rounded-full text-body whitespace-nowrap transition-all ${
-                            trendPeriod === period
-                              ? 'bg-card text-primary shadow-sm'
-                              : 'text-muted-foreground hover:text-foreground'
-                          }`}
+              {/* Pie Chart */}
+              <div className="bg-card rounded-xl p-4 shadow-sm">
+                {breakdownData.length > 0 ? (
+                  <div className="h-64 relative">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={breakdownData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={60}
+                          outerRadius={100}
+                          paddingAngle={2}
+                          dataKey="amount"
+                          nameKey="category"
+                          isAnimationActive={false}
                         >
-                          {period}M
-                        </button>
-                      ))}
+                          {breakdownData.map((entry) => (
+                            <Cell key={entry.category} fill={entry.config.color} stroke="none" />
+                          ))}
+                        </Pie>
+                      </PieChart>
+                    </ResponsiveContainer>
+                    {/* Center Label - Month/Year */}
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <div className="text-center">
+                        <p className="text-title text-foreground font-semibold">{MONTH_NAMES[selectedMonth]}</p>
+                        <p className="text-caption text-muted-foreground">{selectedYear}</p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="h-64 flex items-center justify-center">
+                    <div className="text-center">
+                      <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-secondary flex items-center justify-center">
+                        <PieIcon size={28} className="text-muted-foreground" />
+                      </div>
+                      <p className="text-body text-foreground">No expense data</p>
+                      <p className="text-caption text-muted-foreground mt-1">
+                        Add an expense to get started
+                      </p>
                     </div>
                   </div>
                 )}
               </div>
 
-              {/* Breakdown View */}
-              {summaryView === 'breakdown' && (
+              {/* Category Breakdown List */}
+              {breakdownData.length > 0 && (
                 <div className="bg-card rounded-xl shadow-sm overflow-hidden">
-                  {breakdownData.length > 0 ? (
-                    breakdownData.map((item, index) => (
+                  {breakdownData.map((item, index) => {
+                    const percentage = totalAmount > 0 ? ((item.amount / totalAmount) * 100).toFixed(0) : 0;
+                    return (
                       <div
                         key={item.category}
                         className={`p-4 flex items-center justify-between ${
@@ -612,102 +540,15 @@ const Expenses: React.FC<ExpensesProps> = ({
                           >
                             {item.config.icon}
                           </div>
-                          <span className="text-body text-foreground">{item.category}</span>
+                          <div>
+                            <span className="text-body text-foreground">{item.category}</span>
+                            <span className="text-caption text-muted-foreground ml-2">{percentage}%</span>
+                          </div>
                         </div>
                         <span className="text-title text-foreground">${item.amount.toFixed(2)}</span>
                       </div>
-                    ))
-                  ) : (
-                    <div className="p-8 text-center">
-                      <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-secondary flex items-center justify-center">
-                        <PieIcon size={28} className="text-muted-foreground" />
-                      </div>
-                      <p className="text-body text-foreground">No expense data</p>
-                      <p className="text-caption text-muted-foreground mt-1">
-                        Add an expense to get started
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Trend View - Stacked Bar Chart */}
-              {summaryView === 'trend' && (
-                <div className="bg-card p-4 rounded-xl shadow-sm">
-                  {trendData.some(m => EXPENSE_CATEGORIES.some(cat => (m[cat] as number) > 0)) ? (
-                    <div className="h-72">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={trendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                          <XAxis 
-                            dataKey="month" 
-                            tick={{ fontSize: 11 }} 
-                            axisLine={false} 
-                            tickLine={false}
-                          />
-                          <YAxis 
-                            tick={{ fontSize: 10 }} 
-                            axisLine={false} 
-                            tickLine={false}
-                            tickFormatter={(value) => `$${value >= 1000 ? `${(value/1000).toFixed(0)}k` : value}`}
-                          />
-                          <Tooltip 
-                            cursor={{ fill: 'hsl(var(--muted))' }}
-                            contentStyle={{ 
-                              backgroundColor: 'hsl(var(--card))', 
-                              border: '1px solid hsl(var(--border))',
-                              borderRadius: '8px',
-                              fontSize: '12px'
-                            }}
-                            formatter={(value: number) => [`$${value.toFixed(2)}`, '']}
-                          />
-                          {EXPENSE_CATEGORIES.map((cat) => {
-                            const config = getExpenseCategoryConfig(cat);
-                            return (
-                              <Bar
-                                key={cat}
-                                dataKey={cat}
-                                stackId="a"
-                                fill={config.color}
-                                radius={cat === EXPENSE_CATEGORIES[EXPENSE_CATEGORIES.length - 1] ? [4, 4, 0, 0] : [0, 0, 0, 0]}
-                              />
-                            );
-                          })}
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      ) : (
-                    <div className="h-72 flex items-center justify-center">
-                      <div className="text-center">
-                        <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-secondary flex items-center justify-center">
-                          <TrendingUp size={28} className="text-muted-foreground" />
-                        </div>
-                        <p className="text-body text-foreground">No trend data</p>
-                        <p className="text-caption text-muted-foreground mt-1">
-                          Add expenses to see your spending trend
-                        </p>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Legend */}
-                  {trendData.some(m => EXPENSE_CATEGORIES.some(cat => (m[cat] as number) > 0)) && (
-                    <div className="mt-4 flex flex-wrap gap-3 justify-center">
-                      {EXPENSE_CATEGORIES.map((cat) => {
-                        const config = getExpenseCategoryConfig(cat);
-                        const hasData = trendData.some(m => (m[cat] as number) > 0);
-                        if (!hasData) return null;
-                        return (
-                          <div key={cat} className="flex items-center gap-1.5">
-                            <div
-                              className="w-3 h-3 rounded-sm"
-                              style={{ backgroundColor: config.color }}
-                            />
-                            <span className="text-caption text-muted-foreground">{cat.split(' ')[0]}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -733,29 +574,37 @@ const Expenses: React.FC<ExpensesProps> = ({
               key={expense.id}
               type="button"
               onClick={() => openExistingModal(expense)}
-                        className={`w-full p-4 flex justify-between items-center text-left hover:bg-secondary/50 transition-colors ${
-                          index !== filteredExpenses.length - 1 ? 'list-item-separator' : ''
-                        }`}
+              className={`w-full p-4 flex items-start gap-4 text-left hover:bg-secondary/50 transition-colors ${
+                index !== filteredExpenses.length - 1 ? 'list-item-separator' : ''
+              }`}
             >
-              <div className="flex items-center gap-4">
-                          <div
-                            className="w-10 h-10 rounded-full flex items-center justify-center"
-                            style={{ backgroundColor: config.bgColor, color: config.color }}
-                          >
-                            {config.icon}
-                </div>
-                <div>
-                            <p className="text-title text-foreground">{expense.merchant}</p>
-                            <p className="text-caption text-muted-foreground">
-                              {expense.category} ·{' '}
-                    {new Date(expense.date).toLocaleDateString(
-                      currentLang === 'en' ? 'en-GB' : currentLang,
-                      { day: 'numeric', month: 'short', year: 'numeric' }
-                    )}
-                  </p>
-                </div>
+              {/* Category Icon */}
+              <div
+                className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
+                style={{ backgroundColor: config.bgColor, color: config.color }}
+              >
+                {config.icon}
               </div>
-                        <span className="text-title text-foreground">${expense.amount.toFixed(2)}</span>
+              
+              {/* Info - 3 Lines */}
+              <div className="flex-1 min-w-0">
+                <p className="text-title text-foreground truncate">{expense.merchant}</p>
+                <p className="text-caption text-muted-foreground">{expense.category}</p>
+                <p className="text-caption text-muted-foreground">
+                  {new Date(expense.date).toLocaleDateString(
+                    currentLang === 'en' ? 'en-GB' : currentLang,
+                    { day: 'numeric', month: 'short', year: 'numeric' }
+                  )}
+                </p>
+              </div>
+              
+              {/* Right Side - Amount & Receipt Indicator */}
+              <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                <span className="text-title text-foreground">${expense.amount.toFixed(2)}</span>
+                {expense.receiptUrl && (
+                  <ReceiptText size={14} className="text-muted-foreground" />
+                )}
+              </div>
             </button>
                     );
                   })}
@@ -777,7 +626,7 @@ const Expenses: React.FC<ExpensesProps> = ({
               <button
         onClick={openAddExpenseSheet}
         disabled={isScanning}
-        className={`fixed bottom-24 right-6 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-all flex items-center justify-center z-30 hover:scale-105 active:scale-95 disabled:opacity-50 ${
+        className={`fixed bottom-24 right-6 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-colors flex items-center justify-center z-30 disabled:opacity-50 ${
           isModalOpen ? 'fab-hiding' : ''
         }`}
         aria-label="Add Expense"
@@ -806,7 +655,7 @@ const Expenses: React.FC<ExpensesProps> = ({
       {/* TWO-STAGE PROGRESSIVE SHEET */}
       {/* ─────────────────────────────────────────────────────────────── */}
       {addExpenseStage !== 'closed' && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-end justify-center bottom-sheet-backdrop">
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
           <div className="bg-card w-full max-w-lg rounded-t-2xl shadow-2xl overflow-hidden bottom-sheet-content relative">
             {/* Close Button */}
             <button
@@ -882,7 +731,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                   <ArrowLeft size={20} />
               </button>
 
-                <div className="p-5 space-y-4 max-h-[50vh] overflow-y-auto">
+                <div className="p-5 space-y-4 max-h-[50vh] overflow-y-auto overflow-x-hidden">
                   {/* Amount - Auto-focused */}
                   <div>
                     <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
@@ -902,7 +751,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                         setEditAmount(formatted);
                       }}
                       placeholder="0.00"
-                      className="w-full px-4 py-4 rounded-xl bg-secondary border border-border focus:border-foreground outline-none transition-all text-display"
+                      className="w-full px-4 py-4 rounded-xl bg-muted border border-border focus:border-foreground outline-none transition-all text-display"
                     />
             </div>
 
@@ -916,7 +765,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                       value={editMerchant}
                       onChange={(e) => setEditMerchant(e.target.value)}
                       placeholder="Where did you spend?"
-                      className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-foreground outline-none transition-all text-body"
+                      className="w-full px-4 py-3 rounded-lg bg-muted border border-border focus:border-foreground outline-none transition-all text-body"
                     />
                   </div>
 
@@ -929,7 +778,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                       <select
                         value={editCategory}
                         onChange={(e) => setEditCategory(e.target.value)}
-                        className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-foreground outline-none transition-all text-body"
+                        className="w-full px-4 py-3 rounded-lg bg-muted border border-border focus:border-foreground outline-none transition-all text-body"
                       >
                         {EXPENSE_CATEGORIES.map((cat) => (
                           <option key={cat} value={cat}>
@@ -946,24 +795,18 @@ const Expenses: React.FC<ExpensesProps> = ({
                         type="date"
                         value={editDate}
                         onChange={(e) => setEditDate(e.target.value)}
-                        className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-foreground outline-none transition-all text-body"
+                        className="w-full px-4 py-3 rounded-lg bg-muted border border-border focus:border-foreground outline-none transition-all text-body"
                       />
                     </div>
                   </div>
                 </div>
 
                 {/* Footer - Actions at bottom for thumb reach */}
-                <div className="p-5 pb-20 border-t border-border flex gap-3">
-                  <button
-                    onClick={closeAddExpenseSheet}
-                    className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body hover:bg-secondary/80 transition-colors"
-                  >
-                    Cancel
-                  </button>
+                <div className="p-5 pb-20 border-t border-border">
                   <button
                     onClick={handleSaveExpense}
                     disabled={isSaving || !editAmount}
-                    className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50 flex items-center justify-center gap-2"
+                    className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground text-body hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50 flex items-center justify-center gap-2"
                   >
                     {isSaving ? (
                       <span className="animate-pulse">Saving...</span>
@@ -972,8 +815,8 @@ const Expenses: React.FC<ExpensesProps> = ({
                         <Check size={18} /> Save
                       </>
                     )}
-              </button>
-            </div>
+                  </button>
+                </div>
               </>
             )}
 
@@ -994,7 +837,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                   <ArrowLeft size={20} />
                 </button>
 
-                <div className="p-5 space-y-4 max-h-[50vh] overflow-y-auto">
+                <div className="p-5 space-y-4 max-h-[50vh] overflow-y-auto overflow-x-hidden">
             {/* Receipt Thumbnail */}
                   <div className="rounded-xl overflow-hidden border border-border">
               <img src={pendingReceipt.thumbnailBase64} alt="Receipt" className="w-full h-32 object-cover" />
@@ -1018,7 +861,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                     setEditAmount(formatted);
                   }}
                   placeholder="0.00"
-                      className="w-full px-4 py-4 rounded-xl bg-secondary border border-border focus:border-foreground outline-none transition-all text-display"
+                      className="w-full px-4 py-4 rounded-xl bg-muted border border-border focus:border-foreground outline-none transition-all text-display"
                 />
               </div>
 
@@ -1032,7 +875,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                   value={editMerchant}
                   onChange={(e) => setEditMerchant(e.target.value)}
                   placeholder="Store name"
-                      className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-foreground outline-none transition-all text-body"
+                      className="w-full px-4 py-3 rounded-lg bg-muted border border-border focus:border-foreground outline-none transition-all text-body"
                 />
               </div>
 
@@ -1045,7 +888,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                 <select
                   value={editCategory}
                   onChange={(e) => setEditCategory(e.target.value)}
-                        className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-foreground outline-none transition-all text-body"
+                        className="w-full px-4 py-3 rounded-lg bg-muted border border-border focus:border-foreground outline-none transition-all text-body"
                 >
                   {EXPENSE_CATEGORIES.map((cat) => (
                     <option key={cat} value={cat}>
@@ -1062,24 +905,18 @@ const Expenses: React.FC<ExpensesProps> = ({
                   type="date"
                   value={editDate}
                   onChange={(e) => setEditDate(e.target.value)}
-                        className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-foreground outline-none transition-all text-body"
+                        className="w-full px-4 py-3 rounded-lg bg-muted border border-border focus:border-foreground outline-none transition-all text-body"
                 />
                     </div>
               </div>
             </div>
 
                 {/* Footer - Actions at bottom for thumb reach */}
-                <div className="p-5 pb-20 border-t border-border flex gap-3">
-              <button
-                    onClick={closeAddExpenseSheet}
-                    className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body hover:bg-secondary/80 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
+                <div className="p-5 pb-20 border-t border-border">
+                  <button
                     onClick={handleSaveExpense}
-                disabled={isSaving || !editAmount}
-                    className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50 flex items-center justify-center gap-2"
+                    disabled={isSaving || !editAmount}
+                    className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground text-body hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50 flex items-center justify-center gap-2"
                   >
                     {isSaving ? (
                       <span className="animate-pulse">Saving...</span>
@@ -1088,8 +925,8 @@ const Expenses: React.FC<ExpensesProps> = ({
                         <Check size={18} /> Save
                       </>
                     )}
-              </button>
-            </div>
+                  </button>
+                </div>
               </>
             )}
           </div>
@@ -1100,8 +937,8 @@ const Expenses: React.FC<ExpensesProps> = ({
       {/* EXISTING EXPENSE BOTTOM SHEET */}
       {/* ─────────────────────────────────────────────────────────────── */}
       {selectedExpense && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-end justify-center bottom-sheet-backdrop">
-          <div className="bg-card w-full max-w-lg rounded-t-2xl shadow-2xl overflow-hidden bottom-sheet-content relative">
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
+          <div className="bg-card w-full max-w-lg rounded-t-2xl shadow-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ maxHeight: '85vh' }}>
             {/* Close Button */}
             <button
               onClick={closeExistingModal}
@@ -1112,103 +949,55 @@ const Expenses: React.FC<ExpensesProps> = ({
             </button>
 
             {/* Header */}
-            <div className="pt-6 pb-4 px-5 border-b border-border">
+            <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
               <div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto mb-4" />
               <h2 className="text-title text-foreground">{selectedExpense.merchant}</h2>
               <p className="text-caption text-muted-foreground">
                 {selectedExpense.category || 'Uncategorized'} ·{' '}
-                  {new Date(selectedExpense.date).toLocaleDateString(
-                    currentLang === 'en' ? 'en-GB' : currentLang,
-                    { day: 'numeric', month: 'short', year: 'numeric' }
-                  )}
-                </p>
+                {new Date(selectedExpense.date).toLocaleDateString(
+                  currentLang === 'en' ? 'en-GB' : currentLang,
+                  { day: 'numeric', month: 'short', year: 'numeric' }
+                )}
+              </p>
             </div>
 
-            {/* Content */}
-            <div className="p-5 max-h-[50vh] overflow-y-auto space-y-4">
-            {/* Receipt Thumbnail */}
+            {/* Scrollable Content */}
+            <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 p-5 space-y-4">
+              {/* Receipt Thumbnail */}
               <div className="rounded-xl overflow-hidden border border-border">
-              {selectedExpense.receiptUrl ? (
+                {selectedExpense.receiptUrl ? (
                   <img
                     src={selectedExpense.receiptUrl}
                     alt="Receipt"
                     className="w-full max-h-64 object-contain bg-secondary"
                   />
                 ) : (
-                  <div className="w-full h-40 bg-secondary flex items-center justify-center text-muted-foreground">
-                  No receipt image
+                  <div className="w-full h-28 bg-secondary flex items-center justify-center text-muted-foreground">
+                    No receipt image
+                  </div>
+                )}
+              </div>
+
+              {/* Amount - only show when not editing */}
+              {!isEditingExisting && (
+                <div className="flex items-center justify-between">
+                  <span className="text-body text-muted-foreground">Amount</span>
+                  <span className="text-title text-foreground">${selectedExpense.amount.toFixed(2)}</span>
                 </div>
               )}
-            </div>
 
-            {/* Amount */}
-              <div className="flex items-center justify-between">
-                <span className="text-body text-muted-foreground">Amount</span>
-                <span className="text-title text-foreground">-${selectedExpense.amount.toFixed(2)}</span>
-            </div>
-
-            {/* Actions */}
-              <div className="flex items-center gap-3 pt-2">
-              <button
-                  className="flex-1 rounded-xl bg-primary/10 px-4 py-3 text-primary hover:bg-primary/20 disabled:opacity-60 inline-flex items-center justify-center gap-2 text-body transition-colors"
-                onClick={() => {
-                  setIsEditingExisting((v) => !v);
-                  setConfirmDeleteExisting(false);
-                }}
-                disabled={savingExisting}
-              >
-                <Edit size={18} /> {isEditingExisting ? 'Cancel Edit' : 'Edit'}
-              </button>
-              <button
-                  className="flex-1 rounded-xl bg-destructive/10 px-4 py-3 text-destructive hover:bg-destructive/20 disabled:opacity-60 inline-flex items-center justify-center gap-2 text-body transition-colors"
-                onClick={() => {
-                  setConfirmDeleteExisting((v) => !v);
-                  setIsEditingExisting(false);
-                }}
-                disabled={savingExisting}
-              >
-                <Trash2 size={18} /> Delete
-              </button>
-            </div>
-
-              {/* Edit Form */}
-            {isEditingExisting && (
+              {/* Edit Form - inside scroll for form fields only */}
+              {isEditingExisting && (
                 <div className="space-y-4 border-t border-border pt-4">
+                  {/* Amount - Full width, prominent */}
                   <div>
                     <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
-                      Merchant
+                      Amount
                     </label>
-                    <input
-                      className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-foreground outline-none transition-all text-body"
-                      value={exMerchant}
-                      onChange={(e) => setExMerchant(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
-                      Category
-                  </label>
-                    <select
-                      className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-foreground outline-none transition-all text-body"
-                      value={exCategory}
-                      onChange={(e) => setExCategory(e.target.value)}
-                    >
-                      {EXPENSE_CATEGORIES.map((c) => (
-                        <option key={c} value={c}>
-                          {c}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
-                        Amount
-                  </label>
                     <input
                       type="text"
                       inputMode="decimal"
-                        className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-foreground outline-none transition-all text-body"
+                      className="w-full px-4 py-4 rounded-xl bg-muted border border-border focus:border-foreground outline-none transition-all text-display"
                       value={exAmount}
                       onChange={(e) => {
                         // Only allow digits and one decimal point
@@ -1218,68 +1007,126 @@ const Expenses: React.FC<ExpensesProps> = ({
                         const formatted = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : value;
                         setExAmount(formatted);
                       }}
+                      placeholder="0.00"
                     />
+                  </div>
+
+                  {/* Shop Name - Full width */}
+                  <div>
+                    <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
+                      Shop Name
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full px-4 py-3 rounded-lg bg-muted border border-border focus:border-foreground outline-none transition-all text-body"
+                      value={exMerchant}
+                      onChange={(e) => setExMerchant(e.target.value)}
+                      placeholder="Where did you spend?"
+                    />
+                  </div>
+
+                  {/* Category & Date - Side by side */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
+                        Category
+                      </label>
+                      <select
+                        className="w-full px-4 py-3 rounded-lg bg-muted border border-border focus:border-foreground outline-none transition-all text-body"
+                        value={exCategory}
+                        onChange={(e) => setExCategory(e.target.value)}
+                      >
+                        {EXPENSE_CATEGORIES.map((c) => (
+                          <option key={c} value={c}>
+                            {c}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                     <div>
                       <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
                         Date
-                  </label>
-                    <input
-                      type="date"
-                        className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-foreground outline-none transition-all text-body"
-                      value={exDate}
-                      onChange={(e) => setExDate(e.target.value)}
-                    />
+                      </label>
+                      <input
+                        type="date"
+                        className="w-full px-4 py-3 rounded-lg bg-muted border border-border focus:border-foreground outline-none transition-all text-body"
+                        value={exDate}
+                        onChange={(e) => setExDate(e.target.value)}
+                      />
                     </div>
+                  </div>
                 </div>
+              )}
 
-                  <div className="flex items-center gap-3 pt-2">
-                  <button
-                      className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body hover:bg-secondary/80 transition-colors"
-                    onClick={() => setIsEditingExisting(false)}
-                    disabled={savingExisting}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                      className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50"
-                    onClick={saveExistingEdit}
-                    disabled={savingExisting}
-                  >
-                      {savingExisting ? 'Saving...' : 'Save'}
-                  </button>
-                </div>
-              </div>
-            )}
-
-              {/* Delete Confirmation */}
-            {confirmDeleteExisting && (
+              {/* Delete Confirmation - inside scroll for the message */}
+              {confirmDeleteExisting && (
                 <div className="border-t border-border pt-4">
-                  <p className="text-body text-foreground mb-3">
-                  Are you sure you want to delete this receipt/expense?
-                </p>
-                  <div className="flex items-center gap-3">
+                  <p className="text-body text-foreground">
+                    Are you sure you want to delete this receipt/expense?
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Fixed Footer - Action buttons always visible */}
+            <div className="shrink-0 p-5 pb-20 border-t border-border bg-card space-y-3">
+              {/* Default Actions */}
+              {!isEditingExisting && !confirmDeleteExisting && (
+                <div className="flex items-center gap-3">
                   <button
-                      className="flex-1 py-3.5 rounded-xl bg-destructive text-primary-foreground text-body hover:bg-destructive/90 transition-colors disabled:opacity-50"
-                    onClick={confirmExistingDelete}
+                    className="p-3 rounded-xl bg-destructive/10 text-destructive hover:bg-destructive/20 disabled:opacity-60 transition-colors"
+                    onClick={() => {
+                      setConfirmDeleteExisting(true);
+                      setIsEditingExisting(false);
+                    }}
                     disabled={savingExisting}
                   >
-                      {savingExisting ? 'Deleting...' : 'Yes, delete'}
+                    <Trash2 size={20} />
                   </button>
                   <button
-                      className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body hover:bg-secondary/80 transition-colors"
+                    className="flex-1 rounded-xl bg-primary px-4 py-3 text-primary-foreground hover:bg-primary/90 disabled:opacity-60 inline-flex items-center justify-center gap-2 text-body transition-colors shadow-sm"
+                    onClick={() => {
+                      setIsEditingExisting(true);
+                      setConfirmDeleteExisting(false);
+                    }}
+                    disabled={savingExisting}
+                  >
+                    <Edit size={18} /> Edit
+                  </button>
+                </div>
+              )}
+
+              {/* Edit Actions */}
+              {isEditingExisting && (
+                <button
+                  className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground text-body hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50"
+                  onClick={saveExistingEdit}
+                  disabled={savingExisting}
+                >
+                  {savingExisting ? 'Saving...' : 'Save'}
+                </button>
+              )}
+
+              {/* Delete Confirmation Actions */}
+              {confirmDeleteExisting && (
+                <div className="flex items-center gap-3">
+                  <button
+                    className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body hover:bg-secondary/80 transition-colors"
                     onClick={() => setConfirmDeleteExisting(false)}
                     disabled={savingExisting}
                   >
                     Cancel
                   </button>
+                  <button
+                    className="flex-1 py-3.5 rounded-xl bg-destructive text-primary-foreground text-body hover:bg-destructive/90 transition-colors disabled:opacity-50"
+                    onClick={confirmExistingDelete}
+                    disabled={savingExisting}
+                  >
+                    {savingExisting ? 'Deleting...' : 'Yes, delete'}
+                  </button>
                 </div>
-              </div>
-            )}
+              )}
             </div>
-
-            {/* Footer spacer for safe area */}
-            <div className="h-12" />
           </div>
         </div>
       )}
@@ -1288,7 +1135,7 @@ const Expenses: React.FC<ExpensesProps> = ({
       {/* MONTH PICKER BOTTOM SHEET */}
       {/* ─────────────────────────────────────────────────────────────── */}
       {isMonthPickerOpen && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-end justify-center bottom-sheet-backdrop">
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
           <div className="bg-card w-full max-w-lg rounded-t-2xl shadow-2xl overflow-hidden bottom-sheet-content relative">
             {/* Close Button */}
             <button

@@ -188,10 +188,10 @@ const FamilyProfileCarousel: React.FC<FamilyProfileCarouselProps> = ({ users }) 
             >
               <div className="p-4">
                 {/* Profile Header */}
-                <div className="flex items-start gap-3 mb-4">
-                  {/* Avatar - Circular */}
+                <div className="flex items-start gap-3 mb-2">
+                  {/* Avatar */}
                   <div 
-                    className="relative w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold flex-shrink-0 overflow-hidden"
+                    className="relative w-9 h-9 rounded-lg flex items-center justify-center text-lg flex-shrink-0 overflow-hidden"
                     style={{ 
                       background: roleStyle.gradient,
                       color: 'white',
@@ -201,7 +201,7 @@ const FamilyProfileCarousel: React.FC<FamilyProfileCarouselProps> = ({ users }) 
                       <img 
                         src={user.avatar} 
                         alt={user.name} 
-                        className="w-full h-full rounded-full object-cover" 
+                        className="w-full h-full rounded-lg object-cover" 
                       />
                     ) : (
                       <span className="drop-shadow-sm">
@@ -211,12 +211,12 @@ const FamilyProfileCarousel: React.FC<FamilyProfileCarouselProps> = ({ users }) 
                   </div>
                   
                   {/* Name & Role */}
-                  <div className="flex-1 min-w-0 pt-0.5">
-                    <h3 className="text-title text-foreground font-semibold truncate leading-tight">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-title text-foreground truncate">
                       {user.name}
                     </h3>
                     <span 
-                      className="text-caption px-2.5 py-1 rounded-full inline-flex items-center gap-1 mt-1.5 font-medium"
+                      className="text-caption px-2 py-0.5 rounded-full inline-flex items-center gap-1"
                       style={{ 
                         backgroundColor: roleStyle.bg, 
                         color: roleStyle.color,
@@ -228,21 +228,21 @@ const FamilyProfileCarousel: React.FC<FamilyProfileCarouselProps> = ({ users }) 
                 </div>
 
                 {/* Info Sections */}
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {/* Allergies & Medical */}
                   <div>
-                    <div className="flex items-center gap-1.5 mb-1.5">
-                      <AlertTriangle size={12} className="text-muted-foreground" />
-                      <span className="text-caption text-muted-foreground tracking-wide font-medium">
+                    <div className="flex items-center gap-2 mb-1">
+                      <AlertTriangle size={16} className="text-muted-foreground" />
+                      <span className="text-body text-muted-foreground">
                         Allergies / Medical
                       </span>
                     </div>
                     {user.allergies && user.allergies.length > 0 ? (
-                      <div className="flex flex-wrap gap-1.5">
+                      <div className="flex flex-wrap gap-1.5 ml-6">
                         {user.allergies.slice(0, 4).map((allergy, i) => (
                           <span 
                             key={i}
-                            className="text-caption px-2 py-1 rounded-lg font-medium"
+                            className="text-caption px-2 py-0.5 rounded-full"
                             style={{
                               backgroundColor: 'hsl(var(--destructive) / 0.1)',
                               color: 'hsl(var(--destructive))',
@@ -252,13 +252,13 @@ const FamilyProfileCarousel: React.FC<FamilyProfileCarouselProps> = ({ users }) 
                           </span>
                         ))}
                         {user.allergies.length > 4 && (
-                          <span className="text-caption text-muted-foreground px-2 py-1">
+                          <span className="text-caption text-muted-foreground px-2 py-0.5">
                             +{user.allergies.length - 4} more
                           </span>
                         )}
                       </div>
                     ) : (
-                      <span className="text-caption text-muted-foreground/60 italic">
+                      <span className="text-caption text-muted-foreground/60 italic ml-6">
                         None listed
                       </span>
                     )}
@@ -266,18 +266,18 @@ const FamilyProfileCarousel: React.FC<FamilyProfileCarouselProps> = ({ users }) 
 
                   {/* Preferences */}
                   <div>
-                    <div className="flex items-center gap-1.5 mb-1.5">
-                      <Utensils size={12} className="text-muted-foreground" />
-                      <span className="text-caption text-muted-foreground tracking-wide font-medium">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Utensils size={16} className="text-muted-foreground" />
+                      <span className="text-body text-muted-foreground">
                         Preferences
                       </span>
                     </div>
                     {user.preferences && user.preferences.length > 0 ? (
-                      <div className="flex flex-wrap gap-1.5">
+                      <div className="flex flex-wrap gap-1.5 ml-6">
                         {user.preferences.slice(0, 4).map((pref, i) => (
                           <span 
                             key={i}
-                            className="text-caption px-2 py-1 rounded-lg font-medium"
+                            className="text-caption px-2 py-0.5 rounded-full"
                             style={{
                               backgroundColor: 'hsl(var(--secondary))',
                               color: 'hsl(var(--foreground))',
@@ -287,13 +287,13 @@ const FamilyProfileCarousel: React.FC<FamilyProfileCarouselProps> = ({ users }) 
                           </span>
                         ))}
                         {user.preferences.length > 4 && (
-                          <span className="text-caption text-muted-foreground px-2 py-1">
+                          <span className="text-caption text-muted-foreground px-2 py-0.5">
                             +{user.preferences.length - 4} more
                           </span>
                         )}
                       </div>
                     ) : (
-                      <span className="text-caption text-muted-foreground/60 italic">
+                      <span className="text-caption text-muted-foreground/60 italic ml-6">
                         None listed
                       </span>
                     )}
@@ -840,7 +840,7 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
       {!isHelper && (
         <button
           onClick={activeSection === "essentialInfo" ? handleAddEssentialClick : handleAddTrainingClick}
-          className={`fixed bottom-24 right-6 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-all flex items-center justify-center z-30 hover:scale-105 active:scale-95 ${
+          className={`fixed bottom-24 right-6 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-colors flex items-center justify-center z-30 ${
             (isEssentialModalOpen || isTrainingModalOpen || viewingTrainingModule) ? 'fab-hiding' : ''
           }`}
           aria-label={activeSection === "essentialInfo" ? "Add Essential Info" : "Add Training Module"}
@@ -958,10 +958,10 @@ const EssentialInfoCard: React.FC<EssentialInfoCardProps> = ({
       {item.phone && (
         <button
           onClick={onCall}
-          className="w-full text-left flex items-center gap-2 py-1.5 hover:text-[#4CAF50] transition-colors group"
+          className="w-full text-left flex items-center gap-2 py-1.5 hover:text-primary transition-colors group"
         >
-          <Phone size={16} className="text-muted-foreground group-hover:text-[#4CAF50] flex-shrink-0" />
-          <span className="text-body text-foreground group-hover:text-[#4CAF50]">
+          <Phone size={16} className="text-muted-foreground group-hover:text-primary flex-shrink-0" />
+          <span className="text-body text-foreground group-hover:text-primary">
             {item.countryCode} {item.phone}
           </span>
         </button>
@@ -1002,7 +1002,7 @@ const TrainingCard: React.FC<TrainingCardProps> = ({
     : module.category;
 
   return (
-    <div className="bg-card rounded-xl p-5 shadow-sm border border-border hover:shadow-md transition-shadow">
+    <div className="bg-card rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
       {/* Header */}
       <div className="flex items-start justify-between mb-3">
         <div className="flex-1">
@@ -1082,7 +1082,7 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
   onDelete,
 }) => {
   return (
-    <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-end justify-center bottom-sheet-backdrop">
+    <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
       <div className="bg-card w-full max-w-lg rounded-t-2xl shadow-2xl overflow-hidden bottom-sheet-content relative">
         {/* Close Button */}
         <button 
@@ -1225,12 +1225,6 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
             </button>
           )}
           <button
-            onClick={onClose}
-            className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body hover:bg-secondary/80 transition-colors"
-          >
-            Cancel
-          </button>
-          <button
             onClick={onSave}
             className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body hover:bg-primary/90 transition-colors shadow-sm"
           >
@@ -1265,7 +1259,7 @@ const TrainingModal: React.FC<TrainingModalProps> = ({
   onDelete,
 }) => {
   return (
-    <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-end justify-center bottom-sheet-backdrop">
+    <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
       <div className="bg-card w-full max-w-lg rounded-t-2xl shadow-2xl overflow-hidden bottom-sheet-content relative">
         {/* Close Button */}
         <button 
@@ -1381,12 +1375,6 @@ const TrainingModal: React.FC<TrainingModalProps> = ({
             </button>
           )}
           <button
-            onClick={onClose}
-            className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body hover:bg-secondary/80 transition-colors"
-          >
-            Cancel
-          </button>
-          <button
             onClick={onSave}
             className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body hover:bg-primary/90 transition-colors shadow-sm"
           >
@@ -1422,7 +1410,7 @@ const TrainingViewModal: React.FC<TrainingViewModalProps> = ({
     : module.category;
 
   return (
-    <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-end justify-center bottom-sheet-backdrop">
+    <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
       <div className="bg-card w-full max-w-lg rounded-t-2xl shadow-2xl overflow-hidden bottom-sheet-content relative">
         {/* Close Button */}
         <button 

@@ -33,6 +33,7 @@ interface ToDoProps extends BaseViewProps {
   onAdd: (item: ToDoItem) => Promise<void>;
   onUpdate: (id: string, data: Partial<ToDoItem>) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
+  initialSection?: 'shopping' | 'task';
 }
 
 const SHOPPING_CATEGORIES = Object.values(ShoppingCategory);
@@ -160,6 +161,7 @@ const ToDo: React.FC<ToDoProps> = ({
   onUpdate,
   onDelete,
   t,
+  initialSection,
 }) => {
   // ─────────────────────────────────────────────────────────────────
   // Scroll Header Hook
@@ -170,7 +172,7 @@ const ToDo: React.FC<ToDoProps> = ({
   // State
   // ─────────────────────────────────────────────────────────────────
   
-  const [activeSection, setActiveSection] = useState<ToDoType>('shopping');
+  const [activeSection, setActiveSection] = useState<ToDoType>(initialSection || 'shopping');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [isAddingInline, setIsAddingInline] = useState(false);
   const [inlineInputValue, setInlineInputValue] = useState('');
@@ -1317,12 +1319,25 @@ const ToDo: React.FC<ToDoProps> = ({
               </div>
             </div>
             
-            {/* Fixed Save Button */}
-            <div className="shrink-0 px-6 pt-4 pb-6 bg-card">
+            {/* Fixed Footer with Delete + Save */}
+            <div className="shrink-0 px-6 pt-4 pb-6 bg-card border-t border-border flex gap-3">
+              {editingItemId && (
+                <button
+                  onClick={async () => {
+                    const itemId = editingItemId;
+                    setIsSheetOpen(false);
+                    setEditingItemId(null);
+                    await handleDelete(itemId);
+                  }}
+                  className="p-4 bg-destructive/10 text-destructive rounded-xl hover:bg-destructive/20 transition-colors"
+                >
+                  <Trash2 size={20} />
+                </button>
+              )}
               <button
                 onClick={handleSheetSave}
                 disabled={!sheetForm.name?.trim()}
-                className="w-full py-4 bg-primary text-primary-foreground rounded-xl text-body hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity flex items-center justify-center gap-2"
+                className="flex-1 py-4 bg-primary text-primary-foreground rounded-xl text-body hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity flex items-center justify-center gap-2"
               >
                 <Check size={18} />
                 {editingItemId 

@@ -69,7 +69,7 @@
   --text-display: 2rem;
   --text-title: 1rem;
   --text-body: 0.875rem;
-  --text-caption: 0.75rem;
+  --text-caption: 0.875rem;
 
   /* ─────────────────────────────────────────────────────────────────
      BORDER RADIUS
@@ -166,6 +166,11 @@
   border-color: hsl(var(--border));
 }
 
+/* Cards should never have borders by default */
+.bg-card {
+  border: none !important;
+}
+
 body {
   font-family: var(--font-sans);
   background-color: hsl(var(--background));
@@ -173,6 +178,39 @@ body {
   -webkit-tap-highlight-color: transparent;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   GLOBAL RULES: NO BOUNCY/SCALE EFFECTS
+   ───────────────────────────────────────────────────────────────── 
+   
+   DESIGN RULE: No scale transforms on interactive elements.
+   
+   FORBIDDEN:
+   - hover:scale-*    (e.g., hover:scale-105)
+   - active:scale-*   (e.g., active:scale-95)
+   - scale-*          (e.g., scale-110, scale-95)
+   - Keyframe animations with scale overshoot (scale > 1.0)
+   - transition-all on elements that change size/position
+   
+   ALLOWED:
+   - Header title shrink (controlled via inline style)
+   - transition-colors, transition-opacity, transition-shadow
+   
+   ───────────────────────────────────────────────────────────────── */
+
+/* Kill all Tailwind scale utilities on interactive elements */
+button:where(.scale-95, .scale-105, .scale-110, [class*="hover:scale"], [class*="active:scale"]),
+a:where(.scale-95, .scale-105, .scale-110, [class*="hover:scale"], [class*="active:scale"]),
+div:where(.scale-95, .scale-105, .scale-110, [class*="hover:scale"], [class*="active:scale"]) {
+  --tw-scale-x: 1 !important;
+  --tw-scale-y: 1 !important;
+  transform: none !important;
+}
+
+/* Ensure transition-all doesn't animate transforms - only colors/opacity/shadow */
+.transition-all {
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow !important;
 }
 
 /* ─────────────────────────────────────────────────────────────────
@@ -280,6 +318,7 @@ button:focus-visible {
 
 .bottom-sheet-content {
   animation: sheet-slide-up 0.4s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+  overflow-x: hidden;
 }
 
 /* Safe area for devices with home indicators */
@@ -323,20 +362,13 @@ button:focus-visible {
 }
 
 .helpy-logo {
-  font-family: 'Peanut Butter', cursive;
+  font-family: 'Peanut Butter', var(--font-sans);
   font-size: 20px;
   color: #D1D5DB;
-  /* Deboss/engraved effect - shadow on top-left, highlight on bottom-right */
-  text-shadow: 
-    1px 1px 0px rgba(255, 255, 255, 0.6),
-    -1px -1px 1px rgba(0, 0, 0, 0.08);
 }
 
 .dark .helpy-logo {
   color: #4B5563;
-  text-shadow: 
-    1px 1px 0px rgba(255, 255, 255, 0.1),
-    -1px -1px 1px rgba(0, 0, 0, 0.3);
 }
 
 /* Breathing animation for intro */
@@ -353,19 +385,23 @@ button:focus-visible {
   animation: breathe 2s ease-in-out infinite;
 }
 
-/* Meal type button pop animation */
-@keyframes mealButtonPop {
-  0% {
-    opacity: 0;
-    transform: scale(0.8);
-  }
-  70% {
-    opacity: 1;
-    transform: scale(1.05);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
+/* ─────────────────────────────────────────────────────────────────
+   CUSTOM SELECT DROPDOWN ARROW (Cross-browser compatible)
+   ───────────────────────────────────────────────────────────────── */
+select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px;
+  padding-right: 40px !important;
 }
+
+/* Dark mode arrow */
+.dark select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239CA3AF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+
 

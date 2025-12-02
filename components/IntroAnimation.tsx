@@ -26,7 +26,7 @@ const IntroAnimation: React.FC<IntroAnimationProps> = ({ onComplete }) => {
     >
       <h1 
         className="text-white text-6xl animate-breathe"
-        style={{ fontFamily: "'Peanut Butter', cursive" }}
+        style={{ fontFamily: "'Peanut Butter', 'Plus Jakarta Sans', Inter, -apple-system, BlinkMacSystemFont, sans-serif" }}
       >
         helpy
       </h1>

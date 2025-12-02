@@ -102,9 +102,15 @@ const App: React.FC = () => {
     }
   }, [signOut]);
 
+  // Navigation data (e.g., initialSection for ToDo)
+  const [navData, setNavData] = useState<{ section?: string } | null>(null);
+
   // Navigation
-  const handleNavigate = (view: string) => {
+  const handleNavigate = (view: string, data?: { section?: string }) => {
     setActiveView(view);
+    setNavData(data ?? null);
+    // Scroll to top when navigating to a new view
+    window.scrollTo(0, 0);
     if (onboardingStep === 1 && view === 'profile') {
       setOnboardingStep(2);
     }
@@ -236,8 +242,9 @@ const App: React.FC = () => {
     await addItem(hid, 'expenses', expense);
   };
 
-  const handleUpdateExpense = async (id: string, data: Partial<Expense>) => {
+  const handleUpdateExpense = async (expense: Expense) => {
     if (!hid) return;
+    const { id, ...data } = expense;
     setExpenses(prev => prev.map(e => e.id === id ? { ...e, ...data } : e));  // Optimistic
     await updateItem(hid, 'expenses', id, data);
   };
@@ -329,6 +336,7 @@ const App: React.FC = () => {
             onDelete={handleDeleteTodoItem}
             t={translations}
             currentLang={lang}
+            initialSection={navData?.section as 'shopping' | 'task' | undefined}
           />
         );
 

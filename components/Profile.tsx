@@ -110,13 +110,14 @@ const Profile: React.FC<ProfileProps> = ({
   };
 
   // --- Helper Functions ---
+  // Colors based on brand palette: #3EAFD2, #FF9800, #7E57C2, #4CAF50, #F06292, #AB47BC, #757575
   const getRoleBadgeColor = (role: UserRole) => {
     switch (role) {
-      case UserRole.MASTER: return 'bg-blue-100 text-blue-700';
-      case UserRole.SPOUSE: return 'bg-purple-100 text-purple-700';
-      case UserRole.HELPER: return 'bg-orange-100 text-orange-700';
-      case UserRole.CHILD: return 'bg-green-100 text-green-700';
-      default: return 'bg-gray-100 text-gray-700';
+      case UserRole.MASTER: return 'bg-[#E6F7FB] text-[#3EAFD2]';
+      case UserRole.SPOUSE: return 'bg-[#F3E5F5] text-[#AB47BC]';
+      case UserRole.HELPER: return 'bg-[#FFF3E0] text-[#FF9800]';
+      case UserRole.CHILD: return 'bg-[#E8F5E9] text-[#4CAF50]';
+      default: return 'bg-[#F5F5F5] text-[#757575]';
     }
   };
 

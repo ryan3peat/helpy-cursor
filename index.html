@@ -13,27 +13,101 @@
         theme: {
           extend: {
             colors: {
-              'brand-primary': '#6366f1',
-              'brand-secondary': '#8b5cf6',
+              // Legacy brand colors (keep for backward compatibility)
+              brand: {
+                primary: '#4e649b',
+                secondary: '#647ac0',
+                accent: '#f7f7f7',
+                text: '#1a1a1a',
+                muted: '#888888',
+              },
+              // New Design System Colors
+              background: 'hsl(var(--background) / <alpha-value>)',
+              foreground: 'hsl(var(--foreground) / <alpha-value>)',
+              border: 'hsl(var(--border) / <alpha-value>)',
+              input: 'hsl(var(--input) / <alpha-value>)',
+              ring: 'hsl(var(--ring) / <alpha-value>)',
+              card: {
+                DEFAULT: 'hsl(var(--card) / <alpha-value>)',
+                foreground: 'hsl(var(--card-foreground) / <alpha-value>)',
+              },
+              popover: {
+                DEFAULT: 'hsl(var(--popover) / <alpha-value>)',
+                foreground: 'hsl(var(--popover-foreground) / <alpha-value>)',
+              },
+              primary: {
+                DEFAULT: 'hsl(var(--primary) / <alpha-value>)',
+                foreground: 'hsl(var(--primary-foreground) / <alpha-value>)',
+              },
+              secondary: {
+                DEFAULT: 'hsl(var(--secondary) / <alpha-value>)',
+                foreground: 'hsl(var(--secondary-foreground) / <alpha-value>)',
+              },
+              muted: {
+                DEFAULT: 'hsl(var(--muted) / <alpha-value>)',
+                foreground: 'hsl(var(--muted-foreground) / <alpha-value>)',
+              },
+              accent: {
+                DEFAULT: 'hsl(var(--accent) / <alpha-value>)',
+                foreground: 'hsl(var(--accent-foreground) / <alpha-value>)',
+              },
+              destructive: {
+                DEFAULT: 'hsl(var(--destructive) / <alpha-value>)',
+                foreground: 'hsl(var(--destructive-foreground) / <alpha-value>)',
+              },
             },
             fontFamily: {
-              sans: ['Inter', 'system-ui', 'sans-serif'],
+              sans: ['Plus Jakarta Sans', 'Inter', 'sans-serif'],
+            },
+            fontSize: {
+              'display': ['2rem', { lineHeight: '1.2', letterSpacing: '-0.02em', fontWeight: '800' }],
+              'title': ['1rem', { lineHeight: '1.4', letterSpacing: '-0.01em', fontWeight: '700' }],
+              'body': ['0.875rem', { lineHeight: '1.5', fontWeight: '600' }],
+              'caption': ['0.75rem', { lineHeight: '1.4', letterSpacing: '0.01em', fontWeight: '500' }],
+            },
+            borderRadius: {
+              'xl': '1.125rem',
+              'lg': '0.75rem',
+              'md': '0.5rem',
+              'sm': '0.375rem',
+            },
+            boxShadow: {
+              'sm': 'var(--shadow-sm)',
+              'DEFAULT': 'var(--shadow)',
+              'md': 'var(--shadow-md)',
+              'lg': 'var(--shadow-lg)',
+              'xl': 'var(--shadow-xl)',
+              '2xl': 'var(--shadow-2xl)',
             },
           },
         },
       };
     </script>
-
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-
-    <!-- Custom Styles -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
       * {
         font-family: 'Inter', system-ui, sans-serif;
       }
       body {
         background-color: #f8fafc;
+      }
+      /* Legacy styles - kept for backward compatibility with other pages */
+      .app-background {
+        background: linear-gradient(180deg, #eef2ff 0%, #f8fafc 100%);
+        min-height: 100vh;
+      }
+      .glass-surface {
+        background: rgba(255, 255, 255, 0.75);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+      }
+      .no-scrollbar::-webkit-scrollbar {
+        display: none;
+      }
+      .no-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
       }
       @keyframes fade-in {
         from { opacity: 0; }

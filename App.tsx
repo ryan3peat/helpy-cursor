@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useClerk } from '@clerk/clerk-react'; // ADD THIS IMPORT
+import { useClerk } from '@clerk/clerk-react';
 import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
-import ShoppingList from './components/ShoppingList';
-import Tasks from './components/Tasks';
+import ToDo from './components/ToDo';
 import Meals from './components/Meals';
 import Expenses from './components/Expenses';
 import Profile from './components/Profile';
@@ -12,7 +11,7 @@ import IntroAnimation from './components/IntroAnimation';
 import Auth from './components/Auth';
 import OnboardingOverlay from './components/OnboardingOverlay';
 import InviteSetup from './components/InviteSetup';
-import { ShoppingItem, Task, Meal, Expense, Section, User, TranslationDictionary } from './types';
+import { ToDoItem, Meal, Expense, User, TranslationDictionary } from './types';
 import { BASE_TRANSLATIONS } from './constants';
 import {
   subscribeToCollection,
@@ -24,7 +23,7 @@ import {
 } from './services/supabaseService';
 
 const App: React.FC = () => {
-  const { signOut } = useClerk(); // ADD THIS HOOK
+  const { signOut } = useClerk();
   const [showIntro, setShowIntro] = useState(true);
   const [activeView, setActiveView] = useState('dashboard');
 
@@ -85,13 +84,8 @@ const App: React.FC = () => {
 
   const handleLogout = useCallback(async () => {
     try {
-      // 1. Sign out from Clerk first
       await signOut();
-      
-      // 2. Reset the login processed ref
       loginProcessedRef.current = false;
-      
-      // 3. Clear local state
       setCurrentUser(null);
       localStorage.removeItem('helpy_current_session_user');
       setActiveView('dashboard');
@@ -99,7 +93,6 @@ const App: React.FC = () => {
       setShowIntro(true);
     } catch (error) {
       console.error('Logout error:', error);
-      // Even if Clerk logout fails, clear local state
       loginProcessedRef.current = false;
       setCurrentUser(null);
       localStorage.removeItem('helpy_current_session_user');
@@ -130,68 +123,65 @@ const App: React.FC = () => {
 
   // Global Data State
   const [users, setUsers] = useState<User[]>([]);
-  const [householdSections, setHouseholdSections] = useState<Section[]>([]);
-  const [familyNotes, setFamilyNotes] = useState('');
-  const [shoppingItems, setShoppingItems] = useState<ShoppingItem[]>([]);
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [todoItems, setTodoItems] = useState<ToDoItem[]>([]);
   const [meals, setMeals] = useState<Meal[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [familyNotes, setFamilyNotes] = useState('');
+
+  // Ensure currentUser is always in the users array (for assignee selection)
+  useEffect(() => {
+    if (currentUser && !users.find(u => u.id === currentUser.id)) {
+      setUsers(prev => prev.length > 0 ? prev : [currentUser]);
+    }
+  }, [currentUser, users]);
 
   // Supabase Subscriptions
   useEffect(() => {
     if (!currentUser || !currentUser.householdId) return;
     const hid = currentUser.householdId;
+    
     const unsubUsers = subscribeToCollection(hid, 'users', (data) => setUsers(data as User[]));
-    const unsubTasks = subscribeToCollection(hid, 'tasks', (data) => setTasks(data as Task[]));
-    const unsubShopping = subscribeToCollection(hid, 'shopping', (data) => setShoppingItems(data as ShoppingItem[]));
+    const unsubTodoItems = subscribeToCollection(hid, 'todo_items', (data) => setTodoItems(data as ToDoItem[]));
     const unsubMeals = subscribeToCollection(hid, 'meals', (data) => setMeals(data as Meal[]));
     const unsubExpenses = subscribeToCollection(hid, 'expenses', (data) => setExpenses(data as Expense[]));
-    const unsubSections = subscribeToCollection(hid, 'sections', (data) => setHouseholdSections(data as Section[]));
     const unsubNotes = subscribeToNotes(hid, (note) => setFamilyNotes(note));
+    
     return () => {
       unsubUsers();
-      unsubTasks();
-      unsubShopping();
+      unsubTodoItems();
       unsubMeals();
       unsubExpenses();
-      unsubSections();
       unsubNotes();
     };
   }, [currentUser]);
 
   const hid = currentUser?.householdId ?? '';
 
-  const handleAddShoppingItem = async (item: Omit<ShoppingItem, 'id'>) => {
-    if (!hid) return;
-    await addItem(hid, 'shopping', item);
+  // ToDo CRUD Handlers
+  const handleAddTodoItem = async (item: ToDoItem) => {
+    if (!hid) return item;
+    const newItem = { ...item, id: `todo-${Date.now()}` };
+    setTodoItems(prev => [newItem, ...prev]);
+    await addItem(hid, 'todo_items', item);
+    return newItem;
   };
 
-  const handleUpdateShoppingItem = async (id: string, data: Partial<ShoppingItem>) => {
+  const handleUpdateTodoItem = async (id: string, data: Partial<ToDoItem>) => {
     if (!hid) return;
-    await updateItem(hid, 'shopping', id, data);
+    setTodoItems(prev => prev.map(item => 
+      item.id === id ? { ...item, ...data } : item
+    ));
+    await updateItem(hid, 'todo_items', id, data);
   };
 
-  const handleDeleteShoppingItem = async (id: string) => {
+  const handleDeleteTodoItem = async (id: string) => {
     if (!hid) return;
-    await deleteItem(hid, 'shopping', id);
+    setTodoItems(prev => prev.filter(item => item.id !== id));
+    await deleteItem(hid, 'todo_items', id);
   };
 
-  const handleAddTask = async (task: Omit<Task, 'id'>) => {
-    if (!hid) return;
-    await addItem(hid, 'tasks', task);
-  };
-
-  const handleUpdateTask = async (id: string, data: Partial<Task>) => {
-    if (!hid) return;
-    await updateItem(hid, 'tasks', id, data);
-  };
-
-  const handleDeleteTask = async (id: string) => {
-    if (!hid) return;
-    await deleteItem(hid, 'tasks', id);
-  };
-
-  const handleAddMeal = async (meal: Omit<Meal, 'id'>) => {
+  // Meal CRUD Handlers
+  const handleAddMeal = async (meal: Meal) => {
     if (!hid) return;
     await addItem(hid, 'meals', meal);
   };
@@ -206,7 +196,8 @@ const App: React.FC = () => {
     await deleteItem(hid, 'meals', id);
   };
 
-  const handleAddExpense = async (expense: Omit<Expense, 'id'>) => {
+  // Expense CRUD Handlers
+  const handleAddExpense = async (expense: Expense) => {
     if (!hid) return;
     await addItem(hid, 'expenses', expense);
   };
@@ -221,21 +212,7 @@ const App: React.FC = () => {
     await deleteItem(hid, 'expenses', id);
   };
 
-  const handleAddSection = async (section: Omit<Section, 'id'>) => {
-    if (!hid) return;
-    await addItem(hid, 'sections', section);
-  };
-
-  const handleUpdateSection = async (id: string, data: Partial<Section>) => {
-    if (!hid) return;
-    await updateItem(hid, 'sections', id, data);
-  };
-
-  const handleDeleteSection = async (id: string) => {
-    if (!hid) return;
-    await deleteItem(hid, 'sections', id);
-  };
-
+  // User CRUD Handlers
   const handleAddUser = async (user: Omit<User, 'id'>): Promise<User | undefined> => {
     if (!hid) return;
     const result = await addItem(hid, 'users', user);
@@ -252,6 +229,7 @@ const App: React.FC = () => {
     await deleteItem(hid, 'users', id);
   };
 
+  // Notes Handler
   const handleSaveFamilyNotes = async (notes: string) => {
     if (!hid) return;
     await saveFamilyNotes(hid, notes);
@@ -262,8 +240,7 @@ const App: React.FC = () => {
       case 'dashboard':
         return (
           <Dashboard
-            shoppingItems={shoppingItems}
-            tasks={tasks}
+            todoItems={todoItems}
             meals={meals}
             users={users}
             expenses={expenses}
@@ -277,42 +254,35 @@ const App: React.FC = () => {
             isTranslating={isTranslating}
           />
         );
-      case 'shopping':
+
+      case 'todo':
         return (
-          <ShoppingList
-            items={shoppingItems}
+          <ToDo
+            items={todoItems}
             users={users}
-            onAdd={handleAddShoppingItem}
-            onUpdate={handleUpdateShoppingItem}
-            onDelete={handleDeleteShoppingItem}
             currentUser={currentUser!}
+            onAdd={handleAddTodoItem}
+            onUpdate={handleUpdateTodoItem}
+            onDelete={handleDeleteTodoItem}
             t={translations}
+            currentLang={lang}
           />
         );
-      case 'tasks':
-        return (
-          <Tasks
-            tasks={tasks}
-            users={users}
-            onAdd={handleAddTask}
-            onUpdate={handleUpdateTask}
-            onDelete={handleDeleteTask}
-            currentUser={currentUser!}
-            t={translations}
-          />
-        );
+
       case 'meals':
         return (
           <Meals
             meals={meals}
             users={users}
+            currentUser={currentUser!}
             onAdd={handleAddMeal}
             onUpdate={handleUpdateMeal}
             onDelete={handleDeleteMeal}
-            currentUser={currentUser!}
             t={translations}
+            currentLang={lang}
           />
         );
+
       case 'expenses':
         return (
           <Expenses
@@ -326,19 +296,18 @@ const App: React.FC = () => {
             currentLang={lang}
           />
         );
+
       case 'info':
         return (
           <HouseholdInfo
-            sections={householdSections}
-            familyNotes={familyNotes}
-            onAddSection={handleAddSection}
-            onUpdateSection={handleUpdateSection}
-            onDeleteSection={handleDeleteSection}
-            onSaveFamilyNotes={handleSaveFamilyNotes}
+            householdId={hid}
             currentUser={currentUser!}
+            users={users}
             t={translations}
+            currentLang={lang}
           />
         );
+
       case 'profile':
         return (
           <Profile
@@ -353,6 +322,7 @@ const App: React.FC = () => {
             currentLang={lang}
           />
         );
+
       default:
         return null;
     }

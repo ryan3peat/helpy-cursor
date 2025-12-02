@@ -1,6 +1,5 @@
-
 import React from 'react';
-import { Home, ShoppingCart, CheckSquare, Utensils, DollarSign, Info } from 'lucide-react';
+import { Home, ClipboardList, Utensils, DollarSign, Info } from 'lucide-react';
 import { NavItem, TranslationDictionary } from '../types';
 
 interface LayoutProps {
@@ -12,37 +11,57 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children, activeView, onNavigate, t }) => {
   const navItems: NavItem[] = [
-    { id: 'dashboard', label: t['nav.home'], icon: <Home size={24} /> },
-    { id: 'shopping', label: t['nav.shop'], icon: <ShoppingCart size={24} /> },
-    { id: 'tasks', label: t['nav.tasks'], icon: <CheckSquare size={24} /> },
-    { id: 'meals', label: t['nav.meals'], icon: <Utensils size={24} /> },
-    { id: 'expenses', label: t['nav.cost'], icon: <DollarSign size={24} /> },
-    { id: 'info', label: t['nav.info'], icon: <Info size={24} /> },
+    { id: 'dashboard', label: t['nav.home'], icon: Home },
+    { id: 'todo', label: t['nav.todo'] || 'To Do', icon: ClipboardList },
+    { id: 'meals', label: t['nav.meals'], icon: Utensils },
+    { id: 'expenses', label: t['nav.cost'], icon: DollarSign },
+    { id: 'info', label: t['nav.info'], icon: Info },
   ];
 
   return (
     <div className="flex flex-col min-h-screen">
       {/* Main Content Area */}
-      <div className="flex-1">{children}</div>
+      <div className="flex-1 pb-20">{children}</div>
 
-      {/* Bottom Navigation */}
+      {/* Bottom Navigation - iOS Style */}
       <nav
-        className="fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 z-50"
-        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }} // ✅ Safe area support
+        className="fixed bottom-0 left-0 w-full z-50 
+          bg-white/70 dark:bg-black/70 
+          backdrop-blur-xl backdrop-saturate-150
+          border-t border-black/5 dark:border-white/10"
+        style={{ 
+          paddingBottom: 'env(safe-area-inset-bottom)',
+          boxShadow: '0 -4px 16px rgba(0, 0, 0, 0.04)'
+        }}
       >
-        <div className="flex justify-around py-2">
+        <div className="flex justify-around items-center h-16">
           {navItems.map((item) => {
             const isActive = activeView === item.id;
+            const Icon = item.icon;
             return (
               <button
                 key={item.id}
                 onClick={() => onNavigate(item.id)}
-                className={`flex flex-col items-center justify-center w-full transition-all duration-300 ${
-                  isActive ? 'text-brand-primary -translate-y-1' : 'text-gray-400'
-                }`}
+                className="flex flex-col items-center justify-center gap-0.5 w-full h-full"
               >
-                {item.icon}
-                <span className="text-xs">{item.label}</span>
+                <Icon 
+                  size={22} 
+                  strokeWidth={isActive ? 2.5 : 1.75}
+                  className={`transition-colors duration-200 ${
+                    isActive 
+                      ? 'text-primary' 
+                      : 'text-muted-foreground'
+                  }`}
+                />
+                <span 
+                  className={`text-[10px] font-medium transition-colors duration-200 ${
+                    isActive 
+                      ? 'text-primary' 
+                      : 'text-muted-foreground'
+                  }`}
+                >
+                  {item.label}
+                </span>
               </button>
             );
           })}

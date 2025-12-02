@@ -1,17 +1,19 @@
 import { supabase } from './supabase';
-import { User, ShoppingItem, Task, Meal, Expense, Section } from '../types';
+import { User, ShoppingItem, Task, Meal, Expense, Section, ToDoItem } from '../types';
 
 // Type for generic data items
-type DataItem = User | ShoppingItem | Task | Meal | Expense | Section;
+type DataItem = User | ShoppingItem | Task | Meal | Expense | Section | ToDoItem;
 
 // CRITICAL: Map your app's collection names to Supabase table names
 const COLLECTION_MAP: Record<string, string> = {
   'users': 'users',
   'shopping': 'shopping',
   'tasks': 'tasks',
+  'todo_items': 'todo_items',
   'meals': 'meals',
   'expenses': 'expenses',
-  'sections': 'sections'
+  'sections': 'sections',
+  'essential_info': 'essential_info'
 };
 
 // Cache to store clerk_id -> supabase uuid mapping

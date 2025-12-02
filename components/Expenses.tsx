@@ -36,7 +36,7 @@ import {
   deleteReceiptByExpenseId,
 } from '../services/receiptService';
 import { processReceipt, ParsedReceipt } from '../services/visionService';
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 
 // Expense Category Config (colors and icons)
 type ExpenseCategoryConfig = {
@@ -490,39 +490,12 @@ const Expenses: React.FC<ExpensesProps> = ({
                           paddingAngle={2}
                           dataKey="amount"
                           nameKey="category"
-                          label={({ cx, cy, midAngle, outerRadius, percent }) => {
-                            const RADIAN = Math.PI / 180;
-                            const radius = outerRadius + 20;
-                            const x = cx + radius * Math.cos(-midAngle * RADIAN);
-                            const y = cy + radius * Math.sin(-midAngle * RADIAN);
-                            return (
-                              <text
-                                x={x}
-                                y={y}
-                                fill="hsl(var(--foreground))"
-                                textAnchor={x > cx ? 'start' : 'end'}
-                                dominantBaseline="central"
-                                style={{ fontWeight: 600, fontSize: '13px' }}
-                              >
-                                {`${(percent * 100).toFixed(0)}%`}
-                              </text>
-                            );
-                          }}
-                          labelLine={{ stroke: 'hsl(var(--muted-foreground))', strokeWidth: 1 }}
+                          isAnimationActive={false}
                         >
                           {breakdownData.map((entry) => (
-                            <Cell key={entry.category} fill={entry.config.color} />
+                            <Cell key={entry.category} fill={entry.config.color} stroke="none" />
                           ))}
                         </Pie>
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: 'hsl(var(--card))',
-                            border: '1px solid hsl(var(--border))',
-                            borderRadius: '8px',
-                            fontSize: '12px',
-                          }}
-                          formatter={(value: number) => [`$${value.toFixed(2)}`, '']}
-                        />
                       </PieChart>
                     </ResponsiveContainer>
                     {/* Center Label - Month/Year */}
@@ -551,25 +524,31 @@ const Expenses: React.FC<ExpensesProps> = ({
               {/* Category Breakdown List */}
               {breakdownData.length > 0 && (
                 <div className="bg-card rounded-xl shadow-sm overflow-hidden">
-                  {breakdownData.map((item, index) => (
-                    <div
-                      key={item.category}
-                      className={`p-4 flex items-center justify-between ${
-                        index !== breakdownData.length - 1 ? 'list-item-separator' : ''
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div
-                          className="w-9 h-9 rounded-full flex items-center justify-center"
-                          style={{ backgroundColor: item.config.bgColor, color: item.config.color }}
-                        >
-                          {item.config.icon}
+                  {breakdownData.map((item, index) => {
+                    const percentage = totalAmount > 0 ? ((item.amount / totalAmount) * 100).toFixed(0) : 0;
+                    return (
+                      <div
+                        key={item.category}
+                        className={`p-4 flex items-center justify-between ${
+                          index !== breakdownData.length - 1 ? 'list-item-separator' : ''
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div
+                            className="w-9 h-9 rounded-full flex items-center justify-center"
+                            style={{ backgroundColor: item.config.bgColor, color: item.config.color }}
+                          >
+                            {item.config.icon}
+                          </div>
+                          <div>
+                            <span className="text-body text-foreground">{item.category}</span>
+                            <span className="text-caption text-muted-foreground ml-2">{percentage}%</span>
+                          </div>
                         </div>
-                        <span className="text-body text-foreground">{item.category}</span>
+                        <span className="text-title text-foreground">${item.amount.toFixed(2)}</span>
                       </div>
-                      <span className="text-title text-foreground">${item.amount.toFixed(2)}</span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>

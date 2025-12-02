@@ -713,7 +713,10 @@ const Meals: React.FC<MealsProps> = ({
             {weekDays.map((dayDate) => {
               const dateStr = formatDateStr(dayDate);
               const isToday = dayDate.toDateString() === new Date().toDateString();
-              const dayMeals = meals.filter(m => m.date === dateStr);
+              const mealTypeOrder: Record<string, number> = { Breakfast: 1, Lunch: 2, Dinner: 3, Snacks: 4 };
+              const dayMeals = meals
+                .filter(m => m.date === dateStr)
+                .sort((a, b) => (mealTypeOrder[a.type] || 99) - (mealTypeOrder[b.type] || 99));
             
             // Build rows: each meal + one "Add Meal Plan" row
             const mealRows = dayMeals.map(meal => ({ type: 'meal' as const, meal }));
@@ -819,7 +822,7 @@ const Meals: React.FC<MealsProps> = ({
                               </span>
                                   )}
                                   {eaters.length === 0 && (
-                                    <span className="text-caption text-muted-foreground/50">--</span>
+                                    <span className="h-6 flex items-center text-caption text-muted-foreground/50">--</span>
                                   )}
                             </div>
 

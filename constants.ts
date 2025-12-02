@@ -1,5 +1,5 @@
 
-import { UserRole, User, ShoppingCategory, Section, Task, Meal, MealType, Expense } from './types';
+import { ShoppingCategory } from './types';
 
 export const EXPENSE_CATEGORIES = [
   'Housing & Utilities',
@@ -10,113 +10,11 @@ export const EXPENSE_CATEGORIES = [
   'Miscellaneous'
 ];
 
-export const MOCK_USERS: User[] = [
-  { 
-    id: '1', 
-    householdId: 'demo',
-    name: 'Sarah (Mom)', 
-    role: UserRole.MASTER, 
-    avatar: 'https://picsum.photos/200/200?random=1',
-    allergies: [],
-    preferences: ['Low Sodium', 'No Spicy'],
-    email: 'sarah@helpy.com',
-    password: 'password'
-  },
-  { 
-    id: '2', 
-    householdId: 'demo',
-    name: 'David (Dad)', 
-    role: UserRole.SPOUSE, 
-    avatar: 'https://picsum.photos/200/200?random=2',
-    allergies: ['Shellfish'],
-    preferences: ['High Protein'],
-    email: 'david@helpy.com',
-    password: 'password'
-  },
-  { 
-    id: '3', 
-    householdId: 'demo',
-    name: 'Maria (Helper)', 
-    role: UserRole.HELPER, 
-    avatar: 'https://picsum.photos/200/200?random=3',
-    allergies: [],
-    preferences: []
-  },
-  { 
-    id: '4', 
-    householdId: 'demo',
-    name: 'Tom (Kid)', 
-    role: UserRole.CHILD, 
-    avatar: 'https://picsum.photos/200/200?random=4',
-    allergies: ['Peanuts', 'Dairy'],
-    preferences: ['Likes Pasta']
-  },
-];
-
-export const DEFAULT_FAMILY_RULES: Section[] = [
-  { 
-    id: '101', 
-    category: 'House Rules', 
-    title: 'No Shoes Indoors', 
-    content: 'Please change to indoor slippers at door.\nShoe rack provided.\nThank you!\n\nDue: Dec 18, 2025\nIndah' 
-  },
-  { 
-    id: '102', 
-    category: 'House Rules', 
-    title: 'Phone Use Policy', 
-    content: 'Phone OK during break & after child sleeps.\nNo TikTok live from flat.\nKeep volume low.\n\nDue: Dec 18, 2025\nIndah' 
-  },
-  { 
-    id: '103', 
-    category: 'House Rules', 
-    title: 'Guest & Visitor Rules', 
-    content: 'Visitors OK with prior notice.\nMax 2 hours.\nCommon area only.\n\nDue: Dec 18, 2025\nIndah' 
-  },
-];
-
-export const DEFAULT_SHOPPING_ITEMS = [
-  { id: '101', name: 'Organic Eggs', category: ShoppingCategory.SUPERMARKET, quantity: '12 pcs', completed: false, addedBy: '1' },
-  { id: '102', name: 'Fresh Salmon', category: ShoppingCategory.WET_MARKET, quantity: '500g', completed: false, addedBy: '1' },
-  { id: '103', name: 'AA Batteries', category: ShoppingCategory.OTHERS, quantity: '1 pack', completed: true, addedBy: '2' },
-];
-
-export const DEFAULT_TASKS: Task[] = [
-  { 
-    id: '1', 
-    title: 'Pay Piano Tutor', 
-    assignees: ['1'], 
-    dueDate: new Date().toISOString().split('T')[0], 
-    completed: false 
-  },
-  { 
-    id: '2', 
-    title: 'Water Plants', 
-    assignees: ['3'], 
-    dueDate: new Date().toISOString().split('T')[0], 
-    completed: true, 
-    recurrence: {
-        frequency: 'WEEKLY',
-        interval: 1,
-        weekDays: [0, 3], // Sun, Wed
-        endCondition: 'NEVER'
-    }
-  },
-];
-
-export const DEFAULT_MEALS: Meal[] = [
-  { id: '1', date: new Date().toISOString().split('T')[0], type: MealType.DINNER, description: 'Steamed Fish & Veggies', forUserIds: ['1','2','3','4'] }
-];
-
-export const DEFAULT_EXPENSES: Expense[] = [
-  { id: '1', amount: 120.50, category: 'Food & Daily Needs', merchant: 'FairPrice', date: '2023-10-25' },
-  { id: '2', amount: 45.00, category: 'Transport & Travel', merchant: 'Grab', date: '2023-10-24' },
-  { id: '3', amount: 850.00, category: 'Housing & Utilities', merchant: 'Management Fee', date: '2023-10-01' },
-];
-
+// Colors based on brand palette: #3EAFD2, #FF9800, #7E57C2, #4CAF50, #F06292, #AB47BC, #757575
 export const SHOPPING_CATEGORY_COLORS: Record<ShoppingCategory, string> = {
-  [ShoppingCategory.SUPERMARKET]: 'border-l-blue-500',
-  [ShoppingCategory.WET_MARKET]: 'border-l-green-500',
-  [ShoppingCategory.OTHERS]: 'border-l-gray-400',
+  [ShoppingCategory.SUPERMARKET]: 'border-l-[#3EAFD2]',
+  [ShoppingCategory.WET_MARKET]: 'border-l-[#4CAF50]',
+  [ShoppingCategory.OTHERS]: 'border-l-[#757575]',
 };
 
 export const SUPPORTED_LANGUAGES = [
@@ -241,6 +139,29 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'meal.type.breakfast': 'Breakfast',
   'meal.type.lunch': 'Lunch',
   'meal.type.dinner': 'Dinner',
+  'meal.type.snacks': 'Snacks',
+
+  // Meal Audience
+  'meals.audience_label': 'This meal is for',
+  'meals.audience_all': 'Everyone',
+  'meals.audience_adults': 'Adults',
+  'meals.audience_kids': 'Kids',
+
+  // Meal RSVP
+  'meals.join': 'Join Meal',
+  'meals.im_in': "I'm In",
+  'meals.im_out': "I'm Out",
+  'meals.leave': 'Leave',
+  'meals.eating': 'Eating',
+  'meals.ill_be_eating': "I'll be eating",
+  'meals.no_dish_yet': 'No dish yet',
+  'meals.not_for_you': 'Not for you',
+  'meals.no_one_yet': 'No one yet',
+  'meals.plan_dish': 'Plan Dish',
+  'meals.edit_dish': 'Edit dish',
+  'meals.add_meal_plan': 'Add Meal Plan',
+  'meals.adults_only': 'Adults Only',
+  'meals.kids_only': 'Kids Only',
 
   // Expenses
   'expenses.title': 'Expenses',
@@ -288,12 +209,23 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'onboarding.got_it': 'Got it',
   'onboarding.add_member': 'Add Family Member',
 
+  // ToDo (unified Shopping + Tasks)
+  'todo.title': 'To Do',
+  'todo.shopping': 'Shopping',
+  'todo.tasks': 'Tasks',
+  'todo.suggested': 'Suggested',
+  'todo.completed': 'Completed',
+  'todo.no_shopping': 'No shopping items yet',
+  'todo.no_tasks': 'No tasks yet',
+  'todo.category.home_care': 'Home Care',
+  'todo.category.family_care': 'Family Care',
+  'todo.category.others': 'Others',
+
   // Nav
   'nav.home': 'Home',
-  'nav.shop': 'Shop',
-  'nav.tasks': 'Tasks',
+  'nav.todo': 'To Do',
   'nav.meals': 'Meals',
-  'nav.cost': 'Cost',
+  'nav.cost': 'Expenses',
   'nav.info': 'Info',
   
   // Common

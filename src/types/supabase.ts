@@ -140,6 +140,53 @@ export interface Database {
           category?: string
         }
       }
+      todo_items: {
+        Row: {
+          id: string
+          household_id: string | null
+          type: string // 'shopping' | 'task'
+          name: string
+          category: string
+          completed: boolean
+          assignee_id: string | null
+          created_at: string
+          quantity: string | null
+          unit: string | null
+          due_date: string | null
+          due_time: string | null
+          recurrence: Json | null
+        }
+        Insert: {
+          id?: string
+          household_id?: string | null
+          type: string
+          name: string
+          category: string
+          completed?: boolean
+          assignee_id?: string | null
+          created_at?: string
+          quantity?: string | null
+          unit?: string | null
+          due_date?: string | null
+          due_time?: string | null
+          recurrence?: Json | null
+        }
+        Update: {
+          id?: string
+          household_id?: string | null
+          type?: string
+          name?: string
+          category?: string
+          completed?: boolean
+          assignee_id?: string | null
+          created_at?: string
+          quantity?: string | null
+          unit?: string | null
+          due_date?: string | null
+          due_time?: string | null
+          recurrence?: Json | null
+        }
+      }
       meals: {
         Row: {
           id: string

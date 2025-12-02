@@ -17,20 +17,20 @@ import {
   Coffee,
   Sun,
   Moon,
+  Cookie,
   Users,
   Baby,
   User as UserIcon,
   Plus
 } from 'lucide-react';
-import { ShoppingItem, Task, Meal, User, MealType, TranslationDictionary, UserRole, Expense } from '../types';
+import { ToDoItem, Meal, User, MealType, TranslationDictionary, UserRole, Expense } from '../types';
 import { SUPPORTED_LANGUAGES } from '../constants';
 
 interface DashboardProps {
-  shoppingItems: ShoppingItem[];
-  tasks: Task[];
+  todoItems: ToDoItem[];
   meals: Meal[];
   users: User[];
-  expenses: Expense[]; // ✅ Added expenses prop
+  expenses: Expense[];
   onNavigate: (view: string) => void;
   familyNotes: string;
   onUpdateNotes: (notes: string) => void;
@@ -42,8 +42,7 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({
-  shoppingItems,
-  tasks,
+  todoItems,
   meals,
   users,
   expenses,
@@ -56,8 +55,8 @@ const Dashboard: React.FC<DashboardProps> = ({
   onLanguageChange,
   isTranslating
 }) => {
-  const shoppingCount = shoppingItems.filter(i => !i.completed).length;
-  const activeTaskCount = tasks.filter(t => !t.completed).length;
+  const shoppingCount = todoItems.filter(i => i.type === 'shopping' && !i.completed).length;
+  const activeTaskCount = todoItems.filter(i => i.type === 'task' && !i.completed).length;
   const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [tempNotes, setTempNotes] = useState(familyNotes);
   const [timeOfDay, setTimeOfDay] = useState('');
@@ -96,7 +95,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     const upcoming = meals.filter(m => m.date >= todayStr);
     upcoming.sort((a, b) => {
       if (a.date !== b.date) return a.date.localeCompare(b.date);
-      const order = { [MealType.BREAKFAST]: 1, [MealType.LUNCH]: 2, [MealType.DINNER]: 3 };
+      const order = { [MealType.BREAKFAST]: 1, [MealType.LUNCH]: 2, [MealType.DINNER]: 3, [MealType.SNACKS]: 4 };
       return (order[a.type] ?? 0) - (order[b.type] ?? 0);
     });
     return upcoming[0];
@@ -113,20 +112,21 @@ const Dashboard: React.FC<DashboardProps> = ({
       if (m.type === MealType.LUNCH && currentHour >= 15) return false;
       return true;
     });
-    const order = { [MealType.BREAKFAST]: 1, [MealType.LUNCH]: 2, [MealType.DINNER]: 3 };
+    const order = { [MealType.BREAKFAST]: 1, [MealType.LUNCH]: 2, [MealType.DINNER]: 3, [MealType.SNACKS]: 4 };
     return remaining.sort((a, b) => (order[a.type] ?? 0) - (order[b.type] ?? 0));
   };
   const todaysMenu = getTodaysRemainingMeals();
 
+  // Colors based on brand palette: #3EAFD2, #FF9800, #7E57C2, #4CAF50, #F06292, #AB47BC, #757575
   const getAudienceInfo = (userIds: string[]) => {
     const eaters = users.filter(u => userIds.includes(u.id));
     const totalUsers = users.length;
-    if (eaters.length === totalUsers) return { label: t['dashboard.everyone'] ?? 'Everyone', icon: Users, color: 'bg-blue-100 text-blue-600' };
+    if (eaters.length === totalUsers) return { label: t['dashboard.everyone'] ?? 'Everyone', icon: Users, color: 'bg-[#E6F7FB] text-[#3EAFD2]' };
     const hasAdults = eaters.some(u => u.role !== UserRole.CHILD);
     const hasKids = eaters.some(u => u.role === UserRole.CHILD);
-    if (hasAdults && !hasKids) return { label: t['meals.group_adults'] ?? 'Adults', icon: UserIcon, color: 'bg-purple-100 text-purple-600' };
-    if (!hasAdults && hasKids) return { label: t['meals.group_kids'] ?? 'Kids', icon: Baby, color: 'bg-green-100 text-green-600' };
-    return { label: 'Mixed', icon: Users, color: 'bg-gray-100 text-gray-600' };
+    if (hasAdults && !hasKids) return { label: t['meals.group_adults'] ?? 'Adults', icon: UserIcon, color: 'bg-[#F3E5F5] text-[#AB47BC]' };
+    if (!hasAdults && hasKids) return { label: t['meals.group_kids'] ?? 'Kids', icon: Baby, color: 'bg-[#E8F5E9] text-[#4CAF50]' };
+    return { label: 'Mixed', icon: Users, color: 'bg-[#F5F5F5] text-[#757575]' };
   };
 
   const getMealTypeIcon = (type: MealType) => {
@@ -134,14 +134,16 @@ const Dashboard: React.FC<DashboardProps> = ({
       case MealType.BREAKFAST: return <Coffee size={16} />;
       case MealType.LUNCH: return <Sun size={16} />;
       case MealType.DINNER: return <Moon size={16} />;
+      case MealType.SNACKS: return <Cookie size={16} />;
     }
   };
 
   const getMealTypeColor = (type: MealType) => {
     switch (type) {
-      case MealType.BREAKFAST: return 'text-orange-500';
-      case MealType.LUNCH: return 'text-amber-500';
-      case MealType.DINNER: return 'text-indigo-500';
+      case MealType.BREAKFAST: return 'text-[#FF9800]';
+      case MealType.LUNCH: return 'text-[#4CAF50]';
+      case MealType.DINNER: return 'text-[#7E57C2]';
+      case MealType.SNACKS: return 'text-[#F06292]';
     }
   };
 
@@ -176,7 +178,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   );
 
   return (
-    <div className="px-5 pt-16 pb-16 space-y-6 animate-fade-in h-full overflow-y-auto no-scrollbar">
+    <div className="px-5 pt-16 pb-16 space-y-6 animate-fade-in overflow-y-auto no-scrollbar page-content">
       {/* Header */}
       <div className="flex justify-between items-end mb-2">
         <div>
@@ -220,7 +222,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         <div className="relative bg-white border border-gray-100 p-5 rounded-2xl shadow-sm transition-all hover:shadow-md">
           <div className="flex justify-between items-start mb-3">
             <div className="flex items-center gap-2">
-              <div className="text-amber-500">
+              <div className="text-[#FF9800]">
                 <FileText size={18} />
               </div>
               <span className="font-bold text-lg text-gray-400">{t['dashboard.family_board']}</span>
@@ -237,7 +239,7 @@ const Dashboard: React.FC<DashboardProps> = ({
             ) : (
               <button
                 onClick={() => setIsEditingNotes(true)}
-                className="p-1.5 text-gray-300 hover:text-amber-500 hover:bg-amber-50 rounded-full transition-colors"
+                className="p-1.5 text-gray-300 hover:text-[#FF9800] hover:bg-[#FFF3E0] rounded-full transition-colors"
               >
                 <Pencil size={14} />
               </button>
@@ -330,23 +332,23 @@ const Dashboard: React.FC<DashboardProps> = ({
           count={shoppingCount}
           icon={ShoppingCart}
           label={t['dashboard.items_needed']}
-          colorClass="text-blue-600"
-          onClick={() => onNavigate('shopping')}
+          colorClass="text-[#3EAFD2]"
+          onClick={() => onNavigate('todo')}
         />
         <StatCard
           title={t['dashboard.tasks']}
           count={activeTaskCount}
           icon={Calendar}
           label={t['dashboard.todo']}
-          colorClass="text-purple-600"
-          onClick={() => onNavigate('tasks')}
+          colorClass="text-[#7E57C2]"
+          onClick={() => onNavigate('todo')}
         />
         <StatCard
           title={t['dashboard.meals']}
           count={meals.length}
           icon={Utensils}
           label={t['dashboard.planned']}
-          colorClass="text-green-600"
+          colorClass="text-[#4CAF50]"
           onClick={() => onNavigate('meals')}
         />
         <StatCard
@@ -359,7 +361,7 @@ const Dashboard: React.FC<DashboardProps> = ({
           }
           icon={TrendingUp}
           label={t['dashboard.this_month']}
-          colorClass="text-orange-600"
+          colorClass="text-[#FF9800]"
           onClick={() => onNavigate('expenses')}
         />
       </div>
@@ -378,13 +380,13 @@ const Dashboard: React.FC<DashboardProps> = ({
             className="group bg-white p-1 rounded-2xl shadow-sm border border-gray-100 cursor-pointer active:scale-[0.98] transition-all hover:shadow-md hover:border-gray-200"
           >
             <div className="flex gap-4 p-3">
-              <div className="flex flex-col items-center justify-center w-14 h-14 bg-indigo-50 rounded-xl text-indigo-600 shrink-0 border border-indigo-100/50">
+              <div className="flex flex-col items-center justify-center w-14 h-14 bg-[#EDE7F6] rounded-xl text-[#7E57C2] shrink-0 border border-[#7E57C2]/20">
                 <span className="text-xs font-bold">{new Date(nextMeal.date).toLocaleDateString(currentLang === 'en' ? 'en-GB' : currentLang, { weekday: 'short' })}</span>
                 <span className="text-lg font-bold leading-none">{new Date(nextMeal.date).getDate()}</span>
               </div>
               <div className="flex-1 min-w-0 py-0.5">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-xs font-bold text-indigo-500">
+                  <span className="text-xs font-bold text-[#7E57C2]">
                     {nextMealLabel}
                   </span>
                 </div>
@@ -451,6 +453,11 @@ const Dashboard: React.FC<DashboardProps> = ({
       </div>
     </div>
   )}
+
+      {/* Footer */}
+      <div className="helpy-footer">
+        <span className="helpy-logo">helpy</span>
+      </div>
   </div>
   );
   };

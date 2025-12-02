@@ -1,5 +1,4 @@
-
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
   Camera,
   PieChart as PieIcon,
@@ -10,7 +9,24 @@ import {
   Check,
   Edit,
   Trash2,
+  Receipt,
+  Pencil,
+  Plus,
+  ArrowLeft,
+  Home,
+  ShoppingCart,
+  Car,
+  Heart,
+  PartyPopper,
+  MoreHorizontal,
+  TrendingUp,
+  LayoutList,
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
+  Calendar,
 } from 'lucide-react';
+import { useScrollHeader } from '@/hooks/useScrollHeader';
 import { Expense, BaseViewProps } from '../types';
 import { EXPENSE_CATEGORIES } from '../constants';
 import {
@@ -18,31 +34,52 @@ import {
   createReceiptRecord,
   updateReceiptWithOCR,
   linkReceiptToExpense,
-  // NEW: delete the receipt row & storage by expense id
   deleteReceiptByExpenseId,
-  // Optional alternative: only unlink the receipt from the expense (keep the receipt row)
-  // unlinkReceiptFromExpenseByExpenseId,
 } from '../services/receiptService';
 import { processReceipt, ParsedReceipt } from '../services/visionService';
-import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, Legend } from 'recharts';
+
+// Expense Category Config (colors and icons)
+type ExpenseCategoryConfig = {
+  color: string;
+  bgColor: string;
+  icon: React.ReactNode;
+};
+
+const EXPENSE_CATEGORY_CONFIG: Record<string, ExpenseCategoryConfig> = {
+  'Housing & Utilities': { color: '#3EAFD2', bgColor: '#E6F7FB', icon: <Home size={18} /> },
+  'Food & Daily Needs': { color: '#FF9800', bgColor: '#FFF3E0', icon: <ShoppingCart size={18} /> },
+  'Transport & Travel': { color: '#7E57C2', bgColor: '#EDE7F6', icon: <Car size={18} /> },
+  'Health & Personal Care': { color: '#4CAF50', bgColor: '#E8F5E9', icon: <Heart size={18} /> },
+  'Fun & Lifestyle': { color: '#F06292', bgColor: '#FCE4EC', icon: <PartyPopper size={18} /> },
+  'Miscellaneous': { color: '#757575', bgColor: '#F5F5F5', icon: <MoreHorizontal size={18} /> },
+};
+
+const getExpenseCategoryConfig = (category: string): ExpenseCategoryConfig => {
+  return EXPENSE_CATEGORY_CONFIG[category] || EXPENSE_CATEGORY_CONFIG['Miscellaneous'];
+};
 
 interface ExpensesProps extends BaseViewProps {
   expenses: Expense[];
   householdId: string;
   onAdd: (expense: Expense) => void;
-
-  /** callbacks for editing/deleting existing expenses in your DB */
   onUpdate?: (expense: Expense) => Promise<void> | void;
   onDelete?: (id: string) => Promise<void> | void;
 }
 
-/** Pending receipt data before user confirmation (OCR) */
 interface PendingReceipt {
   receiptId: string;
   imageUrl: string;
-  thumbnailBase64: string; // For displaying preview
+  thumbnailBase64: string;
   parsed: ParsedReceipt;
 }
+
+// Sheet stages for the two-stage progressive design
+type AddExpenseStage = 'closed' | 'options' | 'manual' | 'ocr';
+
+// Summary view types
+type SummaryViewType = 'breakdown' | 'trend';
+type TrendPeriod = 3 | 6 | 12;
 
 const Expenses: React.FC<ExpensesProps> = ({
   expenses,
@@ -53,43 +90,59 @@ const Expenses: React.FC<ExpensesProps> = ({
   t,
   currentLang,
 }) => {
-  const [view, setView] = useState<'list' | 'chart'>('chart');
+  const [view, setView] = useState<'list' | 'chart'>('list');
   const [isScanning, setIsScanning] = useState(false);
-  const [showScanOptions, setShowScanOptions] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  /** ---------- OCR CONFIRMATION STATE (existing feature) ----------- */
+  // Summary View State
+  const [summaryView, setSummaryView] = useState<SummaryViewType>('breakdown');
+  const [trendPeriod, setTrendPeriod] = useState<TrendPeriod>(3);
+
+  // Month/Year Selection State
+  const now = new Date();
+  const [selectedMonth, setSelectedMonth] = useState(now.getMonth()); // 0-11
+  const [selectedYear, setSelectedYear] = useState(now.getFullYear());
+  const [isMonthPickerOpen, setIsMonthPickerOpen] = useState(false);
+  const [pickerYear, setPickerYear] = useState(now.getFullYear()); // Year shown in picker
+
+  // Two-Stage Progressive Sheet State
+  const [addExpenseStage, setAddExpenseStage] = useState<AddExpenseStage>('closed');
+
+  // OCR State (for stage: 'ocr')
   const [pendingReceipt, setPendingReceipt] = useState<PendingReceipt | null>(null);
+
+  // Shared form fields (used by both OCR and Manual entry)
   const [editAmount, setEditAmount] = useState<string>('');
   const [editMerchant, setEditMerchant] = useState<string>('');
-  const [editCategory, setEditCategory] = useState<string>('');
-  const [editDate, setEditDate] = useState<string>('');
+  const [editCategory, setEditCategory] = useState<string>(EXPENSE_CATEGORIES[0]);
+  const [editDate, setEditDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [isSaving, setIsSaving] = useState(false);
 
-  /** ---------- EXISTING EXPENSE MODAL (new feature) ----------- */
+  // Existing Expense Modal State
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
   const [isEditingExisting, setIsEditingExisting] = useState(false);
   const [confirmDeleteExisting, setConfirmDeleteExisting] = useState(false);
   const [savingExisting, setSavingExisting] = useState(false);
 
-  // Separate edit fields for existing expense edit
   const [exAmount, setExAmount] = useState<string>('');
   const [exMerchant, setExMerchant] = useState<string>('');
   const [exCategory, setExCategory] = useState<string>('');
   const [exDate, setExDate] = useState<string>('');
 
-  /** ---------- NEW: local copy for optimistic UI ---------- */
-  const [localExpenses, setLocalExpenses] = useState<Expense[]>(expenses);
+  const [localExpenses, setLocalExpenses] = useState<Expense[]>([...expenses]);
 
-  // Keep local state in sync with parent prop
-  useEffect(() => {
-    setLocalExpenses(expenses);
-  }, [expenses]);
+  // Scroll header hook
+  const { isScrolled } = useScrollHeader();
 
+  // Refs
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
+  const amountInputRef = useRef<HTMLInputElement>(null);
 
-  /** Keep existing expense edit form in sync when opening modal */
+  useEffect(() => {
+    setLocalExpenses([...expenses]);
+  }, [expenses]);
+
   useEffect(() => {
     if (!selectedExpense) return;
     setExAmount(selectedExpense.amount.toFixed(2));
@@ -99,11 +152,71 @@ const Expenses: React.FC<ExpensesProps> = ({
     setExDate(iso);
   }, [selectedExpense]);
 
-  /** --------------------- Receipt Scanning Flow --------------------- */
+  // Auto-focus amount field when entering manual mode
+  useEffect(() => {
+    if (addExpenseStage === 'manual' && amountInputRef.current) {
+      // Small delay to ensure the input is rendered
+      setTimeout(() => {
+        amountInputRef.current?.focus();
+      }, 100);
+    }
+  }, [addExpenseStage]);
+
+  // Check if any modal is open
+  const isModalOpen = addExpenseStage !== 'closed' || selectedExpense || isMonthPickerOpen;
+
+  // Filter expenses by selected month/year
+  // Parse date string directly to avoid timezone issues (YYYY-MM-DD format)
+  const filteredExpenses = useMemo(() => {
+    return localExpenses.filter((expense) => {
+      const [year, month] = expense.date.split('-').map(Number);
+      return (month - 1) === selectedMonth && year === selectedYear;
+    });
+  }, [localExpenses, selectedMonth, selectedYear]);
+
+  // Month names for display
+  const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const MONTH_NAMES_FULL = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+  // Format selected month for display
+  const selectedMonthLabel = `${MONTH_NAMES_FULL[selectedMonth]} ${selectedYear}`;
+
+  // ─────────────────────────────────────────────────────────────────
+  // Open Add Expense Sheet
+  // ─────────────────────────────────────────────────────────────────
+  const openAddExpenseSheet = () => {
+    // Reset form to defaults
+    setEditAmount('');
+    setEditMerchant('');
+    setEditCategory(EXPENSE_CATEGORIES[0]);
+    setEditDate(new Date().toISOString().split('T')[0]);
+    setPendingReceipt(null);
+    setAddExpenseStage('options');
+  };
+
+  const closeAddExpenseSheet = () => {
+    setAddExpenseStage('closed');
+    setPendingReceipt(null);
+    setEditAmount('');
+    setEditMerchant('');
+    setEditCategory(EXPENSE_CATEGORIES[0]);
+    setEditDate(new Date().toISOString().split('T')[0]);
+  };
+
+  // ─────────────────────────────────────────────────────────────────
+  // Enter Manual Mode
+  // ─────────────────────────────────────────────────────────────────
+  const enterManualMode = () => {
+    setAddExpenseStage('manual');
+  };
+
+  // ─────────────────────────────────────────────────────────────────
+  // Receipt Scanning Flow
+  // ─────────────────────────────────────────────────────────────────
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setShowScanOptions(false);
+    setAddExpenseStage('closed'); // Close sheet while scanning
     setIsScanning(true);
     setError(null);
     try {
@@ -125,8 +238,9 @@ const Expenses: React.FC<ExpensesProps> = ({
       setPendingReceipt({ receiptId, imageUrl: url, thumbnailBase64, parsed });
       setEditAmount(parsed.total.toFixed(2));
       setEditMerchant(parsed.merchant);
-      setEditCategory(parsed.category);
-      setEditDate(parsed.date);
+      setEditCategory(parsed.category || EXPENSE_CATEGORIES[0]);
+      setEditDate(parsed.date || new Date().toISOString().split('T')[0]);
+      setAddExpenseStage('ocr'); // Show OCR confirmation
     } catch (err) {
       console.error('Receipt processing failed:', err);
       setError(err instanceof Error ? err.message : 'Failed to process receipt');
@@ -136,8 +250,10 @@ const Expenses: React.FC<ExpensesProps> = ({
     }
   };
 
-  const handleConfirmSave = async () => {
-    if (!pendingReceipt) return;
+  // ─────────────────────────────────────────────────────────────────
+  // Save Expense (works for both OCR and Manual)
+  // ─────────────────────────────────────────────────────────────────
+  const handleSaveExpense = async () => {
     setIsSaving(true);
     try {
       const newExpense: Expense = {
@@ -146,17 +262,17 @@ const Expenses: React.FC<ExpensesProps> = ({
         merchant: editMerchant || 'Unknown',
         category: editCategory || 'Miscellaneous',
         date: editDate || new Date().toISOString().split('T')[0],
-        receiptUrl: pendingReceipt.imageUrl,
+        receiptUrl: pendingReceipt?.imageUrl || undefined,
       };
 
-      // link in DB
+      // If OCR, link receipt to expense
+      if (pendingReceipt) {
       await linkReceiptToExpense(pendingReceipt.receiptId, newExpense.id);
+      }
 
-      // add to parent (if it updates its state) and update local for instant UI
       onAdd(newExpense);
       setLocalExpenses((prev) => [...prev, newExpense]);
-
-      setPendingReceipt(null);
+      closeAddExpenseSheet();
     } catch (err) {
       console.error('Failed to save expense:', err);
       setError(err instanceof Error ? err.message : 'Failed to save expense');
@@ -165,15 +281,9 @@ const Expenses: React.FC<ExpensesProps> = ({
     }
   };
 
-  const handleCancelReceipt = () => {
-    setPendingReceipt(null);
-    setEditAmount('');
-    setEditMerchant('');
-    setEditCategory('');
-    setEditDate('');
-  };
-
-  /** --------------------- Existing Expense Modal (NEW) --------------------- */
+  // ─────────────────────────────────────────────────────────────────
+  // Existing Expense Modal
+  // ─────────────────────────────────────────────────────────────────
   function openExistingModal(exp: Expense) {
     setSelectedExpense(exp);
     setIsEditingExisting(false);
@@ -197,12 +307,9 @@ const Expenses: React.FC<ExpensesProps> = ({
         category: exCategory || selectedExpense.category,
         date: exDate || selectedExpense.date,
       };
-
       if (onUpdate) {
         await onUpdate(updated);
       }
-
-      // Optimistically update local list
       setLocalExpenses((prev) => prev.map((e) => (e.id === updated.id ? updated : e)));
       setSelectedExpense(updated);
       setIsEditingExisting(false);
@@ -218,20 +325,11 @@ const Expenses: React.FC<ExpensesProps> = ({
     if (!selectedExpense) return;
     setSavingExisting(true);
     try {
-      // 1) Delete receipt rows & storage in Supabase for this expense
       await deleteReceiptByExpenseId(selectedExpense.id);
-      // Or, if you prefer not to delete the receipt, just unlink it:
-      // await unlinkReceiptFromExpenseByExpenseId(selectedExpense.id);
-
-      // 2) Call parent to delete the expense record from your expenses table
       if (onDelete) {
         await onDelete(selectedExpense.id);
       }
-
-      // 3) Optimistically update local list & total
       setLocalExpenses((prev) => prev.filter((e) => e.id !== selectedExpense.id));
-
-      // 4) Close the modal
       closeExistingModal();
     } catch (err) {
       console.error('Failed to delete expense:', err);
@@ -241,7 +339,68 @@ const Expenses: React.FC<ExpensesProps> = ({
     }
   }
 
-  /** --------------------- Chart Preparation --------------------- */
+  // ─────────────────────────────────────────────────────────────────
+  // Chart Data
+  // ─────────────────────────────────────────────────────────────────
+  // Breakdown data - categories with totals (filtered by selected month)
+  const breakdownData = useMemo(() => {
+    return EXPENSE_CATEGORIES.map((cat) => {
+      const total = filteredExpenses
+        .filter((e) => e.category === cat)
+        .reduce((sum, e) => sum + e.amount, 0);
+      return {
+        category: cat,
+        amount: total,
+        config: getExpenseCategoryConfig(cat),
+      };
+    }).filter((d) => d.amount > 0).sort((a, b) => b.amount - a.amount);
+  }, [filteredExpenses]);
+
+  // Monthly trend data for stacked bar chart (ending at selected month)
+  const trendData = useMemo(() => {
+    const months: { month: string; year: number; monthNum: number; [key: string]: number | string }[] = [];
+    
+    // Generate month labels for the selected period, ending at selected month
+    for (let i = trendPeriod - 1; i >= 0; i--) {
+      let targetMonth = selectedMonth - i;
+      let targetYear = selectedYear;
+      
+      // Handle year rollover (going backwards)
+      while (targetMonth < 0) {
+        targetMonth += 12;
+        targetYear -= 1;
+      }
+      
+      const monthKey = `${MONTH_NAMES[targetMonth]} '${String(targetYear).slice(-2)}`;
+      const monthData: { month: string; year: number; monthNum: number; [key: string]: number | string } = { 
+        month: monthKey,
+        year: targetYear,
+        monthNum: targetMonth,
+      };
+      
+      // Initialize all categories to 0
+      EXPENSE_CATEGORIES.forEach(cat => {
+        monthData[cat] = 0;
+      });
+      
+      months.push(monthData);
+    }
+    
+    // Populate with expense data - parse date string directly to avoid timezone issues
+    localExpenses.forEach((expense) => {
+      const [year, month] = expense.date.split('-').map(Number);
+      const expenseMonth = month - 1; // Convert to 0-indexed
+      
+      const monthEntry = months.find(m => m.year === year && m.monthNum === expenseMonth);
+      if (monthEntry && expense.category) {
+        monthEntry[expense.category] = (monthEntry[expense.category] as number || 0) + expense.amount;
+      }
+    });
+    
+    return months;
+  }, [localExpenses, trendPeriod, selectedMonth, selectedYear]);
+
+  // Legacy chart data (keeping for reference)
   const chartData = EXPENSE_CATEGORIES.map((cat) => ({
     name: cat.split(' ')[0],
     amount: localExpenses
@@ -249,102 +408,346 @@ const Expenses: React.FC<ExpensesProps> = ({
       .reduce((sum, e) => sum + e.amount, 0),
   })).filter((d) => d.amount > 0);
 
-  const COLORS = ['#4e649b', '#647ac0', '#a3b1da', '#d1d9f0', '#f0f4ff', '#888888'];
+  const COLORS = ['hsl(198, 23%, 50%)', 'hsl(198, 23%, 60%)', 'hsl(198, 23%, 70%)', 'hsl(198, 23%, 80%)', 'hsl(0, 0%, 60%)', 'hsl(0, 0%, 70%)'];
+
+  // Total for selected month
+  const totalAmount = filteredExpenses.reduce((acc, curr) => acc + curr.amount, 0);
 
   return (
-    <div className="px-4 pt-16 pb-24 h-full animate-slide-up relative">
-      {/* Header */}
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-brand-text">{t['expenses.title']}</h1>
-        <div className="flex gap-2">
+    <div className="min-h-screen bg-background pb-40">
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
+        {/* ─────────────────────────────────────────────────────────────── */}
+        {/* STICKY HEADER with Scroll Animation */}
+        {/* ─────────────────────────────────────────────────────────────── */}
+        <header
+          className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm -mx-4 px-4 sm:-mx-6 sm:px-6 transition-[padding] duration-300 overflow-hidden"
+          style={{
+            paddingTop: isScrolled ? '12px' : '48px',
+            paddingBottom: '12px',
+          }}
+        >
+          <div className="flex items-center justify-between">
+            <h1
+              className="text-display text-foreground transition-transform duration-300 origin-left will-change-transform"
+              style={{ transform: isScrolled ? 'scale(0.5)' : 'scale(1)' }}
+            >
+              {t['expenses.title']}
+            </h1>
+            {/* Month Selector Button */}
           <button
-            onClick={() => setView('chart')}
-            className={`p-2 rounded-lg ${view === 'chart' ? 'bg-brand-primary text-white' : 'bg-gray-200 text-gray-500'}`}
-          >
-            <PieIcon size={20} />
+              onClick={() => {
+                setPickerYear(selectedYear);
+                setIsMonthPickerOpen(true);
+              }}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-full bg-secondary text-foreground text-body hover:bg-secondary/80 transition-colors"
+            >
+              <Calendar size={16} />
+              <span>{MONTH_NAMES[selectedMonth]} {selectedYear}</span>
+              <ChevronDown size={16} />
           </button>
+          </div>
+        </header>
+
+        {/* Total Card - fades out on scroll */}
+        <div
+          className="transition-all duration-300 overflow-hidden"
+          style={{
+            opacity: isScrolled ? 0 : 1,
+            maxHeight: isScrolled ? '0px' : '120px',
+            marginBottom: isScrolled ? '0px' : '24px',
+            marginTop: isScrolled ? '0px' : '16px',
+          }}
+        >
+          <div className="bg-primary text-primary-foreground p-6 rounded-xl shadow-md">
+            <p className="text-body opacity-80 mb-1">Total for {MONTH_NAMES_FULL[selectedMonth]}</p>
+            <h2 className="text-display">${totalAmount.toFixed(2)}</h2>
+          </div>
+        </div>
+
+        {/* ─────────────────────────────────────────────────────────────── */}
+        {/* STICKY TAB NAVIGATION (View Toggle) */}
+        {/* ─────────────────────────────────────────────────────────────── */}
+        <div
+          className="sticky z-10 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 py-3 transition-all duration-300"
+          style={{
+            top: isScrolled ? '52px' : '80px',
+            boxShadow: isScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none',
+          }}
+        >
+          <div
+            className="relative rounded-full overflow-hidden"
+            style={{ backgroundColor: 'hsl(var(--muted))' }}
+          >
+            <div className="flex p-1">
           <button
             onClick={() => setView('list')}
-            className={`p-2 rounded-lg ${view === 'list' ? 'bg-brand-primary text-white' : 'bg-gray-200 text-gray-500'}`}
-          >
-            <List size={20} />
+                className={`flex-1 px-4 py-2 rounded-full text-body whitespace-nowrap transition-all flex items-center justify-center gap-2 ${
+                  view === 'list'
+                    ? 'bg-card text-primary shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <List size={18} />
+                List
           </button>
+          <button
+                onClick={() => setView('chart')}
+                className={`flex-1 px-4 py-2 rounded-full text-body whitespace-nowrap transition-all flex items-center justify-center gap-2 ${
+                  view === 'chart'
+                    ? 'bg-card text-primary shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <PieIcon size={18} />
+                Summary
+          </button>
+            </div>
+            <div
+              className="absolute inset-0 rounded-full pointer-events-none"
+              style={{ boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.06)' }}
+            />
         </div>
       </div>
 
-      {/* Error */}
+        {/* ─────────────────────────────────────────────────────────────── */}
+        {/* MAIN CONTENT */}
+        {/* ─────────────────────────────────────────────────────────────── */}
+        <div className="pt-4">
+          {/* Error Alert */}
       {error && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
-          <AlertCircle className="text-red-500 flex-shrink-0 mt-0.5" size={20} />
+            <div className="mb-4 p-4 bg-destructive/10 border border-destructive/20 rounded-xl flex items-start gap-3">
+              <AlertCircle className="text-destructive flex-shrink-0 mt-0.5" size={20} />
           <div className="flex-1">
-            <p className="text-red-800 font-medium">Scan Failed</p>
-            <p className="text-red-600 text-sm">{error}</p>
+                <p className="text-title text-destructive">Error</p>
+                <p className="text-body text-destructive/80">{error}</p>
           </div>
-          <button onClick={() => setError(null)} className="text-red-400 hover:text-red-600">
+              <button onClick={() => setError(null)} className="text-destructive/60 hover:text-destructive">
             <X size={16} />
           </button>
         </div>
       )}
 
-      {/* Total Card (uses localExpenses) */}
-      <div className="bg-brand-primary text-white p-6 rounded-2xl shadow-lg mb-6 relative overflow-hidden">
-        <div className="absolute right-0 top-0 w-32 h-32 bg-white opacity-10 rounded-full -translate-y-1/2 translate-x-1/2" />
-        <p className="text-brand-accent opacity-80 text-sm font-medium mb-1">{t['expenses.total_month']}</p>
-        <h2 className="text-4xl font-bold">
-          ${localExpenses.reduce((acc, curr) => acc + curr.amount, 0).toFixed(2)}
-        </h2>
+          {/* Scanning Indicator */}
+          {isScanning && (
+            <div className="mb-4 p-4 bg-primary/10 rounded-xl text-center">
+              <p className="text-body text-primary animate-pulse">{t['expenses.analyzing']}</p>
       </div>
-
-      {/* Scan Button */}
-      <div className="mb-8">
-        <button
-          onClick={() => setShowScanOptions(true)}
-          disabled={isScanning}
-          className="w-full py-4 rounded-xl border-2 border-dashed border-brand-secondary text-brand-primary font-semibold flex items-center justify-center gap-2 hover:bg-blue-50 transition-colors text-sm"
-        >
-          {isScanning ? (
-            <span className="animate-pulse">{t['expenses.analyzing']}</span>
-          ) : (
-            <>
-              <Camera size={20} /> {t['expenses.scan_receipt']}
-            </>
           )}
+
+          {/* Summary View */}
+          {view === 'chart' ? (
+            <div className="space-y-4">
+              {/* Summary View Toggle */}
+              <div className="flex items-center justify-between">
+                <div
+                  className="relative rounded-full overflow-hidden inline-flex"
+                  style={{ backgroundColor: 'hsl(var(--muted))' }}
+                >
+                  <div className="flex p-1">
+        <button
+                      onClick={() => setSummaryView('breakdown')}
+                      className={`px-4 py-2.5 rounded-full text-body whitespace-nowrap transition-all flex items-center gap-2 ${
+                        summaryView === 'breakdown'
+                          ? 'bg-card text-primary shadow-sm'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      <LayoutList size={16} />
+                      Breakdown
+                    </button>
+                    <button
+                      onClick={() => setSummaryView('trend')}
+                      className={`px-4 py-2.5 rounded-full text-body whitespace-nowrap transition-all flex items-center gap-2 ${
+                        summaryView === 'trend'
+                          ? 'bg-card text-primary shadow-sm'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      <TrendingUp size={16} />
+                      Trend
         </button>
+                  </div>
       </div>
 
-      {/* Content */}
-      {view === 'chart' ? (
-        <div className="bg-white p-4 rounded-2xl shadow-sm h-64">
-          <h3 className="text-gray-800 font-bold mb-4">{t['expenses.breakdown']}</h3>
-          <ResponsiveContainer width="100%" height="85%">
-            <BarChart data={chartData}>
-              <XAxis dataKey="name" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
-              <Tooltip cursor={{ fill: 'transparent' }} />
-              <Bar dataKey="amount" radius={[4, 4, 0, 0]}>
-                {chartData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                ))}
-              </Bar>
+                {/* Period Selector (only for Trend view) */}
+                {summaryView === 'trend' && (
+                  <div
+                    className="relative rounded-full overflow-hidden inline-flex"
+                    style={{ backgroundColor: 'hsl(var(--muted))' }}
+                  >
+                    <div className="flex p-1">
+                      {([3, 6, 12] as TrendPeriod[]).map((period) => (
+                        <button
+                          key={period}
+                          onClick={() => setTrendPeriod(period)}
+                          className={`px-3 py-2 rounded-full text-body whitespace-nowrap transition-all ${
+                            trendPeriod === period
+                              ? 'bg-card text-primary shadow-sm'
+                              : 'text-muted-foreground hover:text-foreground'
+                          }`}
+                        >
+                          {period}M
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Breakdown View */}
+              {summaryView === 'breakdown' && (
+                <div className="bg-card rounded-xl shadow-sm overflow-hidden">
+                  {breakdownData.length > 0 ? (
+                    breakdownData.map((item, index) => (
+                      <div
+                        key={item.category}
+                        className={`p-4 flex items-center justify-between ${
+                          index !== breakdownData.length - 1 ? 'list-item-separator' : ''
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div
+                            className="w-9 h-9 rounded-full flex items-center justify-center"
+                            style={{ backgroundColor: item.config.bgColor, color: item.config.color }}
+                          >
+                            {item.config.icon}
+                          </div>
+                          <span className="text-body text-foreground">{item.category}</span>
+                        </div>
+                        <span className="text-title text-foreground">${item.amount.toFixed(2)}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="p-8 text-center">
+                      <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-secondary flex items-center justify-center">
+                        <PieIcon size={28} className="text-muted-foreground" />
+                      </div>
+                      <p className="text-body text-foreground">No expense data</p>
+                      <p className="text-caption text-muted-foreground mt-1">
+                        Add an expense to get started
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Trend View - Stacked Bar Chart */}
+              {summaryView === 'trend' && (
+                <div className="bg-card p-4 rounded-xl shadow-sm">
+                  {trendData.some(m => EXPENSE_CATEGORIES.some(cat => (m[cat] as number) > 0)) ? (
+                    <div className="h-72">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={trendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                          <XAxis 
+                            dataKey="month" 
+                            tick={{ fontSize: 11 }} 
+                            axisLine={false} 
+                            tickLine={false}
+                          />
+                          <YAxis 
+                            tick={{ fontSize: 10 }} 
+                            axisLine={false} 
+                            tickLine={false}
+                            tickFormatter={(value) => `$${value >= 1000 ? `${(value/1000).toFixed(0)}k` : value}`}
+                          />
+                          <Tooltip 
+                            cursor={{ fill: 'hsl(var(--muted))' }}
+                            contentStyle={{ 
+                              backgroundColor: 'hsl(var(--card))', 
+                              border: '1px solid hsl(var(--border))',
+                              borderRadius: '8px',
+                              fontSize: '12px'
+                            }}
+                            formatter={(value: number) => [`$${value.toFixed(2)}`, '']}
+                          />
+                          {EXPENSE_CATEGORIES.map((cat) => {
+                            const config = getExpenseCategoryConfig(cat);
+                            return (
+                              <Bar
+                                key={cat}
+                                dataKey={cat}
+                                stackId="a"
+                                fill={config.color}
+                                radius={cat === EXPENSE_CATEGORIES[EXPENSE_CATEGORIES.length - 1] ? [4, 4, 0, 0] : [0, 0, 0, 0]}
+                              />
+                            );
+                          })}
             </BarChart>
           </ResponsiveContainer>
         </div>
       ) : (
-        <div className="space-y-3 pb-10">
-          {localExpenses.map((expense) => (
+                    <div className="h-72 flex items-center justify-center">
+                      <div className="text-center">
+                        <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-secondary flex items-center justify-center">
+                          <TrendingUp size={28} className="text-muted-foreground" />
+                        </div>
+                        <p className="text-body text-foreground">No trend data</p>
+                        <p className="text-caption text-muted-foreground mt-1">
+                          Add expenses to see your spending trend
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Legend */}
+                  {trendData.some(m => EXPENSE_CATEGORIES.some(cat => (m[cat] as number) > 0)) && (
+                    <div className="mt-4 flex flex-wrap gap-3 justify-center">
+                      {EXPENSE_CATEGORIES.map((cat) => {
+                        const config = getExpenseCategoryConfig(cat);
+                        const hasData = trendData.some(m => (m[cat] as number) > 0);
+                        if (!hasData) return null;
+                        return (
+                          <div key={cat} className="flex items-center gap-1.5">
+                            <div
+                              className="w-3 h-3 rounded-sm"
+                              style={{ backgroundColor: config.color }}
+                            />
+                            <span className="text-caption text-muted-foreground">{cat.split(' ')[0]}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          ) : (
+            /* List View - Unified Card */
+            <div>
+              {filteredExpenses.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-secondary flex items-center justify-center">
+                    <Receipt size={28} className="text-muted-foreground" />
+                  </div>
+                  <p className="text-body text-foreground">No expenses in {MONTH_NAMES_FULL[selectedMonth]}</p>
+                  <p className="text-caption text-muted-foreground mt-1">
+                    Tap + to add your first expense
+                  </p>
+                </div>
+              ) : (
+                <div className="bg-card rounded-xl shadow-sm overflow-hidden">
+                  {filteredExpenses.map((expense, index) => {
+                    const config = getExpenseCategoryConfig(expense.category);
+                    return (
             <button
               key={expense.id}
               type="button"
               onClick={() => openExistingModal(expense)}
-              className="w-full bg-white p-4 rounded-2xl shadow-sm flex justify-between items-center text-left hover:shadow-md transition"
+                        className={`w-full p-4 flex justify-between items-center text-left hover:bg-secondary/50 transition-colors ${
+                          index !== filteredExpenses.length - 1 ? 'list-item-separator' : ''
+                        }`}
             >
               <div className="flex items-center gap-4">
-                <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center text-orange-500">
-                  <DollarSignIcon size={20} />
+                          <div
+                            className="w-10 h-10 rounded-full flex items-center justify-center"
+                            style={{ backgroundColor: config.bgColor, color: config.color }}
+                          >
+                            {config.icon}
                 </div>
                 <div>
-                  <p className="font-bold text-gray-800">{expense.merchant}</p>
-                  <p className="text-xs text-gray-400">
-                    {expense.category} •{' '}
+                            <p className="text-title text-foreground">{expense.merchant}</p>
+                            <p className="text-caption text-muted-foreground">
+                              {expense.category} ·{' '}
                     {new Date(expense.date).toLocaleDateString(
                       currentLang === 'en' ? 'en-GB' : currentLang,
                       { day: 'numeric', month: 'short', year: 'numeric' }
@@ -352,40 +755,37 @@ const Expenses: React.FC<ExpensesProps> = ({
                   </p>
                 </div>
               </div>
-              <span className="font-bold text-lg text-gray-800">-${expense.amount.toFixed(2)}</span>
+                        <span className="text-title text-foreground">${expense.amount.toFixed(2)}</span>
             </button>
-          ))}
-          {localExpenses.length === 0 && <p className="text-sm text-gray-500">No expenses yet.</p>}
+                    );
+                  })}
         </div>
       )}
+            </div>
+          )}
+        </div>
 
-      {/* Scan Options Modal */}
-      {showScanOptions && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-xl animate-slide-up">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-bold text-gray-800">{t['expenses.scan_receipt']}</h3>
+        {/* Footer */}
+        <div className="helpy-footer">
+          <span className="helpy-logo">helpy</span>
+        </div>
+      </div>
+
+      {/* ─────────────────────────────────────────────────────────────── */}
+      {/* FLOATING ACTION BUTTON */}
+      {/* ─────────────────────────────────────────────────────────────── */}
               <button
-                onClick={() => setShowScanOptions(false)}
-                className="p-2 bg-gray-100 rounded-full text-gray-500 hover:bg-gray-200"
-              >
-                <X size={20} />
+        onClick={openAddExpenseSheet}
+        disabled={isScanning}
+        className={`fixed bottom-24 right-6 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-all flex items-center justify-center z-30 hover:scale-105 active:scale-95 disabled:opacity-50 ${
+          isModalOpen ? 'fab-hiding' : ''
+        }`}
+        aria-label="Add Expense"
+      >
+        <Plus size={24} />
               </button>
-            </div>
-            <div className="space-y-3">
-              <button
-                onClick={() => cameraInputRef.current?.click()}
-                className="w-full py-4 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center gap-3 font-bold text-gray-700 hover:bg-gray-100 transition-colors"
-              >
-                <Camera size={20} /> {t['profile.take_photo']}
-              </button>
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="w-full py-4 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center gap-3 font-bold text-gray-700 hover:bg-gray-100 transition-colors"
-              >
-                <ImageIcon size={20} /> {t['profile.choose_library']}
-              </button>
-            </div>
+
+      {/* Hidden file inputs */}
             <input
               type="file"
               ref={cameraInputRef}
@@ -401,55 +801,239 @@ const Expenses: React.FC<ExpensesProps> = ({
               className="hidden"
               onChange={handleFileUpload}
             />
+
+      {/* ─────────────────────────────────────────────────────────────── */}
+      {/* TWO-STAGE PROGRESSIVE SHEET */}
+      {/* ─────────────────────────────────────────────────────────────── */}
+      {addExpenseStage !== 'closed' && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-end justify-center bottom-sheet-backdrop">
+          <div className="bg-card w-full max-w-lg rounded-t-2xl shadow-2xl overflow-hidden bottom-sheet-content relative">
+            {/* Close Button */}
+            <button
+              onClick={closeAddExpenseSheet}
+              className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center hover:bg-secondary transition-colors right-4 top-4 text-muted-foreground"
+              aria-label="Close"
+            >
+              <X size={20} />
+            </button>
+
+            {/* Header */}
+            <div className="pt-6 pb-4 px-5 border-b border-border">
+              <div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto mb-4" />
+              <h2 className="text-title text-foreground text-center">
+                {addExpenseStage === 'options' && 'Add Expense'}
+                {addExpenseStage === 'manual' && 'Enter Expense'}
+                {addExpenseStage === 'ocr' && 'Confirm Receipt'}
+              </h2>
           </div>
+
+            {/* ─────────────────────────────────────────────────────────────── */}
+            {/* STAGE 1: OPTIONS (Compact - Thumb Friendly) */}
+            {/* ─────────────────────────────────────────────────────────────── */}
+            {addExpenseStage === 'options' && (
+              <div className="p-5 pb-20 space-y-3">
+                {/* Scan Options - Side by side for quick access */}
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="py-6 rounded-xl bg-secondary border border-border flex flex-col items-center justify-center gap-2 text-foreground hover:bg-secondary/80 transition-colors"
+                  >
+                    <ImageIcon size={28} />
+                    <span className="text-body font-medium">Photo Library</span>
+                  </button>
+                  <button
+                    onClick={() => cameraInputRef.current?.click()}
+                    className="py-6 rounded-xl bg-primary/10 border border-primary/20 flex flex-col items-center justify-center gap-2 text-primary hover:bg-primary/20 transition-colors"
+                  >
+                    <Camera size={28} />
+                    <span className="text-body font-medium">Scan Receipt</span>
+                  </button>
+                </div>
+
+                {/* Divider */}
+                <div className="flex items-center gap-3 py-2">
+                  <div className="flex-1 h-px bg-border" />
+                  <span className="text-caption text-muted-foreground">or</span>
+                  <div className="flex-1 h-px bg-border" />
+          </div>
+
+                {/* Manual Entry Button - Full width at bottom for thumb reach */}
+                <button
+                  onClick={enterManualMode}
+                  className="w-full py-4 rounded-xl bg-secondary border border-border flex items-center justify-center gap-3 text-title text-foreground hover:bg-secondary/80 transition-colors"
+                >
+                  <Pencil size={20} />
+                  Enter Manually
+                </button>
         </div>
       )}
 
-      {/* OCR Confirmation Modal (existing) */}
-      {pendingReceipt && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-xl animate-slide-up max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-bold text-gray-800">Confirm Receipt</h3>
-              <button onClick={handleCancelReceipt} className="p-2 bg-gray-100 rounded-full text-gray-500 hover:bg-gray-200">
-                <X size={20} />
+            {/* ─────────────────────────────────────────────────────────────── */}
+            {/* STAGE 2A: MANUAL ENTRY FORM */}
+            {/* ─────────────────────────────────────────────────────────────── */}
+            {addExpenseStage === 'manual' && (
+              <>
+                {/* Back Button */}
+                <button
+                  onClick={() => setAddExpenseStage('options')}
+                  className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center hover:bg-secondary transition-colors left-4 top-4 text-muted-foreground"
+                  aria-label="Back"
+                >
+                  <ArrowLeft size={20} />
               </button>
+
+                <div className="p-5 space-y-4 max-h-[50vh] overflow-y-auto">
+                  {/* Amount - Auto-focused */}
+                  <div>
+                    <label className="block text-caption text-muted-foreground mb-2 uppercase tracking-wide">
+                      Amount
+                    </label>
+                    <input
+                      ref={amountInputRef}
+                      type="number"
+                      step="0.01"
+                      inputMode="decimal"
+                      value={editAmount}
+                      onChange={(e) => setEditAmount(e.target.value)}
+                      placeholder="0.00"
+                      className="w-full px-4 py-4 rounded-xl bg-secondary border border-border focus:border-foreground outline-none transition-all text-display"
+                    />
             </div>
 
+                  {/* Shop Name */}
+                  <div>
+                    <label className="block text-caption text-muted-foreground mb-2 uppercase tracking-wide">
+                      Shop Name
+                    </label>
+                    <input
+                      type="text"
+                      value={editMerchant}
+                      onChange={(e) => setEditMerchant(e.target.value)}
+                      placeholder="Where did you spend?"
+                      className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-foreground outline-none transition-all text-body"
+                    />
+                  </div>
+
+                  {/* Category & Date - Side by side */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-caption text-muted-foreground mb-2 uppercase tracking-wide">
+                        Category
+                      </label>
+                      <select
+                        value={editCategory}
+                        onChange={(e) => setEditCategory(e.target.value)}
+                        className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-foreground outline-none transition-all text-body"
+                      >
+                        {EXPENSE_CATEGORIES.map((cat) => (
+                          <option key={cat} value={cat}>
+                            {cat}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-caption text-muted-foreground mb-2 uppercase tracking-wide">
+                        Date
+                      </label>
+                      <input
+                        type="date"
+                        value={editDate}
+                        onChange={(e) => setEditDate(e.target.value)}
+                        className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-foreground outline-none transition-all text-body"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Footer - Actions at bottom for thumb reach */}
+                <div className="p-5 pb-20 border-t border-border flex gap-3">
+                  <button
+                    onClick={closeAddExpenseSheet}
+                    className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body hover:bg-secondary/80 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSaveExpense}
+                    disabled={isSaving || !editAmount}
+                    className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {isSaving ? (
+                      <span className="animate-pulse">Saving...</span>
+                    ) : (
+                      <>
+                        <Check size={18} /> Save
+                      </>
+                    )}
+              </button>
+            </div>
+              </>
+            )}
+
+            {/* ─────────────────────────────────────────────────────────────── */}
+            {/* STAGE 2B: OCR CONFIRMATION */}
+            {/* ─────────────────────────────────────────────────────────────── */}
+            {addExpenseStage === 'ocr' && pendingReceipt && (
+              <>
+                {/* Back Button */}
+                <button
+                  onClick={() => {
+                    setPendingReceipt(null);
+                    setAddExpenseStage('options');
+                  }}
+                  className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center hover:bg-secondary transition-colors left-4 top-4 text-muted-foreground"
+                  aria-label="Back"
+                >
+                  <ArrowLeft size={20} />
+                </button>
+
+                <div className="p-5 space-y-4 max-h-[50vh] overflow-y-auto">
             {/* Receipt Thumbnail */}
-            <div className="mb-4 rounded-xl overflow-hidden border border-gray-200">
+                  <div className="rounded-xl overflow-hidden border border-border">
               <img src={pendingReceipt.thumbnailBase64} alt="Receipt" className="w-full h-32 object-cover" />
             </div>
 
-            {/* Editable Fields (OCR) */}
-            <div className="space-y-4">
+                  {/* Amount */}
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">Amount (HKD)</label>
+                    <label className="block text-caption text-muted-foreground mb-2 uppercase tracking-wide">
+                      Amount
+                    </label>
                 <input
                   type="number"
                   step="0.01"
+                      inputMode="decimal"
                   value={editAmount}
                   onChange={(e) => setEditAmount(e.target.value)}
                   placeholder="0.00"
-                  className="w-full bg-gray-50 border-none rounded-xl px-4 py-3 text-lg font-bold focus:ring-2 focus:ring-brand-primary outline-none text-gray-800"
+                      className="w-full px-4 py-4 rounded-xl bg-secondary border border-border focus:border-foreground outline-none transition-all text-display"
                 />
               </div>
+
+                  {/* Shop Name */}
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">Shop Name</label>
+                    <label className="block text-caption text-muted-foreground mb-2 uppercase tracking-wide">
+                      Shop Name
+                    </label>
                 <input
                   type="text"
                   value={editMerchant}
                   onChange={(e) => setEditMerchant(e.target.value)}
                   placeholder="Store name"
-                  className="w-full bg-gray-50 border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-brand-primary outline-none font-semibold text-gray-800"
+                      className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-foreground outline-none transition-all text-body"
                 />
               </div>
+
+                  {/* Category & Date - Side by side */}
+                  <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">Category</label>
+                      <label className="block text-caption text-muted-foreground mb-2 uppercase tracking-wide">
+                        Category
+                      </label>
                 <select
                   value={editCategory}
                   onChange={(e) => setEditCategory(e.target.value)}
-                  className="w-full bg-gray-50 border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-brand-primary outline-none font-semibold text-gray-800"
+                        className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-foreground outline-none transition-all text-body"
                 >
                   {EXPENSE_CATEGORIES.map((cat) => (
                     <option key={cat} value={cat}>
@@ -459,83 +1043,102 @@ const Expenses: React.FC<ExpensesProps> = ({
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">Date</label>
+                      <label className="block text-caption text-muted-foreground mb-2 uppercase tracking-wide">
+                        Date
+                      </label>
                 <input
                   type="date"
                   value={editDate}
                   onChange={(e) => setEditDate(e.target.value)}
-                  className="w-full bg-gray-50 border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-brand-primary outline-none font-semibold text-gray-800"
+                        className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-foreground outline-none transition-all text-body"
                 />
+                    </div>
               </div>
             </div>
 
-            <div className="flex gap-3 mt-6 pt-4 border-t border-gray-100">
+                {/* Footer - Actions at bottom for thumb reach */}
+                <div className="p-5 pb-20 border-t border-border flex gap-3">
               <button
-                onClick={handleCancelReceipt}
-                className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold text-sm hover:bg-gray-200 transition-colors"
+                    onClick={closeAddExpenseSheet}
+                    className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body hover:bg-secondary/80 transition-colors"
               >
                 Cancel
               </button>
               <button
-                onClick={handleConfirmSave}
+                    onClick={handleSaveExpense}
                 disabled={isSaving || !editAmount}
-                className="flex-1 bg-brand-primary text-white py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-brand-secondary transition-colors disabled:opacity-50"
-              >
-                {isSaving ? <span className="animate-pulse">Saving...</span> : (<><Check size={18} /> Save</>)}
+                    className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {isSaving ? (
+                      <span className="animate-pulse">Saving...</span>
+                    ) : (
+                      <>
+                        <Check size={18} /> Save
+                      </>
+                    )}
               </button>
             </div>
+              </>
+            )}
           </div>
         </div>
       )}
 
-      {/* Existing Expense Modal (NEW) */}
+      {/* ─────────────────────────────────────────────────────────────── */}
+      {/* EXISTING EXPENSE BOTTOM SHEET */}
+      {/* ─────────────────────────────────────────────────────────────── */}
       {selectedExpense && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-xl animate-slide-up max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-end justify-center bottom-sheet-backdrop">
+          <div className="bg-card w-full max-w-lg rounded-t-2xl shadow-2xl overflow-hidden bottom-sheet-content relative">
+            {/* Close Button */}
+            <button
+              onClick={closeExistingModal}
+              className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center hover:bg-secondary transition-colors right-4 top-4 text-muted-foreground"
+              aria-label="Close"
+            >
+              <X size={20} />
+            </button>
+
             {/* Header */}
-            <div className="flex justify-between items-start">
-              <div>
-                <h3 className="text-xl font-bold text-gray-800">{selectedExpense.merchant}</h3>
-                <p className="text-xs text-gray-500">
-                  {selectedExpense.category || 'Uncategorized'} •{' '}
+            <div className="pt-6 pb-4 px-5 border-b border-border">
+              <div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto mb-4" />
+              <h2 className="text-title text-foreground">{selectedExpense.merchant}</h2>
+              <p className="text-caption text-muted-foreground">
+                {selectedExpense.category || 'Uncategorized'} ·{' '}
                   {new Date(selectedExpense.date).toLocaleDateString(
                     currentLang === 'en' ? 'en-GB' : currentLang,
                     { day: 'numeric', month: 'short', year: 'numeric' }
                   )}
                 </p>
-              </div>
-              <button
-                onClick={closeExistingModal}
-                className="p-2 bg-gray-100 rounded-full text-gray-500 hover:bg-gray-200"
-                aria-label="Close"
-              >
-                <X size={20} />
-              </button>
             </div>
 
+            {/* Content */}
+            <div className="p-5 max-h-[50vh] overflow-y-auto space-y-4">
             {/* Receipt Thumbnail */}
-            <div className="mt-3 rounded-xl overflow-hidden border border-gray-200">
+              <div className="rounded-xl overflow-hidden border border-border">
               {selectedExpense.receiptUrl ? (
-                <img src={selectedExpense.receiptUrl} alt="Receipt" className="w-full max-h-64 object-contain bg-gray-50" />
-              ) : (
-                <div className="w-full h-40 bg-gray-100 flex items-center justify-center text-gray-500">
+                  <img
+                    src={selectedExpense.receiptUrl}
+                    alt="Receipt"
+                    className="w-full max-h-64 object-contain bg-secondary"
+                  />
+                ) : (
+                  <div className="w-full h-40 bg-secondary flex items-center justify-center text-muted-foreground">
                   No receipt image
                 </div>
               )}
             </div>
 
             {/* Amount */}
-            <div className="mt-4 flex items-center justify-between">
-              <span className="text-sm text-gray-600">Amount</span>
-              <span className="font-semibold text-gray-900">
-                -${selectedExpense.amount.toFixed(2)}
-              </span>
+              <div className="flex items-center justify-between">
+                <span className="text-body text-muted-foreground">Amount</span>
+                <span className="text-title text-foreground">-${selectedExpense.amount.toFixed(2)}</span>
             </div>
 
             {/* Actions */}
-            <div className="mt-4 flex items-center gap-3">
+              <div className="flex items-center gap-3 pt-2">
               <button
-                className="rounded-lg bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700 disabled:opacity-60 inline-flex items-center gap-2"
+                  className="flex-1 rounded-xl bg-primary/10 px-4 py-3 text-primary hover:bg-primary/20 disabled:opacity-60 inline-flex items-center justify-center gap-2 text-body transition-colors"
                 onClick={() => {
                   setIsEditingExisting((v) => !v);
                   setConfirmDeleteExisting(false);
@@ -544,9 +1147,8 @@ const Expenses: React.FC<ExpensesProps> = ({
               >
                 <Edit size={18} /> {isEditingExisting ? 'Cancel Edit' : 'Edit'}
               </button>
-
               <button
-                className="rounded-lg bg-red-600 px-4 py-2 text-white hover:bg-red-700 disabled:opacity-60 inline-flex items-center gap-2"
+                  className="flex-1 rounded-xl bg-destructive/10 px-4 py-3 text-destructive hover:bg-destructive/20 disabled:opacity-60 inline-flex items-center justify-center gap-2 text-body transition-colors"
                 onClick={() => {
                   setConfirmDeleteExisting((v) => !v);
                   setIsEditingExisting(false);
@@ -557,22 +1159,25 @@ const Expenses: React.FC<ExpensesProps> = ({
               </button>
             </div>
 
-            {/* Edit Existing */}
+              {/* Edit Form */}
             {isEditingExisting && (
-              <div className="mt-4 space-y-3 border-t pt-4">
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <label className="block">
-                    <span className="text-sm text-gray-600">Merchant</span>
+                <div className="space-y-4 border-t border-border pt-4">
+                  <div>
+                    <label className="block text-caption text-muted-foreground mb-2 uppercase tracking-wide">
+                      Merchant
+                    </label>
                     <input
-                      className="mt-1 w-full rounded-lg border px-3 py-2"
+                      className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-foreground outline-none transition-all text-body"
                       value={exMerchant}
                       onChange={(e) => setExMerchant(e.target.value)}
                     />
+                  </div>
+                  <div>
+                    <label className="block text-caption text-muted-foreground mb-2 uppercase tracking-wide">
+                      Category
                   </label>
-                  <label className="block">
-                    <span className="text-sm text-gray-600">Category</span>
                     <select
-                      className="mt-1 w-full rounded-lg border px-3 py-2"
+                      className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-foreground outline-none transition-all text-body"
                       value={exCategory}
                       onChange={(e) => setExCategory(e.target.value)}
                     >
@@ -582,63 +1187,68 @@ const Expenses: React.FC<ExpensesProps> = ({
                         </option>
                       ))}
                     </select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-caption text-muted-foreground mb-2 uppercase tracking-wide">
+                        Amount
                   </label>
-                  <label className="block">
-                    <span className="text-sm text-gray-600">Amount</span>
                     <input
                       type="number"
                       step="0.01"
-                      className="mt-1 w-full rounded-lg border px-3 py-2"
+                        className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-foreground outline-none transition-all text-body"
                       value={exAmount}
                       onChange={(e) => setExAmount(e.target.value)}
                     />
+                    </div>
+                    <div>
+                      <label className="block text-caption text-muted-foreground mb-2 uppercase tracking-wide">
+                        Date
                   </label>
-                  <label className="block">
-                    <span className="text-sm text-gray-600">Date</span>
                     <input
                       type="date"
-                      className="mt-1 w-full rounded-lg border px-3 py-2"
+                        className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-foreground outline-none transition-all text-body"
                       value={exDate}
                       onChange={(e) => setExDate(e.target.value)}
                     />
-                  </label>
+                    </div>
                 </div>
 
-                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 pt-2">
                   <button
-                    className="rounded-lg bg-gray-100 px-4 py-2 text-gray-800 hover:bg-gray-200"
+                      className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body hover:bg-secondary/80 transition-colors"
                     onClick={() => setIsEditingExisting(false)}
                     disabled={savingExisting}
                   >
                     Cancel
                   </button>
                   <button
-                    className="ml-auto rounded-lg bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700 disabled:opacity-60"
+                      className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50"
                     onClick={saveExistingEdit}
                     disabled={savingExisting}
                   >
-                    {savingExisting ? 'Saving…' : 'Save'}
+                      {savingExisting ? 'Saving...' : 'Save'}
                   </button>
                 </div>
               </div>
             )}
 
-            {/* Delete Existing Confirmation */}
+              {/* Delete Confirmation */}
             {confirmDeleteExisting && (
-              <div className="mt-4 border-t pt-4">
-                <p className="text-sm text-gray-700">
+                <div className="border-t border-border pt-4">
+                  <p className="text-body text-foreground mb-3">
                   Are you sure you want to delete this receipt/expense?
                 </p>
-                <div className="mt-3 flex items-center gap-3">
+                  <div className="flex items-center gap-3">
                   <button
-                    className="rounded-lg bg-red-600 px-4 py-2 text-white hover:bg-red-700 disabled:opacity-60"
+                      className="flex-1 py-3.5 rounded-xl bg-destructive text-primary-foreground text-body hover:bg-destructive/90 transition-colors disabled:opacity-50"
                     onClick={confirmExistingDelete}
                     disabled={savingExisting}
                   >
-                    {savingExisting ? 'Deleting…' : 'Yes, delete'}
+                      {savingExisting ? 'Deleting...' : 'Yes, delete'}
                   </button>
                   <button
-                    className="rounded-lg bg-gray-100 px-4 py-2 text-gray-700 hover:bg-gray-200"
+                      className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body hover:bg-secondary/80 transition-colors"
                     onClick={() => setConfirmDeleteExisting(false)}
                     disabled={savingExisting}
                   >
@@ -647,28 +1257,103 @@ const Expenses: React.FC<ExpensesProps> = ({
                 </div>
               </div>
             )}
+            </div>
+
+            {/* Footer spacer for safe area */}
+            <div className="h-12" />
+          </div>
+        </div>
+      )}
+
+      {/* ─────────────────────────────────────────────────────────────── */}
+      {/* MONTH PICKER BOTTOM SHEET */}
+      {/* ─────────────────────────────────────────────────────────────── */}
+      {isMonthPickerOpen && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-end justify-center bottom-sheet-backdrop">
+          <div className="bg-card w-full max-w-lg rounded-t-2xl shadow-2xl overflow-hidden bottom-sheet-content relative">
+            {/* Close Button */}
+            <button
+              onClick={() => setIsMonthPickerOpen(false)}
+              className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center hover:bg-secondary transition-colors right-4 top-4 text-muted-foreground"
+              aria-label="Close"
+            >
+              <X size={20} />
+            </button>
+
+            {/* Header */}
+            <div className="pt-6 pb-4 px-5 border-b border-border">
+              <div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto mb-4" />
+              <h2 className="text-title text-foreground text-center">Select Month</h2>
+    </div>
+
+            {/* Year Selector */}
+            <div className="flex items-center justify-center gap-4 py-4 border-b border-border">
+              <button
+                onClick={() => setPickerYear(pickerYear - 1)}
+                className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-secondary transition-colors text-muted-foreground"
+              >
+                <ChevronLeft size={24} />
+              </button>
+              <span className="text-display text-foreground min-w-[100px] text-center">{pickerYear}</span>
+              <button
+                onClick={() => setPickerYear(pickerYear + 1)}
+                disabled={pickerYear >= now.getFullYear()}
+                className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-secondary transition-colors text-muted-foreground disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                <ChevronRight size={24} />
+              </button>
+            </div>
+
+            {/* Month Grid */}
+            <div className="p-5">
+              <div className="grid grid-cols-4 gap-2">
+                {MONTH_NAMES.map((month, index) => {
+                  const isSelected = index === selectedMonth && pickerYear === selectedYear;
+                  const isFuture = pickerYear > now.getFullYear() || (pickerYear === now.getFullYear() && index > now.getMonth());
+                  return (
+                    <button
+                      key={month}
+                      onClick={() => {
+                        if (!isFuture) {
+                          setSelectedMonth(index);
+                          setSelectedYear(pickerYear);
+                          setIsMonthPickerOpen(false);
+                        }
+                      }}
+                      disabled={isFuture}
+                      className={`py-3 rounded-xl text-body transition-all ${
+                        isSelected
+                          ? 'bg-primary text-primary-foreground shadow-sm'
+                          : isFuture
+                          ? 'bg-secondary/50 text-muted-foreground/50 cursor-not-allowed'
+                          : 'bg-secondary text-foreground hover:bg-secondary/80'
+                      }`}
+                    >
+                      {month}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Quick Actions */}
+            <div className="p-5 pb-20 border-t border-border">
+              <button
+                onClick={() => {
+                  setSelectedMonth(now.getMonth());
+                  setSelectedYear(now.getFullYear());
+                  setIsMonthPickerOpen(false);
+                }}
+                className="w-full py-3.5 rounded-xl bg-secondary text-foreground text-body hover:bg-secondary/80 transition-colors"
+              >
+                Go to Current Month
+              </button>
+            </div>
           </div>
         </div>
       )}
     </div>
   );
 };
-
-const DollarSignIcon = ({ size }: { size: number }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width={size}
-    height={size}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <line x1="12" x2="12" y1="2" y2="22" />
-    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-  </svg>
-);
 
 export default Expenses;

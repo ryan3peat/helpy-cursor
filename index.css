@@ -1,0 +1,336 @@
+/* Design System CSS Variables */
+/* Based on Visual Design Specification v1.0.0 */
+
+/* ─────────────────────────────────────────────────────────────────
+   CUSTOM FONTS
+   ───────────────────────────────────────────────────────────────── */
+@font-face {
+  font-family: 'Peanut Butter';
+  src: url('/fonts/peanut_butter_2/Peanut Butter.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  /* ─────────────────────────────────────────────────────────────────
+     ELEVATION OVERLAYS (Light Mode)
+     ───────────────────────────────────────────────────────────────── */
+  --button-outline: rgba(0,0,0, .08);
+  --badge-outline: rgba(0,0,0, .04);
+  --elevate-1: rgba(0,0,0, .04);
+  --elevate-2: rgba(0,0,0, .08);
+
+  /* ─────────────────────────────────────────────────────────────────
+     CORE COLORS (Light Mode)
+     ───────────────────────────────────────────────────────────────── */
+  --background: 0 0% 98%;
+  --foreground: 0 0% 28%;
+  --border: 0 0% 88%;
+
+  /* Card */
+  --card: 0 0% 100%;
+  --card-foreground: 0 0% 28%;
+  --card-border: 0 0% 90%;
+
+  /* Popover */
+  --popover: 0 0% 100%;
+  --popover-foreground: 0 0% 28%;
+  --popover-border: 0 0% 88%;
+
+  /* Primary - Cyan brand color #3EAFD2 */
+  --primary: 194 62% 53%;
+  --primary-foreground: 0 0% 100%;
+
+  /* Secondary */
+  --secondary: 0 0% 96%;
+  --secondary-foreground: 0 0% 28%;
+
+  /* Muted */
+  --muted: 0 0% 96%;
+  --muted-foreground: 0 0% 46%;
+
+  /* Accent */
+  --accent: 0 0% 96%;
+  --accent-foreground: 0 0% 28%;
+
+  /* Destructive */
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+
+  /* Input & Ring */
+  --input: 0 0% 75%;
+  --ring: 194 62% 53%;
+
+  /* ─────────────────────────────────────────────────────────────────
+     TYPOGRAPHY
+     ───────────────────────────────────────────────────────────────── */
+  --font-sans: "Plus Jakarta Sans", Inter, -apple-system, BlinkMacSystemFont, sans-serif;
+  --text-display: 2rem;
+  --text-title: 1rem;
+  --text-body: 0.875rem;
+  --text-caption: 0.75rem;
+
+  /* ─────────────────────────────────────────────────────────────────
+     BORDER RADIUS
+     ───────────────────────────────────────────────────────────────── */
+  --radius: 0.75rem;
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1.125rem;
+
+  /* ─────────────────────────────────────────────────────────────────
+     SHADOWS (Light Mode)
+     ───────────────────────────────────────────────────────────────── */
+  --shadow-2xs: 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-xs: 0 1px 3px rgba(0,0,0,0.06);
+  --shadow-sm: 0 2px 4px rgba(0,0,0,0.06);
+  --shadow: 0 2px 8px rgba(0,0,0,0.08);
+  --shadow-md: 4px 8px 12px rgba(72,60,50,0.05);
+  --shadow-up: 0 -8px 12px rgba(72,60,50,0.05);
+  --shadow-lg: 0 6px 16px rgba(0,0,0,0.10);
+  --shadow-xl: 0 8px 28px rgba(0,0,0,0.12);
+  --shadow-2xl: 0 12px 40px rgba(0,0,0,0.15);
+
+  /* ─────────────────────────────────────────────────────────────────
+     SPACING
+     ───────────────────────────────────────────────────────────────── */
+  --spacing: 0.25rem;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   DARK MODE
+   ───────────────────────────────────────────────────────────────── */
+.dark {
+  /* Elevation Overlays */
+  --button-outline: rgba(255,255,255, .10);
+  --badge-outline: rgba(255,255,255, .05);
+  --elevate-1: rgba(255,255,255, .05);
+  --elevate-2: rgba(255,255,255, .10);
+
+  /* Core Colors */
+  --background: 0 0% 7%;
+  --foreground: 0 0% 95%;
+  --border: 0 0% 20%;
+
+  /* Card */
+  --card: 0 0% 10%;
+  --card-foreground: 0 0% 95%;
+  --card-border: 0 0% 18%;
+
+  /* Popover */
+  --popover: 0 0% 12%;
+  --popover-foreground: 0 0% 95%;
+  --popover-border: 0 0% 20%;
+
+  /* Primary (consistent) - #3EAFD2 */
+  --primary: 194 62% 53%;
+  --primary-foreground: 0 0% 100%;
+
+  /* Secondary */
+  --secondary: 0 0% 15%;
+  --secondary-foreground: 0 0% 95%;
+
+  /* Muted */
+  --muted: 0 0% 15%;
+  --muted-foreground: 0 0% 60%;
+
+  /* Accent */
+  --accent: 0 0% 15%;
+  --accent-foreground: 0 0% 95%;
+
+  /* Destructive */
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+
+  /* Input & Ring */
+  --input: 0 0% 35%;
+  --ring: 194 62% 53%;
+
+  /* Shadows (stronger for dark) */
+  --shadow-2xs: 0 1px 2px rgba(0,0,0,0.15);
+  --shadow-xs: 0 1px 3px rgba(0,0,0,0.2);
+  --shadow-sm: 0 2px 4px rgba(0,0,0,0.2);
+  --shadow: 0 2px 8px rgba(0,0,0,0.25);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.3);
+  --shadow-lg: 0 6px 16px rgba(0,0,0,0.35);
+  --shadow-xl: 0 8px 28px rgba(0,0,0,0.4);
+  --shadow-2xl: 0 12px 40px rgba(0,0,0,0.5);
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   BASE STYLES
+   ───────────────────────────────────────────────────────────────── */
+* {
+  border-color: hsl(var(--border));
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  -webkit-tap-highlight-color: transparent;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   UTILITY CLASSES
+   ───────────────────────────────────────────────────────────────── */
+
+/* Inset Separator - for list items where line shouldn't touch card edges */
+.list-item-separator {
+  position: relative;
+}
+.list-item-separator::after {
+  content: '';
+  position: absolute;
+  left: 1rem;
+  right: 1rem;
+  bottom: 0;
+  height: 1px;
+  background-color: hsl(var(--border));
+}
+
+/* Scrollbar Hide */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Focus States - Elegant border change only */
+*:focus-visible {
+  outline: none;
+}
+
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+[role="combobox"]:focus-visible {
+  outline: none;
+  border-color: hsl(var(--foreground));
+}
+
+button:focus-visible {
+  outline: none;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   ANIMATION CLASSES
+   ───────────────────────────────────────────────────────────────── */
+
+/* Smooth Collapse Animation */
+.item-enter {
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease-out, opacity 0.3s ease-out;
+}
+.item-enter-active {
+  max-height: 100px;
+  opacity: 1;
+}
+.item-exit {
+  max-height: 100px;
+  opacity: 1;
+  overflow: hidden;
+  transition: max-height 0.3s ease-in, opacity 0.2s ease-in;
+}
+.item-exit-active {
+  max-height: 0;
+  opacity: 0;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: none !important;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   BOTTOM SHEET ANIMATIONS
+   ───────────────────────────────────────────────────────────────── */
+
+/* Backdrop fade in */
+@keyframes backdrop-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Sheet slide up from bottom */
+@keyframes sheet-slide-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+
+/* Bottom sheet wrapper */
+.bottom-sheet-backdrop {
+  animation: backdrop-fade-in 0.3s ease-out forwards;
+}
+
+.bottom-sheet-content {
+  animation: sheet-slide-up 0.4s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+}
+
+
+/* FAB hide animation when sheet opens */
+@keyframes fab-hide {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+}
+
+.fab-hiding {
+  animation: fab-hide 0.2s ease-out forwards;
+  pointer-events: none;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   HELPY LOGO FOOTER
+   ───────────────────────────────────────────────────────────────── */
+.helpy-footer {
+  text-align: center;
+  padding: 2rem 0;
+  /* Ensures footer is at least this far from top of page */
+  margin-top: auto;
+}
+
+/* Wrapper to ensure minimum page height for footer positioning */
+.page-content {
+  min-height: calc(100vh - 180px); /* Account for header + bottom nav */
+  display: flex;
+  flex-direction: column;
+}
+
+.helpy-logo {
+  font-family: 'Peanut Butter', cursive;
+  font-size: 20px;
+  color: #D1D5DB;
+  /* Deboss/engraved effect - shadow on top-left, highlight on bottom-right */
+  text-shadow: 
+    1px 1px 0px rgba(255, 255, 255, 0.6),
+    -1px -1px 1px rgba(0, 0, 0, 0.08);
+}
+
+.dark .helpy-logo {
+  color: #4B5563;
+  text-shadow: 
+    1px 1px 0px rgba(255, 255, 255, 0.1),
+    -1px -1px 1px rgba(0, 0, 0, 0.3);
+}
+

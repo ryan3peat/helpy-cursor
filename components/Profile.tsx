@@ -61,13 +61,14 @@ const Profile: React.FC<ProfileProps> = ({ users, onAdd, onUpdate, onDelete, onB
   
   const selectedUser = users.find(u => u.id === selectedUserId) || users[0];
 
+  // Colors based on brand palette: #3EAFD2, #FF9800, #7E57C2, #4CAF50, #F06292, #AB47BC, #757575
   const getRoleBadgeColor = (role: UserRole) => {
     switch (role) {
-      case UserRole.MASTER: return 'bg-blue-100 text-blue-700';
-      case UserRole.SPOUSE: return 'bg-purple-100 text-purple-700';
-      case UserRole.HELPER: return 'bg-orange-100 text-orange-700';
-      case UserRole.CHILD: return 'bg-green-100 text-green-700';
-      default: return 'bg-gray-100 text-gray-600';
+      case UserRole.MASTER: return 'bg-[#E6F7FB] text-[#3EAFD2]';
+      case UserRole.SPOUSE: return 'bg-[#F3E5F5] text-[#AB47BC]';
+      case UserRole.HELPER: return 'bg-[#FFF3E0] text-[#FF9800]';
+      case UserRole.CHILD: return 'bg-[#E8F5E9] text-[#4CAF50]';
+      default: return 'bg-[#F5F5F5] text-[#757575]';
     }
   };
 
@@ -197,7 +198,7 @@ const Profile: React.FC<ProfileProps> = ({ users, onAdd, onUpdate, onDelete, onB
               key={p.id}
               onClick={() => setSelectedPlan(p.id as any)}
               className={`w-full p-4 rounded-2xl border-2 transition-all text-left flex justify-between items-center ${
-                selectedPlan === p.id ? 'border-brand-primary bg-blue-50/50' : 'border-gray-100 bg-white'
+                selectedPlan === p.id ? 'border-brand-primary bg-[#E6F7FB]/50' : 'border-gray-100 bg-white'
               }`}
             >
               <div>
@@ -379,7 +380,7 @@ const Profile: React.FC<ProfileProps> = ({ users, onAdd, onUpdate, onDelete, onB
               className="w-full bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between hover:bg-gray-50 transition-all active:scale-[0.99]"
             >
               <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-full bg-[#E6F7FB] text-[#3EAFD2] flex items-center justify-center">
                   <item.icon size={20} />
                 </div>
                 <div className="text-left">
@@ -398,7 +399,7 @@ const Profile: React.FC<ProfileProps> = ({ users, onAdd, onUpdate, onDelete, onB
   // --- Main Profile View (Default) ---
 
   return (
-    <div className="px-4 pt-16 pb-24 h-full animate-slide-up flex flex-col relative">
+    <div className="px-4 pt-16 pb-24 animate-slide-up page-content relative">
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-brand-text">{t['profile.title']}</h1>
@@ -437,7 +438,7 @@ const Profile: React.FC<ProfileProps> = ({ users, onAdd, onUpdate, onDelete, onB
                     className="w-full h-full rounded-full object-cover border-2 border-white" 
                   />
                   {isCurrent && (
-                    <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 border-2 border-white rounded-full"></div>
+                    <div className="absolute bottom-0 right-0 w-4 h-4 bg-[#4CAF50] border-2 border-white rounded-full"></div>
                   )}
                 </div>
                 <span className={`text-xs font-medium whitespace-nowrap ${isSelected ? 'text-brand-primary' : 'text-gray-500'}`}>
@@ -524,14 +525,14 @@ const Profile: React.FC<ProfileProps> = ({ users, onAdd, onUpdate, onDelete, onB
             </div>
 
             <div>
-              <div className="flex items-center gap-2 mb-2 text-green-600 font-semibold text-sm">
+              <div className="flex items-center gap-2 mb-2 text-[#4CAF50] font-semibold text-sm">
                  <Heart size={16} />
                  <span>{t['profile.preferences']}</span>
               </div>
               <div className="flex flex-wrap gap-2">
                 {selectedUser.preferences && selectedUser.preferences.length > 0 ? (
                   selectedUser.preferences.map((pref, i) => (
-                    <span key={i} className="bg-green-50 text-green-700 border border-green-100 px-3 py-1 rounded-lg text-xs font-medium">
+                    <span key={i} className="bg-[#E8F5E9] text-[#4CAF50] border border-[#4CAF50]/20 px-3 py-1 rounded-lg text-xs font-medium">
                       {pref}
                     </span>
                   ))
@@ -551,6 +552,11 @@ const Profile: React.FC<ProfileProps> = ({ users, onAdd, onUpdate, onDelete, onB
         <LogOut size={18} />
         {t['profile.logout']}
       </button>
+
+      {/* Footer */}
+      <div className="helpy-footer">
+        <span className="helpy-logo">helpy</span>
+      </div>
 
       {/* Add User Modal */}
       {isAddModalOpen && (
@@ -627,7 +633,7 @@ const Profile: React.FC<ProfileProps> = ({ users, onAdd, onUpdate, onDelete, onB
         <div className="fixed inset-0 bg-black/60 z-[90] flex items-center justify-center p-4 backdrop-blur-md animate-fade-in">
             <div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl animate-slide-up">
                 <div className="flex flex-col items-center text-center mb-6">
-                    <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center text-green-600 mb-4">
+                    <div className="w-16 h-16 bg-[#E8F5E9] rounded-full flex items-center justify-center text-[#4CAF50] mb-4">
                         <Check size={32} />
                     </div>
                     <h3 className="text-2xl font-bold text-gray-800">Member Added!</h3>
@@ -645,7 +651,7 @@ const Profile: React.FC<ProfileProps> = ({ users, onAdd, onUpdate, onDelete, onB
 
                 <button 
                     onClick={copyInviteLink}
-                    className={`w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all ${isCopied ? 'bg-green-500 text-white' : 'bg-brand-primary text-white hover:bg-brand-secondary'}`}
+                    className={`w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all ${isCopied ? 'bg-[#4CAF50] text-white' : 'bg-brand-primary text-white hover:bg-brand-secondary'}`}
                 >
                     {isCopied ? <Check size={18} /> : <Copy size={18} />}
                     {isCopied ? t['profile.copied'] : t['profile.copy_link']}
@@ -738,7 +744,7 @@ const Profile: React.FC<ProfileProps> = ({ users, onAdd, onUpdate, onDelete, onB
                     </div>
 
                     <div>
-                        <div className="flex items-center gap-2 mb-2 text-green-600 font-semibold text-sm">
+                        <div className="flex items-center gap-2 mb-2 text-[#4CAF50] font-semibold text-sm">
                             <Heart size={16} />
                             <span>{t['profile.preferences']}</span>
                         </div>
@@ -749,17 +755,17 @@ const Profile: React.FC<ProfileProps> = ({ users, onAdd, onUpdate, onDelete, onB
                                 onChange={(e) => setNewPreferenceInput(e.target.value)}
                                 onKeyDown={(e) => e.key === 'Enter' && addPreference()}
                                 placeholder="Add preference..."
-                                className="flex-1 bg-gray-50 border-none rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-green-200 outline-none"
+                                className="flex-1 bg-gray-50 border-none rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-[#4CAF50]/30 outline-none"
                             />
-                            <button onClick={addPreference} className="bg-green-100 text-green-600 p-2 rounded-xl hover:bg-green-200">
+                            <button onClick={addPreference} className="bg-[#E8F5E9] text-[#4CAF50] p-2 rounded-xl hover:bg-[#4CAF50]/20">
                                 <Plus size={20} />
                             </button>
                         </div>
                         <div className="flex flex-wrap gap-2">
                              {editPreferences.map((item, i) => (
-                                <span key={i} className="bg-green-50 text-green-700 border border-green-100 pl-3 pr-1 py-1 rounded-lg text-xs font-medium flex items-center gap-1">
+                                <span key={i} className="bg-[#E8F5E9] text-[#4CAF50] border border-[#4CAF50]/20 pl-3 pr-1 py-1 rounded-lg text-xs font-medium flex items-center gap-1">
                                     {item}
-                                    <button onClick={() => setEditPreferences(prev => prev.filter((_, idx) => idx !== i))} className="p-0.5 hover:bg-green-100 rounded-full">
+                                    <button onClick={() => setEditPreferences(prev => prev.filter((_, idx) => idx !== i))} className="p-0.5 hover:bg-[#4CAF50]/20 rounded-full">
                                         <X size={14} />
                                     </button>
                                 </span>

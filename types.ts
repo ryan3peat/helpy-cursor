@@ -28,12 +28,51 @@ export interface Section {
   content: string;
 }
 
+// --- ToDo Types (Unified Shopping + Tasks) ---
+export type ToDoType = 'shopping' | 'task';
+
 export enum ShoppingCategory {
   SUPERMARKET = 'Supermarket',
   WET_MARKET = 'Wet Market',
   OTHERS = 'Others'
 }
 
+export enum TaskCategory {
+  HOME_CARE = 'Home Care',
+  FAMILY_CARE = 'Family Care',
+  OTHERS = 'Others'
+}
+
+export type ToDoCategory = ShoppingCategory | TaskCategory;
+
+// Recurrence types for tasks
+export type RecurrenceFrequency = 'NONE' | 'DAILY' | 'WEEKLY' | 'MONTHLY';
+
+export interface RecurrenceRule {
+  frequency: RecurrenceFrequency;
+  dayOfWeek?: number; // 0=Sun, 1=Mon... (for WEEKLY)
+  dayOfMonth?: number; // 1-31 (for MONTHLY)
+}
+
+// Unified ToDo Item
+export interface ToDoItem {
+  id: string;
+  type: ToDoType;
+  name: string; // Item name or task title
+  category: string; // ShoppingCategory or TaskCategory value
+  completed: boolean;
+  assigneeId?: string; // Single assignee user ID
+  createdAt?: string;
+  // Shopping-specific
+  quantity?: string;
+  unit?: string;
+  // Task-specific
+  dueDate?: string; // YYYY-MM-DD
+  dueTime?: string; // HH:mm
+  recurrence?: RecurrenceRule;
+}
+
+// Legacy types for backwards compatibility
 export interface ShoppingItem {
   id: string;
   name: string;
@@ -43,24 +82,12 @@ export interface ShoppingItem {
   addedBy?: string;
 }
 
-// --- Recurrence Types ---
-export type RecurrenceFrequency = 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY';
-
-export interface RecurrenceRule {
-  frequency: RecurrenceFrequency;
-  interval: number; // e.g. 1 = every week, 2 = every 2 weeks
-  weekDays?: number[]; // 0=Sun, 1=Mon...
-  endCondition: 'NEVER' | 'ON_DATE' | 'AFTER_OCCURRENCES';
-  endDate?: string;
-  endCount?: number;
-}
-
 export interface Task {
   id: string;
   title: string;
-  assignees: string[]; // List of User IDs
-  dueDate: string; // YYYY-MM-DD
-  dueTime?: string; // HH:mm
+  assignees: string[];
+  dueDate: string;
+  dueTime?: string;
   completed: boolean;
   recurrence?: RecurrenceRule;
 }
@@ -68,8 +95,11 @@ export interface Task {
 export enum MealType {
   BREAKFAST = 'Breakfast',
   LUNCH = 'Lunch',
-  DINNER = 'Dinner'
+  DINNER = 'Dinner',
+  SNACKS = 'Snacks'
 }
+
+export type MealAudience = 'ALL' | 'ADULTS' | 'KIDS';
 
 export interface Meal {
   id: string;
@@ -77,6 +107,7 @@ export interface Meal {
   type: MealType;
   description: string;
   forUserIds: string[];
+  audience: MealAudience;
 }
 
 export interface Expense {
@@ -91,7 +122,7 @@ export interface Expense {
 export interface NavItem {
   id: string;
   label: string;
-  icon: React.ReactNode;
+  icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>;
 }
 
 export type TranslationDictionary = Record<string, string>;

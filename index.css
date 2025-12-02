@@ -69,7 +69,7 @@
   --text-display: 2rem;
   --text-title: 1rem;
   --text-body: 0.875rem;
-  --text-caption: 0.75rem;
+  --text-caption: 0.875rem;
 
   /* ─────────────────────────────────────────────────────────────────
      BORDER RADIUS
@@ -361,7 +361,7 @@ button:focus-visible {
 }
 
 .helpy-logo {
-  font-family: 'Peanut Butter', cursive;
+  font-family: 'Peanut Butter', var(--font-sans);
   font-size: 20px;
   color: #D1D5DB;
 }

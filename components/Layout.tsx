@@ -19,9 +19,9 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, onNavigate, t }) 
   ];
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="min-h-screen pb-20 bg-background">
       {/* Main Content Area */}
-      <div className="flex-1 pb-20">{children}</div>
+      <div className="flex-1">{children}</div>
 
       {/* Bottom Navigation - iOS Style */}
       <nav

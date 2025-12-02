@@ -324,12 +324,12 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
         <div className="mb-8 text-center">
           <h1 
             className="text-5xl text-white mb-3"
-            style={{ fontFamily: "'Peanut Butter', cursive" }}
+            style={{ fontFamily: "'Peanut Butter', 'Plus Jakarta Sans', Inter, -apple-system, BlinkMacSystemFont, sans-serif" }}
           >
             helpy
           </h1>
           <p className="text-white/90 text-sm font-medium">
-            <span className="font-bold" style={{ fontFamily: 'Georgia, serif' }}>"</span>I just want you to know<br />I'm real grateful you're here<span className="font-bold" style={{ fontFamily: 'Georgia, serif' }}>"</span>
+            "I just want you to know<br />I'm real grateful you're here"
           </p>
           <p className="text-white/70 text-xs mt-1 font-medium">
             Aibileen Clark, The Help

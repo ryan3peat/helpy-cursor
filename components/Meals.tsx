@@ -1024,42 +1024,15 @@ const Meals: React.FC<MealsProps> = ({
                                     key={meal.id}
                                       className="flex items-start gap-1.5 px-2 py-1.5 rounded-md bg-muted/50 hover:bg-muted transition-colors"
                                     >
-                                      {/* Audience Icon */}
-                                      <span className="text-muted-foreground shrink-0 mt-0.5">
-                                        {meal.audience === 'ADULTS' && <UserIcon size={12} />}
-                                        {meal.audience === 'KIDS' && <Baby size={12} />}
-                                        {meal.audience === 'ALL' && (
-                                          <span className="flex items-center gap-0.5">
-                                            <UserIcon size={11} />
-                                            <Baby size={11} />
-                                          </span>
-                                        )}
-                                      </span>
                                       {/* Meal Name or RSVP count */}
                                       {hasDish ? (
                                         <span className="text-body font-semibold text-foreground line-clamp-2 leading-tight">
                                           {meal.description}
                                         </span>
                                       ) : (
-                                        <div className="flex flex-col text-body leading-tight gap-0.5">
-                                          <span className="font-semibold text-muted-foreground">RSVP</span>
-                                          {mealUsers.length > 0 ? (
-                                            <>
-                                              {adultCount > 0 && (
-                                                <span className="text-foreground flex items-center gap-1">
-                                                  <UserIcon size={11} /> Adult x {adultCount}
-                                                </span>
-                                              )}
-                                              {kidCount > 0 && (
-                                                <span className="text-foreground flex items-center gap-1">
-                                                  <Baby size={11} /> Kid x {kidCount}
-                                                </span>
-                                              )}
-                                            </>
-                                          ) : (
-                                            <span className="text-foreground">{meal.forUserIds.length} people</span>
-                                          )}
-                                    </div>
+                                        <span className="text-caption text-muted-foreground leading-tight">
+                                          {t['meals.hungry_no_menu'] ?? "Someone's hungry, menu unknown..."}
+                                        </span>
                                       )}
                                   </div>
                                 );

@@ -1022,18 +1022,33 @@ const Meals: React.FC<MealsProps> = ({
                                 return (
                                   <div
                                     key={meal.id}
-                                      className="flex items-start gap-1.5 px-2 py-1.5 rounded-md bg-muted/50 hover:bg-muted transition-colors"
-                                    >
-                                      {/* Meal Name or RSVP count */}
-                                      {hasDish ? (
-                                        <span className="text-body font-semibold text-foreground line-clamp-2 leading-tight">
-                                          {meal.description}
-                                        </span>
-                                      ) : (
-                                        <span className="text-caption text-muted-foreground leading-tight">
-                                          {t['meals.hungry_no_menu'] ?? "Someone's hungry, menu unknown..."}
+                                    className="px-2 py-1.5 rounded-md bg-muted/50 hover:bg-muted transition-colors"
+                                  >
+                                    {/* Dish name or RSVP label */}
+                                    {hasDish ? (
+                                      <span className="text-body font-semibold text-foreground line-clamp-2 leading-tight block">
+                                        {meal.description}
+                                      </span>
+                                    ) : (
+                                      <span className="text-caption font-medium text-muted-foreground block">
+                                        RSVP
+                                      </span>
+                                    )}
+                                    {/* RSVP counts - consistent format */}
+                                    <div className="flex items-center gap-2 text-caption text-muted-foreground mt-1">
+                                      {adultCount > 0 && (
+                                        <span className="flex items-center gap-0.5">
+                                          <UserIcon size={12} />
+                                          {adultCount}
                                         </span>
                                       )}
+                                      {kidCount > 0 && (
+                                        <span className="flex items-center gap-0.5">
+                                          <Baby size={12} />
+                                          {kidCount}
+                                        </span>
+                                      )}
+                                    </div>
                                   </div>
                                 );
                               })}

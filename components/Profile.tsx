@@ -853,10 +853,16 @@ const Profile: React.FC<ProfileProps> = ({
             <label className="text-xs font-bold text-gray-500 ml-1">Card Number</label>
             <input
               type="text"
+              inputMode="numeric"
               placeholder="1234 5678 9012 3456"
               maxLength={19}
               value={paymentData.cardNumber}
-              onChange={e => setPaymentData({ ...paymentData, cardNumber: e.target.value })}
+              onChange={e => {
+                // Only allow digits and format with spaces every 4 digits
+                const digitsOnly = e.target.value.replace(/\D/g, '');
+                const formatted = digitsOnly.replace(/(\d{4})(?=\d)/g, '$1 ').slice(0, 19);
+                setPaymentData({ ...paymentData, cardNumber: formatted });
+              }}
               className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-800 font-mono text-sm focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 outline-none"
             />
           </div>
@@ -865,10 +871,19 @@ const Profile: React.FC<ProfileProps> = ({
               <label className="text-xs font-bold text-gray-500 ml-1">Expiry</label>
               <input
                 type="text"
+                inputMode="numeric"
                 placeholder="MM/YY"
                 maxLength={5}
                 value={paymentData.expiry}
-                onChange={e => setPaymentData({ ...paymentData, expiry: e.target.value })}
+                onChange={e => {
+                  // Only allow digits and auto-format as MM/YY
+                  const digitsOnly = e.target.value.replace(/\D/g, '');
+                  let formatted = digitsOnly;
+                  if (digitsOnly.length >= 2) {
+                    formatted = digitsOnly.slice(0, 2) + '/' + digitsOnly.slice(2, 4);
+                  }
+                  setPaymentData({ ...paymentData, expiry: formatted });
+                }}
                 className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-800 font-mono text-sm focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 outline-none"
               />
             </div>
@@ -876,10 +891,16 @@ const Profile: React.FC<ProfileProps> = ({
               <label className="text-xs font-bold text-gray-500 ml-1">CVC</label>
               <input
                 type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 placeholder="123"
-                maxLength={3}
+                maxLength={4}
                 value={paymentData.cvc}
-                onChange={e => setPaymentData({ ...paymentData, cvc: e.target.value })}
+                onChange={e => {
+                  // Only allow digits for CVC
+                  const value = e.target.value.replace(/\D/g, '');
+                  setPaymentData({ ...paymentData, cvc: value });
+                }}
                 className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-800 font-mono text-sm focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 outline-none"
               />
             </div>

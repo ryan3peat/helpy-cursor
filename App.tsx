@@ -180,35 +180,45 @@ const App: React.FC = () => {
     await deleteItem(hid, 'todo_items', id);
   };
 
-  // Meal CRUD Handlers
+  // Meal CRUD Handlers (with optimistic updates for instant UI)
   const handleAddMeal = async (meal: Meal) => {
     if (!hid) return;
-    await addItem(hid, 'meals', meal);
+    const tempId = `temp-${Date.now()}`;
+    const newMeal = { ...meal, id: tempId };
+    setMeals(prev => [...prev, newMeal]);  // Optimistic: update UI immediately
+    await addItem(hid, 'meals', meal);      // Sync to server in background
   };
 
   const handleUpdateMeal = async (id: string, data: Partial<Meal>) => {
     if (!hid) return;
+    setMeals(prev => prev.map(m => m.id === id ? { ...m, ...data } : m));  // Optimistic
     await updateItem(hid, 'meals', id, data);
   };
 
   const handleDeleteMeal = async (id: string) => {
     if (!hid) return;
+    setMeals(prev => prev.filter(m => m.id !== id));  // Optimistic
     await deleteItem(hid, 'meals', id);
   };
 
-  // Expense CRUD Handlers
+  // Expense CRUD Handlers (with optimistic updates for instant UI)
   const handleAddExpense = async (expense: Expense) => {
     if (!hid) return;
+    const tempId = `temp-${Date.now()}`;
+    const newExpense = { ...expense, id: tempId };
+    setExpenses(prev => [...prev, newExpense]);  // Optimistic
     await addItem(hid, 'expenses', expense);
   };
 
   const handleUpdateExpense = async (id: string, data: Partial<Expense>) => {
     if (!hid) return;
+    setExpenses(prev => prev.map(e => e.id === id ? { ...e, ...data } : e));  // Optimistic
     await updateItem(hid, 'expenses', id, data);
   };
 
   const handleDeleteExpense = async (id: string) => {
     if (!hid) return;
+    setExpenses(prev => prev.filter(e => e.id !== id));  // Optimistic
     await deleteItem(hid, 'expenses', id);
   };
 

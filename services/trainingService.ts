@@ -4,12 +4,54 @@ import type {
   TrainingModule, 
   CreateTrainingModule, 
   UpdateTrainingModule,
-  HelperPoints,
   TrainingStats,
 } from '@src/types/training';
 
 const TABLE_NAME = 'training_modules';
-const POINTS_TABLE = 'helper_points';
+
+// Cache to store clerk_id -> supabase uuid mapping
+const userIdCache: Record<string, string> = {};
+
+/**
+ * Get the actual Supabase UUID for a user ID
+ * Handles both Clerk IDs (active users) and Supabase UUIDs (pending users)
+ */
+async function getSupabaseUserId(id: string, householdId: string): Promise<string | null> {
+  if (!id || id === '') return null;
+  
+  // Check cache first
+  if (userIdCache[id]) {
+    return userIdCache[id];
+  }
+  
+  // Query all users in household
+  const { data, error } = await supabase
+    .from('users')
+    .select('id, clerk_id, status')
+    .eq('household_id', householdId);
+  
+  if (error) {
+    console.error('Error querying users for ID conversion:', error);
+    return null;
+  }
+  
+  // First, check if this ID matches a clerk_id (active users)
+  const userByClerkId = data?.find(u => String(u.clerk_id) === String(id));
+  if (userByClerkId) {
+    userIdCache[id] = userByClerkId.id;
+    return userByClerkId.id;
+  }
+  
+  // Second, check if this ID is already a Supabase UUID (pending users)
+  const userByUuid = data?.find(u => String(u.id) === String(id));
+  if (userByUuid) {
+    userIdCache[id] = id;
+    return id;
+  }
+  
+  console.error('Could not find user with id:', id);
+  return null;
+}
 
 /**
  * Convert snake_case from Supabase to camelCase for app
@@ -25,7 +67,6 @@ function toCamelCase(data: any): TrainingModule {
     assigneeId: data.assignee_id,
     isCompleted: data.is_completed,
     completedAt: data.completed_at,
-    points: data.points || 10,
     createdBy: data.created_by,
     createdAt: data.created_at,
   };
@@ -33,6 +74,7 @@ function toCamelCase(data: any): TrainingModule {
 
 /**
  * Convert camelCase to snake_case for Supabase
+ * Note: Empty strings for UUID fields are converted to null
  */
 function toSnakeCase(data: Partial<TrainingModule | CreateTrainingModule>): any {
   const result: any = {};
@@ -40,11 +82,16 @@ function toSnakeCase(data: Partial<TrainingModule | CreateTrainingModule>): any 
   if ('customCategory' in data && data.customCategory !== undefined) result.custom_category = data.customCategory;
   if ('name' in data && data.name !== undefined) result.name = data.name;
   if ('content' in data && data.content !== undefined) result.content = data.content;
-  if ('assigneeId' in data && data.assigneeId !== undefined) result.assignee_id = data.assigneeId;
+  // Convert empty string to null for UUID field
+  if ('assigneeId' in data && data.assigneeId !== undefined) {
+    result.assignee_id = data.assigneeId === '' ? null : data.assigneeId;
+  }
   if ('isCompleted' in data && data.isCompleted !== undefined) result.is_completed = data.isCompleted;
   if ('completedAt' in data && data.completedAt !== undefined) result.completed_at = data.completedAt;
-  if ('points' in data && data.points !== undefined) result.points = data.points;
-  if ('createdBy' in data && data.createdBy !== undefined) result.created_by = data.createdBy;
+  // Convert empty string to null for UUID field
+  if ('createdBy' in data && data.createdBy !== undefined) {
+    result.created_by = data.createdBy === '' ? null : data.createdBy;
+  }
   return result;
 }
 
@@ -73,11 +120,18 @@ export async function listTrainingModulesForUser(
   householdId: string, 
   userId: string
 ): Promise<TrainingModule[]> {
+  // Convert Clerk ID to Supabase UUID
+  const userUuid = await getSupabaseUserId(userId, householdId);
+  if (!userUuid) {
+    console.error('Could not resolve user ID:', userId);
+    return [];
+  }
+
   const { data, error } = await supabase
     .from(TABLE_NAME)
     .select('*')
     .eq('household_id', householdId)
-    .eq('assignee_id', userId)
+    .eq('assignee_id', userUuid)
     .order('created_at', { ascending: false });
 
   if (error) {
@@ -108,12 +162,23 @@ export async function createTrainingModule(
   module: CreateTrainingModule,
   createdBy: string
 ): Promise<TrainingModule> {
+  // Convert Clerk IDs to Supabase UUIDs
+  let createdByUuid: string | null = null;
+  if (createdBy && createdBy !== '') {
+    createdByUuid = await getSupabaseUserId(createdBy, householdId);
+  }
+  
+  let assigneeUuid: string | null = null;
+  if (module.assigneeId && module.assigneeId !== '') {
+    assigneeUuid = await getSupabaseUserId(module.assigneeId, householdId);
+  }
+
   const payload = {
     ...toSnakeCase(module),
     household_id: householdId,
-    created_by: createdBy,
+    created_by: createdByUuid,
+    assignee_id: assigneeUuid,
     is_completed: false,
-    points: module.points || 10,
   };
 
   const { data, error } = await supabase
@@ -138,9 +203,17 @@ export async function updateTrainingModule(
   id: string,
   updates: UpdateTrainingModule
 ): Promise<TrainingModule> {
+  const snakeCaseUpdates = toSnakeCase(updates);
+  
+  // Convert assignee_id from Clerk ID to Supabase UUID if present
+  if ('assignee_id' in snakeCaseUpdates && snakeCaseUpdates.assignee_id) {
+    const assigneeUuid = await getSupabaseUserId(snakeCaseUpdates.assignee_id, householdId);
+    snakeCaseUpdates.assignee_id = assigneeUuid;
+  }
+
   const { data, error } = await supabase
     .from(TABLE_NAME)
-    .update(toSnakeCase(updates))
+    .update(snakeCaseUpdates)
     .eq('id', id)
     .eq('household_id', householdId)
     .select()
@@ -159,23 +232,8 @@ export async function updateTrainingModule(
  */
 export async function completeTrainingModule(
   householdId: string,
-  moduleId: string,
-  userId: string
+  moduleId: string
 ): Promise<TrainingModule> {
-  // First, get the module to check points
-  const { data: moduleData, error: fetchError } = await supabase
-    .from(TABLE_NAME)
-    .select('*')
-    .eq('id', moduleId)
-    .eq('household_id', householdId)
-    .single();
-
-  if (fetchError || !moduleData) {
-    console.error('Failed to fetch training module:', fetchError);
-    throw fetchError;
-  }
-
-  // Mark as completed
   const { data, error } = await supabase
     .from(TABLE_NAME)
     .update({
@@ -191,9 +249,6 @@ export async function completeTrainingModule(
     console.error('Failed to complete training module:', error);
     throw error;
   }
-
-  // Award points to the helper
-  await awardPoints(userId, moduleData.points || 10);
 
   return toCamelCase(data);
 }
@@ -248,131 +303,6 @@ export function subscribeToTrainingModules(
     .subscribe();
 
   // Return unsubscribe function
-  return () => {
-    subscription.unsubscribe();
-  };
-}
-
-// ─────────────────────────────────────────────────────────────────
-// Helper Points / Gamification
-// ─────────────────────────────────────────────────────────────────
-
-/**
- * Get helper points for a user
- */
-export async function getHelperPoints(userId: string): Promise<HelperPoints | null> {
-  const { data, error } = await supabase
-    .from(POINTS_TABLE)
-    .select('*')
-    .eq('user_id', userId)
-    .single();
-
-  if (error) {
-    if (error.code === 'PGRST116') {
-      // No record found, return null
-      return null;
-    }
-    console.error('Failed to fetch helper points:', error);
-    throw error;
-  }
-
-  return {
-    id: data.id,
-    userId: data.user_id,
-    totalPoints: data.total_points,
-    trainingsCompleted: data.trainings_completed,
-    updatedAt: data.updated_at,
-  };
-}
-
-/**
- * Award points to a helper
- */
-export async function awardPoints(userId: string, points: number): Promise<HelperPoints> {
-  // Check if user has a points record
-  const existing = await getHelperPoints(userId);
-
-  if (existing) {
-    // Update existing record
-    const { data, error } = await supabase
-      .from(POINTS_TABLE)
-      .update({
-        total_points: existing.totalPoints + points,
-        trainings_completed: existing.trainingsCompleted + 1,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('user_id', userId)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Failed to update helper points:', error);
-      throw error;
-    }
-
-    return {
-      id: data.id,
-      userId: data.user_id,
-      totalPoints: data.total_points,
-      trainingsCompleted: data.trainings_completed,
-      updatedAt: data.updated_at,
-    };
-  } else {
-    // Create new record
-    const { data, error } = await supabase
-      .from(POINTS_TABLE)
-      .insert([{
-        user_id: userId,
-        total_points: points,
-        trainings_completed: 1,
-      }])
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Failed to create helper points:', error);
-      throw error;
-    }
-
-    return {
-      id: data.id,
-      userId: data.user_id,
-      totalPoints: data.total_points,
-      trainingsCompleted: data.trainings_completed,
-      updatedAt: data.updated_at,
-    };
-  }
-}
-
-/**
- * Subscribe to helper points changes
- */
-export function subscribeToHelperPoints(
-  userId: string,
-  callback: (data: HelperPoints | null) => void
-): () => void {
-  // Initial fetch
-  getHelperPoints(userId).then(callback).catch(console.error);
-
-  // Subscribe to changes
-  const channelName = `helper_points-${userId}`;
-  
-  const subscription = supabase
-    .channel(channelName)
-    .on(
-      'postgres_changes',
-      {
-        event: '*',
-        schema: 'public',
-        table: POINTS_TABLE,
-        filter: `user_id=eq.${userId}`,
-      },
-      () => {
-        getHelperPoints(userId).then(callback).catch(console.error);
-      }
-    )
-    .subscribe();
-
   return () => {
     subscription.unsubscribe();
   };

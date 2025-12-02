@@ -890,11 +890,17 @@ const Expenses: React.FC<ExpensesProps> = ({
                     </label>
                     <input
                       ref={amountInputRef}
-                      type="number"
-                      step="0.01"
+                      type="text"
                       inputMode="decimal"
                       value={editAmount}
-                      onChange={(e) => setEditAmount(e.target.value)}
+                      onChange={(e) => {
+                        // Only allow digits and one decimal point
+                        const value = e.target.value.replace(/[^\d.]/g, '');
+                        // Prevent multiple decimal points
+                        const parts = value.split('.');
+                        const formatted = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : value;
+                        setEditAmount(formatted);
+                      }}
                       placeholder="0.00"
                       className="w-full px-4 py-4 rounded-xl bg-secondary border border-border focus:border-foreground outline-none transition-all text-display"
                     />
@@ -1000,11 +1006,17 @@ const Expenses: React.FC<ExpensesProps> = ({
                       Amount
                     </label>
                 <input
-                  type="number"
-                  step="0.01"
+                  type="text"
                       inputMode="decimal"
                   value={editAmount}
-                  onChange={(e) => setEditAmount(e.target.value)}
+                  onChange={(e) => {
+                    // Only allow digits and one decimal point
+                    const value = e.target.value.replace(/[^\d.]/g, '');
+                    // Prevent multiple decimal points
+                    const parts = value.split('.');
+                    const formatted = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : value;
+                    setEditAmount(formatted);
+                  }}
                   placeholder="0.00"
                       className="w-full px-4 py-4 rounded-xl bg-secondary border border-border focus:border-foreground outline-none transition-all text-display"
                 />
@@ -1194,11 +1206,18 @@ const Expenses: React.FC<ExpensesProps> = ({
                         Amount
                   </label>
                     <input
-                      type="number"
-                      step="0.01"
+                      type="text"
+                      inputMode="decimal"
                         className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-foreground outline-none transition-all text-body"
                       value={exAmount}
-                      onChange={(e) => setExAmount(e.target.value)}
+                      onChange={(e) => {
+                        // Only allow digits and one decimal point
+                        const value = e.target.value.replace(/[^\d.]/g, '');
+                        // Prevent multiple decimal points
+                        const parts = value.split('.');
+                        const formatted = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : value;
+                        setExAmount(formatted);
+                      }}
                     />
                     </div>
                     <div>

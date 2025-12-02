@@ -282,6 +282,11 @@ button:focus-visible {
   animation: sheet-slide-up 0.4s cubic-bezier(0.32, 0.72, 0, 1) forwards;
 }
 
+/* Safe area for devices with home indicators */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
 
 /* FAB hide animation when sheet opens */
 @keyframes fab-hide {
@@ -332,5 +337,21 @@ button:focus-visible {
   text-shadow: 
     1px 1px 0px rgba(255, 255, 255, 0.1),
     -1px -1px 1px rgba(0, 0, 0, 0.3);
+}
+
+/* Meal type button pop animation */
+@keyframes mealButtonPop {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 

@@ -17,7 +17,6 @@ import {
   MoreHorizontal,
   CheckCircle2,
   Clock,
-  Award,
   ChevronRight,
   ClipboardList,
   UtensilsCrossed,
@@ -51,12 +50,10 @@ import type {
   TrainingModule,
   CreateTrainingModule,
   TrainingCategory,
-  HelperPoints,
 } from "@src/types/training";
 import {
   TRAINING_CATEGORIES,
   TRAINING_CATEGORY_CONFIG,
-  getHelperLevel,
 } from "@src/types/training";
 import {
   subscribeToTrainingModules,
@@ -64,7 +61,6 @@ import {
   updateTrainingModule,
   deleteTrainingModule,
   completeTrainingModule,
-  subscribeToHelperPoints,
 } from "@/services/trainingService";
 
 interface HouseholdInfoProps extends BaseViewProps {
@@ -374,11 +370,7 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
     name: "",
     content: "",
     assigneeId: "",
-    points: 10,
   });
-
-  // Helper points for gamification
-  const [helperPoints, setHelperPoints] = useState<HelperPoints | null>(null);
 
   const [isLoading, setIsLoading] = useState(true);
 
@@ -402,18 +394,11 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
       setTrainingModules(data);
     });
 
-    // Subscribe to helper points if user is a helper
-    let unsubPoints: (() => void) | undefined;
-    if (isHelper) {
-      unsubPoints = subscribeToHelperPoints(currentUser.id, setHelperPoints);
-    }
-
     return () => {
       unsubEssential();
       unsubTraining();
-      unsubPoints?.();
     };
-  }, [householdId, currentUser.id, isHelper]);
+  }, [householdId]);
 
   // ─────────────────────────────────────────────────────────────────
   // Stats Calculations
@@ -480,11 +465,19 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
 
   const handleDeleteEssential = async () => {
     if (!editingEssentialItem) return;
+    
+    const itemToDelete = editingEssentialItem;
+    
+    // Optimistic UI: immediately close modal and remove from local state
+    setIsEssentialModalOpen(false);
+    setEssentialItems(prev => prev.filter(item => item.id !== itemToDelete.id));
+    
+    // Perform delete in background
     try {
-      await deleteEssentialInfo(householdId, editingEssentialItem.id);
-      setIsEssentialModalOpen(false);
+      await deleteEssentialInfo(householdId, itemToDelete.id);
     } catch (error) {
       console.error("Failed to delete:", error);
+      // Subscription will restore correct state if delete failed
     }
   };
 
@@ -514,7 +507,6 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
       name: "",
       content: "",
       assigneeId: helpers[0]?.id || "",
-      points: 10,
     });
     setIsTrainingModalOpen(true);
   };
@@ -527,7 +519,6 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
       name: module.name,
       content: module.content || "",
       assigneeId: module.assigneeId || "",
-      points: module.points,
     });
     setIsTrainingModalOpen(true);
   };
@@ -551,17 +542,25 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
 
   const handleDeleteTraining = async () => {
     if (!editingTrainingModule) return;
+    
+    const moduleToDelete = editingTrainingModule;
+    
+    // Optimistic UI: immediately close modal and remove from local state
+    setIsTrainingModalOpen(false);
+    setTrainingModules(prev => prev.filter(m => m.id !== moduleToDelete.id));
+    
+    // Perform delete in background
     try {
-      await deleteTrainingModule(householdId, editingTrainingModule.id);
-      setIsTrainingModalOpen(false);
+      await deleteTrainingModule(householdId, moduleToDelete.id);
     } catch (error) {
       console.error("Failed to delete training:", error);
+      // Subscription will restore correct state if delete failed
     }
   };
 
   const handleCompleteTraining = async (module: TrainingModule) => {
     try {
-      await completeTrainingModule(householdId, module.id, currentUser.id);
+      await completeTrainingModule(householdId, module.id);
       setViewingTrainingModule(null);
     } catch (error) {
       console.error("Failed to complete training:", error);
@@ -659,13 +658,6 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
             boxShadow: isScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none'
           }}
         >
-          {/* Helper Points Banner (only for helpers in training section) */}
-          {isHelper && activeSection === "training" && (
-            <div className="mb-3">
-              <HelperPointsBanner points={helperPoints} />
-            </div>
-          )}
-
           {/* Essential Info Tabs */}
           {activeSection === "essentialInfo" && (
             <div 
@@ -755,9 +747,11 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
         <div className="pt-4">
 
         {/* ─────────────────────────────────────────────────────────────── */}
-        {/* FAMILY PROFILE CAROUSEL - Always visible */}
+        {/* FAMILY PROFILE CAROUSEL - Only visible in Essential Info section */}
         {/* ─────────────────────────────────────────────────────────────── */}
-        <FamilyProfileCarousel users={users} />
+        {activeSection === "essentialInfo" && (
+          <FamilyProfileCarousel users={users} />
+        )}
 
         {/* ─────────────────────────────────────────────────────────────── */}
         {/* ESSENTIAL INFO SECTION */}
@@ -899,39 +893,6 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
 };
 
 // ─────────────────────────────────────────────────────────────────
-// Helper Points Banner Component
-// ─────────────────────────────────────────────────────────────────
-interface HelperPointsBannerProps {
-  points: HelperPoints | null;
-}
-
-const HelperPointsBanner: React.FC<HelperPointsBannerProps> = ({ points }) => {
-  const totalPoints = points?.totalPoints || 0;
-  const { level, progress } = getHelperLevel(totalPoints);
-
-  return (
-    <div className="bg-primary rounded-xl p-4 mb-6 text-primary-foreground shadow-md">
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2">
-          <Award size={20} />
-          <span className="text-title">Your Points</span>
-        </div>
-        <span className="text-display">{totalPoints} pts</span>
-      </div>
-      <div className="flex items-center gap-3">
-        <div className="flex-1 h-2 bg-primary-foreground/20 rounded-full overflow-hidden">
-          <div
-            className="h-full bg-primary-foreground rounded-full transition-all"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-        <span className="text-body">Level {level}</span>
-      </div>
-    </div>
-  );
-};
-
-// ─────────────────────────────────────────────────────────────────
 // Essential Info Card Component
 // ─────────────────────────────────────────────────────────────────
 interface EssentialInfoCardProps {
@@ -1058,7 +1019,6 @@ const TrainingCard: React.FC<TrainingCardProps> = ({
             >
               {displayCategory}
             </span>
-            <span className="text-caption text-muted-foreground">+{module.points} pts</span>
               </div>
             </div>
         {isHelper ? (
@@ -1225,8 +1185,13 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
                 <Phone size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <input
                   type="tel"
+                  inputMode="tel"
                   value={form.phone}
-                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                  onChange={(e) => {
+                    // Only allow digits, spaces, dashes, and parentheses for phone formatting
+                    const value = e.target.value.replace(/[^\d\s\-()]/g, '');
+                    setForm({ ...form, phone: value });
+                  }}
                   placeholder="812 345 6789"
                   className="w-full pl-11 pr-4 py-3 rounded-lg bg-secondary border border-border focus:border-foreground outline-none transition-all text-body"
                 />
@@ -1403,29 +1368,7 @@ const TrainingModal: React.FC<TrainingModalProps> = ({
             </select>
           </div>
 
-          {/* Points */}
-          <div>
-            <label className="block text-caption text-muted-foreground mb-2 uppercase tracking-wide">
-              Points Reward
-            </label>
-            <div className="grid grid-cols-4 gap-2">
-              {[0, 10, 20, 30].map((value) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => setForm({ ...form, points: value })}
-                  className={`py-3 rounded-lg text-body transition-all ${
-                    form.points === value
-                      ? "bg-primary text-primary-foreground shadow-sm"
-                      : "bg-secondary text-foreground hover:bg-secondary/80"
-                  }`}
-                >
-                  {value}
-                </button>
-              ))}
-            </div>
-          </div>
-            </div>
+        </div>
 
         {/* Footer */}
         <div className="p-5 pb-20 border-t border-border flex gap-3">
@@ -1503,7 +1446,6 @@ const TrainingViewModal: React.FC<TrainingViewModalProps> = ({
           <h2 className="text-display text-foreground">{module.name}</h2>
           <div className="flex items-center gap-3 mt-2 text-body text-muted-foreground">
             <span>Assigned to: {assigneeName}</span>
-            <span className="text-primary font-medium">+{module.points} pts</span>
           </div>
         </div>
 

@@ -132,6 +132,22 @@ export function subscribeToCollection(
 }
 
 /**
+ * Convert an array of user IDs (which may be Clerk IDs) to Supabase UUIDs
+ */
+async function convertUserIdsToUuids(ids: string[], householdId: string): Promise<string[]> {
+  const convertedIds: string[] = [];
+  for (const id of ids) {
+    const uuid = await getSupabaseUserId(id, householdId);
+    if (uuid) {
+      convertedIds.push(uuid);
+    } else {
+      console.warn(`⚠️ Could not resolve user ID: ${id}`);
+    }
+  }
+  return convertedIds;
+}
+
+/**
  * Add a new item to a collection
  * Why: Create new records (e.g., add shopping item, create task)
  */
@@ -153,9 +169,40 @@ export async function addItem(
     household_id: householdId
   };
   
-  // Remove id if undefined (let Supabase generate it)
-  if (finalData.id === undefined) {
+  // Remove id if undefined or not a valid UUID (let Supabase generate it)
+  // Temp IDs look like "temp-1234567890", "todo-1234567890", or plain timestamps like "1733139999999"
+  // Valid UUIDs look like "550e8400-e29b-41d4-a716-446655440000"
+  const isValidUuid = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+  
+  if (finalData.id === undefined || 
+      (typeof finalData.id === 'string' && !isValidUuid(finalData.id))) {
     delete finalData.id;
+  }
+  
+  // Convert empty strings to null ONLY for specific field types
+  // PostgreSQL doesn't accept empty strings for DATE, TIME, UUID columns
+  // But text fields like 'description' should keep empty strings (NOT NULL constraint)
+  const fieldsToConvertToNull = ['due_date', 'due_time', 'assignee_id', 'created_by', 'completed_at'];
+  for (const key of fieldsToConvertToNull) {
+    if (finalData[key] === '') {
+      finalData[key] = null;
+    }
+  }
+  
+  // For meals: convert for_user_ids from Clerk IDs to Supabase UUIDs
+  if (collection === 'meals' && Array.isArray(finalData.for_user_ids)) {
+    console.log('🔄 Converting for_user_ids to UUIDs:', finalData.for_user_ids);
+    finalData.for_user_ids = await convertUserIdsToUuids(finalData.for_user_ids, householdId);
+    console.log('✅ Converted for_user_ids:', finalData.for_user_ids);
+  }
+  
+  // For todo_items: convert assignee_id from Clerk ID to Supabase UUID
+  if (collection === 'todo_items' && finalData.assignee_id) {
+    const uuid = await getSupabaseUserId(finalData.assignee_id, householdId);
+    if (uuid) {
+      console.log(`🔄 Converting assignee_id ${finalData.assignee_id} to UUID ${uuid}`);
+      finalData.assignee_id = uuid;
+    }
   }
   
   console.log('🟡 Sending to Supabase:', finalData);
@@ -191,6 +238,33 @@ export async function updateItem(
   console.log(`🔄 Updating ${collection} item:`, id, updates);
   
   const snakeCaseUpdates = convertToSnakeCase(updates);
+  
+  // Convert empty strings to null ONLY for specific field types
+  // PostgreSQL doesn't accept empty strings for DATE, TIME, UUID columns
+  // But text fields like 'description' should keep empty strings (NOT NULL constraint)
+  const fieldsToConvertToNull = ['due_date', 'due_time', 'assignee_id', 'created_by', 'completed_at'];
+  for (const key of fieldsToConvertToNull) {
+    if (snakeCaseUpdates[key] === '') {
+      snakeCaseUpdates[key] = null;
+    }
+  }
+  
+  // For meals: convert for_user_ids from Clerk IDs to Supabase UUIDs
+  if (collection === 'meals' && Array.isArray(snakeCaseUpdates.for_user_ids)) {
+    console.log('🔄 Converting for_user_ids to UUIDs:', snakeCaseUpdates.for_user_ids);
+    snakeCaseUpdates.for_user_ids = await convertUserIdsToUuids(snakeCaseUpdates.for_user_ids, householdId);
+    console.log('✅ Converted for_user_ids:', snakeCaseUpdates.for_user_ids);
+  }
+  
+  // For todo_items: convert assignee_id from Clerk ID to Supabase UUID
+  if (collection === 'todo_items' && snakeCaseUpdates.assignee_id) {
+    const uuid = await getSupabaseUserId(snakeCaseUpdates.assignee_id, householdId);
+    if (uuid) {
+      console.log(`🔄 Converting assignee_id ${snakeCaseUpdates.assignee_id} to UUID ${uuid}`);
+      snakeCaseUpdates.assignee_id = uuid;
+    }
+  }
+  
   console.log('🔄 Snake case updates:', snakeCaseUpdates);
   
   let actualId = id;
@@ -497,6 +571,28 @@ export async function completeInviteRegistration(
 
 // HELPER FUNCTIONS
 
+// Reverse cache to store uuid -> app user id mapping
+const uuidToAppIdCache: Record<string, string> = {};
+
+/**
+ * Get the app's user ID (Clerk ID for active users) from a Supabase UUID
+ */
+function getAppUserIdFromUuid(uuid: string): string {
+  // Check reverse cache
+  if (uuidToAppIdCache[uuid]) {
+    return uuidToAppIdCache[uuid];
+  }
+  // UUID not found in cache - return as-is (might be a pending user UUID)
+  return uuid;
+}
+
+/**
+ * Convert an array of Supabase UUIDs to app user IDs
+ */
+function convertUuidsToAppUserIds(uuids: string[]): string[] {
+  return uuids.map(uuid => getAppUserIdFromUuid(uuid));
+}
+
 /**
  * Convert Supabase snake_case to camelCase
  * 
@@ -518,14 +614,26 @@ function convertSupabaseData(data: any[], collection?: string): DataItem[] {
       if (item.clerk_id) {
         // Active user - use clerk_id as app id
         userIdCache[item.clerk_id] = item.id;
-        console.log(`📝 Cached mapping: clerk_id ${item.clerk_id} -> UUID ${item.id}`);
+        uuidToAppIdCache[item.id] = item.clerk_id; // Reverse mapping
+        console.log(`📝 Cached mapping: clerk_id ${item.clerk_id} <-> UUID ${item.id}`);
         converted.id = item.clerk_id;
       } else {
         // Pending user - keep Supabase UUID as id
         // Also cache it to itself so lookups work
         userIdCache[item.id] = item.id;
+        uuidToAppIdCache[item.id] = item.id; // Maps to itself
         console.log(`📝 Pending user: keeping UUID ${item.id} as id`);
       }
+    }
+    
+    // For meals: convert for_user_ids from Supabase UUIDs back to app user IDs
+    if (collection === 'meals' && Array.isArray(item.for_user_ids)) {
+      converted.forUserIds = convertUuidsToAppUserIds(item.for_user_ids);
+    }
+    
+    // For todo_items: convert assignee_id from Supabase UUID to app user ID
+    if (collection === 'todo_items' && item.assignee_id) {
+      converted.assigneeId = getAppUserIdFromUuid(item.assignee_id);
     }
     
     return converted;

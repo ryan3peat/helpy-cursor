@@ -68,6 +68,10 @@ const Meals: React.FC<MealsProps> = ({
   const [description, setDescription] = useState('');
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
 
+  // Quick Join Popover State (tracks which date's popover is open)
+  const [quickJoinPopoverDate, setQuickJoinPopoverDate] = useState<string | null>(null);
+  const quickJoinPopoverRef = useRef<HTMLDivElement | null>(null);
+
   // Ref: Day view container for auto-scroll to current day
   const dayViewRef = useRef<HTMLDivElement | null>(null);
 
@@ -220,7 +224,13 @@ const Meals: React.FC<MealsProps> = ({
     const newUserIds = isIn
       ? meal.forUserIds.filter(id => id !== currentUser.id)
       : [...meal.forUserIds, currentUser.id];
-    onUpdate(meal.id, { forUserIds: newUserIds });
+    
+    // If leaving and meal becomes empty (no description AND no participants), delete it
+    if (isIn && newUserIds.length === 0 && !meal.description.trim()) {
+      onDelete(meal.id);
+    } else {
+      onUpdate(meal.id, { forUserIds: newUserIds });
+    }
   };
 
   // Quick RSVP for empty slot - create availability entry
@@ -383,6 +393,26 @@ const Meals: React.FC<MealsProps> = ({
     
     return () => clearTimeout(timeoutId);
   }, [view, currentViewDate]);
+
+  // Close quick join popover when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (quickJoinPopoverRef.current && !quickJoinPopoverRef.current.contains(event.target as Node)) {
+        setQuickJoinPopoverDate(null);
+      }
+    };
+
+    if (quickJoinPopoverDate) {
+      // Use setTimeout to avoid the click that opened the popover from immediately closing it
+      const timeoutId = setTimeout(() => {
+        document.addEventListener('click', handleClickOutside);
+      }, 0);
+      return () => {
+        clearTimeout(timeoutId);
+        document.removeEventListener('click', handleClickOutside);
+      };
+    }
+  }, [quickJoinPopoverDate]);
 
   // Date Range String
   const dateRangeStr = `${weekDays[0].toLocaleDateString(langCode, { day: 'numeric', month: 'short' })} - ${weekDays[6].toLocaleDateString(langCode, { day: 'numeric', month: 'short' })}`;
@@ -826,17 +856,66 @@ const Meals: React.FC<MealsProps> = ({
                           );
                         } else {
                           // "Add Meal Plan" row
+                          const isExpanded = quickJoinPopoverDate === dateStr;
+                          // Get existing meal types for this day to disable them in the picker
+                          // Only count meals that have a description OR have participants
+                          const existingMealTypes = dayMeals
+                            .filter(m => m.description.trim() || m.forUserIds.length > 0)
+                            .map(m => m.type);
                           return (
                             <div key={`add-${idx}`} className="flex min-h-[60px]">
-                              {/* Column 2: Add Meal Plan */}
+                              {/* Column 2: Add Meal Plan OR Meal Type Picker */}
                               <div 
-                                onClick={() => openAddModal(dayDate, MealType.DINNER)}
-                                className="flex-1 p-3 cursor-pointer hover:bg-muted/50 transition-colors flex items-center justify-center"
+                                ref={isExpanded ? quickJoinPopoverRef : null}
+                                className="flex-1 p-3 flex items-center justify-center"
                               >
-                                <button className="text-body font-semibold text-muted-foreground hover:text-primary flex items-center gap-1.5 transition-colors">
-                                  {t['meals.add_meal_plan'] ?? 'Add Meal Plan'}
-                                  <Plus size={16} />
-                                </button>
+                                {isExpanded ? (
+                                  /* Expanded: 4 large meal type buttons with staggered animation */
+                                  <div className="flex items-center justify-center gap-2">
+                                    {[
+                                      { type: MealType.BREAKFAST, icon: <Coffee size={20} />, color: 'text-[#FF9800] border-[#FF9800]/30 hover:bg-[#FF9800]/10 hover:border-[#FF9800]/50' },
+                                      { type: MealType.LUNCH, icon: <Sun size={20} />, color: 'text-[#4CAF50] border-[#4CAF50]/30 hover:bg-[#4CAF50]/10 hover:border-[#4CAF50]/50' },
+                                      { type: MealType.DINNER, icon: <Moon size={20} />, color: 'text-[#7E57C2] border-[#7E57C2]/30 hover:bg-[#7E57C2]/10 hover:border-[#7E57C2]/50' },
+                                      { type: MealType.SNACKS, icon: <Cookie size={20} />, color: 'text-[#F06292] border-[#F06292]/30 hover:bg-[#F06292]/10 hover:border-[#F06292]/50' },
+                                    ].map(({ type, icon, color }, index) => {
+                                      const alreadyExists = existingMealTypes.includes(type);
+                                      return (
+                                        <button
+                                          key={type}
+                                          onClick={() => {
+                                            if (alreadyExists) return;
+                                            handleQuickRsvpEmpty(dayDate, type);
+                                            setQuickJoinPopoverDate(null);
+                                          }}
+                                          disabled={alreadyExists}
+                                          className={`w-12 h-12 flex items-center justify-center rounded-xl border-2 bg-card transition-all duration-200 ${
+                                            alreadyExists 
+                                              ? 'opacity-30 cursor-not-allowed border-muted text-muted-foreground' 
+                                              : color
+                                          }`}
+                                          style={{
+                                            animation: 'mealButtonPop 200ms ease-out forwards',
+                                            animationDelay: `${index * 50}ms`,
+                                            opacity: 0,
+                                            transform: 'scale(0.8)'
+                                          }}
+                                          title={alreadyExists ? `${getMealLabel(type)} already exists` : getMealLabel(type)}
+                                        >
+                                          {icon}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                ) : (
+                                  /* Collapsed: Add Meal Plan button */
+                                  <button 
+                                    onClick={() => openAddModal(dayDate, MealType.DINNER)}
+                                    className="text-body font-semibold text-muted-foreground hover:text-primary flex items-center gap-1.5 transition-colors"
+                                  >
+                                    {t['meals.add_meal_plan'] ?? 'Add Meal Plan'}
+                                    <Plus size={16} />
+                                  </button>
+                                )}
                               </div>
 
                               {/* Inset Vertical Separator with Gradient */}
@@ -847,7 +926,7 @@ const Meals: React.FC<MealsProps> = ({
                                 />
                               </div>
 
-                              {/* Column 3: Quick Join */}
+                              {/* Column 3: Join/Close Button */}
                               <div className="w-28 shrink-0 p-2 flex flex-col items-center justify-center gap-1.5">
                                 {/* Show all user avatars as potential eaters */}
                                 <div className="flex -space-x-1.5">
@@ -859,16 +938,25 @@ const Meals: React.FC<MealsProps> = ({
                                       className="w-6 h-6 rounded-full bg-muted object-cover border-2 border-card opacity-40"
                                     />
                                   ))}
-                                    </div>
-                                <button
-                                  onClick={() => handleQuickRsvpEmpty(dayDate, MealType.DINNER)}
-                                  className="text-caption font-semibold px-3 py-1.5 rounded-full transition-all flex items-center gap-1 bg-primary/15 text-primary hover:bg-primary/25"
-                                >
-                                  Join <Plus size={10} />
+                                </div>
+                                {isExpanded ? (
+                                  <button
+                                    onClick={() => setQuickJoinPopoverDate(null)}
+                                    className="text-caption font-semibold px-3 py-1.5 rounded-full transition-all flex items-center gap-1 bg-muted text-muted-foreground hover:bg-muted/80"
+                                  >
+                                    Close <X size={10} />
                                   </button>
+                                ) : (
+                                  <button
+                                    onClick={() => setQuickJoinPopoverDate(dateStr)}
+                                    className="text-caption font-semibold px-3 py-1.5 rounded-full transition-all flex items-center gap-1 bg-primary/15 text-primary hover:bg-primary/25"
+                                  >
+                                    Join <Plus size={10} />
+                                  </button>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        );
+                          );
                         }
                       })}
                     </div>

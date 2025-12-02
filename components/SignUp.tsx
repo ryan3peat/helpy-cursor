@@ -95,8 +95,14 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
                 </label>
                 <input
                   type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   value={code}
-                  onChange={(e) => setCode(e.target.value)}
+                  onChange={(e) => {
+                    // Only allow digits for verification code
+                    const value = e.target.value.replace(/\D/g, '');
+                    setCode(value);
+                  }}
                   placeholder="Enter 6-digit code"
                   required
                   maxLength={6}
@@ -208,8 +214,13 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
               </label>
               <input
                 type="tel"
+                inputMode="tel"
                 value={formData.phoneNumber}
-                onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
+                onChange={(e) => {
+                  // Only allow digits, spaces, dashes, parentheses, and + for international format
+                  const value = e.target.value.replace(/[^\d\s\-()+ ]/g, '');
+                  setFormData({ ...formData, phoneNumber: value });
+                }}
                 placeholder="+1 (555) 123-4567"
                 className="w-full rounded-xl border-gray-300 focus:border-brand-primary focus:ring-brand-primary px-4 py-3"
               />

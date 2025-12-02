@@ -562,7 +562,7 @@ const ToDo: React.FC<ToDoProps> = ({
         name: sheetForm.name!,
         category: sheetForm.category,
         assigneeId: sheetForm.assigneeId,
-        quantity: sheetForm.quantity,
+        quantity: sheetForm.quantity || '1',
         unit: sheetForm.unit,
         dueDate: sheetForm.dueDate,
         dueTime: sheetForm.dueTime,
@@ -588,7 +588,7 @@ const ToDo: React.FC<ToDoProps> = ({
         completed: false,
         assigneeId: sheetForm.assigneeId,
         createdAt: new Date().toISOString(),
-        quantity: sheetForm.quantity,
+        quantity: sheetForm.quantity || '1',
         unit: sheetForm.unit,
         dueDate: sheetForm.dueDate,
         dueTime: sheetForm.dueTime,
@@ -854,7 +854,7 @@ const ToDo: React.FC<ToDoProps> = ({
           <div
             className={`flex items-center gap-3 p-4 ${
               activeItems.length > 0 ? 'list-item-separator' : ''
-            } ${isAddingInline ? 'bg-muted/50' : 'hover:bg-muted/30 cursor-pointer'}`}
+            } ${!isAddingInline ? 'hover:bg-muted/30 cursor-pointer' : ''}`}
             onClick={() => !isAddingInline && setIsAddingInline(true)}
           >
             <div className="text-muted-foreground/50 shrink-0">
@@ -1078,13 +1078,13 @@ const ToDo: React.FC<ToDoProps> = ({
 
       {/* Detailed Sheet Overlay */}
       {isSheetOpen && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bottom-sheet-backdrop">
+        <div className="fixed inset-0 z-[60] flex items-end justify-center bottom-sheet-backdrop">
           <div
             className="absolute inset-0 bg-black/50"
             onClick={() => setIsSheetOpen(false)}
           />
           
-          <div className="relative w-full max-w-lg bg-card rounded-t-3xl bottom-sheet-content flex flex-col" style={{ maxHeight: '85vh' }}>
+          <div className="relative w-full max-w-lg bg-card rounded-t-3xl bottom-sheet-content flex flex-col" style={{ maxHeight: '80vh', marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
             {/* Drag Handle */}
             <div className="flex justify-center pt-4 pb-2 shrink-0">
               <div className="w-12 h-1.5 bg-muted-foreground/30 rounded-full" />
@@ -1135,10 +1135,17 @@ const ToDo: React.FC<ToDoProps> = ({
                       Qty
                     </label>
                     <input
-                      type="number"
-                      value={sheetForm.quantity || '1'}
-                      onChange={e => setSheetForm(prev => ({ ...prev, quantity: e.target.value }))}
-                      className="w-full px-4 py-3 bg-muted rounded-xl text-body text-foreground text-center outline-none border border-transparent focus:border-foreground transition-colors"
+                      type="text"
+                      inputMode="decimal"
+                      value={sheetForm.quantity ?? ''}
+                      onChange={e => {
+                        // Allow digits, decimal point, and fractions like 1/2
+                        const value = e.target.value.replace(/[^\d./]/g, '');
+                        setSheetForm(prev => ({ ...prev, quantity: value }));
+                      }}
+                      onFocus={e => e.target.select()}
+                      placeholder="Qty"
+                      className="w-full px-4 py-3 bg-muted rounded-xl text-body text-foreground text-center outline-none border border-transparent focus:border-foreground transition-colors placeholder:text-muted-foreground"
                     />
                   </div>
                   <div className="flex-1">
@@ -1297,7 +1304,7 @@ const ToDo: React.FC<ToDoProps> = ({
             </div>
             
             {/* Fixed Save Button */}
-            <div className="shrink-0 px-6 pb-8 pt-4 bg-card">
+            <div className="shrink-0 px-6 pt-4 pb-6 bg-card">
               <button
                 onClick={handleSheetSave}
                 disabled={!sheetForm.name?.trim()}

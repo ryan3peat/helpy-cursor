@@ -24,7 +24,7 @@ interface ScrollHeaderConfig {
 export function useScrollHeader(config: ScrollHeaderConfig = {}): ScrollHeaderState {
   const { 
     collapseThreshold = 60,
-    expandThreshold = 5,
+    expandThreshold = 35,
     cooldown = 150
   } = config;
 

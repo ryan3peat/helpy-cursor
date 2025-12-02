@@ -179,6 +179,7 @@ const ToDo: React.FC<ToDoProps> = ({
   const [sheetForm, setSheetForm] = useState<Partial<ToDoItem>>({});
   const [editingItemId, setEditingItemId] = useState<string | null>(null); // Track if editing existing item
   const [showCompleted, setShowCompleted] = useState(false);
+  const [showSuggested, setShowSuggested] = useState(true);
   const [optimisticItems, setOptimisticItems] = useState<ToDoItem[]>([]);
   const [optimisticCompleted, setOptimisticCompleted] = useState<Record<string, boolean>>({});
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
@@ -827,24 +828,37 @@ const ToDo: React.FC<ToDoProps> = ({
           </div>
         </div>
 
-        {/* Suggestions */}
+        {/* Suggestions - Collapsible */}
         {suggestions.length > 0 && (
           <div className="mt-4 mb-2">
-            <p className="text-caption text-muted-foreground uppercase tracking-wide mb-2">
-              {t['todo.suggested'] || 'Suggested'}
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {suggestions.map((s, i) => (
-                <button
-                  key={i}
-                  onClick={() => handleSuggestionClick(s)}
-                  className={`px-3 py-1.5 rounded-full text-body font-medium transition-all flex items-center gap-1 border hover:opacity-80 ${getSuggestionPillStyle(s.category)}`}
-                >
-                  <Plus size={14} />
-                  {s.name}
-                </button>
-              ))}
-            </div>
+            <button
+              onClick={() => setShowSuggested(!showSuggested)}
+              className="flex items-center gap-2 mb-2"
+            >
+              {showSuggested ? (
+                <ChevronDown size={16} className="text-muted-foreground" />
+              ) : (
+                <ChevronRight size={16} className="text-muted-foreground" />
+              )}
+              <span className="text-caption text-muted-foreground uppercase tracking-wide">
+                {t['todo.suggested'] || 'Suggested'} ({suggestions.length})
+              </span>
+            </button>
+            
+            {showSuggested && (
+              <div className="flex flex-wrap gap-2">
+                {suggestions.map((s, i) => (
+                  <button
+                    key={i}
+                    onClick={() => handleSuggestionClick(s)}
+                    className={`px-3 py-1.5 rounded-full text-body font-medium transition-all flex items-center gap-1 border hover:opacity-80 ${getSuggestionPillStyle(s.category)}`}
+                  >
+                    <Plus size={14} />
+                    {s.name}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

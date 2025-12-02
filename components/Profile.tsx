@@ -2,11 +2,13 @@ import React, { useState, useRef } from 'react';
 import {
   AlertCircle, Heart, Settings, Plus, Trash2, X, Save, Camera,
   Image as ImageIcon, LogOut, Copy, Check, ChevronLeft, ChevronRight,
-  CreditCard, Shield, Lock, Crown, Mail, Share2
+  CreditCard, Shield, Lock, Crown, Mail, Share2, Bell, Phone
 } from 'lucide-react';
+import { useUser } from '@clerk/clerk-react';
 import { User, UserRole, BaseViewProps } from '../types';
 import { createInvite } from '../services/inviteService';
 import { createCheckoutSession, createPortalSession } from '../services/stripeService';
+import { supabase } from '../services/supabase';
 
 interface ProfileProps extends BaseViewProps {
   users: User[];
@@ -31,6 +33,9 @@ const Profile: React.FC<ProfileProps> = ({
   const [inviteLink, setInviteLink] = useState<string | null>(null);
   const [isCopied, setIsCopied] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isAddingUser, setIsAddingUser] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<string | null>(null);
 
   // Edit Profile Form State
   const [editName, setEditName] = useState('');
@@ -52,13 +57,110 @@ const Profile: React.FC<ProfileProps> = ({
     plan: string;
     status: string;
     periodEnd?: string;
+    period?: string;
   } | null>(null);
+  const [isLoadingSubscription, setIsLoadingSubscription] = useState(false);
+
+  // Fetch subscription info
+  React.useEffect(() => {
+    const fetchSubscriptionInfo = async () => {
+      if (!currentUser?.householdId) return;
+      
+      try {
+        setIsLoadingSubscription(true);
+        const { data, error } = await supabase
+          .from('households')
+          .select('subscription_plan, subscription_status, subscription_current_period_end, subscription_period')
+          .eq('id', currentUser.householdId)
+          .single();
+
+        if (error) throw error;
+
+        if (data) {
+          setSubscriptionInfo({
+            plan: data.subscription_plan || 'free',
+            status: data.subscription_status || 'inactive',
+            periodEnd: data.subscription_current_period_end,
+            period: data.subscription_period || 'monthly'
+          });
+          setSelectedPlan((data.subscription_plan || 'free') as 'free' | 'core' | 'pro');
+          setBillingPeriod((data.subscription_period || 'monthly') as 'monthly' | 'yearly');
+        }
+      } catch (error) {
+        console.error('Error fetching subscription info:', error);
+      } finally {
+        setIsLoadingSubscription(false);
+      }
+    };
+
+    if (activeSection === 'plan') {
+      fetchSubscriptionInfo();
+    }
+  }, [currentUser?.householdId, activeSection]);
   
-  const [securityData, setSecurityData] = useState({
+  // Get Clerk user to detect authentication method
+  const { user: clerkUser } = useUser();
+  const isGoogleAuth = clerkUser?.externalAccounts?.some(account => 
+    account.provider === 'google'
+  ) || false;
+
+  const [accountData, setAccountData] = useState({
     email: currentUser.email || '',
+    firstName: currentUser.firstName || currentUser.name?.split(' ')[0] || '',
+    lastName: currentUser.lastName || currentUser.name?.split(' ').slice(1).join(' ') || '',
+    phoneNumber: currentUser.phoneNumber || '',
+    countryCode: currentUser.countryCode || '+852',
     currentPassword: '',
-    newPassword: ''
+    newPassword: '',
+    notificationsEnabled: currentUser.notificationsEnabled ?? true
   });
+
+  // Country codes list
+  const countryCodes = [
+    { code: '+852', country: 'Hong Kong' },
+    { code: '+1', country: 'United States/Canada' },
+    { code: '+44', country: 'United Kingdom' },
+    { code: '+86', country: 'China' },
+    { code: '+65', country: 'Singapore' },
+    { code: '+60', country: 'Malaysia' },
+    { code: '+66', country: 'Thailand' },
+    { code: '+84', country: 'Vietnam' },
+    { code: '+62', country: 'Indonesia' },
+    { code: '+63', country: 'Philippines' },
+    { code: '+81', country: 'Japan' },
+    { code: '+82', country: 'South Korea' },
+    { code: '+61', country: 'Australia' },
+    { code: '+64', country: 'New Zealand' },
+    { code: '+91', country: 'India' },
+    { code: '+33', country: 'France' },
+    { code: '+49', country: 'Germany' },
+    { code: '+39', country: 'Italy' },
+    { code: '+34', country: 'Spain' },
+    { code: '+31', country: 'Netherlands' },
+    { code: '+971', country: 'United Arab Emirates' },
+  ];
+
+  const [countryCodeSearch, setCountryCodeSearch] = useState('');
+  const [showCountryCodeDropdown, setShowCountryCodeDropdown] = useState(false);
+  
+  const filteredCountryCodes = countryCodes.filter(item =>
+    item.country.toLowerCase().includes(countryCodeSearch.toLowerCase()) ||
+    item.code.includes(countryCodeSearch)
+  );
+
+  // Update accountData when currentUser changes
+  React.useEffect(() => {
+    setAccountData({
+      email: currentUser.email || '',
+      firstName: currentUser.firstName || currentUser.name?.split(' ')[0] || '',
+      lastName: currentUser.lastName || currentUser.name?.split(' ').slice(1).join(' ') || '',
+      phoneNumber: currentUser.phoneNumber || '',
+      countryCode: currentUser.countryCode || '+1',
+      currentPassword: '',
+      newPassword: '',
+      notificationsEnabled: currentUser.notificationsEnabled ?? true
+    });
+  }, [currentUser]);
   const [paymentData, setPaymentData] = useState({
     cardNumber: '',
     expiry: '',
@@ -69,7 +171,25 @@ const Profile: React.FC<ProfileProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
-  const selectedUser = users.find(u => u.id === selectedUserId) || users[0];
+  // Filter out any invalid users (safety check)
+  const validUsers = React.useMemo(() => {
+    return users.filter(u => u && u.id);
+  }, [users]);
+
+  // Find selected user, fallback to current user if not found
+  const selectedUser = validUsers.find(u => u.id === selectedUserId) || validUsers.find(u => u.id === currentUser.id) || validUsers[0];
+
+  // Update selectedUserId if the currently selected user is deleted
+  React.useEffect(() => {
+    const userExists = validUsers.some(u => u.id === selectedUserId);
+    if (!userExists && validUsers.length > 0) {
+      // If selected user was deleted, switch to current user or first available user
+      setSelectedUserId(currentUser.id);
+    } else if (validUsers.length === 0) {
+      // If no users, ensure we're on current user
+      setSelectedUserId(currentUser.id);
+    }
+  }, [validUsers, selectedUserId, currentUser.id]);
 
   const resetForm = () => {
     setNewName('');
@@ -122,38 +242,69 @@ const Profile: React.FC<ProfileProps> = ({
   };
 
   const handleAddUser = async () => {
-    if (!newName.trim()) return;
-    const newUser: Omit<User, 'id'> = {
-      householdId: currentUser.householdId,
-      email: '',
-      name: newName,
-      role: newRole,
-      avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(newName)}`,
-      allergies: [],
-      preferences: [],
-      status: 'pending'
-    };
-    const createdUser = await onAdd(newUser);
-    if (createdUser) {
-      const link = await createInvite({
-        name: newName,
-        role: newRole,
-        householdId: currentUser.householdId,
-        inviterId: currentUser.id
-      });
-      setInviteLink(link.inviteLink);
-    }
+    if (!newName.trim() || isAddingUser) return;
+    
+    setIsAddingUser(true);
+    const nameToAdd = newName.trim();
+    const roleToAdd = newRole;
+    
+    // Close modal immediately for better UX
     resetForm();
     setIsAddModalOpen(false);
+    
+    try {
+      // Children don't need invite links - they're added directly to the household
+      if (roleToAdd === UserRole.CHILD) {
+        const newUser: Omit<User, 'id'> = {
+          householdId: currentUser.householdId,
+          email: '',
+          name: nameToAdd,
+          role: roleToAdd,
+          avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(nameToAdd)}`,
+          allergies: [],
+          preferences: [],
+          status: 'active' // Children are added as active family members, not pending
+        };
+        
+        // Create child user directly without invite link
+        await onAdd(newUser);
+        // User will appear via subscription update
+      } else {
+        // For Spouse and Helper, create user with invite link
+        const result = await createInvite({
+          name: nameToAdd,
+          role: roleToAdd,
+          householdId: currentUser.householdId,
+          inviterId: currentUser.id
+        });
+        
+        // Show invite link modal for non-children
+        setInviteLink(result.inviteLink);
+      }
+    } catch (error) {
+      console.error('Failed to add user:', error);
+      alert('Failed to add user. Please try again.');
+    } finally {
+      setIsAddingUser(false);
+    }
   };
 
   const handleDeleteUser = (id: string) => {
-    if (window.confirm(t['profile.confirmDelete'] || 'Delete this user?')) {
-      onDelete(id);
-      if (selectedUserId === id) {
-        setSelectedUserId(currentUser.id);
-      }
+    setUserToDelete(id);
+    setDeleteConfirmOpen(true);
+  };
+
+  const confirmDeleteUser = () => {
+    if (!userToDelete) return;
+    
+    // Update selectedUserId before deletion if needed
+    if (selectedUserId === userToDelete) {
+      setSelectedUserId(currentUser.id);
     }
+    // Call onDelete which will update the parent's users array
+    onDelete(userToDelete);
+    setDeleteConfirmOpen(false);
+    setUserToDelete(null);
   };
 
   const handleReinvite = async (userId: string) => {
@@ -173,6 +324,29 @@ const Profile: React.FC<ProfileProps> = ({
     navigator.clipboard.writeText(inviteLink);
     setIsCopied(true);
     setTimeout(() => setIsCopied(false), 2000);
+  };
+
+  const handleShareInvite = async () => {
+    if (!inviteLink) return;
+    
+    // Use Web Share API if available (mobile devices)
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Join my Helpy household',
+          text: 'Join my Helpy household',
+          url: inviteLink,
+        });
+      } catch (error) {
+        // User cancelled or error occurred, fall back to copy
+        if ((error as Error).name !== 'AbortError') {
+          handleCopyInvite();
+        }
+      }
+    } else {
+      // Fall back to copy on desktop
+      handleCopyInvite();
+    }
   };
 
   const handleOpenEdit = () => {
@@ -263,13 +437,22 @@ const Profile: React.FC<ProfileProps> = ({
                 <div className="bg-gray-50 p-3 rounded-xl mb-4 break-all text-sm font-mono text-gray-700">
                   {inviteLink}
                 </div>
-                <button
-                  onClick={handleCopyInvite}
-                  className="w-full bg-brand-primary text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-brand-secondary transition-colors"
-                >
-                  {isCopied ? <Check size={18} /> : <Copy size={18} />}
-                  {isCopied ? 'Copied!' : 'Copy Link'}
-                </button>
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleCopyInvite}
+                    className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-gray-200 transition-colors"
+                  >
+                    {isCopied ? <Check size={18} /> : <Copy size={18} />}
+                    {isCopied ? 'Copied!' : 'Copy'}
+                  </button>
+                  <button
+                    onClick={handleShareInvite}
+                    className="flex-1 bg-brand-primary text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-brand-secondary transition-colors"
+                  >
+                    <Share2 size={18} />
+                    Share
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -277,15 +460,15 @@ const Profile: React.FC<ProfileProps> = ({
           {/* User Carousel */}
           <div className="bg-gradient-to-br from-brand-primary to-brand-secondary rounded-3xl p-6 shadow-lg">
             <h2 className="text-white text-lg font-bold mb-4">{t['profile.familyMembers']}</h2>
-            <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
-              {users.map((user) => {
+            <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide pl-4 pt-4">
+              {validUsers.map((user) => {
                 const isCurrent = user.id === currentUser.id;
                 const isSelected = user.id === selectedUserId;
                 return (
                   <div
                     key={user.id}
                     onClick={() => setSelectedUserId(user.id)}
-                    className={`flex flex-col items-center gap-2 cursor-pointer transition-all ${isSelected ? 'scale-110' : 'scale-95 opacity-60'
+                    className={`flex flex-col items-center gap-2 cursor-pointer transition-all mt-2 ${isSelected ? 'scale-110' : 'scale-95 opacity-60'
                       }`}
                   >
                     <div className={`w-16 h-16 rounded-full overflow-hidden border-4 ${isSelected ? 'border-white shadow-xl' : 'border-white/50'
@@ -303,7 +486,7 @@ const Profile: React.FC<ProfileProps> = ({
               })}
               <div
                 onClick={() => setIsAddModalOpen(true)}
-                className="flex flex-col items-center gap-2 cursor-pointer scale-95 opacity-60 hover:opacity-100 transition-opacity"
+                className="flex flex-col items-center gap-2 cursor-pointer scale-95 opacity-60 hover:opacity-100 transition-opacity mt-2"
               >
                 <div id="onboarding-add-member-btn" className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center border-2 border-white/50">
                   <Plus size={24} className="text-white" />
@@ -320,9 +503,10 @@ const Profile: React.FC<ProfileProps> = ({
                 {selectedUser.id !== currentUser.id && (
                   <button
                     onClick={() => handleDeleteUser(selectedUser.id)}
-                    className="p-2 text-red-300 hover:text-red-500 bg-red-50 rounded-full transition-colors"
+                    className="flex items-center gap-2 px-3 py-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-colors"
                   >
                     <Trash2 size={18} />
+                    <span className="text-sm font-semibold">{t['profile.delete'] || 'Delete'}</span>
                   </button>
                 )}
                 <button
@@ -424,8 +608,8 @@ const Profile: React.FC<ProfileProps> = ({
 
         {/* Add User Modal */}
         {isAddModalOpen && (
-          <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50 animate-fade-in">
-            <div className="bg-white rounded-t-3xl w-full max-w-lg p-6 animate-slide-up shadow-2xl">
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-fade-in overflow-y-auto">
+            <div className="bg-white rounded-3xl w-full max-w-lg p-6 animate-slide-up shadow-2xl my-8">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-xl font-bold text-gray-800">{t['profile.addMember']}</h3>
                 <button onClick={() => setIsAddModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-full">
@@ -445,21 +629,79 @@ const Profile: React.FC<ProfileProps> = ({
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">{t['profile.role']}</label>
-                  <select
-                    value={newRole}
-                    onChange={(e) => setNewRole(e.target.value as UserRole)}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-primary"
-                  >
-                    <option value={UserRole.SPOUSE}>Spouse</option>
-                    <option value={UserRole.HELPER}>Helper</option>
-                    <option value={UserRole.CHILD}>Child</option>
-                  </select>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setNewRole(UserRole.SPOUSE)}
+                      className={`flex-1 px-4 py-3 rounded-xl font-semibold transition-all ${
+                        newRole === UserRole.SPOUSE
+                          ? 'bg-[#F3E5F5] text-[#AB47BC] border-2 border-[#AB47BC]'
+                          : 'bg-gray-100 text-gray-600 border-2 border-transparent hover:bg-gray-200'
+                      }`}
+                    >
+                      Spouse
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setNewRole(UserRole.HELPER)}
+                      className={`flex-1 px-4 py-3 rounded-xl font-semibold transition-all ${
+                        newRole === UserRole.HELPER
+                          ? 'bg-[#FFF3E0] text-[#FF9800] border-2 border-[#FF9800]'
+                          : 'bg-gray-100 text-gray-600 border-2 border-transparent hover:bg-gray-200'
+                      }`}
+                    >
+                      Helper
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setNewRole(UserRole.CHILD)}
+                      className={`flex-1 px-4 py-3 rounded-xl font-semibold transition-all ${
+                        newRole === UserRole.CHILD
+                          ? 'bg-[#E8F5E9] text-[#4CAF50] border-2 border-[#4CAF50]'
+                          : 'bg-gray-100 text-gray-600 border-2 border-transparent hover:bg-gray-200'
+                      }`}
+                    >
+                      Child
+                    </button>
+                  </div>
                 </div>
                 <button
                   onClick={handleAddUser}
-                  className="w-full bg-brand-primary text-white py-4 rounded-xl font-bold shadow-lg hover:bg-brand-secondary transition-colors"
+                  disabled={isAddingUser || !newName.trim()}
+                  className="w-full bg-brand-primary text-white py-4 rounded-xl font-bold shadow-lg hover:bg-brand-secondary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {t['common.add']}
+                  {isAddingUser ? 'Adding...' : t['common.add']}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {deleteConfirmOpen && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-fade-in">
+            <div className="bg-white rounded-3xl w-full max-w-md p-6 animate-slide-up shadow-2xl">
+              <div className="mb-6">
+                <h3 className="text-xl font-bold text-gray-800 mb-2">Delete Family Member</h3>
+                <p className="text-sm text-gray-600">
+                  {t['profile.confirmDelete'] || 'Are you sure you want to delete this family member? This action cannot be undone.'}
+                </p>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setDeleteConfirmOpen(false);
+                    setUserToDelete(null);
+                  }}
+                  className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-200 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmDeleteUser}
+                  className="flex-1 bg-red-50 text-red-600 py-3 rounded-xl font-bold hover:bg-red-100 transition-colors"
+                >
+                  Delete
                 </button>
               </div>
             </div>
@@ -625,16 +867,44 @@ const Profile: React.FC<ProfileProps> = ({
   // =====================================================
   // PLAN SELECTION VIEW
   // =====================================================
+  const handleCancelSubscription = async () => {
+    if (!window.confirm('Are you sure you want to cancel your subscription? You will lose access to premium features at the end of your billing period.')) {
+      return;
+    }
+    
+    try {
+      setIsLoading(true);
+      // Redirect to Stripe portal for cancellation
+      await handleManageSubscription();
+    } catch (error) {
+      console.error('Error canceling subscription:', error);
+      alert('Failed to cancel subscription. Please try again.');
+      setIsLoading(false);
+    }
+  };
+
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return 'N/A';
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    } catch {
+      return 'N/A';
+    }
+  };
+
+  const getNextPaymentDate = (periodEnd?: string, period?: string) => {
+    if (!periodEnd) return null;
+    try {
+      const endDate = new Date(periodEnd);
+      return endDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    } catch {
+      return null;
+    }
+  };
+
   if (activeSection === 'plan') {
     const plans = [
-      {
-        id: 'free',
-        name: 'Free',
-        monthlyPrice: 0,
-        yearlyPrice: 0,
-        features: ['Up to 4 family members', 'Basic features'],
-        highlight: false
-      },
       {
         id: 'core',
         name: 'Core',
@@ -653,12 +923,84 @@ const Profile: React.FC<ProfileProps> = ({
       }
     ];
 
+    const currentPlanName = subscriptionInfo?.plan === 'core' ? 'Core' : subscriptionInfo?.plan === 'pro' ? 'Pro' : 'Free';
+    const planPrice = subscriptionInfo?.plan === 'core' 
+      ? (subscriptionInfo?.period === 'yearly' ? 850 : 88)
+      : subscriptionInfo?.plan === 'pro'
+      ? (subscriptionInfo?.period === 'yearly' ? 1080 : 118)
+      : 0;
+
     return (
       <div className="px-4 pt-16 pb-24 h-full animate-slide-up flex flex-col overflow-y-auto">
-        {renderSettingsHeader('Choose Your Plan')}
+        {renderSettingsHeader('Subscription')}
 
-        {/* Billing Period Toggle */}
-        <div className="mt-6 mb-6 flex justify-center">
+        {/* Current Subscription Details */}
+        {isLoadingSubscription ? (
+          <div className="mt-6 bg-white rounded-3xl p-6 shadow-sm border border-gray-100 mb-6">
+            <div className="flex items-center justify-center py-8">
+              <div className="w-8 h-8 border-4 border-brand-primary border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          </div>
+        ) : subscriptionInfo ? (
+          <div className="mt-6 bg-gradient-to-br from-brand-primary to-brand-secondary rounded-3xl p-6 shadow-lg text-white mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-lg font-semibold text-white/90 mb-1">Current Plan</h3>
+                <p className="text-2xl font-bold">{currentPlanName}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-sm text-white/80 mb-1">Price</p>
+                {planPrice > 0 ? (
+                  <p className="text-xl font-bold">
+                    ${planPrice}
+                    <span className="text-sm font-normal">/{subscriptionInfo?.period === 'yearly' ? 'yr' : 'mo'}</span>
+                  </p>
+                ) : (
+                  <p className="text-xl font-bold">Free</p>
+                )}
+              </div>
+            </div>
+            
+            {subscriptionInfo.status === 'active' && subscriptionInfo.periodEnd && (
+              <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-white/20">
+                <div>
+                  <p className="text-xs text-white/70 mb-1">Subscription Until</p>
+                  <p className="text-sm font-semibold">{formatDate(subscriptionInfo.periodEnd)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-white/70 mb-1">Next Payment</p>
+                  <p className="text-sm font-semibold">{getNextPaymentDate(subscriptionInfo.periodEnd, subscriptionInfo.period) || 'N/A'}</p>
+                </div>
+              </div>
+            )}
+
+            {subscriptionInfo.status === 'active' && (
+              <button
+                onClick={handleCancelSubscription}
+                disabled={isLoading}
+                className="w-full mt-4 bg-white/20 hover:bg-white/30 text-white py-3 rounded-xl font-semibold transition-colors disabled:opacity-50"
+              >
+                {isLoading ? 'Processing...' : 'Cancel Subscription'}
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="mt-6 bg-white rounded-3xl p-6 shadow-sm border border-gray-100 mb-6">
+            <div className="text-center py-4">
+              <h3 className="text-lg font-bold text-gray-800 mb-2">No Active Subscription</h3>
+              <p className="text-sm text-gray-600">Choose a plan below to get started</p>
+            </div>
+          </div>
+        )}
+
+        {/* Upgrade/Change Plan Section */}
+        <div className="mb-6">
+          <h3 className="text-lg font-bold text-gray-800 mb-4">
+            {subscriptionInfo && subscriptionInfo.status === 'active' ? 'Change Plan' : 'Choose Your Plan'}
+          </h3>
+
+          {/* Billing Period Toggle */}
+          <div className="mb-6 flex justify-center">
           <div className="bg-gray-100 rounded-full p-1 inline-flex">
             <button
               onClick={() => setBillingPeriod('monthly')}
@@ -684,58 +1026,54 @@ const Profile: React.FC<ProfileProps> = ({
           </div>
         </div>
 
-        {/* Plan Cards */}
-        <div className="space-y-4 mb-6">
-          {plans.map((p) => {
-            const price = billingPeriod === 'monthly' ? p.monthlyPrice : p.yearlyPrice;
-            const isCurrentPlan = selectedPlan === p.id;
-            const isFree = p.id === 'free';
+          {/* Plan Cards */}
+          <div className="space-y-4">
+            {plans.map((p) => {
+              const price = billingPeriod === 'monthly' ? p.monthlyPrice : p.yearlyPrice;
+              const isCurrentPlan = selectedPlan === p.id;
 
-            return (
-              <div
-                key={p.id}
-                className={`bg-white rounded-2xl p-6 border-2 transition-all ${
-                  p.highlight
-                    ? 'border-brand-primary shadow-lg'
-                    : isCurrentPlan
-                    ? 'border-brand-primary'
-                    : 'border-gray-200'
-                }`}
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <h3 className="text-xl font-bold text-gray-800">{p.name}</h3>
-                    <div className="flex items-baseline gap-1 mt-1">
-                      <span className="text-3xl font-bold text-gray-900">
-                        ${price}
-                      </span>
-                      {!isFree && (
+              return (
+                <div
+                  key={p.id}
+                  className={`bg-white rounded-2xl p-6 border-2 transition-all ${
+                    p.highlight
+                      ? 'border-brand-primary shadow-lg'
+                      : isCurrentPlan
+                      ? 'border-brand-primary'
+                      : 'border-gray-200'
+                  }`}
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <div>
+                      <h3 className="text-xl font-bold text-gray-800">{p.name}</h3>
+                      <div className="flex items-baseline gap-1 mt-1">
+                        <span className="text-3xl font-bold text-gray-900">
+                          ${price}
+                        </span>
                         <span className="text-gray-500 text-sm">
                           /{billingPeriod === 'monthly' ? 'mo' : 'yr'}
                         </span>
-                      )}
+                      </div>
                     </div>
+                    {p.highlight && (
+                      <span className="bg-brand-primary text-white text-xs font-bold px-3 py-1 rounded-full">
+                        Popular
+                      </span>
+                    )}
                   </div>
-                  {p.highlight && (
-                    <span className="bg-brand-primary text-white text-xs font-bold px-3 py-1 rounded-full">
-                      Popular
-                    </span>
-                  )}
-                </div>
 
-                <ul className="space-y-2 mb-6">
-                  {p.features.map((feature, idx) => (
-                    <li key={idx} className="flex items-center gap-2 text-sm text-gray-600">
-                      <Check size={16} className="text-green-500 flex-shrink-0" />
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
+                  <ul className="space-y-2 mb-6">
+                    {p.features.map((feature, idx) => (
+                      <li key={idx} className="flex items-center gap-2 text-sm text-gray-600">
+                        <Check size={16} className="text-green-500 flex-shrink-0" />
+                        {feature}
+                      </li>
+                    ))}
+                  </ul>
 
-                {!isFree ? (
                   <button
                     onClick={() => handleSelectPlan(p.id as 'core' | 'pro', billingPeriod)}
-                    disabled={isLoading}
+                    disabled={isLoading || isCurrentPlan}
                     className={`w-full py-3 rounded-xl font-bold transition-all ${
                       isCurrentPlan
                         ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
@@ -744,26 +1082,11 @@ const Profile: React.FC<ProfileProps> = ({
                   >
                     {isLoading ? 'Processing...' : isCurrentPlan ? 'Current Plan' : 'Select Plan'}
                   </button>
-                ) : (
-                  <div className="w-full py-3 text-center text-gray-500 text-sm font-semibold">
-                    Always Free
-                  </div>
-                )}
-              </div>
-            );
-          })}
+                </div>
+              );
+            })}
+          </div>
         </div>
-
-        {/* Manage Subscription Button (if they have an active subscription) */}
-        {subscriptionInfo?.status === 'active' && (
-          <button
-            onClick={handleManageSubscription}
-            disabled={isLoading}
-            className="w-full bg-gray-100 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
-          >
-            {isLoading ? 'Loading...' : 'Manage Subscription'}
-          </button>
-        )}
       </div>
     );
   }
@@ -773,50 +1096,218 @@ const Profile: React.FC<ProfileProps> = ({
   // =====================================================
   if (activeSection === 'security') {
     return (
-      <div className="px-4 pt-16 pb-24 h-full animate-slide-up flex flex-col">
-        {renderSettingsHeader('Update Credentials')}
-        <div className="space-y-6 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-          <div className="space-y-1">
-            <label className="text-xs font-bold text-gray-500 ml-1">Email Address</label>
-            <div className="relative">
-              <input
-                type="email"
-                value={securityData.email}
-                onChange={e => setSecurityData({ ...securityData, email: e.target.value })}
-                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-800 font-medium focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 outline-none pl-10"
-              />
-              <Mail size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+      <div className="px-4 pt-16 pb-24 h-full animate-slide-up flex flex-col overflow-y-auto">
+        {renderSettingsHeader('Account')}
+        
+        <div className="space-y-6">
+          {/* Profile Information Section */}
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            <h3 className="text-lg font-bold text-gray-800 mb-4">Profile Information</h3>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-gray-500 ml-1">First Name</label>
+                  <input
+                    type="text"
+                    value={accountData.firstName}
+                    onChange={e => setAccountData({ ...accountData, firstName: e.target.value })}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-800 font-medium focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 outline-none"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-gray-500 ml-1">Last Name</label>
+                  <input
+                    type="text"
+                    value={accountData.lastName}
+                    onChange={e => setAccountData({ ...accountData, lastName: e.target.value })}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-800 font-medium focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 outline-none"
+                  />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-gray-500 ml-1">Mobile Number</label>
+                <div className="flex gap-2">
+                  <div className="relative w-32 country-code-dropdown">
+                    <input
+                      type="text"
+                      value={accountData.countryCode}
+                      onClick={() => setShowCountryCodeDropdown(true)}
+                      onFocus={() => setShowCountryCodeDropdown(true)}
+                      onChange={e => {
+                        setAccountData({ ...accountData, countryCode: e.target.value });
+                        setCountryCodeSearch(e.target.value);
+                        setShowCountryCodeDropdown(true);
+                      }}
+                      placeholder="+852"
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-800 font-medium focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 outline-none cursor-pointer"
+                    />
+                    <Phone size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                    {showCountryCodeDropdown && (
+                      <div className="absolute z-50 mt-1 w-64 bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-y-auto country-code-dropdown">
+                        <div className="p-2 sticky top-0 bg-white border-b border-gray-200">
+                          <input
+                            type="text"
+                            value={countryCodeSearch}
+                            onChange={e => setCountryCodeSearch(e.target.value)}
+                            placeholder="Search country..."
+                            className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
+                            autoFocus
+                          />
+                        </div>
+                        <div className="py-1">
+                          {filteredCountryCodes.length > 0 ? (
+                            filteredCountryCodes.map((item) => (
+                              <button
+                                key={`${item.code}-${item.country}`}
+                                type="button"
+                                onClick={() => {
+                                  setAccountData({ ...accountData, countryCode: item.code });
+                                  setShowCountryCodeDropdown(false);
+                                  setCountryCodeSearch('');
+                                }}
+                                className="w-full text-left px-4 py-2 hover:bg-gray-50 transition-colors flex items-center justify-between"
+                              >
+                                <span className="text-sm text-gray-800">{item.country}</span>
+                                <span className="text-sm font-medium text-gray-600">{item.code}</span>
+                              </button>
+                            ))
+                          ) : (
+                            <div className="px-4 py-2 text-sm text-gray-500">No countries found</div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <div className="relative flex-1">
+                    <input
+                      type="tel"
+                      value={accountData.phoneNumber}
+                      onChange={e => setAccountData({ ...accountData, phoneNumber: e.target.value })}
+                      placeholder="Mobile number"
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-800 font-medium focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 outline-none pl-10"
+                    />
+                    <Phone size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-          <div className="space-y-1">
-            <label className="text-xs font-bold text-gray-500 ml-1">Current Password</label>
-            <div className="relative">
-              <input
-                type="password"
-                placeholder="••••••••"
-                value={securityData.currentPassword}
-                onChange={e => setSecurityData({ ...securityData, currentPassword: e.target.value })}
-                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-800 font-medium focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 outline-none pl-10"
-              />
-              <Lock size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+
+          {/* Email & Password Section */}
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            <h3 className="text-lg font-bold text-gray-800 mb-4">Email & Password</h3>
+            <div className="space-y-4">
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-gray-500 ml-1">Email Address</label>
+                <div className="relative">
+                  <input
+                    type="email"
+                    value={accountData.email}
+                    onChange={e => setAccountData({ ...accountData, email: e.target.value })}
+                    disabled={isGoogleAuth}
+                    className={`w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-800 font-medium focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 outline-none pl-10 ${isGoogleAuth ? 'opacity-60 cursor-not-allowed' : ''}`}
+                  />
+                  <Mail size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                </div>
+                {isGoogleAuth && (
+                  <p className="text-xs text-gray-500 mt-1 ml-1">Email managed by Google account</p>
+                )}
+              </div>
+              
+              {!isGoogleAuth && (
+                <>
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-gray-500 ml-1">Current Password</label>
+                    <div className="relative">
+                      <input
+                        type="password"
+                        placeholder="••••••••"
+                        value={accountData.currentPassword}
+                        onChange={e => setAccountData({ ...accountData, currentPassword: e.target.value })}
+                        className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-800 font-medium focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 outline-none pl-10"
+                      />
+                      <Lock size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-gray-500 ml-1">New Password</label>
+                    <div className="relative">
+                      <input
+                        type="password"
+                        placeholder="••••••••"
+                        value={accountData.newPassword}
+                        onChange={e => setAccountData({ ...accountData, newPassword: e.target.value })}
+                        className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-800 font-medium focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 outline-none pl-10"
+                      />
+                      <Lock size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    </div>
+                  </div>
+                </>
+              )}
+              {isGoogleAuth && (
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                  <p className="text-sm text-blue-800">
+                    Your account is managed through Google. Password changes must be made through your Google account settings.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
-          <div className="space-y-1">
-            <label className="text-xs font-bold text-gray-500 ml-1">New Password</label>
-            <div className="relative">
-              <input
-                type="password"
-                placeholder="••••••••"
-                value={securityData.newPassword}
-                onChange={e => setSecurityData({ ...securityData, newPassword: e.target.value })}
-                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-800 font-medium focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 outline-none pl-10"
-              />
-              <Lock size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+
+          {/* Notifications Section */}
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            <h3 className="text-lg font-bold text-gray-800 mb-4">Notifications</h3>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gradient-to-br from-brand-primary to-brand-secondary rounded-xl flex items-center justify-center">
+                    <Bell size={20} className="text-white" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-gray-800">Enable Notifications</p>
+                    <p className="text-xs text-gray-500">Receive updates and reminders</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setAccountData({ ...accountData, notificationsEnabled: !accountData.notificationsEnabled })}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    accountData.notificationsEnabled ? 'bg-brand-primary' : 'bg-gray-300'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      accountData.notificationsEnabled ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
             </div>
           </div>
         </div>
-        <div className="mt-auto pt-4">
-          <button onClick={() => setActiveSection('settings')} className="w-full bg-brand-primary text-white py-4 rounded-xl font-bold shadow-lg hover:bg-brand-secondary transition-colors">
+
+        <div className="mt-6 pt-4">
+          <button 
+            onClick={() => {
+              // Save account data
+              const updates: Partial<User> = {
+                firstName: accountData.firstName,
+                lastName: accountData.lastName,
+                phoneNumber: accountData.phoneNumber,
+                countryCode: accountData.countryCode,
+                email: accountData.email,
+                notificationsEnabled: accountData.notificationsEnabled
+              };
+              
+              // Update name if firstName or lastName changed
+              if (accountData.firstName || accountData.lastName) {
+                updates.name = `${accountData.firstName} ${accountData.lastName}`.trim();
+              }
+              
+              onUpdate(currentUser.id, updates);
+              setActiveSection('settings');
+            }} 
+            className="w-full bg-brand-primary text-white py-4 rounded-xl font-bold shadow-lg hover:bg-brand-secondary transition-colors"
+          >
             Save Changes
           </button>
         </div>
@@ -936,9 +1427,9 @@ const Profile: React.FC<ProfileProps> = ({
 
         <div className="space-y-3">
           {[
-            { id: 'plan', label: 'Change Plan', icon: Crown, desc: 'Manage your subscription' },
-            { id: 'security', label: 'Update Credentials', icon: Shield, desc: 'Email & Password' },
-            { id: 'payment', label: 'Manage Payment', icon: CreditCard, desc: 'Cards & Billing' },
+            { id: 'plan', label: 'Subscription', icon: Crown },
+            { id: 'security', label: 'Account', icon: Shield },
+            { id: 'payment', label: 'Manage Payment', icon: CreditCard },
           ].map((item) => (
             <button
               key={item.id}
@@ -951,7 +1442,6 @@ const Profile: React.FC<ProfileProps> = ({
                 </div>
                 <div className="text-left">
                   <p className="font-bold text-gray-800">{item.label}</p>
-                  <p className="text-xs text-gray-500">{item.desc}</p>
                 </div>
               </div>
               <ChevronRight size={20} className="text-gray-400" />

@@ -124,3 +124,4 @@ CREATE POLICY "Allow delete on expenses" ON expenses FOR DELETE USING (true);
 -- 2. Moving sensitive operations to server-side APIs
 -- ============================================================================
 
+

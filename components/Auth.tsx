@@ -305,7 +305,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
   // Loading state while creating user
   if (isCreatingUser) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-brand-primary to-brand-secondary">
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#3EAFD2' }}>
         <div className="text-white text-center">
           <div className="w-16 h-16 border-4 border-white/30 border-t-white rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-lg font-bold">Setting up your account...</p>
@@ -316,37 +316,56 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
   }
 
   return (
-    <div className="min-h-screen w-full bg-gradient-to-br from-brand-primary to-brand-secondary flex flex-col items-center justify-center p-6 animate-fade-in">
+    <div className="min-h-screen w-full flex flex-col items-center justify-center p-6" style={{ backgroundColor: '#3EAFD2' }}>
       
       {/* Logo Area */}
       <div className="mb-8 text-center">
-        <div className="w-20 h-20 bg-white/20 rounded-3xl flex items-center justify-center mx-auto mb-4 backdrop-blur-sm border border-white/30 shadow-xl">
-          <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-            <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-            <path d="M2 17l10 5 10-5M2 12l10 5 10-5"/>
-          </svg>
-        </div>
-        <h1 className="text-4xl font-bold text-white tracking-tight">Helpy</h1>
-        <p className="text-white/80 mt-2 font-medium">Your Family Command Center</p>
+        <h1 
+          className="text-5xl text-white mb-3"
+          style={{ fontFamily: "'Peanut Butter', cursive" }}
+        >
+          helpy
+        </h1>
+        <p className="text-white/90 text-sm font-medium italic">
+          "I just want you to know<br />I'm real grateful you're here"
+        </p>
+        <p className="text-white/70 text-xs mt-1 font-medium">
+          — Aibileen Clark, The Help
+        </p>
       </div>
 
       {/* Clerk Auth Component */}
       <div className="w-full max-w-md">
         <SignIn 
           appearance={{
+            variables: {
+              colorPrimary: '#3EAFD2',
+              colorText: '#474747',
+              colorTextSecondary: '#757575',
+              colorInputBackground: '#FFFFFF',
+              colorInputText: '#474747',
+              colorBackground: '#FFFFFF',
+              fontFamily: '"Plus Jakarta Sans", Inter, -apple-system, BlinkMacSystemFont, sans-serif',
+              borderRadius: '0.75rem',
+              fontSize: '0.875rem',
+              spacingUnit: '0.9rem',
+            },
             elements: {
               rootBox: "w-full",
-              card: "bg-white/95 backdrop-blur-xl shadow-2xl rounded-3xl border border-white/50 p-8",
-              headerTitle: "text-2xl font-bold text-gray-800",
-              headerSubtitle: "text-gray-500 text-sm",
-              socialButtonsBlockButton: "bg-white border-2 border-gray-200 hover:border-brand-primary transition-all rounded-xl font-semibold text-gray-700 hover:bg-gray-50",
-              socialButtonsBlockButtonText: "font-semibold text-sm",
-              formButtonPrimary: "bg-brand-primary hover:bg-brand-secondary rounded-xl font-bold py-3 shadow-lg shadow-brand-primary/20 transition-all",
-              footerActionLink: "text-brand-primary font-bold hover:underline",
-              formFieldInput: "rounded-xl border-gray-300 focus:border-brand-primary focus:ring-brand-primary",
-              formFieldLabel: "text-gray-700 font-semibold text-sm",
-              identityPreviewText: "text-gray-700",
-              identityPreviewEditButton: "text-brand-primary hover:text-brand-secondary"
+              cardBox: "shadow-lg rounded-2xl overflow-hidden",
+              card: "bg-white rounded-2xl border-0 shadow-none p-6",
+              headerTitle: "text-xl font-bold text-[#474747]",
+              headerSubtitle: "text-sm text-gray-500",
+              socialButtonsBlockButton: "border border-gray-200 hover:border-gray-300 transition-all rounded-xl font-medium py-3",
+              socialButtonsBlockButtonText: "font-medium text-sm",
+              formButtonPrimary: "!bg-[#3EAFD2] !bg-none !shadow-none rounded-xl font-semibold py-3 transition-all hover:opacity-90",
+              formFieldInput: "bg-white border border-gray-200 rounded-xl px-4 py-3 text-[#474747] placeholder-gray-400 focus:border-[#3EAFD2] focus:ring-1 focus:ring-[#3EAFD2]",
+              formFieldLabel: "font-medium text-sm text-[#474747] mb-1.5",
+              dividerLine: "bg-gray-200",
+              dividerText: "text-gray-400 text-sm",
+              identityPreviewEditButtonIcon: "text-[#3EAFD2]",
+              formFieldInputShowPasswordButton: "text-gray-400 hover:text-gray-600",
+              footer: "hidden"
             }
           }}
           routing="hash"
@@ -367,12 +386,6 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
         </div>
       </div>
 
-      {/* Footer */}
-      <div className="mt-8 text-white/60 text-xs font-medium text-center leading-relaxed">
-        Secure • Private • Family First
-        <br />
-        <span className="text-white/40 text-[10px]">Powered by Clerk & Supabase</span>
-      </div>
     </div>
   );
 };

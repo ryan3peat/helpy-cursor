@@ -74,11 +74,27 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
 
   if (verificationStep) {
     return (
-      <div className="min-h-screen w-full bg-gradient-to-br from-brand-primary to-brand-secondary flex flex-col items-center justify-center p-6 animate-fade-in">
+      <div className="min-h-screen w-full flex flex-col items-center justify-center p-6" style={{ backgroundColor: '#3EAFD2' }}>
+        {/* Logo Area */}
+        <div className="mb-8 text-center">
+          <h1 
+            className="text-5xl text-white mb-3"
+            style={{ fontFamily: "'Peanut Butter', cursive" }}
+          >
+            helpy
+          </h1>
+          <p className="text-white/90 text-sm font-medium italic">
+            "I just want you to know<br />I'm real grateful you're here"
+          </p>
+          <p className="text-white/70 text-xs mt-1 font-medium">
+            — Aibileen Clark, The Help
+          </p>
+        </div>
+
         <div className="w-full max-w-md">
-          <div className="bg-white/95 backdrop-blur-xl shadow-2xl rounded-3xl border border-white/50 p-8">
-            <h2 className="text-2xl font-bold text-gray-800 text-center mb-2">Verify Your Email</h2>
-            <p className="text-gray-500 text-sm text-center mb-6">
+          <div className="bg-white shadow-lg rounded-2xl p-6">
+            <h2 className="text-xl font-bold text-[#474747] text-center mb-2">Verify Your Email</h2>
+            <p className="text-gray-500 text-sm text-center mb-5">
               We sent a code to {formData.email}
             </p>
 
@@ -90,7 +106,7 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
 
             <form onSubmit={handleVerifyEmail} className="space-y-4">
               <div>
-                <label className="text-gray-700 font-semibold text-sm mb-1 block">
+                <label className="text-[#474747] font-medium text-sm mb-1.5 block">
                   Verification Code
                 </label>
                 <input
@@ -106,14 +122,15 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
                   placeholder="Enter 6-digit code"
                   required
                   maxLength={6}
-                  className="w-full rounded-xl border-gray-300 focus:border-brand-primary focus:ring-brand-primary px-4 py-3"
+                  className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-[#474747] placeholder-gray-400 focus:outline-none focus:border-[#3EAFD2] focus:ring-1 focus:ring-[#3EAFD2] transition-colors text-center text-lg tracking-widest"
                 />
               </div>
 
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full bg-brand-primary hover:bg-brand-secondary rounded-xl font-bold py-3 shadow-lg shadow-brand-primary/20 transition-all text-white disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                style={{ backgroundColor: '#3EAFD2' }}
+                className="w-full hover:opacity-90 rounded-xl font-semibold py-3 transition-all text-white disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {isSubmitting ? (
                   <>
@@ -132,31 +149,35 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
   }
 
   return (
-    <div className="min-h-screen w-full bg-gradient-to-br from-brand-primary to-brand-secondary flex flex-col items-center justify-center p-6 animate-fade-in">
+    <div className="min-h-screen w-full flex flex-col items-center justify-center p-6" style={{ backgroundColor: '#3EAFD2' }}>
       {/* Logo Area */}
       <div className="mb-8 text-center">
-        <div className="w-20 h-20 bg-white/20 rounded-3xl flex items-center justify-center mx-auto mb-4 backdrop-blur-sm border border-white/30 shadow-xl">
-          <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-            <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-            <path d="M2 17l10 5 10-5M2 12l10 5 10-5"/>
-          </svg>
-        </div>
-        <h1 className="text-4xl font-bold text-white tracking-tight">Helpy</h1>
-        <p className="text-white/80 mt-2 font-medium">Create Your Account</p>
+        <h1 
+          className="text-5xl text-white mb-3"
+          style={{ fontFamily: "'Peanut Butter', cursive" }}
+        >
+          helpy
+        </h1>
+        <p className="text-white/90 text-sm font-medium italic">
+          "I just want you to know<br />I'm real grateful you're here"
+        </p>
+        <p className="text-white/70 text-xs mt-1 font-medium">
+          — Aibileen Clark, The Help
+        </p>
       </div>
 
       {/* Sign Up Form */}
       <div className="w-full max-w-md">
-        <div className="bg-white/95 backdrop-blur-xl shadow-2xl rounded-3xl border border-white/50 p-8">
+        <div className="bg-white shadow-lg rounded-2xl p-6">
           <button
             onClick={onBackToSignIn}
-            className="flex items-center gap-2 text-gray-600 hover:text-brand-primary mb-4 transition-colors"
+            className="flex items-center gap-2 text-gray-500 hover:text-[#3EAFD2] mb-4 transition-colors"
           >
             <ArrowLeft size={18} />
             <span className="text-sm font-medium">Back to Sign In</span>
           </button>
 
-          <h2 className="text-2xl font-bold text-gray-800 mb-6">Sign Up</h2>
+          <h2 className="text-xl font-bold text-[#474747] mb-5">Sign Up</h2>
 
           {error && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">
@@ -165,9 +186,9 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-gray-700 font-semibold text-sm mb-1 block">
+                <label className="text-[#474747] font-medium text-sm mb-1.5 block">
                   First Name
                 </label>
                 <input
@@ -176,11 +197,11 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
                   onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
                   placeholder="John"
                   required
-                  className="w-full rounded-xl border-gray-300 focus:border-brand-primary focus:ring-brand-primary px-4 py-3"
+                  className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-[#474747] placeholder-gray-400 focus:outline-none focus:border-[#3EAFD2] focus:ring-1 focus:ring-[#3EAFD2] transition-colors"
                 />
               </div>
               <div>
-                <label className="text-gray-700 font-semibold text-sm mb-1 block">
+                <label className="text-[#474747] font-medium text-sm mb-1.5 block">
                   Last Name
                 </label>
                 <input
@@ -189,13 +210,13 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
                   onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
                   placeholder="Doe"
                   required
-                  className="w-full rounded-xl border-gray-300 focus:border-brand-primary focus:ring-brand-primary px-4 py-3"
+                  className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-[#474747] placeholder-gray-400 focus:outline-none focus:border-[#3EAFD2] focus:ring-1 focus:ring-[#3EAFD2] transition-colors"
                 />
               </div>
             </div>
 
             <div>
-              <label className="text-gray-700 font-semibold text-sm mb-1 block">
+              <label className="text-[#474747] font-medium text-sm mb-1.5 block">
                 Email
               </label>
               <input
@@ -204,12 +225,12 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 placeholder="john@example.com"
                 required
-                className="w-full rounded-xl border-gray-300 focus:border-brand-primary focus:ring-brand-primary px-4 py-3"
+                className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-[#474747] placeholder-gray-400 focus:outline-none focus:border-[#3EAFD2] focus:ring-1 focus:ring-[#3EAFD2] transition-colors"
               />
             </div>
 
             <div>
-              <label className="text-gray-700 font-semibold text-sm mb-1 block">
+              <label className="text-[#474747] font-medium text-sm mb-1.5 block">
                 Phone Number <span className="text-gray-400 font-normal">(Optional)</span>
               </label>
               <input
@@ -222,30 +243,31 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
                   setFormData({ ...formData, phoneNumber: value });
                 }}
                 placeholder="+1 (555) 123-4567"
-                className="w-full rounded-xl border-gray-300 focus:border-brand-primary focus:ring-brand-primary px-4 py-3"
+                className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-[#474747] placeholder-gray-400 focus:outline-none focus:border-[#3EAFD2] focus:ring-1 focus:ring-[#3EAFD2] transition-colors"
               />
             </div>
 
             <div>
-              <label className="text-gray-700 font-semibold text-sm mb-1 block">
+              <label className="text-[#474747] font-medium text-sm mb-1.5 block">
                 Password
               </label>
               <input
                 type="password"
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                placeholder="••••••••"
+                placeholder="Enter password"
                 required
                 minLength={8}
-                className="w-full rounded-xl border-gray-300 focus:border-brand-primary focus:ring-brand-primary px-4 py-3"
+                className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-[#474747] placeholder-gray-400 focus:outline-none focus:border-[#3EAFD2] focus:ring-1 focus:ring-[#3EAFD2] transition-colors"
               />
-              <p className="text-xs text-gray-500 mt-1">Must be at least 8 characters</p>
+              <p className="text-xs text-gray-400 mt-1.5">Must be at least 8 characters</p>
             </div>
 
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full bg-brand-primary hover:bg-brand-secondary rounded-xl font-bold py-3 shadow-lg shadow-brand-primary/20 transition-all text-white disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              style={{ backgroundColor: '#3EAFD2' }}
+              className="w-full hover:opacity-90 rounded-xl font-semibold py-3 transition-all text-white disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {isSubmitting ? (
                 <>
@@ -258,12 +280,12 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
             </button>
           </form>
 
-          <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600">
+          <div className="mt-5 text-center">
+            <p className="text-sm text-gray-500">
               Already have an account?{' '}
               <button
                 onClick={onBackToSignIn}
-                className="text-brand-primary font-bold hover:underline"
+                className="text-[#3EAFD2] font-semibold hover:underline"
               >
                 Sign In
               </button>
@@ -272,12 +294,6 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
         </div>
       </div>
 
-      {/* Footer */}
-      <div className="mt-8 text-white/60 text-xs font-medium text-center leading-relaxed">
-        Secure • Private • Family First
-        <br />
-        <span className="text-white/40 text-[10px]">Powered by Clerk & Supabase</span>
-      </div>
     </div>
   );
 };

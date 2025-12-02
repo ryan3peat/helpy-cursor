@@ -340,7 +340,7 @@ const App: React.FC = () => {
 
   if (loginProcessedRef.current && !currentUser) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-brand-primary to-brand-secondary">
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#3EAFD2' }}>
         <div className="text-white text-center">
           <div className="w-16 h-16 border-4 border-white/30 border-t-white rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-lg font-bold">Completing setup...</p>
@@ -354,7 +354,12 @@ const App: React.FC = () => {
   }
 
   if (!currentUser) {
-    return <Auth onLogin={handleLogin} />;
+    return (
+      <>
+        {showIntro && <IntroAnimation onComplete={() => setShowIntro(false)} />}
+        <Auth onLogin={handleLogin} />
+      </>
+    );
   }
 
   return (

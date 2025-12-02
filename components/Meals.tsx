@@ -471,7 +471,7 @@ const Meals: React.FC<MealsProps> = ({
           <div className="flex-1 p-3 flex flex-col">
             <div className="flex items-center gap-1 mb-2">
               <Users size={12} className="text-muted-foreground" />
-              <span className="text-caption font-semibold text-muted-foreground uppercase tracking-wide">
+              <span className="text-caption font-semibold text-muted-foreground tracking-wide">
                 {t['meals.eating'] ?? 'Eating'} ({eaterCount})
               </span>
             </div>
@@ -570,7 +570,7 @@ const Meals: React.FC<MealsProps> = ({
           <div className="flex-1 p-3 flex flex-col">
             <div className="flex items-center gap-1 mb-2">
               <Users size={12} className="text-muted-foreground" />
-              <span className="text-caption font-semibold text-muted-foreground uppercase tracking-wide">
+              <span className="text-caption font-semibold text-muted-foreground tracking-wide">
                 {t['meals.eating'] ?? 'Eating'} (0)
               </span>
             </div>
@@ -729,7 +729,7 @@ const Meals: React.FC<MealsProps> = ({
                 {/* 3-Column Table Layout */}
                 <div className="flex">
                   {/* Column 1: Date (spans all rows) */}
-                  <div className={`w-20 shrink-0 p-3 flex flex-col items-center justify-center ${isToday ? 'bg-primary' : 'bg-card'}`}>
+                  <div className={`w-16 shrink-0 p-2 flex flex-col items-center justify-center ${isToday ? 'bg-primary' : 'bg-card'}`}>
                     <span className={`text-caption font-bold ${isToday ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
                       {dayDate.getDate()} {dayDate.toLocaleDateString(langCode, { month: 'short' })}
                       </span>
@@ -767,7 +767,7 @@ const Meals: React.FC<MealsProps> = ({
                               >
                                 {hasDish ? (
                                   <>
-                                    <span className="text-caption font-medium text-muted-foreground uppercase flex items-center gap-1">
+                                    <span className="text-caption font-medium text-muted-foreground flex items-center gap-1">
                                       {getMealIcon(meal.type)}
                                       {getMealLabel(meal.type)}
                                       {renderAudienceIcons(meal.audience || 'ALL')}
@@ -778,7 +778,7 @@ const Meals: React.FC<MealsProps> = ({
                                   </>
                                 ) : (
                                   <>
-                                    <span className="text-caption font-medium text-muted-foreground uppercase flex items-center gap-1">
+                                    <span className="text-caption font-medium text-muted-foreground flex items-center gap-1">
                                       {getMealIcon(meal.type)}
                                       {getMealLabel(meal.type)}
                                       {renderAudienceIcons(meal.audience || 'ALL')}
@@ -863,51 +863,52 @@ const Meals: React.FC<MealsProps> = ({
                             .filter(m => m.description.trim() || m.forUserIds.length > 0)
                             .map(m => m.type);
                           return (
-                            <div key={`add-${idx}`} className="flex min-h-[60px]">
-                              {/* Column 2: Add Meal Plan OR Meal Type Picker */}
-                              <div 
-                                ref={isExpanded ? quickJoinPopoverRef : null}
-                                className="flex-1 p-3 flex items-center justify-center"
-                              >
-                                {isExpanded ? (
-                                  /* Expanded: 4 large meal type buttons with staggered animation */
-                                  <div className="flex items-center justify-center gap-2">
-                                    {[
-                                      { type: MealType.BREAKFAST, icon: <Coffee size={20} />, color: 'text-[#FF9800] border-[#FF9800]/30 hover:bg-[#FF9800]/10 hover:border-[#FF9800]/50' },
-                                      { type: MealType.LUNCH, icon: <Sun size={20} />, color: 'text-[#4CAF50] border-[#4CAF50]/30 hover:bg-[#4CAF50]/10 hover:border-[#4CAF50]/50' },
-                                      { type: MealType.DINNER, icon: <Moon size={20} />, color: 'text-[#7E57C2] border-[#7E57C2]/30 hover:bg-[#7E57C2]/10 hover:border-[#7E57C2]/50' },
-                                      { type: MealType.SNACKS, icon: <Cookie size={20} />, color: 'text-[#F06292] border-[#F06292]/30 hover:bg-[#F06292]/10 hover:border-[#F06292]/50' },
-                                    ].map(({ type, icon, color }, index) => {
-                                      const alreadyExists = existingMealTypes.includes(type);
-                                      return (
-                                        <button
-                                          key={type}
-                                          onClick={() => {
-                                            if (alreadyExists) return;
-                                            handleQuickRsvpEmpty(dayDate, type);
-                                            setQuickJoinPopoverDate(null);
-                                          }}
-                                          disabled={alreadyExists}
-                                          className={`w-12 h-12 flex items-center justify-center rounded-xl border-2 bg-card transition-all duration-200 ${
-                                            alreadyExists 
-                                              ? 'opacity-30 cursor-not-allowed border-muted text-muted-foreground' 
-                                              : color
-                                          }`}
-                                          style={{
-                                            animation: 'mealButtonPop 200ms ease-out forwards',
-                                            animationDelay: `${index * 50}ms`,
-                                            opacity: 0,
-                                            transform: 'scale(0.8)'
-                                          }}
-                                          title={alreadyExists ? `${getMealLabel(type)} already exists` : getMealLabel(type)}
-                                        >
-                                          {icon}
-                                        </button>
-                                      );
-                                    })}
-                                  </div>
-                                ) : (
-                                  /* Collapsed: Add Meal Plan button */
+                            <div key={`add-${idx}`} className="flex min-h-[60px] relative">
+                              {/* Expanded: Absolute positioned meal type picker (covers date) */}
+                              {isExpanded && (
+                                <div 
+                                  ref={quickJoinPopoverRef}
+                                  className="absolute inset-y-0 left-0 right-[120px] bg-card z-10 flex items-center justify-center gap-3 rounded-l-xl"
+                                >
+                                  {[
+                                    { type: MealType.BREAKFAST, icon: <Coffee size={20} />, color: 'text-[#FF9800] border-[#FF9800]/30 hover:bg-[#FF9800]/10 hover:border-[#FF9800]/50' },
+                                    { type: MealType.LUNCH, icon: <Sun size={20} />, color: 'text-[#4CAF50] border-[#4CAF50]/30 hover:bg-[#4CAF50]/10 hover:border-[#4CAF50]/50' },
+                                    { type: MealType.DINNER, icon: <Moon size={20} />, color: 'text-[#7E57C2] border-[#7E57C2]/30 hover:bg-[#7E57C2]/10 hover:border-[#7E57C2]/50' },
+                                    { type: MealType.SNACKS, icon: <Cookie size={20} />, color: 'text-[#F06292] border-[#F06292]/30 hover:bg-[#F06292]/10 hover:border-[#F06292]/50' },
+                                  ].map(({ type, icon, color }, index) => {
+                                    const alreadyExists = existingMealTypes.includes(type);
+                                    return (
+                                      <button
+                                        key={type}
+                                        onClick={() => {
+                                          if (alreadyExists) return;
+                                          handleQuickRsvpEmpty(dayDate, type);
+                                          setQuickJoinPopoverDate(null);
+                                        }}
+                                        disabled={alreadyExists}
+                                        className={`w-12 h-12 flex items-center justify-center rounded-xl border-2 bg-card transition-all duration-200 ${
+                                          alreadyExists 
+                                            ? 'opacity-30 cursor-not-allowed border-muted text-muted-foreground' 
+                                            : color
+                                        }`}
+                                        style={{
+                                          animation: 'mealButtonPop 200ms ease-out forwards',
+                                          animationDelay: `${index * 50}ms`,
+                                          opacity: 0,
+                                          transform: 'scale(0.8)'
+                                        }}
+                                        title={alreadyExists ? `${getMealLabel(type)} already exists` : getMealLabel(type)}
+                                      >
+                                        {icon}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              )}
+
+                              {/* Column 2: Add Meal Plan (visible when collapsed) */}
+                              <div className="flex-1 min-w-0 p-3 flex items-center justify-center">
+                                {!isExpanded && (
                                   <button 
                                     onClick={() => openAddModal(dayDate, MealType.DINNER)}
                                     className="text-body font-semibold text-muted-foreground hover:text-primary flex items-center gap-1.5 transition-colors"

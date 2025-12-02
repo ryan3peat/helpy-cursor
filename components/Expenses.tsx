@@ -885,7 +885,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                 <div className="p-5 space-y-4 max-h-[50vh] overflow-y-auto">
                   {/* Amount - Auto-focused */}
                   <div>
-                    <label className="block text-caption text-muted-foreground mb-2 uppercase tracking-wide">
+                    <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
                       Amount
                     </label>
                     <input
@@ -908,7 +908,7 @@ const Expenses: React.FC<ExpensesProps> = ({
 
                   {/* Shop Name */}
                   <div>
-                    <label className="block text-caption text-muted-foreground mb-2 uppercase tracking-wide">
+                    <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
                       Shop Name
                     </label>
                     <input
@@ -923,7 +923,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                   {/* Category & Date - Side by side */}
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-caption text-muted-foreground mb-2 uppercase tracking-wide">
+                      <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
                         Category
                       </label>
                       <select
@@ -939,7 +939,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                       </select>
                     </div>
                     <div>
-                      <label className="block text-caption text-muted-foreground mb-2 uppercase tracking-wide">
+                      <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
                         Date
                       </label>
                       <input
@@ -1002,7 +1002,7 @@ const Expenses: React.FC<ExpensesProps> = ({
 
                   {/* Amount */}
               <div>
-                    <label className="block text-caption text-muted-foreground mb-2 uppercase tracking-wide">
+                    <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
                       Amount
                     </label>
                 <input
@@ -1024,7 +1024,7 @@ const Expenses: React.FC<ExpensesProps> = ({
 
                   {/* Shop Name */}
               <div>
-                    <label className="block text-caption text-muted-foreground mb-2 uppercase tracking-wide">
+                    <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
                       Shop Name
                     </label>
                 <input
@@ -1039,7 +1039,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                   {/* Category & Date - Side by side */}
                   <div className="grid grid-cols-2 gap-3">
               <div>
-                      <label className="block text-caption text-muted-foreground mb-2 uppercase tracking-wide">
+                      <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
                         Category
                       </label>
                 <select
@@ -1055,7 +1055,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                 </select>
               </div>
               <div>
-                      <label className="block text-caption text-muted-foreground mb-2 uppercase tracking-wide">
+                      <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
                         Date
                       </label>
                 <input
@@ -1175,7 +1175,7 @@ const Expenses: React.FC<ExpensesProps> = ({
             {isEditingExisting && (
                 <div className="space-y-4 border-t border-border pt-4">
                   <div>
-                    <label className="block text-caption text-muted-foreground mb-2 uppercase tracking-wide">
+                    <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
                       Merchant
                     </label>
                     <input
@@ -1185,7 +1185,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                     />
                   </div>
                   <div>
-                    <label className="block text-caption text-muted-foreground mb-2 uppercase tracking-wide">
+                    <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
                       Category
                   </label>
                     <select
@@ -1202,7 +1202,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-caption text-muted-foreground mb-2 uppercase tracking-wide">
+                      <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
                         Amount
                   </label>
                     <input
@@ -1221,7 +1221,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                     />
                     </div>
                     <div>
-                      <label className="block text-caption text-muted-foreground mb-2 uppercase tracking-wide">
+                      <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
                         Date
                   </label>
                     <input

@@ -233,7 +233,7 @@ const FamilyProfileCarousel: React.FC<FamilyProfileCarouselProps> = ({ users }) 
                   <div>
                     <div className="flex items-center gap-1.5 mb-1.5">
                       <AlertTriangle size={12} className="text-muted-foreground" />
-                      <span className="text-caption text-muted-foreground uppercase tracking-wide font-medium">
+                      <span className="text-caption text-muted-foreground tracking-wide font-medium">
                         Allergies / Medical
                       </span>
                     </div>
@@ -268,7 +268,7 @@ const FamilyProfileCarousel: React.FC<FamilyProfileCarouselProps> = ({ users }) 
                   <div>
                     <div className="flex items-center gap-1.5 mb-1.5">
                       <Utensils size={12} className="text-muted-foreground" />
-                      <span className="text-caption text-muted-foreground uppercase tracking-wide font-medium">
+                      <span className="text-caption text-muted-foreground tracking-wide font-medium">
                         Preferences
                       </span>
                     </div>
@@ -1106,7 +1106,7 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
         <div className="p-5 space-y-4 max-h-[60vh] overflow-y-auto">
               {/* Category */}
               <div>
-            <label className="block text-caption text-muted-foreground mb-2 uppercase tracking-wide">
+            <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
               Category
             </label>
             <div className="flex flex-wrap gap-2">
@@ -1135,7 +1135,7 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
 
           {/* Name */}
           <div>
-            <label className="block text-caption text-muted-foreground mb-2 uppercase tracking-wide">
+            <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
               Name
             </label>
             <input
@@ -1149,7 +1149,7 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
 
           {/* Address */}
           <div>
-            <label className="block text-caption text-muted-foreground mb-2 uppercase tracking-wide">
+            <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
               Address
             </label>
             <div className="relative">
@@ -1166,7 +1166,7 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
 
           {/* Phone */}
               <div>
-            <label className="block text-caption text-muted-foreground mb-2 uppercase tracking-wide">
+            <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
               Phone Number
             </label>
             <div className="flex gap-2">
@@ -1201,7 +1201,7 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
 
           {/* Note */}
           <div>
-            <label className="block text-caption text-muted-foreground mb-2 uppercase tracking-wide">
+            <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
               Note
             </label>
             <textarea
@@ -1289,7 +1289,7 @@ const TrainingModal: React.FC<TrainingModalProps> = ({
         <div className="p-5 space-y-4 max-h-[60vh] overflow-y-auto">
           {/* Category */}
           <div>
-            <label className="block text-caption text-muted-foreground mb-2 uppercase tracking-wide">
+            <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
               Category
             </label>
             <select
@@ -1308,7 +1308,7 @@ const TrainingModal: React.FC<TrainingModalProps> = ({
           {/* Custom Category (for Others) */}
           {form.category === "Others" && (
             <div>
-              <label className="block text-caption text-muted-foreground mb-2 uppercase tracking-wide">
+              <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
                 Custom Category Name
               </label>
               <input
@@ -1323,7 +1323,7 @@ const TrainingModal: React.FC<TrainingModalProps> = ({
 
           {/* Name */}
           <div>
-            <label className="block text-caption text-muted-foreground mb-2 uppercase tracking-wide">
+            <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
               Training Name
             </label>
             <input
@@ -1337,7 +1337,7 @@ const TrainingModal: React.FC<TrainingModalProps> = ({
 
               {/* Content */}
               <div>
-            <label className="block text-caption text-muted-foreground mb-2 uppercase tracking-wide">
+            <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
               Training Content
             </label>
                 <textarea
@@ -1351,7 +1351,7 @@ const TrainingModal: React.FC<TrainingModalProps> = ({
 
           {/* Assignee */}
           <div>
-            <label className="block text-caption text-muted-foreground mb-2 uppercase tracking-wide">
+            <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
               Assign To
             </label>
             <select

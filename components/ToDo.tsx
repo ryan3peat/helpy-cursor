@@ -661,7 +661,7 @@ const ToDo: React.FC<ToDoProps> = ({
                 <div className="absolute right-0 top-full mt-2 w-56 bg-card rounded-xl shadow-lg overflow-hidden z-50">
                   {/* Sort Section */}
                   <div className="p-3 pb-2">
-                    <p className="text-caption text-muted-foreground uppercase tracking-wide mb-2">Sort by</p>
+                    <p className="text-caption text-muted-foreground tracking-wide mb-2">Sort by</p>
                     <div className="space-y-1">
                       {[
                         { value: 'addedDate-desc', label: 'Added Date (newest)' },
@@ -690,7 +690,7 @@ const ToDo: React.FC<ToDoProps> = ({
                   
                   {/* Filter Section */}
                   <div className="p-3 pt-2">
-                    <p className="text-caption text-muted-foreground uppercase tracking-wide mb-2">Show</p>
+                    <p className="text-caption text-muted-foreground tracking-wide mb-2">Show</p>
                     <button
                       onClick={() => setShowOnlyMine(!showOnlyMine)}
                       className={`w-full text-left px-3 py-2 rounded-lg text-body transition-colors flex items-center justify-between ${
@@ -840,7 +840,7 @@ const ToDo: React.FC<ToDoProps> = ({
               ) : (
                 <ChevronRight size={16} className="text-muted-foreground" />
               )}
-              <span className="text-caption text-muted-foreground uppercase tracking-wide">
+              <span className="text-caption text-muted-foreground tracking-wide">
                 {t['todo.suggested'] || 'Suggested'} ({suggestions.length})
               </span>
             </button>
@@ -1128,7 +1128,7 @@ const ToDo: React.FC<ToDoProps> = ({
               <div className="space-y-5">
               {/* Name Input */}
               <div>
-                <label className="block text-caption text-muted-foreground uppercase tracking-wide mb-2">
+                <label className="block text-caption text-muted-foreground tracking-wide mb-2">
                   {activeSection === 'shopping' ? 'Item Name' : 'Task Name'}
                 </label>
                 <input
@@ -1145,7 +1145,7 @@ const ToDo: React.FC<ToDoProps> = ({
               {activeSection === 'shopping' && (
                 <div className="flex gap-3">
                   <div className="w-24">
-                    <label className="block text-caption text-muted-foreground uppercase tracking-wide mb-2">
+                    <label className="block text-caption text-muted-foreground tracking-wide mb-2">
                       Qty
                     </label>
                     <input
@@ -1163,7 +1163,7 @@ const ToDo: React.FC<ToDoProps> = ({
                     />
                   </div>
                   <div className="flex-1">
-                    <label className="block text-caption text-muted-foreground uppercase tracking-wide mb-2">
+                    <label className="block text-caption text-muted-foreground tracking-wide mb-2">
                       Unit
                     </label>
                     <input
@@ -1181,7 +1181,7 @@ const ToDo: React.FC<ToDoProps> = ({
               {activeSection === 'task' && (
                 <>
                   <div>
-                    <label className="block text-caption text-muted-foreground uppercase tracking-wide mb-2">
+                    <label className="block text-caption text-muted-foreground tracking-wide mb-2">
                       Due Date & Time
                     </label>
                     {/* Hidden native picker - positioned off-screen */}
@@ -1220,7 +1220,7 @@ const ToDo: React.FC<ToDoProps> = ({
                   </div>
                   
                   <div>
-                    <label className="block text-caption text-muted-foreground uppercase tracking-wide mb-2">
+                    <label className="block text-caption text-muted-foreground tracking-wide mb-2">
                       Repeat
                     </label>
                     <select
@@ -1264,7 +1264,7 @@ const ToDo: React.FC<ToDoProps> = ({
               
               {/* Category Selection */}
               <div>
-                <label className="block text-caption text-muted-foreground uppercase tracking-wide mb-2">
+                <label className="block text-caption text-muted-foreground tracking-wide mb-2">
                   Category
                 </label>
                 <div className="flex gap-2">
@@ -1287,7 +1287,7 @@ const ToDo: React.FC<ToDoProps> = ({
               
               {/* Assignee Selection */}
               <div>
-                <label className="block text-caption text-muted-foreground uppercase tracking-wide mb-2">
+                <label className="block text-caption text-muted-foreground tracking-wide mb-2">
                   Assign to
                 </label>
                 <div className="flex flex-wrap gap-2">

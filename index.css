@@ -339,6 +339,20 @@ button:focus-visible {
     -1px -1px 1px rgba(0, 0, 0, 0.3);
 }
 
+/* Breathing animation for intro */
+@keyframes breathe {
+  0%, 100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.animate-breathe {
+  animation: breathe 2s ease-in-out infinite;
+}
+
 /* Meal type button pop animation */
 @keyframes mealButtonPop {
   0% {

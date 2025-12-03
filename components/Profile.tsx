@@ -237,6 +237,7 @@ const Profile: React.FC<ProfileProps> = ({
       case UserRole.SPOUSE: return 'bg-[#F3E5F5] text-[#AB47BC]';
       case UserRole.HELPER: return 'bg-[#FFF3E0] text-[#FF9800]';
       case UserRole.CHILD: return 'bg-[#E8F5E9] text-[#4CAF50]';
+      case UserRole.OTHER: return 'bg-[#FCE4EC] text-[#F06292]';
       default: return 'bg-[#F5F5F5] text-[#757575]';
     }
   };
@@ -270,7 +271,7 @@ const Profile: React.FC<ProfileProps> = ({
         await onAdd(newUser);
         // User will appear via subscription update
       } else {
-        // For Spouse and Helper, create user with invite link
+        // For Spouse, Helper, and Other, create user with invite link
         const result = await createInvite({
           name: nameToAdd,
           role: roleToAdd,
@@ -629,11 +630,11 @@ const Profile: React.FC<ProfileProps> = ({
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">{t['profile.role']}</label>
-                  <div className="flex gap-2">
+                  <div className="grid grid-cols-2 gap-2">
                     <button
                       type="button"
                       onClick={() => setNewRole(UserRole.SPOUSE)}
-                      className={`flex-1 px-4 py-3 rounded-xl font-semibold transition-all ${
+                      className={`px-4 py-3 rounded-xl font-semibold transition-all ${
                         newRole === UserRole.SPOUSE
                           ? 'bg-[#F3E5F5] text-[#AB47BC] border-2 border-[#AB47BC]'
                           : 'bg-gray-100 text-gray-600 border-2 border-transparent hover:bg-gray-200'
@@ -644,7 +645,7 @@ const Profile: React.FC<ProfileProps> = ({
                     <button
                       type="button"
                       onClick={() => setNewRole(UserRole.HELPER)}
-                      className={`flex-1 px-4 py-3 rounded-xl font-semibold transition-all ${
+                      className={`px-4 py-3 rounded-xl font-semibold transition-all ${
                         newRole === UserRole.HELPER
                           ? 'bg-[#FFF3E0] text-[#FF9800] border-2 border-[#FF9800]'
                           : 'bg-gray-100 text-gray-600 border-2 border-transparent hover:bg-gray-200'
@@ -655,13 +656,24 @@ const Profile: React.FC<ProfileProps> = ({
                     <button
                       type="button"
                       onClick={() => setNewRole(UserRole.CHILD)}
-                      className={`flex-1 px-4 py-3 rounded-xl font-semibold transition-all ${
+                      className={`px-4 py-3 rounded-xl font-semibold transition-all ${
                         newRole === UserRole.CHILD
                           ? 'bg-[#E8F5E9] text-[#4CAF50] border-2 border-[#4CAF50]'
                           : 'bg-gray-100 text-gray-600 border-2 border-transparent hover:bg-gray-200'
                       }`}
                     >
                       Child
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setNewRole(UserRole.OTHER)}
+                      className={`px-4 py-3 rounded-xl font-semibold transition-all ${
+                        newRole === UserRole.OTHER
+                          ? 'bg-[#FCE4EC] text-[#F06292] border-2 border-[#F06292]'
+                          : 'bg-gray-100 text-gray-600 border-2 border-transparent hover:bg-gray-200'
+                      }`}
+                    >
+                      Other
                     </button>
                   </div>
                 </div>
@@ -743,6 +755,7 @@ const Profile: React.FC<ProfileProps> = ({
                     <option value={UserRole.SPOUSE}>Spouse</option>
                     <option value={UserRole.HELPER}>Helper</option>
                     <option value={UserRole.CHILD}>Child</option>
+                    <option value={UserRole.OTHER}>Other</option>
                   </select>
                 </div>
 

@@ -20,12 +20,18 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
-  const [verificationStep, setVerificationStep] = useState(false);
+  const [verificationStep, setVerificationStep] = useState<'email' | 'phone' | null>(null);
   const [code, setCode] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isLoaded || !signUp) return;
+
+    // Validate that at least email or phone is provided
+    if (!formData.email && !formData.phoneNumber) {
+      setError('Please provide either an email address or phone number');
+      return;
+    }
 
     setIsSubmitting(true);
     setError('');
@@ -34,14 +40,33 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
       await signUp.create({
         firstName: formData.firstName,
         lastName: formData.lastName,
-        emailAddress: formData.email,
+        emailAddress: formData.email || undefined,
         phoneNumber: formData.phoneNumber || undefined,
         password: formData.password,
       });
 
-      // Send email verification code
-      await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
-      setVerificationStep(true);
+      // Check if verification is needed based on unverifiedFields array
+      const hasUnverifiedEmail = signUp.unverifiedFields && signUp.unverifiedFields.length > 0 && 
+        signUp.unverifiedFields.some(field => field === 'email_address');
+      const hasUnverifiedPhone = signUp.unverifiedFields && signUp.unverifiedFields.length > 0 && 
+        signUp.unverifiedFields.some(field => field === 'phone_number');
+      
+      if (hasUnverifiedEmail && formData.email) {
+        // Send email verification code
+        await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
+        setVerificationStep('email');
+      } else if (hasUnverifiedPhone && formData.phoneNumber) {
+        // Send phone verification code
+        await signUp.preparePhoneNumberVerification({ strategy: 'phone_code' });
+        setVerificationStep('phone');
+      } else if (signUp.status === 'complete') {
+        // No verification needed, sign up is complete
+        await setActive({ session: signUp.createdSessionId! });
+        // User will be redirected by Auth component
+      } else {
+        // Unexpected status - show error
+        setError('Account creation completed but requires additional setup. Please try signing in.');
+      }
     } catch (err: any) {
       setError(err.errors?.[0]?.longMessage || err.message || 'Sign up failed');
     } finally {
@@ -49,7 +74,7 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
     }
   };
 
-  const handleVerifyEmail = async (e: React.FormEvent) => {
+  const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isLoaded || !signUp) return;
 
@@ -57,13 +82,36 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
     setError('');
 
     try {
-      const result = await signUp.attemptEmailAddressVerification({
-        code,
-      });
+      let result;
+      if (verificationStep === 'email') {
+        result = await signUp.attemptEmailAddressVerification({
+          code,
+        });
+      } else if (verificationStep === 'phone') {
+        result = await signUp.attemptPhoneNumberVerification({
+          code,
+        });
+      } else {
+        setError('Invalid verification step');
+        setIsSubmitting(false);
+        return;
+      }
 
       if (result.status === 'complete') {
         await setActive({ session: result.createdSessionId });
         // User will be redirected by Auth component
+      } else {
+        // Handle other statuses
+        switch (result.status) {
+          case 'missing_requirements':
+            setError('Additional information is required. Please check your email or phone for verification instructions.');
+            break;
+          case 'abandoned':
+            setError('Verification was cancelled. Please try again.');
+            break;
+          default:
+            setError(`Verification status: ${result.status}. Please try again or contact support if the issue persists.`);
+        }
       }
     } catch (err: any) {
       setError(err.errors?.[0]?.longMessage || err.message || 'Verification failed');
@@ -73,6 +121,9 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
   };
 
   if (verificationStep) {
+    const verificationType = verificationStep === 'email' ? 'Email' : 'Phone';
+    const verificationTarget = verificationStep === 'email' ? formData.email : formData.phoneNumber;
+    
     return (
       <div className="min-h-screen w-full flex flex-col items-center justify-center p-6" style={{ backgroundColor: '#3EAFD2' }}>
         {/* Single container for logo + form to ensure alignment */}
@@ -95,9 +146,9 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
 
           <div className="w-full">
             <div className="bg-white shadow-lg rounded-2xl p-6">
-            <h2 className="text-xl font-bold text-[#474747] text-center mb-2">Verify Your Email</h2>
+            <h2 className="text-xl font-bold text-[#474747] text-center mb-2">Verify Your {verificationType}</h2>
             <p className="text-gray-500 text-sm text-center mb-5">
-              We sent a code to {formData.email}
+              We sent a code to {verificationTarget}
             </p>
 
             {error && (
@@ -106,7 +157,7 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
               </div>
             )}
 
-            <form onSubmit={handleVerifyEmail} className="space-y-4">
+            <form onSubmit={handleVerify} className="space-y-4">
               <div>
                 <label className="text-[#474747] font-medium text-sm mb-1.5 block">
                   Verification Code
@@ -140,7 +191,7 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
                     Verifying...
                   </>
                 ) : (
-                  'Verify Email'
+                  `Verify ${verificationType}`
                 )}
               </button>
             </form>
@@ -222,21 +273,20 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
 
             <div>
               <label className="text-[#474747] font-medium text-sm mb-1.5 block">
-                Email
+                Email <span className="text-gray-400 font-normal">(Optional if phone provided)</span>
               </label>
               <input
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 placeholder="john@example.com"
-                required
                 className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-[#474747] placeholder-gray-400 focus:outline-none focus:border-[#3EAFD2] focus:ring-1 focus:ring-[#3EAFD2] transition-colors"
               />
             </div>
 
             <div>
               <label className="text-[#474747] font-medium text-sm mb-1.5 block">
-                Phone Number <span className="text-gray-400 font-normal">(Optional)</span>
+                Phone Number <span className="text-gray-400 font-normal">(Optional if email provided)</span>
               </label>
               <input
                 type="tel"
@@ -250,6 +300,7 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
                 placeholder="+1 (555) 123-4567"
                 className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-[#474747] placeholder-gray-400 focus:outline-none focus:border-[#3EAFD2] focus:ring-1 focus:ring-[#3EAFD2] transition-colors"
               />
+              <p className="text-xs text-gray-400 mt-1.5">Provide at least one: email or phone number</p>
             </div>
 
             <div>

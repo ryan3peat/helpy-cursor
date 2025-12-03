@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { useScrollHeader } from '@/hooks/useScrollHeader';
 import { useTranslatedContent } from '@/hooks/useTranslatedContent';
+import { useScrollLock } from '@/hooks/useScrollLock';
 import { ToDoItem, ToDoType, ShoppingCategory, TaskCategory, RecurrenceFrequency, User, UserRole, BaseViewProps } from '../types';
 import { detectInputLanguage } from '../services/languageDetectionService';
 
@@ -46,6 +47,21 @@ const RECURRENCE_OPTIONS: { value: RecurrenceFrequency; label: string }[] = [
   { value: 'DAILY', label: 'Daily' },
   { value: 'WEEKLY', label: 'Weekly' },
   { value: 'MONTHLY', label: 'Monthly' },
+];
+
+// Sort options - Shopping only has Added Date (no due dates)
+type SortOption = 'addedDate-desc' | 'addedDate-asc' | 'dueDate-desc' | 'dueDate-asc';
+
+const SHOPPING_SORT_OPTIONS: { value: SortOption; label: string }[] = [
+  { value: 'addedDate-desc', label: 'Added Date (newest)' },
+  { value: 'addedDate-asc', label: 'Added Date (oldest)' },
+];
+
+const TASK_SORT_OPTIONS: { value: SortOption; label: string }[] = [
+  { value: 'addedDate-desc', label: 'Added Date (newest)' },
+  { value: 'addedDate-asc', label: 'Added Date (oldest)' },
+  { value: 'dueDate-desc', label: 'Due Date (newest)' },
+  { value: 'dueDate-asc', label: 'Due Date (oldest)' },
 ];
 
 const DAYS_OF_WEEK = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -83,7 +99,7 @@ const getCategoryBadgeStyle = (category: string): string => {
     case TaskCategory.HOME_CARE:
       return 'bg-[#FFF3E0] text-[#FF9800]'; // Orange
     case TaskCategory.FAMILY_CARE:
-      return 'bg-[#FCE4EC] text-[#D2366E]'; // Magenta
+      return 'bg-[#FCE4EC] text-[#F06292]'; // Magenta
     default:
       return 'bg-[#F5F5F5] text-[#757575]'; // Gray
   }
@@ -99,7 +115,7 @@ const getSuggestionPillStyle = (category: string): string => {
     case TaskCategory.HOME_CARE:
       return 'bg-[#FFF3E0] text-[#FF9800] border-[#FF9800]/40'; // Orange
     case TaskCategory.FAMILY_CARE:
-      return 'bg-[#FCE4EC] text-[#D2366E] border-[#D2366E]/40'; // Magenta
+      return 'bg-[#FCE4EC] text-[#F06292] border-[#F06292]/40'; // Magenta
     default:
       return 'bg-[#F5F5F5] text-[#757575] border-[#757575]/40'; // Gray
   }
@@ -149,6 +165,17 @@ const formatDateTime = (dueDate?: string, dueTime?: string): string => {
   }
   
   return dateStr;
+};
+
+const isOverdue = (dueDate?: string): boolean => {
+  if (!dueDate) return false;
+  
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  const due = new Date(dueDate + 'T00:00:00');
+  
+  return due < today;
 };
 
 // ─────────────────────────────────────────────────────────────────
@@ -210,6 +237,10 @@ const ToDo: React.FC<ToDoProps> = ({
   const [inlineInputValue, setInlineInputValue] = useState('');
   const inlineInputRef = useRef<HTMLInputElement>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
+  
+  // Lock body scroll when sheet is open
+  useScrollLock(isSheetOpen);
+  
   const [sheetForm, setSheetForm] = useState<Partial<ToDoItem>>({});
   const [editingItemId, setEditingItemId] = useState<string | null>(null); // Track if editing existing item
   const [showCompleted, setShowCompleted] = useState(false);
@@ -222,7 +253,6 @@ const ToDo: React.FC<ToDoProps> = ({
   const [completingIds, setCompletingIds] = useState<Set<string>>(new Set());
   
   // Sort & Filter
-  type SortOption = 'addedDate-desc' | 'addedDate-asc' | 'dueDate-desc' | 'dueDate-asc';
   const [sortBy, setSortBy] = useState<SortOption>('addedDate-desc');
   const [showOnlyMine, setShowOnlyMine] = useState(false);
   const [isFilterDropdownOpen, setIsFilterDropdownOpen] = useState(false);
@@ -262,6 +292,10 @@ const ToDo: React.FC<ToDoProps> = ({
 
   useEffect(() => {
     setSelectedCategory('All');
+    // Reset sort to added date when switching to shopping if currently sorting by due date
+    if (activeSection === 'shopping' && sortBy.startsWith('dueDate')) {
+      setSortBy('addedDate-desc');
+    }
   }, [activeSection]);
   
   useEffect(() => {
@@ -721,12 +755,7 @@ const ToDo: React.FC<ToDoProps> = ({
                   <div className="p-3 pb-2">
                     <p className="text-caption text-muted-foreground tracking-wide mb-2">Sort by</p>
                     <div className="space-y-1">
-                      {[
-                        { value: 'addedDate-desc', label: 'Added Date (newest)' },
-                        { value: 'addedDate-asc', label: 'Added Date (oldest)' },
-                        { value: 'dueDate-desc', label: 'Due Date (newest)' },
-                        { value: 'dueDate-asc', label: 'Due Date (oldest)' },
-                      ].map(option => (
+                      {(activeSection === 'shopping' ? SHOPPING_SORT_OPTIONS : TASK_SORT_OPTIONS).map(option => (
                         <button
                           key={option.value}
                           onClick={() => setSortBy(option.value as SortOption)}
@@ -806,10 +835,10 @@ const ToDo: React.FC<ToDoProps> = ({
             {/* Shopping Card */}
             <button
               onClick={() => setActiveSection('shopping')}
-              className={`px-3 py-2.5 rounded-xl text-left border transition-all ${
+              className={`px-3 py-2.5 rounded-xl text-left transition-all ${
                 activeSection === 'shopping'
-                  ? 'bg-primary text-primary-foreground border-primary shadow-md'
-                  : 'bg-card text-foreground border-border hover:border-foreground/20'
+                  ? 'bg-primary text-primary-foreground shadow-md'
+                  : 'bg-card text-foreground shadow-sm'
               }`}
             >
               <div className="flex items-center gap-2">
@@ -824,10 +853,10 @@ const ToDo: React.FC<ToDoProps> = ({
             {/* Tasks Card */}
             <button
               onClick={() => setActiveSection('task')}
-              className={`px-3 py-2.5 rounded-xl text-left border transition-all ${
+              className={`px-3 py-2.5 rounded-xl text-left transition-all ${
                 activeSection === 'task'
-                  ? 'bg-primary text-primary-foreground border-primary shadow-md'
-                  : 'bg-card text-foreground border-border hover:border-foreground/20'
+                  ? 'bg-primary text-primary-foreground shadow-md'
+                  : 'bg-card text-foreground shadow-sm'
               }`}
             >
               <div className="flex items-center gap-2">
@@ -1033,7 +1062,7 @@ const ToDo: React.FC<ToDoProps> = ({
                       {item.category}
                     </span>
                     {item.type === 'task' && item.dueDate && (
-                      <span className="flex items-center gap-1 text-caption text-muted-foreground">
+                      <span className={`flex items-center gap-1 text-caption ${isOverdue(item.dueDate) ? 'text-[#F06292]' : 'text-muted-foreground'}`}>
                         <Calendar size={11} />
                         {formatDateTime(item.dueDate, item.dueTime)}
                       </span>
@@ -1195,7 +1224,7 @@ const ToDo: React.FC<ToDoProps> = ({
                   onChange={e => setSheetForm(prev => ({ ...prev, name: e.target.value }))}
                   placeholder={activeSection === 'shopping' ? 'e.g., Milk' : 'e.g., Clean bathroom'}
                   className="w-full px-4 py-3 bg-muted rounded-xl text-body text-foreground placeholder-muted-foreground outline-none border border-transparent focus:border-foreground transition-colors"
-                  autoFocus
+                  autoFocus={!editingItemId}
                 />
               </div>
               

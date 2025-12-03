@@ -22,6 +22,10 @@ import {
   saveFamilyNotes,
   subscribeToNotes
 } from './services/supabaseService';
+import type { EssentialInfo } from '@src/types/essentialInfo';
+import type { TrainingModule } from '@src/types/training';
+import { subscribeToEssentialInfo } from './services/essentialInfoService';
+import { subscribeToTrainingModules } from './services/trainingService';
 
 const App: React.FC = () => {
   const { signOut } = useClerk();
@@ -142,6 +146,8 @@ const App: React.FC = () => {
   const [meals, setMeals] = useState<Meal[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [familyNotes, setFamilyNotes] = useState('');
+  const [essentialItems, setEssentialItems] = useState<EssentialInfo[]>([]);
+  const [trainingModules, setTrainingModules] = useState<TrainingModule[]>([]);
 
   // Ensure currentUser is always in the users array (for assignee selection)
   useEffect(() => {
@@ -186,6 +192,8 @@ const App: React.FC = () => {
     const unsubMeals = subscribeToCollection(hid, 'meals', (data) => setMeals(data as Meal[]));
     const unsubExpenses = subscribeToCollection(hid, 'expenses', (data) => setExpenses(data as Expense[]));
     const unsubNotes = subscribeToNotes(hid, (note) => setFamilyNotes(note));
+    const unsubEssential = subscribeToEssentialInfo(hid, (data) => setEssentialItems(data));
+    const unsubTraining = subscribeToTrainingModules(hid, (data) => setTrainingModules(data));
     
     return () => {
       unsubUsers();
@@ -193,6 +201,8 @@ const App: React.FC = () => {
       unsubMeals();
       unsubExpenses();
       unsubNotes();
+      unsubEssential();
+      unsubTraining();
     };
   }, [currentUser]);
 
@@ -311,7 +321,15 @@ const App: React.FC = () => {
   // Notes Handler
   const handleSaveFamilyNotes = async (notes: string) => {
     if (!hid) return;
-    await saveFamilyNotes(hid, notes);
+    const previousNotes = familyNotes; // Store previous value
+    setFamilyNotes(notes); // Optimistic update
+    
+    try {
+      await saveFamilyNotes(hid, notes);
+    } catch (error) {
+      console.error('Failed to save notes:', error);
+      setFamilyNotes(previousNotes); // Rollback on error
+    }
   };
 
   const renderView = () => {
@@ -383,6 +401,8 @@ const App: React.FC = () => {
             householdId={hid}
             currentUser={currentUser!}
             users={users}
+            essentialItems={essentialItems}
+            trainingModules={trainingModules}
             t={translations}
             currentLang={lang}
           />

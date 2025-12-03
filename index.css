@@ -54,8 +54,8 @@
   --accent: 0 0% 96%;
   --accent-foreground: 0 0% 28%;
 
-  /* Destructive */
-  --destructive: 0 84% 60%;
+  /* Destructive - Brand pink #F06292 */
+  --destructive: 340 83% 66%;
   --destructive-foreground: 0 0% 100%;
 
   /* Input & Ring */
@@ -140,8 +140,8 @@
   --accent: 0 0% 15%;
   --accent-foreground: 0 0% 95%;
 
-  /* Destructive */
-  --destructive: 0 84% 60%;
+  /* Destructive - Brand pink #F06292 */
+  --destructive: 340 83% 66%;
   --destructive-foreground: 0 0% 100%;
 
   /* Input & Ring */

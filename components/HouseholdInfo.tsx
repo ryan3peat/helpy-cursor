@@ -1,6 +1,7 @@
 // components/HouseholdInfo.tsx
 import React, { useEffect, useState, useRef } from "react";
 import { useScrollHeader } from "@/hooks/useScrollHeader";
+import { useScrollLock } from "@/hooks/useScrollLock";
 import {
   Plus,
   X,
@@ -41,7 +42,6 @@ import type {
 } from "@src/types/essentialInfo";
 import { COUNTRY_CODES, CATEGORY_CONFIG } from "@src/types/essentialInfo";
 import {
-  subscribeToEssentialInfo,
   createEssentialInfo,
   updateEssentialInfo,
   deleteEssentialInfo,
@@ -58,7 +58,6 @@ import {
   TRAINING_CATEGORY_CONFIG,
 } from "@src/types/training";
 import {
-  subscribeToTrainingModules,
   createTrainingModule,
   updateTrainingModule,
   deleteTrainingModule,
@@ -69,6 +68,8 @@ interface HouseholdInfoProps extends BaseViewProps {
   householdId: string;
   currentUser: User;
   users: User[];
+  essentialItems: EssentialInfo[];
+  trainingModules: TrainingModule[];
 }
 
 type ActiveSection = "essentialInfo" | "training";
@@ -117,9 +118,9 @@ const ROLE_STYLES: Record<UserRole, { bg: string; color: string; gradient: strin
     gradient: 'linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%)'
   },
   [UserRole.SPOUSE]: { 
-    bg: '#FCE7F3', 
-    color: '#BE185D',
-    gradient: 'linear-gradient(135deg, #EC4899 0%, #BE185D 100%)'
+    bg: '#FCE4EC', 
+    color: '#F06292',
+    gradient: 'linear-gradient(135deg, #F06292 0%, #C74B7A 100%)'
   },
   [UserRole.HELPER]: { 
     bg: '#D1FAE5', 
@@ -446,8 +447,8 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
   householdId,
   currentUser,
   users,
-  t,
-  currentLang,
+  essentialItems,
+  trainingModules,
 }) => {
   // ─────────────────────────────────────────────────────────────────
   // Section Toggle State
@@ -456,9 +457,8 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
   const isHelper = currentUser.role === UserRole.HELPER;
 
   // ─────────────────────────────────────────────────────────────────
-  // Essential Info State
+  // Essential Info State (data comes from props, only UI state here)
   // ─────────────────────────────────────────────────────────────────
-  const [essentialItems, setEssentialItems] = useState<EssentialInfo[]>([]);
   const [selectedEssentialCategory, setSelectedEssentialCategory] = useState<EssentialInfoCategory | "All">("All");
   const [isEssentialModalOpen, setIsEssentialModalOpen] = useState(false);
   const [editingEssentialItem, setEditingEssentialItem] = useState<EssentialInfo | null>(null);
@@ -472,13 +472,16 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
   });
 
   // ─────────────────────────────────────────────────────────────────
-  // Training State
+  // Training State (data comes from props, only UI state here)
   // ─────────────────────────────────────────────────────────────────
-  const [trainingModules, setTrainingModules] = useState<TrainingModule[]>([]);
   const [selectedTrainingCategory, setSelectedTrainingCategory] = useState<TrainingCategory | "All">("All");
   const [isTrainingModalOpen, setIsTrainingModalOpen] = useState(false);
   const [editingTrainingModule, setEditingTrainingModule] = useState<TrainingModule | null>(null);
   const [viewingTrainingModule, setViewingTrainingModule] = useState<TrainingModule | null>(null);
+  
+  // Lock body scroll when any modal is open
+  useScrollLock(isEssentialModalOpen || isTrainingModalOpen || !!viewingTrainingModule);
+  
   const [trainingForm, setTrainingForm] = useState<CreateTrainingModule>({
     category: "House Rules",
     customCategory: "",
@@ -487,33 +490,10 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
     assigneeId: "",
   });
 
-  const [isLoading, setIsLoading] = useState(true);
-
   // ─────────────────────────────────────────────────────────────────
   // Scroll State for Header Animation (using reusable hook)
   // ─────────────────────────────────────────────────────────────────
   const { isScrolled } = useScrollHeader();
-
-  // ─────────────────────────────────────────────────────────────────
-  // Data Subscriptions
-  // ─────────────────────────────────────────────────────────────────
-  useEffect(() => {
-    setIsLoading(true);
-    
-    const unsubEssential = subscribeToEssentialInfo(householdId, (data) => {
-      setEssentialItems(data);
-      setIsLoading(false);
-    });
-
-    const unsubTraining = subscribeToTrainingModules(householdId, (data) => {
-      setTrainingModules(data);
-    });
-
-    return () => {
-      unsubEssential();
-      unsubTraining();
-    };
-  }, [householdId]);
 
   // ─────────────────────────────────────────────────────────────────
   // Stats Calculations
@@ -595,16 +575,14 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
     
     const itemToDelete = editingEssentialItem;
     
-    // Optimistic UI: immediately close modal and remove from local state
+    // Close modal immediately for responsive UX
     setIsEssentialModalOpen(false);
-    setEssentialItems(prev => prev.filter(item => item.id !== itemToDelete.id));
     
-    // Perform delete in background
+    // Perform delete (subscription in App.tsx will update the data)
     try {
       await deleteEssentialInfo(householdId, itemToDelete.id);
     } catch (error) {
       console.error("Failed to delete:", error);
-      // Subscription will restore correct state if delete failed
     }
   };
 
@@ -701,16 +679,14 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
     
     const moduleToDelete = editingTrainingModule;
     
-    // Optimistic UI: immediately close modal and remove from local state
+    // Close modal immediately for responsive UX
     setIsTrainingModalOpen(false);
-    setTrainingModules(prev => prev.filter(m => m.id !== moduleToDelete.id));
     
-    // Perform delete in background
+    // Perform delete (subscription in App.tsx will update the data)
     try {
       await deleteTrainingModule(householdId, moduleToDelete.id);
     } catch (error) {
       console.error("Failed to delete training:", error);
-      // Subscription will restore correct state if delete failed
     }
   };
 
@@ -769,10 +745,10 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
             {/* Essential Info Card */}
             <button
               onClick={() => setActiveSection("essentialInfo")}
-              className={`px-3 py-2.5 rounded-xl text-left border ${
+              className={`px-3 py-2.5 rounded-xl text-left transition-all ${
                 activeSection === "essentialInfo"
-                  ? "bg-primary text-primary-foreground border-primary shadow-md"
-                  : "bg-card text-foreground border-border hover:border-foreground/20"
+                  ? "bg-primary text-primary-foreground shadow-md"
+                  : "bg-card text-foreground shadow-sm"
               }`}
             >
               <div className="flex items-center gap-2">
@@ -787,10 +763,10 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
             {/* Training Card */}
             <button
               onClick={() => setActiveSection("training")}
-              className={`px-3 py-2.5 rounded-xl text-left border ${
+              className={`px-3 py-2.5 rounded-xl text-left transition-all ${
                 activeSection === "training"
-                  ? "bg-primary text-primary-foreground border-primary shadow-md"
-                  : "bg-card text-foreground border-border hover:border-foreground/20"
+                  ? "bg-primary text-primary-foreground shadow-md"
+                  : "bg-card text-foreground shadow-sm"
               }`}
             >
               <div className="flex items-center gap-2">
@@ -917,9 +893,7 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
 
             {/* Cards List */}
             <div className="space-y-4">
-              {isLoading ? (
-                <div className="text-center py-12 text-muted-foreground">Loading...</div>
-              ) : filteredEssentialItems.length === 0 ? (
+              {filteredEssentialItems.length === 0 ? (
                 <div className="text-center py-12">
                   <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-secondary flex items-center justify-center">
                     <FileText size={28} className="text-muted-foreground" />
@@ -1291,7 +1265,7 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
         </div>
 
         {/* Form */}
-        <div className="p-5 space-y-4 max-h-[60vh] overflow-y-auto">
+        <div className="p-5 space-y-4 max-h-[75vh] overflow-y-auto">
               {/* Category */}
               <div>
             <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
@@ -1468,7 +1442,7 @@ const TrainingModal: React.FC<TrainingModalProps> = ({
         </div>
 
         {/* Form */}
-        <div className="p-5 space-y-4 max-h-[60vh] overflow-y-auto">
+        <div className="p-5 space-y-4 max-h-[75vh] overflow-y-auto">
           {/* Category */}
           <div>
             <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
@@ -1636,7 +1610,7 @@ const TrainingViewModal: React.FC<TrainingViewModalProps> = ({
         </div>
 
         {/* Content */}
-        <div className="p-5 max-h-[50vh] overflow-y-auto">
+        <div className="p-5 max-h-[65vh] overflow-y-auto">
           <div className="prose prose-slate prose-sm">
             {module.content ? (
               <div className="whitespace-pre-wrap text-body text-foreground">

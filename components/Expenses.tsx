@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { useScrollHeader } from '@/hooks/useScrollHeader';
 import { useTranslatedContent } from '@/hooks/useTranslatedContent';
+import { useScrollLock } from '@/hooks/useScrollLock';
 import { Expense, BaseViewProps } from '../types';
 import { EXPENSE_CATEGORIES } from '../constants';
 import { detectInputLanguage } from '../services/languageDetectionService';
@@ -155,6 +156,9 @@ const Expenses: React.FC<ExpensesProps> = ({
 
   // Scroll header hook
   const { isScrolled } = useScrollHeader();
+  
+  // Lock body scroll when any modal is open
+  useScrollLock(addExpenseStage !== 'closed' || !!selectedExpense || isMonthPickerOpen);
 
   // Refs
   const fileInputRef = useRef<HTMLInputElement>(null);

@@ -10,7 +10,6 @@ import {
   Cookie,
   Edit2,
   Trash2,
-  Check,
   ChevronLeft,
   ChevronRight,
   RotateCcw,
@@ -23,6 +22,7 @@ import {
 } from 'lucide-react';
 import { useScrollHeader } from '@/hooks/useScrollHeader';
 import { useTranslatedContent } from '@/hooks/useTranslatedContent';
+import { useScrollLock } from '@/hooks/useScrollLock';
 import { Meal, MealType, MealAudience, User, UserRole, BaseViewProps } from '../types';
 import { suggestMeal } from '../services/geminiService';
 import { detectInputLanguage } from '../services/languageDetectionService';
@@ -85,6 +85,10 @@ const Meals: React.FC<MealsProps> = ({
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
+  
+  // Lock body scroll when modal is open
+  useScrollLock(isModalOpen);
+  
   const [editingMealId, setEditingMealId] = useState<string | null>(null);
 
   // Context for the modal (When adding new)
@@ -765,167 +769,154 @@ const Meals: React.FC<MealsProps> = ({
                 .filter(m => m.date === dateStr)
                 .sort((a, b) => (mealTypeOrder[a.type] || 99) - (mealTypeOrder[b.type] || 99));
             
-            // Build rows: each meal + one "Add Meal Plan" row
-            const mealRows = dayMeals.map(meal => ({ type: 'meal' as const, meal }));
-            // Always add one "Add" row at the end
-            const rows = [...mealRows, { type: 'add' as const, meal: null }];
+              // Build rows: each meal + one "Add Meal Plan" row
+              const mealRows = dayMeals.map(meal => ({ type: 'meal' as const, meal }));
+              // Always add one "Add" row at the end
+              const rows = [...mealRows, { type: 'add' as const, meal: null }];
+
+              // Count helpers for display
+              const getParticipantCounts = (userIds: string[]) => {
+                const participants = userIds
+                  .map(uid => users.find(u => u.id === uid))
+                  .filter((u): u is User => !!u);
+                const adultCount = participants.filter(u => u.role !== UserRole.CHILD).length;
+                const kidCount = participants.filter(u => u.role === UserRole.CHILD).length;
+                return { adultCount, kidCount };
+              };
 
               return (
-              <div 
-                key={dateStr} 
-                id={`day-${dateStr}`} 
-                className="bg-card rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow"
-              >
-                {/* 3-Column Table Layout */}
-                <div className="flex">
-                  {/* Column 1: Date (spans all rows) */}
-                  <div className={`w-16 shrink-0 p-2 flex flex-col items-center justify-center ${isToday ? 'bg-primary' : 'bg-card'}`}>
-                    <span className={`text-caption font-bold ${isToday ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
-                      {dayDate.getDate()} {dayDate.toLocaleDateString(langCode, { month: 'short' })}
-                      </span>
-                    <span className={`text-title font-bold ${isToday ? 'text-primary-foreground' : 'text-foreground'}`}>
-                      {dayDate.toLocaleDateString(langCode, { weekday: 'short' })}
+                <div 
+                  key={dateStr} 
+                  id={`day-${dateStr}`} 
+                  className="bg-card rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+                >
+                  {/* Prominent Date Header Bar */}
+                  <div className={`px-4 py-3 ${isToday ? 'bg-primary' : 'bg-card'}`}>
+                    <span className={`text-body font-bold ${isToday ? 'text-primary-foreground' : 'text-foreground'}`}>
+                      {dayDate.toLocaleDateString(langCode, { weekday: 'short' })}, {dayDate.getDate()} {dayDate.toLocaleDateString(langCode, { month: 'short' })}
                     </span>
                   </div>
 
-                  {/* Inset Vertical Separator with Gradient */}
-                  <div className="flex items-center py-4">
-                    <div 
-                      className="w-px h-full opacity-50"
-                      style={{ background: 'linear-gradient(to bottom, transparent, hsl(var(--border)) 40%, hsl(var(--border)) 60%, transparent)' }}
-                    />
-                    </div>
-
-                  {/* Columns 2 & 3: Meal rows */}
-                  <div className="flex-1 divide-y divide-border">
-                      {rows.map((row, idx) => {
-                        if (row.type === 'meal' && row.meal) {
-                          const meal = row.meal;
-                          const hasDish = meal.description.trim().length > 0;
-                          const isIn = isUserInMeal(meal);
-                          const canJoin = canUserJoinMeal(meal);
-                          const eaters = meal.forUserIds
-                            .map(uid => users.find(u => u.id === uid))
-                            .filter((u): u is User => !!u);
+                  {/* Meal Rows - horizontal dividers with margin */}
+                  <div className="[&>*]:mx-3 [&>*:not(:last-child)]:border-b [&>*:not(:last-child)]:border-border">
+                    {rows.map((row, idx) => {
+                      if (row.type === 'meal' && row.meal) {
+                        const meal = row.meal;
+                        const hasDish = meal.description.trim().length > 0;
+                        const isIn = isUserInMeal(meal);
+                        const canJoin = canUserJoinMeal(meal);
+                        const { adultCount, kidCount } = getParticipantCounts(meal.forUserIds);
 
                         return (
-                            <div key={meal.id} className="flex min-h-[70px]">
-                              {/* Column 2: Meal Info */}
-                              <div 
-                                onClick={() => openEditModal(meal)}
-                                className="flex-1 p-3 cursor-pointer hover:bg-muted/50 transition-colors flex flex-col justify-center"
-                              >
-                                {hasDish ? (
-                                  <>
-                                    <span className="text-caption font-medium text-muted-foreground flex items-center gap-1">
-                                      {getMealIcon(meal.type)}
-                                      {getMealLabel(meal.type)}
-                                      {renderAudienceIcons(meal.audience || 'ALL')}
-                                    </span>
-                                    <span className="text-body font-semibold text-foreground leading-tight">
-                                      <TranslatedMealDescription meal={meal} currentLang={currentLang} onUpdate={onUpdate} />
-                                    </span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <span className="text-caption font-medium text-muted-foreground flex items-center gap-1">
-                                      {getMealIcon(meal.type)}
-                                      {getMealLabel(meal.type)}
-                                      {renderAudienceIcons(meal.audience || 'ALL')}
-                                    </span>
-                                    <button className="text-body font-semibold text-primary flex items-center gap-1">
-                        <Plus size={14} />
-                                      {t['meals.add_dish'] ?? 'Add Dish'}
-                              </button>
-                                  </>
-                                )}
-                            </div>
-
-                              {/* Inset Vertical Separator with Gradient */}
-                              <div className="flex items-center py-4">
-                                <div 
-                                  className="w-px h-full opacity-50"
-                                  style={{ background: 'linear-gradient(to bottom, transparent, hsl(var(--border)) 40%, hsl(var(--border)) 60%, transparent)' }}
-                                />
-                              </div>
-
-                              {/* Column 3: Who's Eating + Action */}
-                              <div className="w-28 shrink-0 p-2 flex flex-col items-center justify-center gap-1.5">
-                                {/* Avatars */}
-                                <div className="flex -space-x-1.5">
-                                  {eaters.slice(0, 4).map(u => (
-                                    <img
-                                      key={u.id}
-                                      src={u.avatar}
-                                      alt={u.name}
-                                      className={`w-6 h-6 rounded-full bg-muted object-cover border-2 ${
-                                        u.id === currentUser.id ? 'border-primary' : 'border-card'
-                                      }`}
-                                    />
-                                  ))}
-                                  {eaters.length > 4 && (
-                                    <span className="w-6 h-6 rounded-full bg-muted border-2 border-card flex items-center justify-center text-[9px] font-bold text-muted-foreground">
-                                      +{eaters.length - 4}
+                          <div key={meal.id} className="grid grid-cols-[1fr_1px_4rem_1px_7rem] h-[72px] items-center">
+                            {/* Left Column: Meal Info */}
+                            <div 
+                              onClick={() => openEditModal(meal)}
+                              className="h-full p-3 cursor-pointer hover:bg-muted/50 transition-colors flex flex-col justify-center min-w-0"
+                            >
+                              <span className="text-caption font-medium text-muted-foreground flex items-center gap-1 mb-0.5">
+                                {getMealIcon(meal.type)}
+                                {getMealLabel(meal.type)}
                               </span>
-                                  )}
-                                  {eaters.length === 0 && (
-                                    <span className="h-6 flex items-center text-caption text-muted-foreground/50">--</span>
-                                  )}
+                              {hasDish ? (
+                                <span className="text-body font-semibold text-foreground leading-tight truncate">
+                                  <TranslatedMealDescription meal={meal} currentLang={currentLang} onUpdate={onUpdate} />
+                                </span>
+                              ) : (
+                                <button className="text-body font-semibold text-primary flex items-center gap-1">
+                                  <Plus size={14} />
+                                  {t['meals.add_dish'] ?? 'Add Dish'}
+                                </button>
+                              )}
                             </div>
 
-                                {/* Join/Leave Button - Pill shaped with opacity bg */}
-                                {canJoin ? (
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleQuickRsvp(meal, e);
-                                    }}
-                                    className={`text-caption font-semibold px-3 py-1.5 rounded-full transition-all flex items-center gap-1 ${
-                                      isIn
-                                        ? 'bg-destructive/15 text-destructive hover:bg-destructive/25'
-                                        : 'bg-primary/15 text-primary hover:bg-primary/25'
-                                    }`}
-                                  >
-                                    {isIn ? (
-                                      <>{t['meals.leave'] ?? 'Leave'} <X size={10} /></>
-                                    ) : (
-                                      <>Join <Plus size={10} /></>
-                                    )}
-                                  </button>
-                                ) : (
-                                  <div className="text-center">
-                                    <span className="text-[9px] text-muted-foreground block">
-                                      {meal.audience === 'ADULTS' 
-                                        ? (t['meals.adults_only'] ?? 'Adults Only')
-                                        : (t['meals.kids_only'] ?? 'Kids Only')}
-                                      </span>
-                                  </div>
-                                )}
-                              </div>
+                            {/* Vertical Separator */}
+                            <div 
+                              className="h-1/2 opacity-50"
+                              style={{ background: 'linear-gradient(to bottom, transparent, hsl(var(--border)) 20%, hsl(var(--border)) 80%, transparent)' }}
+                            />
+
+                            {/* Middle Column: Participant Counts */}
+                            <div 
+                              onClick={() => openEditModal(meal)}
+                              className="h-full p-2 cursor-pointer hover:bg-muted/50 transition-colors flex flex-col items-center justify-center gap-0.5"
+                            >
+                              {(adultCount > 0 || kidCount > 0) ? (
+                                <>
+                                  {adultCount > 0 && (
+                                    <div className="flex items-center gap-1">
+                                      <UserIcon size={14} className="text-muted-foreground" />
+                                      <span className="text-body font-bold text-foreground">{adultCount}</span>
+                                    </div>
+                                  )}
+                                  {kidCount > 0 && (
+                                    <div className="flex items-center gap-1">
+                                      <Baby size={14} className="text-muted-foreground" />
+                                      <span className="text-body font-bold text-foreground">{kidCount}</span>
+                                    </div>
+                                  )}
+                                </>
+                              ) : (
+                                <span className="text-caption text-muted-foreground/50">--</span>
+                              )}
                             </div>
-                          );
-                        } else {
-                          // "Add Meal Plan" row
-                          const isExpanded = quickJoinPopoverDate === dateStr;
-                          // Get existing meal types for this day to disable them in the picker
-                          // Only count meals that have a description OR have participants
-                          const existingMealTypes = dayMeals
-                            .filter(m => m.description.trim() || m.forUserIds.length > 0)
-                            .map(m => m.type);
-                          return (
-                            <div key={`add-${idx}`} className="flex min-h-[60px] relative">
-                              {/* Expanded: Absolute positioned meal type picker (covers date) */}
-                              {isExpanded && (
-                                <div 
-                                  ref={quickJoinPopoverRef}
-                                  className="absolute inset-y-0 left-0 right-[120px] bg-card z-10 flex items-center justify-center gap-3 rounded-l-xl"
+
+                            {/* Vertical Separator */}
+                            <div 
+                              className="h-1/2 opacity-50"
+                              style={{ background: 'linear-gradient(to bottom, transparent, hsl(var(--border)) 20%, hsl(var(--border)) 80%, transparent)' }}
+                            />
+
+                            {/* Right Column: Join Button */}
+                            <div className="h-full p-2 flex items-center justify-center">
+                              {canJoin ? (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleQuickRsvp(meal, e);
+                                  }}
+                                  className={`w-[100px] px-3 text-caption font-semibold py-2 rounded-full transition-all text-center whitespace-nowrap ${
+                                    isIn
+                                      ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                                      : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                                  }`}
                                 >
+                                  {isIn ? (t['meals.joined'] ?? 'Joined') : (t['meals.tap_to_join'] ?? 'Tap to Join')}
+                                </button>
+                              ) : (
+                                <span className="text-caption text-muted-foreground text-center leading-tight">
+                                  {meal.audience === 'ADULTS' 
+                                    ? (t['meals.adults_only'] ?? 'Adults Only')
+                                    : (t['meals.kids_only'] ?? 'Kids Only')}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      } else {
+                        // "Add Meal Plan" row
+                        const isExpanded = quickJoinPopoverDate === dateStr;
+                        // Get existing meal types for this day to disable them in the picker
+                        const existingMealTypes = dayMeals
+                          .filter(m => m.description.trim() || m.forUserIds.length > 0)
+                          .map(m => m.type);
+                        
+                        return (
+                          <div key={`add-${idx}`} className="relative">
+                            {/* Expanded: Meal type picker - absolute overlay */}
+                            {isExpanded && (
+                              <div 
+                                ref={quickJoinPopoverRef}
+                                className="absolute inset-0 bg-card z-10 grid grid-cols-[1fr_1px_4rem_1px_7rem] h-[72px] items-center"
+                              >
+                                {/* Left area: Meal type icons */}
+                                <div className="h-full py-1 px-4 flex items-center justify-between">
                                   {[
-                                    { type: MealType.BREAKFAST, icon: <Coffee size={20} />, color: 'text-[#FF9800] border-[#FF9800]/30 hover:bg-[#FF9800]/10 hover:border-[#FF9800]/50' },
-                                    { type: MealType.LUNCH, icon: <Sun size={20} />, color: 'text-[#4CAF50] border-[#4CAF50]/30 hover:bg-[#4CAF50]/10 hover:border-[#4CAF50]/50' },
-                                    { type: MealType.DINNER, icon: <Moon size={20} />, color: 'text-[#7E57C2] border-[#7E57C2]/30 hover:bg-[#7E57C2]/10 hover:border-[#7E57C2]/50' },
-                                    { type: MealType.SNACKS, icon: <Cookie size={20} />, color: 'text-[#F06292] border-[#F06292]/30 hover:bg-[#F06292]/10 hover:border-[#F06292]/50' },
-                                  ].map(({ type, icon, color }, index) => {
+                                    { type: MealType.BREAKFAST, label: 'Breakfast', icon: <Coffee size={18} />, color: 'text-[#FF9800] border-[#FF9800]/30 hover:bg-[#FF9800]/10 hover:border-[#FF9800]/50' },
+                                    { type: MealType.LUNCH, label: 'Lunch', icon: <Sun size={18} />, color: 'text-[#4CAF50] border-[#4CAF50]/30 hover:bg-[#4CAF50]/10 hover:border-[#4CAF50]/50' },
+                                    { type: MealType.DINNER, label: 'Dinner', icon: <Moon size={18} />, color: 'text-[#7E57C2] border-[#7E57C2]/30 hover:bg-[#7E57C2]/10 hover:border-[#7E57C2]/50' },
+                                    { type: MealType.SNACKS, label: 'Snack', icon: <Cookie size={18} />, color: 'text-[#F06292] border-[#F06292]/30 hover:bg-[#F06292]/10 hover:border-[#F06292]/50' },
+                                  ].map(({ type, label, icon, color }) => {
                                     const alreadyExists = existingMealTypes.includes(type);
                                     return (
                                       <button
@@ -936,75 +927,94 @@ const Meals: React.FC<MealsProps> = ({
                                           setQuickJoinPopoverDate(null);
                                         }}
                                         disabled={alreadyExists}
-                                        className={`w-12 h-12 flex items-center justify-center rounded-xl border-2 bg-card transition-colors ${
+                                        className={`flex flex-col items-center justify-center gap-0.5 transition-colors ${
                                           alreadyExists 
-                                            ? 'opacity-30 cursor-not-allowed border-muted text-muted-foreground' 
-                                            : color
+                                            ? 'opacity-30 cursor-not-allowed text-muted-foreground' 
+                                            : color.split(' ')[0]
                                         }`}
                                         title={alreadyExists ? `${getMealLabel(type)} already exists` : getMealLabel(type)}
                                       >
-                                        {icon}
+                                        <div className={`w-9 h-9 flex items-center justify-center rounded-xl border-2 bg-card transition-colors ${
+                                          alreadyExists 
+                                            ? 'border-muted' 
+                                            : color
+                                        }`}>
+                                          {icon}
+                                        </div>
+                                        <span className="text-[10px] font-medium">{label}</span>
                                       </button>
                                     );
                                   })}
                                 </div>
-                              )}
 
-                              {/* Column 2: Add Meal Plan (visible when collapsed) */}
-                              <div className="flex-1 min-w-0 p-3 flex items-center justify-center">
-                                {!isExpanded && (
-                                  <button 
-                                    onClick={() => openAddModal(dayDate, MealType.DINNER)}
-                                    className="text-body font-semibold text-muted-foreground hover:text-primary flex items-center gap-1.5 transition-colors"
-                                  >
-                                    {t['meals.add_meal_plan'] ?? 'Add Meal Plan'}
-                                    <Plus size={16} />
-                                  </button>
-                                )}
-                              </div>
+                                {/* Empty separator column */}
+                                <div />
 
-                              {/* Inset Vertical Separator with Gradient */}
-                              <div className="flex items-center py-4">
-                                <div 
-                                  className="w-px h-full opacity-50"
-                                  style={{ background: 'linear-gradient(to bottom, transparent, hsl(var(--border)) 40%, hsl(var(--border)) 60%, transparent)' }}
-                                />
-                              </div>
+                                {/* Empty middle column */}
+                                <div />
 
-                              {/* Column 3: Join/Close Button */}
-                              <div className="w-28 shrink-0 p-2 flex flex-col items-center justify-center gap-1.5">
-                                {/* Show all user avatars as potential eaters */}
-                                <div className="flex -space-x-1.5">
-                                  {users.filter(u => u.role !== UserRole.HELPER).slice(0, 4).map(u => (
-                                    <img
-                                      key={u.id}
-                                      src={u.avatar}
-                                      alt={u.name}
-                                      className="w-6 h-6 rounded-full bg-muted object-cover border-2 border-card opacity-40"
-                                    />
-                                  ))}
-                                </div>
-                                {isExpanded ? (
+                                {/* Empty separator column */}
+                                <div />
+
+                                {/* Right Column: Close button - aligned with Tap to Join */}
+                                <div className="h-full p-2 flex items-center justify-center">
                                   <button
                                     onClick={() => setQuickJoinPopoverDate(null)}
-                                    className="text-caption font-semibold px-3 py-1.5 rounded-full transition-all flex items-center gap-1 bg-muted text-muted-foreground hover:bg-muted/80"
+                                    className="w-[100px] px-3 text-caption font-semibold py-2 rounded-full text-center whitespace-nowrap bg-muted text-muted-foreground hover:bg-muted/80"
                                   >
-                                    Close <X size={10} />
+                                    Close
                                   </button>
-                                ) : (
-                                  <button
-                                    onClick={() => setQuickJoinPopoverDate(dateStr)}
-                                    className="text-caption font-semibold px-3 py-1.5 rounded-full transition-all flex items-center gap-1 bg-primary/15 text-primary hover:bg-primary/25"
-                                  >
-                                    Join <Plus size={10} />
-                                  </button>
-                                )}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Grid row - same structure as meal rows */}
+                            <div className="grid grid-cols-[1fr_1px_4rem_1px_7rem] h-[72px] items-center">
+                              {/* Left Column: Add Meal Plan button */}
+                              <div 
+                                onClick={() => openAddModal(dayDate, MealType.DINNER)}
+                                className="h-full p-3 cursor-pointer hover:bg-muted/50 transition-colors flex flex-col justify-center min-w-0"
+                              >
+                                <button className="text-body font-semibold text-muted-foreground hover:text-primary flex items-center gap-1.5 transition-colors">
+                                  <Plus size={16} />
+                                  {t['meals.add_meal_plan'] ?? 'Add Meal Plan'}
+                                </button>
+                              </div>
+
+                              {/* Vertical Separator */}
+                              <div 
+                                className="h-1/2 opacity-50"
+                                style={{ background: 'linear-gradient(to bottom, transparent, hsl(var(--border)) 20%, hsl(var(--border)) 80%, transparent)' }}
+                              />
+
+                              {/* Middle Column: Empty counts placeholder */}
+                              <div 
+                                onClick={() => openAddModal(dayDate, MealType.DINNER)}
+                                className="h-full p-2 cursor-pointer hover:bg-muted/50 transition-colors flex flex-col items-center justify-center gap-0.5"
+                              >
+                                <span className="text-caption text-muted-foreground/50">--</span>
+                              </div>
+
+                              {/* Vertical Separator */}
+                              <div 
+                                className="h-1/2 opacity-50"
+                                style={{ background: 'linear-gradient(to bottom, transparent, hsl(var(--border)) 20%, hsl(var(--border)) 80%, transparent)' }}
+                              />
+
+                              {/* Right Column: Join button */}
+                              <div className="h-full p-2 flex items-center justify-center">
+                                <button
+                                  onClick={() => setQuickJoinPopoverDate(dateStr)}
+                                  className="w-[100px] px-3 text-caption font-semibold py-2 rounded-full transition-all text-center whitespace-nowrap bg-muted text-muted-foreground hover:bg-muted/80"
+                                >
+                                  {t['meals.tap_to_join'] ?? 'Tap to Join'}
+                                </button>
                               </div>
                             </div>
-                          );
-                        }
-                      })}
-                    </div>
+                          </div>
+                        );
+                      }
+                    })}
                   </div>
                 </div>
               );
@@ -1016,8 +1026,16 @@ const Meals: React.FC<MealsProps> = ({
             <table className="min-w-[700px] w-full border-collapse">
             <thead>
               <tr>
-                  <th className="sticky top-0 left-0 z-40 bg-muted w-16 p-2 border-b border-r border-border text-body font-semibold text-muted-foreground text-center">
-                    
+                  <th 
+                  className="sticky top-0 left-0 z-40 bg-muted w-16 p-2 border-b border-border text-body font-semibold text-muted-foreground text-center relative overflow-visible"
+                >
+                  {/* Shadow overlay on right edge */}
+                  <div 
+                    className="absolute top-0 -right-3 bottom-0 w-3 pointer-events-none"
+                    style={{ 
+                      background: 'linear-gradient(to right, rgba(0,0,0,0.06), transparent)',
+                    }}
+                  />
                 </th>
                 {mealTypes.map(type => (
                     <th key={type} className="sticky top-0 z-30 bg-muted p-2 border-b border-border text-center min-w-[140px]">
@@ -1037,10 +1055,17 @@ const Meals: React.FC<MealsProps> = ({
                     <tr key={dateStr} className="group">
                       {/* Day Column */}
                       <td 
-                        className={`sticky left-0 z-20 p-2 border-b border-r border-border text-center ${
+                        className={`sticky left-0 z-20 p-2 border-b border-border text-center relative overflow-visible ${
                           isToday ? 'bg-primary text-primary-foreground' : 'bg-card'
                         }`}
                       >
+                        {/* Shadow overlay on right edge */}
+                        <div 
+                          className="absolute top-0 -right-3 bottom-0 w-3 pointer-events-none"
+                          style={{ 
+                            background: 'linear-gradient(to right, rgba(0,0,0,0.06), transparent)',
+                          }}
+                        />
                         <div className="flex flex-col items-center">
                           <span className={`text-body font-semibold ${isToday ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
                           {day.toLocaleDateString(langCode, { weekday: 'short' })}
@@ -1218,7 +1243,7 @@ const Meals: React.FC<MealsProps> = ({
                 <label className="text-caption font-semibold text-muted-foreground">{t['meals.the_dish'] ?? 'The Dish'}</label>
                 <div className="relative">
                   <textarea
-                    autoFocus
+                    autoFocus={!editingMealId}
                     rows={2}
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
@@ -1252,17 +1277,12 @@ const Meals: React.FC<MealsProps> = ({
                       <button
                         key={user.id}
                         onClick={() => toggleUser(user.id)}
-                        className={`relative flex flex-col items-center gap-1.5 p-2 rounded-xl border-2 transition-all ${
+                        className={`flex flex-col items-center gap-1.5 p-2 rounded-xl border-2 transition-all ${
                           isSelected
-                            ? 'bg-card border-primary shadow-sm'
-                            : 'bg-muted border-transparent opacity-50 hover:opacity-80'
+                            ? 'bg-primary/10 border-primary text-primary'
+                            : 'bg-card border-border text-muted-foreground hover:border-foreground/20'
                         }`}
                       >
-                        {isSelected && (
-                          <div className="absolute top-1 right-1 bg-primary text-primary-foreground rounded-full p-0.5">
-                            <Check size={8} strokeWidth={4} />
-                          </div>
-                        )}
                         <img
                           src={user.avatar}
                           alt={user.name}

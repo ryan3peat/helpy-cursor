@@ -24,12 +24,16 @@ const IntroAnimation: React.FC<IntroAnimationProps> = ({ onComplete }) => {
       }`}
       style={{ backgroundColor: '#3EAFD2' }}
     >
-      <h1 
-        className="text-white text-6xl animate-breathe"
-        style={{ fontFamily: "'Peanut Butter', 'Plus Jakarta Sans', Inter, -apple-system, BlinkMacSystemFont, sans-serif" }}
-      >
-        helpy
-      </h1>
+      <img 
+        src="/helpy-logo.PNG"
+        alt="helpy"
+        className="animate-breathe"
+        style={{ 
+          width: '200px',
+          height: 'auto',
+          mixBlendMode: 'screen'
+        }}
+      />
     </div>
   );
 };

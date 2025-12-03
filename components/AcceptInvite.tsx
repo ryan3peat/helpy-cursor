@@ -212,7 +212,7 @@ const AcceptInvite: React.FC<AcceptInviteProps> = ({ onComplete }) => {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-brand-primary to-brand-secondary">
         <div className="bg-white rounded-3xl p-8 shadow-2xl text-center max-w-md">
-          <XCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <XCircle className="w-12 h-12 text-[#F06292] mx-auto mb-4" />
           <h2 className="text-xl font-bold text-gray-800">Invitation Error</h2>
           <p className="text-gray-500 mt-2">{errorMessage || 'This invitation is invalid or has expired.'}</p>
           <button
@@ -315,7 +315,7 @@ const AcceptInvite: React.FC<AcceptInviteProps> = ({ onComplete }) => {
 
         {/* Error message */}
         {errorMessage && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">
+          <div className="mb-6 p-4 bg-[#F06292]/10 border border-[#F06292]/20 rounded-xl text-[#F06292] text-sm">
             {errorMessage}
           </div>
         )}

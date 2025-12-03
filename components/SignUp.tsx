@@ -160,7 +160,7 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
             </p>
 
             {error && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">
+              <div className="mb-4 p-3 bg-[#F06292]/10 border border-[#F06292]/20 rounded-xl text-[#F06292] text-sm">
                 {error}
               </div>
             )}
@@ -244,7 +244,7 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
           <h2 className="text-xl font-bold text-[#474747] mb-5">Sign Up</h2>
 
           {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">
+            <div className="mb-4 p-3 bg-[#F06292]/10 border border-[#F06292]/20 rounded-xl text-[#F06292] text-sm">
               {error}
             </div>
           )}

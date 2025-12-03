@@ -552,18 +552,18 @@ const Profile: React.FC<ProfileProps> = ({
               {/* Allergies */}
               <div className="mb-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <AlertCircle size={16} className="text-red-500" />
-                  <h4 className="text-sm font-bold text-gray-700">{t['profile.allergies']}</h4>
+                  <AlertCircle size={16} className="text-[#F06292]" />
+                  <h4 className="text-sm font-bold text-foreground">{t['profile.allergies']}</h4>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {selectedUser.allergies && selectedUser.allergies.length > 0 ? (
                     selectedUser.allergies.map((allergy) => (
-                      <span key={allergy} className="px-3 py-1 bg-red-50 text-red-700 rounded-full text-xs font-medium">
+                      <span key={allergy} className="px-3 py-1 bg-[#F06292]/10 text-[#F06292] rounded-full text-xs font-medium">
                         {allergy}
                       </span>
                     ))
                   ) : (
-                    <span className="text-xs text-gray-400 italic">{t['profile.none']}</span>
+                    <span className="text-xs text-muted-foreground italic">{t['profile.none']}</span>
                   )}
                 </div>
               </div>
@@ -571,18 +571,18 @@ const Profile: React.FC<ProfileProps> = ({
               {/* Preferences */}
               <div>
                 <div className="flex items-center gap-2 mb-2">
-                  <Heart size={16} className="text-pink-500" />
-                  <h4 className="text-sm font-bold text-gray-700">{t['profile.preferences']}</h4>
+                  <Heart size={16} className="text-[#F06292]" />
+                  <h4 className="text-sm font-bold text-foreground">{t['profile.preferences']}</h4>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {selectedUser.preferences && selectedUser.preferences.length > 0 ? (
                     selectedUser.preferences.map((pref) => (
-                      <span key={pref} className="px-3 py-1 bg-pink-50 text-pink-700 rounded-full text-xs font-medium">
+                      <span key={pref} className="px-3 py-1 bg-[#F06292]/10 text-[#F06292] rounded-full text-xs font-medium">
                         {pref}
                       </span>
                     ))
                   ) : (
-                    <span className="text-xs text-gray-400 italic">{t['profile.none']}</span>
+                    <span className="text-xs text-muted-foreground italic">{t['profile.none']}</span>
                   )}
                 </div>
               </div>
@@ -777,9 +777,9 @@ const Profile: React.FC<ProfileProps> = ({
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {editAllergies.map((allergy) => (
-                      <span key={allergy} className="px-3 py-1 bg-red-50 text-red-700 rounded-full text-xs font-medium flex items-center gap-1">
+                      <span key={allergy} className="px-3 py-1 bg-[#F06292]/10 text-[#F06292] rounded-full text-xs font-medium flex items-center gap-1">
                         {allergy}
-                        <button onClick={() => removeAllergy(allergy)} className="hover:bg-red-200 rounded-full p-0.5">
+                        <button onClick={() => removeAllergy(allergy)} className="hover:bg-[#F06292]/20 rounded-full p-0.5">
                           <X size={12} />
                         </button>
                       </span>
@@ -789,25 +789,25 @@ const Profile: React.FC<ProfileProps> = ({
 
                 {/* Preferences */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Preferences</label>
+                  <label className="block text-sm font-semibold text-foreground mb-2">Preferences</label>
                   <div className="flex gap-2 mb-2">
                     <input
                       type="text"
                       value={newPreferenceInput}
                       onChange={(e) => setNewPreferenceInput(e.target.value)}
                       onKeyPress={(e) => e.key === 'Enter' && addPreference()}
-                      className="flex-1 px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-primary"
+                      className="flex-1 px-4 py-2 border border-border rounded-xl bg-muted focus:outline-none focus:ring-2 focus:ring-primary text-foreground"
                       placeholder="Add preference"
                     />
-                    <button onClick={addPreference} className="px-4 py-2 bg-brand-primary text-white rounded-xl font-semibold">
+                    <button onClick={addPreference} className="px-4 py-2 bg-primary text-primary-foreground rounded-xl font-semibold">
                       <Plus size={18} />
                     </button>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {editPreferences.map((pref) => (
-                      <span key={pref} className="px-3 py-1 bg-pink-50 text-pink-700 rounded-full text-xs font-medium flex items-center gap-1">
+                      <span key={pref} className="px-3 py-1 bg-[#F06292]/10 text-[#F06292] rounded-full text-xs font-medium flex items-center gap-1">
                         {pref}
-                        <button onClick={() => removePreference(pref)} className="hover:bg-pink-200 rounded-full p-0.5">
+                        <button onClick={() => removePreference(pref)} className="hover:bg-[#F06292]/20 rounded-full p-0.5">
                           <X size={12} />
                         </button>
                       </span>

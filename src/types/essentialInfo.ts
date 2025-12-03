@@ -276,12 +276,12 @@ export const COUNTRY_CODES = [
 ] as const;
 
 // Category colors for UI (icons handled by Lucide in component)
-// Colors based on brand palette: #3EAFD2, #FF9800, #7E57C2, #4CAF50, #F06292, #AB47BC, #D2366E, #757575
+// Colors based on brand palette: #3EAFD2, #FF9800, #7E57C2, #4CAF50, #F06292, #AB47BC, #F06292, #757575
 export const CATEGORY_CONFIG: Record<EssentialInfoCategory, { color: string; bgColor: string }> = {
   Home: { color: '#3EAFD2', bgColor: '#E6F7FB' },
   School: { color: '#7E57C2', bgColor: '#EDE7F6' },
   Doctor: { color: '#4CAF50', bgColor: '#E8F5E9' },
-  Hospital: { color: '#D2366E', bgColor: '#FCE4EC' },
+  Hospital: { color: '#F06292', bgColor: '#FCE4EC' },
   Shops: { color: '#FF9800', bgColor: '#FFF3E0' },
   Others: { color: '#757575', bgColor: '#F5F5F5' },
 };

@@ -60,7 +60,7 @@ export interface TrainingStats {
 }
 
 // Category config for UI
-// Colors based on brand palette: #3EAFD2, #FF9800, #7E57C2, #4CAF50, #F06292, #AB47BC, #D2366E, #757575
+// Colors based on brand palette: #3EAFD2, #FF9800, #7E57C2, #4CAF50, #F06292, #AB47BC, #F06292, #757575
 export const TRAINING_CATEGORY_CONFIG: Record<TrainingCategory, { color: string; bgColor: string }> = {
   'House Rules': { color: '#7E57C2', bgColor: '#EDE7F6' },
   'Routine': { color: '#AB47BC', bgColor: '#F3E5F5' },
@@ -69,7 +69,7 @@ export const TRAINING_CATEGORY_CONFIG: Record<TrainingCategory, { color: string;
   'Cleaning': { color: '#4CAF50', bgColor: '#E8F5E9' },
   'Grocery & Market': { color: '#4CAF50', bgColor: '#E8F5E9' },
   'Laundry & Wardrobe': { color: '#3EAFD2', bgColor: '#E6F7FB' },
-  'Safety & Emergency': { color: '#D2366E', bgColor: '#FCE4EC' },
+  'Safety & Emergency': { color: '#F06292', bgColor: '#FCE4EC' },
   'Energy & Bills': { color: '#FF9800', bgColor: '#FFF3E0' },
   'Helper Self-Care': { color: '#F06292', bgColor: '#FCE4EC' },
   'Others': { color: '#757575', bgColor: '#F5F5F5' },

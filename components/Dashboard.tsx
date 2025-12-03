@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   ShoppingCart,
-  Calendar,
+  ClipboardList,
   DollarSign,
   Pencil,
   Check,
@@ -192,7 +192,8 @@ const Dashboard: React.FC<DashboardProps> = ({
         className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm px-5 transition-all duration-300 overflow-hidden"
         style={{ 
           paddingTop: isScrolled ? '12px' : '64px',
-          paddingBottom: isScrolled ? '12px' : '16px'
+          paddingBottom: isScrolled ? '12px' : '16px',
+          boxShadow: isScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none'
         }}
       >
         <div className="flex justify-between items-center">
@@ -246,7 +247,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 
       {/* Family Notes */}
       <div className="relative group">
-        <div className="relative bg-primary p-5 rounded-2xl shadow-sm transition-all hover:shadow-md">
+        <div className="relative bg-primary p-5 rounded-2xl shadow-sm border border-border transition-all hover:shadow-md">
           <div className="flex justify-between items-start mb-3">
             <div className="flex items-center gap-2">
               <div className="text-white">
@@ -279,13 +280,12 @@ const Dashboard: React.FC<DashboardProps> = ({
                 onChange={(e) => setTempNotes(e.target.value)}
                 className="w-full bg-white/10 border border-white/20 rounded-xl p-3 text-sm font-medium text-white placeholder:text-white/60 focus:ring-2 focus:ring-white/50 focus:border-transparent outline-none resize-none leading-relaxed"
                 rows={3}
-                autoFocus
                 placeholder={t['dashboard.type_note']}
               />
               <div className="flex justify-end">
                 <button 
                   onClick={handleDeleteNotes} 
-                  className="p-1.5 bg-white rounded-full text-red-500 shadow-sm hover:bg-white/90 transition-colors animate-fade-in"
+                  className="p-1.5 bg-white rounded-full text-[#F06292] shadow-sm hover:bg-white/90 transition-colors animate-fade-in"
                 >
                   <Trash2 size={14} />
                 </button>
@@ -368,14 +368,14 @@ const Dashboard: React.FC<DashboardProps> = ({
           title={t['dashboard.shopping']}
           count={shoppingCount}
           icon={ShoppingCart}
-          label={t['dashboard.items_needed']}
+          label={t['dashboard.todo']}
           colorClass="text-primary"
           onClick={() => onNavigate('todo', { section: 'shopping' })}
         />
         <StatCard
           title={t['dashboard.tasks']}
           count={activeTaskCount}
-          icon={Calendar}
+          icon={ClipboardList}
           label={t['dashboard.todo']}
           colorClass="text-primary"
           onClick={() => onNavigate('todo', { section: 'task' })}

@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Helpy Icon Generator</title>
+  <style>
+    @font-face {
+      font-family: 'Peanut Butter';
+      src: url('/fonts/peanut_butter_2/Peanut Butter.ttf') format('truetype');
+      font-weight: normal;
+      font-style: normal;
+    }
+    
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
+      min-height: 100vh;
+      padding: 40px 20px;
+      margin: 0;
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    h1 {
+      text-align: center;
+      color: #333;
+      margin-bottom: 10px;
+    }
+    .subtitle {
+      text-align: center;
+      color: #666;
+      margin-bottom: 30px;
+    }
+    
+    .preview-section {
+      background: white;
+      border-radius: 16px;
+      padding: 30px;
+      margin-bottom: 30px;
+      text-align: center;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
+    .preview-section h2 {
+      margin: 0 0 20px 0;
+      color: #333;
+      font-size: 18px;
+    }
+    .logo-preview {
+      font-family: 'Peanut Butter', cursive;
+      font-size: 72px;
+      color: #5ec5e8;
+      margin: 20px 0;
+    }
+    
+    .style-options {
+      display: flex;
+      gap: 20px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin: 20px 0;
+    }
+    .style-option {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+    .style-option label {
+      font-size: 13px;
+      color: #666;
+    }
+    .style-option input[type="color"] {
+      width: 50px;
+      height: 35px;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .style-option select {
+      padding: 8px 12px;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+    
+    .icons-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+      margin-top: 30px;
+    }
+    .icon-card {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .icon-card h3 {
+      margin: 0 0 5px 0;
+      font-size: 14px;
+      color: #333;
+    }
+    .icon-card .size {
+      color: #888;
+      font-size: 12px;
+      margin-bottom: 10px;
+    }
+    .icon-card .purpose {
+      color: #5ec5e8;
+      font-size: 11px;
+      margin-bottom: 15px;
+      font-weight: 500;
+    }
+    .icon-preview-wrapper {
+      background: repeating-conic-gradient(#e8e8e8 0% 25%, #fff 0% 50%) 50% / 16px 16px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 15px auto;
+      padding: 15px;
+      min-height: 100px;
+    }
+    .icon-preview-wrapper img {
+      border-radius: 12px;
+      image-rendering: -webkit-optimize-contrast;
+      image-rendering: crisp-edges;
+    }
+    .download-btn {
+      background: #5ec5e8;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      transition: background 0.2s;
+      width: 100%;
+    }
+    .download-btn:hover {
+      background: #4eb8d8;
+    }
+    .download-all {
+      background: #333;
+      color: white;
+      border: none;
+      padding: 16px 32px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 600;
+      margin: 30px auto;
+      display: block;
+    }
+    .download-all:hover {
+      background: #444;
+    }
+    .instructions {
+      background: #e8f5e9;
+      border-left: 4px solid #4caf50;
+      padding: 16px 20px;
+      border-radius: 0 8px 8px 0;
+      margin-top: 30px;
+    }
+    .instructions h3 {
+      margin: 0 0 10px 0;
+      color: #2e7d32;
+    }
+    .instructions ol {
+      margin: 0;
+      padding-left: 20px;
+      color: #2e7d32;
+    }
+    .instructions li {
+      margin-bottom: 8px;
+    }
+    .instructions code {
+      background: rgba(0,0,0,0.1);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+    
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Helpy Icon Generator</h1>
+    <p class="subtitle">Generate crisp favicon and app icons using the Peanut Butter font</p>
+    
+    <div class="preview-section">
+      <h2>Preview</h2>
+      <div class="logo-preview" id="logoPreview">helpy</div>
+      
+      <div class="style-options">
+        <div class="style-option">
+          <label>Text Color</label>
+          <input type="color" id="textColor" value="#5ec5e8">
+        </div>
+        <div class="style-option">
+          <label>Background</label>
+          <select id="bgStyle">
+            <option value="transparent">Transparent</option>
+            <option value="white">White</option>
+            <option value="colored">Colored (swap)</option>
+            <option value="rounded">Rounded colored</option>
+            <option value="rounded-white" selected>Rounded white</option>
+          </select>
+        </div>
+        <div class="style-option">
+          <label>Small icons show</label>
+          <select id="smallText">
+            <option value="h" selected>Just "h"</option>
+            <option value="helpy">Full "helpy"</option>
+          </select>
+        </div>
+      </div>
+      
+      <button class="download-all" id="generateBtn">Generate All Icons</button>
+    </div>
+    
+    <div class="icons-grid" id="iconsGrid">
+      <div class="loading">Click "Generate All Icons" to create your icons</div>
+    </div>
+    
+    <div class="instructions">
+      <h3>After downloading:</h3>
+      <ol>
+        <li>Move all downloaded PNG files to <code>/public/icons/</code></li>
+        <li>Your icons are already configured in <code>index.html</code></li>
+        <li>Deploy and test bookmarking on different devices</li>
+      </ol>
+    </div>
+  </div>
+  
+  <script>
+    const iconConfigs = [
+      { name: 'favicon-16', size: 16, purpose: 'Browser tab (small)', useSmall: true },
+      { name: 'favicon-32', size: 32, purpose: 'Browser tab (standard)', useSmall: true },
+      { name: 'apple-touch-icon', size: 180, purpose: 'iOS Home Screen', useSmall: false },
+      { name: 'icon-192', size: 192, purpose: 'Android / PWA', useSmall: false },
+      { name: 'icon-512', size: 512, purpose: 'Android / PWA (high-res)', useSmall: false },
+    ];
+    
+    const textColorInput = document.getElementById('textColor');
+    const bgStyleSelect = document.getElementById('bgStyle');
+    const smallTextSelect = document.getElementById('smallText');
+    const logoPreview = document.getElementById('logoPreview');
+    
+    // Store generated data URLs
+    const generatedIcons = {};
+    
+    // Update preview when color changes
+    textColorInput.addEventListener('input', () => {
+      logoPreview.style.color = textColorInput.value;
+    });
+    
+    function generateIcon(config, textColor, bgStyle, smallText) {
+      const size = config.size;
+      // Use MUCH higher resolution for crisp text - 16x for small, 4x for large
+      const scale = size <= 32 ? 16 : (size <= 192 ? 4 : 2);
+      
+      const canvas = document.createElement('canvas');
+      canvas.width = size * scale;
+      canvas.height = size * scale;
+      const ctx = canvas.getContext('2d');
+      
+      const text = (config.useSmall && smallText === 'h') ? 'h' : 'helpy';
+      const isSmallIcon = config.useSmall && smallText === 'h';
+      
+      // Calculate colors based on style
+      let fillColor, textFillColor;
+      if (bgStyle === 'transparent') {
+        fillColor = 'transparent';
+        textFillColor = textColor;
+      } else if (bgStyle === 'white' || bgStyle === 'rounded-white') {
+        fillColor = '#ffffff';
+        textFillColor = textColor;
+      } else if (bgStyle === 'colored' || bgStyle === 'rounded') {
+        fillColor = textColor;
+        textFillColor = '#ffffff';
+      }
+      
+      // Draw background
+      if (bgStyle === 'rounded' || bgStyle === 'rounded-white') {
+        const radius = size * scale * 0.22;
+        ctx.fillStyle = fillColor;
+        ctx.beginPath();
+        ctx.roundRect(0, 0, size * scale, size * scale, radius);
+        ctx.fill();
+      } else if (fillColor !== 'transparent') {
+        ctx.fillStyle = fillColor;
+        ctx.fillRect(0, 0, size * scale, size * scale);
+      }
+      
+      // Calculate font size - make text fill more of the icon
+      let fontSize;
+      if (isSmallIcon) {
+        fontSize = size * scale * 0.65;
+      } else {
+        fontSize = size * scale * 0.32;
+      }
+      
+      // Draw text with high quality
+      ctx.fillStyle = textFillColor;
+      ctx.font = `${fontSize}px "Peanut Butter"`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      
+      // Adjust vertical position
+      const yOffset = isSmallIcon ? size * scale * 0.52 : size * scale * 0.54;
+      ctx.fillText(text, size * scale / 2, yOffset);
+      
+      // Create final canvas at target size with high quality downscaling
+      const finalCanvas = document.createElement('canvas');
+      finalCanvas.width = size;
+      finalCanvas.height = size;
+      const finalCtx = finalCanvas.getContext('2d');
+      
+      // Use multiple steps for better downscaling quality
+      if (scale > 2) {
+        // Step down gradually for better quality
+        let currentCanvas = canvas;
+        let currentSize = size * scale;
+        
+        while (currentSize > size * 2) {
+          const stepCanvas = document.createElement('canvas');
+          const newSize = Math.floor(currentSize / 2);
+          stepCanvas.width = newSize;
+          stepCanvas.height = newSize;
+          const stepCtx = stepCanvas.getContext('2d');
+          stepCtx.imageSmoothingEnabled = true;
+          stepCtx.imageSmoothingQuality = 'high';
+          stepCtx.drawImage(currentCanvas, 0, 0, newSize, newSize);
+          currentCanvas = stepCanvas;
+          currentSize = newSize;
+        }
+        
+        finalCtx.imageSmoothingEnabled = true;
+        finalCtx.imageSmoothingQuality = 'high';
+        finalCtx.drawImage(currentCanvas, 0, 0, size, size);
+      } else {
+        finalCtx.imageSmoothingEnabled = true;
+        finalCtx.imageSmoothingQuality = 'high';
+        finalCtx.drawImage(canvas, 0, 0, size, size);
+      }
+      
+      return finalCanvas.toDataURL('image/png');
+    }
+    
+    function generateAllIcons() {
+      const textColor = textColorInput.value;
+      const bgStyle = bgStyleSelect.value;
+      const smallText = smallTextSelect.value;
+      
+      const grid = document.getElementById('iconsGrid');
+      grid.innerHTML = '';
+      
+      iconConfigs.forEach(config => {
+        const dataUrl = generateIcon(config, textColor, bgStyle, smallText);
+        generatedIcons[config.name] = dataUrl;
+        
+        const card = document.createElement('div');
+        card.className = 'icon-card';
+        
+        const previewSize = Math.min(config.size, 80);
+        
+        card.innerHTML = `
+          <h3>${config.name}.png</h3>
+          <div class="size">${config.size} x ${config.size} px</div>
+          <div class="purpose">${config.purpose}</div>
+          <div class="icon-preview-wrapper">
+            <img src="${dataUrl}" width="${previewSize}" height="${previewSize}" style="width: ${previewSize}px; height: ${previewSize}px;">
+          </div>
+          <button class="download-btn" data-name="${config.name}">Download</button>
+        `;
+        
+        grid.appendChild(card);
+        
+        // Download handler
+        card.querySelector('.download-btn').addEventListener('click', (e) => {
+          const name = e.target.dataset.name;
+          downloadIcon(name);
+        });
+      });
+      
+      // Add download all button
+      const downloadAllCard = document.createElement('div');
+      downloadAllCard.className = 'icon-card';
+      downloadAllCard.innerHTML = `
+        <h3>All Icons</h3>
+        <div class="size">Download all at once</div>
+        <div class="purpose">5 files total</div>
+        <div class="icon-preview-wrapper" style="min-height: 60px;">
+          <span style="font-size: 32px; color: #5ec5e8;">ZIP</span>
+        </div>
+        <button class="download-btn" id="downloadAllBtn">Download All</button>
+      `;
+      grid.appendChild(downloadAllCard);
+      
+      document.getElementById('downloadAllBtn').addEventListener('click', () => {
+        iconConfigs.forEach((config, index) => {
+          setTimeout(() => {
+            downloadIcon(config.name);
+          }, index * 400);
+        });
+      });
+    }
+    
+    function downloadIcon(name) {
+      const dataUrl = generatedIcons[name];
+      if (!dataUrl) return;
+      
+      const link = document.createElement('a');
+      link.download = `${name}.png`;
+      link.href = dataUrl;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+    
+    // Generate on button click
+    document.getElementById('generateBtn').addEventListener('click', () => {
+      // Ensure font is loaded
+      document.fonts.load('48px "Peanut Butter"').then(() => {
+        generateAllIcons();
+      });
+    });
+    
+    // Auto-generate after font loads
+    document.fonts.ready.then(() => {
+      setTimeout(() => {
+        document.fonts.load('48px "Peanut Butter"').then(() => {
+          generateAllIcons();
+        });
+      }, 500);
+    });
+  </script>
+</body>
+</html>

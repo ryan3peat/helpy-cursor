@@ -3,7 +3,7 @@
 // Shows before user signs up/signs in
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useSignUp, useClerk, useUser, SignUp } from '@clerk/clerk-react';
+import { useSignUp, useSignIn, useClerk, useUser, SignUp } from '@clerk/clerk-react';
 import { Loader2, Mail, ArrowRight } from 'lucide-react';
 
 interface InviteWelcomeProps {
@@ -25,6 +25,7 @@ interface InviteInfo {
 
 const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onComplete }) => {
   const { signUp, setActive, isLoaded: signUpLoaded } = useSignUp();
+  const { signIn, isLoaded: signInLoaded } = useSignIn();
   const { redirectToSignIn, openSignUp } = useClerk();
   const { user, isSignedIn, isLoaded: userLoaded } = useUser();
   
@@ -263,11 +264,38 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
     }
   }, [showGoogleOAuth]);
 
-  // Handle sign in for existing users
-  const handleSignIn = () => {
+  // Handle sign in for existing users - use direct OAuth for Google
+  const handleSignIn = async () => {
+    // Check if user is already signed in
+    if (userLoaded && isSignedIn) {
+      // User is already signed in, redirect to complete invite
+      const prodUrl = getProductionUrl();
+      const inviteUrl = `${prodUrl}?invite=true&hid=${householdId}&uid=${userId}`;
+      window.location.href = inviteUrl;
+      return;
+    }
+    
     // Use production URL for Clerk redirect
     const prodUrl = getProductionUrl();
     const redirectUrl = `${prodUrl}?invite=true&hid=${householdId}&uid=${userId}`;
+    
+    // For Google OAuth, use direct authentication to avoid form validation issues
+    // For email/password, fall back to redirectToSignIn
+    if (signIn && signInLoaded) {
+      try {
+        await signIn.authenticateWithRedirect({
+          strategy: 'oauth_google',
+          redirectUrl: redirectUrl,
+          redirectUrlComplete: redirectUrl,
+        });
+        return;
+      } catch (error: any) {
+        console.error('Google OAuth sign-in error:', error);
+        // Fall through to regular sign-in
+      }
+    }
+    
+    // Fallback to regular sign-in (for email/password)
     redirectToSignIn({
       redirectUrl: redirectUrl,
     });

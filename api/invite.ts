@@ -62,7 +62,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // 2. Generate simple invite link (no Clerk involved)
-    const appUrl = process.env.VITE_APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://helpy-psi.vercel.app';
+    const appUrl = process.env.VITE_APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://helpyfam.com';
     const inviteLink = `${appUrl}?invite=true&hid=${householdId}&uid=${newUser.id}`;
 
     // 3. Return success

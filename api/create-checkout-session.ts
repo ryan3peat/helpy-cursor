@@ -54,7 +54,7 @@ export default async function handler(req: any, res: any) {
     }
 
     // Use environment variable with fallback
-    const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://helpy-psi.vercel.app';
+    const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://helpyfam.com';
 
     // Create Checkout Session
     const session = await stripe.checkout.sessions.create({

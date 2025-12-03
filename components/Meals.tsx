@@ -1167,7 +1167,7 @@ const Meals: React.FC<MealsProps> = ({
             {/* Header */}
             <div className="flex justify-between items-center px-6 pb-4 shrink-0">
               <h3 className="text-title font-bold text-foreground">
-                {modalDate.toLocaleDateString(langCode, { weekday: 'short', day: 'numeric', month: 'short' })}
+                {`${modalDate.toLocaleDateString(langCode, { weekday: 'short' })}, ${modalDate.getDate()} ${modalDate.toLocaleDateString(langCode, { month: 'short' })}`}
               </h3>
               <button
                 onClick={() => setIsModalOpen(false)}

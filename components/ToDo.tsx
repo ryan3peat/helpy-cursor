@@ -161,7 +161,7 @@ const formatDateTime = (dueDate?: string, dueTime?: string): string => {
   
   if (dueTime) {
     // Format: 18:05 (24h)
-    dateStr += ` , ${dueTime}`;
+    dateStr += `, ${dueTime}`;
   }
   
   return dateStr;

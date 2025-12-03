@@ -900,7 +900,10 @@ const Profile: React.FC<ProfileProps> = ({
     if (!dateString) return 'N/A';
     try {
       const date = new Date(dateString);
-      return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+      const day = date.getDate();
+      const month = date.toLocaleDateString('en-GB', { month: 'short' });
+      const year = date.getFullYear();
+      return `${day} ${month} ${year}`;
     } catch {
       return 'N/A';
     }
@@ -910,7 +913,10 @@ const Profile: React.FC<ProfileProps> = ({
     if (!periodEnd) return null;
     try {
       const endDate = new Date(periodEnd);
-      return endDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+      const day = endDate.getDate();
+      const month = endDate.toLocaleDateString('en-GB', { month: 'short' });
+      const year = endDate.getFullYear();
+      return `${day} ${month} ${year}`;
     } catch {
       return null;
     }

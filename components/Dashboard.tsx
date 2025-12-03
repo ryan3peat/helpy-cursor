@@ -315,7 +315,14 @@ const Dashboard: React.FC<DashboardProps> = ({
         <div className="bg-primary px-4 py-2.5 flex justify-between items-center">
           <h2 className="text-lg font-bold text-white">Today's Menu</h2>
           <span className="text-sm font-bold text-white">
-            {new Date().toLocaleDateString(currentLang === 'en' ? 'en-GB' : currentLang, { weekday: 'short', day: 'numeric', month: 'short' })}
+            {(() => {
+              const d = new Date();
+              const locale = currentLang === 'en' ? 'en-GB' : currentLang;
+              const weekday = d.toLocaleDateString(locale, { weekday: 'short' });
+              const day = d.getDate();
+              const month = d.toLocaleDateString(locale, { month: 'short' });
+              return `${weekday}, ${day} ${month}`;
+            })()}
           </span>
         </div>
         <div className="p-4">
@@ -392,7 +399,13 @@ const Dashboard: React.FC<DashboardProps> = ({
           </div>
         }
         icon={DollarSign}
-        label={new Date().toLocaleDateString(currentLang === 'en' ? 'en-US' : currentLang, { month: 'short', year: 'numeric' })}
+        label={(() => {
+          const d = new Date();
+          const locale = currentLang === 'en' ? 'en-GB' : currentLang;
+          const month = d.toLocaleDateString(locale, { month: 'short' });
+          const year = d.getFullYear();
+          return `${month} ${year}`;
+        })()}
         colorClass="text-primary"
         onClick={() => onNavigate('expenses')}
       />

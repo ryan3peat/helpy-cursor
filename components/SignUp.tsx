@@ -1,6 +1,6 @@
 // components/SignUp.tsx
 import React, { useState } from 'react';
-import { useSignUp, useClerk } from '@clerk/clerk-react';
+import { useSignUp, SignUp as ClerkSignUp } from '@clerk/clerk-react';
 import { Loader2, ArrowLeft } from 'lucide-react';
 
 interface SignUpProps {
@@ -9,7 +9,6 @@ interface SignUpProps {
 
 const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
   const { signUp, setActive, isLoaded } = useSignUp();
-  const { openSignUp } = useClerk();
   
   const [formData, setFormData] = useState({
     firstName: '',
@@ -22,6 +21,7 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
   const [error, setError] = useState('');
   const [verificationStep, setVerificationStep] = useState<'email' | null>(null);
   const [code, setCode] = useState('');
+  const [showClerkSignUp, setShowClerkSignUp] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -107,6 +107,70 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
       setIsSubmitting(false);
     }
   };
+
+  // If showing Clerk SignUp for OAuth, render it
+  if (showClerkSignUp) {
+    return (
+      <div className="min-h-screen w-full flex flex-col items-center justify-center p-6" style={{ backgroundColor: '#3EAFD2' }}>
+        <div className="w-full max-w-md flex flex-col items-center">
+          <div className="mb-8 text-center w-full">
+            <h1 
+              className="text-5xl text-white mb-3"
+              style={{ fontFamily: "'Peanut Butter', 'Plus Jakarta Sans', Inter, -apple-system, BlinkMacSystemFont, sans-serif" }}
+            >
+              helpy
+            </h1>
+            <p className="text-white/90 text-sm font-medium">
+              "I just want you to know<br />I'm real grateful you're here"
+            </p>
+            <p className="text-white/70 text-xs mt-1 font-medium">
+              Aibileen Clark, The Help
+            </p>
+          </div>
+          <div className="w-full">
+            <div className="bg-white shadow-lg rounded-2xl p-6">
+              <button
+                onClick={() => setShowClerkSignUp(false)}
+                className="flex items-center gap-2 text-gray-500 hover:text-[#3EAFD2] mb-4 transition-colors"
+              >
+                <ArrowLeft size={18} />
+                <span className="text-sm font-medium">Back</span>
+              </button>
+              <ClerkSignUp
+                routing="hash"
+                appearance={{
+                  variables: {
+                    colorPrimary: '#3EAFD2',
+                    colorText: '#474747',
+                    colorTextSecondary: '#757575',
+                    colorInputBackground: '#FFFFFF',
+                    colorInputText: '#474747',
+                    colorBackground: '#FFFFFF',
+                    fontFamily: '"Plus Jakarta Sans", Inter, -apple-system, BlinkMacSystemFont, sans-serif',
+                    borderRadius: '0.75rem',
+                    fontSize: '0.875rem',
+                    spacingUnit: '0.9rem',
+                  },
+                  elements: {
+                    rootBox: "w-full",
+                    cardBox: "w-full shadow-none rounded-2xl overflow-hidden",
+                    card: "bg-white rounded-2xl border-0 shadow-none p-0",
+                    headerTitle: "text-xl font-bold text-[#474747]",
+                    headerSubtitle: "text-sm text-gray-500",
+                    socialButtonsBlockButton: "border border-gray-200 hover:border-gray-300 transition-all rounded-xl font-medium py-3",
+                    socialButtonsBlockButtonText: "font-medium text-sm",
+                    formButtonPrimary: "!bg-[#3EAFD2] !bg-none !shadow-none rounded-xl font-semibold py-3 transition-all hover:opacity-90",
+                    formFieldInput: "bg-white border border-gray-200 rounded-xl px-4 py-3 text-[#474747] placeholder-gray-400 focus:border-[#3EAFD2] focus:ring-1 focus:ring-[#3EAFD2]",
+                    formFieldLabel: "font-medium text-sm text-[#474747] mb-1.5",
+                  }
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (verificationStep) {
     const verificationType = 'Email';
@@ -233,13 +297,7 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
           <div className="mb-4">
             <button
               type="button"
-              onClick={() => {
-                const redirectUrl = window.location.origin + window.location.pathname;
-                openSignUp({
-                  redirectUrl: redirectUrl,
-                  fallbackRedirectUrl: redirectUrl,
-                });
-              }}
+              onClick={() => setShowClerkSignUp(true)}
               className="w-full border-2 border-gray-200 hover:border-gray-300 rounded-xl font-semibold py-3 transition-all text-gray-700 flex items-center justify-center gap-2 mb-4"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">

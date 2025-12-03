@@ -26,8 +26,10 @@ import {
   Calendar,
 } from 'lucide-react';
 import { useScrollHeader } from '@/hooks/useScrollHeader';
+import { useTranslatedContent } from '@/hooks/useTranslatedContent';
 import { Expense, BaseViewProps } from '../types';
 import { EXPENSE_CATEGORIES } from '../constants';
+import { detectInputLanguage } from '../services/languageDetectionService';
 import {
   uploadReceiptImage,
   createReceiptRecord,
@@ -75,6 +77,35 @@ interface PendingReceipt {
 
 // Sheet stages for the two-stage progressive design
 type AddExpenseStage = 'closed' | 'options' | 'manual' | 'ocr';
+
+// Component for displaying translated merchant name
+const TranslatedMerchantName: React.FC<{
+  expense: Expense;
+  currentLang: string;
+  onUpdate?: (expense: Expense) => Promise<void> | void;
+}> = ({ expense, currentLang, onUpdate }) => {
+  const translatedMerchant = useTranslatedContent({
+    content: expense.merchant,
+    contentLang: expense.merchantLang,
+    currentLang,
+    translations: expense.merchantTranslations || {},
+    onTranslationUpdate: async (translation) => {
+      // Update translations in database
+      if (onUpdate) {
+        const updatedExpense: Expense = {
+          ...expense,
+          merchantTranslations: {
+            ...(expense.merchantTranslations || {}),
+            [currentLang]: translation,
+          },
+        };
+        await onUpdate(updatedExpense);
+      }
+    },
+  });
+
+  return <>{translatedMerchant}</>;
+};
 
 const Expenses: React.FC<ExpensesProps> = ({
   expenses,
@@ -254,6 +285,8 @@ const Expenses: React.FC<ExpensesProps> = ({
         category: editCategory || 'Miscellaneous',
         date: editDate || new Date().toISOString().split('T')[0],
         receiptUrl: pendingReceipt?.imageUrl || undefined,
+        merchantLang: detectInputLanguage(currentLang) || null,
+        merchantTranslations: {},
       };
 
       // If OCR, link receipt to expense
@@ -291,12 +324,20 @@ const Expenses: React.FC<ExpensesProps> = ({
     if (!selectedExpense) return;
     setSavingExisting(true);
     try {
+      // Re-detect language if merchant changed
+      const merchantChanged = selectedExpense.merchant !== exMerchant;
+      const detectedLang = merchantChanged ? detectInputLanguage(currentLang) : undefined;
+      
       const updated: Expense = {
         ...selectedExpense,
         amount: parseFloat(exAmount) || selectedExpense.amount,
         merchant: exMerchant || selectedExpense.merchant,
         category: exCategory || selectedExpense.category,
         date: exDate || selectedExpense.date,
+        ...(merchantChanged && detectedLang !== undefined ? {
+          merchantLang: detectedLang || null,
+          merchantTranslations: {} // Reset translations when merchant changes
+        } : {}),
       };
       if (onUpdate) {
         await onUpdate(updated);
@@ -588,7 +629,9 @@ const Expenses: React.FC<ExpensesProps> = ({
               
               {/* Info - 3 Lines */}
               <div className="flex-1 min-w-0">
-                <p className="text-title text-foreground truncate">{expense.merchant}</p>
+                <p className="text-title text-foreground truncate">
+                  <TranslatedMerchantName expense={expense} currentLang={currentLang} onUpdate={onUpdate} />
+                </p>
                 <p className="text-caption text-muted-foreground">{expense.category}</p>
                 <p className="text-caption text-muted-foreground">
                   {new Date(expense.date).toLocaleDateString(

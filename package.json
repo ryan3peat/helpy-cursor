@@ -17,6 +17,7 @@
     "@supabase/supabase-js": "^2.86.0",
     "@vercel/node": "^5.5.13",
     "class-variance-authority": "^0.7.1",
+    "framer-motion": "^12.23.25",
     "lucide-react": "^0.554.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",

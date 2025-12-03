@@ -430,10 +430,10 @@ const App: React.FC = () => {
 
   if (loginProcessedRef.current && !currentUser) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#3EAFD2' }}>
+      <div className="min-h-screen flex flex-col justify-end pb-24" style={{ backgroundColor: '#3EAFD2' }}>
         <div className="text-white text-center">
-          <div className="w-16 h-16 border-4 border-white/30 border-t-white rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-lg font-bold">Completing setup...</p>
+          <div className="w-10 h-10 border-4 border-white/30 border-t-white rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-sm font-bold">Completing setup...</p>
         </div>
       </div>
     );
@@ -444,11 +444,11 @@ const App: React.FC = () => {
   if (!clerkLoaded) {
     console.log('🟣 [App] Clerk not loaded yet, showing loading state');
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#3EAFD2' }}>
+      <div className="min-h-screen flex flex-col justify-end pb-24" style={{ backgroundColor: '#3EAFD2' }}>
         <div className="text-white text-center">
-          <div className="w-16 h-16 border-4 border-white/30 border-t-white rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-lg font-bold">Loading...</p>
-          <p className="text-sm text-white/60 mt-2">Initializing authentication</p>
+          <div className="w-10 h-10 border-4 border-white/30 border-t-white rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-sm font-bold">Loading...</p>
+          <p className="text-xs text-white/60 mt-2">Initializing authentication</p>
         </div>
       </div>
     );

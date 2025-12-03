@@ -1,0 +1,87 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Align marketing site with Helpy design system */
+@font-face {
+  font-family: "Peanut Butter";
+  src: url("/fonts/peanut_butter_2/Peanut Butter.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  /* Core colors (light mode) – copied from main Helpy app */
+  --button-outline: rgba(0, 0, 0, 0.08);
+  --badge-outline: rgba(0, 0, 0, 0.04);
+  --elevate-1: rgba(0, 0, 0, 0.04);
+  --elevate-2: rgba(0, 0, 0, 0.08);
+
+  --background: 0 0% 98%;
+  --foreground: 0 0% 28%;
+  --border: 0 0% 88%;
+
+  --card: 0 0% 100%;
+  --card-foreground: 0 0% 28%;
+  --card-border: 0 0% 90%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 0 0% 28%;
+  --popover-border: 0 0% 88%;
+
+  /* Primary – Helpy cyan #3EAFD2 */
+  --primary: 194 62% 53%;
+  --primary-foreground: 0 0% 100%;
+
+  --secondary: 0 0% 96%;
+  --secondary-foreground: 0 0% 28%;
+
+  --muted: 0 0% 96%;
+  --muted-foreground: 0 0% 46%;
+
+  --accent: 0 0% 96%;
+  --accent-foreground: 0 0% 28%;
+
+  --destructive: 340 83% 66%;
+  --destructive-foreground: 0 0% 100%;
+
+  --input: 0 0% 75%;
+  --ring: 194 62% 53%;
+
+  --font-sans: "Plus Jakarta Sans", Inter, -apple-system, BlinkMacSystemFont,
+    sans-serif;
+  --radius: 0.75rem;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  -webkit-tap-highlight-color: transparent;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+main {
+  min-height: 100vh;
+}
+
+a {
+  color: hsl(var(--primary));
+}
+
+button:focus-visible,
+a:focus-visible,
+select:focus-visible,
+input:focus-visible {
+  outline: none;
+  border-color: hsl(var(--foreground));
+}
+
+/* Helpy logo style */
+.helpy-logo {
+  font-family: "Peanut Butter", var(--font-sans);
+  font-weight: normal;
+  color: #3EAFD2;
+}

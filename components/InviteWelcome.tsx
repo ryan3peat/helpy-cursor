@@ -25,7 +25,7 @@ interface InviteInfo {
 
 const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onComplete }) => {
   const { signUp, setActive, isLoaded: signUpLoaded } = useSignUp();
-  const { redirectToSignIn, openSignUp } = useClerk();
+  const { redirectToSignIn, openSignUp, authenticateWithRedirect } = useClerk();
   const { user, isSignedIn, isLoaded: userLoaded } = useUser();
   
   // Get production URL - use environment variable or fallback to current origin
@@ -218,7 +218,7 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
     }
   };
 
-  // Handle Google signup
+  // Handle Google signup - directly initiate Google OAuth
   const handleGoogleSignUp = () => {
     // Check if user is already signed in
     if (userLoaded && isSignedIn) {
@@ -232,8 +232,12 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
     // Use production URL for Clerk redirect
     const prodUrl = getProductionUrl();
     const redirectUrl = `${prodUrl}?invite=true&hid=${householdId}&uid=${userId}`;
-    openSignUp({
+    
+    // Directly authenticate with Google OAuth, bypassing password form
+    authenticateWithRedirect({
+      strategy: 'oauth_google',
       redirectUrl: redirectUrl,
+      redirectUrlComplete: redirectUrl,
     });
   };
 

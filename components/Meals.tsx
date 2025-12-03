@@ -907,10 +907,10 @@ const Meals: React.FC<MealsProps> = ({
                             {isExpanded && (
                               <div 
                                 ref={quickJoinPopoverRef}
-                                className="absolute inset-0 bg-card z-10 grid grid-cols-[1fr_1px_4rem_1px_7rem] h-[72px] items-center"
+                                className="absolute inset-0 bg-card z-10 flex items-center h-[72px] px-4"
                               >
                                 {/* Left area: Meal type icons */}
-                                <div className="h-full py-1 px-4 flex items-center justify-between">
+                                <div className="flex-1 flex items-center justify-evenly min-w-0">
                                   {[
                                     { type: MealType.BREAKFAST, label: 'Breakfast', icon: <Coffee size={18} />, color: 'text-[#FF9800] border-[#FF9800]/30 hover:bg-[#FF9800]/10 hover:border-[#FF9800]/50' },
                                     { type: MealType.LUNCH, label: 'Lunch', icon: <Sun size={18} />, color: 'text-[#4CAF50] border-[#4CAF50]/30 hover:bg-[#4CAF50]/10 hover:border-[#4CAF50]/50' },
@@ -947,22 +947,13 @@ const Meals: React.FC<MealsProps> = ({
                                   })}
                                 </div>
 
-                                {/* Empty separator column */}
-                                <div />
-
-                                {/* Empty middle column */}
-                                <div />
-
-                                {/* Empty separator column */}
-                                <div />
-
-                                {/* Right Column: Close button - aligned with Tap to Join */}
-                                <div className="h-full p-2 flex items-center justify-center">
+                                {/* Right: Close button */}
+                                <div className="flex-shrink-0 pl-3">
                                   <button
                                     onClick={() => setQuickJoinPopoverDate(null)}
-                                    className="w-[100px] px-3 text-caption font-semibold py-2 rounded-full text-center whitespace-nowrap bg-muted text-muted-foreground hover:bg-muted/80"
+                                    className="w-9 h-9 flex items-center justify-center rounded-full bg-destructive/15 text-destructive hover:bg-destructive/25 transition-colors"
                                   >
-                                    Close
+                                    <X size={18} />
                                   </button>
                                 </div>
                               </div>

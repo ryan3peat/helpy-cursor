@@ -1359,10 +1359,10 @@ const ToDo: React.FC<ToDoProps> = ({
                     <button
                       key={cat}
                       onClick={() => setSheetForm(prev => ({ ...prev, category: cat }))}
-                      className={`flex-1 px-2 py-2 rounded-xl text-sm border transition-all flex items-center justify-center gap-1 ${
+                      className={`flex-1 px-2 py-2 rounded-xl text-sm transition-all flex items-center justify-center gap-1 ${
                         sheetForm.category === cat
-                          ? 'bg-primary text-primary-foreground border-primary'
-                          : 'bg-card text-foreground border-border hover:border-foreground/30'
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-card text-foreground ring-1 ring-neutral-300 hover:ring-neutral-400'
                       }`}
                     >
                       {categoryIcons[cat]}
@@ -1382,10 +1382,10 @@ const ToDo: React.FC<ToDoProps> = ({
                     <button
                       key={user.id}
                       onClick={() => setSheetForm(prev => ({ ...prev, assigneeId: user.id }))}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-xl text-body border transition-all ${
+                      className={`flex items-center gap-2 px-3 py-2 rounded-xl text-body transition-all ${
                         sheetForm.assigneeId === user.id
-                          ? 'bg-primary text-primary-foreground border-primary'
-                          : 'bg-card text-foreground border-border hover:border-foreground/30'
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-card text-foreground ring-1 ring-neutral-300 hover:ring-neutral-400'
                       }`}
                     >
                       {user.avatar ? (

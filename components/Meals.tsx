@@ -18,7 +18,8 @@ import {
   User as UserIcon,
   Baby,
   LayoutList,
-  LayoutGrid
+  LayoutGrid,
+  Check
 } from 'lucide-react';
 import { useScrollHeader } from '@/hooks/useScrollHeader';
 import { useTranslatedContent } from '@/hooks/useTranslatedContent';
@@ -1154,145 +1155,152 @@ const Meals: React.FC<MealsProps> = ({
           onClick={() => setIsModalOpen(false)}
         >
           <div 
-            className="bg-popover w-full max-w-lg rounded-t-2xl p-6 flex flex-col max-h-[85vh] bottom-sheet-content"
+            className="relative bg-popover w-full max-w-lg rounded-t-3xl flex flex-col bottom-sheet-content"
+            style={{ maxHeight: '80vh', marginBottom: 'env(safe-area-inset-bottom, 34px)' }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Drag Handle */}
-            <div className="flex justify-center mb-4">
-              <div className="w-10 h-1 bg-muted-foreground/30 rounded-full" />
+            <div className="flex justify-center pt-4 pb-2 shrink-0">
+              <div className="w-12 h-1.5 bg-muted-foreground/30 rounded-full" />
             </div>
 
             {/* Header */}
-            <div className="flex justify-between items-center mb-5">
+            <div className="flex justify-between items-center px-6 pb-4 shrink-0">
               <h3 className="text-title font-bold text-foreground">
                 {modalDate.toLocaleDateString(langCode, { weekday: 'short', day: 'numeric', month: 'short' })}
-                </h3>
-                <button
-                  onClick={() => setIsModalOpen(false)}
-                className="p-2 bg-muted rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
-                >
-                  <X size={20} />
-                </button>
-            </div>
-
-            {/* Meal Type Selector */}
-            <div className="grid grid-cols-4 gap-2 mb-5">
-              {mealTypes.map(type => {
-                const isSelected = modalType === type;
-                return (
-                  <button
-                    key={type}
-                    onClick={() => setModalType(type)}
-                    className={`py-2.5 rounded-xl border-2 transition-colors flex flex-col items-center justify-center gap-1 ${
-                      isSelected
-                        ? 'bg-primary/10 border-primary text-primary'
-                        : 'bg-card border-border text-muted-foreground hover:border-foreground/20'
-                    }`}
-                  >
-                    {getMealIcon(type)}
-                    <span className="text-caption font-semibold">{getMealLabel(type)}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Audience Selector */}
-            <div className="mb-5">
-              <label className="text-caption font-semibold text-muted-foreground mb-2 block">
-                {t['meals.audience_label'] ?? 'This meal is for'}
-              </label>
-              <div 
-                className="relative rounded-full overflow-hidden"
-                style={{ backgroundColor: 'hsl(var(--muted))' }}
+              </h3>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="p-2 rounded-full hover:bg-muted transition-colors"
               >
-                <div className="flex p-1">
-                  {(['ALL', 'ADULTS', 'KIDS'] as const).map(aud => {
-                    const active = modalAudience === aud;
-                    return (
-                      <button
-                        key={aud}
-                        onClick={() => handleAudienceChange(aud)}
-                        className={`flex-1 py-2 text-body font-medium rounded-full transition-all ${
-                          active ? 'bg-card text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground'
-                        }`}
-                      >
-                        {getAudienceLabel(aud)}
-                      </button>
-                    );
-                  })}
-                </div>
-                <div 
-                  className="absolute inset-0 rounded-full pointer-events-none"
-                  style={{ boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.06)' }}
-                />
-              </div>
+                <X size={20} className="text-muted-foreground" />
+              </button>
             </div>
 
-            <div className="space-y-5 overflow-y-auto flex-1 min-h-0 py-2">
-              {/* Dish Input */}
-              <div className="space-y-2">
-                <label className="text-caption font-semibold text-muted-foreground">{t['meals.the_dish'] ?? 'The Dish'}</label>
-                <div className="relative">
-                  <textarea
-                    autoFocus={!editingMealId}
-                    rows={2}
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    placeholder={`${t['meals.whats_for'] ?? "What's for"} ${getMealLabel(modalType).toLowerCase()}?`}
-                    className="w-full bg-muted border border-border rounded-xl px-4 py-3 text-body focus:border-foreground outline-none font-medium text-foreground resize-none placeholder:text-muted-foreground pr-12"
-                  />
+            {/* Scrollable Form Content */}
+            <div className="flex-1 overflow-y-auto px-6 pb-4">
+              <div className="space-y-5">
+                {/* Meal Type Selector */}
+                <div>
+                  <label className="block text-caption text-muted-foreground tracking-wide mb-2">
+                    {t['meals.meal_type'] ?? 'Meal Type'}
+                  </label>
+                  <div className="grid grid-cols-4 gap-2">
+                    {mealTypes.map(type => {
+                      const isSelected = modalType === type;
+                      return (
+                        <button
+                          key={type}
+                          onClick={() => setModalType(type)}
+                          className={`py-2.5 rounded-xl transition-colors flex flex-col items-center justify-center gap-1 ${
+                            isSelected
+                              ? 'bg-primary text-primary-foreground'
+                              : 'bg-card ring-1 ring-neutral-300 text-muted-foreground hover:ring-neutral-400'
+                          }`}
+                        >
+                          {getMealIcon(type)}
+                          <span className="text-caption font-semibold">{getMealLabel(type)}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Audience Selector */}
+                <div>
+                  <label className="block text-caption text-muted-foreground tracking-wide mb-2">
+                    {t['meals.audience_label'] ?? 'This meal is for'}
+                  </label>
+                  <div 
+                    className="relative rounded-full overflow-hidden"
+                    style={{ backgroundColor: 'hsl(var(--muted))' }}
+                  >
+                    <div className="flex p-1">
+                      {(['ALL', 'ADULTS', 'KIDS'] as const).map(aud => {
+                        const active = modalAudience === aud;
+                        return (
+                          <button
+                            key={aud}
+                            onClick={() => handleAudienceChange(aud)}
+                            className={`flex-1 py-2 text-body font-medium rounded-full transition-all ${
+                              active ? 'bg-card text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                            }`}
+                          >
+                            {getAudienceLabel(aud)}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <div 
+                      className="absolute inset-0 rounded-full pointer-events-none"
+                      style={{ boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.06)' }}
+                    />
+                  </div>
+                </div>
+
+                {/* Dish Input */}
+                <div>
+                  <label className="block text-caption text-muted-foreground tracking-wide mb-2">
+                    {t['meals.the_dish'] ?? 'The Dish'}
+                  </label>
+                  <div className="relative">
+                    <textarea
+                      autoFocus={!editingMealId}
+                      rows={2}
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      placeholder={`${t['meals.whats_for'] ?? "What's for"} ${getMealLabel(modalType).toLowerCase()}?`}
+                      className="w-full bg-muted border border-transparent rounded-xl px-4 py-3 text-body focus:border-foreground outline-none font-medium text-foreground resize-none placeholder:text-muted-foreground pr-12 transition-colors"
+                    />
                     <button
                       onClick={handleAiSuggest}
                       disabled={loadingAi}
-                    className="absolute bottom-2 right-2 p-2 bg-card shadow-sm border border-border rounded-full text-primary hover:text-primary/80 transition-colors disabled:opacity-50"
+                      className="absolute bottom-2 right-2 p-2 bg-card shadow-sm border border-border rounded-full text-primary hover:text-primary/80 transition-colors disabled:opacity-50"
                       title={t['meals.suggest_ai']}
                     >
-                    {loadingAi ? (
-                      <span className="animate-spin block w-4 h-4 border-2 border-primary border-t-transparent rounded-full"></span>
-                    ) : (
-                      <Sparkles size={14} />
-                    )}
-                  </button>
+                      {loadingAi ? (
+                        <span className="animate-spin block w-4 h-4 border-2 border-primary border-t-transparent rounded-full"></span>
+                      ) : (
+                        <Sparkles size={14} />
+                      )}
+                    </button>
+                  </div>
                 </div>
-              </div>
 
-              {/* People Section */}
-              <div className="space-y-3">
-                <label className="text-caption font-semibold text-muted-foreground flex items-center gap-2">
-                  <Users size={14} /> {t['meals.who_eating'] ?? "Who's eating?"}
-                </label>
-                <div className="grid grid-cols-4 gap-2 max-h-36 overflow-y-auto">
-                  {getUsersForAudience(modalAudience).map(user => {
-                    const isSelected = selectedUserIds.includes(user.id);
-                    return (
-                      <button
-                        key={user.id}
-                        onClick={() => toggleUser(user.id)}
-                        className={`flex flex-col items-center gap-1.5 p-2 rounded-xl border-2 transition-all ${
-                          isSelected
-                            ? 'bg-primary/10 border-primary text-primary'
-                            : 'bg-card border-border text-muted-foreground hover:border-foreground/20'
-                        }`}
-                      >
-                        <img
-                          src={user.avatar}
-                          alt={user.name}
-                          className="w-8 h-8 rounded-full object-cover bg-muted"
-                        />
-                        <span className={`text-caption font-semibold truncate w-full text-center ${
-                          isSelected ? 'text-primary' : 'text-muted-foreground'
-                        }`}>
-                          {user.name.split(' ')[0]}
-                        </span>
-                      </button>
-                    );
-                  })}
+                {/* People Section */}
+                <div>
+                  <label className="block text-caption text-muted-foreground tracking-wide mb-2 flex items-center gap-2">
+                    <Users size={14} /> {t['meals.who_eating'] ?? "Who's eating?"}
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {getUsersForAudience(modalAudience).map(user => {
+                      const isSelected = selectedUserIds.includes(user.id);
+                      return (
+                        <button
+                          key={user.id}
+                          onClick={() => toggleUser(user.id)}
+                          className={`flex items-center gap-2 px-3 py-2 rounded-xl text-body transition-all ${
+                            isSelected
+                              ? 'bg-primary text-primary-foreground'
+                              : 'bg-card text-foreground ring-1 ring-neutral-300 hover:ring-neutral-400'
+                          }`}
+                        >
+                          <img
+                            src={user.avatar}
+                            alt={user.name}
+                            className="w-6 h-6 rounded-full object-cover bg-muted"
+                          />
+                          <span>{user.id === currentUser.id ? 'You' : user.name.split(' ')[0]}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Footer */}
-            <div className="mt-5 flex gap-3 pt-4 border-t border-border shrink-0">
+            {/* Fixed Footer with Delete + Save */}
+            <div className="shrink-0 px-6 pt-4 pb-6 bg-popover border-t border-border flex gap-3">
               {editingMealId && (
                 <button
                   onClick={handleDelete}
@@ -1304,10 +1312,10 @@ const Meals: React.FC<MealsProps> = ({
               <button
                 onClick={handleSave}
                 disabled={!(description.trim().length > 0 || selectedUserIds.length > 0)}
-                className="flex-1 bg-primary text-primary-foreground py-4 rounded-xl font-semibold text-body transition-all disabled:opacity-50 hover:bg-primary/90"
-                style={{ boxShadow: 'var(--shadow-md)' }}
+                className="flex-1 py-4 bg-primary text-primary-foreground rounded-xl text-body hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity flex items-center justify-center gap-2"
               >
-                {editingMealId ? t['meals.save_changes'] : t['meals.add_meal']}
+                <Check size={18} />
+                {editingMealId ? (t['meals.save_changes'] ?? 'Save Changes') : (t['meals.add_meal'] ?? 'Add Meal')}
               </button>
             </div>
           </div>

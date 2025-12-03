@@ -449,6 +449,8 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
   users,
   essentialItems,
   trainingModules,
+  t,
+  currentLang,
 }) => {
   // ─────────────────────────────────────────────────────────────────
   // Section Toggle State
@@ -733,12 +735,13 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
 
         {/* Section Toggle Cards - fade out and collapse on scroll */}
         <div 
-          className="transition-all duration-300 overflow-hidden"
+          className="transition-all duration-300"
           style={{
             opacity: isScrolled ? 0 : 1,
-            maxHeight: isScrolled ? '0px' : '100px',
+            maxHeight: isScrolled ? '0px' : '120px',
             marginBottom: isScrolled ? '0px' : '24px',
-            marginTop: isScrolled ? '0px' : '16px'
+            marginTop: isScrolled ? '0px' : '16px',
+            overflow: isScrolled ? 'hidden' : 'visible',
           }}
         >
           <div className="grid grid-cols-2 gap-3">

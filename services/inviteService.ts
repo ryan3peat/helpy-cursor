@@ -14,9 +14,9 @@ export async function createInvite(params: {
   householdId: string;
   inviterId: string;
 }): Promise<{ user: User; inviteLink: string }> {
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
-  
-  const response = await fetch(`${baseUrl}/api/invite`, {
+  // Always use relative URL since API is on the same domain
+  // This avoids issues with hardcoded domains in environment variables
+  const response = await fetch('/api/invite', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params),
@@ -38,9 +38,9 @@ export async function resendInvite(
   userId: string,
   householdId: string
 ): Promise<{ inviteLink: string }> {
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
-  
-  const response = await fetch(`${baseUrl}/api/invite/resend`, {
+  // Always use relative URL since API is on the same domain
+  // This avoids issues with hardcoded domains in environment variables
+  const response = await fetch('/api/invite/resend', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ userId, householdId }),

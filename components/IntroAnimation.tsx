@@ -65,22 +65,36 @@ const IntroAnimation: React.FC<IntroAnimationProps> = ({ onComplete }) => {
 
   return (
     <motion.div 
-      className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden"
-      style={{ backgroundColor: '#3EAFD2' }}
+      className="fixed top-0 left-0 right-0 z-[100] flex items-center justify-center"
+      style={{ 
+        backgroundColor: '#3EAFD2',
+        bottom: 'calc(0px - env(safe-area-inset-bottom, 0px))',
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)'
+      }}
       initial={{ opacity: 1 }}
       animate={{ opacity: isExiting ? 0 : 1 }}
       transition={{ duration: 0.5, ease: 'easeOut' }}
     >
-      {/* Falling Icons */}
-      {iconConfigs.map((config, index) => (
-        <FallingIcon
-          key={index}
-          Icon={config.Icon}
-          startX={config.startX}
-          delay={config.delay}
-          onLanded={handleIconLanded}
-        />
-      ))}
+      {/* Inner wrapper to ensure overflow clipping works on iOS Safari */}
+      <div 
+        className="absolute inset-0 overflow-hidden"
+        style={{ 
+          WebkitBackfaceVisibility: 'hidden',
+          backfaceVisibility: 'hidden',
+          transform: 'translateZ(0)'
+        }}
+      >
+        {/* Falling Icons */}
+        {iconConfigs.map((config, index) => (
+          <FallingIcon
+            key={index}
+            Icon={config.Icon}
+            startX={config.startX}
+            delay={config.delay}
+            onLanded={handleIconLanded}
+          />
+        ))}
+      </div>
 
       {/* Helpy Logo */}
       <motion.div

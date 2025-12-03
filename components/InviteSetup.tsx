@@ -38,7 +38,10 @@ const InviteSetup: React.FC<InviteSetupProps> = ({ householdId, userId, onComple
   
       // Now safe to check isSignedIn because we know isLoaded is true
       if (!isSignedIn || !clerkUserId) {
-        redirectToSignIn({ redirectUrl: window.location.href });
+        // Use production URL for redirect
+        const prodUrl = import.meta.env.VITE_APP_URL || import.meta.env.NEXT_PUBLIC_APP_URL || 'https://helpyfam.com';
+        const redirectUrl = `${prodUrl}?invite=true&hid=${householdId}&uid=${userId}`;
+        redirectToSignIn({ redirectUrl: redirectUrl });
         return;
       }
   

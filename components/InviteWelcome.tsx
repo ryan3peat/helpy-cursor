@@ -28,6 +28,20 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
   const { redirectToSignIn, openSignUp } = useClerk();
   const { user, isSignedIn, isLoaded: userLoaded } = useUser();
   
+  // Get production URL - use environment variable or fallback to current origin
+  const getProductionUrl = () => {
+    // In production, use the production domain explicitly
+    if (typeof window !== 'undefined') {
+      const prodUrl = import.meta.env.VITE_APP_URL || import.meta.env.NEXT_PUBLIC_APP_URL || 'https://helpyfam.com';
+      // If we're already on production domain, use it; otherwise use env var
+      if (window.location.hostname === 'helpyfam.com' || window.location.hostname.includes('helpyfam.com')) {
+        return `https://helpyfam.com`;
+      }
+      return prodUrl;
+    }
+    return 'https://helpyfam.com';
+  };
+  
   const [inviteInfo, setInviteInfo] = useState<InviteInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [showSignUp, setShowSignUp] = useState(false);
@@ -47,7 +61,8 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
   useEffect(() => {
     if (userLoaded && isSignedIn && user) {
       // User is already signed in, redirect to complete invite flow
-      const inviteUrl = `${window.location.origin}${window.location.pathname}?invite=true&hid=${householdId}&uid=${userId}`;
+      const prodUrl = getProductionUrl();
+      const inviteUrl = `${prodUrl}?invite=true&hid=${householdId}&uid=${userId}`;
       window.location.href = inviteUrl;
       return;
     }
@@ -105,8 +120,9 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
     setError('');
 
     try {
-      // Preserve invite params in redirect URL
-      const redirectUrl = `${window.location.origin}${window.location.pathname}?invite=true&hid=${householdId}&uid=${userId}`;
+      // Preserve invite params in redirect URL - use production URL
+      const prodUrl = getProductionUrl();
+      const redirectUrl = `${prodUrl}?invite=true&hid=${householdId}&uid=${userId}`;
       
       await signUp.create({
         firstName: formData.firstName,
@@ -122,9 +138,10 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
         await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
         setVerificationStep('email');
       } else if (signUp.status === 'complete') {
-        // Preserve invite params in URL before setActive
-        const inviteUrl = `${window.location.origin}${window.location.pathname}?invite=true&hid=${householdId}&uid=${userId}`;
-        window.history.replaceState({}, '', `${window.location.pathname}?invite=true&hid=${householdId}&uid=${userId}`);
+        // Preserve invite params in URL before setActive - use production URL
+        const prodUrl = getProductionUrl();
+        const inviteUrl = `${prodUrl}?invite=true&hid=${householdId}&uid=${userId}`;
+        window.history.replaceState({}, '', `/?invite=true&hid=${householdId}&uid=${userId}`);
         
         try {
           await setActive({ session: signUp.createdSessionId! });
@@ -145,9 +162,10 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
     } catch (err: any) {
       const errorMessage = err.errors?.[0]?.longMessage || err.message || 'Sign up failed';
       
-      // If user already exists, redirect to sign in with invite params
+      // If user already exists, redirect to sign in with invite params - use production URL
       if (errorMessage.toLowerCase().includes('already') || errorMessage.toLowerCase().includes('taken')) {
-        const signInUrl = `${window.location.origin}${window.location.pathname}?invite=true&hid=${householdId}&uid=${userId}`;
+        const prodUrl = getProductionUrl();
+        const signInUrl = `${prodUrl}?invite=true&hid=${householdId}&uid=${userId}`;
         redirectToSignIn({ redirectUrl: signInUrl });
         return;
       }
@@ -172,9 +190,10 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
       });
 
       if (result.status === 'complete') {
-        // Preserve invite params in URL before setActive
-        const inviteUrl = `${window.location.origin}${window.location.pathname}?invite=true&hid=${householdId}&uid=${userId}`;
-        window.history.replaceState({}, '', `${window.location.pathname}?invite=true&hid=${householdId}&uid=${userId}`);
+        // Preserve invite params in URL before setActive - use production URL
+        const prodUrl = getProductionUrl();
+        const inviteUrl = `${prodUrl}?invite=true&hid=${householdId}&uid=${userId}`;
+        window.history.replaceState({}, '', `/?invite=true&hid=${householdId}&uid=${userId}`);
         
         try {
           await setActive({ session: result.createdSessionId });
@@ -204,12 +223,15 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
     // Check if user is already signed in
     if (userLoaded && isSignedIn) {
       // User is already signed in, redirect to complete invite
-      const inviteUrl = `${window.location.origin}${window.location.pathname}?invite=true&hid=${householdId}&uid=${userId}`;
+      const prodUrl = getProductionUrl();
+      const inviteUrl = `${prodUrl}?invite=true&hid=${householdId}&uid=${userId}`;
       window.location.href = inviteUrl;
       return;
     }
     
-    const redirectUrl = `${window.location.origin}${window.location.pathname}?invite=true&hid=${householdId}&uid=${userId}`;
+    // Use production URL for Clerk redirect
+    const prodUrl = getProductionUrl();
+    const redirectUrl = `${prodUrl}?invite=true&hid=${householdId}&uid=${userId}`;
     openSignUp({
       redirectUrl: redirectUrl,
     });
@@ -217,7 +239,9 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
 
   // Handle sign in for existing users
   const handleSignIn = () => {
-    const redirectUrl = `${window.location.origin}${window.location.pathname}?invite=true&hid=${householdId}&uid=${userId}`;
+    // Use production URL for Clerk redirect
+    const prodUrl = getProductionUrl();
+    const redirectUrl = `${prodUrl}?invite=true&hid=${householdId}&uid=${userId}`;
     redirectToSignIn({
       redirectUrl: redirectUrl,
     });

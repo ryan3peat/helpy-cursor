@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useClerk } from '@clerk/clerk-react';
+import { useClerk, useUser } from '@clerk/clerk-react';
 import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
 import ToDo from './components/ToDo';
@@ -25,6 +25,7 @@ import {
 
 const App: React.FC = () => {
   const { signOut } = useClerk();
+  const { user: clerkUser, isSignedIn, isLoaded: clerkLoaded } = useUser();
   const [showIntro, setShowIntro] = useState(true);
   const [activeView, setActiveView] = useState('dashboard');
 
@@ -412,7 +413,8 @@ const App: React.FC = () => {
   }
 
   // Show InviteWelcome for unauthenticated users with invite params
-  if (inviteParams && !currentUser) {
+  // Only show if Clerk user is not signed in (to avoid showing after OAuth redirect)
+  if (inviteParams && !currentUser && clerkLoaded && !isSignedIn) {
     return <InviteWelcome householdId={inviteParams.hid} userId={inviteParams.uid} onComplete={handleLogin} />;
   }
 
@@ -421,6 +423,8 @@ const App: React.FC = () => {
     return <InviteSetup householdId={inviteParams.hid} userId={inviteParams.uid} onComplete={handleLogin} />;
   }
 
+  // If Clerk user is authenticated but currentUser not set yet, show Auth component
+  // This handles the case after OAuth redirect where Clerk is authenticated but App state isn't updated
   if (!currentUser) {
     return (
       <>

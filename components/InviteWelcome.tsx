@@ -3,7 +3,7 @@
 // Shows before user signs up/signs in
 
 import React, { useState, useEffect } from 'react';
-import { useSignUp, useClerk } from '@clerk/clerk-react';
+import { useSignUp, useClerk, useUser } from '@clerk/clerk-react';
 import { Loader2, Mail, ArrowRight } from 'lucide-react';
 
 interface InviteWelcomeProps {
@@ -26,6 +26,7 @@ interface InviteInfo {
 const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onComplete }) => {
   const { signUp, setActive, isLoaded: signUpLoaded } = useSignUp();
   const { redirectToSignIn, openSignUp } = useClerk();
+  const { user, isSignedIn, isLoaded: userLoaded } = useUser();
   
   const [inviteInfo, setInviteInfo] = useState<InviteInfo | null>(null);
   const [loading, setLoading] = useState(true);
@@ -42,8 +43,23 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
     password: ''
   });
 
+  // Check if user is already signed in - if so, redirect immediately
+  useEffect(() => {
+    if (userLoaded && isSignedIn && user) {
+      // User is already signed in, redirect to complete invite flow
+      const inviteUrl = `${window.location.origin}${window.location.pathname}?invite=true&hid=${householdId}&uid=${userId}`;
+      window.location.href = inviteUrl;
+      return;
+    }
+  }, [userLoaded, isSignedIn, user, householdId, userId]);
+
   // Fetch invite info on mount
   useEffect(() => {
+    // Don't fetch if user is already signed in
+    if (userLoaded && isSignedIn) {
+      return;
+    }
+
     async function fetchInviteInfo() {
       try {
         const response = await fetch(`/api/get-invite-info?hid=${householdId}&uid=${userId}`);
@@ -73,7 +89,7 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
     }
 
     fetchInviteInfo();
-  }, [householdId, userId]);
+  }, [householdId, userId, userLoaded, isSignedIn]);
 
   // Handle email signup
   const handleSignUp = async (e: React.FormEvent) => {
@@ -185,6 +201,14 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
 
   // Handle Google signup
   const handleGoogleSignUp = () => {
+    // Check if user is already signed in
+    if (userLoaded && isSignedIn) {
+      // User is already signed in, redirect to complete invite
+      const inviteUrl = `${window.location.origin}${window.location.pathname}?invite=true&hid=${householdId}&uid=${userId}`;
+      window.location.href = inviteUrl;
+      return;
+    }
+    
     const redirectUrl = `${window.location.origin}${window.location.pathname}?invite=true&hid=${householdId}&uid=${userId}`;
     openSignUp({
       redirectUrl: redirectUrl,
@@ -199,13 +223,25 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
     });
   };
 
-  // Loading state
-  if (loading) {
+  // Loading state - also show loading if checking user status
+  if (loading || !userLoaded) {
     return (
       <div className="min-h-screen w-full flex flex-col items-center justify-center p-6" style={{ backgroundColor: '#3EAFD2' }}>
         <div className="text-white text-center">
           <Loader2 className="w-12 h-12 animate-spin mx-auto mb-4" />
           <p className="text-lg font-bold">Loading invitation...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If user is signed in, show loading while redirecting
+  if (isSignedIn && user) {
+    return (
+      <div className="min-h-screen w-full flex flex-col items-center justify-center p-6" style={{ backgroundColor: '#3EAFD2' }}>
+        <div className="text-white text-center">
+          <Loader2 className="w-12 h-12 animate-spin mx-auto mb-4" />
+          <p className="text-lg font-bold">Completing invitation...</p>
         </div>
       </div>
     );

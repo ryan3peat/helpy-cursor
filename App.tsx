@@ -11,6 +11,7 @@ import IntroAnimation from './components/IntroAnimation';
 import Auth from './components/Auth';
 import OnboardingOverlay from './components/OnboardingOverlay';
 import InviteSetup from './components/InviteSetup';
+import InviteWelcome from './components/InviteWelcome';
 import { ToDoItem, Meal, Expense, User, TranslationDictionary } from './types';
 import { BASE_TRANSLATIONS } from './constants';
 import {
@@ -410,7 +411,13 @@ const App: React.FC = () => {
     );
   }
 
+  // Show InviteWelcome for unauthenticated users with invite params
   if (inviteParams && !currentUser) {
+    return <InviteWelcome householdId={inviteParams.hid} userId={inviteParams.uid} onComplete={handleLogin} />;
+  }
+
+  // Show InviteSetup for authenticated users with invite params (existing flow)
+  if (inviteParams && currentUser) {
     return <InviteSetup householdId={inviteParams.hid} userId={inviteParams.uid} onComplete={handleLogin} />;
   }
 

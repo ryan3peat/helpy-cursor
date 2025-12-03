@@ -319,6 +319,9 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
               <p className="text-xs text-gray-400 mt-1.5">Must be at least 8 characters</p>
             </div>
 
+            {/* Clerk CAPTCHA widget container - required for bot protection */}
+            <div id="clerk-captcha" className="mb-4"></div>
+
             <button
               type="submit"
               disabled={isSubmitting}

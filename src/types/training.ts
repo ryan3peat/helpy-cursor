@@ -39,6 +39,11 @@ export interface TrainingModule {
   completedAt?: string;
   createdBy?: string;
   createdAt?: string;
+  // Translation fields
+  nameLang?: string | null; // Language code of the name field (null if undetectable)
+  nameTranslations?: Record<string, string>; // Translations: { "en": "original", "zh-CN": "translated", ... }
+  contentLang?: string | null; // Language code of the content field (null if undetectable)
+  contentTranslations?: Record<string, string>; // Translations: { "en": "original", "zh-CN": "translated", ... }
 }
 
 // For creating new training modules

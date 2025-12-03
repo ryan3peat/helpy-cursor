@@ -76,6 +76,9 @@ export interface ToDoItem {
   dueDate?: string; // YYYY-MM-DD
   dueTime?: string; // HH:mm
   recurrence?: RecurrenceRule;
+  // Translation fields
+  nameLang?: string | null; // Language code of the name field (null if undetectable)
+  nameTranslations?: Record<string, string>; // Translations: { "en": "original", "zh-CN": "translated", ... }
 }
 
 // Legacy types for backwards compatibility
@@ -114,6 +117,9 @@ export interface Meal {
   description: string;
   forUserIds: string[];
   audience: MealAudience;
+  // Translation fields
+  descriptionLang?: string | null; // Language code of the description field (null if undetectable)
+  descriptionTranslations?: Record<string, string>; // Translations: { "en": "original", "zh-CN": "translated", ... }
 }
 
 export interface Expense {
@@ -123,6 +129,9 @@ export interface Expense {
   date: string;
   merchant: string;
   receiptUrl?: string;
+  // Translation fields
+  merchantLang?: string | null; // Language code of the merchant field (null if undetectable)
+  merchantTranslations?: Record<string, string>; // Translations: { "en": "original", "zh-CN": "translated", ... }
 }
 
 export interface NavItem {

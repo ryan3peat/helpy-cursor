@@ -30,6 +30,8 @@ import {
   Utensils,
 } from "lucide-react";
 import { BaseViewProps, User, UserRole } from "@/types";
+import { useTranslatedContent } from "@/hooks/useTranslatedContent";
+import { detectInputLanguage } from "@/services/languageDetectionService";
 
 // Essential Info Types & Services
 import type {
@@ -329,10 +331,118 @@ const FamilyProfileCarousel: React.FC<FamilyProfileCarouselProps> = ({ users }) 
   );
 };
 
+// Component for displaying translated EssentialInfo name
+const TranslatedEssentialName: React.FC<{
+  info: EssentialInfo;
+  currentLang: string;
+  onUpdate?: (id: string, data: Partial<EssentialInfo>) => void;
+}> = ({ info, currentLang, onUpdate }) => {
+  if (!info.name) return <>{info.name || "Unnamed"}</>;
+  
+  const translatedName = useTranslatedContent({
+    content: info.name,
+    contentLang: info.nameLang,
+    currentLang,
+    translations: info.nameTranslations || {},
+    onTranslationUpdate: async (translation) => {
+      if (onUpdate) {
+        const updatedTranslations = {
+          ...(info.nameTranslations || {}),
+          [currentLang]: translation,
+        };
+        await onUpdate(info.id, { nameTranslations: updatedTranslations });
+      }
+    },
+  });
+
+  return <>{translatedName}</>;
+};
+
+// Component for displaying translated EssentialInfo note
+const TranslatedEssentialNote: React.FC<{
+  info: EssentialInfo;
+  currentLang: string;
+  onUpdate?: (id: string, data: Partial<EssentialInfo>) => void;
+}> = ({ info, currentLang, onUpdate }) => {
+  if (!info.note) return null;
+  
+  const translatedNote = useTranslatedContent({
+    content: info.note,
+    contentLang: info.noteLang,
+    currentLang,
+    translations: info.noteTranslations || {},
+    onTranslationUpdate: async (translation) => {
+      if (onUpdate) {
+        const updatedTranslations = {
+          ...(info.noteTranslations || {}),
+          [currentLang]: translation,
+        };
+        await onUpdate(info.id, { noteTranslations: updatedTranslations });
+      }
+    },
+  });
+
+  return <>{translatedNote}</>;
+};
+
+// Component for displaying translated TrainingModule name
+const TranslatedTrainingName: React.FC<{
+  module: TrainingModule;
+  currentLang: string;
+  onUpdate?: (id: string, data: Partial<TrainingModule>) => void;
+}> = ({ module, currentLang, onUpdate }) => {
+  const translatedName = useTranslatedContent({
+    content: module.name,
+    contentLang: module.nameLang,
+    currentLang,
+    translations: module.nameTranslations || {},
+    onTranslationUpdate: async (translation) => {
+      if (onUpdate) {
+        const updatedTranslations = {
+          ...(module.nameTranslations || {}),
+          [currentLang]: translation,
+        };
+        await onUpdate(module.id, { nameTranslations: updatedTranslations });
+      }
+    },
+  });
+
+  return <>{translatedName}</>;
+};
+
+// Component for displaying translated TrainingModule content
+const TranslatedTrainingContent: React.FC<{
+  module: TrainingModule;
+  currentLang: string;
+  onUpdate?: (id: string, data: Partial<TrainingModule>) => void;
+}> = ({ module, currentLang, onUpdate }) => {
+  if (!module.content) return null;
+  
+  const translatedContent = useTranslatedContent({
+    content: module.content,
+    contentLang: module.contentLang,
+    currentLang,
+    translations: module.contentTranslations || {},
+    onTranslationUpdate: async (translation) => {
+      if (onUpdate) {
+        const updatedTranslations = {
+          ...(module.contentTranslations || {}),
+          [currentLang]: translation,
+        };
+        await onUpdate(module.id, { contentTranslations: updatedTranslations });
+      }
+    },
+  });
+
+  return <>{translatedContent}</>;
+};
+
 const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
   householdId,
   currentUser,
   users,
+  t,
+  currentLang,
 }) => {
   // ─────────────────────────────────────────────────────────────────
   // Section Toggle State
@@ -455,7 +565,19 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
       if (editingEssentialItem) {
         await updateEssentialInfo(householdId, editingEssentialItem.id, essentialForm);
     } else {
-        await createEssentialInfo(householdId, essentialForm);
+        // Detect language for new essential info
+        const nameLang = essentialForm.name ? detectInputLanguage(currentLang) : null;
+        const noteLang = essentialForm.note ? detectInputLanguage(currentLang) : null;
+        
+        const createData: any = {
+          ...essentialForm,
+          nameLang: nameLang || null,
+          nameTranslations: {},
+          noteLang: noteLang || null,
+          noteTranslations: {},
+        };
+        
+        await createEssentialInfo(householdId, createData);
       }
       setIsEssentialModalOpen(false);
     } catch (error) {
@@ -530,9 +652,38 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
   const handleSaveTraining = async () => {
     try {
       if (editingTrainingModule) {
-        await updateTrainingModule(householdId, editingTrainingModule.id, trainingForm);
+        // Re-detect language if name or content changed
+        const existingModule = trainingModules.find(m => m.id === editingTrainingModule.id);
+        const nameChanged = existingModule && existingModule.name !== trainingForm.name;
+        const contentChanged = existingModule && existingModule.content !== trainingForm.content;
+        const nameLang = nameChanged ? detectInputLanguage(currentLang) : undefined;
+        const contentLang = contentChanged ? detectInputLanguage(currentLang) : undefined;
+        
+        const updateData: any = { ...trainingForm };
+        if (nameChanged && nameLang !== undefined) {
+          updateData.nameLang = nameLang || null;
+          updateData.nameTranslations = {};
+        }
+        if (contentChanged && contentLang !== undefined) {
+          updateData.contentLang = contentLang || null;
+          updateData.contentTranslations = {};
+        }
+        
+        await updateTrainingModule(householdId, editingTrainingModule.id, updateData);
       } else {
-        await createTrainingModule(householdId, trainingForm, currentUser.id);
+        // Detect language for new training module
+        const nameLang = trainingForm.name ? detectInputLanguage(currentLang) : null;
+        const contentLang = trainingForm.content ? detectInputLanguage(currentLang) : null;
+        
+        const createData: any = {
+          ...trainingForm,
+          nameLang: nameLang || null,
+          nameTranslations: {},
+          contentLang: contentLang || null,
+          contentTranslations: {},
+        };
+        
+        await createTrainingModule(householdId, createData, currentUser.id);
       }
       setIsTrainingModalOpen(false);
     } catch (error) {
@@ -782,6 +933,8 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
                     onOpenMap={() => item.address && openGoogleMaps(item.address)}
                     onCall={() => item.phone && makeCall(item.countryCode || "+852", item.phone)}
                     canEdit={!isHelper}
+                    currentLang={currentLang}
+                    householdId={householdId}
                   />
                 ))
               )}
@@ -817,6 +970,8 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
                     onEdit={() => handleEditTrainingClick(module)}
                     onView={() => handleViewTrainingClick(module)}
                     isHelper={isHelper}
+                    currentLang={currentLang}
+                    householdId={householdId}
                   />
                 ))
               )}
@@ -886,6 +1041,8 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
           onClose={() => setViewingTrainingModule(null)}
           onComplete={() => handleCompleteTraining(viewingTrainingModule)}
           isHelper={isHelper}
+          currentLang={currentLang}
+          householdId={householdId}
         />
       )}
     </div>
@@ -901,6 +1058,8 @@ interface EssentialInfoCardProps {
   onOpenMap: () => void;
   onCall: () => void;
   canEdit: boolean;
+  currentLang: string;
+  householdId: string;
 }
 
 const EssentialInfoCard: React.FC<EssentialInfoCardProps> = ({
@@ -909,6 +1068,8 @@ const EssentialInfoCard: React.FC<EssentialInfoCardProps> = ({
   onOpenMap,
   onCall,
   canEdit,
+  currentLang,
+  householdId,
 }) => {
   const config = CATEGORY_CONFIG[item.category];
 
@@ -924,7 +1085,13 @@ const EssentialInfoCard: React.FC<EssentialInfoCardProps> = ({
             {ESSENTIAL_CATEGORY_ICONS[item.category]}
           </div>
           <div>
-            <h3 className="text-title text-foreground">{item.name || "Unnamed"}</h3>
+            <h3 className="text-title text-foreground">
+              <TranslatedEssentialName 
+                info={item} 
+                currentLang={currentLang} 
+                onUpdate={(id, data) => updateEssentialInfo(householdId, id, data as any)} 
+              />
+            </h3>
             <span
               className="text-caption px-2 py-0.5 rounded-full"
               style={{ backgroundColor: config.bgColor, color: config.color }}
@@ -971,7 +1138,13 @@ const EssentialInfoCard: React.FC<EssentialInfoCardProps> = ({
       {item.note && (
         <div className="flex items-start gap-2 py-1.5">
           <FileText size={16} className="text-muted-foreground mt-0.5 flex-shrink-0" />
-          <span className="text-body text-muted-foreground">{item.note}</span>
+          <span className="text-body text-muted-foreground">
+            <TranslatedEssentialNote 
+              info={item} 
+              currentLang={currentLang} 
+              onUpdate={(id, data) => updateEssentialInfo(householdId, id, data as any)} 
+            />
+          </span>
         </div>
       )}
       </div>
@@ -987,6 +1160,8 @@ interface TrainingCardProps {
   onEdit: () => void;
   onView: () => void;
   isHelper: boolean;
+  currentLang: string;
+  householdId: string;
 }
 
 const TrainingCard: React.FC<TrainingCardProps> = ({
@@ -995,6 +1170,8 @@ const TrainingCard: React.FC<TrainingCardProps> = ({
   onEdit,
   onView,
   isHelper,
+  currentLang,
+  householdId,
 }) => {
   const config = TRAINING_CATEGORY_CONFIG[module.category];
   const displayCategory = module.category === "Others" && module.customCategory
@@ -1007,7 +1184,13 @@ const TrainingCard: React.FC<TrainingCardProps> = ({
       <div className="flex items-start justify-between mb-3">
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-1">
-            <h3 className="text-title text-foreground">{module.name}</h3>
+            <h3 className="text-title text-foreground">
+              <TranslatedTrainingName 
+                module={module} 
+                currentLang={currentLang} 
+                onUpdate={(id, data) => updateTrainingModule(householdId, id, data as any)} 
+              />
+            </h3>
             {module.isCompleted && (
               <CheckCircle2 size={16} className="text-[#4CAF50]" />
             )}
@@ -1395,6 +1578,8 @@ interface TrainingViewModalProps {
   onClose: () => void;
   onComplete: () => void;
   isHelper: boolean;
+  currentLang: string;
+  householdId: string;
 }
 
 const TrainingViewModal: React.FC<TrainingViewModalProps> = ({
@@ -1403,6 +1588,8 @@ const TrainingViewModal: React.FC<TrainingViewModalProps> = ({
   onClose,
   onComplete,
   isHelper,
+  currentLang,
+  householdId,
 }) => {
   const config = TRAINING_CATEGORY_CONFIG[module.category];
   const displayCategory = module.category === "Others" && module.customCategory
@@ -1431,7 +1618,13 @@ const TrainingViewModal: React.FC<TrainingViewModalProps> = ({
           >
             {displayCategory}
           </span>
-          <h2 className="text-display text-foreground">{module.name}</h2>
+          <h2 className="text-display text-foreground">
+            <TranslatedTrainingName 
+              module={module} 
+              currentLang={currentLang} 
+              onUpdate={(id, data) => updateTrainingModule(householdId, id, data as any)} 
+            />
+          </h2>
           <div className="flex items-center gap-3 mt-2 text-body text-muted-foreground">
             <span>Assigned to: {assigneeName}</span>
           </div>
@@ -1441,7 +1634,13 @@ const TrainingViewModal: React.FC<TrainingViewModalProps> = ({
         <div className="p-5 max-h-[50vh] overflow-y-auto">
           <div className="prose prose-slate prose-sm">
             {module.content ? (
-              <div className="whitespace-pre-wrap text-body text-foreground">{module.content}</div>
+              <div className="whitespace-pre-wrap text-body text-foreground">
+                <TranslatedTrainingContent 
+                  module={module} 
+                  currentLang={currentLang} 
+                  onUpdate={(id, data) => updateTrainingModule(householdId, id, data as any)} 
+                />
+              </div>
             ) : (
               <p className="text-body text-muted-foreground italic">No content provided.</p>
             )}

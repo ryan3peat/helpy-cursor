@@ -32,6 +32,10 @@ function toSnakeCase(data: Partial<EssentialInfo>): any {
   if (data.countryCode !== undefined) result.country_code = data.countryCode;
   if (data.phone !== undefined) result.phone = data.phone;
   if (data.note !== undefined) result.note = data.note;
+  if (data.nameLang !== undefined) result.name_lang = data.nameLang;
+  if (data.nameTranslations !== undefined) result.name_translations = data.nameTranslations;
+  if (data.noteLang !== undefined) result.note_lang = data.noteLang;
+  if (data.noteTranslations !== undefined) result.note_translations = data.noteTranslations;
   return result;
 }
 

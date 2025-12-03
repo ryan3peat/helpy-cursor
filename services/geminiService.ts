@@ -3,7 +3,7 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { MealType, TranslationDictionary } from "../types";
 
 const getAiClient = () => {
-  const apiKey = process.env.API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
   if (!apiKey) {
     console.warn("API Key not found. AI features will return mock data.");
     return null;
@@ -108,8 +108,7 @@ export const getAppTranslations = async (targetLangCode: string, baseDictionary:
       IMPORTANT: 
       1. Return ONLY the JSON object.
       2. Maintain the exact same keys.
-      3. If target is 'zh-HK' or Cantonese, use colloquial Hong Kong phrasing where appropriate.
-      4. Keep it natural for a mobile app interface.
+      3. Keep it natural for a mobile app interface.
       
       JSON to translate:
       ${JSON.stringify(baseDictionary)}`,
@@ -130,5 +129,127 @@ export const getAppTranslations = async (targetLangCode: string, baseDictionary:
   } catch (error) {
     console.error("Translation failed:", error);
     return baseDictionary; // Fallback to English
+  }
+};
+
+// --- User Content Translation Service ---
+
+/**
+ * Translates a single piece of user-generated content
+ * @param text - The text to translate
+ * @param sourceLang - Source language code (e.g., 'en', 'zh-CN')
+ * @param targetLang - Target language code (e.g., 'zh-CN', 'en')
+ * @returns Translated text, or original text if translation fails
+ */
+export const translateUserContent = async (
+  text: string,
+  sourceLang: string,
+  targetLang: string
+): Promise<string> => {
+  // If languages are the same, return original
+  if (sourceLang === targetLang) {
+    return text;
+  }
+  
+  // If source language is null/empty, return original (undetectable)
+  if (!sourceLang) {
+    return text;
+  }
+  
+  const ai = getAiClient();
+  if (!ai) return text; // Fallback to original
+  
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: `Translate the following text from language code "${sourceLang}" to language code "${targetLang}".
+      
+      IMPORTANT:
+      1. Return ONLY the translated text, no explanations or additional text.
+      2. Preserve any formatting, numbers, or special characters.
+      3. Keep the translation natural and contextually appropriate.
+      
+      Text to translate:
+      ${text}`,
+    });
+    
+    const translated = response.text?.trim();
+    return translated || text; // Return original if empty response
+  } catch (error) {
+    console.error("User content translation failed:", error);
+    return text; // Fallback to original
+  }
+};
+
+/**
+ * Batch translates multiple pieces of user-generated content
+ * More efficient than calling translateUserContent multiple times
+ * @param items - Array of items with text and sourceLang
+ * @param targetLang - Target language code
+ * @returns Array of translated texts (or originals if translation fails)
+ */
+export const batchTranslateUserContent = async (
+  items: Array<{ text: string; sourceLang: string }>,
+  targetLang: string
+): Promise<string[]> => {
+  // Filter out items that don't need translation
+  const itemsToTranslate = items.filter(item => 
+    item.sourceLang && 
+    item.sourceLang !== targetLang && 
+    item.text.trim().length > 0
+  );
+  
+  // If nothing to translate, return originals
+  if (itemsToTranslate.length === 0) {
+    return items.map(item => item.text);
+  }
+  
+  const ai = getAiClient();
+  if (!ai) {
+    return items.map(item => item.text); // Fallback to originals
+  }
+  
+  try {
+    // Build prompt with all items
+    const itemsList = itemsToTranslate.map((item, index) => 
+      `${index + 1}. [${item.sourceLang}] ${item.text}`
+    ).join('\n');
+    
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: `Translate the following items from their source languages to language code "${targetLang}".
+      
+      IMPORTANT:
+      1. Return ONLY a JSON array of translated strings in the same order.
+      2. Preserve any formatting, numbers, or special characters.
+      3. Keep translations natural and contextually appropriate.
+      4. If an item is already in the target language, return it unchanged.
+      
+      Items to translate:
+      ${itemsList}
+      
+      Return format: ["translated text 1", "translated text 2", ...]`,
+      config: {
+        responseMimeType: "application/json"
+      }
+    });
+    
+    const text = response.text;
+    if (!text) throw new Error("Empty response from batch translation");
+    
+    const translatedArray = JSON.parse(text);
+    
+    // Map translations back to original order
+    let translationIndex = 0;
+    return items.map(item => {
+      if (item.sourceLang && item.sourceLang !== targetLang && item.text.trim().length > 0) {
+        const translated = translatedArray[translationIndex++];
+        return translated || item.text; // Fallback to original if missing
+      }
+      return item.text; // Return original if no translation needed
+    });
+  } catch (error) {
+    console.error("Batch translation failed:", error);
+    return items.map(item => item.text); // Fallback to originals
   }
 };

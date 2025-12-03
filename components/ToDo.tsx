@@ -20,7 +20,9 @@ import {
   ArrowUpDown,
 } from 'lucide-react';
 import { useScrollHeader } from '@/hooks/useScrollHeader';
+import { useTranslatedContent } from '@/hooks/useTranslatedContent';
 import { ToDoItem, ToDoType, ShoppingCategory, TaskCategory, RecurrenceFrequency, User, UserRole, BaseViewProps } from '../types';
+import { detectInputLanguage } from '../services/languageDetectionService';
 
 // ─────────────────────────────────────────────────────────────────
 // Types & Constants
@@ -150,6 +152,35 @@ const formatDateTime = (dueDate?: string, dueTime?: string): string => {
 };
 
 // ─────────────────────────────────────────────────────────────────
+// Component for displaying translated item name
+// ─────────────────────────────────────────────────────────────────
+
+const TranslatedItemName: React.FC<{
+  item: ToDoItem;
+  currentLang: string;
+  onUpdate?: (id: string, data: Partial<ToDoItem>) => Promise<void>;
+}> = ({ item, currentLang, onUpdate }) => {
+  const translatedName = useTranslatedContent({
+    content: item.name,
+    contentLang: item.nameLang,
+    currentLang,
+    translations: item.nameTranslations || {},
+    onTranslationUpdate: async (translation) => {
+      // Update translations in database
+      if (onUpdate) {
+        const updatedTranslations = {
+          ...(item.nameTranslations || {}),
+          [currentLang]: translation,
+        };
+        await onUpdate(item.id, { nameTranslations: updatedTranslations });
+      }
+    },
+  });
+
+  return <>{translatedName}</>;
+};
+
+// ─────────────────────────────────────────────────────────────────
 // Main Component
 // ─────────────────────────────────────────────────────────────────
 
@@ -161,6 +192,7 @@ const ToDo: React.FC<ToDoProps> = ({
   onUpdate,
   onDelete,
   t,
+  currentLang,
   initialSection,
 }) => {
   // ─────────────────────────────────────────────────────────────────
@@ -343,6 +375,9 @@ const ToDo: React.FC<ToDoProps> = ({
     const category = selectedCategory !== 'All' ? selectedCategory : defaultCategory;
     const today = new Date().toISOString().split('T')[0];
     
+    // Detect language for the new item
+    const detectedLang = detectInputLanguage(currentLang);
+    
     const newItem: ToDoItem = {
       id: `temp-${Date.now()}`,
       type: activeSection,
@@ -351,6 +386,8 @@ const ToDo: React.FC<ToDoProps> = ({
       completed: false,
       assigneeId: getDefaultAssignee(users, currentUser),
       createdAt: new Date().toISOString(),
+      nameLang: detectedLang || null,
+      nameTranslations: {},
       ...(activeSection === 'shopping' ? { quantity: '1' } : { dueDate: today }),
     };
     
@@ -369,6 +406,9 @@ const ToDo: React.FC<ToDoProps> = ({
   const handleSuggestionClick = async (suggestion: { name: string; category: string }) => {
     const today = new Date().toISOString().split('T')[0];
     
+    // Detect language for the new item
+    const detectedLang = detectInputLanguage(currentLang);
+    
     const newItem: ToDoItem = {
       id: `temp-${Date.now()}`,
       type: activeSection,
@@ -377,6 +417,8 @@ const ToDo: React.FC<ToDoProps> = ({
       completed: false,
       assigneeId: getDefaultAssignee(users, currentUser),
       createdAt: new Date().toISOString(),
+      nameLang: detectedLang || null,
+      nameTranslations: {},
       ...(activeSection === 'shopping' ? { quantity: '1' } : { dueDate: today }),
     };
     
@@ -561,6 +603,11 @@ const ToDo: React.FC<ToDoProps> = ({
         };
       }
       
+      // Re-detect language if name changed
+      const existingItem = items.find(i => i.id === editingItemId);
+      const nameChanged = existingItem && existingItem.name !== sheetForm.name;
+      const detectedLang = nameChanged ? detectInputLanguage(currentLang) : undefined;
+      
       const updates: Partial<ToDoItem> = {
         name: sheetForm.name!,
         category: sheetForm.category,
@@ -570,6 +617,10 @@ const ToDo: React.FC<ToDoProps> = ({
         dueDate: sheetForm.dueDate,
         dueTime: sheetForm.dueTime,
         recurrence,
+        ...(nameChanged && detectedLang !== undefined ? { 
+          nameLang: detectedLang || null,
+          nameTranslations: {} // Reset translations when name changes
+        } : {}),
       };
       
       const itemId = editingItemId; // Capture before clearing
@@ -583,6 +634,9 @@ const ToDo: React.FC<ToDoProps> = ({
       }
     } else {
       // Adding new item
+      // Detect language for the new item
+      const detectedLang = detectInputLanguage(currentLang);
+      
       const newItem: ToDoItem = {
         id: `temp-${Date.now()}`,
         type: activeSection,
@@ -591,6 +645,8 @@ const ToDo: React.FC<ToDoProps> = ({
         completed: false,
         assigneeId: sheetForm.assigneeId,
         createdAt: new Date().toISOString(),
+        nameLang: detectedLang || null,
+        nameTranslations: {},
         quantity: sheetForm.quantity || '1',
         unit: sheetForm.unit,
         dueDate: sheetForm.dueDate,
@@ -962,7 +1018,7 @@ const ToDo: React.FC<ToDoProps> = ({
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center">
                     <span className={`text-body ${isCompleting ? 'text-muted-foreground line-through' : 'text-foreground'}`}>
-                      {item.name}
+                      <TranslatedItemName item={item} currentLang={currentLang} onUpdate={onUpdate} />
                       {item.type === 'shopping' && item.quantity && item.quantity !== '1' && (
                         <span className="text-muted-foreground font-normal">
                           {' · '}{item.quantity}{item.unit ? ` ${item.unit}` : ''}
@@ -1066,7 +1122,7 @@ const ToDo: React.FC<ToDoProps> = ({
                     
                     <div className="flex-1 min-w-0">
                       <span className="text-body text-muted-foreground line-through">
-                        {item.name}
+                        <TranslatedItemName item={item} currentLang={currentLang} onUpdate={onUpdate} />
                       </span>
                       <span className={`ml-2 px-1.5 py-0.5 rounded text-[10px] font-medium opacity-50 ${getCategoryBadgeStyle(item.category)}`}>
                         {item.category}

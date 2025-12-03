@@ -22,8 +22,10 @@ import {
   LayoutGrid
 } from 'lucide-react';
 import { useScrollHeader } from '@/hooks/useScrollHeader';
+import { useTranslatedContent } from '@/hooks/useTranslatedContent';
 import { Meal, MealType, MealAudience, User, UserRole, BaseViewProps } from '../types';
 import { suggestMeal } from '../services/geminiService';
+import { detectInputLanguage } from '../services/languageDetectionService';
 
 interface MealsProps extends BaseViewProps {
   meals: Meal[];
@@ -33,6 +35,32 @@ interface MealsProps extends BaseViewProps {
   onUpdate: (id: string, data: Partial<Meal>) => void;
   onDelete: (id: string) => void;
 }
+
+// Component for displaying translated meal description
+const TranslatedMealDescription: React.FC<{
+  meal: Meal;
+  currentLang: string;
+  onUpdate?: (id: string, data: Partial<Meal>) => void;
+}> = ({ meal, currentLang, onUpdate }) => {
+  const translatedDescription = useTranslatedContent({
+    content: meal.description,
+    contentLang: meal.descriptionLang,
+    currentLang,
+    translations: meal.descriptionTranslations || {},
+    onTranslationUpdate: async (translation) => {
+      // Update translations in database
+      if (onUpdate) {
+        const updatedTranslations = {
+          ...(meal.descriptionTranslations || {}),
+          [currentLang]: translation,
+        };
+        await onUpdate(meal.id, { descriptionTranslations: updatedTranslations });
+      }
+    },
+  });
+
+  return <>{translatedDescription}</>;
+};
 
 const Meals: React.FC<MealsProps> = ({
   meals,
@@ -247,7 +275,9 @@ const Meals: React.FC<MealsProps> = ({
       type,
       description: '',
       forUserIds: [currentUser.id],
-      audience: currentUser.role === UserRole.CHILD ? 'KIDS' : 'ALL'
+      audience: currentUser.role === UserRole.CHILD ? 'KIDS' : 'ALL',
+      descriptionLang: null,
+      descriptionTranslations: {}
     };
     onAdd(newMeal);
   };
@@ -324,20 +354,32 @@ const Meals: React.FC<MealsProps> = ({
 
     const dateStr = formatDateStr(modalDate);
     if (editingMealId) {
+      const existingMeal = meals.find(m => m.id === editingMealId);
+      const descriptionChanged = existingMeal && existingMeal.description !== description;
+      const detectedLang = descriptionChanged ? detectInputLanguage(currentLang) : undefined;
+      
       onUpdate(editingMealId, {
         description,
         forUserIds: selectedUserIds,
         type: modalType,
-        audience: modalAudience
+        audience: modalAudience,
+        ...(descriptionChanged && detectedLang !== undefined ? {
+          descriptionLang: detectedLang || null,
+          descriptionTranslations: {} // Reset translations when description changes
+        } : {}),
       });
     } else {
+      // Create new meal - detect language
+      const detectedLang = detectInputLanguage(currentLang);
       const newMeal: Meal = {
         id: Date.now().toString(),
         date: dateStr,
         type: modalType,
         description,
         forUserIds: selectedUserIds,
-        audience: modalAudience
+        audience: modalAudience,
+        descriptionLang: detectedLang || null,
+        descriptionTranslations: {}
       };
       onAdd(newMeal);
     }
@@ -452,7 +494,7 @@ const Meals: React.FC<MealsProps> = ({
             {hasDish ? (
               <div className="flex-1 flex flex-col">
                 <p className={`font-semibold text-foreground leading-tight flex-1 ${compact ? 'text-caption' : 'text-body'}`}>
-                  {meal.description}
+                  <TranslatedMealDescription meal={meal} currentLang={currentLang} onUpdate={onUpdate} />
                 </p>
                 <button className="flex items-center gap-1 text-caption font-medium text-muted-foreground hover:text-primary transition-colors mt-2">
                   <Edit2 size={10} />
@@ -781,7 +823,7 @@ const Meals: React.FC<MealsProps> = ({
                                       {renderAudienceIcons(meal.audience || 'ALL')}
                                     </span>
                                     <span className="text-body font-semibold text-foreground leading-tight">
-                                      {meal.description}
+                                      <TranslatedMealDescription meal={meal} currentLang={currentLang} onUpdate={onUpdate} />
                                     </span>
                                   </>
                                 ) : (
@@ -1035,7 +1077,7 @@ const Meals: React.FC<MealsProps> = ({
                                     {/* Dish name or RSVP label */}
                                     {hasDish ? (
                                       <span className="text-body font-semibold text-foreground line-clamp-2 leading-tight block">
-                                        {meal.description}
+                                        <TranslatedMealDescription meal={meal} currentLang={currentLang} onUpdate={onUpdate} />
                                       </span>
                                     ) : (
                                       <span className="text-caption font-medium text-muted-foreground block">

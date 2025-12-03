@@ -18,6 +18,11 @@ export interface EssentialInfo {
   phone?: string;
   note?: string;
   createdAt?: string;
+  // Translation fields
+  nameLang?: string | null; // Language code of the name field (null if undetectable)
+  nameTranslations?: Record<string, string>; // Translations: { "en": "original", "zh-CN": "translated", ... }
+  noteLang?: string | null; // Language code of the note field (null if undetectable)
+  noteTranslations?: Record<string, string>; // Translations: { "en": "original", "zh-CN": "translated", ... }
 }
 
 // For creating new entries (id is auto-generated)

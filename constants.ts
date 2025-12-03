@@ -21,7 +21,6 @@ export const SUPPORTED_LANGUAGES = [
   { code: 'en', name: 'English' },
   { code: 'zh-CN', name: 'Chinese Simplified' },
   { code: 'zh-TW', name: 'Chinese Traditional' },
-  { code: 'zh-HK', name: 'Cantonese' },
   { code: 'tl', name: 'Tagalog' },
   { code: 'id', name: 'Bahasa Indonesia' },
   { code: 'ko', name: 'Korean' },

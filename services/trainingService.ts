@@ -69,6 +69,10 @@ function toCamelCase(data: any): TrainingModule {
     completedAt: data.completed_at,
     createdBy: data.created_by,
     createdAt: data.created_at,
+    nameLang: data.name_lang,
+    nameTranslations: data.name_translations || {},
+    contentLang: data.content_lang,
+    contentTranslations: data.content_translations || {},
   };
 }
 
@@ -92,6 +96,10 @@ function toSnakeCase(data: Partial<TrainingModule | CreateTrainingModule>): any 
   if ('createdBy' in data && data.createdBy !== undefined) {
     result.created_by = data.createdBy === '' ? null : data.createdBy;
   }
+  if ('nameLang' in data && data.nameLang !== undefined) result.name_lang = data.nameLang;
+  if ('nameTranslations' in data && data.nameTranslations !== undefined) result.name_translations = data.nameTranslations;
+  if ('contentLang' in data && data.contentLang !== undefined) result.content_lang = data.contentLang;
+  if ('contentTranslations' in data && data.contentTranslations !== undefined) result.content_translations = data.contentTranslations;
   return result;
 }
 

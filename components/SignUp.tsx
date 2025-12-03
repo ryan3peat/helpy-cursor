@@ -14,22 +14,21 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
     firstName: '',
     lastName: '',
     email: '',
-    phoneNumber: '',
     password: ''
   });
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
-  const [verificationStep, setVerificationStep] = useState<'email' | 'phone' | null>(null);
+  const [verificationStep, setVerificationStep] = useState<'email' | null>(null);
   const [code, setCode] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isLoaded || !signUp) return;
 
-    // Validate that at least email or phone is provided
-    if (!formData.email && !formData.phoneNumber) {
-      setError('Please provide either an email address or phone number');
+    // Validate that email is provided
+    if (!formData.email) {
+      setError('Please provide an email address');
       return;
     }
 
@@ -40,25 +39,18 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
       await signUp.create({
         firstName: formData.firstName,
         lastName: formData.lastName,
-        emailAddress: formData.email || undefined,
-        phoneNumber: formData.phoneNumber || undefined,
+        emailAddress: formData.email,
         password: formData.password,
       });
 
       // Check if verification is needed based on unverifiedFields array
       const hasUnverifiedEmail = signUp.unverifiedFields && signUp.unverifiedFields.length > 0 && 
         signUp.unverifiedFields.some(field => field === 'email_address');
-      const hasUnverifiedPhone = signUp.unverifiedFields && signUp.unverifiedFields.length > 0 && 
-        signUp.unverifiedFields.some(field => field === 'phone_number');
       
       if (hasUnverifiedEmail && formData.email) {
         // Send email verification code
         await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
         setVerificationStep('email');
-      } else if (hasUnverifiedPhone && formData.phoneNumber) {
-        // Send phone verification code
-        await signUp.preparePhoneNumberVerification({ strategy: 'phone_code' });
-        setVerificationStep('phone');
       } else if (signUp.status === 'complete') {
         // No verification needed, sign up is complete
         await setActive({ session: signUp.createdSessionId! });
@@ -82,20 +74,15 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
     setError('');
 
     try {
-      let result;
-      if (verificationStep === 'email') {
-        result = await signUp.attemptEmailAddressVerification({
-          code,
-        });
-      } else if (verificationStep === 'phone') {
-        result = await signUp.attemptPhoneNumberVerification({
-          code,
-        });
-      } else {
+      if (verificationStep !== 'email') {
         setError('Invalid verification step');
         setIsSubmitting(false);
         return;
       }
+
+      const result = await signUp.attemptEmailAddressVerification({
+        code,
+      });
 
       if (result.status === 'complete') {
         await setActive({ session: result.createdSessionId });
@@ -121,8 +108,8 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
   };
 
   if (verificationStep) {
-    const verificationType = verificationStep === 'email' ? 'Email' : 'Phone';
-    const verificationTarget = verificationStep === 'email' ? formData.email : formData.phoneNumber;
+    const verificationType = 'Email';
+    const verificationTarget = formData.email;
     
     return (
       <div className="min-h-screen w-full flex flex-col items-center justify-center p-6" style={{ backgroundColor: '#3EAFD2' }}>
@@ -273,34 +260,16 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
 
             <div>
               <label className="text-[#474747] font-medium text-sm mb-1.5 block">
-                Email <span className="text-gray-400 font-normal">(Optional if phone provided)</span>
+                Email
               </label>
               <input
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 placeholder="john@example.com"
+                required
                 className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-[#474747] placeholder-gray-400 focus:outline-none focus:border-[#3EAFD2] focus:ring-1 focus:ring-[#3EAFD2] transition-colors"
               />
-            </div>
-
-            <div>
-              <label className="text-[#474747] font-medium text-sm mb-1.5 block">
-                Phone Number <span className="text-gray-400 font-normal">(Optional if email provided)</span>
-              </label>
-              <input
-                type="tel"
-                inputMode="tel"
-                value={formData.phoneNumber}
-                onChange={(e) => {
-                  // Only allow digits, spaces, dashes, parentheses, and + for international format
-                  const value = e.target.value.replace(/[^\d\s\-()+ ]/g, '');
-                  setFormData({ ...formData, phoneNumber: value });
-                }}
-                placeholder="+1 (555) 123-4567"
-                className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-[#474747] placeholder-gray-400 focus:outline-none focus:border-[#3EAFD2] focus:ring-1 focus:ring-[#3EAFD2] transition-colors"
-              />
-              <p className="text-xs text-gray-400 mt-1.5">Provide at least one: email or phone number</p>
             </div>
 
             <div>

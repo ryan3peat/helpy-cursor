@@ -585,6 +585,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
             }
           }}
           routing="hash"
+          signUpUrl={null}
         />
         
         {/* Custom Sign Up Button */}

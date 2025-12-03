@@ -353,7 +353,7 @@ const Dashboard: React.FC<DashboardProps> = ({
             </div>
           ) : (
             <div className="text-center py-2 flex flex-col items-center gap-2">
-              <p className="text-sm text-muted-foreground italic">No meals remaining for today</p>
+              <p className="text-sm text-muted-foreground">No meals remaining for today</p>
               <button className="text-sm font-bold text-primary flex items-center gap-1 hover:underline">
                 <Plus size={12} /> Plan Meal
               </button>

@@ -35,6 +35,9 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
   const checkOrCreateUser = async (clerkUser: any) => {
     setIsCreatingUser(true);
     
+    // Get email once at the start to avoid duplicate declarations
+    const clerkEmail = clerkUser.primaryEmailAddress?.emailAddress;
+    
     try {
       console.log('🔍 Checking for user:', clerkUser.id);
       
@@ -194,7 +197,6 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
       // STEP 3: Check if there's a pending user with matching email
       // This handles cases where invitation metadata wasn't passed through
       // ============================================================
-      const clerkEmail = clerkUser.primaryEmailAddress?.emailAddress;
       if (clerkEmail) {
         const { data: pendingUser, error: pendingError } = await supabase
           .from('users')
@@ -261,14 +263,12 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
 
       console.log('✅ Household created:', newHousehold);
 
-      const clerkEmail = clerkUser.primaryEmailAddress?.emailAddress || '';
-      
       const { data: createdUser, error: userError } = await supabase
         .from('users')
         .insert([{
           household_id: newHousehold.id,
           clerk_id: clerkUser.id,
-          email: clerkEmail,
+          email: clerkEmail || '',
           name: clerkUser.fullName || clerkUser.firstName || 'User',
           role: 'Admin',
           avatar: clerkUser.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${clerkUser.firstName || 'User'}`,

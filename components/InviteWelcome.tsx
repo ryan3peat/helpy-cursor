@@ -25,7 +25,7 @@ interface InviteInfo {
 
 const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onComplete }) => {
   const { signUp, setActive, isLoaded: signUpLoaded } = useSignUp();
-  const { redirectToSignIn, openSignUp, authenticateWithRedirect } = useClerk();
+  const { redirectToSignIn, openSignUp } = useClerk();
   const { user, isSignedIn, isLoaded: userLoaded } = useUser();
   
   // Get production URL - use environment variable or fallback to current origin
@@ -40,6 +40,12 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
       return prodUrl;
     }
     return 'https://helpyfam.com';
+  };
+
+  // Get Clerk domain for OAuth URLs
+  const getClerkDomain = () => {
+    // Use custom domain if available, otherwise use default
+    return 'accounts.helpyfam.com'; // Your custom Clerk domain
   };
   
   const [inviteInfo, setInviteInfo] = useState<InviteInfo | null>(null);
@@ -233,12 +239,14 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
     const prodUrl = getProductionUrl();
     const redirectUrl = `${prodUrl}?invite=true&hid=${householdId}&uid=${userId}`;
     
-    // Directly authenticate with Google OAuth, bypassing password form
-    authenticateWithRedirect({
-      strategy: 'oauth_google',
-      redirectUrl: redirectUrl,
-      redirectUrlComplete: redirectUrl,
-    });
+    // Construct Clerk OAuth URL directly
+    // Clerk's OAuth endpoint format: https://[domain]/v1/oauth/[provider]?redirect_url=[url]
+    const clerkDomain = getClerkDomain();
+    const encodedRedirect = encodeURIComponent(redirectUrl);
+    const oauthUrl = `https://${clerkDomain}/v1/oauth/google?redirect_url=${encodedRedirect}`;
+    
+    // Redirect directly to Google OAuth
+    window.location.href = oauthUrl;
   };
 
   // Handle sign in for existing users

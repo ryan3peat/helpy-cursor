@@ -516,8 +516,8 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
     return <SignUp onBackToSignIn={() => setShowSignUp(false)} />;
   }
 
-  // Loading state while creating user
-  if (isCreatingUser) {
+  // Loading state while creating user OR while user is authenticated but being processed
+  if (isCreatingUser || (isLoaded && user && !hasCheckedUser.current)) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#3EAFD2' }}>
         <div className="text-white text-center">
@@ -529,80 +529,95 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
     );
   }
 
-  return (
-    <div className="min-h-screen w-full flex flex-col items-center justify-center p-6" style={{ backgroundColor: '#3EAFD2' }}>
-      
-      {/* Single container for logo + auth to ensure alignment */}
-      <div className="w-full max-w-md">
-        {/* Logo Area */}
-        <div className="mb-8 text-center">
-          <h1 
-            className="text-5xl text-white mb-3"
-            style={{ fontFamily: "'Peanut Butter', 'Plus Jakarta Sans', Inter, -apple-system, BlinkMacSystemFont, sans-serif" }}
-          >
-            helpy
-          </h1>
-          <p className="text-white/90 text-sm font-medium">
-            "I just want you to know<br />I'm real grateful you're here"
-          </p>
-          <p className="text-white/70 text-xs mt-1 font-medium">
-            Aibileen Clark, The Help
-          </p>
-        </div>
-
-        {/* Clerk Auth Component */}
-        <div className="w-full">
-          <SignIn 
-          appearance={{
-            variables: {
-              colorPrimary: '#3EAFD2',
-              colorText: '#474747',
-              colorTextSecondary: '#757575',
-              colorInputBackground: '#FFFFFF',
-              colorInputText: '#474747',
-              colorBackground: '#FFFFFF',
-              fontFamily: '"Plus Jakarta Sans", Inter, -apple-system, BlinkMacSystemFont, sans-serif',
-              borderRadius: '0.75rem',
-              fontSize: '0.875rem',
-              spacingUnit: '0.9rem',
-            },
-            elements: {
-              rootBox: "w-full",
-              cardBox: "w-full shadow-lg rounded-2xl overflow-hidden",
-              card: "bg-white rounded-2xl border-0 shadow-none p-6",
-              headerTitle: "text-xl font-bold text-[#474747]",
-              headerSubtitle: "text-sm text-gray-500",
-              socialButtonsBlockButton: "border border-gray-200 hover:border-gray-300 transition-all rounded-xl font-medium py-3",
-              socialButtonsBlockButtonText: "font-medium text-sm",
-              formButtonPrimary: "!bg-[#3EAFD2] !bg-none !shadow-none rounded-xl font-semibold py-3 transition-all hover:opacity-90",
-              formFieldInput: "bg-white border border-gray-200 rounded-xl px-4 py-3 text-[#474747] placeholder-gray-400 focus:border-[#3EAFD2] focus:ring-1 focus:ring-[#3EAFD2]",
-              formFieldLabel: "font-medium text-sm text-[#474747] mb-1.5",
-              dividerLine: "bg-gray-200",
-              dividerText: "text-gray-400 text-sm",
-              identityPreviewEditButtonIcon: "text-[#3EAFD2]",
-              formFieldInputShowPasswordButton: "text-gray-400 hover:text-gray-600",
-              footer: "hidden"
-            }
-          }}
-          routing="hash"
-          signUpUrl={null}
-        />
+  // Only show SignIn component if user is not authenticated
+  // If user is authenticated, they're being processed by checkOrCreateUser
+  if (!isLoaded || !user) {
+    return (
+      <div className="min-h-screen w-full flex flex-col items-center justify-center p-6" style={{ backgroundColor: '#3EAFD2' }}>
         
-        {/* Custom Sign Up Button */}
-        <div className="mt-4 text-center">
-          <p className="text-sm text-white/80">
-            Don't have an account?{' '}
-            <button
-              onClick={() => setShowSignUp(true)}
-              className="font-bold text-white hover:underline"
+        {/* Single container for logo + auth to ensure alignment */}
+        <div className="w-full max-w-md">
+          {/* Logo Area */}
+          <div className="mb-8 text-center">
+            <h1 
+              className="text-5xl text-white mb-3"
+              style={{ fontFamily: "'Peanut Butter', 'Plus Jakarta Sans', Inter, -apple-system, BlinkMacSystemFont, sans-serif" }}
             >
-              Sign up
-            </button>
-          </p>
-        </div>
-        </div>
-      </div>
+              helpy
+            </h1>
+            <p className="text-white/90 text-sm font-medium">
+              "I just want you to know<br />I'm real grateful you're here"
+            </p>
+            <p className="text-white/70 text-xs mt-1 font-medium">
+              Aibileen Clark, The Help
+            </p>
+          </div>
 
+          {/* Clerk Auth Component */}
+          <div className="w-full">
+            <SignIn 
+            appearance={{
+              variables: {
+                colorPrimary: '#3EAFD2',
+                colorText: '#474747',
+                colorTextSecondary: '#757575',
+                colorInputBackground: '#FFFFFF',
+                colorInputText: '#474747',
+                colorBackground: '#FFFFFF',
+                fontFamily: '"Plus Jakarta Sans", Inter, -apple-system, BlinkMacSystemFont, sans-serif',
+                borderRadius: '0.75rem',
+                fontSize: '0.875rem',
+                spacingUnit: '0.9rem',
+              },
+              elements: {
+                rootBox: "w-full",
+                cardBox: "w-full shadow-lg rounded-2xl overflow-hidden",
+                card: "bg-white rounded-2xl border-0 shadow-none p-6",
+                headerTitle: "text-xl font-bold text-[#474747]",
+                headerSubtitle: "text-sm text-gray-500",
+                socialButtonsBlockButton: "border border-gray-200 hover:border-gray-300 transition-all rounded-xl font-medium py-3",
+                socialButtonsBlockButtonText: "font-medium text-sm",
+                formButtonPrimary: "!bg-[#3EAFD2] !bg-none !shadow-none rounded-xl font-semibold py-3 transition-all hover:opacity-90",
+                formFieldInput: "bg-white border border-gray-200 rounded-xl px-4 py-3 text-[#474747] placeholder-gray-400 focus:border-[#3EAFD2] focus:ring-1 focus:ring-[#3EAFD2]",
+                formFieldLabel: "font-medium text-sm text-[#474747] mb-1.5",
+                dividerLine: "bg-gray-200",
+                dividerText: "text-gray-400 text-sm",
+                identityPreviewEditButtonIcon: "text-[#3EAFD2]",
+                formFieldInputShowPasswordButton: "text-gray-400 hover:text-gray-600",
+                footer: "hidden"
+              }
+            }}
+            routing="hash"
+            signUpUrl={null}
+          />
+          
+          {/* Custom Sign Up Button */}
+          <div className="mt-4 text-center">
+            <p className="text-sm text-white/80">
+              Don't have an account?{' '}
+              <button
+                onClick={() => setShowSignUp(true)}
+                className="font-bold text-white hover:underline"
+              >
+                Sign up
+              </button>
+            </p>
+          </div>
+          </div>
+        </div>
+
+      </div>
+    );
+  }
+
+  // If user is authenticated but hasn't been processed yet, show loading
+  // This shouldn't happen normally, but serves as a fallback
+  return (
+    <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#3EAFD2' }}>
+      <div className="text-white text-center">
+        <div className="w-16 h-16 border-4 border-white/30 border-t-white rounded-full animate-spin mx-auto mb-4"></div>
+        <p className="text-lg font-bold">Completing setup...</p>
+      </div>
     </div>
   );
 };

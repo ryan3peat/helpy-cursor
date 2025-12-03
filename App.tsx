@@ -419,6 +419,21 @@ const App: React.FC = () => {
     );
   }
 
+  // CRITICAL: Show loading while Clerk is initializing (after OAuth redirect)
+  // Don't make routing decisions until Clerk has finished loading
+  if (!clerkLoaded) {
+    console.log('🟣 [App] Clerk not loaded yet, showing loading state');
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#3EAFD2' }}>
+        <div className="text-white text-center">
+          <div className="w-16 h-16 border-4 border-white/30 border-t-white rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-lg font-bold">Loading...</p>
+          <p className="text-sm text-white/60 mt-2">Initializing authentication</p>
+        </div>
+      </div>
+    );
+  }
+
   // Show InviteWelcome for unauthenticated users with invite params
   // Only show if Clerk user is not signed in (to avoid showing after OAuth redirect)
   if (inviteParams && !currentUser && clerkLoaded && !isSignedIn) {
@@ -433,6 +448,8 @@ const App: React.FC = () => {
   // If Clerk user is authenticated but currentUser not set yet, show Auth component
   // This handles the case after OAuth redirect where Clerk is authenticated but App state isn't updated
   if (!currentUser) {
+    console.log('🟠 [App] Rendering Auth component - no currentUser');
+    console.log('🟠 [App] Clerk state:', { clerkLoaded, isSignedIn, clerkUser: !!clerkUser });
     return (
       <>
         {showIntro && <IntroAnimation onComplete={() => setShowIntro(false)} />}

@@ -26,11 +26,20 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
   const hasCheckedUser = React.useRef(false);
 
   React.useEffect(() => {
+    console.log('🔵 [Auth] useEffect triggered:', { isLoaded, user: !!user, isCreatingUser, hasCheckedUser: hasCheckedUser.current });
     if (isLoaded && user && !isCreatingUser && !hasCheckedUser.current) {
+      console.log('✅ [Auth] Conditions met, calling checkOrCreateUser');
       hasCheckedUser.current = true;
       checkOrCreateUser(user);
+    } else {
+      console.log('⚠️ [Auth] Conditions not met:', {
+        isLoaded,
+        hasUser: !!user,
+        isCreatingUser,
+        hasCheckedUser: hasCheckedUser.current
+      });
     }
-  }, [isLoaded, user]);
+  }, [isLoaded, user, isCreatingUser]);
 
   const checkOrCreateUser = async (clerkUser: any) => {
     setIsCreatingUser(true);
@@ -562,6 +571,21 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
     return <SignUp onBackToSignIn={() => setShowSignUp(false)} />;
   }
 
+  // CRITICAL: Show loading while Clerk is initializing (after OAuth redirect)
+  // Don't render SignIn until we know if user is authenticated or not
+  if (!isLoaded) {
+    console.log('🟣 [Auth] Clerk not loaded yet, showing loading state');
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#3EAFD2' }}>
+        <div className="text-white text-center">
+          <div className="w-16 h-16 border-4 border-white/30 border-t-white rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-lg font-bold">Loading...</p>
+          <p className="text-sm text-white/60 mt-2">Checking authentication status</p>
+        </div>
+      </div>
+    );
+  }
+
   // Loading state while creating user OR while user is authenticated but being processed
   if (isCreatingUser || (isLoaded && user && !hasCheckedUser.current)) {
     return (
@@ -579,20 +603,25 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
   // This means the user was processed but onLogin wasn't called yet (or is being called)
   // Show loading to prevent showing SignIn component
   if (isLoaded && user && hasCheckedUser.current) {
+    console.log('🟡 [Auth] Rendering loading state - user authenticated, hasCheckedUser is true');
+    console.log('🟡 [Auth] State:', { isCreatingUser, hasCheckedUser: hasCheckedUser.current });
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#3EAFD2' }}>
         <div className="text-white text-center">
           <div className="w-16 h-16 border-4 border-white/30 border-t-white rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-lg font-bold">Completing setup...</p>
           <p className="text-sm text-white/60 mt-2">Please wait</p>
+          <p className="text-xs text-white/40 mt-4">Check browser console (F12) for details</p>
         </div>
       </div>
     );
   }
 
-  // Only show SignIn component if user is not authenticated
-  // If user is authenticated, they're being processed by checkOrCreateUser
-  if (!isLoaded || !user) {
+  // Only show SignIn component if Clerk is loaded AND user is not authenticated
+  // Now we know for sure that user is not authenticated (isLoaded is true, user is null)
+  if (!user) {
+    console.log('🔴 [Auth] Rendering SignIn component - Clerk loaded but no authenticated user');
+    console.log('🔴 [Auth] State:', { isLoaded, hasUser: !!user });
     return (
       <div className="min-h-screen w-full flex flex-col items-center justify-center p-6" style={{ backgroundColor: '#3EAFD2' }}>
         

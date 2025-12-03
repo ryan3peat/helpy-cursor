@@ -2,8 +2,8 @@
 // Pre-authentication welcome page for invite links
 // Shows before user signs up/signs in
 
-import React, { useState, useEffect } from 'react';
-import { useSignUp, useClerk, useUser } from '@clerk/clerk-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useSignUp, useClerk, useUser, SignUp } from '@clerk/clerk-react';
 import { Loader2, Mail, ArrowRight } from 'lucide-react';
 
 interface InviteWelcomeProps {
@@ -55,6 +55,8 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
   const [error, setError] = useState('');
   const [verificationStep, setVerificationStep] = useState<'email' | null>(null);
   const [code, setCode] = useState('');
+  const [showGoogleOAuth, setShowGoogleOAuth] = useState(false);
+  const signUpRef = useRef<HTMLDivElement>(null);
 
   const [formData, setFormData] = useState({
     firstName: '',
@@ -224,7 +226,7 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
     }
   };
 
-  // Handle Google signup - directly initiate Google OAuth
+  // Handle Google signup - show Clerk SignUp component with OAuth
   const handleGoogleSignUp = () => {
     // Check if user is already signed in
     if (userLoaded && isSignedIn) {
@@ -235,19 +237,31 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
       return;
     }
     
-    // Use production URL for Clerk redirect
-    const prodUrl = getProductionUrl();
-    const redirectUrl = `${prodUrl}?invite=true&hid=${householdId}&uid=${userId}`;
-    
-    // Construct Clerk OAuth URL directly
-    // Clerk's OAuth endpoint format: https://[domain]/v1/oauth/[provider]?redirect_url=[url]
-    const clerkDomain = getClerkDomain();
-    const encodedRedirect = encodeURIComponent(redirectUrl);
-    const oauthUrl = `https://${clerkDomain}/v1/oauth/google?redirect_url=${encodedRedirect}`;
-    
-    // Redirect directly to Google OAuth
-    window.location.href = oauthUrl;
+    // Show Clerk SignUp component which will have OAuth buttons
+    setShowGoogleOAuth(true);
   };
+
+  // Auto-click Google button when SignUp component is shown
+  useEffect(() => {
+    if (showGoogleOAuth && signUpRef.current) {
+      // Wait for Clerk's SignUp component to render
+      setTimeout(() => {
+        // Find the Google OAuth button in Clerk's SignUp component
+        const googleButton = signUpRef.current?.querySelector('button[data-provider="oauth_google"]') as HTMLButtonElement;
+        if (googleButton) {
+          googleButton.click();
+        } else {
+          // Fallback: try finding by text content
+          const buttons = signUpRef.current?.querySelectorAll('button');
+          buttons?.forEach(button => {
+            if (button.textContent?.toLowerCase().includes('google')) {
+              button.click();
+            }
+          });
+        }
+      }, 100);
+    }
+  }, [showGoogleOAuth]);
 
   // Handle sign in for existing users
   const handleSignIn = () => {
@@ -398,7 +412,41 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
               )}
             </div>
 
-            {!showSignUp ? (
+            {showGoogleOAuth ? (
+              <>
+                {/* Clerk SignUp Component for OAuth - auto-clicks Google button */}
+                <div className="mb-4">
+                  <button
+                    onClick={() => setShowGoogleOAuth(false)}
+                    className="flex items-center gap-2 text-gray-500 hover:text-[#3EAFD2] mb-4 transition-colors text-sm"
+                  >
+                    <ArrowRight size={16} className="rotate-180" />
+                    <span>Back</span>
+                  </button>
+                </div>
+                <div ref={signUpRef}>
+                  <SignUp
+                    routing="hash"
+                    redirectUrl={`${getProductionUrl()}?invite=true&hid=${householdId}&uid=${userId}`}
+                    fallbackRedirectUrl={`${getProductionUrl()}?invite=true&hid=${householdId}&uid=${userId}`}
+                    appearance={{
+                      elements: {
+                        rootBox: "w-full",
+                        cardBox: "w-full shadow-none rounded-2xl overflow-hidden",
+                        card: "bg-white rounded-2xl border-0 shadow-none p-0",
+                        socialButtonsBlockButton: "border border-gray-200 hover:border-gray-300 transition-all rounded-xl font-medium py-3",
+                        formButtonPrimary: "!bg-[#3EAFD2] !bg-none !shadow-none rounded-xl font-semibold py-3 transition-all hover:opacity-90",
+                        formField: "hidden", // Hide email/password form fields
+                        formFieldInput: "hidden",
+                        formFieldLabel: "hidden",
+                        dividerLine: "hidden",
+                        dividerText: "hidden",
+                      }
+                    }}
+                  />
+                </div>
+              </>
+            ) : !showSignUp ? (
               <>
                 {/* Sign Up Options */}
                 <div className="space-y-3">

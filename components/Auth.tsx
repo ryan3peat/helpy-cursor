@@ -4,6 +4,7 @@ import { SignIn, useUser } from '@clerk/clerk-react';
 import { supabase } from '../services/supabase';
 import { User } from '../types';
 import SignUp from './SignUp';
+import HouseholdSwitchModal from './HouseholdSwitchModal';
 
 interface AuthProps {
   onLogin: (user: User) => void;
@@ -13,6 +14,15 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
   const { user, isLoaded } = useUser();
   const [isCreatingUser, setIsCreatingUser] = React.useState(false);
   const [showSignUp, setShowSignUp] = useState(false);
+  const [showHouseholdSwitch, setShowHouseholdSwitch] = useState(false);
+  const [householdSwitchInfo, setHouseholdSwitchInfo] = useState<{
+    currentHouseholdName: string;
+    newHouseholdName: string;
+    adminName: string | null;
+    existingUserId: string;
+    newHouseholdId: string;
+    newUserId: string;
+  } | null>(null);
   const hasCheckedUser = React.useRef(false);
 
   React.useEffect(() => {
@@ -251,12 +261,14 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
 
       console.log('✅ Household created:', newHousehold);
 
+      const clerkEmail = clerkUser.primaryEmailAddress?.emailAddress || '';
+      
       const { data: createdUser, error: userError } = await supabase
         .from('users')
         .insert([{
           household_id: newHousehold.id,
           clerk_id: clerkUser.id,
-          email: clerkUser.primaryEmailAddress?.emailAddress || '',
+          email: clerkEmail,
           name: clerkUser.fullName || clerkUser.firstName || 'User',
           role: 'Admin',
           avatar: clerkUser.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${clerkUser.firstName || 'User'}`,
@@ -269,6 +281,62 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
 
       if (userError) {
         console.error('❌ User error:', userError);
+        
+        // Check if it's a duplicate email error (code 23505)
+        if (userError.code === '23505' && userError.message?.includes('email')) {
+          // Check if we're in an invite flow
+          const urlParams = new URLSearchParams(window.location.search);
+          const hashParams = new URLSearchParams(window.location.hash.split('?')[1] || '');
+          const isInvite = urlParams.get('invite') === 'true' || hashParams.get('invite') === 'true';
+          const hid = urlParams.get('hid') || hashParams.get('hid');
+          const uid = urlParams.get('uid') || hashParams.get('uid');
+          
+          if (isInvite && hid && uid && clerkEmail) {
+            // Find existing user with this email
+            const { data: existingUser } = await supabase
+              .from('users')
+              .select('id, household_id, email')
+              .eq('email', clerkEmail)
+              .maybeSingle();
+            
+            if (existingUser && existingUser.household_id !== hid) {
+              // User exists in different household - show switch modal
+              const { data: currentHousehold } = await supabase
+                .from('households')
+                .select('name')
+                .eq('id', existingUser.household_id)
+                .maybeSingle();
+              
+              const { data: newHouseholdData } = await supabase
+                .from('households')
+                .select('name')
+                .eq('id', hid)
+                .maybeSingle();
+              
+              // Get admin name for new household
+              const { data: adminUser } = await supabase
+                .from('users')
+                .select('name')
+                .eq('household_id', hid)
+                .eq('role', 'Admin')
+                .eq('status', 'active')
+                .maybeSingle();
+              
+              setHouseholdSwitchInfo({
+                currentHouseholdName: currentHousehold?.name || 'your current household',
+                newHouseholdName: newHouseholdData?.name || 'the new household',
+                adminName: adminUser?.name || null,
+                existingUserId: existingUser.id,
+                newHouseholdId: hid,
+                newUserId: uid
+              });
+              setShowHouseholdSwitch(true);
+              setIsCreatingUser(false);
+              return;
+            }
+          }
+        }
+        
         throw userError;
       }
 
@@ -295,6 +363,153 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
       setIsCreatingUser(false);
     }
   };
+
+  // Handle household switch - stay in current household
+  const handleStayInCurrentHousehold = async () => {
+    if (!householdSwitchInfo || !user) return;
+    
+    setShowHouseholdSwitch(false);
+    
+    // Find existing user and log them in
+    const { data: existingUser } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', householdSwitchInfo.existingUserId)
+      .maybeSingle();
+    
+    if (existingUser) {
+      // Update clerk_id if needed
+      if (!existingUser.clerk_id) {
+        await supabase
+          .from('users')
+          .update({ clerk_id: user.id })
+          .eq('id', existingUser.id);
+      }
+      
+      onLogin({
+        id: existingUser.clerk_id || existingUser.id,
+        householdId: existingUser.household_id,
+        email: existingUser.email,
+        name: existingUser.name,
+        role: existingUser.role,
+        avatar: existingUser.avatar,
+        allergies: existingUser.allergies || [],
+        preferences: existingUser.preferences || [],
+        status: existingUser.status || 'active'
+      });
+    } else {
+      // Clear URL and go to home
+      window.location.href = '/';
+    }
+  };
+
+  // Handle household switch - switch to new household
+  const handleSwitchToNewHousehold = async () => {
+    if (!householdSwitchInfo || !user) return;
+    
+    setShowHouseholdSwitch(false);
+    setIsCreatingUser(true);
+    
+    try {
+      // Check if pending user exists for the invite
+      const { data: pendingUser } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', householdSwitchInfo.newUserId)
+        .eq('household_id', householdSwitchInfo.newHouseholdId)
+        .eq('status', 'pending')
+        .maybeSingle();
+      
+      if (pendingUser) {
+        // Activate the pending user and link to Clerk account
+        const { data: activatedUser, error: activateError } = await supabase
+          .from('users')
+          .update({
+            status: 'active',
+            clerk_id: user.id,
+            email: user.primaryEmailAddress?.emailAddress || pendingUser.email,
+            invite_expires_at: null,
+            name: user.fullName || user.firstName || pendingUser.name,
+            avatar: user.imageUrl || pendingUser.avatar
+          })
+          .eq('id', householdSwitchInfo.newUserId)
+          .eq('household_id', householdSwitchInfo.newHouseholdId)
+          .select()
+          .single();
+        
+        if (!activateError && activatedUser) {
+          // Delete the old user record (user can only be in one household)
+          await supabase
+            .from('users')
+            .delete()
+            .eq('id', householdSwitchInfo.existingUserId);
+          
+          // Clear invite params
+          window.history.replaceState({}, '', window.location.pathname);
+          
+          onLogin({
+            id: activatedUser.clerk_id || activatedUser.id,
+            householdId: activatedUser.household_id,
+            email: activatedUser.email,
+            name: activatedUser.name,
+            role: activatedUser.role,
+            avatar: activatedUser.avatar,
+            allergies: activatedUser.allergies || [],
+            preferences: activatedUser.preferences || [],
+            status: 'active'
+          });
+          return;
+        }
+      }
+      
+      // If no pending user, update existing user to new household
+      const { data: updatedUser, error: updateError } = await supabase
+        .from('users')
+        .update({
+          household_id: householdSwitchInfo.newHouseholdId,
+          clerk_id: user.id
+        })
+        .eq('id', householdSwitchInfo.existingUserId)
+        .select()
+        .single();
+      
+      if (!updateError && updatedUser) {
+        // Clear invite params
+        window.history.replaceState({}, '', window.location.pathname);
+        
+        onLogin({
+          id: updatedUser.clerk_id || updatedUser.id,
+          householdId: updatedUser.household_id,
+          email: updatedUser.email,
+          name: updatedUser.name,
+          role: updatedUser.role,
+          avatar: updatedUser.avatar,
+          allergies: updatedUser.allergies || [],
+          preferences: updatedUser.preferences || [],
+          status: updatedUser.status || 'active'
+        });
+      } else {
+        throw updateError || new Error('Failed to switch household');
+      }
+    } catch (error: any) {
+      console.error('Failed to switch household:', error);
+      alert(`Failed to switch household: ${error.message || 'Unknown error'}`);
+      setIsCreatingUser(false);
+    }
+  };
+
+  // Show household switch modal
+  if (showHouseholdSwitch && householdSwitchInfo) {
+    return (
+      <HouseholdSwitchModal
+        currentHouseholdName={householdSwitchInfo.currentHouseholdName}
+        newHouseholdName={householdSwitchInfo.newHouseholdName}
+        adminName={householdSwitchInfo.adminName}
+        onStay={handleStayInCurrentHousehold}
+        onSwitch={handleSwitchToNewHousehold}
+      />
+    );
+  }
 
   // Show custom signup page
   if (showSignUp) {

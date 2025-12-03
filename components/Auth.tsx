@@ -29,53 +29,8 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
       console.log('🔍 Checking for user:', clerkUser.id);
       
       // ============================================================
-      // STEP 1: Check if this user came from a Clerk invitation
-      // (Kept for backwards compatibility)
-      // ============================================================
-      const metadata = clerkUser.publicMetadata as {
-        supabaseUserId?: string;
-        householdId?: string;
-        role?: string;
-      } | undefined;
-
-      if (metadata?.supabaseUserId && metadata?.householdId) {
-        console.log('📨 User came from Clerk invitation, activating pending user...');
-        console.log('📨 Metadata:', metadata);
-
-        const { data: activatedUser, error: activateError } = await supabase
-          .from('users')
-          .update({ 
-            status: 'active',
-            clerk_id: clerkUser.id,
-            invite_expires_at: null
-          })
-          .eq('id', metadata.supabaseUserId)
-          .eq('household_id', metadata.householdId)
-          .select()
-          .single();
-
-        if (activateError) {
-          console.error('❌ Failed to activate invited user:', activateError);
-        } else if (activatedUser) {
-          console.log('✅ Invited user activated:', activatedUser);
-          onLogin({
-            id: activatedUser.clerk_id || activatedUser.id,
-            householdId: activatedUser.household_id,
-            email: activatedUser.email,
-            name: activatedUser.name,
-            role: activatedUser.role,
-            avatar: activatedUser.avatar,
-            allergies: activatedUser.allergies || [],
-            preferences: activatedUser.preferences || [],
-            status: 'active'
-          });
-          return;
-        }
-      }
-
-      // ============================================================
-      // STEP 1.5: Check URL for invite parameters (SHAREABLE LINK FLOW)
-      // This handles the flow where admin shares a link without email
+      // STEP 1: PRIORITY - Check URL for invite parameters FIRST
+      // This must run before checking for existing users or creating new households
       // ============================================================
       const urlParams = new URLSearchParams(window.location.search);
       const hashParams = new URLSearchParams(window.location.hash.split('?')[1] || '');
@@ -86,7 +41,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
       const uid = urlParams.get('uid') || hashParams.get('uid');
 
       if (isInvite && hid && uid) {
-        console.log('🔗 Invite URL detected:', { hid, uid });
+        console.log('🔗 Invite URL detected (PRIORITY):', { hid, uid });
 
         const { data: pendingUser, error: pendingError } = await supabase
           .from('users')
@@ -147,6 +102,50 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
           console.log('⚠️ No pending user found for invite params, may already be activated');
           // Clear URL params and continue to regular flow
           window.history.replaceState({}, '', window.location.pathname);
+        }
+      }
+
+      // ============================================================
+      // STEP 2: Check if this user came from a Clerk invitation (backwards compatibility)
+      // ============================================================
+      const metadata = clerkUser.publicMetadata as {
+        supabaseUserId?: string;
+        householdId?: string;
+        role?: string;
+      } | undefined;
+
+      if (metadata?.supabaseUserId && metadata?.householdId) {
+        console.log('📨 User came from Clerk invitation, activating pending user...');
+        console.log('📨 Metadata:', metadata);
+
+        const { data: activatedUser, error: activateError } = await supabase
+          .from('users')
+          .update({ 
+            status: 'active',
+            clerk_id: clerkUser.id,
+            invite_expires_at: null
+          })
+          .eq('id', metadata.supabaseUserId)
+          .eq('household_id', metadata.householdId)
+          .select()
+          .single();
+
+        if (activateError) {
+          console.error('❌ Failed to activate invited user:', activateError);
+        } else if (activatedUser) {
+          console.log('✅ Invited user activated:', activatedUser);
+          onLogin({
+            id: activatedUser.clerk_id || activatedUser.id,
+            householdId: activatedUser.household_id,
+            email: activatedUser.email,
+            name: activatedUser.name,
+            role: activatedUser.role,
+            avatar: activatedUser.avatar,
+            allergies: activatedUser.allergies || [],
+            preferences: activatedUser.preferences || [],
+            status: 'active'
+          });
+          return;
         }
       }
 

@@ -106,14 +106,37 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
         await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
         setVerificationStep('email');
       } else if (signUp.status === 'complete') {
-        await setActive({ session: signUp.createdSessionId! });
-        // After setActive, Auth.tsx will detect invite params and complete the flow
-        // The page will reload and Auth.tsx will handle invite completion
+        // Preserve invite params in URL before setActive
+        const inviteUrl = `${window.location.origin}${window.location.pathname}?invite=true&hid=${householdId}&uid=${userId}`;
+        window.history.replaceState({}, '', `${window.location.pathname}?invite=true&hid=${householdId}&uid=${userId}`);
+        
+        try {
+          await setActive({ session: signUp.createdSessionId! });
+          
+          // After setActive completes, redirect to ensure Auth.tsx picks up the invite params
+          // Small delay to ensure setActive has fully processed
+          setTimeout(() => {
+            window.location.href = inviteUrl;
+          }, 500);
+        } catch (setActiveError: any) {
+          console.error('setActive error:', setActiveError);
+          // If setActive fails, still redirect - Auth.tsx will handle it
+          window.location.href = inviteUrl;
+        }
       } else {
         setError('Account creation completed but requires additional setup. Please try signing in.');
       }
     } catch (err: any) {
-      setError(err.errors?.[0]?.longMessage || err.message || 'Sign up failed');
+      const errorMessage = err.errors?.[0]?.longMessage || err.message || 'Sign up failed';
+      
+      // If user already exists, redirect to sign in with invite params
+      if (errorMessage.toLowerCase().includes('already') || errorMessage.toLowerCase().includes('taken')) {
+        const signInUrl = `${window.location.origin}${window.location.pathname}?invite=true&hid=${householdId}&uid=${userId}`;
+        redirectToSignIn({ redirectUrl: signInUrl });
+        return;
+      }
+      
+      setError(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -133,9 +156,23 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
       });
 
       if (result.status === 'complete') {
-        await setActive({ session: result.createdSessionId });
-        // After setActive, Auth.tsx will detect invite params and complete the flow
-        // The page will reload and Auth.tsx will handle invite completion
+        // Preserve invite params in URL before setActive
+        const inviteUrl = `${window.location.origin}${window.location.pathname}?invite=true&hid=${householdId}&uid=${userId}`;
+        window.history.replaceState({}, '', `${window.location.pathname}?invite=true&hid=${householdId}&uid=${userId}`);
+        
+        try {
+          await setActive({ session: result.createdSessionId });
+          
+          // After setActive completes, redirect to ensure Auth.tsx picks up the invite params
+          // Small delay to ensure setActive has fully processed
+          setTimeout(() => {
+            window.location.href = inviteUrl;
+          }, 500);
+        } catch (setActiveError: any) {
+          console.error('setActive error:', setActiveError);
+          // If setActive fails, still redirect - Auth.tsx will handle it
+          window.location.href = inviteUrl;
+        }
       } else {
         setError('Verification failed. Please try again.');
       }

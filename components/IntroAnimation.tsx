@@ -97,17 +97,15 @@ const IntroAnimation: React.FC<IntroAnimationProps> = ({ onComplete }) => {
       </div>
 
       {/* Helpy Logo */}
-      <motion.div
-        className="text-6xl sm:text-7xl lg:text-8xl select-none z-10"
+      <motion.img
+        src="/helpy-logo.PNG"
+        alt="helpy"
+        className="h-16 sm:h-20 lg:h-24 select-none z-10"
         initial={{ scale: 0.5 }}
         animate={{ 
           scale: isBurping 
             ? currentScale * 1.06 // gentle burp
             : currentScale, // smooth growth
-        }}
-        style={{ 
-          fontFamily: '"Peanut Butter", cursive',
-          color: '#ffffff',
         }}
         transition={{ 
           scale: { 
@@ -116,9 +114,8 @@ const IntroAnimation: React.FC<IntroAnimationProps> = ({ onComplete }) => {
             damping: 15,
           },
         }}
-      >
-        helpy
-      </motion.div>
+        draggable={false}
+      />
     </motion.div>
   );
 };

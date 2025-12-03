@@ -1248,7 +1248,7 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
 }) => {
   return (
     <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
-      <div className="bg-card w-full max-w-lg rounded-t-2xl shadow-2xl overflow-hidden bottom-sheet-content relative">
+      <div className="bg-card w-full max-w-lg rounded-t-2xl shadow-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ maxHeight: '80vh', marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
         {/* Close Button */}
         <button 
           onClick={onClose} 
@@ -1259,7 +1259,7 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
         </button>
 
         {/* Header */}
-        <div className="pt-6 pb-4 px-5 border-b border-border">
+        <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
           {/* Drag Handle */}
           <div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto mb-4" />
           <h2 className="text-title text-foreground text-center">
@@ -1268,7 +1268,7 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
         </div>
 
         {/* Form */}
-        <div className="p-5 space-y-4 max-h-[75vh] overflow-y-auto">
+        <div className="p-5 space-y-4 flex-1 overflow-y-auto">
               {/* Category */}
               <div>
             <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
@@ -1369,18 +1369,18 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
             <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
               Note
             </label>
-            <textarea
+            <input
+              type="text"
               value={form.note}
               onChange={(e) => setForm({ ...form, note: e.target.value })}
               placeholder="Any additional details..."
-              rows={3}
-              className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-foreground outline-none transition-all resize-none text-body"
+              className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-foreground outline-none transition-all text-body"
             />
           </div>
         </div>
 
         {/* Footer */}
-        <div className="p-5 pb-20 border-t border-border flex gap-3">
+        <div className="p-5 pb-8 border-t border-border flex gap-3 shrink-0">
           {isEditing && (
             <button
               onClick={onDelete}
@@ -1425,7 +1425,7 @@ const TrainingModal: React.FC<TrainingModalProps> = ({
 }) => {
   return (
     <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
-      <div className="bg-card w-full max-w-lg rounded-t-2xl shadow-2xl overflow-hidden bottom-sheet-content relative">
+      <div className="bg-card w-full max-w-lg rounded-t-2xl shadow-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ maxHeight: '80vh', marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
         {/* Close Button */}
         <button 
           onClick={onClose} 
@@ -1580,7 +1580,7 @@ const TrainingViewModal: React.FC<TrainingViewModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
-      <div className="bg-card w-full max-w-lg rounded-t-2xl shadow-2xl overflow-hidden bottom-sheet-content relative">
+      <div className="bg-card w-full max-w-lg rounded-t-2xl shadow-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ maxHeight: '80vh', marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
         {/* Close Button */}
         <button 
           onClick={onClose} 
@@ -1591,7 +1591,7 @@ const TrainingViewModal: React.FC<TrainingViewModalProps> = ({
         </button>
 
         {/* Header */}
-        <div className="pt-6 pb-4 px-5 border-b border-border">
+        <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
           {/* Drag Handle */}
           <div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto mb-4" />
           <span
@@ -1613,7 +1613,7 @@ const TrainingViewModal: React.FC<TrainingViewModalProps> = ({
         </div>
 
         {/* Content */}
-        <div className="p-5 max-h-[65vh] overflow-y-auto">
+        <div className="p-5 flex-1 overflow-y-auto">
           <div className="prose prose-slate prose-sm">
             {module.content ? (
               <div className="whitespace-pre-wrap text-body text-foreground">

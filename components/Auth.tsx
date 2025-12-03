@@ -529,6 +529,21 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
     );
   }
 
+  // If user is authenticated but checkOrCreateUser has completed (hasCheckedUser.current is true)
+  // This means the user was processed but onLogin wasn't called yet (or is being called)
+  // Show loading to prevent showing SignIn component
+  if (isLoaded && user && hasCheckedUser.current) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#3EAFD2' }}>
+        <div className="text-white text-center">
+          <div className="w-16 h-16 border-4 border-white/30 border-t-white rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-lg font-bold">Completing setup...</p>
+          <p className="text-sm text-white/60 mt-2">Please wait</p>
+        </div>
+      </div>
+    );
+  }
+
   // Only show SignIn component if user is not authenticated
   // If user is authenticated, they're being processed by checkOrCreateUser
   if (!isLoaded || !user) {
@@ -610,13 +625,12 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
     );
   }
 
-  // If user is authenticated but hasn't been processed yet, show loading
-  // This shouldn't happen normally, but serves as a fallback
+  // Fallback - should never reach here
   return (
     <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#3EAFD2' }}>
       <div className="text-white text-center">
         <div className="w-16 h-16 border-4 border-white/30 border-t-white rounded-full animate-spin mx-auto mb-4"></div>
-        <p className="text-lg font-bold">Completing setup...</p>
+        <p className="text-lg font-bold">Loading...</p>
       </div>
     </div>
   );

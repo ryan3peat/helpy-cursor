@@ -331,7 +331,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-start">
-                          <span className="text-sm font-bold text-muted-foreground mb-0.5 block">
+                          <span className="text-sm text-muted-foreground mb-0.5 block">
                             {t[`meal.type.${meal.type.toLowerCase()}`] ?? meal.type}
                           </span>
                           {renderAudienceIcons(meal.forUserIds)}

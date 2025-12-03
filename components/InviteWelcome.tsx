@@ -264,8 +264,8 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
     }
   }, [showGoogleOAuth]);
 
-  // Handle sign in for existing users - use direct OAuth for Google
-  const handleSignIn = async () => {
+  // Handle Google sign-in - always goes directly to Google OAuth
+  const handleGoogleSignIn = async () => {
     // Check if user is already signed in
     if (userLoaded && isSignedIn) {
       // User is already signed in, redirect to complete invite
@@ -279,23 +279,42 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
     const prodUrl = getProductionUrl();
     const redirectUrl = `${prodUrl}?invite=true&hid=${householdId}&uid=${userId}`;
     
-    // For Google OAuth, use direct authentication to avoid form validation issues
-    // For email/password, fall back to redirectToSignIn
-    if (signIn && signInLoaded) {
-      try {
-        await signIn.authenticateWithRedirect({
-          strategy: 'oauth_google',
-          redirectUrl: redirectUrl,
-          redirectUrlComplete: redirectUrl,
-        });
-        return;
-      } catch (error: any) {
-        console.error('Google OAuth sign-in error:', error);
-        // Fall through to regular sign-in
-      }
+    // Wait for signIn to be loaded before attempting OAuth
+    if (!signInLoaded || !signIn) {
+      // Retry after a short delay if signIn isn't ready
+      setTimeout(() => handleGoogleSignIn(), 100);
+      return;
     }
     
-    // Fallback to regular sign-in (for email/password)
+    try {
+      // Always use direct OAuth authentication - no fallback
+      await signIn.authenticateWithRedirect({
+        strategy: 'oauth_google',
+        redirectUrl: redirectUrl,
+        redirectUrlComplete: redirectUrl,
+      });
+    } catch (error: any) {
+      console.error('Google OAuth sign-in error:', error);
+      setError('Failed to initiate Google sign-in. Please try again.');
+    }
+  };
+
+  // Handle email/password sign-in - uses Clerk's SignIn component
+  const handleEmailSignIn = () => {
+    // Check if user is already signed in
+    if (userLoaded && isSignedIn) {
+      // User is already signed in, redirect to complete invite
+      const prodUrl = getProductionUrl();
+      const inviteUrl = `${prodUrl}?invite=true&hid=${householdId}&uid=${userId}`;
+      window.location.href = inviteUrl;
+      return;
+    }
+    
+    // Use production URL for Clerk redirect
+    const prodUrl = getProductionUrl();
+    const redirectUrl = `${prodUrl}?invite=true&hid=${householdId}&uid=${userId}`;
+    
+    // Use Clerk's SignIn component for email/password authentication
     redirectToSignIn({
       redirectUrl: redirectUrl,
     });
@@ -501,17 +520,31 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
                   </button>
                 </div>
 
-                {/* Sign In Option */}
+                {/* Sign In Options */}
                 <div className="mt-6 pt-6 border-t border-gray-200">
                   <p className="text-center text-sm text-gray-500 mb-3">
                     Already have an account?
                   </p>
-                  <button
-                    onClick={handleSignIn}
-                    className="w-full text-[#3EAFD2] font-semibold hover:underline"
-                  >
-                    Sign In
-                  </button>
+                  <div className="space-y-3">
+                    <button
+                      onClick={handleGoogleSignIn}
+                      className="w-full border-2 border-gray-200 hover:border-gray-300 rounded-xl font-semibold py-3 transition-all text-gray-700 flex items-center justify-center gap-2"
+                    >
+                      <svg className="w-5 h-5" viewBox="0 0 24 24">
+                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                      </svg>
+                      Sign In with Google
+                    </button>
+                    <button
+                      onClick={handleEmailSignIn}
+                      className="w-full text-[#3EAFD2] font-semibold hover:underline"
+                    >
+                      Sign In with Email
+                    </button>
+                  </div>
                 </div>
               </>
             ) : (

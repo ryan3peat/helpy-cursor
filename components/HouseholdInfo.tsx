@@ -131,6 +131,11 @@ const ROLE_STYLES: Record<UserRole, { bg: string; color: string; gradient: strin
     color: '#D97706',
     gradient: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)'
   },
+  [UserRole.OTHER]: { 
+    bg: '#FCE4EC', 
+    color: '#F06292',
+    gradient: 'linear-gradient(135deg, #F48FB1 0%, #F06292 100%)'
+  },
 };
 
 // ─────────────────────────────────────────────────────────────────

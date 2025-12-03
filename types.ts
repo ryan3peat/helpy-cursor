@@ -4,7 +4,8 @@ export enum UserRole {
   MASTER = 'Admin',
   SPOUSE = 'Spouse',
   HELPER = 'Helper',
-  CHILD = 'Child'
+  CHILD = 'Child',
+  OTHER = 'Other'
 }
 
 export interface User {

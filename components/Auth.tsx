@@ -39,7 +39,11 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
     const clerkEmail = clerkUser.primaryEmailAddress?.emailAddress;
     
     try {
-      console.log('🔍 Checking for user:', clerkUser.id);
+      console.log('🔍 [Auth] checkOrCreateUser started for Clerk user:', clerkUser.id);
+      console.log('🔍 [Auth] Clerk email:', clerkEmail);
+      console.log('🔍 [Auth] Full URL:', window.location.href);
+      console.log('🔍 [Auth] Search params:', window.location.search);
+      console.log('🔍 [Auth] Hash:', window.location.hash);
       
       // ============================================================
       // STEP 1: PRIORITY - Check URL for invite parameters FIRST
@@ -48,10 +52,19 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
       const urlParams = new URLSearchParams(window.location.search);
       const hashParams = new URLSearchParams(window.location.hash.split('?')[1] || '');
       
+      // Also check the full URL as fallback (Clerk might put params in different places)
+      const fullUrl = window.location.href;
+      const urlMatch = fullUrl.match(/[?&]invite=true[&]?/);
+      const hidMatch = fullUrl.match(/[?&]hid=([^&]+)/);
+      const uidMatch = fullUrl.match(/[?&]uid=([^&]+)/);
+      
       // Check both query params and hash params (Clerk uses hash routing)
-      const isInvite = urlParams.get('invite') === 'true' || hashParams.get('invite') === 'true';
-      const hid = urlParams.get('hid') || hashParams.get('hid');
-      const uid = urlParams.get('uid') || hashParams.get('uid');
+      const isInvite = urlParams.get('invite') === 'true' || hashParams.get('invite') === 'true' || urlMatch !== null;
+      const hid = urlParams.get('hid') || hashParams.get('hid') || (hidMatch ? decodeURIComponent(hidMatch[1]) : null);
+      const uid = urlParams.get('uid') || hashParams.get('uid') || (uidMatch ? decodeURIComponent(uidMatch[1]) : null);
+      
+      console.log('🔍 [Auth] Invite params check:', { isInvite, hid, uid });
+      console.log('🔍 [Auth] URL params:', { urlParams: Object.fromEntries(urlParams), hashParams: Object.fromEntries(hashParams) });
 
       if (isInvite && hid && uid) {
         console.log('🔗 Invite URL detected (PRIORITY):', { hid, uid });
@@ -90,11 +103,18 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
               .single();
 
             if (!activateError && activatedUser) {
-              console.log('✅ Invited user activated via URL:', activatedUser);
+              console.log('✅ [Auth] Invited user activated via URL:', activatedUser);
+              console.log('✅ [Auth] Calling onLogin() with user:', {
+                id: activatedUser.clerk_id || activatedUser.id,
+                householdId: activatedUser.household_id,
+                email: activatedUser.email,
+                name: activatedUser.name
+              });
               
               // Clear the invite params from URL
               window.history.replaceState({}, '', window.location.pathname);
               
+              // Call onLogin and then reset state
               onLogin({
                 id: activatedUser.clerk_id || activatedUser.id,
                 householdId: activatedUser.household_id,
@@ -106,13 +126,21 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                 preferences: activatedUser.preferences || [],
                 status: 'active'
               });
+              
+              // Reset state after successful login
+              setIsCreatingUser(false);
+              console.log('✅ [Auth] onLogin() called successfully, resetting isCreatingUser');
               return;
             } else {
-              console.error('❌ Failed to activate via URL:', activateError);
+              console.error('❌ [Auth] Failed to activate via URL:', activateError);
+              console.error('❌ [Auth] activateError details:', activateError);
+              console.error('❌ [Auth] activatedUser:', activatedUser);
             }
           }
         } else {
-          console.log('⚠️ No pending user found for invite params, may already be activated');
+          console.log('⚠️ [Auth] No pending user found for invite params, may already be activated');
+          console.log('⚠️ [Auth] pendingError:', pendingError);
+          console.log('⚠️ [Auth] pendingUser:', pendingUser);
           // Clear URL params and continue to regular flow
           window.history.replaceState({}, '', window.location.pathname);
         }
@@ -146,7 +174,8 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
         if (activateError) {
           console.error('❌ Failed to activate invited user:', activateError);
         } else if (activatedUser) {
-          console.log('✅ Invited user activated:', activatedUser);
+          console.log('✅ [Auth] Invited user activated via metadata:', activatedUser);
+          console.log('✅ [Auth] Calling onLogin() with user');
           onLogin({
             id: activatedUser.clerk_id || activatedUser.id,
             householdId: activatedUser.household_id,
@@ -158,6 +187,8 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
             preferences: activatedUser.preferences || [],
             status: 'active'
           });
+          setIsCreatingUser(false);
+          console.log('✅ [Auth] onLogin() called successfully, resetting isCreatingUser');
           return;
         }
       }
@@ -178,7 +209,8 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
       }
 
       if (existingUser) {
-        console.log('✅ User exists, logging in');
+        console.log('✅ [Auth] User exists, logging in:', existingUser);
+        console.log('✅ [Auth] Calling onLogin() with existing user');
         onLogin({
           id: existingUser.clerk_id,
           householdId: existingUser.household_id,
@@ -190,6 +222,8 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
           preferences: existingUser.preferences || [],
           status: existingUser.status || 'active'
         });
+        setIsCreatingUser(false);
+        console.log('✅ [Auth] onLogin() called successfully, resetting isCreatingUser');
         return;
       }
 
@@ -227,7 +261,8 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
               .single();
 
             if (!activateError && activatedUser) {
-              console.log('✅ Pending user activated by email:', activatedUser);
+              console.log('✅ [Auth] Pending user activated by email:', activatedUser);
+              console.log('✅ [Auth] Calling onLogin() with activated user');
               onLogin({
                 id: activatedUser.clerk_id,
                 householdId: activatedUser.household_id,
@@ -239,6 +274,8 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                 preferences: activatedUser.preferences || [],
                 status: 'active'
               });
+              setIsCreatingUser(false);
+              console.log('✅ [Auth] onLogin() called successfully, resetting isCreatingUser');
               return;
             }
           }
@@ -340,7 +377,8 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
         throw userError;
       }
 
-      console.log('✅ User created:', createdUser);
+      console.log('✅ [Auth] User created:', createdUser);
+      console.log('✅ [Auth] Calling onLogin() with new user');
 
       // Login
       onLogin({
@@ -354,6 +392,8 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
         preferences: createdUser.preferences || [],
         status: 'active'
       });
+      setIsCreatingUser(false);
+      console.log('✅ [Auth] onLogin() called successfully, resetting isCreatingUser');
     } catch (error: any) {
       console.error('❌ Failed to create user:', error);
       alert(`Account setup failed: ${error.message || 'Unknown error'}\n\nPlease try signing up again.`);
@@ -386,6 +426,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
           .eq('id', existingUser.id);
       }
       
+      console.log('✅ [Auth] Calling onLogin() from handleStayInCurrentHousehold');
       onLogin({
         id: existingUser.clerk_id || existingUser.id,
         householdId: existingUser.household_id,
@@ -397,6 +438,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
         preferences: existingUser.preferences || [],
         status: existingUser.status || 'active'
       });
+      setIsCreatingUser(false);
     } else {
       // Clear URL and go to home
       window.location.href = '/';
@@ -447,6 +489,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
           // Clear invite params
           window.history.replaceState({}, '', window.location.pathname);
           
+          console.log('✅ [Auth] Calling onLogin() from handleSwitchToNewHousehold (activated user)');
           onLogin({
             id: activatedUser.clerk_id || activatedUser.id,
             householdId: activatedUser.household_id,
@@ -458,6 +501,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
             preferences: activatedUser.preferences || [],
             status: 'active'
           });
+          setIsCreatingUser(false);
           return;
         }
       }
@@ -477,6 +521,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
         // Clear invite params
         window.history.replaceState({}, '', window.location.pathname);
         
+        console.log('✅ [Auth] Calling onLogin() from handleSwitchToNewHousehold (updated user)');
         onLogin({
           id: updatedUser.clerk_id || updatedUser.id,
           householdId: updatedUser.household_id,
@@ -488,6 +533,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
           preferences: updatedUser.preferences || [],
           status: updatedUser.status || 'active'
         });
+        setIsCreatingUser(false);
       } else {
         throw updateError || new Error('Failed to switch household');
       }

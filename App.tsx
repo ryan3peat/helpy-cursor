@@ -68,7 +68,12 @@ const App: React.FC = () => {
   }, []);
 
   const handleLogin = useCallback((user: User) => {
+    console.log('🔵 [App] handleLogin called with user:', user);
+    console.log('🔵 [App] loginProcessedRef.current:', loginProcessedRef.current);
+    console.log('🔵 [App] currentUser before update:', currentUser);
+    
     if (loginProcessedRef.current) {
+      console.log('⚠️ [App] handleLogin blocked by loginProcessedRef');
       return;
     }
     loginProcessedRef.current = true;
@@ -79,10 +84,12 @@ const App: React.FC = () => {
     localStorage.setItem('helpy_current_session_user', JSON.stringify(user));
     setShowIntro(false);
     setActiveView('dashboard');
+    console.log('✅ [App] handleLogin completed, currentUser should be set');
     setTimeout(() => {
       loginProcessedRef.current = false;
+      console.log('✅ [App] loginProcessedRef reset');
     }, 1000);
-  }, []);
+  }, [currentUser]);
 
   const handleLogout = useCallback(async () => {
     try {

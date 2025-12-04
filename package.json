@@ -19,6 +19,7 @@
     "class-variance-authority": "^0.7.1",
     "framer-motion": "^12.23.25",
     "lucide-react": "^0.554.0",
+    "micro": "^10.0.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "recharts": "^3.4.1",

@@ -9,6 +9,7 @@ import { User, UserRole, BaseViewProps } from '../types';
 import { createInvite } from '../services/inviteService';
 import { createCheckoutSession, createPortalSession } from '../services/stripeService';
 import { supabase } from '../services/supabase';
+import { deleteItem } from '../services/supabaseService';
 
 interface ProfileProps extends BaseViewProps {
   users: User[];
@@ -60,6 +61,9 @@ const Profile: React.FC<ProfileProps> = ({
     period?: string;
   } | null>(null);
   const [isLoadingSubscription, setIsLoadingSubscription] = useState(false);
+  const [isDeleteAccountModalOpen, setIsDeleteAccountModalOpen] = useState(false);
+  const [isFinalDeleteConfirmOpen, setIsFinalDeleteConfirmOpen] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 
   // Fetch subscription info
   React.useEffect(() => {
@@ -93,7 +97,7 @@ const Profile: React.FC<ProfileProps> = ({
       }
     };
 
-    if (activeSection === 'plan') {
+    if (activeSection === 'plan' || activeSection === 'security') {
       fetchSubscriptionInfo();
     }
   }, [currentUser?.householdId, activeSection]);
@@ -909,6 +913,77 @@ const Profile: React.FC<ProfileProps> = ({
     }
   };
 
+  // Handle Delete Account
+  const handleDeleteAccountClick = () => {
+    setIsDeleteAccountModalOpen(true);
+  };
+
+  const handleFirstDeleteConfirm = () => {
+    setIsDeleteAccountModalOpen(false);
+    setIsFinalDeleteConfirmOpen(true);
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!currentUser?.householdId || !clerkUser) {
+      alert('Unable to delete account. Please try again.');
+      return;
+    }
+
+    setIsDeletingAccount(true);
+
+    try {
+      // Get all users in the household except the master user
+      const familyMembers = users.filter(user => user.id !== currentUser.id);
+
+      // Delete each family member
+      for (const member of familyMembers) {
+        try {
+          await deleteItem(currentUser.householdId, 'users', member.id);
+        } catch (error) {
+          console.error(`Error deleting family member ${member.id}:`, error);
+          // Continue with deletion even if one fails
+        }
+      }
+
+      // Delete the master user from Supabase
+      try {
+        await deleteItem(currentUser.householdId, 'users', currentUser.id);
+      } catch (error) {
+        console.error('Error deleting master user:', error);
+        throw error;
+      }
+
+      // Delete the household record
+      const { error: householdError } = await supabase
+        .from('households')
+        .delete()
+        .eq('id', currentUser.householdId);
+
+      if (householdError) {
+        console.error('Error deleting household:', householdError);
+        throw householdError;
+      }
+
+      // Delete the Clerk account
+      try {
+        await clerkUser.delete();
+      } catch (error) {
+        console.error('Error deleting Clerk account:', error);
+        // Even if Clerk deletion fails, we've deleted everything else
+        // So we should still sign out
+      }
+
+      // Sign out the user
+      setIsFinalDeleteConfirmOpen(false);
+      onLogout();
+    } catch (error) {
+      console.error('Error deleting account:', error);
+      alert('Failed to delete account. Please try again or contact support.');
+      setIsDeletingAccount(false);
+      setIsFinalDeleteConfirmOpen(false);
+    }
+  };
+
   const getNextPaymentDate = (periodEnd?: string, period?: string) => {
     if (!periodEnd) return null;
     try {
@@ -1304,7 +1379,7 @@ const Profile: React.FC<ProfileProps> = ({
           </div>
         </div>
 
-        <div className="mt-6 pt-4">
+        <div className="mt-6 pt-4 space-y-4">
           <button 
             onClick={() => {
               // Save account data
@@ -1329,7 +1404,86 @@ const Profile: React.FC<ProfileProps> = ({
           >
             Save Changes
           </button>
+
+          {/* Delete Account Button - Only for Master Users */}
+          {currentUser.role === UserRole.MASTER && (
+            <button
+              onClick={handleDeleteAccountClick}
+              className="w-full bg-red-50 text-red-600 py-4 rounded-xl font-bold shadow-sm hover:bg-red-100 transition-colors border border-red-200"
+            >
+              Delete Account
+            </button>
+          )}
         </div>
+
+        {/* First Delete Confirmation Modal */}
+        {isDeleteAccountModalOpen && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-fade-in">
+            <div className="bg-white rounded-3xl w-full max-w-md p-6 animate-slide-up shadow-2xl">
+              <div className="mb-6">
+                <h3 className="text-xl font-bold text-gray-800 mb-2">Delete Account</h3>
+                <p className="text-sm text-gray-600">
+                  Are you sure you want to delete your account? This change will be permanent.
+                </p>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setIsDeleteAccountModalOpen(false)}
+                  className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-200 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleFirstDeleteConfirm}
+                  className="flex-1 bg-red-50 text-red-600 py-3 rounded-xl font-bold hover:bg-red-100 transition-colors"
+                >
+                  Continue
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Final Delete Confirmation Modal */}
+        {isFinalDeleteConfirmOpen && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-fade-in">
+            <div className="bg-white rounded-3xl w-full max-w-md p-6 animate-slide-up shadow-2xl">
+              <div className="mb-6">
+                <h3 className="text-xl font-bold text-gray-800 mb-2">Delete Account</h3>
+                {subscriptionInfo?.status === 'active' && subscriptionInfo?.periodEnd && (
+                  <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
+                    <p className="text-sm text-yellow-800 font-semibold mb-1">Subscription Information</p>
+                    <p className="text-sm text-yellow-700">
+                      Your subscription is active until {formatDate(subscriptionInfo.periodEnd)}
+                    </p>
+                  </div>
+                )}
+                <p className="text-sm text-gray-600">
+                  Are you sure you want to delete? After deletion it will be immediate.
+                </p>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setIsFinalDeleteConfirmOpen(false);
+                    setIsDeletingAccount(false);
+                  }}
+                  disabled={isDeletingAccount}
+                  className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteAccount}
+                  disabled={isDeletingAccount}
+                  className="flex-1 bg-red-600 text-white py-3 rounded-xl font-bold hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isDeletingAccount ? 'Deleting...' : 'Delete Account'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }

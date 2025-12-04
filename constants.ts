@@ -226,6 +226,7 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'nav.meals': 'Meals',
   'nav.cost': 'Expenses',
   'nav.info': 'Info',
+  'nav.profile': 'Profile',
   
   // Common
   'common.save': 'Save',

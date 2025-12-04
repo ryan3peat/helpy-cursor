@@ -1,6 +1,16 @@
 <!DOCTYPE html>
 <html lang="en" class="light">
   <head>
+    <!-- Restore theme before render to prevent flash -->
+    <script>
+      (function() {
+        var saved = localStorage.getItem('helpy_theme');
+        if (saved === 'dark') {
+          document.documentElement.classList.remove('light');
+          document.documentElement.classList.add('dark');
+        }
+      })();
+    </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="color-scheme" content="light dark" />

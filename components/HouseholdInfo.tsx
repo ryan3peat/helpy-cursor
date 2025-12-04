@@ -29,6 +29,7 @@ import {
   Heart,
   AlertTriangle,
   Utensils,
+  Info,
 } from "lucide-react";
 import { BaseViewProps, User, UserRole } from "@/types";
 import { useTranslatedContent } from "@/hooks/useTranslatedContent";
@@ -41,11 +42,8 @@ import type {
   EssentialInfoCategory,
 } from "@src/types/essentialInfo";
 import { COUNTRY_CODES, CATEGORY_CONFIG } from "@src/types/essentialInfo";
-import {
-  createEssentialInfo,
-  updateEssentialInfo,
-  deleteEssentialInfo,
-} from "@/services/essentialInfoService";
+// Keep updateEssentialInfo for translation updates in card components
+import { updateEssentialInfo } from "@/services/essentialInfoService";
 
 // Training Types & Services
 import type {
@@ -57,12 +55,8 @@ import {
   TRAINING_CATEGORIES,
   TRAINING_CATEGORY_CONFIG,
 } from "@src/types/training";
-import {
-  createTrainingModule,
-  updateTrainingModule,
-  deleteTrainingModule,
-  completeTrainingModule,
-} from "@/services/trainingService";
+// Keep updateTrainingModule and completeTrainingModule for translation updates and completion
+import { updateTrainingModule, completeTrainingModule } from "@/services/trainingService";
 
 interface HouseholdInfoProps extends BaseViewProps {
   householdId: string;
@@ -70,6 +64,14 @@ interface HouseholdInfoProps extends BaseViewProps {
   users: User[];
   essentialItems: EssentialInfo[];
   trainingModules: TrainingModule[];
+  // Essential Info handlers (with optimistic updates in App.tsx)
+  onAddEssentialInfo: (info: CreateEssentialInfo) => Promise<void>;
+  onUpdateEssentialInfo: (id: string, data: Partial<CreateEssentialInfo>) => Promise<void>;
+  onDeleteEssentialInfo: (id: string) => Promise<void>;
+  // Training Module handlers (with optimistic updates in App.tsx)
+  onAddTrainingModule: (module: CreateTrainingModule, createdBy: string) => Promise<void>;
+  onUpdateTrainingModule: (id: string, data: Partial<CreateTrainingModule>) => Promise<void>;
+  onDeleteTrainingModule: (id: string) => Promise<void>;
 }
 
 type ActiveSection = "essentialInfo" | "training";
@@ -113,9 +115,9 @@ const TRAINING_CATEGORY_ICONS: Record<TrainingCategory, React.ReactNode> = {
 // ─────────────────────────────────────────────────────────────────
 const ROLE_STYLES: Record<UserRole, { bg: string; color: string; gradient: string }> = {
   [UserRole.MASTER]: { 
-    bg: '#DBEAFE', 
-    color: '#1D4ED8',
-    gradient: 'linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%)'
+    bg: '#E6F7FB', 
+    color: '#3EAFD2', // Helpy blue
+    gradient: 'linear-gradient(135deg, #3EAFD2 0%, #2E99BB 100%)'
   },
   [UserRole.SPOUSE]: { 
     bg: '#FCE4EC', 
@@ -140,6 +142,17 @@ const ROLE_STYLES: Record<UserRole, { bg: string; color: string; gradient: strin
 };
 
 // ─────────────────────────────────────────────────────────────────
+// Role priority for consistent sorting across all family members
+// ─────────────────────────────────────────────────────────────────
+const ROLE_PRIORITY: Record<string, number> = {
+  'Admin': 1,
+  'Spouse': 2,
+  'Helper': 3,
+  'Child': 4,
+  'Other': 5,
+};
+
+// ─────────────────────────────────────────────────────────────────
 // Family Profile Carousel Component
 // ─────────────────────────────────────────────────────────────────
 interface FamilyProfileCarouselProps {
@@ -150,18 +163,29 @@ const FamilyProfileCarousel: React.FC<FamilyProfileCarouselProps> = ({ users }) 
   const [activeIndex, setActiveIndex] = useState(0);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
+  // Sort users by role priority, then alphabetically
+  const sortedUsers = React.useMemo(() => {
+    return [...users].sort((a, b) => {
+      const priorityA = ROLE_PRIORITY[a.role] ?? 99;
+      const priorityB = ROLE_PRIORITY[b.role] ?? 99;
+      const roleDiff = priorityA - priorityB;
+      if (roleDiff !== 0) return roleDiff;
+      return a.name.localeCompare(b.name);
+    });
+  }, [users]);
+
   const handleScroll = () => {
     if (scrollContainerRef.current) {
       const container = scrollContainerRef.current;
-      const cardWidth = container.offsetWidth * 0.62;
+      const cardWidth = container.offsetWidth * 0.82;
       const newIndex = Math.round(container.scrollLeft / cardWidth);
-      setActiveIndex(Math.min(Math.max(newIndex, 0), users.length - 1));
+      setActiveIndex(Math.min(Math.max(newIndex, 0), sortedUsers.length - 1));
     }
   };
 
   const scrollToIndex = (index: number) => {
     if (scrollContainerRef.current) {
-      const cardWidth = scrollContainerRef.current.offsetWidth * 0.62;
+      const cardWidth = scrollContainerRef.current.offsetWidth * 0.82;
       scrollContainerRef.current.scrollTo({
         left: cardWidth * index,
         behavior: 'smooth'
@@ -170,7 +194,7 @@ const FamilyProfileCarousel: React.FC<FamilyProfileCarouselProps> = ({ users }) 
     }
   };
 
-  if (users.length === 0) return null;
+  if (sortedUsers.length === 0) return null;
 
   return (
     <div className="mb-5">
@@ -180,26 +204,26 @@ const FamilyProfileCarousel: React.FC<FamilyProfileCarouselProps> = ({ users }) 
         onScroll={handleScroll}
         className="flex gap-3 overflow-x-auto snap-x snap-mandatory scrollbar-hide pb-3 items-stretch"
       >
-        {users.map((user, index) => {
+        {sortedUsers.map((user, index) => {
           const roleStyle = ROLE_STYLES[user.role] || ROLE_STYLES[UserRole.HELPER];
           const isActive = index === activeIndex;
           
           return (
             <div
               key={user.id}
-              className={`flex-shrink-0 w-[62%] snap-start rounded-2xl overflow-hidden transition-all duration-300 flex flex-col ${
+              className={`flex-shrink-0 w-[82%] snap-start rounded-2xl overflow-hidden transition-all duration-300 flex flex-col ${
                 isActive ? 'shadow-md' : 'shadow-sm opacity-85'
               }`}
               style={{
                 background: 'hsl(var(--card))',
               }}
             >
-              <div className="p-4 flex-1">
+              <div className="p-5 flex-1">
                 {/* Profile Header */}
-                <div className="flex items-start gap-3 mb-2">
+                <div className="flex items-start gap-3 mb-4">
                   {/* Avatar */}
                   <div 
-                    className="relative w-9 h-9 rounded-full flex items-center justify-center text-lg flex-shrink-0 overflow-hidden"
+                    className="relative w-10 h-10 rounded-full flex items-center justify-center text-lg flex-shrink-0 overflow-hidden"
                     style={{ 
                       background: roleStyle.gradient,
                       color: 'white',
@@ -224,7 +248,7 @@ const FamilyProfileCarousel: React.FC<FamilyProfileCarouselProps> = ({ users }) 
                       {user.name}
                     </h3>
                     <span 
-                      className="text-caption px-2 py-0.5 rounded-full inline-flex items-center gap-1"
+                      className="text-caption px-2 py-0.5 rounded-full inline-flex items-center gap-1 mt-1"
                       style={{ 
                         backgroundColor: roleStyle.bg, 
                         color: roleStyle.color,
@@ -236,21 +260,21 @@ const FamilyProfileCarousel: React.FC<FamilyProfileCarouselProps> = ({ users }) 
                 </div>
 
                 {/* Info Sections */}
-                <div className="space-y-2">
-                  {/* Allergies & Medical */}
+                <div className="space-y-4">
+                  {/* Allergy & Medical */}
                   <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <AlertTriangle size={16} className="text-muted-foreground" />
-                      <span className="text-body text-muted-foreground">
-                        Allergies / Medical
+                    <div className="flex items-center gap-2 mb-2">
+                      <Info size={16} className="text-destructive" />
+                      <span className="text-body text-foreground">
+                        Allergy & Medical
                       </span>
                     </div>
                     {user.allergies && user.allergies.length > 0 ? (
-                      <div className="flex flex-wrap gap-1.5 ml-6">
+                      <div className="flex flex-wrap gap-2 ml-6">
                         {user.allergies.slice(0, 6).map((allergy, i) => (
                           <span 
                             key={i}
-                            className="text-caption px-2 py-0.5 rounded-full"
+                            className="text-caption px-2.5 py-1 rounded-full"
                             style={{
                               backgroundColor: 'hsl(var(--destructive) / 0.1)',
                               color: 'hsl(var(--destructive))',
@@ -260,7 +284,7 @@ const FamilyProfileCarousel: React.FC<FamilyProfileCarouselProps> = ({ users }) 
                           </span>
                         ))}
                         {user.allergies.length > 6 && (
-                          <span className="text-caption text-muted-foreground px-2 py-0.5">
+                          <span className="text-caption text-muted-foreground px-2.5 py-1">
                             +{user.allergies.length - 6} more
                           </span>
                         )}
@@ -274,28 +298,24 @@ const FamilyProfileCarousel: React.FC<FamilyProfileCarouselProps> = ({ users }) 
 
                   {/* Preferences */}
                   <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <Utensils size={16} className="text-muted-foreground" />
-                      <span className="text-body text-muted-foreground">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Heart size={16} className="text-foreground" />
+                      <span className="text-body text-foreground">
                         Preferences
                       </span>
                     </div>
                     {user.preferences && user.preferences.length > 0 ? (
-                      <div className="flex flex-wrap gap-1.5 ml-6">
+                      <div className="flex flex-wrap gap-2 ml-6">
                         {user.preferences.slice(0, 6).map((pref, i) => (
                           <span 
                             key={i}
-                            className="text-caption px-2 py-0.5 rounded-full"
-                            style={{
-                              backgroundColor: 'hsl(var(--secondary))',
-                              color: 'hsl(var(--foreground))',
-                            }}
+                            className="text-caption px-2.5 py-1 rounded-full bg-foreground/10 text-foreground"
                           >
                             {pref}
                           </span>
                         ))}
                         {user.preferences.length > 6 && (
-                          <span className="text-caption text-muted-foreground px-2 py-0.5">
+                          <span className="text-caption text-muted-foreground px-2.5 py-1">
                             +{user.preferences.length - 6} more
                           </span>
                         )}
@@ -314,9 +334,9 @@ const FamilyProfileCarousel: React.FC<FamilyProfileCarouselProps> = ({ users }) 
       </div>
 
       {/* Pagination Dots */}
-      {users.length > 1 && (
+      {sortedUsers.length > 1 && (
         <div className="flex justify-center gap-1.5 mt-1">
-          {users.map((_, index) => (
+          {sortedUsers.map((_, index) => (
             <button
               key={index}
               onClick={() => scrollToIndex(index)}
@@ -449,6 +469,12 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
   users,
   essentialItems,
   trainingModules,
+  onAddEssentialInfo,
+  onUpdateEssentialInfo,
+  onDeleteEssentialInfo,
+  onAddTrainingModule,
+  onUpdateTrainingModule,
+  onDeleteTrainingModule,
   t,
   currentLang,
 }) => {
@@ -548,15 +574,19 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
   };
 
   const handleSaveEssential = async () => {
+    // Close modal FIRST for instant feedback & double-click prevention
+    setIsEssentialModalOpen(false);
+    
     try {
       if (editingEssentialItem) {
-        await updateEssentialInfo(householdId, editingEssentialItem.id, essentialForm);
-    } else {
+        // Update existing - use optimistic handler
+        await onUpdateEssentialInfo(editingEssentialItem.id, essentialForm);
+      } else {
         // Detect language for new essential info
         const nameLang = essentialForm.name ? detectInputLanguage(currentLang) : null;
         const noteLang = essentialForm.note ? detectInputLanguage(currentLang) : null;
         
-        const createData: any = {
+        const createData: CreateEssentialInfo = {
           ...essentialForm,
           nameLang: nameLang || null,
           nameTranslations: {},
@@ -564,9 +594,9 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
           noteTranslations: {},
         };
         
-        await createEssentialInfo(householdId, createData);
+        // Add new - use optimistic handler
+        await onAddEssentialInfo(createData);
       }
-      setIsEssentialModalOpen(false);
     } catch (error) {
       console.error("Failed to save:", error);
     }
@@ -580,9 +610,9 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
     // Close modal immediately for responsive UX
     setIsEssentialModalOpen(false);
     
-    // Perform delete (subscription in App.tsx will update the data)
+    // Use optimistic delete handler
     try {
-      await deleteEssentialInfo(householdId, itemToDelete.id);
+      await onDeleteEssentialInfo(itemToDelete.id);
     } catch (error) {
       console.error("Failed to delete:", error);
     }
@@ -635,6 +665,9 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
   };
 
   const handleSaveTraining = async () => {
+    // Close modal FIRST for instant feedback & double-click prevention
+    setIsTrainingModalOpen(false);
+    
     try {
       if (editingTrainingModule) {
         // Re-detect language if name or content changed
@@ -644,23 +677,24 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
         const nameLang = nameChanged ? detectInputLanguage(currentLang) : undefined;
         const contentLang = contentChanged ? detectInputLanguage(currentLang) : undefined;
         
-        const updateData: any = { ...trainingForm };
+        const updateData: Partial<CreateTrainingModule> = { ...trainingForm };
         if (nameChanged && nameLang !== undefined) {
-          updateData.nameLang = nameLang || null;
-          updateData.nameTranslations = {};
+          (updateData as any).nameLang = nameLang || null;
+          (updateData as any).nameTranslations = {};
         }
         if (contentChanged && contentLang !== undefined) {
-          updateData.contentLang = contentLang || null;
-          updateData.contentTranslations = {};
+          (updateData as any).contentLang = contentLang || null;
+          (updateData as any).contentTranslations = {};
         }
         
-        await updateTrainingModule(householdId, editingTrainingModule.id, updateData);
+        // Update existing - use optimistic handler
+        await onUpdateTrainingModule(editingTrainingModule.id, updateData);
       } else {
         // Detect language for new training module
         const nameLang = trainingForm.name ? detectInputLanguage(currentLang) : null;
         const contentLang = trainingForm.content ? detectInputLanguage(currentLang) : null;
         
-        const createData: any = {
+        const createData: CreateTrainingModule = {
           ...trainingForm,
           nameLang: nameLang || null,
           nameTranslations: {},
@@ -668,9 +702,9 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
           contentTranslations: {},
         };
         
-        await createTrainingModule(householdId, createData, currentUser.id);
+        // Add new - use optimistic handler
+        await onAddTrainingModule(createData, currentUser.id);
       }
-      setIsTrainingModalOpen(false);
     } catch (error) {
       console.error("Failed to save training:", error);
     }
@@ -684,18 +718,20 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
     // Close modal immediately for responsive UX
     setIsTrainingModalOpen(false);
     
-    // Perform delete (subscription in App.tsx will update the data)
+    // Use optimistic delete handler
     try {
-      await deleteTrainingModule(householdId, moduleToDelete.id);
+      await onDeleteTrainingModule(moduleToDelete.id);
     } catch (error) {
       console.error("Failed to delete training:", error);
     }
   };
 
   const handleCompleteTraining = async (module: TrainingModule) => {
+    // Close modal FIRST for instant feedback & double-click prevention
+    setViewingTrainingModule(null);
+    
     try {
       await completeTrainingModule(householdId, module.id);
-      setViewingTrainingModule(null);
     } catch (error) {
       console.error("Failed to complete training:", error);
     }
@@ -1228,6 +1264,29 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
   onSave,
   onDelete,
 }) => {
+  const [countryCodeSearch, setCountryCodeSearch] = useState('');
+  const [showCountryCodeDropdown, setShowCountryCodeDropdown] = useState(false);
+  
+  const filteredCountryCodes = COUNTRY_CODES.filter(item =>
+    item.country.toLowerCase().includes(countryCodeSearch.toLowerCase()) ||
+    item.code.includes(countryCodeSearch)
+  );
+
+  // Close dropdown when clicking outside
+  React.useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('.country-code-dropdown')) {
+        setShowCountryCodeDropdown(false);
+      }
+    };
+    
+    if (showCountryCodeDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showCountryCodeDropdown]);
+
   return (
     <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
       {/* Safe area bottom cover - fills the gap below the sheet */}
@@ -1322,17 +1381,57 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
               Phone Number
             </label>
             <div className="flex gap-2">
-              <select
-                value={form.countryCode}
-                onChange={(e) => setForm({ ...form, countryCode: e.target.value })}
-                className="w-32 px-3 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
-              >
-                {COUNTRY_CODES.map((cc, index) => (
-                  <option key={`${cc.code}-${cc.country}-${index}`} value={cc.code}>
-                    {cc.code} ({cc.country})
-                  </option>
-                ))}
-              </select>
+              <div className="relative w-28 country-code-dropdown">
+                <input
+                  type="text"
+                  value={form.countryCode}
+                  onClick={() => setShowCountryCodeDropdown(true)}
+                  onFocus={() => setShowCountryCodeDropdown(true)}
+                  onChange={(e) => {
+                    setForm({ ...form, countryCode: e.target.value });
+                    setCountryCodeSearch(e.target.value);
+                    setShowCountryCodeDropdown(true);
+                  }}
+                  placeholder="+852"
+                  className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none cursor-pointer transition-all text-body"
+                />
+                <Phone size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                {showCountryCodeDropdown && (
+                  <div className="absolute z-50 mt-1 w-64 bg-card border border-border rounded-xl shadow-lg max-h-60 overflow-y-auto country-code-dropdown">
+                    <div className="p-2 sticky top-0 bg-card border-b border-border">
+                      <input
+                        type="text"
+                        value={countryCodeSearch}
+                        onChange={(e) => setCountryCodeSearch(e.target.value)}
+                        placeholder="Search country..."
+                        className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-body focus:outline-none focus:border-primary transition-colors"
+                        autoFocus
+                      />
+                    </div>
+                    <div className="py-1">
+                      {filteredCountryCodes.length > 0 ? (
+                        filteredCountryCodes.map((item, index) => (
+                          <button
+                            key={`${item.code}-${item.country}-${index}`}
+                            type="button"
+                            onClick={() => {
+                              setForm({ ...form, countryCode: item.code });
+                              setShowCountryCodeDropdown(false);
+                              setCountryCodeSearch('');
+                            }}
+                            className="w-full text-left px-4 py-2 hover:bg-secondary transition-colors flex items-center justify-between"
+                          >
+                            <span className="text-body text-foreground">{item.country}</span>
+                            <span className="text-body font-medium text-muted-foreground">{item.code}</span>
+                          </button>
+                        ))
+                      ) : (
+                        <div className="px-4 py-2 text-body text-muted-foreground">No countries found</div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
               <div className="relative flex-1">
                 <Phone size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <input
@@ -1344,7 +1443,7 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
                     const value = e.target.value.replace(/[^\d\s\-()]/g, '');
                     setForm({ ...form, phone: value });
                   }}
-                  placeholder="812 345 6789"
+                  placeholder="Mobile number"
                   className="w-full pl-11 pr-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
                 />
               </div>

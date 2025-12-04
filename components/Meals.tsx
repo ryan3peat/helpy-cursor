@@ -848,7 +848,10 @@ const Meals: React.FC<MealsProps> = ({
                                   )}
                                 </>
                               ) : (
-                                <span className="text-caption text-muted-foreground/50">--</span>
+                                <div className="flex items-center gap-1">
+                                  <UserIcon size={14} className="text-muted-foreground/40" />
+                                  <span className="text-body font-medium text-muted-foreground/40">0</span>
+                                </div>
                               )}
                             </div>
 
@@ -974,7 +977,10 @@ const Meals: React.FC<MealsProps> = ({
                                 onClick={() => openAddModal(dayDate, MealType.DINNER)}
                                 className="h-full p-2 cursor-pointer hover:bg-muted/50 transition-colors flex flex-col items-center justify-center gap-0.5"
                               >
-                                <span className="text-caption text-muted-foreground/50">--</span>
+                                <div className="flex items-center gap-1">
+                                  <UserIcon size={14} className="text-muted-foreground/40" />
+                                  <span className="text-body font-medium text-muted-foreground/40">0</span>
+                                </div>
                               </div>
 
                               {/* Vertical Separator */}

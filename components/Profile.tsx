@@ -23,12 +23,13 @@ interface ProfileProps extends BaseViewProps {
 }
 
 // Role priority for consistent sorting across all family members
-const ROLE_PRIORITY: Record<UserRole, number> = {
-  [UserRole.MASTER]: 1,
-  [UserRole.SPOUSE]: 2,
-  [UserRole.HELPER]: 3,
-  [UserRole.CHILD]: 4,
-  [UserRole.OTHER]: 5,
+// Uses plain strings for reliability across all data sources
+const ROLE_PRIORITY: Record<string, number> = {
+  'Admin': 1,
+  'Spouse': 2,
+  'Helper': 3,
+  'Child': 4,
+  'Other': 5,
 };
 
 const Profile: React.FC<ProfileProps> = ({
@@ -182,7 +183,8 @@ const Profile: React.FC<ProfileProps> = ({
     cardNumber: '',
     expiry: '',
     cvc: '',
-    name: currentUser.name || ''
+    name: currentUser.name || '',
+    cardType: 'DEBIT' as 'DEBIT' | 'CREDIT' | 'PREPAID'
   });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -193,7 +195,10 @@ const Profile: React.FC<ProfileProps> = ({
     return users
       .filter(u => u && u.id)
       .sort((a, b) => {
-        const roleDiff = ROLE_PRIORITY[a.role] - ROLE_PRIORITY[b.role];
+        // Use fallback of 99 for unknown roles to sort them last
+        const priorityA = ROLE_PRIORITY[a.role] ?? 99;
+        const priorityB = ROLE_PRIORITY[b.role] ?? 99;
+        const roleDiff = priorityA - priorityB;
         if (roleDiff !== 0) return roleDiff;
         return a.name.localeCompare(b.name);
       });
@@ -256,7 +261,7 @@ const Profile: React.FC<ProfileProps> = ({
   // Colors based on brand palette: #3EAFD2, #FF9800, #7E57C2, #4CAF50, #F06292, #AB47BC, #757575
   const getRoleBadgeColor = (role: UserRole) => {
     switch (role) {
-      case UserRole.MASTER: return 'bg-[#E6F7FB] text-[#3EAFD2]';
+      case UserRole.MASTER: return 'bg-primary/10 text-primary'; // Helpy blue #3EAFD2
       case UserRole.SPOUSE: return 'bg-[#F3E5F5] text-[#AB47BC]';
       case UserRole.HELPER: return 'bg-[#FFF3E0] text-[#FF9800]';
       case UserRole.CHILD: return 'bg-[#E8F5E9] text-[#4CAF50]';
@@ -414,15 +419,17 @@ const Profile: React.FC<ProfileProps> = ({
   };
 
   const renderSettingsHeader = (title: string, onBackOverride?: () => void) => (
-    <div className="fixed top-0 left-0 right-0 bg-background/95 backdrop-blur-sm border-b border-border px-4 py-4 flex items-center gap-3 z-10">
-      <button
-        onClick={onBackOverride || (() => setActiveSection('main'))}
-        className="p-2 hover:bg-secondary rounded-full transition-colors"
-      >
-        <ChevronLeft size={24} className="text-foreground" />
-      </button>
-      <h2 className="text-title font-bold text-foreground">{title}</h2>
-    </div>
+    <header className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm -mx-4 px-4 sm:-mx-6 sm:px-6 pt-12 pb-3">
+      <div className="flex items-center gap-2">
+        <button
+          onClick={onBackOverride || (() => setActiveSection('main'))}
+          className="p-2 hover:bg-secondary rounded-full transition-colors"
+        >
+          <ChevronLeft size={24} className="text-foreground" />
+        </button>
+        <h1 className="text-display text-foreground">{title}</h1>
+      </div>
+    </header>
   );
 
   // =====================================================
@@ -433,12 +440,14 @@ const Profile: React.FC<ProfileProps> = ({
       <div className="min-h-screen bg-background pb-40">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
           {/* Header with Logout */}
-          <header className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm -mx-4 px-4 sm:-mx-6 sm:px-6 pt-12 pb-3 border-b border-border">
+          <header className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm -mx-4 px-4 sm:-mx-6 sm:px-6 pt-12 pb-3">
             <div className="flex items-center justify-between">
-              <button onClick={onBack} className="p-2 hover:bg-secondary rounded-full transition-colors">
-                <ChevronLeft size={24} className="text-foreground" />
-              </button>
-              <h1 className="text-display text-foreground">{t['nav.profile']}</h1>
+              <div className="flex items-center gap-2">
+                <button onClick={onBack} className="p-2 hover:bg-secondary rounded-full transition-colors">
+                  <ChevronLeft size={24} className="text-foreground" />
+                </button>
+                <h1 className="text-display text-foreground">{t['nav.profile']}</h1>
+              </div>
               <button
                 onClick={onLogout}
                 className="flex items-center gap-2 px-3 py-2 bg-destructive/10 text-destructive rounded-xl hover:bg-destructive/20 transition-colors"
@@ -485,9 +494,19 @@ const Profile: React.FC<ProfileProps> = ({
             )}
 
             {/* User Carousel */}
-            <div className="bg-primary rounded-3xl p-6 shadow-md">
-              <h2 className="text-primary-foreground text-title font-bold mb-4">{t['profile.familyMembers']}</h2>
-              <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide pl-4 pt-4">
+            <div className="bg-primary rounded-3xl px-5 py-5 shadow-md">
+              <h2 className="text-primary-foreground text-title font-bold mb-3">{t['profile.familyMembers']}</h2>
+              <div className="flex gap-4 overflow-x-auto pb-1 scrollbar-hide">
+                {/* Add button first - always visible */}
+                <div
+                  onClick={() => setIsAddModalOpen(true)}
+                  className="flex flex-col items-center gap-2 cursor-pointer opacity-60 hover:opacity-100 transition-opacity"
+                >
+                  <div id="onboarding-add-member-btn" className="w-16 h-16 rounded-full bg-primary-foreground/20 flex items-center justify-center border-2 border-primary-foreground/50">
+                    <Plus size={24} className="text-primary-foreground" />
+                  </div>
+                  <span className="text-caption font-medium text-primary-foreground/70">{t['common.add']}</span>
+                </div>
                 {validUsers.map((user) => {
                   const isCurrent = user.id === currentUser.id;
                   const isSelected = user.id === selectedUserId;
@@ -495,7 +514,7 @@ const Profile: React.FC<ProfileProps> = ({
                     <div
                       key={user.id}
                       onClick={() => setSelectedUserId(user.id)}
-                      className={`flex flex-col items-center gap-2 cursor-pointer transition-opacity mt-2 ${isSelected ? 'opacity-100' : 'opacity-60'
+                      className={`flex flex-col items-center gap-2 cursor-pointer transition-opacity ${isSelected ? 'opacity-100' : 'opacity-60'
                         }`}
                     >
                       <div className={`w-16 h-16 rounded-full overflow-hidden border-4 ${isSelected ? 'border-primary-foreground shadow-md' : 'border-primary-foreground/50'
@@ -511,15 +530,6 @@ const Profile: React.FC<ProfileProps> = ({
                     </div>
                   );
                 })}
-                <div
-                  onClick={() => setIsAddModalOpen(true)}
-                  className="flex flex-col items-center gap-2 cursor-pointer opacity-60 hover:opacity-100 transition-opacity mt-2"
-                >
-                  <div id="onboarding-add-member-btn" className="w-16 h-16 rounded-full bg-primary-foreground/20 flex items-center justify-center border-2 border-primary-foreground/50">
-                    <Plus size={24} className="text-primary-foreground" />
-                  </div>
-                  <span className="text-caption font-medium text-primary-foreground/70">{t['common.add']}</span>
-                </div>
               </div>
             </div>
 
@@ -597,13 +607,13 @@ const Profile: React.FC<ProfileProps> = ({
                 {/* Preferences */}
                 <div>
                   <div className="flex items-center gap-2 mb-2">
-                    <Heart size={16} className="text-destructive" />
+                    <Heart size={16} className="text-foreground" />
                     <h4 className="text-body font-bold text-foreground">{t['profile.preferences']}</h4>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {selectedUser.preferences && selectedUser.preferences.length > 0 ? (
                       selectedUser.preferences.map((pref) => (
-                        <span key={pref} className="px-3 py-1 bg-destructive/10 text-destructive rounded-full text-caption font-medium">
+                        <span key={pref} className="px-3 py-1 bg-foreground/10 text-foreground rounded-full text-caption font-medium">
                           {pref}
                         </span>
                       ))
@@ -1076,8 +1086,8 @@ const Profile: React.FC<ProfileProps> = ({
     return (
       <div className="min-h-screen bg-background pb-40">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
-          <div className="pt-16 pb-24">
-            {renderSettingsHeader('Subscription')}
+          {renderSettingsHeader('Subscription', () => setActiveSection('settings'))}
+          <div className="pt-6 pb-24">
 
             {/* Current Subscription Details */}
             {isLoadingSubscription ? (
@@ -1256,8 +1266,8 @@ const Profile: React.FC<ProfileProps> = ({
     return (
       <div className="min-h-screen bg-background pb-40">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
-          <div className="pt-16 pb-24">
-            {renderSettingsHeader('Account')}
+          {renderSettingsHeader('Account', () => setActiveSection('settings'))}
+          <div className="pt-6 pb-24">
             
             <div className="space-y-6">
               {/* Profile Information Section */}
@@ -1568,22 +1578,62 @@ const Profile: React.FC<ProfileProps> = ({
     return (
       <div className="min-h-screen bg-background pb-40">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
-          <div className="pt-16 pb-24">
-            {renderSettingsHeader('Payment Method')}
+          {renderSettingsHeader('Payment Method', () => setActiveSection('settings'))}
+          <div className="pt-6 pb-24">
 
             {/* Card Preview */}
-            <div className="bg-muted rounded-2xl p-6 shadow-md mb-8 relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-foreground opacity-5 rounded-full -translate-y-1/2 translate-x-1/2"></div>
-              <div className="flex justify-between items-start mb-8">
-                <CreditCard size={24} className="text-muted-foreground opacity-80" />
-                <span className="text-caption font-mono bg-secondary px-2 py-1 rounded text-muted-foreground">DEBIT</span>
-              </div>
-              <div className="text-title font-mono tracking-widest mb-4 text-foreground">
-                {paymentData.cardNumber || '•••• •••• •••• ••••'}
-              </div>
-              <div className="flex justify-between text-body">
-                <span className="text-muted-foreground">{paymentData.name || 'CARDHOLDER'}</span>
-                <span className="text-muted-foreground">{paymentData.expiry || 'MM/YY'}</span>
+            <div className="mt-6 mb-6">
+              <div 
+                className="rounded-2xl p-5 relative overflow-hidden"
+                style={{
+                  aspectRatio: '1.586 / 1',
+                  background: paymentData.cardType === 'DEBIT' 
+                    ? 'linear-gradient(135deg, #F06292 0%, #C74B7A 50%, #9C3D62 100%)'
+                    : paymentData.cardType === 'PREPAID'
+                    ? 'linear-gradient(135deg, #FF9800 0%, #E68A00 50%, #CC7A00 100%)'
+                    : 'linear-gradient(135deg, #3EAFD2 0%, #2D8BAA 50%, #1E6B85 100%)',
+                  boxShadow: paymentData.cardType === 'DEBIT'
+                    ? '0 16px 32px -12px rgba(240, 98, 146, 0.35), 0 6px 12px -6px rgba(240, 98, 146, 0.2)'
+                    : paymentData.cardType === 'PREPAID'
+                    ? '0 16px 32px -12px rgba(255, 152, 0, 0.35), 0 6px 12px -6px rgba(255, 152, 0, 0.2)'
+                    : '0 16px 32px -12px rgba(62, 175, 210, 0.35), 0 6px 12px -6px rgba(62, 175, 210, 0.2)'
+                }}
+              >
+                {/* Oversized branded "h" watermark */}
+                <div 
+                  className="absolute -top-8 -right-4 text-white/10 select-none pointer-events-none"
+                  style={{ 
+                    fontFamily: "'Peanut Butter', cursive",
+                    fontSize: '270px',
+                    lineHeight: 1
+                  }}
+                >
+                  h
+                </div>
+                <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-black/10 pointer-events-none"></div>
+                
+                {/* Card content */}
+                <div className="relative h-full flex flex-col justify-between">
+                  <div className="flex justify-end">
+                    <span className="text-xs font-mono bg-white/20 backdrop-blur-sm px-2 py-1 rounded text-white/90">{paymentData.cardType}</span>
+                  </div>
+                  
+                  <div className="mt-auto">
+                    <div className="text-lg font-mono tracking-[0.2em] mb-3 text-white drop-shadow-sm">
+                      {paymentData.cardNumber || '•••• •••• •••• ••••'}
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <div>
+                        <div className="text-[10px] text-white/60 uppercase tracking-wider mb-0.5">Card Holder</div>
+                        <span className="text-white/90 font-medium">{paymentData.name || 'YOUR NAME'}</span>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-[10px] text-white/60 uppercase tracking-wider mb-0.5">Expires</div>
+                        <span className="text-white/90 font-medium">{paymentData.expiry || 'MM/YY'}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -1654,6 +1704,32 @@ const Profile: React.FC<ProfileProps> = ({
                   className="w-full bg-muted border border-border rounded-xl px-4 py-3 text-foreground font-medium text-body focus:border-primary outline-none transition-colors"
                 />
               </div>
+              <div className="space-y-1">
+                <label className="text-caption font-bold text-muted-foreground ml-1">Card Type</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {(['DEBIT', 'CREDIT', 'PREPAID'] as const).map(type => {
+                    const isSelected = paymentData.cardType === type;
+                    const colorMap = {
+                      DEBIT: { bg: '#F06292', text: 'white' },
+                      CREDIT: { bg: '#3EAFD2', text: 'white' },
+                      PREPAID: { bg: '#FF9800', text: 'white' }
+                    };
+                    return (
+                      <button
+                        key={type}
+                        type="button"
+                        onClick={() => setPaymentData({ ...paymentData, cardType: type })}
+                        className={`px-3 py-2.5 rounded-xl text-body font-medium transition-all ${
+                          !isSelected ? 'bg-muted text-muted-foreground border border-border' : ''
+                        }`}
+                        style={isSelected ? { backgroundColor: colorMap[type].bg, color: colorMap[type].text } : {}}
+                      >
+                        {type}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
 
             <div className="mt-6 pt-4">
@@ -1679,8 +1755,8 @@ const Profile: React.FC<ProfileProps> = ({
     return (
       <div className="min-h-screen bg-background pb-40">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
-          <div className="pt-16 pb-24">
-            {renderSettingsHeader('Settings', () => setActiveSection('main'))}
+          {renderSettingsHeader('Settings', () => setActiveSection('main'))}
+          <div className="pt-6 pb-24">
 
             <div className="space-y-3">
               {[

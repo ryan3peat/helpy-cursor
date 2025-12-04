@@ -24,8 +24,20 @@ import {
 } from './services/supabaseService';
 import type { EssentialInfo } from '@src/types/essentialInfo';
 import type { TrainingModule } from '@src/types/training';
-import { subscribeToEssentialInfo } from './services/essentialInfoService';
-import { subscribeToTrainingModules } from './services/trainingService';
+import { 
+  subscribeToEssentialInfo,
+  createEssentialInfo,
+  updateEssentialInfo,
+  deleteEssentialInfo,
+} from './services/essentialInfoService';
+import { 
+  subscribeToTrainingModules,
+  createTrainingModule,
+  updateTrainingModule,
+  deleteTrainingModule,
+} from './services/trainingService';
+import type { CreateEssentialInfo } from '@src/types/essentialInfo';
+import type { CreateTrainingModule } from '@src/types/training';
 
 // Broom icon component for loading animation (matching flaticon clean_9755169)
 const BroomIcon = ({ className }: { className?: string }) => (
@@ -342,6 +354,98 @@ const App: React.FC = () => {
     }
   };
 
+  // Essential Info CRUD Handlers (with optimistic updates for instant UI)
+  const handleAddEssentialInfo = async (info: CreateEssentialInfo) => {
+    if (!hid) return;
+    const tempId = `temp-${Date.now()}`;
+    const tempItem: EssentialInfo = {
+      ...info,
+      id: tempId,
+      householdId: hid,
+      createdAt: new Date().toISOString(),
+    };
+    setEssentialItems(prev => [tempItem, ...prev]);  // Optimistic
+    try {
+      await createEssentialInfo(hid, info);
+    } catch (error) {
+      console.error('Failed to add essential info:', error);
+      setEssentialItems(prev => prev.filter(item => item.id !== tempId));  // Rollback
+    }
+  };
+
+  const handleUpdateEssentialInfo = async (id: string, data: Partial<CreateEssentialInfo>) => {
+    if (!hid) return;
+    const previousItems = essentialItems;
+    setEssentialItems(prev => prev.map(item => 
+      item.id === id ? { ...item, ...data } : item
+    ));  // Optimistic
+    try {
+      await updateEssentialInfo(hid, id, data);
+    } catch (error) {
+      console.error('Failed to update essential info:', error);
+      setEssentialItems(previousItems);  // Rollback
+    }
+  };
+
+  const handleDeleteEssentialInfo = async (id: string) => {
+    if (!hid) return;
+    const previousItems = essentialItems;
+    setEssentialItems(prev => prev.filter(item => item.id !== id));  // Optimistic
+    try {
+      await deleteEssentialInfo(hid, id);
+    } catch (error) {
+      console.error('Failed to delete essential info:', error);
+      setEssentialItems(previousItems);  // Rollback
+    }
+  };
+
+  // Training Module CRUD Handlers (with optimistic updates for instant UI)
+  const handleAddTrainingModule = async (module: CreateTrainingModule, createdBy: string) => {
+    if (!hid) return;
+    const tempId = `temp-${Date.now()}`;
+    const tempModule: TrainingModule = {
+      ...module,
+      id: tempId,
+      householdId: hid,
+      createdAt: new Date().toISOString(),
+      createdBy,
+      isCompleted: false,
+    };
+    setTrainingModules(prev => [tempModule, ...prev]);  // Optimistic
+    try {
+      await createTrainingModule(hid, module, createdBy);
+    } catch (error) {
+      console.error('Failed to add training module:', error);
+      setTrainingModules(prev => prev.filter(m => m.id !== tempId));  // Rollback
+    }
+  };
+
+  const handleUpdateTrainingModule = async (id: string, data: Partial<CreateTrainingModule>) => {
+    if (!hid) return;
+    const previousModules = trainingModules;
+    setTrainingModules(prev => prev.map(m => 
+      m.id === id ? { ...m, ...data } : m
+    ));  // Optimistic
+    try {
+      await updateTrainingModule(hid, id, data);
+    } catch (error) {
+      console.error('Failed to update training module:', error);
+      setTrainingModules(previousModules);  // Rollback
+    }
+  };
+
+  const handleDeleteTrainingModule = async (id: string) => {
+    if (!hid) return;
+    const previousModules = trainingModules;
+    setTrainingModules(prev => prev.filter(m => m.id !== id));  // Optimistic
+    try {
+      await deleteTrainingModule(hid, id);
+    } catch (error) {
+      console.error('Failed to delete training module:', error);
+      setTrainingModules(previousModules);  // Rollback
+    }
+  };
+
   const renderView = () => {
     switch (activeView) {
       case 'dashboard':
@@ -413,6 +517,12 @@ const App: React.FC = () => {
             users={users}
             essentialItems={essentialItems}
             trainingModules={trainingModules}
+            onAddEssentialInfo={handleAddEssentialInfo}
+            onUpdateEssentialInfo={handleUpdateEssentialInfo}
+            onDeleteEssentialInfo={handleDeleteEssentialInfo}
+            onAddTrainingModule={handleAddTrainingModule}
+            onUpdateTrainingModule={handleUpdateTrainingModule}
+            onDeleteTrainingModule={handleDeleteTrainingModule}
             t={translations}
             currentLang={lang}
           />

@@ -748,19 +748,8 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
   }
 
   // Only show SignIn component if Clerk is loaded AND user is not authenticated
-  // Check for invite params - if present, show SignUp instead
+  // Now we know for sure that user is not authenticated (isLoaded is true, user is null)
   if (!user) {
-    // Check for invite params
-    const urlParams = new URLSearchParams(window.location.search);
-    const hashParams = new URLSearchParams(window.location.hash.split('?')[1] || '');
-    const isInvite = urlParams.get('invite') === 'true' || hashParams.get('invite') === 'true';
-    
-    // If invite params present, show SignUp component instead
-    if (isInvite) {
-      console.log('🔴 [Auth] Rendering SignUp component - invite params detected');
-      return <SignUp onBackToSignIn={() => setShowSignUp(false)} />;
-    }
-    
     console.log('🔴 [Auth] Rendering SignIn component - Clerk loaded but no authenticated user');
     console.log('🔴 [Auth] State:', { isLoaded, hasUser: !!user });
     return (

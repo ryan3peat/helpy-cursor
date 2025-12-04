@@ -622,7 +622,7 @@ const Profile: React.FC<ProfileProps> = ({
 
         {/* Add User Modal */}
           {isAddModalOpen && (
-            <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-end justify-center p-4 z-50 bottom-sheet-backdrop">
+            <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center sm:items-end justify-center p-4 z-50 bottom-sheet-backdrop">
               <div className="bg-card rounded-t-3xl w-full max-w-lg p-6 bottom-sheet-content relative flex flex-col" style={{ maxHeight: '80vh', marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
                 <div className="flex items-center justify-between mb-6 shrink-0">
                   <h3 className="text-title font-bold text-foreground">{t['profile.addMember']}</h3>
@@ -737,7 +737,7 @@ const Profile: React.FC<ProfileProps> = ({
 
           {/* Edit User Modal */}
           {isEditModalOpen && (
-            <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-end justify-center p-4 z-50 bottom-sheet-backdrop">
+            <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center sm:items-end justify-center p-4 z-50 bottom-sheet-backdrop">
               <div className="bg-card rounded-t-3xl w-full max-w-lg bottom-sheet-content relative flex flex-col" style={{ maxHeight: '80vh', marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
                 <div className="flex items-center justify-between mb-6 p-6 pb-4 border-b border-border shrink-0">
                   <h3 className="text-title font-bold text-foreground">Edit Profile</h3>

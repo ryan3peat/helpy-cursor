@@ -624,30 +624,37 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
     const isAndroid = /Android/.test(navigator.userAgent);
 
     if (isIOS) {
-      // iOS: Try Google Maps app first, fallback to Apple Maps if not installed
-      let didLeaveApp = false;
+      // iOS: Try Google Maps app first, ask user for Apple Maps if not installed
+      let appOpened = false;
       
-      const checkVisibility = () => {
+      const handleVisibility = () => {
         if (document.visibilityState === 'hidden') {
-          didLeaveApp = true;
+          appOpened = true;
         }
       };
       
-      document.addEventListener('visibilitychange', checkVisibility);
+      document.addEventListener('visibilitychange', handleVisibility);
       
-      // Try Google Maps app (URI scheme - works like tel:)
+      // Try Google Maps app (URI scheme - works like tel:, returns where you left off)
       window.location.href = `comgooglemaps://?q=${encoded}`;
       
-      // If app didn't open after 800ms, fall back to Apple Maps
+      // After 1 second, if app didn't open, ASK user (prevents double-open race condition)
       setTimeout(() => {
-        document.removeEventListener('visibilitychange', checkVisibility);
-        if (!didLeaveApp) {
-          window.location.href = `maps://maps.apple.com/?q=${encoded}`;
+        document.removeEventListener('visibilitychange', handleVisibility);
+        if (!appOpened && document.visibilityState === 'visible') {
+          // Google Maps didn't open - ask user instead of auto-opening
+          const openAppleMaps = window.confirm(
+            'Google Maps is not installed.\n\nOpen in Apple Maps instead?'
+          );
+          if (openAppleMaps) {
+            // Apple Maps URI scheme - returns where you left off
+            window.location.href = `maps://maps.apple.com/?q=${encoded}`;
+          }
         }
-      }, 800);
+      }, 1000);
     } else if (isAndroid) {
       // Android: geo: URI opens default maps app (usually Google Maps if installed)
-      // Works like tel: - opens app and returns to exactly where you were
+      // Works like tel: - returns exactly where you left off
       window.location.href = `geo:0,0?q=${encoded}`;
     } else {
       // Desktop: open Google Maps web in new tab

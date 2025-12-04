@@ -411,4 +411,153 @@ select {
   font-style: normal !important;
 }
 
+/* ─────────────────────────────────────────────────────────────────
+   BROOM SWEEP LOADER ANIMATION
+   ───────────────────────────────────────────────────────────────── */
+@keyframes broom-sweep {
+  0% {
+    left: 0%;
+  }
+  45% {
+    left: calc(100% - 24px);
+  }
+  50% {
+    left: calc(100% - 24px);
+    transform: scaleX(1);
+  }
+  55% {
+    left: calc(100% - 24px);
+    transform: scaleX(-1);
+  }
+  100% {
+    left: 0%;
+    transform: scaleX(-1);
+  }
+}
+
+@keyframes broom-sweep-reverse {
+  0% {
+    left: 0%;
+    transform: scaleX(-1);
+  }
+  45% {
+    left: calc(100% - 32px);
+    transform: scaleX(-1);
+  }
+  50% {
+    left: calc(100% - 32px);
+    transform: scaleX(-1);
+  }
+  55% {
+    left: calc(100% - 32px);
+    transform: scaleX(1);
+  }
+  100% {
+    left: 0%;
+    transform: scaleX(1);
+  }
+}
+
+@keyframes trail-grow {
+  0% {
+    clip-path: inset(0 100% 0 0);
+  }
+  45% {
+    clip-path: inset(0 0 0 0);
+  }
+  50% {
+    clip-path: inset(0 0 0 0);
+  }
+  55% {
+    clip-path: inset(0 0 0 0);
+  }
+  100% {
+    clip-path: inset(0 0 0 100%);
+  }
+}
+
+.broom-loader {
+  position: relative;
+  width: 112px;
+  height: 40px;
+}
+
+.broom-track {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 9999px;
+  transform: translateY(-50%);
+}
+
+.broom-trail {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 9999px;
+  transform: translateY(-50%);
+  animation: trail-grow 2.5s ease-in-out infinite;
+}
+
+.broom-icon-svg {
+  position: absolute;
+  bottom: 8px;
+  left: 0;
+  color: white;
+  animation: broom-sweep 2.5s ease-in-out infinite;
+  z-index: 10;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   GLOBAL RULE: INSET SEPARATORS IN SHEETS/MODALS
+   
+   DESIGN RULE: Separator lines (border-t, border-b) inside bottom 
+   sheets, modals, and dialogs should never touch the edges.
+   They automatically get horizontal margin for visual breathing room.
+   
+   This applies to direct children of:
+   - .bottom-sheet-content (custom bottom sheets)
+   - Elements with role="dialog"
+   ───────────────────────────────────────────────────────────────── */
+
+/* Remove actual borders and use pseudo-elements for inset separators */
+.bottom-sheet-content > [class~="border-b"],
+.bottom-sheet-content > [class~="border-t"],
+[role="dialog"] > [class~="border-b"],
+[role="dialog"] > [class~="border-t"] {
+  border-bottom-color: transparent !important;
+  border-top-color: transparent !important;
+  position: relative;
+}
+
+.bottom-sheet-content > [class~="border-b"]::after,
+[role="dialog"] > [class~="border-b"]::after {
+  content: '';
+  position: absolute;
+  left: 1.25rem;
+  right: 1.25rem;
+  bottom: 0;
+  height: 1px;
+  background-color: hsl(var(--border));
+  pointer-events: none;
+}
+
+.bottom-sheet-content > [class~="border-t"]::before,
+[role="dialog"] > [class~="border-t"]::before {
+  content: '';
+  position: absolute;
+  left: 1.25rem;
+  right: 1.25rem;
+  top: 0;
+  height: 1px;
+  background-color: hsl(var(--border));
+  pointer-events: none;
+}
+
 

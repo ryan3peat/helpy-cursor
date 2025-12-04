@@ -189,7 +189,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     <div className="pb-16 animate-fade-in page-content bg-background">
       {/* Sticky Header */}
       <header 
-        className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm px-5 transition-all duration-300 overflow-hidden"
+        className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm px-5 transition-[padding,box-shadow] duration-300 overflow-hidden"
         style={{ 
           paddingTop: isScrolled ? '12px' : '64px',
           paddingBottom: isScrolled ? '12px' : '16px',
@@ -207,10 +207,9 @@ const Dashboard: React.FC<DashboardProps> = ({
             </h1>
           </div>
           <div 
-            className="flex gap-2 transition-all duration-300"
+            className="flex gap-2 transition-transform duration-300"
             style={{ 
-              transform: isScrolled ? 'scale(0.85)' : 'scale(1)',
-              opacity: isScrolled ? 0.9 : 1
+              transform: isScrolled ? 'scale(0.85)' : 'scale(1)'
             }}
           >
             <button
@@ -218,12 +217,23 @@ const Dashboard: React.FC<DashboardProps> = ({
               className="w-14 h-14 rounded-full bg-card border border-border shadow-sm flex flex-col items-center justify-center text-muted-foreground active:scale-95 transition-transform"
             >
               {isTranslating ? (
-                <Loader2 size={24} className="animate-spin text-primary" />
+                <Loader2 size={18} className="animate-spin text-primary" />
               ) : (
-                <Languages size={24} />
+                <Languages size={18} />
               )}
-              <span className="text-[10px] font-medium text-muted-foreground mt-0.5">
-                {currentLang.split('-')[0]}
+              <span className="text-[14px] font-medium text-primary mt-0.5">
+                {(() => {
+                  switch(currentLang) {
+                    case 'en': return 'en';
+                    case 'zh-CN': return '简中';
+                    case 'zh-TW': return '繁中';
+                    case 'tl': return 'tl';
+                    case 'id': return 'id';
+                    case 'ko': return '한국';
+                    case 'ja': return '日本';
+                    default: return currentLang.split('-')[0];
+                  }
+                })()}
               </span>
             </button>
             <button
@@ -422,41 +432,78 @@ const Dashboard: React.FC<DashboardProps> = ({
         </div>
       </div>
 
-      {/* Language Modal */}
-    {showLangModal && (
-    <div className="fixed inset-0 bg-black/50 z-[80] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
-      <div className="bg-card w-full max-w-sm rounded-3xl p-6 shadow-xl animate-slide-up">
-        <div className="flex justify-between items-center mb-6">
-          <h3 className="text-xl font-bold text-foreground">{t['dashboard.language']}</h3>
-          <button
+      {/* Language Sheet */}
+      {showLangModal && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
+          {/* Click outside to close */}
+          <div 
+            className="absolute inset-0"
             onClick={() => setShowLangModal(false)}
-            className="p-2 bg-muted rounded-full text-muted-foreground hover:bg-muted/80"
+          />
+          {/* Safe area bottom cover */}
+          <div 
+            className="absolute bottom-0 left-0 right-0 bg-card"
+            style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
+          />
+          <div 
+            className="relative w-full max-w-lg bg-card rounded-t-3xl bottom-sheet-content flex flex-col" 
+            style={{ maxHeight: '80vh', marginBottom: 'env(safe-area-inset-bottom, 34px)' }}
           >
-            <X size={20} />
-          </button>
+            {/* Header */}
+            <div className="px-5 pt-5 pb-3 border-b border-border">
+              <div className="flex justify-between items-center">
+                <h3 className="text-xl font-bold text-foreground">{t['dashboard.language']}</h3>
+                <button
+                  onClick={() => setShowLangModal(false)}
+                  className="p-2 bg-muted rounded-full text-muted-foreground hover:bg-muted/80"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                Translation provided by AI. For accuracy, please refer to the original language version if in doubt.
+              </p>
+            </div>
+            
+            {/* Language List */}
+            <div className="px-5 pt-5 pb-8 space-y-2 overflow-y-auto no-scrollbar">
+              {SUPPORTED_LANGUAGES.map(lang => {
+                // Display names in native language with code - UI only, doesn't affect backend
+                const getDisplayName = (code: string) => {
+                  switch(code) {
+                    case 'en': return 'English (en)';
+                    case 'zh-CN': return '简体中文 (zh-CN)';
+                    case 'zh-TW': return '繁體中文 (zh-TW)';
+                    case 'tl': return 'Tagalog (tl)';
+                    case 'id': return 'Bahasa Indonesia (id)';
+                    case 'ko': return '한국어 (ko)';
+                    case 'ja': return '日本語 (ja)';
+                    default: return lang.name;
+                  }
+                };
+                
+                return (
+                  <button
+                    key={lang.code}
+                    onClick={() => {
+                      onLanguageChange(lang.code);
+                      setShowLangModal(false);
+                    }}
+                    className={`w-full p-4 rounded-2xl flex items-center justify-between transition-all ${
+                      currentLang === lang.code
+                        ? 'bg-primary text-primary-foreground font-bold shadow-md'
+                        : 'bg-muted text-foreground font-medium hover:bg-muted/80'
+                    }`}
+                  >
+                    <span className="text-sm">{getDisplayName(lang.code)}</span>
+                    {currentLang === lang.code && <Check size={18} />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
-        <div className="space-y-2 max-h-[60vh] overflow-y-auto no-scrollbar">
-          {SUPPORTED_LANGUAGES.map(lang => (
-            <button
-              key={lang.code}
-              onClick={() => {
-                onLanguageChange(lang.code);
-                setShowLangModal(false);
-              }}
-              className={`w-full p-4 rounded-2xl flex items-center justify-between transition-all ${
-                currentLang === lang.code
-                  ? 'bg-primary text-primary-foreground font-bold shadow-md'
-                  : 'bg-muted text-foreground font-medium hover:bg-muted/80'
-              }`}
-            >
-              <span className="text-sm">{lang.name}</span>
-              {currentLang === lang.code && <Check size={18} />}
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
-  )}
+      )}
   </div>
   );
   };

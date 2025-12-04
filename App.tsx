@@ -27,6 +27,16 @@ import type { TrainingModule } from '@src/types/training';
 import { subscribeToEssentialInfo } from './services/essentialInfoService';
 import { subscribeToTrainingModules } from './services/trainingService';
 
+// Broom icon component for loading animation (matching flaticon clean_9755169)
+const BroomIcon = ({ className }: { className?: string }) => (
+  <img 
+    src="https://cdn-icons-png.flaticon.com/512/9755/9755169.png" 
+    alt="" 
+    className={className}
+    style={{ width: 28, height: 28, filter: 'brightness(0) invert(1)' }}
+  />
+);
+
 const App: React.FC = () => {
   const { signOut } = useClerk();
   const { user: clerkUser, isSignedIn, isLoaded: clerkLoaded } = useUser();
@@ -432,8 +442,13 @@ const App: React.FC = () => {
     return (
       <div className="min-h-screen flex flex-col justify-end pb-24" style={{ backgroundColor: '#3EAFD2' }}>
         <div className="text-white text-center">
-          <div className="w-10 h-10 border-4 border-white/30 border-t-white rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-sm font-bold">Completing setup...</p>
+          <div className="broom-loader mx-auto mb-6">
+            <BroomIcon className="broom-icon-svg" />
+            <div className="broom-track"></div>
+            <div className="broom-trail"></div>
+          </div>
+          <p className="text-sm font-bold">Tidying things up...</p>
+          <p className="text-xs text-white/60 mt-2">Almost ready</p>
         </div>
       </div>
     );
@@ -446,9 +461,13 @@ const App: React.FC = () => {
     return (
       <div className="min-h-screen flex flex-col justify-end pb-24" style={{ backgroundColor: '#3EAFD2' }}>
         <div className="text-white text-center">
-          <div className="w-10 h-10 border-4 border-white/30 border-t-white rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-sm font-bold">Loading...</p>
-          <p className="text-xs text-white/60 mt-2">Initializing authentication</p>
+          <div className="broom-loader mx-auto mb-6">
+            <BroomIcon className="broom-icon-svg" />
+            <div className="broom-track"></div>
+            <div className="broom-trail"></div>
+          </div>
+          <p className="text-sm font-bold">Tidying things up...</p>
+          <p className="text-xs text-white/60 mt-2">Please wait a moment</p>
         </div>
       </div>
     );

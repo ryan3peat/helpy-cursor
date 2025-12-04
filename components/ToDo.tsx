@@ -1185,6 +1185,12 @@ const ToDo: React.FC<ToDoProps> = ({
             onClick={() => setIsSheetOpen(false)}
           />
           
+          {/* Safe area bottom cover - fills the gap below the sheet */}
+          <div 
+            className="absolute bottom-0 left-0 right-0 bg-card"
+            style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
+          />
+          
           <div className="relative w-full max-w-lg bg-card rounded-t-3xl bottom-sheet-content flex flex-col" style={{ maxHeight: '80vh', marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
             {/* Drag Handle */}
             <div className="flex justify-center pt-4 pb-2 shrink-0">

@@ -1014,8 +1014,11 @@ const Meals: React.FC<MealsProps> = ({
         </div>
       ) : (
           /* Week View - Compact Chips */
-          <div className="overflow-auto rounded-xl bg-card shadow-sm hover:shadow-md transition-shadow">
-            <table className="min-w-[700px] w-full border-collapse">
+          <div 
+            className="overflow-auto rounded-xl bg-card shadow-sm hover:shadow-md transition-shadow isolate"
+            style={{ maxHeight: 'calc(100dvh - 240px)' }}
+          >
+            <table className="min-w-[700px] w-full" style={{ borderCollapse: 'separate', borderSpacing: 0 }}>
             <thead>
               <tr>
                   <th 
@@ -1040,14 +1043,15 @@ const Meals: React.FC<MealsProps> = ({
               </tr>
             </thead>
             <tbody>
-              {weekDays.map(day => {
+              {weekDays.map((day, dayIndex) => {
                 const dateStr = formatDateStr(day);
                 const isToday = day.toDateString() === new Date().toDateString();
+                const isLastRow = dayIndex === weekDays.length - 1;
                 return (
                     <tr key={dateStr} className="group">
                       {/* Day Column */}
                       <td 
-                        className={`sticky left-0 z-20 p-2 border-b border-border text-center relative overflow-visible ${
+                        className={`sticky left-0 z-20 p-2 border-r border-border text-center relative overflow-visible ${
                           isToday ? 'bg-primary text-primary-foreground' : 'bg-card'
                         }`}
                       >
@@ -1068,13 +1072,14 @@ const Meals: React.FC<MealsProps> = ({
                       </div>
                     </td>
                       {/* Meal Columns */}
-                    {mealTypes.map(type => {
+                    {mealTypes.map((type, typeIndex) => {
                       const slotMeals = getMealsForSlot(day, type);
+                      const isLastCol = typeIndex === mealTypes.length - 1;
                       return (
                         <td
                           key={type}
                             onClick={() => handleWeekCellClick(day)}
-                            className="p-1.5 border-b border-r border-border align-top cursor-pointer hover:bg-primary/5 transition-colors"
+                            className={`p-1.5 align-top cursor-pointer hover:bg-primary/5 transition-colors ${!isLastRow ? 'border-b border-border' : ''} ${!isLastCol ? 'border-r border-border' : ''}`}
                         >
                           {slotMeals.length > 0 ? (
                               <div className="space-y-1">

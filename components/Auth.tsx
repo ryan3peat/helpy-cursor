@@ -6,6 +6,16 @@ import { User } from '../types';
 import SignUp from './SignUp';
 import HouseholdSwitchModal from './HouseholdSwitchModal';
 
+// Broom icon component for loading animation (matching flaticon clean_9755169)
+const BroomIcon = ({ className }: { className?: string }) => (
+  <img 
+    src="https://cdn-icons-png.flaticon.com/512/9755/9755169.png" 
+    alt="" 
+    className={className}
+    style={{ width: 28, height: 28, filter: 'brightness(0) invert(1)' }}
+  />
+);
+
 interface AuthProps {
   onLogin: (user: User) => void;
 }
@@ -576,11 +586,15 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
   if (!isLoaded) {
     console.log('🟣 [Auth] Clerk not loaded yet, showing loading state');
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#3EAFD2' }}>
+      <div className="min-h-screen flex flex-col justify-end pb-24" style={{ backgroundColor: '#3EAFD2' }}>
         <div className="text-white text-center">
-          <div className="w-16 h-16 border-4 border-white/30 border-t-white rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-lg font-bold">Loading...</p>
-          <p className="text-sm text-white/60 mt-2">Checking authentication status</p>
+          <div className="broom-loader mx-auto mb-6">
+            <BroomIcon className="broom-icon-svg" />
+            <div className="broom-track"></div>
+            <div className="broom-trail"></div>
+          </div>
+          <p className="text-sm font-bold">Tidying things up...</p>
+          <p className="text-sm text-white/60 mt-2">Please wait a moment</p>
         </div>
       </div>
     );
@@ -589,11 +603,15 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
   // Loading state while creating user OR while user is authenticated but being processed
   if (isCreatingUser || (isLoaded && user && !hasCheckedUser.current)) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#3EAFD2' }}>
+      <div className="min-h-screen flex flex-col justify-end pb-24" style={{ backgroundColor: '#3EAFD2' }}>
         <div className="text-white text-center">
-          <div className="w-16 h-16 border-4 border-white/30 border-t-white rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-lg font-bold">Setting up your account...</p>
-          <p className="text-sm text-white/60 mt-2">This may take a few seconds</p>
+          <div className="broom-loader mx-auto mb-6">
+            <BroomIcon className="broom-icon-svg" />
+            <div className="broom-track"></div>
+            <div className="broom-trail"></div>
+          </div>
+          <p className="text-sm font-bold">Tidying things up...</p>
+          <p className="text-sm text-white/60 mt-2">Setting up your account</p>
         </div>
       </div>
     );
@@ -606,12 +624,15 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
     console.log('🟡 [Auth] Rendering loading state - user authenticated, hasCheckedUser is true');
     console.log('🟡 [Auth] State:', { isCreatingUser, hasCheckedUser: hasCheckedUser.current });
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#3EAFD2' }}>
+      <div className="min-h-screen flex flex-col justify-end pb-24" style={{ backgroundColor: '#3EAFD2' }}>
         <div className="text-white text-center">
-          <div className="w-16 h-16 border-4 border-white/30 border-t-white rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-lg font-bold">Completing setup...</p>
-          <p className="text-sm text-white/60 mt-2">Please wait</p>
-          <p className="text-xs text-white/40 mt-4">Check browser console (F12) for details</p>
+          <div className="broom-loader mx-auto mb-6">
+            <BroomIcon className="broom-icon-svg" />
+            <div className="broom-track"></div>
+            <div className="broom-trail"></div>
+          </div>
+          <p className="text-sm font-bold">Tidying things up...</p>
+          <p className="text-sm text-white/60 mt-2">Almost ready</p>
         </div>
       </div>
     );
@@ -702,10 +723,14 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
 
   // Fallback - should never reach here
   return (
-    <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#3EAFD2' }}>
+    <div className="min-h-screen flex flex-col justify-end pb-24" style={{ backgroundColor: '#3EAFD2' }}>
       <div className="text-white text-center">
-        <div className="w-16 h-16 border-4 border-white/30 border-t-white rounded-full animate-spin mx-auto mb-4"></div>
-        <p className="text-lg font-bold">Loading...</p>
+        <div className="broom-loader mx-auto mb-6">
+          <BroomIcon className="broom-icon-svg" />
+          <div className="broom-track"></div>
+          <div className="broom-trail"></div>
+        </div>
+        <p className="text-sm font-bold">Tidying things up...</p>
       </div>
     </div>
   );

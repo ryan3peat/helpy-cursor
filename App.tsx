@@ -442,12 +442,14 @@ const App: React.FC = () => {
     return (
       <div className="min-h-screen flex flex-col justify-end pb-24" style={{ backgroundColor: '#3EAFD2' }}>
         <div className="text-white text-center">
-          <div className="broom-loader mx-auto mb-6">
-            <BroomIcon className="broom-icon-svg" />
-            <div className="broom-track"></div>
-            <div className="broom-trail"></div>
+          <div className="broom-loader-wrapper">
+            <div className="broom-loader mb-4">
+              <BroomIcon className="broom-icon-svg" />
+              <div className="broom-track"></div>
+              <div className="broom-trail"></div>
+            </div>
+            <p className="text-sm font-bold whitespace-nowrap">Tidying things up...</p>
           </div>
-          <p className="text-sm font-bold">Tidying things up...</p>
           <p className="text-xs text-white/60 mt-2">Almost ready</p>
         </div>
       </div>
@@ -461,12 +463,14 @@ const App: React.FC = () => {
     return (
       <div className="min-h-screen flex flex-col justify-end pb-24" style={{ backgroundColor: '#3EAFD2' }}>
         <div className="text-white text-center">
-          <div className="broom-loader mx-auto mb-6">
-            <BroomIcon className="broom-icon-svg" />
-            <div className="broom-track"></div>
-            <div className="broom-trail"></div>
+          <div className="broom-loader-wrapper">
+            <div className="broom-loader mb-4">
+              <BroomIcon className="broom-icon-svg" />
+              <div className="broom-track"></div>
+              <div className="broom-trail"></div>
+            </div>
+            <p className="text-sm font-bold whitespace-nowrap">Tidying things up...</p>
           </div>
-          <p className="text-sm font-bold">Tidying things up...</p>
           <p className="text-xs text-white/60 mt-2">Please wait a moment</p>
         </div>
       </div>

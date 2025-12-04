@@ -476,9 +476,17 @@ select {
   }
 }
 
+.broom-loader-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: fit-content;
+  margin: 0 auto;
+}
+
 .broom-loader {
   position: relative;
-  width: 112px;
+  width: 100%;
   height: 40px;
 }
 

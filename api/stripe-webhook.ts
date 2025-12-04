@@ -67,17 +67,44 @@ export default async function handler(req: any, res: any) {
       const period = session.metadata?.period;
       const hid = session.metadata?.household_id;
 
-      if (hid && plan) {
+      if (hid && plan && session.subscription) {
         const limits = PLAN_LIMITS[plan];
-        await supabase.from('households').update({
-          stripe_customer_id: session.customer as string,
-          stripe_subscription_id: session.subscription as string,
-          subscription_status: 'active',
-          subscription_plan: plan,
-          subscription_period: period,
-          max_family_members: limits.maxFamily,
-          max_helpers: limits.maxHelpers,
-        }).eq('id', hid);
+        
+        // Retrieve subscription to get period end date
+        try {
+          const subscriptionId = typeof session.subscription === 'string' 
+            ? session.subscription 
+            : session.subscription.id;
+          
+          const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+          
+          await supabase.from('households').update({
+            stripe_customer_id: session.customer as string,
+            stripe_subscription_id: subscriptionId,
+            subscription_status: 'active',
+            subscription_plan: plan,
+            subscription_period: period,
+            subscription_current_period_end: new Date(
+              subscription.current_period_end * 1000
+            ).toISOString(),
+            max_family_members: limits.maxFamily,
+            max_helpers: limits.maxHelpers,
+          }).eq('id', hid);
+        } catch (error) {
+          console.error('Error retrieving subscription in checkout.session.completed:', error);
+          // Fallback: update without period_end, it will be set by invoice.paid event
+          await supabase.from('households').update({
+            stripe_customer_id: session.customer as string,
+            stripe_subscription_id: typeof session.subscription === 'string' 
+              ? session.subscription 
+              : session.subscription.id,
+            subscription_status: 'active',
+            subscription_plan: plan,
+            subscription_period: period,
+            max_family_members: limits.maxFamily,
+            max_helpers: limits.maxHelpers,
+          }).eq('id', hid);
+        }
       }
       break;
     }

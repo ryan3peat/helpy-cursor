@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import {
   AlertCircle, Heart, Settings, Plus, Trash2, X, Save, Camera,
   Image as ImageIcon, LogOut, Copy, Check, ChevronLeft, ChevronRight,
-  CreditCard, Shield, Lock, Crown, Mail, Share2, Bell, Phone
+  CreditCard, Shield, Lock, Crown, Mail, Share2, Bell, Phone, CheckCircle
 } from 'lucide-react';
 import { useUser } from '@clerk/clerk-react';
 import { User, UserRole, BaseViewProps } from '../types';
@@ -75,46 +75,119 @@ const Profile: React.FC<ProfileProps> = ({
   const [isDeleteAccountModalOpen, setIsDeleteAccountModalOpen] = useState(false);
   const [isFinalDeleteConfirmOpen, setIsFinalDeleteConfirmOpen] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [subscriptionSuccess, setSubscriptionSuccess] = useState(false);
 
   // Lock scroll when any modal is open
   useScrollLock(isAddModalOpen || isEditModalOpen || deleteConfirmOpen || showPhotoOptions);
 
   // Fetch subscription info
-  React.useEffect(() => {
-    const fetchSubscriptionInfo = async () => {
-      if (!currentUser?.householdId) return;
-      
-      try {
-        setIsLoadingSubscription(true);
-        const { data, error } = await supabase
-          .from('households')
-          .select('subscription_plan, subscription_status, subscription_current_period_end, subscription_period')
-          .eq('id', currentUser.householdId)
-          .single();
+  const fetchSubscriptionInfo = React.useCallback(async (retryCount = 0) => {
+    if (!currentUser?.householdId) return;
+    
+    try {
+      setIsLoadingSubscription(true);
+      const { data, error } = await supabase
+        .from('households')
+        .select('subscription_plan, subscription_status, subscription_current_period_end, subscription_period')
+        .eq('id', currentUser.householdId)
+        .single();
 
-        if (error) throw error;
+      if (error) throw error;
 
-        if (data) {
-          setSubscriptionInfo({
-            plan: data.subscription_plan || 'free',
-            status: data.subscription_status || 'inactive',
-            periodEnd: data.subscription_current_period_end,
-            period: data.subscription_period || 'monthly'
-          });
-          setSelectedPlan((data.subscription_plan || 'free') as 'free' | 'core' | 'pro');
-          setBillingPeriod((data.subscription_period || 'monthly') as 'monthly' | 'yearly');
+      if (data) {
+        setSubscriptionInfo({
+          plan: data.subscription_plan || 'free',
+          status: data.subscription_status || 'inactive',
+          periodEnd: data.subscription_current_period_end,
+          period: data.subscription_period || 'monthly'
+        });
+        setSelectedPlan((data.subscription_plan || 'free') as 'free' | 'core' | 'pro');
+        setBillingPeriod((data.subscription_period || 'monthly') as 'monthly' | 'yearly');
+        
+        // If we were retrying and subscription is now active, we're done
+        if (retryCount > 0 && data.subscription_status === 'active') {
+          return true; // Success
         }
-      } catch (error) {
-        console.error('Error fetching subscription info:', error);
-      } finally {
-        setIsLoadingSubscription(false);
+        return data.subscription_status === 'active';
       }
-    };
+      return false;
+    } catch (error) {
+      console.error('Error fetching subscription info:', error);
+      return false;
+    } finally {
+      setIsLoadingSubscription(false);
+    }
+  }, [currentUser?.householdId]);
 
+  // Check for Stripe checkout redirect and refetch subscription info
+  React.useEffect(() => {
+    if (!currentUser?.householdId) return;
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const hashParams = new URLSearchParams(window.location.hash.split('?')[1] || '');
+    const sessionId = urlParams.get('session_id') || hashParams.get('session_id');
+    const success = urlParams.get('success') || hashParams.get('success');
+
+    // If we just returned from Stripe checkout
+    if (sessionId || success === 'true') {
+      // Navigate to subscription page
+      setActiveSection('settings');
+      // Small delay to allow settings to render, then navigate to plan
+      setTimeout(() => setActiveSection('plan'), 100);
+
+      // Clear URL parameters
+      const newUrl = window.location.pathname + (window.location.hash.split('?')[0] || '');
+      window.history.replaceState({}, document.title, newUrl);
+
+      // Show success message
+      setSubscriptionSuccess(true);
+      setTimeout(() => setSubscriptionSuccess(false), 10000);
+
+      // Refetch with retry logic (webhook might take a few seconds)
+      const retryFetch = async (attempt: number = 0) => {
+        const maxRetries = 10;
+        const retryDelay = 2000; // 2 seconds between retries
+
+        if (attempt >= maxRetries) {
+          console.warn('Subscription update not detected after max retries');
+          setSubscriptionSuccess(false);
+          return;
+        }
+
+        const isActive = await fetchSubscriptionInfo(attempt);
+        
+        if (isActive) {
+          // Subscription is now active, we're done - keep success message a bit longer
+          setTimeout(() => setSubscriptionSuccess(false), 3000);
+          return;
+        }
+        
+        if (attempt < maxRetries) {
+          // Subscription not active yet, retry after delay
+          setTimeout(() => retryFetch(attempt + 1), retryDelay);
+        } else {
+          setSubscriptionSuccess(false);
+        }
+      };
+
+      // Initial fetch immediately, then retry if needed
+      setTimeout(() => {
+        fetchSubscriptionInfo(0).then((isActive) => {
+          if (!isActive) {
+            // Wait 2 seconds before first retry (give webhook time to process)
+            setTimeout(() => retryFetch(1), 2000);
+          }
+        });
+      }, 500);
+    }
+  }, [currentUser?.householdId, fetchSubscriptionInfo]);
+
+  // Fetch subscription info when navigating to plan/security sections
+  React.useEffect(() => {
     if (activeSection === 'plan' || activeSection === 'security') {
       fetchSubscriptionInfo();
     }
-  }, [currentUser?.householdId, activeSection]);
+  }, [currentUser?.householdId, activeSection, fetchSubscriptionInfo]);
   
   // Get Clerk user to detect authentication method
   const { user: clerkUser } = useUser();
@@ -1171,6 +1244,18 @@ const Profile: React.FC<ProfileProps> = ({
         <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
           {renderSettingsHeader('Subscription', () => setActiveSection('settings'))}
           <div className="pt-6 pb-24">
+
+            {/* Success Message Banner */}
+            {subscriptionSuccess && (
+              <div className="mb-4 p-4 bg-green-500/10 border border-green-500/20 rounded-xl flex items-center gap-3">
+                <CheckCircle size={20} className="text-green-500 flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="text-body font-semibold text-green-700 dark:text-green-400">
+                    Payment successful! Your subscription is being updated...
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Current Subscription Summary Tile */}
             {isLoadingSubscription ? (

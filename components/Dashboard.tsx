@@ -191,34 +191,24 @@ const Dashboard: React.FC<DashboardProps> = ({
 
   return (
     <div className="pb-16 animate-fade-in page-content bg-background">
-      {/* Sticky Header */}
+      {/* Sticky Header - Push Up (No Shrink) */}
       <header 
-        className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm px-5 transition-[padding,box-shadow] duration-300 overflow-hidden"
+        className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm px-5 pt-12 pb-3 transition-shadow duration-200"
         style={{ 
-          paddingTop: isScrolled ? '12px' : '64px',
-          paddingBottom: isScrolled ? '12px' : '16px',
           boxShadow: isScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none'
         }}
       >
         <div className="flex justify-between items-center">
-          <div 
-            className="transition-transform duration-300 origin-left will-change-transform"
-            style={{ transform: isScrolled ? 'scale(0.65)' : 'scale(1)' }}
-          >
+          <div>
             <h1 className="text-3xl font-bold text-foreground tracking-tight leading-tight">
               {timeOfDay},<br />
               <span className="text-primary">{currentUser.name.split(' ')[0]}</span>
             </h1>
           </div>
-          <div 
-            className="flex gap-2 transition-transform duration-300"
-            style={{ 
-              transform: isScrolled ? 'scale(0.85)' : 'scale(1)'
-            }}
-          >
+          <div className="flex gap-2">
             <button
               onClick={() => setShowLangModal(true)}
-              className="w-14 h-14 rounded-full bg-card border border-border shadow-sm flex flex-col items-center justify-center text-muted-foreground active:scale-95 transition-transform"
+              className="w-14 h-14 rounded-full bg-card border border-border shadow-sm flex flex-col items-center justify-center text-muted-foreground"
             >
               {isTranslating ? (
                 <Loader2 size={18} className="animate-spin text-primary" />
@@ -249,7 +239,7 @@ const Dashboard: React.FC<DashboardProps> = ({
               <img
                 src={currentUser.avatar}
                 alt="Profile"
-                className="w-14 h-14 rounded-full border-4 border-card shadow-sm bg-muted object-cover relative z-10 active:scale-95 transition-transform"
+                className="w-14 h-14 rounded-full border-4 border-card shadow-sm bg-muted object-cover relative z-10"
               />
             </button>
           </div>

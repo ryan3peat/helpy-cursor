@@ -715,33 +715,23 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
     <div className="min-h-screen bg-background pb-40">
       <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
         {/* ─────────────────────────────────────────────────────────────── */}
-        {/* STICKY HEADER - Option B: Shrink Title Only, Snap Padding */}
-        {/* Padding snaps instantly (no transition), title scales smoothly */}
+        {/* STICKY HEADER - Push Up (No Shrink) */}
+        {/* Fixed size header, collapsible content fades out */}
         {/* ─────────────────────────────────────────────────────────────── */}
-        <header 
-          className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm -mx-4 px-4 sm:-mx-6 sm:px-6 overflow-hidden"
-          style={{ 
-            paddingTop: isScrolled ? '12px' : '48px',
-            paddingBottom: '12px'
-          }}
-        >
-          {/* Title - shrinks to 50% on scroll (GPU-accelerated) */}
-          <h1 
-            className="text-display text-foreground transition-transform duration-300 origin-left will-change-transform"
-            style={{ transform: isScrolled ? 'scale(0.5)' : 'scale(1)' }}
-          >
+        <header className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm -mx-4 px-4 sm:-mx-6 sm:px-6 pt-12 pb-3">
+          <h1 className="text-display text-foreground">
             Family Info
           </h1>
         </header>
 
-        {/* Section Toggle Cards - opacity fades, layout snaps */}
+        {/* Section Toggle Cards - fades out on scroll */}
         <div 
           className="transition-opacity duration-200 overflow-hidden"
           style={{
             opacity: isScrolled ? 0 : 1,
-            maxHeight: isScrolled ? '0px' : '120px',
-            marginBottom: isScrolled ? '0px' : '24px',
-            marginTop: isScrolled ? '0px' : '16px',
+            height: isScrolled ? 0 : 'auto',
+            marginBottom: isScrolled ? 0 : '24px',
+            marginTop: isScrolled ? 0 : '16px',
             pointerEvents: isScrolled ? 'none' : 'auto',
           }}
         >
@@ -785,12 +775,12 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
         </div>
 
         {/* ─────────────────────────────────────────────────────────────── */}
-        {/* STICKY TAB NAVIGATION - position snaps, shadow fades */}
+        {/* STICKY TAB NAVIGATION */}
         {/* ─────────────────────────────────────────────────────────────── */}
         <div 
           className="sticky z-10 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 py-3 transition-shadow duration-200"
           style={{ 
-            top: isScrolled ? '52px' : '96px',
+            top: '92px',
             boxShadow: isScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none'
           }}
         >
@@ -978,7 +968,7 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
       {!isHelper && (
         <button
           onClick={activeSection === "essentialInfo" ? handleAddEssentialClick : handleAddTrainingClick}
-          className={`fixed bottom-24 right-6 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-colors flex items-center justify-center z-30 ${
+          className={`fixed bottom-28 right-6 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-colors flex items-center justify-center z-30 ${
             (isEssentialModalOpen || isTrainingModalOpen || viewingTrainingModule) ? 'fab-hiding' : ''
           }`}
           aria-label={activeSection === "essentialInfo" ? "Add Essential Info" : "Add Training Module"}

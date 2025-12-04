@@ -400,20 +400,11 @@ const Expenses: React.FC<ExpensesProps> = ({
     <div className="min-h-screen bg-background pb-40">
       <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
         {/* ─────────────────────────────────────────────────────────────── */}
-        {/* STICKY HEADER - Option B: Shrink Title Only, Snap Padding */}
+        {/* STICKY HEADER - Push Up (No Shrink) */}
         {/* ─────────────────────────────────────────────────────────────── */}
-        <header
-          className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm -mx-4 px-4 sm:-mx-6 sm:px-6 overflow-hidden"
-          style={{
-            paddingTop: isScrolled ? '12px' : '48px',
-            paddingBottom: '12px',
-          }}
-        >
+        <header className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm -mx-4 px-4 sm:-mx-6 sm:px-6 pt-12 pb-3">
           <div className="flex items-center justify-between">
-            <h1
-              className="text-display text-foreground transition-transform duration-300 origin-left will-change-transform"
-              style={{ transform: isScrolled ? 'scale(0.5)' : 'scale(1)' }}
-            >
+            <h1 className="text-display text-foreground">
               {t['expenses.title']}
             </h1>
             {/* Month Selector Button */}
@@ -431,14 +422,14 @@ const Expenses: React.FC<ExpensesProps> = ({
           </div>
         </header>
 
-        {/* Total Card - opacity fades, layout snaps */}
+        {/* Total Card - fades out on scroll */}
         <div
           className="transition-opacity duration-200 overflow-hidden"
           style={{
             opacity: isScrolled ? 0 : 1,
-            maxHeight: isScrolled ? '0px' : '120px',
-            marginBottom: isScrolled ? '0px' : '24px',
-            marginTop: isScrolled ? '0px' : '16px',
+            height: isScrolled ? 0 : 'auto',
+            marginBottom: isScrolled ? 0 : '24px',
+            marginTop: isScrolled ? 0 : '16px',
             pointerEvents: isScrolled ? 'none' : 'auto',
           }}
         >
@@ -449,12 +440,12 @@ const Expenses: React.FC<ExpensesProps> = ({
         </div>
 
         {/* ─────────────────────────────────────────────────────────────── */}
-        {/* STICKY TAB NAVIGATION - position snaps, shadow fades */}
+        {/* STICKY TAB NAVIGATION */}
         {/* ─────────────────────────────────────────────────────────────── */}
         <div
           className="sticky z-10 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 py-3 transition-shadow duration-200"
           style={{
-            top: isScrolled ? '52px' : '96px',
+            top: '92px',
             boxShadow: isScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none',
           }}
         >

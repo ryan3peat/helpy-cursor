@@ -1,6 +1,6 @@
 // components/SignUp.tsx
 import React, { useState, useEffect } from 'react';
-import { useSignUp } from '@clerk/clerk-react';
+import { useSignUp, useSignIn } from '@clerk/clerk-react';
 import { Loader2, ArrowLeft } from 'lucide-react';
 
 interface SignUpProps {
@@ -9,6 +9,7 @@ interface SignUpProps {
 
 const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
   const { signUp, setActive, isLoaded } = useSignUp();
+  const { signIn, setActive: setActiveSignIn, isLoaded: signInLoaded } = useSignIn();
   
   const [formData, setFormData] = useState({
     firstName: '',
@@ -58,14 +59,84 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
         }
       } catch (error: any) {
         console.error('OAuth redirect handling error:', error);
-        setError('Failed to complete sign up. Please try again.');
+        
+        // Check for external_account_exists error (Clerk's way of saying user already exists)
+        const hasExternalAccountError = error.errors?.some(
+          (e: any) => e.code === 'external_account_exists' || 
+                      e.code === 'form_identifier_exists' ||
+                      e.message?.toLowerCase().includes('already exists')
+        );
+
+        if (hasExternalAccountError && signInLoaded && signIn) {
+          // Use Clerk's transfer mechanism to switch to sign-in
+          try {
+            console.log('Existing account detected, transferring to sign-in...');
+            
+            // Transfer the OAuth flow from sign-up to sign-in
+            await signIn.create({ transfer: true });
+            
+            // If transfer successful, continue with sign-in OAuth
+            const baseUrl = window.location.origin + window.location.pathname;
+            const cleanUrl = baseUrl.split('?')[0];
+            
+            await signIn.authenticateWithRedirect({
+              strategy: 'oauth_google',
+              redirectUrl: cleanUrl,
+              redirectUrlComplete: cleanUrl,
+            });
+            return;
+          } catch (transferError: any) {
+            console.error('Transfer to sign-in failed:', transferError);
+            // Fallback: try direct sign-in OAuth
+            try {
+              const baseUrl = window.location.origin + window.location.pathname;
+              const cleanUrl = baseUrl.split('?')[0];
+              
+              await signIn.authenticateWithRedirect({
+                strategy: 'oauth_google',
+                redirectUrl: cleanUrl,
+                redirectUrlComplete: cleanUrl,
+              });
+              return;
+            } catch (signInError: any) {
+              console.error('Sign-in OAuth error:', signInError);
+              setError('Account already exists. Please use Sign In instead.');
+            }
+          }
+        } else {
+          setError('Failed to complete sign up. Please try again.');
+        }
+        
         setIsOAuthProcessing(false);
         setHasCheckedOAuthRedirect(false);
       }
     };
 
     handleOAuthRedirect();
-  }, [isLoaded, signUp, setActive, hasCheckedOAuthRedirect]);
+  }, [isLoaded, signUp, setActive, hasCheckedOAuthRedirect, signIn, signInLoaded]);
+
+  // Handle sign-in OAuth redirect completion
+  useEffect(() => {
+    if (!signInLoaded || !signIn) return;
+
+    const handleSignInOAuthRedirect = async () => {
+      try {
+        // Check if sign-in is complete after OAuth
+        if (signIn.status === 'complete' && signIn.createdSessionId) {
+          setIsOAuthProcessing(true);
+          await setActiveSignIn({ session: signIn.createdSessionId });
+          // User will be redirected by Auth component
+          return;
+        }
+      } catch (error: any) {
+        console.error('Sign-in OAuth redirect handling error:', error);
+        setError('Failed to sign in. Please try again.');
+        setIsOAuthProcessing(false);
+      }
+    };
+
+    handleSignInOAuthRedirect();
+  }, [signInLoaded, signIn, setActiveSignIn]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -182,7 +253,37 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
       });
     } catch (error: any) {
       console.error('Google OAuth error:', error);
-      setError('Failed to initiate Google sign-in. Please try again.');
+      
+      // Check for external_account_exists error BEFORE redirect
+      const hasExternalAccountError = error.errors?.some(
+        (e: any) => e.code === 'external_account_exists' || 
+                    e.code === 'form_identifier_exists' ||
+                    e.message?.toLowerCase().includes('already exists')
+      );
+
+      if (hasExternalAccountError && signInLoaded && signIn) {
+        // Use Clerk's transfer mechanism
+        try {
+          console.log('Existing account detected before redirect, transferring to sign-in...');
+          await signIn.create({ transfer: true });
+          
+          const baseUrl = window.location.origin + window.location.pathname;
+          const cleanUrl = baseUrl.split('?')[0];
+          
+          await signIn.authenticateWithRedirect({
+            strategy: 'oauth_google',
+            redirectUrl: cleanUrl,
+            redirectUrlComplete: cleanUrl,
+          });
+          return;
+        } catch (signInError: any) {
+          console.error('Sign-in OAuth error:', signInError);
+          setError('Account already exists. Please use Sign In instead.');
+        }
+      } else {
+        setError('Failed to initiate Google sign-in. Please try again.');
+      }
+      
       setIsOAuthProcessing(false);
       setHasCheckedOAuthRedirect(false);
     }

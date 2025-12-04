@@ -1254,7 +1254,7 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
         className="absolute bottom-0 left-0 right-0 bg-card"
         style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
       />
-      <div className="bg-card w-full max-w-lg rounded-t-2xl shadow-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ maxHeight: '80vh', marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
+      <div className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ maxHeight: '80vh', marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
         {/* Close Button */}
         <button 
           onClick={onClose} 
@@ -1436,7 +1436,7 @@ const TrainingModal: React.FC<TrainingModalProps> = ({
         className="absolute bottom-0 left-0 right-0 bg-card"
         style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
       />
-      <div className="bg-card w-full max-w-lg rounded-t-2xl shadow-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ maxHeight: '80vh', marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
+      <div className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ maxHeight: '80vh', marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
         {/* Close Button */}
         <button 
           onClick={onClose} 
@@ -1596,7 +1596,7 @@ const TrainingViewModal: React.FC<TrainingViewModalProps> = ({
         className="absolute bottom-0 left-0 right-0 bg-card"
         style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
       />
-      <div className="bg-card w-full max-w-lg rounded-t-2xl shadow-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ maxHeight: '80vh', marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
+      <div className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ maxHeight: '80vh', marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
         {/* Close Button */}
         <button 
           onClick={onClose} 

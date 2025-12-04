@@ -674,7 +674,7 @@ const Expenses: React.FC<ExpensesProps> = ({
               <button
         onClick={openAddExpenseSheet}
         disabled={isScanning}
-        className={`fixed bottom-24 right-6 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-colors flex items-center justify-center z-30 disabled:opacity-50 ${
+        className={`fixed bottom-28 right-6 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-colors flex items-center justify-center z-30 disabled:opacity-50 ${
           isModalOpen ? 'fab-hiding' : ''
         }`}
         aria-label="Add Expense"
@@ -710,7 +710,7 @@ const Expenses: React.FC<ExpensesProps> = ({
             style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
           />
           <div 
-            className="bg-card w-full max-w-lg rounded-t-2xl shadow-2xl overflow-hidden bottom-sheet-content relative"
+            className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content relative"
             style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}
           >
             {/* Close Button */}
@@ -1000,7 +1000,7 @@ const Expenses: React.FC<ExpensesProps> = ({
             style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
           />
           <div 
-            className="bg-card w-full max-w-lg rounded-t-2xl shadow-2xl overflow-hidden bottom-sheet-content relative flex flex-col" 
+            className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" 
             style={{ maxHeight: '85vh', marginBottom: 'env(safe-area-inset-bottom, 34px)' }}
           >
             {/* Close Button */}
@@ -1206,7 +1206,7 @@ const Expenses: React.FC<ExpensesProps> = ({
             style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
           />
           <div 
-            className="bg-card w-full max-w-lg rounded-t-2xl shadow-2xl overflow-hidden bottom-sheet-content relative"
+            className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content relative"
             style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}
           >
             {/* Close Button */}

@@ -400,10 +400,10 @@ const Expenses: React.FC<ExpensesProps> = ({
     <div className="min-h-screen bg-background pb-40">
       <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
         {/* ─────────────────────────────────────────────────────────────── */}
-        {/* STICKY HEADER with Scroll Animation */}
+        {/* STICKY HEADER - Option B: Shrink Title Only, Snap Padding */}
         {/* ─────────────────────────────────────────────────────────────── */}
         <header
-          className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm -mx-4 px-4 sm:-mx-6 sm:px-6 transition-[padding] duration-300 overflow-hidden"
+          className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm -mx-4 px-4 sm:-mx-6 sm:px-6 overflow-hidden"
           style={{
             paddingTop: isScrolled ? '12px' : '48px',
             paddingBottom: '12px',
@@ -431,14 +431,15 @@ const Expenses: React.FC<ExpensesProps> = ({
           </div>
         </header>
 
-        {/* Total Card - fades out on scroll */}
+        {/* Total Card - opacity fades, layout snaps */}
         <div
-          className="transition-all duration-300 overflow-hidden"
+          className="transition-opacity duration-200 overflow-hidden"
           style={{
             opacity: isScrolled ? 0 : 1,
             maxHeight: isScrolled ? '0px' : '120px',
             marginBottom: isScrolled ? '0px' : '24px',
             marginTop: isScrolled ? '0px' : '16px',
+            pointerEvents: isScrolled ? 'none' : 'auto',
           }}
         >
           <div className="bg-primary text-primary-foreground p-6 rounded-xl shadow-md">
@@ -448,12 +449,12 @@ const Expenses: React.FC<ExpensesProps> = ({
         </div>
 
         {/* ─────────────────────────────────────────────────────────────── */}
-        {/* STICKY TAB NAVIGATION (View Toggle) */}
+        {/* STICKY TAB NAVIGATION - position snaps, shadow fades */}
         {/* ─────────────────────────────────────────────────────────────── */}
         <div
-          className="sticky z-10 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 py-3 transition-all duration-300"
+          className="sticky z-10 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 py-3 transition-shadow duration-200"
           style={{
-            top: isScrolled ? '52px' : '80px',
+            top: isScrolled ? '52px' : '96px',
             boxShadow: isScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none',
           }}
         >
@@ -703,7 +704,15 @@ const Expenses: React.FC<ExpensesProps> = ({
       {/* ─────────────────────────────────────────────────────────────── */}
       {addExpenseStage !== 'closed' && (
         <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
-          <div className="bg-card w-full max-w-lg rounded-t-2xl shadow-2xl overflow-hidden bottom-sheet-content relative">
+          {/* Safe area bottom cover - fills the gap below the sheet */}
+          <div 
+            className="absolute bottom-0 left-0 right-0 bg-card"
+            style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
+          />
+          <div 
+            className="bg-card w-full max-w-lg rounded-t-2xl shadow-2xl overflow-hidden bottom-sheet-content relative"
+            style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}
+          >
             {/* Close Button */}
             <button
               onClick={closeAddExpenseSheet}
@@ -727,7 +736,7 @@ const Expenses: React.FC<ExpensesProps> = ({
             {/* STAGE 1: OPTIONS (Compact - Thumb Friendly) */}
             {/* ─────────────────────────────────────────────────────────────── */}
             {addExpenseStage === 'options' && (
-              <div className="p-5 pb-20 space-y-3">
+              <div className="p-5 pb-8 space-y-3">
                 {/* Scan Options - Side by side for quick access */}
                 <div className="grid grid-cols-2 gap-3">
                   <button
@@ -849,7 +858,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                 </div>
 
                 {/* Footer - Actions at bottom for thumb reach */}
-                <div className="p-5 pb-20 border-t border-border">
+                <div className="p-5 pb-8 border-t border-border">
                   <button
                     onClick={handleSaveExpense}
                     disabled={isSaving || !editAmount}
@@ -959,7 +968,7 @@ const Expenses: React.FC<ExpensesProps> = ({
             </div>
 
                 {/* Footer - Actions at bottom for thumb reach */}
-                <div className="p-5 pb-20 border-t border-border">
+                <div className="p-5 pb-8 border-t border-border">
                   <button
                     onClick={handleSaveExpense}
                     disabled={isSaving || !editAmount}
@@ -985,7 +994,15 @@ const Expenses: React.FC<ExpensesProps> = ({
       {/* ─────────────────────────────────────────────────────────────── */}
       {selectedExpense && (
         <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
-          <div className="bg-card w-full max-w-lg rounded-t-2xl shadow-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ maxHeight: '85vh' }}>
+          {/* Safe area bottom cover - fills the gap below the sheet */}
+          <div 
+            className="absolute bottom-0 left-0 right-0 bg-card"
+            style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
+          />
+          <div 
+            className="bg-card w-full max-w-lg rounded-t-2xl shadow-2xl overflow-hidden bottom-sheet-content relative flex flex-col" 
+            style={{ maxHeight: '85vh', marginBottom: 'env(safe-area-inset-bottom, 34px)' }}
+          >
             {/* Close Button */}
             <button
               onClick={closeExistingModal}
@@ -1116,7 +1133,7 @@ const Expenses: React.FC<ExpensesProps> = ({
             </div>
 
             {/* Fixed Footer - Action buttons always visible */}
-            <div className="shrink-0 p-5 pb-20 border-t border-border bg-card space-y-3">
+            <div className="shrink-0 p-5 pb-8 border-t border-border bg-card space-y-3">
               {/* Default Actions */}
               {!isEditingExisting && !confirmDeleteExisting && (
                 <div className="flex items-center gap-3">
@@ -1183,7 +1200,15 @@ const Expenses: React.FC<ExpensesProps> = ({
       {/* ─────────────────────────────────────────────────────────────── */}
       {isMonthPickerOpen && (
         <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
-          <div className="bg-card w-full max-w-lg rounded-t-2xl shadow-2xl overflow-hidden bottom-sheet-content relative">
+          {/* Safe area bottom cover - fills the gap below the sheet */}
+          <div 
+            className="absolute bottom-0 left-0 right-0 bg-card"
+            style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
+          />
+          <div 
+            className="bg-card w-full max-w-lg rounded-t-2xl shadow-2xl overflow-hidden bottom-sheet-content relative"
+            style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}
+          >
             {/* Close Button */}
             <button
               onClick={() => setIsMonthPickerOpen(false)}
@@ -1250,7 +1275,7 @@ const Expenses: React.FC<ExpensesProps> = ({
             </div>
 
             {/* Quick Actions */}
-            <div className="p-5 pb-20 border-t border-border">
+            <div className="p-5 pb-8 border-t border-border">
               <button
                 onClick={() => {
                   setSelectedMonth(now.getMonth());

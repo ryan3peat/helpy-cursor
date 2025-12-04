@@ -4,16 +4,41 @@
 
 A scroll-triggered header shrink animation that provides a polished, native-app feel. When the user scrolls down, the header collapses to maximize content visibility while maintaining navigation accessibility.
 
+**Key Principle: Shrink Title Only, Snap Everything Else**
+
+To avoid jitter, only the title uses a CSS transition (GPU-accelerated `transform: scale()`). All other properties (padding, margins, positions) snap instantly without transitions.
+
 ---
 
 ## Behavior
 
-| Element | Default State | Scrolled State |
-|---------|---------------|----------------|
-| **Header** | Full size, generous padding | Compact, minimal padding |
-| **Title** | `scale(1)` - full size | `scale(0.5)` - 50% size |
-| **Toggle Buttons** | Visible, full height | Faded out, collapsed to 0 |
-| **Tab Navigation** | Below header | Sticky at top with shadow |
+| Element | Default State | Scrolled State | Animation |
+|---------|---------------|----------------|-----------|
+| **Header Padding** | 48px top | 12px top | Instant snap (no transition) |
+| **Title** | `scale(1)` | `scale(0.5)` | Smooth 300ms transition |
+| **Collapsible Section** | Visible, opacity 1 | Hidden, opacity 0 | Opacity fades 200ms |
+| **Tab Navigation Position** | `top: 96px` | `top: 52px` | Instant snap |
+| **Tab Navigation Shadow** | none | shadow | Fades 200ms |
+
+---
+
+## Why This Pattern?
+
+### The Problem with Animating Layout Properties
+
+Animating `padding`, `margin`, `top`, or `maxHeight` triggers **layout recalculation** on every frame, causing:
+- Micro-stutters/jitter
+- Poor performance on mobile
+- Worse on iOS elastic scrolling
+
+### The Solution: GPU-Only Animations
+
+Only these properties animate smoothly on the GPU:
+- `transform` (scale, translate, rotate)
+- `opacity`
+- `box-shadow` (in most browsers)
+
+Everything else should **snap instantly**.
 
 ---
 
@@ -35,14 +60,15 @@ const MyPage: React.FC = () => {
     <div className="min-h-screen bg-background pb-24">
       <div className="max-w-2xl mx-auto px-4 sm:px-6">
         
-        {/* STICKY HEADER */}
+        {/* STICKY HEADER - NO transition on padding */}
         <header 
-          className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm -mx-4 px-4 sm:-mx-6 sm:px-6 transition-[padding] duration-300 overflow-hidden"
+          className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm -mx-4 px-4 sm:-mx-6 sm:px-6 overflow-hidden"
           style={{ 
             paddingTop: isScrolled ? '12px' : '48px',
             paddingBottom: '12px'
           }}
         >
+          {/* TITLE - ONLY this animates (GPU-accelerated) */}
           <h1 
             className="text-display text-foreground transition-transform duration-300 origin-left will-change-transform"
             style={{ transform: isScrolled ? 'scale(0.5)' : 'scale(1)' }}
@@ -51,24 +77,25 @@ const MyPage: React.FC = () => {
           </h1>
         </header>
 
-        {/* COLLAPSIBLE SECTION (optional) */}
+        {/* COLLAPSIBLE SECTION - opacity fades, layout snaps */}
         <div 
-          className="transition-all duration-300 overflow-hidden"
+          className="transition-opacity duration-200 overflow-hidden"
           style={{
             opacity: isScrolled ? 0 : 1,
-            maxHeight: isScrolled ? '0px' : '100px',
+            maxHeight: isScrolled ? '0px' : '120px',
             marginBottom: isScrolled ? '0px' : '24px',
-            marginTop: isScrolled ? '0px' : '16px'
+            marginTop: isScrolled ? '0px' : '16px',
+            pointerEvents: isScrolled ? 'none' : 'auto',
           }}
         >
           {/* Toggle buttons, filters, etc. */}
         </div>
 
-        {/* STICKY TAB NAVIGATION */}
+        {/* STICKY TAB NAVIGATION - position snaps, shadow fades */}
         <div 
-          className="sticky z-10 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 py-3 transition-all duration-300"
+          className="sticky z-10 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 py-3 transition-shadow duration-200"
           style={{ 
-            top: isScrolled ? '52px' : '80px',
+            top: isScrolled ? '52px' : '96px',
             boxShadow: isScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none'
           }}
         >
@@ -88,135 +115,105 @@ const MyPage: React.FC = () => {
 
 ---
 
+## Critical Rules
+
+### DO
+
+- Use `transition-transform` on title only
+- Use `transition-opacity` for fade effects
+- Use `transition-shadow` for shadow effects
+- Let padding/margin/top snap instantly
+
+### DO NOT
+
+- Use `transition-[padding]` on header
+- Use `transition-all` on containers with layout changes
+- Animate `maxHeight` with transitions
+- Animate `top` position with transitions
+
+---
+
 ## Pixel-Perfect Specifications
 
 ### Header Container
 
-| Property | Default | Scrolled | Notes |
-|----------|---------|----------|-------|
-| Padding Top | 48px | 12px | Generous → Compact |
-| Padding Bottom | 12px | 12px | Consistent |
-| Background | `bg-background/95` | `bg-background/95` | Semi-transparent |
-| Backdrop | `backdrop-blur-sm` | `backdrop-blur-sm` | Subtle blur |
-| Z-Index | 20 | 20 | Above tab nav |
+| Property | Default | Scrolled | Transition |
+|----------|---------|----------|------------|
+| Padding Top | 48px | 12px | **None (instant)** |
+| Padding Bottom | 12px | 12px | - |
+| Background | `bg-background/95` | `bg-background/95` | - |
+| Z-Index | 20 | 20 | - |
 
 ### Title
 
-| Property | Default | Scrolled | Notes |
-|----------|---------|----------|-------|
-| Transform | `scale(1)` | `scale(0.5)` | Shrinks to 50% |
-| Origin | `origin-left` | `origin-left` | Scales from left edge |
-| Duration | 300ms | 300ms | Smooth transition |
+| Property | Default | Scrolled | Transition |
+|----------|---------|----------|------------|
+| Transform | `scale(1)` | `scale(0.5)` | 300ms ease |
+| Origin | `origin-left` | `origin-left` | - |
 
 ### Collapsible Section
 
-| Property | Default | Scrolled | Notes |
-|----------|---------|----------|-------|
-| Opacity | 1 | 0 | Fades out |
-| Max Height | 100px | 0px | Collapses |
-| Margin Bottom | 24px | 0px | Removes spacing |
-| Margin Top | 16px | 0px | Removes spacing |
+| Property | Default | Scrolled | Transition |
+|----------|---------|----------|------------|
+| Opacity | 1 | 0 | 200ms ease |
+| Max Height | 120px | 0px | **None (instant)** |
+| Margins | 16px/24px | 0px | **None (instant)** |
+| Pointer Events | auto | none | - |
 
 ### Tab Navigation
 
-| Property | Default | Scrolled | Notes |
-|----------|---------|----------|-------|
-| Position | `sticky` | `sticky` | Always sticky |
-| Top | 80px | 52px | Moves up |
-| Z-Index | 10 | 10 | Below header |
-| Box Shadow | none | `0 4px 12px -2px rgba(0,0,0,0.08)` | Scroll indicator |
+| Property | Default | Scrolled | Transition |
+|----------|---------|----------|------------|
+| Top | 96px | 52px | **None (instant)** |
+| Box Shadow | none | shadow | 200ms ease |
 
 ---
 
 ## Anti-Jitter System
 
-The hook uses multiple techniques to prevent jitter from elastic/bounce scrolling:
+The hook uses multiple techniques to prevent jitter:
 
 ### 1. Hysteresis (Wide Gap)
 Different thresholds for collapsing vs expanding:
 - **Collapse**: when `scrollY > 60px`
-- **Expand**: when `scrollY < 5px`
-- **Buffer zone**: 55px gap prevents oscillation
+- **Expand**: when `scrollY < 35px`
+- **Buffer zone**: 25px gap prevents oscillation
 
 ### 2. Cooldown Lock
-After each state change, further changes are blocked for 150ms:
-```typescript
-isLockedRef.current = true;
-setTimeout(() => {
-  isLockedRef.current = false;
-}, 150);
-```
+After each state change, further changes are blocked for 150ms.
 
 ### 3. requestAnimationFrame
-Throttles updates to screen refresh rate for smoother animation.
+Throttles updates to screen refresh rate.
 
 ### 4. Ignore Elastic Scroll
-Negative scroll values (iOS overscroll) are ignored:
-```typescript
-if (scrollY >= 0) {
-  // Only process positive scroll values
-}
-```
+Negative scroll values (iOS overscroll) are ignored.
 
 ---
 
-## CSS Classes Used
+## CSS Classes Summary
 
 ```css
-/* Background with transparency and blur */
-.bg-background/95    /* 95% opacity */
-.backdrop-blur-sm    /* Subtle blur effect */
+/* Header - NO padding transition */
+.sticky .top-0 .z-20 .bg-background/95 .backdrop-blur-sm .overflow-hidden
 
-/* Transitions */
-.transition-[padding]      /* Animate padding changes */
-.transition-transform      /* Animate scale */
-.transition-all            /* Animate all properties */
-.duration-300              /* 300ms duration */
+/* Title - ONLY transform animates */
+.transition-transform .duration-300 .origin-left .will-change-transform
 
-/* Performance */
-.will-change-transform     /* GPU optimization hint */
-.overflow-hidden           /* Prevents content flash during collapse */
+/* Collapsible - ONLY opacity animates */
+.transition-opacity .duration-200 .overflow-hidden
 
-/* Sticky positioning */
-.sticky                    /* Enable sticky behavior */
-.z-20, .z-10              /* Layer ordering */
+/* Tab Nav - ONLY shadow animates */
+.transition-shadow .duration-200
 ```
-
----
-
-## Shadow Specification
-
-When scrolled, the tab navigation gets a subtle shadow to indicate it's "floating":
-
-```css
-box-shadow: 0 4px 12px -2px rgba(0,0,0,0.08)
-```
-
-| Value | Meaning |
-|-------|---------|
-| `0` | X offset (none) |
-| `4px` | Y offset (downward) |
-| `12px` | Blur radius |
-| `-2px` | Spread (negative = tighter) |
-| `rgba(0,0,0,0.08)` | Black at 8% opacity |
-
----
-
-## Usage Notes
-
-1. **Full-bleed Header**: Use negative margins (`-mx-4`, `-mx-6`) and matching padding (`px-4`, `px-6`) to make header span full width while keeping content aligned.
-
-2. **Responsive**: Use `sm:` breakpoints to adjust padding on larger screens.
-
-3. **Performance**: The `{ passive: true }` option on the scroll listener prevents blocking the main thread.
-
-4. **Customization**: Adjust thresholds, timing, and scale values as needed for different page layouts.
 
 ---
 
 ## Files
 
 - **Hook**: `/hooks/useScrollHeader.ts`
-- **Example**: `/components/HouseholdInfo.tsx`
+- **Examples**: 
+  - `/components/HouseholdInfo.tsx`
+  - `/components/Meals.tsx`
+  - `/components/ToDo.tsx`
+  - `/components/Expenses.tsx`
 - **Docs**: `/docs/SCROLL_HEADER_PATTERN.md`
-

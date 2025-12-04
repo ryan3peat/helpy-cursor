@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { ToDoItem, Meal, User, MealType, TranslationDictionary, UserRole, Expense } from '../types';
 import { useScrollHeader } from '../hooks/useScrollHeader';
+import { useScrollLock } from '../hooks/useScrollLock';
 import { SUPPORTED_LANGUAGES } from '../constants';
 
 interface DashboardProps {
@@ -61,6 +62,9 @@ const Dashboard: React.FC<DashboardProps> = ({
   
   // Scroll header animation
   const { isScrolled } = useScrollHeader();
+  
+  // Lock body scroll when language modal is open
+  useScrollLock(showLangModal);
 
   useEffect(() => {
     setTempNotes(familyNotes);

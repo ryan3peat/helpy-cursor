@@ -715,33 +715,34 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
     <div className="min-h-screen bg-background pb-40">
       <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
         {/* ─────────────────────────────────────────────────────────────── */}
-        {/* STICKY HEADER with Scroll Animation */}
+        {/* STICKY HEADER - Option B: Shrink Title Only, Snap Padding */}
+        {/* Padding snaps instantly (no transition), title scales smoothly */}
         {/* ─────────────────────────────────────────────────────────────── */}
         <header 
-          className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm -mx-4 px-4 sm:-mx-6 sm:px-6 transition-[padding] duration-300 overflow-hidden"
+          className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm -mx-4 px-4 sm:-mx-6 sm:px-6 overflow-hidden"
           style={{ 
             paddingTop: isScrolled ? '12px' : '48px',
             paddingBottom: '12px'
           }}
         >
-          {/* Title - shrinks to 50% on scroll */}
+          {/* Title - shrinks to 50% on scroll (GPU-accelerated) */}
           <h1 
             className="text-display text-foreground transition-transform duration-300 origin-left will-change-transform"
             style={{ transform: isScrolled ? 'scale(0.5)' : 'scale(1)' }}
           >
             Family Info
-      </h1>
+          </h1>
         </header>
 
-        {/* Section Toggle Cards - fade out and collapse on scroll */}
+        {/* Section Toggle Cards - opacity fades, layout snaps */}
         <div 
-          className="transition-all duration-300"
+          className="transition-opacity duration-200 overflow-hidden"
           style={{
             opacity: isScrolled ? 0 : 1,
             maxHeight: isScrolled ? '0px' : '120px',
             marginBottom: isScrolled ? '0px' : '24px',
             marginTop: isScrolled ? '0px' : '16px',
-            overflow: isScrolled ? 'hidden' : 'visible',
+            pointerEvents: isScrolled ? 'none' : 'auto',
           }}
         >
           <div className="grid grid-cols-2 gap-3">
@@ -784,12 +785,12 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
         </div>
 
         {/* ─────────────────────────────────────────────────────────────── */}
-        {/* STICKY TAB NAVIGATION */}
+        {/* STICKY TAB NAVIGATION - position snaps, shadow fades */}
         {/* ─────────────────────────────────────────────────────────────── */}
         <div 
-          className="sticky z-10 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 py-3 transition-all duration-300"
+          className="sticky z-10 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 py-3 transition-shadow duration-200"
           style={{ 
-            top: isScrolled ? '52px' : '80px',
+            top: isScrolled ? '52px' : '96px',
             boxShadow: isScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none'
           }}
         >
@@ -1248,6 +1249,11 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
 }) => {
   return (
     <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
+      {/* Safe area bottom cover - fills the gap below the sheet */}
+      <div 
+        className="absolute bottom-0 left-0 right-0 bg-card"
+        style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
+      />
       <div className="bg-card w-full max-w-lg rounded-t-2xl shadow-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ maxHeight: '80vh', marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
         {/* Close Button */}
         <button 
@@ -1425,6 +1431,11 @@ const TrainingModal: React.FC<TrainingModalProps> = ({
 }) => {
   return (
     <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
+      {/* Safe area bottom cover - fills the gap below the sheet */}
+      <div 
+        className="absolute bottom-0 left-0 right-0 bg-card"
+        style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
+      />
       <div className="bg-card w-full max-w-lg rounded-t-2xl shadow-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ maxHeight: '80vh', marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
         {/* Close Button */}
         <button 
@@ -1530,7 +1541,7 @@ const TrainingModal: React.FC<TrainingModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="p-5 pb-20 border-t border-border flex gap-3">
+        <div className="p-5 pb-8 border-t border-border flex gap-3">
           {isEditing && (
             <button
               onClick={onDelete}
@@ -1580,6 +1591,11 @@ const TrainingViewModal: React.FC<TrainingViewModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
+      {/* Safe area bottom cover - fills the gap below the sheet */}
+      <div 
+        className="absolute bottom-0 left-0 right-0 bg-card"
+        style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
+      />
       <div className="bg-card w-full max-w-lg rounded-t-2xl shadow-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ maxHeight: '80vh', marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
         {/* Close Button */}
         <button 
@@ -1630,7 +1646,7 @@ const TrainingViewModal: React.FC<TrainingViewModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="p-5 pb-20 border-t border-border flex gap-3">
+        <div className="p-5 pb-8 border-t border-border flex gap-3">
           <button
             onClick={onClose}
             className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body hover:bg-secondary/80 transition-colors"

@@ -649,10 +649,10 @@ const Meals: React.FC<MealsProps> = ({
     <div className="min-h-screen bg-background pb-40">
       <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
         {/* ─────────────────────────────────────────────────────────────── */}
-        {/* STICKY HEADER with Scroll Animation */}
+        {/* STICKY HEADER - Option B: Shrink Title Only, Snap Padding */}
         {/* ─────────────────────────────────────────────────────────────── */}
         <header 
-          className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm -mx-4 px-4 sm:-mx-6 sm:px-6 transition-[padding] duration-300 overflow-hidden"
+          className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm -mx-4 px-4 sm:-mx-6 sm:px-6 overflow-hidden"
           style={{ 
             paddingTop: isScrolled ? '12px' : '48px',
             paddingBottom: '12px'
@@ -704,12 +704,12 @@ const Meals: React.FC<MealsProps> = ({
         </header>
 
         {/* ─────────────────────────────────────────────────────────────── */}
-        {/* WEEK NAVIGATION - Always sticky */}
+        {/* WEEK NAVIGATION - position snaps, shadow fades */}
         {/* ─────────────────────────────────────────────────────────────── */}
         <div 
-          className="sticky z-10 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 py-3 transition-all duration-300"
+          className="sticky z-10 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 py-3 transition-shadow duration-200"
           style={{ 
-            top: isScrolled ? '52px' : '80px',
+            top: isScrolled ? '52px' : '96px',
             boxShadow: isScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none'
           }}
         >
@@ -1159,6 +1159,11 @@ const Meals: React.FC<MealsProps> = ({
           className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
           onClick={() => setIsModalOpen(false)}
         >
+          {/* Safe area bottom cover - fills the gap below the sheet */}
+          <div 
+            className="absolute bottom-0 left-0 right-0 bg-popover"
+            style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
+          />
           <div 
             className="relative bg-popover w-full max-w-lg rounded-t-3xl flex flex-col bottom-sheet-content"
             style={{ maxHeight: '80vh', marginBottom: 'env(safe-area-inset-bottom, 34px)' }}

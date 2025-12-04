@@ -1467,7 +1467,6 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
                         onChange={(e) => setCountryCodeSearch(e.target.value)}
                         placeholder="Search country..."
                         className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-body focus:outline-none focus:border-primary transition-colors"
-                        autoFocus
                       />
                     </div>
                   </div>

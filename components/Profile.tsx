@@ -1158,6 +1158,7 @@ const Profile: React.FC<ProfileProps> = ({
       }
     ];
 
+    const isAdmin = currentUser.role === UserRole.MASTER;
     const currentPlanName = subscriptionInfo?.plan === 'core' ? 'Core' : subscriptionInfo?.plan === 'pro' ? 'Pro' : 'Free';
     const planPrice = subscriptionInfo?.plan === 'core' 
       ? (subscriptionInfo?.period === 'yearly' ? 850 : 88)
@@ -1171,14 +1172,14 @@ const Profile: React.FC<ProfileProps> = ({
           {renderSettingsHeader('Subscription', () => setActiveSection('settings'))}
           <div className="pt-6 pb-24">
 
-            {/* Current Subscription Details */}
+            {/* Current Subscription Summary Tile */}
             {isLoadingSubscription ? (
               <div className="mt-6 bg-card rounded-3xl p-6 shadow-sm border border-border mb-6">
                 <div className="flex items-center justify-center py-8">
                   <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
                 </div>
               </div>
-            ) : subscriptionInfo ? (
+            ) : (
               <div className="mt-6 bg-primary rounded-3xl p-6 shadow-md text-primary-foreground mb-6">
                 <div className="flex items-center justify-between mb-4">
                   <div>
@@ -1198,10 +1199,10 @@ const Profile: React.FC<ProfileProps> = ({
                   </div>
                 </div>
                 
-                {subscriptionInfo.status === 'active' && subscriptionInfo.periodEnd && (
+                {subscriptionInfo?.status === 'active' && subscriptionInfo?.periodEnd ? (
                   <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-primary-foreground/20">
                     <div>
-                      <p className="text-caption text-primary-foreground/70 mb-1">Subscription Until</p>
+                      <p className="text-caption text-primary-foreground/70 mb-1">Expires On</p>
                       <p className="text-body font-semibold">{formatDate(subscriptionInfo.periodEnd)}</p>
                     </div>
                     <div>
@@ -1209,9 +1210,13 @@ const Profile: React.FC<ProfileProps> = ({
                       <p className="text-body font-semibold">{getNextPaymentDate(subscriptionInfo.periodEnd, subscriptionInfo.period) || 'N/A'}</p>
                     </div>
                   </div>
+                ) : subscriptionInfo?.status !== 'active' && (
+                  <div className="mt-4 pt-4 border-t border-primary-foreground/20">
+                    <p className="text-body text-primary-foreground/80">No active subscription</p>
+                  </div>
                 )}
 
-                {subscriptionInfo.status === 'active' && (
+                {subscriptionInfo?.status === 'active' && isAdmin && (
                   <button
                     onClick={handleCancelSubscription}
                     disabled={isLoading}
@@ -1221,13 +1226,6 @@ const Profile: React.FC<ProfileProps> = ({
                   </button>
                 )}
               </div>
-            ) : (
-              <div className="mt-6 bg-card rounded-3xl p-6 shadow-sm border border-border mb-6">
-                <div className="text-center py-4">
-                  <h3 className="text-title font-bold text-foreground mb-2">No Active Subscription</h3>
-                  <p className="text-body text-muted-foreground">Choose a plan below to get started</p>
-                </div>
-              </div>
             )}
 
             {/* Upgrade/Change Plan Section */}
@@ -1236,27 +1234,37 @@ const Profile: React.FC<ProfileProps> = ({
                 {subscriptionInfo && subscriptionInfo.status === 'active' ? 'Change Plan' : 'Choose Your Plan'}
               </h3>
 
+              {!isAdmin && (
+                <div className="mb-4 p-4 bg-muted rounded-xl border border-border">
+                  <p className="text-body text-muted-foreground text-center">
+                    Only Admin can make changes to the subscription
+                  </p>
+                </div>
+              )}
+
               {/* Billing Period Toggle */}
               <div className="mb-6 flex justify-center">
-                <div className="relative rounded-full overflow-hidden" style={{ backgroundColor: 'hsl(var(--muted))' }}>
+                <div className={`relative rounded-full overflow-hidden ${!isAdmin ? 'opacity-50' : ''}`} style={{ backgroundColor: 'hsl(var(--muted))' }}>
                   <div className="flex p-1">
                     <button
                       onClick={() => setBillingPeriod('monthly')}
+                      disabled={!isAdmin}
                       className={`px-6 py-2 rounded-full font-semibold text-body transition-colors ${
                         billingPeriod === 'monthly'
                           ? 'bg-card text-primary shadow-sm'
                           : 'text-muted-foreground hover:text-foreground'
-                      }`}
+                      } ${!isAdmin ? 'cursor-not-allowed' : ''}`}
                     >
                       Monthly
                     </button>
                     <button
                       onClick={() => setBillingPeriod('yearly')}
+                      disabled={!isAdmin}
                       className={`px-6 py-2 rounded-full font-semibold text-body transition-colors ${
                         billingPeriod === 'yearly'
                           ? 'bg-card text-primary shadow-sm'
                           : 'text-muted-foreground hover:text-foreground'
-                      }`}
+                      } ${!isAdmin ? 'cursor-not-allowed' : ''}`}
                     >
                       Yearly
                       <span className="ml-1 text-caption" style={{ color: 'hsl(var(--primary))' }}>Save 20%</span>
@@ -1273,7 +1281,7 @@ const Profile: React.FC<ProfileProps> = ({
               <div className="space-y-4">
                 {plans.map((p) => {
                   const price = billingPeriod === 'monthly' ? p.monthlyPrice : p.yearlyPrice;
-                  const isCurrentPlan = selectedPlan === p.id;
+                  const isCurrentPlan = subscriptionInfo?.plan === p.id && subscriptionInfo?.status === 'active';
 
                   return (
                     <div
@@ -1298,11 +1306,18 @@ const Profile: React.FC<ProfileProps> = ({
                             </span>
                           </div>
                         </div>
-                        {p.highlight && (
-                          <span className="bg-primary text-primary-foreground text-caption font-bold px-3 py-1 rounded-full">
-                            Popular
-                          </span>
-                        )}
+                        <div className="flex flex-col items-end gap-1">
+                          {isCurrentPlan && (
+                            <span className="bg-primary text-primary-foreground text-caption font-bold px-3 py-1 rounded-full">
+                              Current Plan
+                            </span>
+                          )}
+                          {p.highlight && !isCurrentPlan && (
+                            <span className="bg-primary text-primary-foreground text-caption font-bold px-3 py-1 rounded-full">
+                              Popular
+                            </span>
+                          )}
+                        </div>
                       </div>
 
                       <ul className="space-y-2 mb-6">
@@ -1316,14 +1331,16 @@ const Profile: React.FC<ProfileProps> = ({
 
                       <button
                         onClick={() => handleSelectPlan(p.id as 'core' | 'pro', billingPeriod)}
-                        disabled={isLoading || isCurrentPlan}
+                        disabled={isLoading || isCurrentPlan || !isAdmin}
                         className={`w-full py-3 rounded-xl font-semibold transition-colors ${
                           isCurrentPlan
                             ? 'bg-secondary text-muted-foreground cursor-not-allowed'
+                            : !isAdmin
+                            ? 'bg-muted text-muted-foreground cursor-not-allowed'
                             : 'bg-primary text-primary-foreground hover:bg-primary/90'
                         }`}
                       >
-                        {isLoading ? 'Processing...' : isCurrentPlan ? 'Current Plan' : 'Select Plan'}
+                        {isLoading ? 'Processing...' : isCurrentPlan ? 'Current Plan' : !isAdmin ? 'Only Admin Can Change' : 'Select Plan'}
                       </button>
                     </div>
                   );

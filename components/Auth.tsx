@@ -247,6 +247,53 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
       }
 
       // ============================================================
+      // STEP 2.5: Check if user exists by email (for returning users)
+      // This handles cases where clerk_id doesn't match or wasn't set
+      // ============================================================
+      if (clerkEmail) {
+        const { data: existingUserByEmail, error: emailCheckError } = await supabase
+          .from('users')
+          .select('*')
+          .eq('email', clerkEmail)
+          .eq('status', 'active')
+          .maybeSingle();
+
+        if (existingUserByEmail && !emailCheckError) {
+          console.log('✅ [Auth] Found existing user by email, updating clerk_id and logging in:', existingUserByEmail);
+          
+          // Update clerk_id if it's missing or different
+          if (!existingUserByEmail.clerk_id || existingUserByEmail.clerk_id !== clerkUser.id) {
+            const { error: updateError } = await supabase
+              .from('users')
+              .update({ clerk_id: clerkUser.id })
+              .eq('id', existingUserByEmail.id);
+            
+            if (updateError) {
+              console.error('❌ Failed to update clerk_id:', updateError);
+            } else {
+              console.log('✅ Updated clerk_id for existing user');
+            }
+          }
+          
+          console.log('✅ [Auth] Calling onLogin() with existing user (found by email)');
+          onLogin({
+            id: clerkUser.id, // Use the current clerk_id
+            householdId: existingUserByEmail.household_id,
+            email: existingUserByEmail.email,
+            name: existingUserByEmail.name,
+            role: existingUserByEmail.role,
+            avatar: existingUserByEmail.avatar,
+            allergies: existingUserByEmail.allergies || [],
+            preferences: existingUserByEmail.preferences || [],
+            status: existingUserByEmail.status || 'active'
+          });
+          setIsCreatingUser(false);
+          console.log('✅ [Auth] onLogin() called successfully, resetting isCreatingUser');
+          return;
+        }
+      }
+
+      // ============================================================
       // STEP 3: Check if there's a pending user with matching email
       // This handles cases where invitation metadata wasn't passed through
       // ============================================================
@@ -340,6 +387,8 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
         
         // Check if it's a duplicate email error (code 23505)
         if (userError.code === '23505' && userError.message?.includes('email')) {
+          console.log('⚠️ [Auth] Duplicate email error detected, checking for existing user...');
+          
           // Check if we're in an invite flow
           const urlParams = new URLSearchParams(window.location.search);
           const hashParams = new URLSearchParams(window.location.hash.split('?')[1] || '');
@@ -387,6 +436,60 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                 newUserId: uid
               });
               setShowHouseholdSwitch(true);
+              setIsCreatingUser(false);
+              return;
+            }
+          }
+          
+          // Fallback: Check for existing user by email and log them in
+          // This handles cases where our earlier checks somehow missed the user
+          if (clerkEmail) {
+            console.log('🔍 [Auth] Checking for existing user by email as fallback...');
+            const { data: existingUserByEmail, error: emailCheckError } = await supabase
+              .from('users')
+              .select('*')
+              .eq('email', clerkEmail)
+              .eq('status', 'active')
+              .maybeSingle();
+            
+            if (existingUserByEmail && !emailCheckError) {
+              console.log('✅ [Auth] Found existing user by email in error handler, updating clerk_id and logging in');
+              
+              // Update clerk_id if it's missing or different
+              if (!existingUserByEmail.clerk_id || existingUserByEmail.clerk_id !== clerkUser.id) {
+                const { error: updateError } = await supabase
+                  .from('users')
+                  .update({ clerk_id: clerkUser.id })
+                  .eq('id', existingUserByEmail.id);
+                
+                if (updateError) {
+                  console.error('❌ Failed to update clerk_id:', updateError);
+                } else {
+                  console.log('✅ Updated clerk_id for existing user');
+                }
+              }
+              
+              // Clean up the household we just created since user already exists
+              if (newHousehold) {
+                await supabase
+                  .from('households')
+                  .delete()
+                  .eq('id', newHousehold.id);
+                console.log('🧹 Cleaned up duplicate household');
+              }
+              
+              console.log('✅ [Auth] Calling onLogin() with existing user (from error handler)');
+              onLogin({
+                id: clerkUser.id,
+                householdId: existingUserByEmail.household_id,
+                email: existingUserByEmail.email,
+                name: existingUserByEmail.name,
+                role: existingUserByEmail.role,
+                avatar: existingUserByEmail.avatar,
+                allergies: existingUserByEmail.allergies || [],
+                preferences: existingUserByEmail.preferences || [],
+                status: existingUserByEmail.status || 'active'
+              });
               setIsCreatingUser(false);
               return;
             }

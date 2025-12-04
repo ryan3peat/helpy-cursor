@@ -619,11 +619,8 @@ const Profile: React.FC<ProfileProps> = ({
             <span className="helpy-logo">helpy</span>
           </div>
         </div>
-      </div>
-    );
-  }
 
-          {/* Add User Modal */}
+        {/* Add User Modal */}
           {isAddModalOpen && (
             <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-end justify-center p-4 z-50 bottom-sheet-backdrop">
               <div className="bg-card rounded-t-3xl w-full max-w-lg p-6 bottom-sheet-content relative flex flex-col" style={{ maxHeight: '80vh', marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
@@ -852,43 +849,44 @@ const Profile: React.FC<ProfileProps> = ({
             </div>
           )}
 
-          {/* Photo Options Modal */}
-          {showPhotoOptions && (
-            <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-end justify-center z-50 bottom-sheet-backdrop">
-              <div className="bg-card rounded-t-3xl w-full max-w-lg p-6 bottom-sheet-content relative" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
-                <h3 className="text-title font-bold text-foreground mb-4">Change Photo</h3>
-                <div className="space-y-3">
-                  <button
-                    onClick={() => {
-                      cameraInputRef.current?.click();
-                      setShowPhotoOptions(false);
-                    }}
-                    className="w-full flex items-center gap-3 p-4 bg-secondary rounded-xl hover:bg-secondary/80 transition-colors"
-                  >
-                    <Camera size={20} className="text-foreground" />
-                    <span className="font-semibold text-foreground text-body">Take Photo</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      fileInputRef.current?.click();
-                      setShowPhotoOptions(false);
-                    }}
-                    className="w-full flex items-center gap-3 p-4 bg-secondary rounded-xl hover:bg-secondary/80 transition-colors"
-                  >
-                    <ImageIcon size={20} className="text-foreground" />
-                    <span className="font-semibold text-foreground text-body">Choose from Library</span>
-                  </button>
-                  <button
-                    onClick={() => setShowPhotoOptions(false)}
-                    className="w-full p-4 bg-secondary rounded-xl font-semibold text-foreground hover:bg-secondary/80 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                </div>
+        {/* Photo Options Modal */}
+        {showPhotoOptions && (
+          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-end justify-center z-50 bottom-sheet-backdrop">
+            <div className="bg-card rounded-t-3xl w-full max-w-lg p-6 bottom-sheet-content relative" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
+              <h3 className="text-title font-bold text-foreground mb-4">Change Photo</h3>
+              <div className="space-y-3">
+                <button
+                  onClick={() => {
+                    cameraInputRef.current?.click();
+                    setShowPhotoOptions(false);
+                  }}
+                  className="w-full flex items-center gap-3 p-4 bg-secondary rounded-xl hover:bg-secondary/80 transition-colors"
+                >
+                  <Camera size={20} className="text-foreground" />
+                  <span className="font-semibold text-foreground text-body">Take Photo</span>
+                </button>
+                <button
+                  onClick={() => {
+                    fileInputRef.current?.click();
+                    setShowPhotoOptions(false);
+                  }}
+                  className="w-full flex items-center gap-3 p-4 bg-secondary rounded-xl hover:bg-secondary/80 transition-colors"
+                >
+                  <ImageIcon size={20} className="text-foreground" />
+                  <span className="font-semibold text-foreground text-body">Choose from Library</span>
+                </button>
+                <button
+                  onClick={() => setShowPhotoOptions(false)}
+                  className="w-full p-4 bg-secondary rounded-xl font-semibold text-foreground hover:bg-secondary/80 transition-colors"
+                >
+                  Cancel
+                </button>
               </div>
             </div>
-          )}
+          </div>
+        )}
 
+        {/* Hidden file inputs */}
         <input ref={fileInputRef} type="file" accept="image/*" className="hidden" />
         <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" />
       </div>

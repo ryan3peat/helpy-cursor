@@ -811,16 +811,8 @@ const ToDo: React.FC<ToDoProps> = ({
           </div>
         </header>
 
-        {/* Section Toggle Cards - fade out on scroll (keep height to prevent bounce) */}
-        <div 
-          className="transition-all duration-300"
-          style={{
-            opacity: isScrolled ? 0 : 1,
-            pointerEvents: isScrolled ? 'none' : 'auto',
-            marginBottom: '24px',
-            marginTop: '16px'
-          }}
-        >
+        {/* Section Toggle Cards */}
+        <div className="mt-4 mb-6">
           <div className="grid grid-cols-2 gap-3">
             {/* Shopping Card */}
             <button
@@ -1169,46 +1161,41 @@ const ToDo: React.FC<ToDoProps> = ({
 
       {/* Detailed Sheet Overlay */}
       {isSheetOpen && (
-        <div className="fixed inset-0 z-[60] flex items-end justify-center bottom-sheet-backdrop">
-          <div
-            className="absolute inset-0 bg-black/50"
-            onClick={() => setIsSheetOpen(false)}
-          />
-          
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
           {/* Safe area bottom cover - fills the gap below the sheet */}
           <div 
             className="absolute bottom-0 left-0 right-0 bg-card"
             style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
           />
-          
-          <div className="relative w-full max-w-lg bg-card rounded-t-3xl bottom-sheet-content flex flex-col" style={{ maxHeight: '80vh', marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
-            {/* Drag Handle */}
-            <div className="flex justify-center pt-4 pb-2 shrink-0">
-              <div className="w-12 h-1.5 bg-muted-foreground/30 rounded-full" />
-            </div>
-            
+          <div 
+            className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col"
+            style={{ maxHeight: '80vh', marginBottom: 'env(safe-area-inset-bottom, 34px)' }}
+          >
+            {/* Close Button */}
+            <button
+              onClick={() => {
+                setIsSheetOpen(false);
+                setEditingItemId(null);
+              }}
+              className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center hover:bg-secondary transition-colors right-4 top-4 text-muted-foreground"
+              aria-label="Close"
+            >
+              <X size={20} />
+            </button>
+
             {/* Header */}
-            <div className="flex items-center justify-between px-6 pb-4 shrink-0">
-              <h2 className="text-title text-foreground">
+            <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
+              <div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto mb-4" />
+              <h2 className="text-title text-foreground text-center">
                 {editingItemId 
                   ? (sheetForm.type === 'shopping' ? 'Edit Shopping Item' : 'Edit Task')
                   : (activeSection === 'shopping' ? 'Add Shopping Item' : 'Add Task')
                 }
               </h2>
-              <button
-                onClick={() => {
-                  setIsSheetOpen(false);
-                  setEditingItemId(null);
-                }}
-                className="p-2 rounded-full hover:bg-muted transition-colors"
-              >
-                <X size={20} className="text-muted-foreground" />
-              </button>
             </div>
             
             {/* Scrollable Form Content */}
-            <div className="flex-1 overflow-y-auto px-6 pb-4">
-              <div className="space-y-5">
+            <div className="flex-1 overflow-y-auto p-5 space-y-4">
               {/* Name Input */}
               <div>
                 <label className="block text-caption text-muted-foreground tracking-wide mb-2">
@@ -1396,12 +1383,10 @@ const ToDo: React.FC<ToDoProps> = ({
                   ))}
                 </div>
               </div>
-              
-              </div>
             </div>
             
             {/* Fixed Footer with Delete + Save */}
-            <div className="shrink-0 px-6 pt-4 pb-6 bg-card border-t border-border flex gap-3">
+            <div className="shrink-0 p-5 pb-8 border-t border-border flex gap-3">
               {editingItemId && (
                 <button
                   onClick={async () => {
@@ -1410,7 +1395,7 @@ const ToDo: React.FC<ToDoProps> = ({
                     setEditingItemId(null);
                     await handleDelete(itemId);
                   }}
-                  className="p-4 bg-destructive/10 text-destructive rounded-xl hover:bg-destructive/20 transition-colors"
+                  className="p-3 rounded-xl bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors"
                 >
                   <Trash2 size={20} />
                 </button>
@@ -1418,7 +1403,7 @@ const ToDo: React.FC<ToDoProps> = ({
               <button
                 onClick={handleSheetSave}
                 disabled={!sheetForm.name?.trim()}
-                className="flex-1 py-4 bg-primary text-primary-foreground rounded-xl text-body hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity flex items-center justify-center gap-2"
+                className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity flex items-center justify-center gap-2"
               >
                 <Check size={18} />
                 {editingItemId 

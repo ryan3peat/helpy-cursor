@@ -422,17 +422,8 @@ const Expenses: React.FC<ExpensesProps> = ({
           </div>
         </header>
 
-        {/* Total Card - fades out on scroll */}
-        <div
-          className="transition-opacity duration-200 overflow-hidden"
-          style={{
-            opacity: isScrolled ? 0 : 1,
-            height: isScrolled ? 0 : 'auto',
-            marginBottom: isScrolled ? 0 : '24px',
-            marginTop: isScrolled ? 0 : '16px',
-            pointerEvents: isScrolled ? 'none' : 'auto',
-          }}
-        >
+        {/* Summary Card */}
+        <div className="mt-4 mb-6">
           <div className="bg-primary text-primary-foreground p-6 rounded-xl shadow-md">
             <p className="text-body opacity-80 mb-1">Total for {MONTH_NAMES_FULL[selectedMonth]}</p>
             <h2 className="text-display">${totalAmount.toFixed(2)}</h2>

@@ -1145,41 +1145,35 @@ const Meals: React.FC<MealsProps> = ({
       {/* MEAL MODAL - Bottom Sheet Style */}
       {/* ─────────────────────────────────────────────────────────────── */}
       {isModalOpen && (
-        <div 
-          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
-          onClick={() => setIsModalOpen(false)}
-        >
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
           {/* Safe area bottom cover - fills the gap below the sheet */}
           <div 
-            className="absolute bottom-0 left-0 right-0 bg-popover"
+            className="absolute bottom-0 left-0 right-0 bg-card"
             style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
           />
           <div 
-            className="relative bg-popover w-full max-w-lg rounded-t-3xl flex flex-col bottom-sheet-content"
+            className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col"
             style={{ maxHeight: '80vh', marginBottom: 'env(safe-area-inset-bottom, 34px)' }}
-            onClick={(e) => e.stopPropagation()}
           >
-            {/* Drag Handle */}
-            <div className="flex justify-center pt-4 pb-2 shrink-0">
-              <div className="w-12 h-1.5 bg-muted-foreground/30 rounded-full" />
-            </div>
+            {/* Close Button */}
+            <button
+              onClick={() => setIsModalOpen(false)}
+              className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center hover:bg-secondary transition-colors right-4 top-4 text-muted-foreground"
+              aria-label="Close"
+            >
+              <X size={20} />
+            </button>
 
             {/* Header */}
-            <div className="flex justify-between items-center px-6 pb-4 shrink-0">
-              <h3 className="text-title font-bold text-foreground">
+            <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
+              <div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto mb-4" />
+              <h2 className="text-title text-foreground text-center">
                 {`${modalDate.toLocaleDateString(langCode, { weekday: 'short' })}, ${modalDate.getDate()} ${modalDate.toLocaleDateString(langCode, { month: 'short' })}`}
-              </h3>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="p-2 rounded-full hover:bg-muted transition-colors"
-              >
-                <X size={20} className="text-muted-foreground" />
-              </button>
+              </h2>
             </div>
 
             {/* Scrollable Form Content */}
-            <div className="flex-1 overflow-y-auto px-6 pb-4">
-              <div className="space-y-5">
+            <div className="flex-1 overflow-y-auto p-5 space-y-4">
                 {/* Meal Type Selector */}
                 <div>
                   <label className="block text-caption text-muted-foreground tracking-wide mb-2">
@@ -1296,15 +1290,14 @@ const Meals: React.FC<MealsProps> = ({
                     })}
                   </div>
                 </div>
-              </div>
             </div>
 
             {/* Fixed Footer with Delete + Save */}
-            <div className="shrink-0 px-6 pt-4 pb-6 bg-popover border-t border-border flex gap-3">
+            <div className="shrink-0 p-5 pb-8 border-t border-border flex gap-3">
               {editingMealId && (
                 <button
                   onClick={handleDelete}
-                  className="p-4 bg-destructive/10 text-destructive rounded-xl hover:bg-destructive/20 transition-colors"
+                  className="p-3 rounded-xl bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors"
                 >
                   <Trash2 size={20} />
                 </button>
@@ -1312,7 +1305,7 @@ const Meals: React.FC<MealsProps> = ({
               <button
                 onClick={handleSave}
                 disabled={!(description.trim().length > 0 || selectedUserIds.length > 0)}
-                className="flex-1 py-4 bg-primary text-primary-foreground rounded-xl text-body hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity flex items-center justify-center gap-2"
+                className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity flex items-center justify-center gap-2"
               >
                 <Check size={18} />
                 {editingMealId ? (t['meals.save_changes'] ?? 'Save Changes') : (t['meals.add_meal'] ?? 'Add Meal')}

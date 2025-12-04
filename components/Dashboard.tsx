@@ -429,38 +429,35 @@ const Dashboard: React.FC<DashboardProps> = ({
       {/* Language Sheet */}
       {showLangModal && (
         <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
-          {/* Click outside to close */}
-          <div 
-            className="absolute inset-0"
-            onClick={() => setShowLangModal(false)}
-          />
           {/* Safe area bottom cover */}
           <div 
             className="absolute bottom-0 left-0 right-0 bg-card"
             style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
           />
           <div 
-            className="relative w-full max-w-lg bg-card rounded-t-3xl bottom-sheet-content flex flex-col" 
+            className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" 
             style={{ maxHeight: '80vh', marginBottom: 'env(safe-area-inset-bottom, 34px)' }}
           >
+            {/* Close Button */}
+            <button
+              onClick={() => setShowLangModal(false)}
+              className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center hover:bg-secondary transition-colors right-4 top-4 text-muted-foreground"
+              aria-label="Close"
+            >
+              <X size={20} />
+            </button>
+
             {/* Header */}
-            <div className="px-5 pt-5 pb-3 border-b border-border">
-              <div className="flex justify-between items-center">
-                <h3 className="text-xl font-bold text-foreground">{t['dashboard.language']}</h3>
-                <button
-                  onClick={() => setShowLangModal(false)}
-                  className="p-2 bg-muted rounded-full text-muted-foreground hover:bg-muted/80"
-                >
-                  <X size={20} />
-                </button>
-              </div>
-              <p className="text-xs text-muted-foreground mt-2">
+            <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
+              <div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto mb-4" />
+              <h2 className="text-title text-foreground text-center">{t['dashboard.language']}</h2>
+              <p className="text-caption text-muted-foreground text-center mt-2">
                 Translation provided by AI. For accuracy, please refer to the original language version if in doubt.
               </p>
             </div>
             
             {/* Language List */}
-            <div className="px-5 pt-5 pb-8 space-y-2 overflow-y-auto no-scrollbar">
+            <div className="flex-1 overflow-y-auto p-5 space-y-2">
               {SUPPORTED_LANGUAGES.map(lang => {
                 // Display names in native language with code - UI only, doesn't affect backend
                 const getDisplayName = (code: string) => {
@@ -483,13 +480,13 @@ const Dashboard: React.FC<DashboardProps> = ({
                       onLanguageChange(lang.code);
                       setShowLangModal(false);
                     }}
-                    className={`w-full p-4 rounded-2xl flex items-center justify-between transition-all ${
+                    className={`w-full p-4 rounded-xl flex items-center justify-between transition-all ${
                       currentLang === lang.code
-                        ? 'bg-primary text-primary-foreground font-bold shadow-md'
-                        : 'bg-muted text-foreground font-medium hover:bg-muted/80'
+                        ? 'bg-primary text-primary-foreground font-bold shadow-sm'
+                        : 'bg-secondary text-foreground font-medium hover:bg-secondary/80'
                     }`}
                   >
-                    <span className="text-sm">{getDisplayName(lang.code)}</span>
+                    <span className="text-body">{getDisplayName(lang.code)}</span>
                     {currentLang === lang.code && <Check size={18} />}
                   </button>
                 );

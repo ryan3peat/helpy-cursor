@@ -1,19 +1,18 @@
-# Scroll Header Animation Pattern
+# Scroll Header Pattern
 
 ## Overview
 
-A simple, jitter-free header pattern. The header stays fixed size at all times. Collapsible content below fades out when scrolling. No animations on padding, margin, or scale.
+A simple, jitter-free header pattern. The header stays fixed (sticky) at the top. All other content scrolls naturally with the page.
 
 ---
 
 ## Behavior
 
-| Element | Default State | Scrolled State | Animation |
-|---------|---------------|----------------|-----------|
-| **Header** | Fixed size (pt-12 pb-3) | Same | None |
-| **Title** | Full size | Same | None |
-| **Collapsible Section** | Visible, opacity 1 | Hidden, height 0 | Opacity fades 200ms |
-| **Tab Navigation** | Fixed top position | Same | Shadow fades 200ms |
+| Element | Behavior |
+|---------|----------|
+| **Header** | Sticky at top (`pt-12 pb-3`), fixed size |
+| **Section Toggle Cards / Summary Card** | Regular content, scrolls naturally |
+| **Tab Navigation** | Sticky below header, shadow appears on scroll |
 
 ---
 
@@ -29,25 +28,18 @@ const MyPage: React.FC = () => {
     <div className="min-h-screen bg-background pb-24">
       <div className="max-w-2xl mx-auto px-4 sm:px-6">
         
-        {/* STICKY HEADER - Fixed size, no animations */}
+        {/* STICKY HEADER */}
         <header className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm -mx-4 px-4 sm:-mx-6 sm:px-6 pt-12 pb-3">
           <h1 className="text-display text-foreground">
             Page Title
           </h1>
         </header>
 
-        {/* COLLAPSIBLE SECTION - fades out on scroll */}
-        <div 
-          className="transition-opacity duration-200 overflow-hidden"
-          style={{
-            opacity: isScrolled ? 0 : 1,
-            height: isScrolled ? 0 : 'auto',
-            marginBottom: isScrolled ? 0 : '24px',
-            marginTop: isScrolled ? 0 : '16px',
-            pointerEvents: isScrolled ? 'none' : 'auto',
-          }}
-        >
-          {/* Toggle buttons, filters, etc. */}
+        {/* SECTION TOGGLE CARDS - regular content */}
+        <div className="mt-4 mb-6">
+          <div className="grid grid-cols-2 gap-3">
+            {/* Cards */}
+          </div>
         </div>
 
         {/* STICKY TAB NAVIGATION */}
@@ -58,7 +50,7 @@ const MyPage: React.FC = () => {
             boxShadow: isScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none'
           }}
         >
-          {/* Tab navigation component */}
+          {/* Tab navigation */}
         </div>
 
         {/* MAIN CONTENT */}
@@ -76,19 +68,19 @@ const MyPage: React.FC = () => {
 
 ## Key Points
 
-1. **Header is fixed size** - `pt-12 pb-3`, never changes
-2. **No title scale animation** - title stays full size
-3. **Only opacity animates** - on collapsible section
-4. **Only shadow animates** - on tab navigation
-5. **Tab top is fixed** - `top: '92px'`, never changes
+1. **Header is sticky** - stays at top when scrolling
+2. **Cards are regular content** - scroll naturally with the page
+3. **Tabs are sticky** - stay below header, shadow fades in on scroll
+4. **No animations on cards** - simple and clean
 
 ---
 
 ## Files
 
-- **Hook**: `/hooks/useScrollHeader.ts`
-- **Examples**: 
+- **Hook**: `/hooks/useScrollHeader.ts` (used only for tab shadow)
+- **Components**: 
   - `/components/HouseholdInfo.tsx`
-  - `/components/Meals.tsx`
   - `/components/ToDo.tsx`
   - `/components/Expenses.tsx`
+  - `/components/Meals.tsx`
+  - `/components/Dashboard.tsx`

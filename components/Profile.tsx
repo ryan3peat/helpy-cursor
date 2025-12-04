@@ -10,6 +10,7 @@ import { createInvite } from '../services/inviteService';
 import { createCheckoutSession, createPortalSession } from '../services/stripeService';
 import { supabase } from '../services/supabase';
 import { deleteItem } from '../services/supabaseService';
+import { useScrollLock } from '@/hooks/useScrollLock';
 
 interface ProfileProps extends BaseViewProps {
   users: User[];
@@ -64,6 +65,9 @@ const Profile: React.FC<ProfileProps> = ({
   const [isDeleteAccountModalOpen, setIsDeleteAccountModalOpen] = useState(false);
   const [isFinalDeleteConfirmOpen, setIsFinalDeleteConfirmOpen] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+
+  // Lock scroll when any modal is open
+  useScrollLock(isAddModalOpen || isEditModalOpen || deleteConfirmOpen || showPhotoOptions);
 
   // Fetch subscription info
   React.useEffect(() => {
@@ -536,7 +540,7 @@ const Profile: React.FC<ProfileProps> = ({
                 <div className="flex items-center gap-4 mb-6">
                   <div className="relative group">
                     <div
-                      className="w-20 h-20 rounded-2xl overflow-hidden shadow-md bg-secondary cursor-pointer"
+                      className="w-20 h-20 rounded-full overflow-hidden shadow-md bg-secondary cursor-pointer"
                       onClick={() => setShowPhotoOptions(true)}
                     >
                       <img src={selectedUser.avatar} alt={selectedUser.name} className="w-full h-full object-cover" />
@@ -851,10 +855,24 @@ const Profile: React.FC<ProfileProps> = ({
 
         {/* Photo Options Modal */}
         {showPhotoOptions && (
-          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-end justify-center z-50 bottom-sheet-backdrop">
-            <div className="bg-card rounded-t-3xl w-full max-w-lg p-6 bottom-sheet-content relative" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
-              <h3 className="text-title font-bold text-foreground mb-4">Change Photo</h3>
-              <div className="space-y-3">
+          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
+            {/* Safe area bottom cover */}
+            <div 
+              className="absolute bottom-0 left-0 right-0 bg-card"
+              style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
+            />
+            <div 
+              className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col"
+              style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}
+            >
+              {/* Header */}
+              <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
+                <div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto mb-4" />
+                <h2 className="text-title text-foreground text-center">Change Photo</h2>
+              </div>
+              
+              {/* Options */}
+              <div className="p-5 space-y-2">
                 <button
                   onClick={() => {
                     cameraInputRef.current?.click();
@@ -862,8 +880,8 @@ const Profile: React.FC<ProfileProps> = ({
                   }}
                   className="w-full flex items-center gap-3 p-4 bg-secondary rounded-xl hover:bg-secondary/80 transition-colors"
                 >
-                  <Camera size={20} className="text-foreground" />
-                  <span className="font-semibold text-foreground text-body">Take Photo</span>
+                  <Camera size={20} className="text-muted-foreground" />
+                  <span className="font-semibold text-foreground">Take Photo</span>
                 </button>
                 <button
                   onClick={() => {
@@ -872,12 +890,16 @@ const Profile: React.FC<ProfileProps> = ({
                   }}
                   className="w-full flex items-center gap-3 p-4 bg-secondary rounded-xl hover:bg-secondary/80 transition-colors"
                 >
-                  <ImageIcon size={20} className="text-foreground" />
-                  <span className="font-semibold text-foreground text-body">Choose from Library</span>
+                  <ImageIcon size={20} className="text-muted-foreground" />
+                  <span className="font-semibold text-foreground">Choose from Library</span>
                 </button>
+              </div>
+              
+              {/* Cancel Footer */}
+              <div className="p-5 pb-8 border-t border-border">
                 <button
                   onClick={() => setShowPhotoOptions(false)}
-                  className="w-full p-4 bg-secondary rounded-xl font-semibold text-foreground hover:bg-secondary/80 transition-colors"
+                  className="w-full py-3.5 bg-muted rounded-xl font-semibold text-foreground hover:bg-muted/80 transition-colors"
                 >
                   Cancel
                 </button>

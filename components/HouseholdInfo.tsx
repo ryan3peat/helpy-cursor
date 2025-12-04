@@ -178,7 +178,7 @@ const FamilyProfileCarousel: React.FC<FamilyProfileCarouselProps> = ({ users }) 
       <div
         ref={scrollContainerRef}
         onScroll={handleScroll}
-        className="flex gap-3 overflow-x-auto snap-x snap-mandatory scrollbar-hide pb-3"
+        className="flex gap-3 overflow-x-auto snap-x snap-mandatory scrollbar-hide pb-3 items-stretch"
       >
         {users.map((user, index) => {
           const roleStyle = ROLE_STYLES[user.role] || ROLE_STYLES[UserRole.HELPER];
@@ -187,19 +187,19 @@ const FamilyProfileCarousel: React.FC<FamilyProfileCarouselProps> = ({ users }) 
           return (
             <div
               key={user.id}
-              className={`flex-shrink-0 w-[62%] snap-start rounded-2xl overflow-hidden transition-all duration-300 ${
+              className={`flex-shrink-0 w-[62%] snap-start rounded-2xl overflow-hidden transition-all duration-300 flex flex-col ${
                 isActive ? 'shadow-md' : 'shadow-sm opacity-85'
               }`}
               style={{
                 background: 'hsl(var(--card))',
               }}
             >
-              <div className="p-4">
+              <div className="p-4 flex-1">
                 {/* Profile Header */}
                 <div className="flex items-start gap-3 mb-2">
                   {/* Avatar */}
                   <div 
-                    className="relative w-9 h-9 rounded-lg flex items-center justify-center text-lg flex-shrink-0 overflow-hidden"
+                    className="relative w-9 h-9 rounded-full flex items-center justify-center text-lg flex-shrink-0 overflow-hidden"
                     style={{ 
                       background: roleStyle.gradient,
                       color: 'white',
@@ -209,7 +209,7 @@ const FamilyProfileCarousel: React.FC<FamilyProfileCarouselProps> = ({ users }) 
                       <img 
                         src={user.avatar} 
                         alt={user.name} 
-                        className="w-full h-full rounded-lg object-cover" 
+                        className="w-full h-full rounded-full object-cover" 
                       />
                     ) : (
                       <span className="drop-shadow-sm">
@@ -247,7 +247,7 @@ const FamilyProfileCarousel: React.FC<FamilyProfileCarouselProps> = ({ users }) 
                     </div>
                     {user.allergies && user.allergies.length > 0 ? (
                       <div className="flex flex-wrap gap-1.5 ml-6">
-                        {user.allergies.slice(0, 4).map((allergy, i) => (
+                        {user.allergies.slice(0, 6).map((allergy, i) => (
                           <span 
                             key={i}
                             className="text-caption px-2 py-0.5 rounded-full"
@@ -259,9 +259,9 @@ const FamilyProfileCarousel: React.FC<FamilyProfileCarouselProps> = ({ users }) 
                             {allergy}
                           </span>
                         ))}
-                        {user.allergies.length > 4 && (
+                        {user.allergies.length > 6 && (
                           <span className="text-caption text-muted-foreground px-2 py-0.5">
-                            +{user.allergies.length - 4} more
+                            +{user.allergies.length - 6} more
                           </span>
                         )}
                       </div>
@@ -282,7 +282,7 @@ const FamilyProfileCarousel: React.FC<FamilyProfileCarouselProps> = ({ users }) 
                     </div>
                     {user.preferences && user.preferences.length > 0 ? (
                       <div className="flex flex-wrap gap-1.5 ml-6">
-                        {user.preferences.slice(0, 4).map((pref, i) => (
+                        {user.preferences.slice(0, 6).map((pref, i) => (
                           <span 
                             key={i}
                             className="text-caption px-2 py-0.5 rounded-full"
@@ -294,9 +294,9 @@ const FamilyProfileCarousel: React.FC<FamilyProfileCarouselProps> = ({ users }) 
                             {pref}
                           </span>
                         ))}
-                        {user.preferences.length > 4 && (
+                        {user.preferences.length > 6 && (
                           <span className="text-caption text-muted-foreground px-2 py-0.5">
-                            +{user.preferences.length - 4} more
+                            +{user.preferences.length - 6} more
                           </span>
                         )}
                       </div>
@@ -724,17 +724,8 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
           </h1>
         </header>
 
-        {/* Section Toggle Cards - fades out on scroll */}
-        <div 
-          className="transition-opacity duration-200 overflow-hidden"
-          style={{
-            opacity: isScrolled ? 0 : 1,
-            height: isScrolled ? 0 : 'auto',
-            marginBottom: isScrolled ? 0 : '24px',
-            marginTop: isScrolled ? 0 : '16px',
-            pointerEvents: isScrolled ? 'none' : 'auto',
-          }}
-        >
+        {/* Section Toggle Cards */}
+        <div className="mt-4 mb-6">
           <div className="grid grid-cols-2 gap-3">
             {/* Essential Info Card */}
             <button

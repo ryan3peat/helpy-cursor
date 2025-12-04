@@ -128,7 +128,8 @@ interface FallingIconProps {
 }
 
 function FallingIcon({ Icon, startX, delay, onLanded }: FallingIconProps) {
-  const distanceFromCenter = startX - 50;
+  const targetPosition = 46; // Target "L" area instead of center
+  const distanceFromCenter = startX - targetPosition;
   
   return (
     <motion.div

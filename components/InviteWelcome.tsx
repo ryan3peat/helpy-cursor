@@ -77,7 +77,7 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
     }
   }, [userLoaded, isSignedIn, user, householdId, userId]);
 
-  // Fetch invite info on mount and redirect to SignUp page
+  // Fetch invite info on mount
   useEffect(() => {
     // Don't fetch if user is already signed in
     if (userLoaded && isSignedIn) {
@@ -92,23 +92,22 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
         if (!response.ok || !data.isValid) {
           setError(data.error || 'Invalid invitation');
           setInviteInfo({ ...data, isValid: false });
-          setLoading(false);
         } else {
           setInviteInfo(data);
-          setLoading(false);
-          
-          // Redirect to standard SignUp page with invite params preserved
-          const prodUrl = getProductionUrl();
-          const inviteUrl = `${prodUrl}?invite=true&hid=${householdId}&uid=${userId}`;
-          
-          // Small delay to show loading state, then redirect
-          setTimeout(() => {
-            window.location.href = inviteUrl;
-          }, 500);
+          // Pre-fill form with pending user name if available
+          if (data.pendingUserName) {
+            const nameParts = data.pendingUserName.split(' ');
+            setFormData(prev => ({
+              ...prev,
+              firstName: nameParts[0] || '',
+              lastName: nameParts.slice(1).join(' ') || ''
+            }));
+          }
         }
       } catch (err: any) {
         setError('Failed to load invitation details');
         console.error('Fetch invite info error:', err);
+      } finally {
         setLoading(false);
       }
     }

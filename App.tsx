@@ -341,7 +341,7 @@ const App: React.FC = () => {
   };
 
   // Notes Handler
-  const handleSaveFamilyNotes = async (notes: string) => {
+  const handleSaveFamilyNotes = async (notes: string): Promise<void> => {
     if (!hid) return;
     const previousNotes = familyNotes; // Store previous value
     setFamilyNotes(notes); // Optimistic update
@@ -351,6 +351,7 @@ const App: React.FC = () => {
     } catch (error) {
       console.error('Failed to save notes:', error);
       setFamilyNotes(previousNotes); // Rollback on error
+      throw error; // Re-throw so Dashboard knows save failed
     }
   };
 

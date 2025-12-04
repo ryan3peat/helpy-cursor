@@ -461,29 +461,49 @@ const Profile: React.FC<ProfileProps> = ({
           <div className="pt-6 space-y-6">
             {/* Invite Link Modal */}
             {inviteLink && (
-              <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-end justify-center p-4 z-50 bottom-sheet-backdrop">
-                <div className="bg-card rounded-t-3xl p-6 max-w-lg w-full shadow-2xl bottom-sheet-content relative" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-title font-bold text-foreground">Invitation Link</h3>
-                    <button onClick={() => setInviteLink(null)} className="p-2 hover:bg-secondary rounded-full transition-colors">
-                      <X size={20} className="text-muted-foreground" />
-                    </button>
+              <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
+                {/* Safe area bottom cover - fills the gap below the sheet */}
+                <div 
+                  className="absolute bottom-0 left-0 right-0 bg-card"
+                  style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
+                />
+                <div className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
+                  {/* Close Button */}
+                  <button 
+                    onClick={() => setInviteLink(null)} 
+                    className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center hover:bg-secondary transition-colors right-4 top-4 text-muted-foreground"
+                    aria-label="Close"
+                  >
+                    <X size={20} />
+                  </button>
+
+                  {/* Header */}
+                  <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
+                    {/* Drag Handle */}
+                    <div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto mb-4" />
+                    <h2 className="text-title text-foreground text-center">Invitation Link</h2>
                   </div>
-                  <p className="text-body text-muted-foreground mb-4">Share this link with the new member:</p>
-                  <div className="bg-muted p-3 rounded-xl mb-4 break-all text-body font-mono text-foreground">
-                    {inviteLink}
+
+                  {/* Content */}
+                  <div className="p-5">
+                    <p className="text-body text-muted-foreground mb-4">Share this link with the new member:</p>
+                    <div className="bg-secondary p-3 rounded-lg break-all text-body font-mono text-foreground">
+                      {inviteLink}
+                    </div>
                   </div>
-                  <div className="flex gap-3">
+
+                  {/* Footer */}
+                  <div className="p-5 pb-8 border-t border-border flex gap-3 shrink-0">
                     <button
                       onClick={handleCopyInvite}
-                      className="flex-1 bg-secondary text-foreground py-3 rounded-xl font-semibold flex items-center justify-center gap-2 hover:bg-secondary/80 transition-colors"
+                      className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body flex items-center justify-center gap-2 hover:bg-secondary/80 transition-colors"
                     >
                       {isCopied ? <Check size={18} /> : <Copy size={18} />}
                       {isCopied ? 'Copied!' : 'Copy'}
                     </button>
                     <button
                       onClick={handleShareInvite}
-                      className="flex-1 bg-primary text-primary-foreground py-3 rounded-xl font-semibold flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors"
+                      className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors shadow-sm"
                     >
                       <Share2 size={18} />
                       Share
@@ -535,34 +555,9 @@ const Profile: React.FC<ProfileProps> = ({
 
             {/* Selected User Profile Card */}
             {selectedUser && (
-              <div className="bg-card rounded-3xl shadow-sm p-6 mb-6 relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-4 flex gap-2">
-                  {selectedUser.id !== currentUser.id && (
-                    <button
-                      onClick={() => handleDeleteUser(selectedUser.id)}
-                      className="flex items-center gap-2 px-3 py-2 bg-destructive/10 text-destructive rounded-xl hover:bg-destructive/20 transition-colors"
-                    >
-                      <Trash2 size={18} />
-                      <span className="text-body font-semibold">{t['profile.delete'] || 'Delete'}</span>
-                    </button>
-                  )}
-                  <button
-                    onClick={handleOpenEdit}
-                    className="p-2 text-muted-foreground hover:text-primary bg-secondary rounded-full transition-colors"
-                  >
-                    <Settings size={18} />
-                  </button>
-                  {selectedUser.status === 'pending' && (
-                    <button
-                      onClick={() => handleReinvite(selectedUser.id)}
-                      className="p-2 text-primary hover:text-primary/80 bg-primary/10 rounded-full transition-colors"
-                    >
-                      <Share2 size={18} />
-                    </button>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-4 mb-6">
+              <div className="bg-card rounded-3xl shadow-sm p-6 mb-6">
+                {/* Header: Avatar + Name + Role */}
+                <div className="flex items-center gap-4">
                   <div className="relative group">
                     <div
                       className="w-20 h-20 rounded-full overflow-hidden shadow-sm bg-secondary cursor-pointer"
@@ -577,49 +572,86 @@ const Profile: React.FC<ProfileProps> = ({
                       <Camera size={14} />
                     </button>
                   </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-title font-bold text-foreground truncate">{selectedUser.name}</h3>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className={`inline-block px-3 py-1 rounded-full text-caption font-semibold ${getRoleBadgeColor(selectedUser.role)}`}>
+                        {selectedUser.role}
+                      </span>
+                      {selectedUser.status === 'pending' && (
+                        <span className="text-caption text-muted-foreground">Pending</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Action Row */}
+                <div className="flex items-center gap-2 mt-4 pt-4 border-t border-border">
+                  <button
+                    onClick={handleOpenEdit}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-secondary text-foreground rounded-xl hover:bg-secondary/80 transition-colors whitespace-nowrap"
+                  >
+                    <Settings size={16} className="shrink-0" />
+                    <span className="text-body font-medium">{t['common.edit'] || 'Edit'}</span>
+                  </button>
+                  {selectedUser.status === 'pending' && (
+                    <button
+                      onClick={() => handleReinvite(selectedUser.id)}
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 transition-colors whitespace-nowrap"
+                    >
+                      <Share2 size={16} className="shrink-0" />
+                      <span className="text-body font-medium">Resend</span>
+                    </button>
+                  )}
+                  {selectedUser.id !== currentUser.id && (
+                    <button
+                      onClick={() => handleDeleteUser(selectedUser.id)}
+                      className="p-2.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl transition-colors shrink-0"
+                      aria-label="Delete member"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  )}
+                </div>
+
+                {/* Content Section */}
+                <div className="mt-4 pt-4 border-t border-border">
+                  {/* Allergies */}
+                  <div className="mb-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <AlertCircle size={16} className="text-destructive" />
+                      <h4 className="text-body font-bold text-foreground">{t['profile.allergies']}</h4>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedUser.allergies && selectedUser.allergies.length > 0 ? (
+                        selectedUser.allergies.map((allergy) => (
+                          <span key={allergy} className="px-3 py-1.5 bg-destructive/10 text-destructive rounded-full text-caption font-medium">
+                            {allergy}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-caption text-muted-foreground">{t['profile.none']}</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Preferences */}
                   <div>
-                    <h3 className="text-title font-bold text-foreground">{selectedUser.name}</h3>
-                    <span className={`inline-block px-3 py-1 rounded-full text-caption font-semibold mt-1 ${getRoleBadgeColor(selectedUser.role)}`}>
-                      {selectedUser.role}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Allergies */}
-                <div className="mb-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <AlertCircle size={16} className="text-destructive" />
-                    <h4 className="text-body font-bold text-foreground">{t['profile.allergies']}</h4>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {selectedUser.allergies && selectedUser.allergies.length > 0 ? (
-                      selectedUser.allergies.map((allergy) => (
-                        <span key={allergy} className="px-3 py-1 bg-destructive/10 text-destructive rounded-full text-caption font-medium">
-                          {allergy}
-                        </span>
-                      ))
-                    ) : (
-                      <span className="text-caption text-muted-foreground">{t['profile.none']}</span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Preferences */}
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <Heart size={16} className="text-foreground" />
-                    <h4 className="text-body font-bold text-foreground">{t['profile.preferences']}</h4>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {selectedUser.preferences && selectedUser.preferences.length > 0 ? (
-                      selectedUser.preferences.map((pref) => (
-                        <span key={pref} className="px-3 py-1 bg-foreground/10 text-foreground rounded-full text-caption font-medium">
-                          {pref}
-                        </span>
-                      ))
-                    ) : (
-                      <span className="text-caption text-muted-foreground">{t['profile.none']}</span>
-                    )}
+                    <div className="flex items-center gap-2 mb-2">
+                      <Heart size={16} className="text-foreground" />
+                      <h4 className="text-body font-bold text-foreground">{t['profile.preferences']}</h4>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedUser.preferences && selectedUser.preferences.length > 0 ? (
+                        selectedUser.preferences.map((pref) => (
+                          <span key={pref} className="px-3 py-1.5 bg-foreground/10 text-foreground rounded-full text-caption font-medium">
+                            {pref}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-caption text-muted-foreground">{t['profile.none']}</span>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -651,32 +683,47 @@ const Profile: React.FC<ProfileProps> = ({
 
         {/* Add User Modal */}
           {isAddModalOpen && (
-            <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center sm:items-end justify-center p-4 z-50 bottom-sheet-backdrop">
-              <div className="bg-card rounded-t-3xl w-full max-w-lg p-6 bottom-sheet-content relative flex flex-col" style={{ maxHeight: '80vh', marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
-                <div className="flex items-center justify-between mb-6 shrink-0">
-                  <h3 className="text-title font-bold text-foreground">{t['profile.addMember']}</h3>
-                  <button onClick={() => setIsAddModalOpen(false)} className="p-2 hover:bg-secondary rounded-full transition-colors">
-                    <X size={24} className="text-muted-foreground" />
-                  </button>
+            <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
+              {/* Safe area bottom cover */}
+              <div 
+                className="absolute bottom-0 left-0 right-0 bg-card"
+                style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
+              />
+              <div className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ maxHeight: '80vh', marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
+                {/* Close Button */}
+                <button 
+                  onClick={() => setIsAddModalOpen(false)} 
+                  className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center hover:bg-secondary transition-colors right-4 top-4 text-muted-foreground"
+                  aria-label="Close"
+                >
+                  <X size={20} />
+                </button>
+
+                {/* Header */}
+                <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
+                  <div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto mb-4" />
+                  <h2 className="text-title text-foreground text-center">{t['profile.addMember']}</h2>
                 </div>
-                <div className="space-y-4 flex-1 overflow-y-auto">
+
+                {/* Form */}
+                <div className="p-5 space-y-4 flex-1 overflow-y-auto">
                   <div>
-                    <label className="block text-body font-semibold text-foreground mb-2">{t['common.name']}</label>
+                    <label className="block text-caption text-muted-foreground mb-2 tracking-wide">{t['common.name']}</label>
                     <input
                       type="text"
                       value={newName}
                       onChange={(e) => setNewName(e.target.value)}
-                      className="w-full px-4 py-3 bg-muted border border-border rounded-xl focus:outline-none focus:border-primary transition-colors text-body"
+                      className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
                       placeholder="Enter name"
                     />
                   </div>
                   <div>
-                    <label className="block text-body font-semibold text-foreground mb-2">{t['profile.role']}</label>
+                    <label className="block text-caption text-muted-foreground mb-2 tracking-wide">{t['profile.role']}</label>
                     <div className="grid grid-cols-2 gap-2">
                       <button
                         type="button"
                         onClick={() => setNewRole(UserRole.SPOUSE)}
-                        className={`px-4 py-3 rounded-xl font-semibold transition-colors ${
+                        className={`px-4 py-3 rounded-lg font-semibold transition-colors ${
                           newRole === UserRole.SPOUSE
                             ? 'bg-[#F3E5F5] text-[#AB47BC] border-2 border-[#AB47BC]'
                             : 'bg-secondary text-muted-foreground border-2 border-transparent hover:bg-secondary/80'
@@ -687,7 +734,7 @@ const Profile: React.FC<ProfileProps> = ({
                       <button
                         type="button"
                         onClick={() => setNewRole(UserRole.HELPER)}
-                        className={`px-4 py-3 rounded-xl font-semibold transition-colors ${
+                        className={`px-4 py-3 rounded-lg font-semibold transition-colors ${
                           newRole === UserRole.HELPER
                             ? 'bg-[#FFF3E0] text-[#FF9800] border-2 border-[#FF9800]'
                             : 'bg-secondary text-muted-foreground border-2 border-transparent hover:bg-secondary/80'
@@ -698,7 +745,7 @@ const Profile: React.FC<ProfileProps> = ({
                       <button
                         type="button"
                         onClick={() => setNewRole(UserRole.CHILD)}
-                        className={`px-4 py-3 rounded-xl font-semibold transition-colors ${
+                        className={`px-4 py-3 rounded-lg font-semibold transition-colors ${
                           newRole === UserRole.CHILD
                             ? 'bg-[#E8F5E9] text-[#4CAF50] border-2 border-[#4CAF50]'
                             : 'bg-secondary text-muted-foreground border-2 border-transparent hover:bg-secondary/80'
@@ -709,7 +756,7 @@ const Profile: React.FC<ProfileProps> = ({
                       <button
                         type="button"
                         onClick={() => setNewRole(UserRole.OTHER)}
-                        className={`px-4 py-3 rounded-xl font-semibold transition-colors ${
+                        className={`px-4 py-3 rounded-lg font-semibold transition-colors ${
                           newRole === UserRole.OTHER
                             ? 'bg-[#FCE4EC] text-[#F06292] border-2 border-[#F06292]'
                             : 'bg-secondary text-muted-foreground border-2 border-transparent hover:bg-secondary/80'
@@ -720,11 +767,13 @@ const Profile: React.FC<ProfileProps> = ({
                     </div>
                   </div>
                 </div>
-                <div className="pt-4 border-t border-border shrink-0">
+
+                {/* Footer */}
+                <div className="p-5 pb-8 border-t border-border shrink-0">
                   <button
                     onClick={handleAddUser}
                     disabled={isAddingUser || !newName.trim()}
-                    className="w-full bg-primary text-primary-foreground py-4 rounded-xl font-semibold shadow-sm hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground text-body hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {isAddingUser ? 'Adding...' : t['common.add']}
                   </button>
@@ -735,27 +784,40 @@ const Profile: React.FC<ProfileProps> = ({
 
           {/* Delete Confirmation Modal */}
           {deleteConfirmOpen && (
-            <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-end justify-center p-4 z-50 bottom-sheet-backdrop">
-              <div className="bg-card rounded-t-3xl w-full max-w-md p-6 bottom-sheet-content relative" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
-                <div className="mb-6">
-                  <h3 className="text-title font-bold text-foreground mb-2">Delete Family Member</h3>
-                  <p className="text-body text-muted-foreground">
+            <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
+              {/* Safe area bottom cover */}
+              <div 
+                className="absolute bottom-0 left-0 right-0 bg-card"
+                style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
+              />
+              <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
+                {/* Header */}
+                <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
+                  <div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto mb-4" />
+                  <h2 className="text-title text-foreground text-center">Delete Family Member</h2>
+                </div>
+
+                {/* Content */}
+                <div className="p-5">
+                  <p className="text-body text-muted-foreground text-center">
                     {t['profile.confirmDelete'] || 'Are you sure you want to delete this family member? This action cannot be undone.'}
                   </p>
                 </div>
-                <div className="flex gap-3">
+
+                {/* Footer */}
+                <div className="p-5 pb-8 border-t border-border flex gap-3 shrink-0">
                   <button
                     onClick={() => {
                       setDeleteConfirmOpen(false);
                       setUserToDelete(null);
                     }}
-                    className="flex-1 bg-secondary text-foreground py-3 rounded-xl font-semibold hover:bg-secondary/80 transition-colors"
+                    className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body hover:bg-secondary/80 transition-colors"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={confirmDeleteUser}
-                    className="flex-1 bg-destructive/10 text-destructive py-3 rounded-xl font-semibold hover:bg-destructive/20 transition-colors"
+                    className="flex-1 py-3.5 rounded-xl bg-destructive/10 text-destructive text-body hover:bg-destructive/20 transition-colors"
                   >
                     Delete
                   </button>
@@ -766,34 +828,49 @@ const Profile: React.FC<ProfileProps> = ({
 
           {/* Edit User Modal */}
           {isEditModalOpen && (
-            <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center sm:items-end justify-center p-4 z-50 bottom-sheet-backdrop">
-              <div className="bg-card rounded-t-3xl w-full max-w-lg bottom-sheet-content relative flex flex-col" style={{ maxHeight: '80vh', marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
-                <div className="flex items-center justify-between mb-6 p-6 pb-4 border-b border-border shrink-0">
-                  <h3 className="text-title font-bold text-foreground">Edit Profile</h3>
-                  <button onClick={() => setIsEditModalOpen(false)} className="p-2 hover:bg-secondary rounded-full transition-colors">
-                    <X size={24} className="text-muted-foreground" />
-                  </button>
+            <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
+              {/* Safe area bottom cover - fills the gap below the sheet */}
+              <div 
+                className="absolute bottom-0 left-0 right-0 bg-card"
+                style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
+              />
+              <div className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ maxHeight: '80vh', marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
+                {/* Close Button */}
+                <button 
+                  onClick={() => setIsEditModalOpen(false)} 
+                  className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center hover:bg-secondary transition-colors right-4 top-4 text-muted-foreground"
+                  aria-label="Close"
+                >
+                  <X size={20} />
+                </button>
+
+                {/* Header */}
+                <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
+                  {/* Drag Handle */}
+                  <div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto mb-4" />
+                  <h2 className="text-title text-foreground text-center">Edit Profile</h2>
                 </div>
 
-                <div className="space-y-6 p-6 flex-1 overflow-y-auto">
+                {/* Form */}
+                <div className="p-5 space-y-4 flex-1 overflow-y-auto">
                   {/* Name */}
                   <div>
-                    <label className="block text-body font-semibold text-foreground mb-2">Name</label>
+                    <label className="block text-caption text-muted-foreground mb-2 tracking-wide">Name</label>
                     <input
                       type="text"
                       value={editName}
                       onChange={(e) => setEditName(e.target.value)}
-                      className="w-full px-4 py-3 bg-muted border border-border rounded-xl focus:outline-none focus:border-primary transition-colors text-body"
+                      className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
                     />
                   </div>
 
                   {/* Role */}
                   <div>
-                    <label className="block text-body font-semibold text-foreground mb-2">Role</label>
+                    <label className="block text-caption text-muted-foreground mb-2 tracking-wide">Role</label>
                     <select
                       value={editRole}
                       onChange={(e) => setEditRole(e.target.value as UserRole)}
-                      className="w-full px-4 py-3 bg-muted border border-border rounded-xl focus:outline-none focus:border-primary transition-colors text-body"
+                      className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
                     >
                       <option value={UserRole.MASTER}>Master</option>
                       <option value={UserRole.SPOUSE}>Spouse</option>
@@ -805,17 +882,17 @@ const Profile: React.FC<ProfileProps> = ({
 
                   {/* Allergies */}
                   <div>
-                    <label className="block text-body font-semibold text-foreground mb-2">Allergies</label>
+                    <label className="block text-caption text-muted-foreground mb-2 tracking-wide">Allergies</label>
                     <div className="flex gap-2 mb-2">
                       <input
                         type="text"
                         value={newAllergyInput}
                         onChange={(e) => setNewAllergyInput(e.target.value)}
                         onKeyPress={(e) => e.key === 'Enter' && addAllergy()}
-                        className="flex-1 px-4 py-2 bg-muted border border-border rounded-xl focus:outline-none focus:border-primary transition-colors text-body"
+                        className="flex-1 px-4 py-2.5 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
                         placeholder="Add allergy"
                       />
-                      <button onClick={addAllergy} className="px-4 py-2 bg-primary text-primary-foreground rounded-xl font-semibold transition-colors">
+                      <button onClick={addAllergy} className="w-10 h-10 bg-primary text-primary-foreground rounded-full flex items-center justify-center hover:bg-primary/90 transition-colors">
                         <Plus size={18} />
                       </button>
                     </div>
@@ -833,25 +910,25 @@ const Profile: React.FC<ProfileProps> = ({
 
                   {/* Preferences */}
                   <div>
-                    <label className="block text-body font-semibold text-foreground mb-2">Preferences</label>
+                    <label className="block text-caption text-muted-foreground mb-2 tracking-wide">Preferences</label>
                     <div className="flex gap-2 mb-2">
                       <input
                         type="text"
                         value={newPreferenceInput}
                         onChange={(e) => setNewPreferenceInput(e.target.value)}
                         onKeyPress={(e) => e.key === 'Enter' && addPreference()}
-                        className="flex-1 px-4 py-2 bg-muted border border-border rounded-xl focus:outline-none focus:border-primary transition-colors text-body"
+                        className="flex-1 px-4 py-2.5 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
                         placeholder="Add preference"
                       />
-                      <button onClick={addPreference} className="px-4 py-2 bg-primary text-primary-foreground rounded-xl font-semibold transition-colors">
+                      <button onClick={addPreference} className="w-10 h-10 bg-primary text-primary-foreground rounded-full flex items-center justify-center hover:bg-primary/90 transition-colors">
                         <Plus size={18} />
                       </button>
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {editPreferences.map((pref) => (
-                        <span key={pref} className="px-3 py-1 bg-destructive/10 text-destructive rounded-full text-caption font-medium flex items-center gap-1">
+                        <span key={pref} className="px-3 py-1 bg-foreground/10 text-foreground rounded-full text-caption font-medium flex items-center gap-1">
                           {pref}
-                          <button onClick={() => removePreference(pref)} className="hover:bg-destructive/20 rounded-full p-0.5 transition-colors">
+                          <button onClick={() => removePreference(pref)} className="hover:bg-foreground/20 rounded-full p-0.5 transition-colors">
                             <X size={12} />
                           </button>
                         </span>
@@ -860,16 +937,17 @@ const Profile: React.FC<ProfileProps> = ({
                   </div>
                 </div>
 
-                <div className="p-6 pt-4 border-t border-border flex gap-3 shrink-0">
+                {/* Footer */}
+                <div className="p-5 pb-8 border-t border-border flex gap-3 shrink-0">
                   <button
                     onClick={() => setIsEditModalOpen(false)}
-                    className="flex-1 bg-secondary text-foreground py-3 rounded-xl font-semibold hover:bg-secondary/80 transition-colors"
+                    className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body hover:bg-secondary/80 transition-colors"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleSaveEdit}
-                    className="flex-1 bg-primary text-primary-foreground py-3 rounded-xl font-semibold hover:bg-primary/90 transition-colors"
+                    className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body hover:bg-primary/90 transition-colors shadow-sm"
                   >
                     Save
                   </button>
@@ -1501,24 +1579,37 @@ const Profile: React.FC<ProfileProps> = ({
 
         {/* First Delete Confirmation Modal */}
         {isDeleteAccountModalOpen && (
-          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-end justify-center p-4 z-50 bottom-sheet-backdrop">
-            <div className="bg-card rounded-t-3xl w-full max-w-md p-6 bottom-sheet-content relative" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
-              <div className="mb-6">
-                <h3 className="text-title font-bold text-foreground mb-2">Delete Account</h3>
-                <p className="text-body text-muted-foreground">
+          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
+            {/* Safe area bottom cover */}
+            <div 
+              className="absolute bottom-0 left-0 right-0 bg-card"
+              style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
+            />
+            <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
+              {/* Header */}
+              <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
+                <div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto mb-4" />
+                <h2 className="text-title text-foreground text-center">Delete Account</h2>
+              </div>
+
+              {/* Content */}
+              <div className="p-5">
+                <p className="text-body text-muted-foreground text-center">
                   Are you sure you want to delete your account? This change will be permanent.
                 </p>
               </div>
-              <div className="flex gap-3">
+
+              {/* Footer */}
+              <div className="p-5 pb-8 border-t border-border flex gap-3 shrink-0">
                 <button
                   onClick={() => setIsDeleteAccountModalOpen(false)}
-                  className="flex-1 bg-secondary text-foreground py-3 rounded-xl font-semibold hover:bg-secondary/80 transition-colors"
+                  className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body hover:bg-secondary/80 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleFirstDeleteConfirm}
-                  className="flex-1 bg-destructive/10 text-destructive py-3 rounded-xl font-semibold hover:bg-destructive/20 transition-colors"
+                  className="flex-1 py-3.5 rounded-xl bg-destructive/10 text-destructive text-body hover:bg-destructive/20 transition-colors"
                 >
                   Continue
                 </button>
@@ -1529,37 +1620,50 @@ const Profile: React.FC<ProfileProps> = ({
 
         {/* Final Delete Confirmation Modal */}
         {isFinalDeleteConfirmOpen && (
-          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-end justify-center p-4 z-50 bottom-sheet-backdrop">
-            <div className="bg-card rounded-t-3xl w-full max-w-md p-6 bottom-sheet-content relative" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
-              <div className="mb-6">
-                <h3 className="text-title font-bold text-foreground mb-2">Delete Account</h3>
+          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
+            {/* Safe area bottom cover */}
+            <div 
+              className="absolute bottom-0 left-0 right-0 bg-card"
+              style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
+            />
+            <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
+              {/* Header */}
+              <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
+                <div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto mb-4" />
+                <h2 className="text-title text-foreground text-center">Delete Account</h2>
+              </div>
+
+              {/* Content */}
+              <div className="p-5">
                 {subscriptionInfo?.status === 'active' && subscriptionInfo?.periodEnd && (
-                  <div className="mb-4 p-4 bg-primary/10 border border-primary/20 rounded-xl">
+                  <div className="mb-4 p-4 bg-primary/10 border border-primary/20 rounded-lg">
                     <p className="text-body text-primary font-semibold mb-1">Subscription Information</p>
                     <p className="text-body text-primary">
                       Your subscription is active until {formatDate(subscriptionInfo.periodEnd)}
                     </p>
                   </div>
                 )}
-                <p className="text-body text-muted-foreground">
+                <p className="text-body text-muted-foreground text-center">
                   Are you sure you want to delete? After deletion it will be immediate.
                 </p>
               </div>
-              <div className="flex gap-3">
+
+              {/* Footer */}
+              <div className="p-5 pb-8 border-t border-border flex gap-3 shrink-0">
                 <button
                   onClick={() => {
                     setIsFinalDeleteConfirmOpen(false);
                     setIsDeletingAccount(false);
                   }}
                   disabled={isDeletingAccount}
-                  className="flex-1 bg-secondary text-foreground py-3 rounded-xl font-semibold hover:bg-secondary/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body hover:bg-secondary/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleDeleteAccount}
                   disabled={isDeletingAccount}
-                  className="flex-1 bg-destructive text-destructive-foreground py-3 rounded-xl font-semibold hover:bg-destructive/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 py-3.5 rounded-xl bg-destructive text-destructive-foreground text-body hover:bg-destructive/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isDeletingAccount ? 'Deleting...' : 'Delete Account'}
                 </button>

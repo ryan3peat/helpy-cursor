@@ -1397,18 +1397,9 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
                 />
                 <Phone size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                 {showCountryCodeDropdown && (
-                  <div className="absolute z-50 mt-1 w-64 bg-card border border-border rounded-xl shadow-lg max-h-60 overflow-y-auto country-code-dropdown">
-                    <div className="p-2 sticky top-0 bg-card border-b border-border">
-                      <input
-                        type="text"
-                        value={countryCodeSearch}
-                        onChange={(e) => setCountryCodeSearch(e.target.value)}
-                        placeholder="Search country..."
-                        className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-body focus:outline-none focus:border-primary transition-colors"
-                        autoFocus
-                      />
-                    </div>
-                    <div className="py-1">
+                  <div className="absolute z-50 bottom-full mb-1 w-64 bg-card border border-border rounded-xl shadow-lg max-h-60 overflow-hidden flex flex-col country-code-dropdown">
+                    {/* Country list - scrollable area */}
+                    <div className="py-1 overflow-y-auto flex-1">
                       {filteredCountryCodes.length > 0 ? (
                         filteredCountryCodes.map((item, index) => (
                           <button
@@ -1428,6 +1419,17 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
                       ) : (
                         <div className="px-4 py-2 text-body text-muted-foreground">No countries found</div>
                       )}
+                    </div>
+                    {/* Search input - at bottom when dropdown opens upward */}
+                    <div className="p-2 bg-card border-t border-border shrink-0">
+                      <input
+                        type="text"
+                        value={countryCodeSearch}
+                        onChange={(e) => setCountryCodeSearch(e.target.value)}
+                        placeholder="Search country..."
+                        className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-body focus:outline-none focus:border-primary transition-colors"
+                        autoFocus
+                      />
                     </div>
                   </div>
                 )}

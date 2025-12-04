@@ -31,7 +31,7 @@ interface DashboardProps {
   expenses: Expense[];
   onNavigate: (view: string, data?: { section?: string }) => void;
   familyNotes: string;
-  onUpdateNotes: (notes: string) => void;
+  onUpdateNotes: (notes: string) => Promise<void>;
   currentUser: User;
   t: TranslationDictionary;
   currentLang: string;
@@ -57,6 +57,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   const activeTaskCount = todoItems.filter(i => i.type === 'task' && !i.completed).length;
   const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [tempNotes, setTempNotes] = useState(familyNotes);
+  const [isSavingNotes, setIsSavingNotes] = useState(false);
   const [timeOfDay, setTimeOfDay] = useState('');
   const [showLangModal, setShowLangModal] = useState(false);
   
@@ -66,9 +67,12 @@ const Dashboard: React.FC<DashboardProps> = ({
   // Lock body scroll when language modal is open
   useScrollLock(showLangModal);
 
+  // Only sync tempNotes with familyNotes when NOT editing (prevents overwriting user input)
   useEffect(() => {
-    setTempNotes(familyNotes);
-  }, [familyNotes]);
+    if (!isEditingNotes) {
+      setTempNotes(familyNotes);
+    }
+  }, [familyNotes, isEditingNotes]);
 
   useEffect(() => {
     const hour = new Date().getHours();
@@ -77,9 +81,16 @@ const Dashboard: React.FC<DashboardProps> = ({
     else setTimeOfDay(t['dashboard.greeting.evening']);
   }, [t]);
 
-  const handleSaveNotes = () => {
-    onUpdateNotes(tempNotes);
-    setIsEditingNotes(false);
+  const handleSaveNotes = async () => {
+    setIsSavingNotes(true);
+    try {
+      await onUpdateNotes(tempNotes);
+      setIsEditingNotes(false);
+    } catch (error) {
+      console.error('Failed to save notes:', error);
+    } finally {
+      setIsSavingNotes(false);
+    }
   };
 
   const handleCancelNotes = () => {
@@ -87,10 +98,17 @@ const Dashboard: React.FC<DashboardProps> = ({
     setIsEditingNotes(false);
   };
 
-  const handleDeleteNotes = () => {
-    onUpdateNotes('');
-    setTempNotes('');
-    setIsEditingNotes(false);
+  const handleDeleteNotes = async () => {
+    setIsSavingNotes(true);
+    try {
+      await onUpdateNotes('');
+      setTempNotes('');
+      setIsEditingNotes(false);
+    } catch (error) {
+      console.error('Failed to delete notes:', error);
+    } finally {
+      setIsSavingNotes(false);
+    }
   };
 
   // --- Meal Logic ---
@@ -258,16 +276,7 @@ const Dashboard: React.FC<DashboardProps> = ({
               </div>
               <span className="text-title text-white">{t['dashboard.family_board']}</span>
             </div>
-            {isEditingNotes ? (
-              <div className="flex gap-2 animate-fade-in">
-                <button onClick={handleCancelNotes} className="p-1.5 bg-white/20 rounded-full text-white shadow-sm hover:bg-white/30 transition-colors">
-                  <X size={14} />
-                </button>
-                <button onClick={handleSaveNotes} className="p-1.5 bg-white rounded-full text-primary shadow-sm hover:bg-white/90 transition-colors">
-                  <Check size={14} />
-                </button>
-              </div>
-            ) : (
+            {!isEditingNotes && (
               <button
                 onClick={() => setIsEditingNotes(true)}
                 className="p-1.5 text-white/70 hover:text-white hover:bg-white/20 rounded-full transition-colors"
@@ -277,21 +286,41 @@ const Dashboard: React.FC<DashboardProps> = ({
             )}
           </div>
           {isEditingNotes ? (
-            <div className="space-y-2">
+            <div className="space-y-3">
               <textarea
                 value={tempNotes}
                 onChange={(e) => setTempNotes(e.target.value)}
-                className="w-full bg-white/10 border border-white/20 rounded-xl p-3 text-body text-white placeholder:text-white/60 focus:ring-2 focus:ring-white/50 focus:border-transparent outline-none resize-none leading-relaxed"
+                disabled={isSavingNotes}
+                className="w-full bg-white/10 border border-white/20 rounded-xl p-3 text-body text-white placeholder:text-white/60 focus:ring-2 focus:ring-white/50 focus:border-transparent outline-none resize-none leading-relaxed disabled:opacity-50"
                 rows={3}
                 placeholder={t['dashboard.type_note']}
               />
-              <div className="flex justify-end">
+              <div className="flex justify-between items-center">
                 <button 
-                  onClick={handleDeleteNotes} 
-                  className="p-1.5 bg-white rounded-full text-[#F06292] shadow-sm hover:bg-white/90 transition-colors animate-fade-in"
+                  onClick={handleDeleteNotes}
+                  disabled={isSavingNotes}
+                  className="p-2.5 bg-[#F06292] rounded-full text-white shadow-sm hover:bg-[#EC407A] transition-colors disabled:opacity-50"
                 >
-                  <Trash2 size={14} />
+                  {isSavingNotes ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18} />}
                 </button>
+                <div className="flex items-center gap-3">
+                  <button 
+                    onClick={handleCancelNotes}
+                    disabled={isSavingNotes}
+                    className="flex items-center gap-2 px-4 py-2 bg-white/20 rounded-full text-white text-body font-medium shadow-sm hover:bg-white/30 transition-colors disabled:opacity-50"
+                  >
+                    <X size={16} />
+                    <span>Cancel</span>
+                  </button>
+                  <button 
+                    onClick={handleSaveNotes}
+                    disabled={isSavingNotes}
+                    className="flex items-center gap-2 px-4 py-2 bg-white rounded-full text-primary text-body font-medium shadow-sm hover:bg-white/90 transition-colors disabled:opacity-50"
+                  >
+                    <span>Save</span>
+                    {isSavingNotes ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+                  </button>
+                </div>
               </div>
             </div>
           ) : (
@@ -427,8 +456,16 @@ const Dashboard: React.FC<DashboardProps> = ({
           <button
             onClick={() => {
               const html = document.documentElement;
-              html.classList.toggle('dark');
-              html.classList.toggle('light');
+              const isDark = html.classList.contains('dark');
+              if (isDark) {
+                html.classList.remove('dark');
+                html.classList.add('light');
+                localStorage.setItem('helpy_theme', 'light');
+              } else {
+                html.classList.remove('light');
+                html.classList.add('dark');
+                localStorage.setItem('helpy_theme', 'dark');
+              }
             }}
             className="mt-4 px-4 py-2 rounded-full bg-muted text-muted-foreground text-caption flex items-center gap-2 mx-auto hover:bg-muted/80 transition-colors"
           >

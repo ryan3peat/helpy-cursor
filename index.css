@@ -182,6 +182,23 @@ body {
 }
 
 /* ─────────────────────────────────────────────────────────────────
+   iOS SAFARI FORM ELEMENTS FIX
+   Prevents form elements from overflowing their containers
+   ───────────────────────────────────────────────────────────────── */
+input,
+select,
+textarea {
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+/* Ensure grid children can shrink below their content size */
+.grid > * {
+  min-width: 0;
+}
+
+/* ─────────────────────────────────────────────────────────────────
    GLOBAL RULES: NO BOUNCY/SCALE EFFECTS
    ───────────────────────────────────────────────────────────────── 
    

@@ -128,13 +128,13 @@ const Dashboard: React.FC<DashboardProps> = ({
         {adultCount > 0 && (
           <span className="flex items-center gap-0.5">
             <UserIcon size={14} />
-            <span className="text-xs font-semibold">{adultCount}</span>
+            <span className="text-caption">{adultCount}</span>
           </span>
         )}
         {kidCount > 0 && (
           <span className="flex items-center gap-0.5">
             <Baby size={14} />
-            <span className="text-xs font-semibold">{kidCount}</span>
+            <span className="text-caption">{kidCount}</span>
           </span>
         )}
       </span>
@@ -178,12 +178,12 @@ const Dashboard: React.FC<DashboardProps> = ({
         <Icon size={18} className={colorClass} />
       </div>
       <div className="mt-auto">
-        <span className="text-3xl font-bold tracking-tight text-foreground block mb-1">
+        <span className="text-display text-foreground block mb-1">
           {count}
         </span>
         <div>
-          <span className="font-semibold text-foreground text-lg block leading-tight">{title}</span>
-          <span className="text-sm font-medium text-muted-foreground">{label}</span>
+          <span className="text-title text-foreground block leading-tight">{title}</span>
+          <span className="text-caption text-muted-foreground">{label}</span>
         </div>
       </div>
     </button>
@@ -200,7 +200,7 @@ const Dashboard: React.FC<DashboardProps> = ({
       >
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold text-foreground tracking-tight leading-tight">
+            <h1 className="text-display text-foreground">
               {timeOfDay},<br />
               <span className="text-primary">{currentUser.name.split(' ')[0]}</span>
             </h1>
@@ -215,7 +215,7 @@ const Dashboard: React.FC<DashboardProps> = ({
               ) : (
                 <Languages size={18} />
               )}
-              <span className="text-[14px] font-medium text-primary mt-0.5">
+              <span className="text-caption text-primary mt-0.5">
                 {(() => {
                   switch(currentLang) {
                     case 'en': return 'en';
@@ -233,13 +233,12 @@ const Dashboard: React.FC<DashboardProps> = ({
             <button
               id="onboarding-profile-btn"
               onClick={() => onNavigate('profile')}
-              className="relative group"
+              className="relative"
             >
-              <div className="absolute inset-0 bg-primary blur-lg opacity-20 group-hover:opacity-40 transition-opacity rounded-full"></div>
               <img
                 src={currentUser.avatar}
                 alt="Profile"
-                className="w-14 h-14 rounded-full border-4 border-card shadow-sm bg-muted object-cover relative z-10"
+                className="w-14 h-14 rounded-full border-4 border-card shadow-sm bg-muted object-cover"
               />
             </button>
           </div>
@@ -257,7 +256,7 @@ const Dashboard: React.FC<DashboardProps> = ({
               <div className="text-white">
                 <Pin size={18} />
               </div>
-              <span className="font-bold text-lg text-white">{t['dashboard.family_board']}</span>
+              <span className="text-title text-white">{t['dashboard.family_board']}</span>
             </div>
             {isEditingNotes ? (
               <div className="flex gap-2 animate-fade-in">
@@ -282,7 +281,7 @@ const Dashboard: React.FC<DashboardProps> = ({
               <textarea
                 value={tempNotes}
                 onChange={(e) => setTempNotes(e.target.value)}
-                className="w-full bg-white/10 border border-white/20 rounded-xl p-3 text-sm font-medium text-white placeholder:text-white/60 focus:ring-2 focus:ring-white/50 focus:border-transparent outline-none resize-none leading-relaxed"
+                className="w-full bg-white/10 border border-white/20 rounded-xl p-3 text-body text-white placeholder:text-white/60 focus:ring-2 focus:ring-white/50 focus:border-transparent outline-none resize-none leading-relaxed"
                 rows={3}
                 placeholder={t['dashboard.type_note']}
               />
@@ -298,12 +297,12 @@ const Dashboard: React.FC<DashboardProps> = ({
           ) : (
             <div onClick={() => setIsEditingNotes(true)} className="min-h-[40px] cursor-pointer">
               {familyNotes ? (
-                <p className="text-white text-sm font-medium leading-relaxed whitespace-pre-line">
+                <p className="text-white text-body leading-relaxed whitespace-pre-line">
                   {familyNotes}
                 </p>
               ) : (
                 <div className="flex items-center gap-2 py-1 text-white/70">
-                  <span className="text-sm font-medium">{t['dashboard.tap_to_pin']}</span>
+                  <span className="text-body">{t['dashboard.tap_to_pin']}</span>
                 </div>
               )}
             </div>
@@ -317,8 +316,8 @@ const Dashboard: React.FC<DashboardProps> = ({
         className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden cursor-pointer active:scale-[0.99] transition-transform hover:shadow-md"
       >
         <div className="bg-primary px-4 py-2.5 flex justify-between items-center">
-          <h2 className="text-lg font-bold text-white">Today's Menu</h2>
-          <span className="text-sm font-bold text-white">
+          <h2 className="text-title text-white">Today's Menu</h2>
+          <span className="text-body text-white">
             {(() => {
               const d = new Date();
               const locale = currentLang === 'en' ? 'en-GB' : currentLang;
@@ -342,17 +341,17 @@ const Dashboard: React.FC<DashboardProps> = ({
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-start">
-                          <span className="text-sm text-muted-foreground mb-0.5 block">
+                          <span className="text-body text-muted-foreground mb-0.5 block">
                             {t[`meal.type.${meal.type.toLowerCase()}`] ?? meal.type}
                           </span>
                           {renderAudienceIcons(meal.forUserIds)}
                         </div>
                         {meal.description ? (
-                          <p className="text-base font-bold text-foreground leading-tight line-clamp-2">
+                          <p className="text-title text-foreground leading-tight line-clamp-2">
                             {meal.description}
                           </p>
                         ) : (
-                          <p className="text-sm text-muted-foreground leading-tight">
+                          <p className="text-body text-muted-foreground leading-tight">
                             {t['meals.hungry_no_menu'] ?? "Someone's hungry, menu unknown..."}
                           </p>
                         )}
@@ -364,8 +363,8 @@ const Dashboard: React.FC<DashboardProps> = ({
             </div>
           ) : (
             <div className="text-center py-2 flex flex-col items-center gap-2">
-              <p className="text-sm text-muted-foreground">No meals remaining for today</p>
-              <button className="text-sm font-bold text-primary flex items-center gap-1 hover:underline">
+              <p className="text-body text-muted-foreground">No meals remaining for today</p>
+              <button className="text-body text-primary flex items-center gap-1 hover:underline">
                 <Plus size={12} /> Plan Meal
               </button>
             </div>
@@ -398,7 +397,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         title={t['dashboard.expenses']}
         count={
           <div className="flex items-baseline gap-0.5">
-            <span className="text-sm font-bold text-muted-foreground align-top">$</span>
+            <span className="text-body text-muted-foreground align-top">$</span>
             <span>{totalExpenses.toFixed(2)}</span>
           </div>
         }
@@ -417,12 +416,27 @@ const Dashboard: React.FC<DashboardProps> = ({
       {/* Footer */}
         <div className="helpy-footer">
           <span className="helpy-logo">helpy</span>
-          <p className="text-[#D1D5DB] dark:text-[#4B5563] text-xs font-medium mt-2 leading-relaxed">
+          <p className="text-[#D1D5DB] dark:text-[#4B5563] text-caption mt-2 leading-relaxed">
             "I just want you to know<br />I'm real grateful you're here"
           </p>
-          <p className="text-[#D1D5DB] dark:text-[#4B5563] text-[10px] mt-1 font-medium">
+          <p className="text-[#D1D5DB] dark:text-[#4B5563] text-micro mt-1">
             Aibileen Clark, The Help
           </p>
+          
+          {/* Dark Mode Test Toggle */}
+          <button
+            onClick={() => {
+              const html = document.documentElement;
+              html.classList.toggle('dark');
+              html.classList.toggle('light');
+            }}
+            className="mt-4 px-4 py-2 rounded-full bg-muted text-muted-foreground text-caption flex items-center gap-2 mx-auto hover:bg-muted/80 transition-colors"
+          >
+            <Sun size={14} className="dark:hidden" />
+            <Moon size={14} className="hidden dark:block" />
+            <span className="dark:hidden">Dark Mode (BETA)</span>
+            <span className="hidden dark:block">Light Mode</span>
+          </button>
         </div>
       </div>
 

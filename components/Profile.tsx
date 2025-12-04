@@ -22,6 +22,15 @@ interface ProfileProps extends BaseViewProps {
   onLogout: () => void;
 }
 
+// Role priority for consistent sorting across all family members
+const ROLE_PRIORITY: Record<UserRole, number> = {
+  [UserRole.MASTER]: 1,
+  [UserRole.SPOUSE]: 2,
+  [UserRole.HELPER]: 3,
+  [UserRole.CHILD]: 4,
+  [UserRole.OTHER]: 5,
+};
+
 const Profile: React.FC<ProfileProps> = ({
   users, onAdd, onUpdate, onDelete, onBack, currentUser, onLogout, t
 }) => {
@@ -179,9 +188,15 @@ const Profile: React.FC<ProfileProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
-  // Filter out any invalid users (safety check)
+  // Filter out invalid users and sort by role priority, then alphabetically
   const validUsers = React.useMemo(() => {
-    return users.filter(u => u && u.id);
+    return users
+      .filter(u => u && u.id)
+      .sort((a, b) => {
+        const roleDiff = ROLE_PRIORITY[a.role] - ROLE_PRIORITY[b.role];
+        if (roleDiff !== 0) return roleDiff;
+        return a.name.localeCompare(b.name);
+      });
   }, [users]);
 
   // Find selected user, fallback to current user if not found
@@ -483,7 +498,7 @@ const Profile: React.FC<ProfileProps> = ({
                       className={`flex flex-col items-center gap-2 cursor-pointer transition-opacity mt-2 ${isSelected ? 'opacity-100' : 'opacity-60'
                         }`}
                     >
-                      <div className={`w-16 h-16 rounded-full overflow-hidden border-4 ${isSelected ? 'border-primary-foreground shadow-lg' : 'border-primary-foreground/50'
+                      <div className={`w-16 h-16 rounded-full overflow-hidden border-4 ${isSelected ? 'border-primary-foreground shadow-md' : 'border-primary-foreground/50'
                         }`}>
                         <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
                       </div>
@@ -491,7 +506,7 @@ const Profile: React.FC<ProfileProps> = ({
                         {user.name.split(' ')[0]} {isCurrent ? '(You)' : ''}
                       </span>
                       {user.status === 'pending' && (
-                        <span className="text-[10px] text-primary-foreground/80 font-bold">Pending</span>
+                        <span className="text-micro text-primary-foreground/80">Pending</span>
                       )}
                     </div>
                   );
@@ -540,14 +555,14 @@ const Profile: React.FC<ProfileProps> = ({
                 <div className="flex items-center gap-4 mb-6">
                   <div className="relative group">
                     <div
-                      className="w-20 h-20 rounded-full overflow-hidden shadow-md bg-secondary cursor-pointer"
+                      className="w-20 h-20 rounded-full overflow-hidden shadow-sm bg-secondary cursor-pointer"
                       onClick={() => setShowPhotoOptions(true)}
                     >
                       <img src={selectedUser.avatar} alt={selectedUser.name} className="w-full h-full object-cover" />
                     </div>
                     <button
                       onClick={() => setShowPhotoOptions(true)}
-                      className="absolute -bottom-1 -right-1 bg-primary text-primary-foreground p-1.5 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="absolute -bottom-1 -right-1 bg-primary text-primary-foreground p-1.5 rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
                     >
                       <Camera size={14} />
                     </button>
@@ -641,7 +656,7 @@ const Profile: React.FC<ProfileProps> = ({
                       type="text"
                       value={newName}
                       onChange={(e) => setNewName(e.target.value)}
-                      className="w-full px-4 py-3 bg-muted border border-border rounded-xl focus:outline-none focus:border-foreground transition-colors text-body"
+                      className="w-full px-4 py-3 bg-muted border border-border rounded-xl focus:outline-none focus:border-primary transition-colors text-body"
                       placeholder="Enter name"
                     />
                   </div>
@@ -758,7 +773,7 @@ const Profile: React.FC<ProfileProps> = ({
                       type="text"
                       value={editName}
                       onChange={(e) => setEditName(e.target.value)}
-                      className="w-full px-4 py-3 bg-muted border border-border rounded-xl focus:outline-none focus:border-foreground transition-colors text-body"
+                      className="w-full px-4 py-3 bg-muted border border-border rounded-xl focus:outline-none focus:border-primary transition-colors text-body"
                     />
                   </div>
 
@@ -768,7 +783,7 @@ const Profile: React.FC<ProfileProps> = ({
                     <select
                       value={editRole}
                       onChange={(e) => setEditRole(e.target.value as UserRole)}
-                      className="w-full px-4 py-3 bg-muted border border-border rounded-xl focus:outline-none focus:border-foreground transition-colors text-body"
+                      className="w-full px-4 py-3 bg-muted border border-border rounded-xl focus:outline-none focus:border-primary transition-colors text-body"
                     >
                       <option value={UserRole.MASTER}>Master</option>
                       <option value={UserRole.SPOUSE}>Spouse</option>
@@ -787,7 +802,7 @@ const Profile: React.FC<ProfileProps> = ({
                         value={newAllergyInput}
                         onChange={(e) => setNewAllergyInput(e.target.value)}
                         onKeyPress={(e) => e.key === 'Enter' && addAllergy()}
-                        className="flex-1 px-4 py-2 bg-muted border border-border rounded-xl focus:outline-none focus:border-foreground transition-colors text-body"
+                        className="flex-1 px-4 py-2 bg-muted border border-border rounded-xl focus:outline-none focus:border-primary transition-colors text-body"
                         placeholder="Add allergy"
                       />
                       <button onClick={addAllergy} className="px-4 py-2 bg-primary text-primary-foreground rounded-xl font-semibold transition-colors">
@@ -815,7 +830,7 @@ const Profile: React.FC<ProfileProps> = ({
                         value={newPreferenceInput}
                         onChange={(e) => setNewPreferenceInput(e.target.value)}
                         onKeyPress={(e) => e.key === 'Enter' && addPreference()}
-                        className="flex-1 px-4 py-2 bg-muted border border-border rounded-xl focus:outline-none focus:border-foreground transition-colors text-body"
+                        className="flex-1 px-4 py-2 bg-muted border border-border rounded-xl focus:outline-none focus:border-primary transition-colors text-body"
                         placeholder="Add preference"
                       />
                       <button onClick={addPreference} className="px-4 py-2 bg-primary text-primary-foreground rounded-xl font-semibold transition-colors">
@@ -1256,7 +1271,7 @@ const Profile: React.FC<ProfileProps> = ({
                         type="text"
                         value={accountData.firstName}
                         onChange={e => setAccountData({ ...accountData, firstName: e.target.value })}
-                        className="w-full bg-muted border border-border rounded-xl px-4 py-3 text-foreground font-medium focus:border-foreground outline-none transition-colors text-body"
+                        className="w-full bg-muted border border-border rounded-xl px-4 py-3 text-foreground font-medium focus:border-primary outline-none transition-colors text-body"
                       />
                     </div>
                     <div className="space-y-1">
@@ -1265,7 +1280,7 @@ const Profile: React.FC<ProfileProps> = ({
                         type="text"
                         value={accountData.lastName}
                         onChange={e => setAccountData({ ...accountData, lastName: e.target.value })}
-                        className="w-full bg-muted border border-border rounded-xl px-4 py-3 text-foreground font-medium focus:border-foreground outline-none transition-colors text-body"
+                        className="w-full bg-muted border border-border rounded-xl px-4 py-3 text-foreground font-medium focus:border-primary outline-none transition-colors text-body"
                       />
                     </div>
                   </div>
@@ -1284,7 +1299,7 @@ const Profile: React.FC<ProfileProps> = ({
                             setShowCountryCodeDropdown(true);
                           }}
                           placeholder="+852"
-                          className="w-full bg-muted border border-border rounded-xl px-4 py-3 text-foreground font-medium focus:border-foreground outline-none cursor-pointer transition-colors text-body"
+                          className="w-full bg-muted border border-border rounded-xl px-4 py-3 text-foreground font-medium focus:border-primary outline-none cursor-pointer transition-colors text-body"
                         />
                         <Phone size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                         {showCountryCodeDropdown && (
@@ -1295,7 +1310,7 @@ const Profile: React.FC<ProfileProps> = ({
                                 value={countryCodeSearch}
                                 onChange={e => setCountryCodeSearch(e.target.value)}
                                 placeholder="Search country..."
-                                className="w-full bg-muted border border-border rounded-lg px-3 py-2 text-body focus:outline-none focus:border-foreground transition-colors"
+                                className="w-full bg-muted border border-border rounded-lg px-3 py-2 text-body focus:outline-none focus:border-primary transition-colors"
                                 autoFocus
                               />
                             </div>
@@ -1329,7 +1344,7 @@ const Profile: React.FC<ProfileProps> = ({
                           value={accountData.phoneNumber}
                           onChange={e => setAccountData({ ...accountData, phoneNumber: e.target.value })}
                           placeholder="Mobile number"
-                          className="w-full bg-muted border border-border rounded-xl px-4 py-3 text-foreground font-medium focus:border-foreground outline-none pl-10 transition-colors text-body"
+                          className="w-full bg-muted border border-border rounded-xl px-4 py-3 text-foreground font-medium focus:border-primary outline-none pl-10 transition-colors text-body"
                         />
                         <Phone size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                       </div>
@@ -1350,7 +1365,7 @@ const Profile: React.FC<ProfileProps> = ({
                         value={accountData.email}
                         onChange={e => setAccountData({ ...accountData, email: e.target.value })}
                         disabled={isGoogleAuth}
-                        className={`w-full bg-muted border border-border rounded-xl px-4 py-3 text-foreground font-medium focus:border-foreground outline-none pl-10 transition-colors text-body ${isGoogleAuth ? 'opacity-60 cursor-not-allowed' : ''}`}
+                        className={`w-full bg-muted border border-border rounded-xl px-4 py-3 text-foreground font-medium focus:border-primary outline-none pl-10 transition-colors text-body ${isGoogleAuth ? 'opacity-60 cursor-not-allowed' : ''}`}
                       />
                       <Mail size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                     </div>
@@ -1369,7 +1384,7 @@ const Profile: React.FC<ProfileProps> = ({
                             placeholder="••••••••"
                             value={accountData.currentPassword}
                             onChange={e => setAccountData({ ...accountData, currentPassword: e.target.value })}
-                            className="w-full bg-muted border border-border rounded-xl px-4 py-3 text-foreground font-medium focus:border-foreground outline-none pl-10 transition-colors text-body"
+                            className="w-full bg-muted border border-border rounded-xl px-4 py-3 text-foreground font-medium focus:border-primary outline-none pl-10 transition-colors text-body"
                           />
                           <Lock size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                         </div>
@@ -1382,7 +1397,7 @@ const Profile: React.FC<ProfileProps> = ({
                             placeholder="••••••••"
                             value={accountData.newPassword}
                             onChange={e => setAccountData({ ...accountData, newPassword: e.target.value })}
-                            className="w-full bg-muted border border-border rounded-xl px-4 py-3 text-foreground font-medium focus:border-foreground outline-none pl-10 transition-colors text-body"
+                            className="w-full bg-muted border border-border rounded-xl px-4 py-3 text-foreground font-medium focus:border-primary outline-none pl-10 transition-colors text-body"
                           />
                           <Lock size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                         </div>
@@ -1587,7 +1602,7 @@ const Profile: React.FC<ProfileProps> = ({
                     const formatted = digitsOnly.replace(/(\d{4})(?=\d)/g, '$1 ').slice(0, 19);
                     setPaymentData({ ...paymentData, cardNumber: formatted });
                   }}
-                  className="w-full bg-muted border border-border rounded-xl px-4 py-3 text-foreground font-mono text-body focus:border-foreground outline-none transition-colors"
+                  className="w-full bg-muted border border-border rounded-xl px-4 py-3 text-foreground font-mono text-body focus:border-primary outline-none transition-colors"
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -1608,7 +1623,7 @@ const Profile: React.FC<ProfileProps> = ({
                       }
                       setPaymentData({ ...paymentData, expiry: formatted });
                     }}
-                    className="w-full bg-muted border border-border rounded-xl px-4 py-3 text-foreground font-mono text-body focus:border-foreground outline-none transition-colors"
+                    className="w-full bg-muted border border-border rounded-xl px-4 py-3 text-foreground font-mono text-body focus:border-primary outline-none transition-colors"
                   />
                 </div>
                 <div className="space-y-1">
@@ -1625,7 +1640,7 @@ const Profile: React.FC<ProfileProps> = ({
                       const value = e.target.value.replace(/\D/g, '');
                       setPaymentData({ ...paymentData, cvc: value });
                     }}
-                    className="w-full bg-muted border border-border rounded-xl px-4 py-3 text-foreground font-mono text-body focus:border-foreground outline-none transition-colors"
+                    className="w-full bg-muted border border-border rounded-xl px-4 py-3 text-foreground font-mono text-body focus:border-primary outline-none transition-colors"
                   />
                 </div>
               </div>
@@ -1636,7 +1651,7 @@ const Profile: React.FC<ProfileProps> = ({
                   placeholder="Name on card"
                   value={paymentData.name}
                   onChange={e => setPaymentData({ ...paymentData, name: e.target.value })}
-                  className="w-full bg-muted border border-border rounded-xl px-4 py-3 text-foreground font-medium text-body focus:border-foreground outline-none transition-colors"
+                  className="w-full bg-muted border border-border rounded-xl px-4 py-3 text-foreground font-medium text-body focus:border-primary outline-none transition-colors"
                 />
               </div>
             </div>

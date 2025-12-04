@@ -326,7 +326,7 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
       <div className="min-h-screen w-full flex flex-col items-center justify-center p-6" style={{ backgroundColor: '#3EAFD2' }}>
         <div className="text-white text-center">
           <Loader2 className="w-12 h-12 animate-spin mx-auto mb-4" />
-          <p className="text-lg font-bold">Loading invitation...</p>
+          <p className="text-title">Loading invitation...</p>
         </div>
       </div>
     );
@@ -338,7 +338,7 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
       <div className="min-h-screen w-full flex flex-col items-center justify-center p-6" style={{ backgroundColor: '#3EAFD2' }}>
         <div className="text-white text-center">
           <Loader2 className="w-12 h-12 animate-spin mx-auto mb-4" />
-          <p className="text-lg font-bold">Completing invitation...</p>
+          <p className="text-title">Completing invitation...</p>
         </div>
       </div>
     );
@@ -349,7 +349,7 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
     return (
       <div className="min-h-screen w-full flex flex-col items-center justify-center p-6" style={{ backgroundColor: '#3EAFD2' }}>
         <div className="bg-white shadow-lg rounded-2xl p-8 max-w-md text-center">
-          <h2 className="text-2xl font-bold text-red-500 mb-4">Invitation Error</h2>
+          <h2 className="text-display text-red-500 mb-4">Invitation Error</h2>
           <p className="text-gray-600 mb-6">
             {error || inviteInfo?.error || 'This invitation is invalid or has expired.'}
           </p>
@@ -370,20 +370,20 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
       <div className="min-h-screen w-full flex flex-col items-center justify-center p-6" style={{ backgroundColor: '#3EAFD2' }}>
         <div className="w-full max-w-md">
           <div className="bg-white shadow-lg rounded-2xl p-6">
-            <h2 className="text-xl font-bold text-[#474747] text-center mb-2">Verify Your Email</h2>
-            <p className="text-gray-500 text-sm text-center mb-5">
+            <h2 className="text-title text-[#474747] text-center mb-2">Verify Your Email</h2>
+            <p className="text-gray-500 text-body text-center mb-5">
               We sent a code to {formData.email}
             </p>
 
             {error && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-body">
                 {error}
               </div>
             )}
 
             <form onSubmit={handleVerify} className="space-y-4">
               <div>
-                <label className="text-[#474747] font-medium text-sm mb-1.5 block">
+                <label className="text-[#474747] text-body mb-1.5 block">
                   Verification Code
                 </label>
                 <input
@@ -437,7 +437,7 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
         <div className="mb-8 text-center w-full">
           <h1 
             className="text-5xl text-white mb-3"
-            style={{ fontFamily: "'Peanut Butter', 'Plus Jakarta Sans', Inter, -apple-system, BlinkMacSystemFont, sans-serif" }}
+            style={{ fontFamily: "'Peanut Butter', var(--font-sans)" }}
           >
             helpy
           </h1>
@@ -447,12 +447,12 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
         <div className="w-full">
           <div className="bg-white shadow-lg rounded-2xl p-6">
             <div className="text-center mb-6">
-              <h2 className="text-2xl font-bold text-[#474747] mb-2">Welcome!</h2>
-              <p className="text-gray-600 text-sm">
+              <h2 className="text-display text-[#474747] mb-2">Welcome!</h2>
+              <p className="text-gray-600 text-body">
                 {welcomeText}
               </p>
               {inviteInfo.pendingUserName && (
-                <p className="text-gray-500 text-xs mt-2">
+                <p className="text-gray-500 text-caption mt-2">
                   You'll be added as: <span className="font-semibold">{inviteInfo.pendingUserName}</span>
                   {inviteInfo.pendingUserRole && ` (${inviteInfo.pendingUserRole})`}
                 </p>
@@ -465,7 +465,7 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
                 <div className="mb-4">
                   <button
                     onClick={() => setShowGoogleOAuth(false)}
-                    className="flex items-center gap-2 text-gray-500 hover:text-[#3EAFD2] mb-4 transition-colors text-sm"
+                    className="flex items-center gap-2 text-gray-500 hover:text-[#3EAFD2] mb-4 transition-colors text-body"
                   >
                     <ArrowRight size={16} className="rotate-180" />
                     <span>Back</span>
@@ -523,7 +523,7 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
                       Sign Up with Google
                     </button>
                     <div className="text-center">
-                      <p className="text-sm text-gray-500">
+                      <p className="text-body text-gray-500">
                         Already have an account?{' '}
                         <button
                           onClick={handleEmailSignIn}
@@ -541,14 +541,14 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
                 {/* Sign Up Form */}
                 <button
                   onClick={() => setShowSignUp(false)}
-                  className="flex items-center gap-2 text-gray-500 hover:text-[#3EAFD2] mb-4 transition-colors text-sm"
+                  className="flex items-center gap-2 text-gray-500 hover:text-[#3EAFD2] mb-4 transition-colors text-body"
                 >
                   <ArrowRight size={16} className="rotate-180" />
                   <span>Back</span>
                 </button>
 
                 {error && (
-                  <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">
+                  <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-body">
                     {error}
                   </div>
                 )}
@@ -556,7 +556,7 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
                 <form onSubmit={handleSignUp} className="space-y-4">
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="text-[#474747] font-medium text-sm mb-1.5 block">
+                      <label className="text-[#474747] text-body mb-1.5 block">
                         First Name
                       </label>
                       <input
@@ -569,7 +569,7 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
                       />
                     </div>
                     <div>
-                      <label className="text-[#474747] font-medium text-sm mb-1.5 block">
+                      <label className="text-[#474747] text-body mb-1.5 block">
                         Last Name
                       </label>
                       <input
@@ -584,7 +584,7 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
                   </div>
 
                   <div>
-                    <label className="text-[#474747] font-medium text-sm mb-1.5 block">
+                    <label className="text-[#474747] text-body mb-1.5 block">
                       Email
                     </label>
                     <input
@@ -598,7 +598,7 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
                   </div>
 
                   <div>
-                    <label className="text-[#474747] font-medium text-sm mb-1.5 block">
+                    <label className="text-[#474747] text-body mb-1.5 block">
                       Password
                     </label>
                     <input
@@ -610,7 +610,7 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
                       minLength={8}
                       className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-[#474747] placeholder-gray-400 focus:outline-none focus:border-[#3EAFD2] focus:ring-1 focus:ring-[#3EAFD2] transition-colors"
                     />
-                    <p className="text-xs text-gray-400 mt-1.5">Must be at least 8 characters</p>
+                    <p className="text-caption text-gray-400 mt-1.5">Must be at least 8 characters</p>
                   </div>
 
                   {/* Clerk CAPTCHA widget container */}

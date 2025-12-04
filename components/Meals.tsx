@@ -310,7 +310,7 @@ const Meals: React.FC<MealsProps> = ({
           />
         ))}
         {remaining > 0 && (
-          <span className="text-[10px] font-bold text-gray-600 bg-gray-100 rounded-full w-6 h-6 flex items-center justify-center border-2 border-white">
+          <span className="text-micro text-gray-600 bg-gray-100 rounded-full w-6 h-6 flex items-center justify-center border-2 border-white">
             +{remaining}
           </span>
         )}
@@ -542,7 +542,7 @@ const Meals: React.FC<MealsProps> = ({
                       }`}
                     />
                     {!compact && (
-                      <span className={`text-[8px] font-medium mt-0.5 ${
+                      <span className={`text-micro mt-0.5 ${
                         u.id === currentUser.id ? 'text-primary' : 'text-muted-foreground'
                       }`}>
                         {u.id === currentUser.id ? 'You' : u.name.split(' ')[0]}
@@ -932,7 +932,7 @@ const Meals: React.FC<MealsProps> = ({
                                         }`}>
                                           {icon}
                                         </div>
-                                        <span className="text-[10px] font-medium">{label}</span>
+                                        <span className="text-micro">{label}</span>
                                       </button>
                                     );
                                   })}
@@ -1189,7 +1189,7 @@ const Meals: React.FC<MealsProps> = ({
                           className={`py-2.5 rounded-xl transition-colors flex flex-col items-center justify-center gap-1 ${
                             isSelected
                               ? 'bg-primary text-primary-foreground'
-                              : 'bg-card ring-1 ring-neutral-300 text-muted-foreground hover:ring-neutral-400'
+                              : 'bg-card ring-1 ring-border text-muted-foreground hover:ring-input'
                           }`}
                         >
                           {getMealIcon(type)}
@@ -1244,7 +1244,7 @@ const Meals: React.FC<MealsProps> = ({
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
                       placeholder={`${t['meals.whats_for'] ?? "What's for"} ${getMealLabel(modalType).toLowerCase()}?`}
-                      className="w-full bg-muted border border-transparent rounded-xl px-4 py-3 text-body focus:border-foreground outline-none font-medium text-foreground resize-none placeholder:text-muted-foreground pr-12 transition-colors"
+                      className="w-full bg-muted border border-transparent rounded-xl px-4 py-3 text-body focus:border-primary outline-none font-medium text-foreground resize-none placeholder:text-muted-foreground pr-12 transition-colors"
                     />
                     <button
                       onClick={handleAiSuggest}
@@ -1276,7 +1276,7 @@ const Meals: React.FC<MealsProps> = ({
                           className={`flex items-center gap-2 px-3 py-2 rounded-xl text-body transition-all ${
                             isSelected
                               ? 'bg-primary text-primary-foreground'
-                              : 'bg-card text-foreground ring-1 ring-neutral-300 hover:ring-neutral-400'
+                              : 'bg-card text-foreground ring-1 ring-border hover:ring-input'
                           }`}
                         >
                           <img

@@ -1040,7 +1040,7 @@ const ToDo: React.FC<ToDoProps> = ({
                   
                   <div className="flex items-center flex-wrap gap-1.5 mt-1.5">
                     {/* Category Badge */}
-                    <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${getCategoryBadgeStyle(item.category)}`}>
+                    <span className={`px-2 py-0.5 rounded-full text-micro ${getCategoryBadgeStyle(item.category)}`}>
                       {item.category}
                     </span>
                     {item.type === 'task' && item.dueDate && (
@@ -1135,7 +1135,7 @@ const ToDo: React.FC<ToDoProps> = ({
                       <span className="text-body text-muted-foreground line-through">
                         <TranslatedItemName item={item} currentLang={currentLang} onUpdate={onUpdate} />
                       </span>
-                      <span className={`ml-2 px-1.5 py-0.5 rounded text-[10px] font-medium opacity-50 ${getCategoryBadgeStyle(item.category)}`}>
+                      <span className={`ml-2 px-1.5 py-0.5 rounded text-micro opacity-50 ${getCategoryBadgeStyle(item.category)}`}>
                         {item.category}
                       </span>
                     </div>
@@ -1206,7 +1206,7 @@ const ToDo: React.FC<ToDoProps> = ({
                   value={sheetForm.name || ''}
                   onChange={e => setSheetForm(prev => ({ ...prev, name: e.target.value }))}
                   placeholder={activeSection === 'shopping' ? 'e.g., Milk' : 'e.g., Clean bathroom'}
-                  className="w-full px-4 py-3 bg-muted rounded-xl text-body text-foreground placeholder-muted-foreground outline-none border border-transparent focus:border-foreground transition-colors"
+                  className="w-full px-4 py-3 bg-muted rounded-xl text-body text-foreground placeholder-muted-foreground outline-none border border-transparent focus:border-primary transition-colors"
                   autoFocus={!editingItemId}
                 />
               </div>
@@ -1229,7 +1229,7 @@ const ToDo: React.FC<ToDoProps> = ({
                       }}
                       onFocus={e => e.target.select()}
                       placeholder="Qty"
-                      className="w-full px-4 py-3 bg-muted rounded-xl text-body text-foreground text-center outline-none border border-transparent focus:border-foreground transition-colors placeholder:text-muted-foreground"
+                      className="w-full px-4 py-3 bg-muted rounded-xl text-body text-foreground text-center outline-none border border-transparent focus:border-primary transition-colors placeholder:text-muted-foreground"
                     />
                   </div>
                   <div className="flex-1">
@@ -1241,7 +1241,7 @@ const ToDo: React.FC<ToDoProps> = ({
                       value={sheetForm.unit || ''}
                       onChange={e => setSheetForm(prev => ({ ...prev, unit: e.target.value }))}
                       placeholder="pcs, kg, L..."
-                      className="w-full px-4 py-3 bg-muted rounded-xl text-body text-foreground placeholder-muted-foreground outline-none border border-transparent focus:border-foreground transition-colors"
+                      className="w-full px-4 py-3 bg-muted rounded-xl text-body text-foreground placeholder-muted-foreground outline-none border border-transparent focus:border-primary transition-colors"
                     />
                   </div>
                 </div>
@@ -1308,7 +1308,7 @@ const ToDo: React.FC<ToDoProps> = ({
                           },
                         }));
                       }}
-                      className="w-full px-4 py-3 bg-muted rounded-xl text-body text-foreground outline-none border border-transparent focus:border-foreground transition-colors"
+                      className="w-full px-4 py-3 bg-muted rounded-xl text-body text-foreground outline-none border border-transparent focus:border-primary transition-colors"
                     >
                       {RECURRENCE_OPTIONS.map(opt => (
                         <option key={opt.value} value={opt.value}>
@@ -1345,7 +1345,7 @@ const ToDo: React.FC<ToDoProps> = ({
                       className={`flex-1 px-2 py-2 rounded-xl text-sm transition-all flex items-center justify-center gap-1 ${
                         sheetForm.category === cat
                           ? 'bg-primary text-primary-foreground'
-                          : 'bg-card text-foreground ring-1 ring-neutral-300 hover:ring-neutral-400'
+                          : 'bg-card text-foreground ring-1 ring-border hover:ring-input'
                       }`}
                     >
                       {categoryIcons[cat]}
@@ -1368,7 +1368,7 @@ const ToDo: React.FC<ToDoProps> = ({
                       className={`flex items-center gap-2 px-3 py-2 rounded-xl text-body transition-all ${
                         sheetForm.assigneeId === user.id
                           ? 'bg-primary text-primary-foreground'
-                          : 'bg-card text-foreground ring-1 ring-neutral-300 hover:ring-neutral-400'
+                          : 'bg-card text-foreground ring-1 ring-border hover:ring-input'
                       }`}
                     >
                       {user.avatar ? (

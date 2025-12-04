@@ -1295,7 +1295,7 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
               placeholder="e.g., City General Hospital"
-              className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-foreground outline-none transition-all text-body"
+              className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
             />
           </div>
 
@@ -1311,7 +1311,7 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
                 value={form.address}
                 onChange={(e) => setForm({ ...form, address: e.target.value })}
                 placeholder="123 Main St, City"
-                className="w-full pl-11 pr-4 py-3 rounded-lg bg-secondary border border-border focus:border-foreground outline-none transition-all text-body"
+                className="w-full pl-11 pr-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
               />
             </div>
               </div>
@@ -1325,7 +1325,7 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
               <select
                 value={form.countryCode}
                 onChange={(e) => setForm({ ...form, countryCode: e.target.value })}
-                className="w-32 px-3 py-3 rounded-lg bg-secondary border border-border focus:border-foreground outline-none transition-all text-body"
+                className="w-32 px-3 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
               >
                 {COUNTRY_CODES.map((cc, index) => (
                   <option key={`${cc.code}-${cc.country}-${index}`} value={cc.code}>
@@ -1345,7 +1345,7 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
                     setForm({ ...form, phone: value });
                   }}
                   placeholder="812 345 6789"
-                  className="w-full pl-11 pr-4 py-3 rounded-lg bg-secondary border border-border focus:border-foreground outline-none transition-all text-body"
+                  className="w-full pl-11 pr-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
                 />
               </div>
             </div>
@@ -1361,7 +1361,7 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
               value={form.note}
               onChange={(e) => setForm({ ...form, note: e.target.value })}
               placeholder="Any additional details..."
-              className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-foreground outline-none transition-all text-body"
+              className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
             />
           </div>
         </div>
@@ -1446,7 +1446,7 @@ const TrainingModal: React.FC<TrainingModalProps> = ({
             <select
               value={form.category}
               onChange={(e) => setForm({ ...form, category: e.target.value as TrainingCategory })}
-              className="w-full pl-4 pr-14 py-3 rounded-lg bg-secondary border border-border focus:border-foreground outline-none transition-all text-body"
+              className="w-full pl-4 pr-14 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
             >
               {TRAINING_CATEGORIES.map((cat) => (
                 <option key={cat} value={cat}>
@@ -1467,7 +1467,7 @@ const TrainingModal: React.FC<TrainingModalProps> = ({
                 value={form.customCategory}
                 onChange={(e) => setForm({ ...form, customCategory: e.target.value })}
                 placeholder="Enter custom category"
-                className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-foreground outline-none transition-all text-body"
+                className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
               />
             </div>
           )}
@@ -1482,7 +1482,7 @@ const TrainingModal: React.FC<TrainingModalProps> = ({
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
               placeholder="e.g., Morning Routine Checklist"
-              className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-foreground outline-none transition-all text-body"
+              className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
                 />
               </div>
 
@@ -1496,7 +1496,7 @@ const TrainingModal: React.FC<TrainingModalProps> = ({
               onChange={(e) => setForm({ ...form, content: e.target.value })}
               placeholder="Enter the training instructions, steps, or details..."
                   rows={6}
-              className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-foreground outline-none transition-all resize-none text-body"
+              className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all resize-none text-body"
             />
           </div>
 
@@ -1508,7 +1508,7 @@ const TrainingModal: React.FC<TrainingModalProps> = ({
             <select
               value={form.assigneeId}
               onChange={(e) => setForm({ ...form, assigneeId: e.target.value })}
-              className="w-full pl-4 pr-14 py-3 rounded-lg bg-secondary border border-border focus:border-foreground outline-none transition-all text-body"
+              className="w-full pl-4 pr-14 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
             >
               <option value="">Select a helper</option>
               {helpers.map((helper) => (
@@ -1611,7 +1611,7 @@ const TrainingViewModal: React.FC<TrainingViewModalProps> = ({
 
         {/* Content */}
         <div className="p-5 flex-1 overflow-y-auto">
-          <div className="prose prose-slate prose-sm">
+          <div className="prose prose-gray prose-sm">
             {module.content ? (
               <div className="whitespace-pre-wrap text-body text-foreground">
                 <TranslatedTrainingContent 

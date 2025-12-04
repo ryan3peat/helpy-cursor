@@ -352,34 +352,34 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
           <div className="mb-8 text-center w-full">
             <h1 
               className="text-5xl text-white mb-3"
-              style={{ fontFamily: "'Peanut Butter', 'Plus Jakarta Sans', Inter, -apple-system, BlinkMacSystemFont, sans-serif" }}
+              style={{ fontFamily: "'Peanut Butter', var(--font-sans)" }}
             >
               helpy
             </h1>
-            <p className="text-white/90 text-sm font-medium">
+            <p className="text-white/90 text-body">
               "I just want you to know<br />I'm real grateful you're here"
             </p>
-            <p className="text-white/70 text-xs mt-1 font-medium">
+            <p className="text-white/70 text-caption mt-1">
               Aibileen Clark, The Help
             </p>
           </div>
 
           <div className="w-full">
             <div className="bg-white shadow-lg rounded-2xl p-6">
-            <h2 className="text-xl font-bold text-[#474747] text-center mb-2">Verify Your {verificationType}</h2>
-            <p className="text-gray-500 text-sm text-center mb-5">
+            <h2 className="text-title text-[#474747] text-center mb-2">Verify Your {verificationType}</h2>
+            <p className="text-gray-500 text-body text-center mb-5">
               We sent a code to {verificationTarget}
             </p>
 
             {error && (
-              <div className="mb-4 p-3 bg-[#F06292]/10 border border-[#F06292]/20 rounded-xl text-[#F06292] text-sm">
+              <div className="mb-4 p-3 bg-[#F06292]/10 border border-[#F06292]/20 rounded-xl text-[#F06292] text-body">
                 {error}
               </div>
             )}
 
             <form onSubmit={handleVerify} className="space-y-4">
               <div>
-                <label className="text-[#474747] font-medium text-sm mb-1.5 block">
+                <label className="text-[#474747] text-body mb-1.5 block">
                   Verification Code
                 </label>
                 <input
@@ -430,14 +430,14 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
         <div className="mb-8 text-center w-full">
           <h1 
             className="text-5xl text-white mb-3"
-            style={{ fontFamily: "'Peanut Butter', 'Plus Jakarta Sans', Inter, -apple-system, BlinkMacSystemFont, sans-serif" }}
+            style={{ fontFamily: "'Peanut Butter', var(--font-sans)" }}
           >
             helpy
           </h1>
-          <p className="text-white/90 text-sm font-medium">
+          <p className="text-white/90 text-body">
             "I just want you to know<br />I'm real grateful you're here"
           </p>
-          <p className="text-white/70 text-xs mt-1 font-medium">
+          <p className="text-white/70 text-caption mt-1">
             Aibileen Clark, The Help
           </p>
         </div>
@@ -450,13 +450,13 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
             className="flex items-center gap-2 text-gray-500 hover:text-[#3EAFD2] mb-4 transition-colors"
           >
             <ArrowLeft size={18} />
-            <span className="text-sm font-medium">Back to Sign In</span>
+            <span className="text-body">Back to Sign In</span>
           </button>
 
-          <h2 className="text-xl font-bold text-[#474747] mb-5">Sign Up</h2>
+          <h2 className="text-title text-[#474747] mb-5">Sign Up</h2>
 
           {error && (
-            <div className="mb-4 p-3 bg-[#F06292]/10 border border-[#F06292]/20 rounded-xl text-[#F06292] text-sm">
+            <div className="mb-4 p-3 bg-[#F06292]/10 border border-[#F06292]/20 rounded-xl text-[#F06292] text-body">
               {error}
             </div>
           )}
@@ -492,7 +492,7 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-gray-200"></div>
             </div>
-            <div className="relative flex justify-center text-sm">
+            <div className="relative flex justify-center text-body">
               <span className="px-2 bg-white text-gray-500">Or continue with email</span>
             </div>
           </div>
@@ -500,7 +500,7 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-[#474747] font-medium text-sm mb-1.5 block">
+                <label className="text-[#474747] text-body mb-1.5 block">
                   First Name
                 </label>
                 <input
@@ -513,7 +513,7 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
                 />
               </div>
               <div>
-                <label className="text-[#474747] font-medium text-sm mb-1.5 block">
+                <label className="text-[#474747] text-body mb-1.5 block">
                   Last Name
                 </label>
                 <input
@@ -528,7 +528,7 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
             </div>
 
             <div>
-              <label className="text-[#474747] font-medium text-sm mb-1.5 block">
+              <label className="text-[#474747] text-body mb-1.5 block">
                 Email
               </label>
               <input
@@ -542,7 +542,7 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
             </div>
 
             <div>
-              <label className="text-[#474747] font-medium text-sm mb-1.5 block">
+              <label className="text-[#474747] text-body mb-1.5 block">
                 Password
               </label>
               <input
@@ -554,7 +554,7 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
                 minLength={8}
                 className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-[#474747] placeholder-gray-400 focus:outline-none focus:border-[#3EAFD2] focus:ring-1 focus:ring-[#3EAFD2] transition-colors"
               />
-              <p className="text-xs text-gray-400 mt-1.5">Must be at least 8 characters</p>
+              <p className="text-caption text-gray-400 mt-1.5">Must be at least 8 characters</p>
             </div>
 
             {/* Clerk CAPTCHA widget container - required for bot protection */}
@@ -578,7 +578,7 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
           </form>
 
           <div className="mt-5 text-center">
-            <p className="text-sm text-gray-500">
+            <p className="text-body text-gray-500">
               Already have an account?{' '}
               <button
                 onClick={onBackToSignIn}

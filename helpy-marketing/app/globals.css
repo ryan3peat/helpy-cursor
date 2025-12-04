@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -49,8 +51,7 @@
   --input: 0 0% 75%;
   --ring: 194 62% 53%;
 
-  --font-sans: "Plus Jakarta Sans", Inter, -apple-system, BlinkMacSystemFont,
-    sans-serif;
+  --font-sans: Inter, -apple-system, BlinkMacSystemFont, sans-serif;
   --radius: 0.75rem;
 }
 
@@ -81,7 +82,7 @@ input:focus-visible {
 
 /* Helpy logo style */
 .helpy-logo {
-  font-family: "Peanut Butter", var(--font-sans);
+  font-family: "Peanut Butter", Inter, sans-serif;
   font-weight: normal;
   color: #3EAFD2;
 }

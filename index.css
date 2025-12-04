@@ -65,11 +65,12 @@
   /* ─────────────────────────────────────────────────────────────────
      TYPOGRAPHY
      ───────────────────────────────────────────────────────────────── */
-  --font-sans: "Plus Jakarta Sans", Inter, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-sans: Inter, -apple-system, BlinkMacSystemFont, sans-serif;
   --text-display: 2rem;
   --text-title: 1rem;
   --text-body: 0.875rem;
-  --text-caption: 0.875rem;
+  --text-caption: 0.75rem;
+  --text-micro: 0.625rem;
 
   /* ─────────────────────────────────────────────────────────────────
      BORDER RADIUS
@@ -87,7 +88,7 @@
   --shadow-xs: 0 1px 3px rgba(0,0,0,0.06);
   --shadow-sm: 0 2px 4px rgba(0,0,0,0.06);
   --shadow: 0 2px 8px rgba(0,0,0,0.08);
-  --shadow-md: 4px 8px 12px rgba(72,60,50,0.05);
+  --shadow-md: 0 4px 12px rgba(72,60,50,0.05);
   --shadow-up: 0 -8px 12px rgba(72,60,50,0.05);
   --shadow-lg: 0 6px 16px rgba(0,0,0,0.10);
   --shadow-xl: 0 8px 28px rgba(0,0,0,0.12);
@@ -250,7 +251,7 @@ textarea:focus-visible,
 select:focus-visible,
 [role="combobox"]:focus-visible {
   outline: none;
-  border-color: hsl(var(--foreground));
+  border-color: hsl(var(--primary));
 }
 
 button:focus-visible {
@@ -362,7 +363,7 @@ button:focus-visible {
 }
 
 .helpy-logo {
-  font-family: 'Peanut Butter', var(--font-sans);
+  font-family: 'Peanut Butter', Inter, sans-serif;
   font-size: 20px;
   color: #D1D5DB;
 }

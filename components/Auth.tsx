@@ -697,9 +697,9 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
               <div className="broom-track"></div>
               <div className="broom-trail"></div>
             </div>
-            <p className="text-sm font-bold whitespace-nowrap">Tidying things up...</p>
+            <p className="text-body whitespace-nowrap">Tidying things up...</p>
           </div>
-          <p className="text-xs text-white/60 mt-2">Please wait a moment</p>
+          <p className="text-caption text-white/60 mt-2">Please wait a moment</p>
         </div>
       </div>
     );
@@ -716,9 +716,9 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
               <div className="broom-track"></div>
               <div className="broom-trail"></div>
             </div>
-            <p className="text-sm font-bold whitespace-nowrap">Tidying things up...</p>
+            <p className="text-body whitespace-nowrap">Tidying things up...</p>
           </div>
-          <p className="text-xs text-white/60 mt-2">Setting up your account</p>
+          <p className="text-caption text-white/60 mt-2">Setting up your account</p>
         </div>
       </div>
     );
@@ -739,9 +739,9 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
               <div className="broom-track"></div>
               <div className="broom-trail"></div>
             </div>
-            <p className="text-sm font-bold whitespace-nowrap">Tidying things up...</p>
+            <p className="text-body whitespace-nowrap">Tidying things up...</p>
           </div>
-          <p className="text-xs text-white/60 mt-2">Almost ready</p>
+          <p className="text-caption text-white/60 mt-2">Almost ready</p>
         </div>
       </div>
     );
@@ -772,14 +772,14 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
           <div className="mb-8 text-center">
             <h1 
               className="text-5xl text-white mb-3"
-              style={{ fontFamily: "'Peanut Butter', 'Plus Jakarta Sans', Inter, -apple-system, BlinkMacSystemFont, sans-serif" }}
+              style={{ fontFamily: "'Peanut Butter', var(--font-sans)" }}
             >
               helpy
             </h1>
-            <p className="text-white/90 text-sm font-medium">
+            <p className="text-white/90 text-body">
               "I just want you to know<br />I'm real grateful you're here"
             </p>
-            <p className="text-white/70 text-xs mt-1 font-medium">
+            <p className="text-white/70 text-caption mt-1">
               Aibileen Clark, The Help
             </p>
           </div>
@@ -795,7 +795,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                 colorInputBackground: '#FFFFFF',
                 colorInputText: '#474747',
                 colorBackground: '#FFFFFF',
-                fontFamily: '"Plus Jakarta Sans", Inter, -apple-system, BlinkMacSystemFont, sans-serif',
+                fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif',
                 borderRadius: '0.75rem',
                 fontSize: '0.875rem',
                 spacingUnit: '0.9rem',
@@ -824,7 +824,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
           
           {/* Custom Sign Up Button */}
           <div className="mt-4 text-center">
-            <p className="text-sm text-white/80">
+            <p className="text-body text-white/80">
               Don't have an account?{' '}
               <button
                 onClick={() => setShowSignUp(true)}
@@ -851,7 +851,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
             <div className="broom-track"></div>
             <div className="broom-trail"></div>
           </div>
-          <p className="text-sm font-bold whitespace-nowrap">Tidying things up...</p>
+          <p className="text-body whitespace-nowrap">Tidying things up...</p>
         </div>
       </div>
     </div>

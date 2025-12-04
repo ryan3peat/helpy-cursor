@@ -789,7 +789,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                         setEditAmount(formatted);
                       }}
                       placeholder="0.00"
-                      className="w-full px-4 py-4 rounded-xl bg-muted border border-border focus:border-foreground outline-none transition-all text-display"
+                      className="w-full px-4 py-4 rounded-xl bg-muted border border-border focus:border-primary outline-none transition-all text-display"
                     />
             </div>
 
@@ -803,7 +803,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                       value={editMerchant}
                       onChange={(e) => setEditMerchant(e.target.value)}
                       placeholder="Where did you spend?"
-                      className="w-full px-4 py-3 rounded-lg bg-muted border border-border focus:border-foreground outline-none transition-all text-body"
+                      className="w-full px-4 py-3 rounded-lg bg-muted border border-border focus:border-primary outline-none transition-all text-body"
                     />
                   </div>
 
@@ -816,7 +816,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                       <select
                         value={editCategory}
                         onChange={(e) => setEditCategory(e.target.value)}
-                        className="w-full px-4 py-3 rounded-lg bg-muted border border-border focus:border-foreground outline-none transition-all text-body"
+                        className="w-full px-4 py-3 rounded-lg bg-muted border border-border focus:border-primary outline-none transition-all text-body"
                       >
                         {EXPENSE_CATEGORIES.map((cat) => (
                           <option key={cat} value={cat}>
@@ -833,7 +833,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                         type="date"
                         value={editDate}
                         onChange={(e) => setEditDate(e.target.value)}
-                        className="w-full px-4 py-3 rounded-lg bg-muted border border-border focus:border-foreground outline-none transition-all text-body"
+                        className="w-full px-4 py-3 rounded-lg bg-muted border border-border focus:border-primary outline-none transition-all text-body"
                       />
                     </div>
                   </div>
@@ -899,7 +899,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                     setEditAmount(formatted);
                   }}
                   placeholder="0.00"
-                      className="w-full px-4 py-4 rounded-xl bg-muted border border-border focus:border-foreground outline-none transition-all text-display"
+                      className="w-full px-4 py-4 rounded-xl bg-muted border border-border focus:border-primary outline-none transition-all text-display"
                 />
               </div>
 
@@ -913,7 +913,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                   value={editMerchant}
                   onChange={(e) => setEditMerchant(e.target.value)}
                   placeholder="Store name"
-                      className="w-full px-4 py-3 rounded-lg bg-muted border border-border focus:border-foreground outline-none transition-all text-body"
+                      className="w-full px-4 py-3 rounded-lg bg-muted border border-border focus:border-primary outline-none transition-all text-body"
                 />
               </div>
 
@@ -926,7 +926,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                 <select
                   value={editCategory}
                   onChange={(e) => setEditCategory(e.target.value)}
-                        className="w-full px-4 py-3 rounded-lg bg-muted border border-border focus:border-foreground outline-none transition-all text-body"
+                        className="w-full px-4 py-3 rounded-lg bg-muted border border-border focus:border-primary outline-none transition-all text-body"
                 >
                   {EXPENSE_CATEGORIES.map((cat) => (
                     <option key={cat} value={cat}>
@@ -943,7 +943,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                   type="date"
                   value={editDate}
                   onChange={(e) => setEditDate(e.target.value)}
-                        className="w-full px-4 py-3 rounded-lg bg-muted border border-border focus:border-foreground outline-none transition-all text-body"
+                        className="w-full px-4 py-3 rounded-lg bg-muted border border-border focus:border-primary outline-none transition-all text-body"
                 />
                     </div>
               </div>
@@ -1043,7 +1043,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                     <input
                       type="text"
                       inputMode="decimal"
-                      className="w-full px-4 py-4 rounded-xl bg-muted border border-border focus:border-foreground outline-none transition-all text-display"
+                      className="w-full px-4 py-4 rounded-xl bg-muted border border-border focus:border-primary outline-none transition-all text-display"
                       value={exAmount}
                       onChange={(e) => {
                         // Only allow digits and one decimal point
@@ -1064,7 +1064,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                     </label>
                     <input
                       type="text"
-                      className="w-full px-4 py-3 rounded-lg bg-muted border border-border focus:border-foreground outline-none transition-all text-body"
+                      className="w-full px-4 py-3 rounded-lg bg-muted border border-border focus:border-primary outline-none transition-all text-body"
                       value={exMerchant}
                       onChange={(e) => setExMerchant(e.target.value)}
                       placeholder="Where did you spend?"
@@ -1078,7 +1078,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                         Category
                       </label>
                       <select
-                        className="w-full px-4 py-3 rounded-lg bg-muted border border-border focus:border-foreground outline-none transition-all text-body"
+                        className="w-full px-4 py-3 rounded-lg bg-muted border border-border focus:border-primary outline-none transition-all text-body"
                         value={exCategory}
                         onChange={(e) => setExCategory(e.target.value)}
                       >
@@ -1095,7 +1095,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                       </label>
                       <input
                         type="date"
-                        className="w-full px-4 py-3 rounded-lg bg-muted border border-border focus:border-foreground outline-none transition-all text-body"
+                        className="w-full px-4 py-3 rounded-lg bg-muted border border-border focus:border-primary outline-none transition-all text-body"
                         value={exDate}
                         onChange={(e) => setExDate(e.target.value)}
                       />

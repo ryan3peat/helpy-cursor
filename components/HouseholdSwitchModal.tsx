@@ -23,8 +23,8 @@ const HouseholdSwitchModal: React.FC<HouseholdSwitchModalProps> = ({
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 relative">
         <div className="text-center mb-6">
-          <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Home className="w-8 h-8 text-yellow-600" />
+          <div className="w-16 h-16 bg-[#FFF3E0] rounded-full flex items-center justify-center mx-auto mb-4">
+            <Home className="w-8 h-8 text-[#FF9800]" />
           </div>
           <h2 className="text-2xl font-bold text-gray-800 mb-2">
             Already a Member

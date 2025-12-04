@@ -26,9 +26,9 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, onNavigate, t }) 
       {/* Bottom Navigation - iOS Style */}
       <nav
         className="fixed bottom-0 left-0 w-full z-50 
-          bg-white/70 dark:bg-black/70 
+          bg-white/70 dark:bg-card/80 
           backdrop-blur-xl backdrop-saturate-150
-          border-t border-black/5 dark:border-white/10"
+          border-t border-black/5 dark:border-white/5"
         style={{ 
           paddingBottom: 'env(safe-area-inset-bottom)',
           boxShadow: '0 -4px 16px rgba(0, 0, 0, 0.04)'
@@ -54,7 +54,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, onNavigate, t }) 
                   }`}
                 />
                 <span 
-                  className={`text-[10px] font-medium transition-colors duration-200 ${
+                  className={`text-micro transition-colors duration-200 ${
                     isActive 
                       ? 'text-primary' 
                       : 'text-muted-foreground'

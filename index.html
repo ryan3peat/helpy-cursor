@@ -33,13 +33,13 @@
         theme: {
           extend: {
             colors: {
-              // Legacy brand colors (keep for backward compatibility)
+              // Brand colors aligned with Helpy design system
               brand: {
-                primary: '#4e649b',
-                secondary: '#647ac0',
+                primary: '#3EAFD2',
+                secondary: '#2B9AC0',
                 accent: '#f7f7f7',
                 text: '#1a1a1a',
-                muted: '#888888',
+                muted: '#757575',
               },
               // New Design System Colors
               background: 'hsl(var(--background) / <alpha-value>)',
@@ -77,13 +77,14 @@
               },
             },
             fontFamily: {
-              sans: ['Plus Jakarta Sans', 'Inter', 'sans-serif'],
+              sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
             },
             fontSize: {
               'display': ['2rem', { lineHeight: '1.2', letterSpacing: '-0.02em', fontWeight: '800' }],
               'title': ['1rem', { lineHeight: '1.4', letterSpacing: '-0.01em', fontWeight: '700' }],
               'body': ['0.875rem', { lineHeight: '1.5', fontWeight: '600' }],
               'caption': ['0.75rem', { lineHeight: '1.4', letterSpacing: '0.01em', fontWeight: '500' }],
+              'micro': ['0.625rem', { lineHeight: '1.2', fontWeight: '600' }],
             },
             borderRadius: {
               'xl': '1.125rem',
@@ -103,11 +104,8 @@
         },
       };
     </script>
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-      * {
-        font-family: 'Inter', system-ui, sans-serif;
-      }
       body {
         background-color: #f8fafc;
       }

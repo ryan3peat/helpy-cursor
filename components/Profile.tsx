@@ -586,36 +586,40 @@ const Profile: React.FC<ProfileProps> = ({
                 </div>
 
                 {/* Action Row */}
-                <div className="flex items-center gap-2 mt-4 pt-4 border-t border-border">
-                  <button
-                    onClick={handleOpenEdit}
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-secondary text-foreground rounded-xl hover:bg-secondary/80 transition-colors whitespace-nowrap"
-                  >
-                    <Settings size={16} className="shrink-0" />
-                    <span className="text-body font-medium">{t['common.edit'] || 'Edit'}</span>
-                  </button>
-                  {selectedUser.status === 'pending' && (
+                <div className="mt-4 pt-4">
+                  <div className="h-px bg-border -mt-4 mb-4" />
+                  <div className="flex items-center gap-2">
                     <button
-                      onClick={() => handleReinvite(selectedUser.id)}
-                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 transition-colors whitespace-nowrap"
+                      onClick={handleOpenEdit}
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-secondary text-foreground rounded-xl hover:bg-secondary/80 transition-colors whitespace-nowrap"
                     >
-                      <Share2 size={16} className="shrink-0" />
-                      <span className="text-body font-medium">Resend</span>
+                      <Settings size={16} className="shrink-0" />
+                      <span className="text-body font-medium">{t['common.edit'] || 'Edit'}</span>
                     </button>
-                  )}
-                  {selectedUser.id !== currentUser.id && (
-                    <button
-                      onClick={() => handleDeleteUser(selectedUser.id)}
-                      className="p-2.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl transition-colors shrink-0"
-                      aria-label="Delete member"
-                    >
-                      <Trash2 size={18} />
-                    </button>
-                  )}
+                    {selectedUser.status === 'pending' && (
+                      <button
+                        onClick={() => handleReinvite(selectedUser.id)}
+                        className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 transition-colors whitespace-nowrap"
+                      >
+                        <Share2 size={16} className="shrink-0" />
+                        <span className="text-body font-medium">Resend</span>
+                      </button>
+                    )}
+                    {selectedUser.id !== currentUser.id && (
+                      <button
+                        onClick={() => handleDeleteUser(selectedUser.id)}
+                        className="p-2.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl transition-colors shrink-0"
+                        aria-label="Delete member"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {/* Content Section */}
-                <div className="mt-4 pt-4 border-t border-border">
+                <div className="mt-4 pt-4">
+                  <div className="h-px bg-border -mt-4 mb-4" />
                   {/* Allergies */}
                   <div className="mb-4">
                     <div className="flex items-center gap-2 mb-2">

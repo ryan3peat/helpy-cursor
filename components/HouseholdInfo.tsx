@@ -620,7 +620,39 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
 
   const openGoogleMaps = (address: string) => {
     const encoded = encodeURIComponent(address);
-    window.open(`https://www.google.com/maps/search/?api=1&query=${encoded}`, "_blank");
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isAndroid = /Android/.test(navigator.userAgent);
+
+    if (isIOS) {
+      // iOS: Try Google Maps app first, fallback to Apple Maps if not installed
+      let didLeaveApp = false;
+      
+      const checkVisibility = () => {
+        if (document.visibilityState === 'hidden') {
+          didLeaveApp = true;
+        }
+      };
+      
+      document.addEventListener('visibilitychange', checkVisibility);
+      
+      // Try Google Maps app (URI scheme - works like tel:)
+      window.location.href = `comgooglemaps://?q=${encoded}`;
+      
+      // If app didn't open after 800ms, fall back to Apple Maps
+      setTimeout(() => {
+        document.removeEventListener('visibilitychange', checkVisibility);
+        if (!didLeaveApp) {
+          window.location.href = `maps://maps.apple.com/?q=${encoded}`;
+        }
+      }, 800);
+    } else if (isAndroid) {
+      // Android: geo: URI opens default maps app (usually Google Maps if installed)
+      // Works like tel: - opens app and returns to exactly where you were
+      window.location.href = `geo:0,0?q=${encoded}`;
+    } else {
+      // Desktop: open Google Maps web in new tab
+      window.open(`https://www.google.com/maps/search/?api=1&query=${encoded}`, "_blank");
+    }
   };
 
   const makeCall = (countryCode: string, phone: string) => {

@@ -1451,78 +1451,75 @@ const Profile: React.FC<ProfileProps> = ({
             <span className="helpy-logo">helpy</span>
           </div>
         </div>
-      </div>
-    );
-  }
 
-          {/* First Delete Confirmation Modal */}
-          {isDeleteAccountModalOpen && (
-            <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-end justify-center p-4 z-50 bottom-sheet-backdrop">
-              <div className="bg-card rounded-t-3xl w-full max-w-md p-6 bottom-sheet-content relative" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
-                <div className="mb-6">
-                  <h3 className="text-title font-bold text-foreground mb-2">Delete Account</h3>
-                  <p className="text-body text-muted-foreground">
-                    Are you sure you want to delete your account? This change will be permanent.
-                  </p>
-                </div>
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => setIsDeleteAccountModalOpen(false)}
-                    className="flex-1 bg-secondary text-foreground py-3 rounded-xl font-semibold hover:bg-secondary/80 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleFirstDeleteConfirm}
-                    className="flex-1 bg-destructive/10 text-destructive py-3 rounded-xl font-semibold hover:bg-destructive/20 transition-colors"
-                  >
-                    Continue
-                  </button>
-                </div>
+        {/* First Delete Confirmation Modal */}
+        {isDeleteAccountModalOpen && (
+          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-end justify-center p-4 z-50 bottom-sheet-backdrop">
+            <div className="bg-card rounded-t-3xl w-full max-w-md p-6 bottom-sheet-content relative" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
+              <div className="mb-6">
+                <h3 className="text-title font-bold text-foreground mb-2">Delete Account</h3>
+                <p className="text-body text-muted-foreground">
+                  Are you sure you want to delete your account? This change will be permanent.
+                </p>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setIsDeleteAccountModalOpen(false)}
+                  className="flex-1 bg-secondary text-foreground py-3 rounded-xl font-semibold hover:bg-secondary/80 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleFirstDeleteConfirm}
+                  className="flex-1 bg-destructive/10 text-destructive py-3 rounded-xl font-semibold hover:bg-destructive/20 transition-colors"
+                >
+                  Continue
+                </button>
               </div>
             </div>
-          )}
+          </div>
+        )}
 
-          {/* Final Delete Confirmation Modal */}
-          {isFinalDeleteConfirmOpen && (
-            <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-end justify-center p-4 z-50 bottom-sheet-backdrop">
-              <div className="bg-card rounded-t-3xl w-full max-w-md p-6 bottom-sheet-content relative" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
-                <div className="mb-6">
-                  <h3 className="text-title font-bold text-foreground mb-2">Delete Account</h3>
-                  {subscriptionInfo?.status === 'active' && subscriptionInfo?.periodEnd && (
-                    <div className="mb-4 p-4 bg-primary/10 border border-primary/20 rounded-xl">
-                      <p className="text-body text-primary font-semibold mb-1">Subscription Information</p>
-                      <p className="text-body text-primary">
-                        Your subscription is active until {formatDate(subscriptionInfo.periodEnd)}
-                      </p>
-                    </div>
-                  )}
-                  <p className="text-body text-muted-foreground">
-                    Are you sure you want to delete? After deletion it will be immediate.
-                  </p>
-                </div>
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => {
-                      setIsFinalDeleteConfirmOpen(false);
-                      setIsDeletingAccount(false);
-                    }}
-                    disabled={isDeletingAccount}
-                    className="flex-1 bg-secondary text-foreground py-3 rounded-xl font-semibold hover:bg-secondary/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleDeleteAccount}
-                    disabled={isDeletingAccount}
-                    className="flex-1 bg-destructive text-destructive-foreground py-3 rounded-xl font-semibold hover:bg-destructive/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isDeletingAccount ? 'Deleting...' : 'Delete Account'}
-                  </button>
-                </div>
+        {/* Final Delete Confirmation Modal */}
+        {isFinalDeleteConfirmOpen && (
+          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-end justify-center p-4 z-50 bottom-sheet-backdrop">
+            <div className="bg-card rounded-t-3xl w-full max-w-md p-6 bottom-sheet-content relative" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
+              <div className="mb-6">
+                <h3 className="text-title font-bold text-foreground mb-2">Delete Account</h3>
+                {subscriptionInfo?.status === 'active' && subscriptionInfo?.periodEnd && (
+                  <div className="mb-4 p-4 bg-primary/10 border border-primary/20 rounded-xl">
+                    <p className="text-body text-primary font-semibold mb-1">Subscription Information</p>
+                    <p className="text-body text-primary">
+                      Your subscription is active until {formatDate(subscriptionInfo.periodEnd)}
+                    </p>
+                  </div>
+                )}
+                <p className="text-body text-muted-foreground">
+                  Are you sure you want to delete? After deletion it will be immediate.
+                </p>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setIsFinalDeleteConfirmOpen(false);
+                    setIsDeletingAccount(false);
+                  }}
+                  disabled={isDeletingAccount}
+                  className="flex-1 bg-secondary text-foreground py-3 rounded-xl font-semibold hover:bg-secondary/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteAccount}
+                  disabled={isDeletingAccount}
+                  className="flex-1 bg-destructive text-destructive-foreground py-3 rounded-xl font-semibold hover:bg-destructive/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isDeletingAccount ? 'Deleting...' : 'Delete Account'}
+                </button>
               </div>
             </div>
-          )}
+          </div>
+        )}
       </div>
     );
   }

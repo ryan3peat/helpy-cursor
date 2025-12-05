@@ -1,18 +1,5 @@
 // services/visionService.ts
-// Handles Alibaba Cloud Qwen-VL API calls for receipt OCR
-
-interface QwenVLResponse {
-  output?: {
-    choices?: Array<{
-      message?: {
-        content?: string;
-      };
-    }>;
-  };
-  code?: string;
-  message?: string;
-  request_id?: string;
-}
+// Handles OCR processing via server-side API proxy (which uses Alibaba Cloud Qwen-VL)
 
 export interface ParsedReceipt {
   rawText: string;
@@ -24,71 +11,34 @@ export interface ParsedReceipt {
   lineItems: Array<{ name: string; price: number }>;
 }
 
-const DASHSCOPE_API_URL = 'https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation';
-const QWEN_MODEL = 'qwen-vl-plus'; // Using qwen-vl-plus as specified
+// API endpoint for OCR processing (server-side proxy to avoid CORS)
+const OCR_API_URL = '/api/ocr-process';
+
+interface OCRApiResponse {
+  text?: string;
+  error?: string;
+}
 
 /**
- * Send image to Alibaba Cloud Qwen-VL API for OCR
- * Why: Extracts text from receipt images with high accuracy using Qwen-VL model
+ * Send image to server-side OCR API proxy (which calls Alibaba Cloud Qwen-VL API)
+ * Why: Uses server-side proxy to avoid CORS issues and keep API key secure
  */
 export async function extractTextFromImage(base64Image: string): Promise<string> {
-  const apiKey = import.meta.env.VITE_ALIBABA_CLOUD_API_KEY;
-  
-  // Debug: Log available env vars (only in dev, and only the key prefix for security)
-  if (import.meta.env.DEV) {
-    console.log('Environment check:', {
-      hasApiKey: !!apiKey,
-      apiKeyLength: apiKey?.length || 0,
-      apiKeyPrefix: apiKey ? `${apiKey.substring(0, 7)}...` : 'missing',
-      allViteEnvKeys: Object.keys(import.meta.env).filter(k => k.startsWith('VITE_')),
-    });
-  }
-  
-  if (!apiKey) {
-    throw new Error('Alibaba Cloud API key not configured. Please set VITE_ALIBABA_CLOUD_API_KEY in your environment variables.');
-  }
-  
-  // Qwen-VL expects base64 image in data URI format
-  const imageDataUri = `data:image/jpeg;base64,${base64Image}`;
-  
-  const requestBody = {
-    model: QWEN_MODEL,
-    input: {
-      messages: [
-        {
-          role: 'user',
-          content: [
-            {
-              image: imageDataUri,
-            },
-            {
-              text: 'Extract all text from this receipt image. Return only the raw text content exactly as it appears, preserving line breaks and formatting.',
-            },
-          ],
-        },
-      ],
-    },
-    parameters: {
-      temperature: 0.1, // Low temperature for more deterministic OCR results
-    },
-  };
-  
-  const response = await fetch(DASHSCOPE_API_URL, {
+  const response = await fetch(OCR_API_URL, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(requestBody),
+    body: JSON.stringify({ base64Image }),
   });
   
   if (!response.ok) {
     const errorText = await response.text();
-    let errorMessage = `Qwen-VL API error: ${response.status}`;
+    let errorMessage = `OCR API error: ${response.status}`;
     
     try {
-      const errorData = JSON.parse(errorText);
-      errorMessage = errorData.message || errorData.error?.message || errorMessage;
+      const errorData: OCRApiResponse = JSON.parse(errorText);
+      errorMessage = errorData.error || errorMessage;
     } catch {
       errorMessage = `${errorMessage} - ${errorText}`;
     }
@@ -96,21 +46,17 @@ export async function extractTextFromImage(base64Image: string): Promise<string>
     throw new Error(errorMessage);
   }
   
-  const data: QwenVLResponse = await response.json();
+  const data: OCRApiResponse = await response.json();
   
-  // Check for API-level errors
-  if (data.code && data.code !== 'Success') {
-    throw new Error(`Qwen-VL API error: ${data.message || data.code}`);
+  if (data.error) {
+    throw new Error(data.error);
   }
   
-  // Extract text from response
-  const fullText = data.output?.choices?.[0]?.message?.content || '';
-  
-  if (!fullText) {
-    throw new Error('No text detected in image. The Qwen-VL model did not return any text content.');
+  if (!data.text) {
+    throw new Error('No text detected in image. The OCR service did not return any text content.');
   }
   
-  return fullText;
+  return data.text;
 }
   
   /**

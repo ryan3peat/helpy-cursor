@@ -81,9 +81,33 @@ export async function extractTextFromImage(base64Image: string): Promise<string>
     const lineItems: Array<{ name: string; price: number }> = [];
   
     // --- Extract Merchant (usually first non-empty line) ---
-    if (lines.length > 0) {
-      // First meaningful line is often the store name
-      merchant = lines[0].substring(0, 50); // Cap length
+    // Skip code-like patterns, URLs, dates, and numbers-only lines
+    const codePatterns = [
+      /^[A-Z0-9]{10,}$/, // All caps alphanumeric codes
+      /^https?:\/\//, // URLs
+      /^\d{4}[\/\-]\d{1,2}[\/\-]\d{1,2}/, // Dates at start
+      /^[#*]\s*/, // Code markers
+      /^[A-Z]{2,}\s*\d+/, // Codes like "ABC 123"
+      /^\$\d+/, // Prices
+    ];
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      // Skip if it looks like code, is too short, or is mostly numbers/symbols
+      const isCodeLike = codePatterns.some(pattern => pattern.test(line));
+      const isTooShort = line.length < 3;
+      const isMostlyNumbers = /^\d+[\s\d]*$/.test(line);
+      const hasTooManySpecialChars = (line.match(/[^a-zA-Z0-9\s]/g) || []).length > line.length * 0.5;
+      
+      if (!isCodeLike && !isTooShort && !isMostlyNumbers && !hasTooManySpecialChars) {
+        merchant = line.substring(0, 50); // Cap length
+        break;
+      }
+    }
+    
+    // Fallback to first line if no good merchant found
+    if (merchant === 'Unknown' && lines.length > 0) {
+      merchant = lines[0].substring(0, 50);
     }
   
     // --- Extract Total ---

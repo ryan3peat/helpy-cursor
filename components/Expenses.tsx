@@ -133,6 +133,7 @@ const Expenses: React.FC<ExpensesProps> = ({
 
   // OCR State (for stage: 'ocr')
   const [pendingReceipt, setPendingReceipt] = useState<PendingReceipt | null>(null);
+  const [isImageZoomed, setIsImageZoomed] = useState(false);
 
   // Shared form fields (used by both OCR and Manual entry)
   const [editAmount, setEditAmount] = useState<string>('');
@@ -280,12 +281,21 @@ const Expenses: React.FC<ExpensesProps> = ({
   // Save Expense (works for both OCR and Manual)
   // ─────────────────────────────────────────────────────────────────
   const handleSaveExpense = async () => {
+    // Validate amount before saving
+    const amount = parseFloat(editAmount);
+    if (!amount || amount <= 0) {
+      setError('Please enter a valid amount');
+      return;
+    }
+
     setIsSaving(true);
+    setError(null); // Clear any previous errors
+    
     try {
       const newExpense: Expense = {
         id: Date.now().toString(),
-        amount: parseFloat(editAmount) || 0,
-        merchant: editMerchant || 'Unknown',
+        amount: amount,
+        merchant: editMerchant.trim() || 'Unknown',
         category: editCategory || 'Miscellaneous',
         date: editDate || new Date().toISOString().split('T')[0],
         receiptUrl: pendingReceipt?.imageUrl || undefined,
@@ -295,15 +305,25 @@ const Expenses: React.FC<ExpensesProps> = ({
 
       // If OCR, link receipt to expense
       if (pendingReceipt) {
-      await linkReceiptToExpense(pendingReceipt.receiptId, newExpense.id);
+        try {
+          await linkReceiptToExpense(pendingReceipt.receiptId, newExpense.id);
+        } catch (linkError) {
+          console.error('Failed to link receipt, but continuing with expense save:', linkError);
+          // Don't fail the entire save if receipt linking fails
+        }
       }
 
-      onAdd(newExpense);
+      // Call onAdd and wait for it to complete
+      if (onAdd) {
+        await Promise.resolve(onAdd(newExpense));
+      }
+      
       setLocalExpenses((prev) => [...prev, newExpense]);
       closeAddExpenseSheet();
     } catch (err) {
       console.error('Failed to save expense:', err);
-      setError(err instanceof Error ? err.message : 'Failed to save expense');
+      setError(err instanceof Error ? err.message : 'Failed to save expense. Please try again.');
+      // Don't close the sheet on error so user can retry
     } finally {
       setIsSaving(false);
     }
@@ -496,7 +516,10 @@ const Expenses: React.FC<ExpensesProps> = ({
           {/* Scanning Indicator */}
           {isScanning && (
             <div className="mb-4 p-4 bg-primary/10 rounded-xl text-center">
-              <p className="text-body text-primary animate-pulse">{t['expenses.analyzing']}</p>
+              <div className="flex items-center justify-center gap-3">
+                <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                <p className="text-body text-primary">{t['expenses.analyzing']}</p>
+              </div>
       </div>
           )}
 
@@ -876,9 +899,21 @@ const Expenses: React.FC<ExpensesProps> = ({
                 </button>
 
                 <div className="p-5 space-y-4 max-h-[50vh] overflow-y-auto overflow-x-hidden">
-            {/* Receipt Thumbnail */}
-                  <div className="rounded-xl overflow-hidden border border-border">
-              <img src={pendingReceipt.thumbnailBase64} alt="Receipt" className="w-full h-32 object-cover" />
+            {/* Receipt Thumbnail - Clickable to zoom */}
+                  <div 
+                    className="rounded-xl overflow-hidden border border-border cursor-pointer relative group"
+                    onClick={() => setIsImageZoomed(true)}
+                  >
+              <img 
+                src={pendingReceipt.thumbnailBase64} 
+                alt="Receipt" 
+                className="w-full h-32 object-contain bg-secondary transition-transform group-hover:scale-105" 
+              />
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                <span className="text-caption text-white opacity-0 group-hover:opacity-100 bg-black/50 px-2 py-1 rounded">
+                  Tap to zoom
+                </span>
+              </div>
             </div>
 
                   {/* Amount */}
@@ -1173,6 +1208,38 @@ const Expenses: React.FC<ExpensesProps> = ({
                 </div>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─────────────────────────────────────────────────────────────── */}
+      {/* IMAGE ZOOM MODAL */}
+      {/* ─────────────────────────────────────────────────────────────── */}
+      {isImageZoomed && pendingReceipt && (
+        <div 
+          className="fixed inset-0 bg-black/90 z-[70] flex items-center justify-center p-4"
+          onClick={() => setIsImageZoomed(false)}
+        >
+          <div className="relative max-w-full max-h-full">
+            <button
+              onClick={() => setIsImageZoomed(false)}
+              className="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors"
+              aria-label="Close"
+            >
+              <X size={24} />
+            </button>
+            <div className="overflow-auto max-h-[90vh] max-w-[90vw]">
+              <img 
+                src={pendingReceipt.thumbnailBase64} 
+                alt="Receipt" 
+                className="max-w-full max-h-full object-contain"
+                onClick={(e) => e.stopPropagation()}
+                style={{ touchAction: 'pan-x pan-y pinch-zoom' }}
+              />
+            </div>
+            <p className="text-caption text-white/70 mt-4 text-center">
+              Pinch to zoom • Drag to pan • Tap outside to close
+            </p>
           </div>
         </div>
       )}

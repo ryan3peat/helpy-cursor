@@ -715,24 +715,11 @@ function convertSupabaseData(data: any[], collection?: string): DataItem[] {
     // The snake_case to camelCase conversion already handles receipt_url -> receiptUrl,
     // but we explicitly ensure it's set correctly
     if (collection === 'expenses') {
-      // Debug: Log conversion process
-      console.log('[Conversion] Converting expense:', {
-        expenseId: item.id,
-        hasReceiptUrl: !!item.receipt_url,
-        receiptUrl: item.receipt_url,
-        convertedHasReceiptUrl: !!converted.receiptUrl,
-        convertedReceiptUrl: converted.receiptUrl,
-        allItemKeys: Object.keys(item),
-        allConvertedKeys: Object.keys(converted),
-      });
-      
       if (item.receipt_url) {
         converted.receiptUrl = item.receipt_url;
-        console.log('[Conversion] Set receiptUrl from receipt_url:', converted.receiptUrl);
       } else {
         // Explicitly set to undefined if not present (not null, to match TypeScript type)
         converted.receiptUrl = undefined;
-        console.log('[Conversion] No receipt_url found, set receiptUrl to undefined');
       }
     }
     

@@ -30,6 +30,17 @@ async function getHouseholdIdFromSubscription(subscriptionId: string): Promise<s
 }
 
 export default async function handler(req: any, res: any) {
+  // Log request details for debugging
+  console.log('📥 Webhook request received:', {
+    method: req.method,
+    url: req.url,
+    headers: {
+      host: req.headers?.host,
+      'stripe-signature': req.headers?.['stripe-signature'] ? 'present' : 'missing',
+      'content-type': req.headers?.['content-type'],
+    },
+  });
+
   if (req.method !== 'POST') {
     return res.status(405).end();
   }
@@ -38,12 +49,13 @@ export default async function handler(req: any, res: any) {
   let buf: Buffer;
   try {
     buf = await buffer(req);
+    console.log('✅ Body buffer created, size:', buf.length);
   } catch (error) {
-    console.error('Error reading request body:', error);
+    console.error('❌ Error reading request body:', error);
     return res.status(400).send('Error reading request body');
   }
 
-  const sig = req.headers['stripe-signature'];
+  const sig = req.headers?.['stripe-signature'] || req.headers?.get?.('stripe-signature');
 
   if (!sig) {
     console.log('⚠️ Missing stripe-signature header');

@@ -83,7 +83,7 @@ export function subscribeToCollection(
   
   // Build the select query - for expenses, LEFT JOIN receipts to get image_url
   const selectQuery = collection === 'expenses' 
-    ? '*, receipts!receipts_expense_id_fkey(image_url)'  // LEFT JOIN receipts
+    ? '*, receipts!receipts_expense_id_fkey(image_url, image_path)'  // LEFT JOIN receipts with image path for URL recovery
     : '*';
   
   // Helper function to fetch data
@@ -742,6 +742,18 @@ function convertUuidsToAppUserIds(uuids: string[]): string[] {
  * - Active users (with clerk_id): uses clerk_id as the app's user id
  * - Pending users (no clerk_id): keeps Supabase UUID as the id
  */
+function getReceiptPublicUrl(imagePath?: string): string | undefined {
+  if (!imagePath) return undefined;
+  const { data } = supabase.storage.from('receipts').getPublicUrl(imagePath);
+  return data?.publicUrl || undefined;
+}
+
+function resolveReceiptUrl(receipt: any): string | undefined {
+  if (!receipt) return undefined;
+  // Prefer stored image_url (may already be public/signed), fall back to public URL from path
+  return receipt.image_url || getReceiptPublicUrl(receipt.image_path);
+}
+
 function convertSupabaseData(data: any[], collection?: string): DataItem[] {
   return data.map(item => {
     const converted: any = {};
@@ -787,10 +799,10 @@ function convertSupabaseData(data: any[], collection?: string): DataItem[] {
       
       if (item.receipts) {
         // receipts can be an array (multiple receipts) or an object (single receipt)
-        if (Array.isArray(item.receipts) && item.receipts.length > 0 && item.receipts[0]?.image_url) {
-          receiptImageUrl = item.receipts[0].image_url;
-        } else if (!Array.isArray(item.receipts) && item.receipts.image_url) {
-          receiptImageUrl = item.receipts.image_url;
+        if (Array.isArray(item.receipts) && item.receipts.length > 0) {
+          receiptImageUrl = resolveReceiptUrl(item.receipts[0]);
+        } else if (!Array.isArray(item.receipts)) {
+          receiptImageUrl = resolveReceiptUrl(item.receipts);
         }
       }
       

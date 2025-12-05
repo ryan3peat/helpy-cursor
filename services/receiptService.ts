@@ -55,14 +55,22 @@ export async function uploadReceiptImage(
     throw new Error(`Failed to upload receipt: ${error.message}`);
   }
 
-  // Get signed URL (valid for 1 year)
-  const { data: urlData } = await supabase.storage
+  // Prefer a stable public URL if the bucket is public; otherwise fall back to a signed URL
+  const { data: publicData } = supabase.storage.from('receipts').getPublicUrl(filePath);
+  const publicUrl = publicData?.publicUrl || '';
+
+  // Supabase signed URLs have a max TTL (7 days). Generate one as a fallback for private buckets.
+  const { data: signedData, error: signedError } = await supabase.storage
     .from('receipts')
-    .createSignedUrl(filePath, 60 * 60 * 24 * 365); // 1 year
+    .createSignedUrl(filePath, 60 * 60 * 24 * 7); // 7 days
+
+  if (signedError && !publicUrl) {
+    console.warn('[ReceiptService] Signed URL generation failed:', signedError.message);
+  }
 
   return {
     path: data.path,
-    url: urlData?.signedUrl || '',
+    url: publicUrl || signedData?.signedUrl || '',
   };
 }
 
@@ -142,10 +150,10 @@ export async function linkReceiptToExpense(
   receiptId: string,
   expenseId: string
 ): Promise<void> {
-  // First, get the receipt's image_url
+  // First, get the receipt's image_url and path (path lets us rebuild URLs when signed links expire)
   const { data: receiptData, error: fetchError } = await supabase
     .from('receipts')
-    .select('image_url')
+    .select('image_url, image_path')
     .eq('id', receiptId)
     .single();
 
@@ -157,10 +165,18 @@ export async function linkReceiptToExpense(
     throw new Error(`Failed to fetch receipt: ${fetchError.message}`);
   }
 
-  // Update the receipt with the expense_id
+  const fallbackUrl = receiptData?.image_path
+    ? supabase.storage.from('receipts').getPublicUrl(receiptData.image_path).data?.publicUrl
+    : undefined;
+  const effectiveUrl = receiptData?.image_url || fallbackUrl;
+
+  // Update the receipt with the expense_id (and store a durable URL if we had to build one)
   const { error: linkError } = await supabase
     .from('receipts')
-    .update({ expense_id: expenseId })
+    .update({
+      expense_id: expenseId,
+      ...(receiptData?.image_url ? {} : { image_url: effectiveUrl }),
+    })
     .eq('id', receiptId);
 
   if (linkError) {
@@ -176,10 +192,10 @@ export async function linkReceiptToExpense(
 
   // Also update the expenses.receipt_url field for backward compatibility
   // This ensures the receipt is visible even if JOIN doesn't work
-  if (receiptData?.image_url) {
+  if (effectiveUrl) {
     const { error: updateError } = await supabase
       .from('expenses')
-      .update({ receipt_url: receiptData.image_url })
+      .update({ receipt_url: effectiveUrl })
       .eq('id', expenseId);
 
     if (updateError) {

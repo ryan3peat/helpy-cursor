@@ -5,7 +5,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 // Use international endpoint for international edition accounts
 const DASHSCOPE_API_URL = 'https://dashscope-intl.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation';
-const QWEN_MODEL = 'qwen-vl-plus';
+const QWEN_MODEL = 'qwen3-vl-flash-2025-10-15';
 
 interface QwenVLRequest {
   base64Image: string;

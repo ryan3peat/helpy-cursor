@@ -70,8 +70,6 @@ export async function extractTextFromImage(base64Image: string): Promise<string>
       rawText = String(rawText || '');
     }
     
-    const lines = rawText.split('\n').map(l => l.trim()).filter(Boolean);
-    
     // Initialize with defaults
     let total = 0;
     let merchant = 'Unknown';
@@ -80,20 +78,51 @@ export async function extractTextFromImage(base64Image: string): Promise<string>
     let confidence = 0.5;
     const lineItems: Array<{ name: string; price: number }> = [];
   
-    // --- Extract Merchant (first meaningful phrase) ---
-    // First, check if rawText contains JSON and extract the actual text
+    // --- Extract actual text content from various response formats ---
     let actualText = rawText;
+    
+    // Handle JSON-wrapped responses
     try {
-      // Check if rawText is a JSON string like {"text":"..."}
-      if (rawText.trim().startsWith('{') && rawText.includes('"text"')) {
-        const parsed = JSON.parse(rawText);
+      const trimmed = rawText.trim();
+      
+      // Check if it's a JSON object with "text" field: {"text":"..."}
+      if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+        const parsed = JSON.parse(trimmed);
         if (parsed.text && typeof parsed.text === 'string') {
           actualText = parsed.text;
+        } else if (parsed.content && typeof parsed.content === 'string') {
+          actualText = parsed.content;
+        } else if (parsed.message && typeof parsed.message === 'string') {
+          actualText = parsed.message;
+        }
+      }
+      
+      // Check if it's a JSON array: [{"text":"..."}]
+      if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // Extract text from each element and join
+          actualText = parsed.map(item => {
+            if (typeof item === 'string') return item;
+            if (item.text) return item.text;
+            if (item.content) return item.content;
+            return JSON.stringify(item);
+          }).join('\n');
         }
       }
     } catch {
       // Not JSON, use as-is
     }
+    
+    // Remove any remaining JSON artifacts (like markdown code blocks from AI response)
+    actualText = actualText
+      .replace(/```json\s*/gi, '')
+      .replace(/```\s*/g, '')
+      .replace(/^\s*\{[\s\S]*?"text"\s*:\s*"/, '') // Remove JSON wrapper start
+      .replace(/"\s*\}\s*$/, '') // Remove JSON wrapper end
+      .trim();
+    
+    const lines = actualText.split('\n').map(l => l.trim()).filter(Boolean);
     
     // Split into lines and get the first meaningful phrase
     const textLines = actualText.split('\n').map(l => l.trim()).filter(Boolean);

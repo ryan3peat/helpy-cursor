@@ -81,14 +81,35 @@ export function subscribeToCollection(
   
   console.log(`🔔 Subscribing to ${tableName} for household ${householdId}`);
   
+  // Build the select query - for expenses, LEFT JOIN receipts to get image_url
+  const selectQuery = collection === 'expenses' 
+    ? '*, receipts!receipts_expense_id_fkey(image_url)'  // LEFT JOIN receipts
+    : '*';
+  
+  // Helper function to fetch data
+  const fetchData = () => {
+    return supabase
+      .from(tableName)
+      .select(selectQuery)
+      .eq('household_id', householdId);
+  };
+  
   // Initial fetch
-  supabase
-    .from(tableName)
-    .select('*')
-    .eq('household_id', householdId)
+  fetchData()
     .then(({ data, error }) => {
       if (error) {
         console.error(`❌ Initial fetch error for ${tableName}:`, error);
+        // Fallback to simple select if JOIN fails (e.g., no receipts table or FK not set)
+        if (collection === 'expenses') {
+          console.log('📥 Falling back to simple expenses fetch without receipts JOIN');
+          supabase
+            .from(tableName)
+            .select('*')
+            .eq('household_id', householdId)
+            .then(({ data: fallbackData }) => {
+              callback(convertSupabaseData(fallbackData || [], collection));
+            });
+        }
         return;
       }
       console.log(`📥 Initial ${tableName} data:`, data?.length, 'items');
@@ -110,11 +131,20 @@ export function subscribeToCollection(
       console.log(`🔄 Real-time ${payload.eventType} on ${tableName}`);
     
       // CRITICAL FIX: Refetch all data on ANY change
-      supabase
-        .from(tableName)
-        .select('*')
-        .eq('household_id', householdId)
-        .then(({ data }) => {
+      fetchData()
+        .then(({ data, error }) => {
+          if (error && collection === 'expenses') {
+            // Fallback for expenses
+            supabase
+              .from(tableName)
+              .select('*')
+              .eq('household_id', householdId)
+              .then(({ data: fallbackData }) => {
+                console.log(`📥 Refetched ${fallbackData?.length || 0} items after ${payload.eventType} (fallback)`);
+                callback(convertSupabaseData(fallbackData || [], collection));
+              });
+            return;
+          }
           console.log(`📥 Refetched ${data?.length || 0} items after ${payload.eventType}`);
           callback(convertSupabaseData(data || [], collection));
         });
@@ -124,10 +154,47 @@ export function subscribeToCollection(
     console.log(`📡 Subscription status for ${tableName}:`, status);
   });
 
+  // For expenses, also subscribe to receipts table changes
+  // This ensures receiptUrl updates when a receipt is linked/unlinked
+  let receiptsSubscription: ReturnType<typeof supabase.channel> | null = null;
+  if (collection === 'expenses') {
+    receiptsSubscription = supabase
+      .channel(`receipts-for-expenses-${householdId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'receipts',
+          filter: `household_id=eq.${householdId}`
+        },
+        (payload: any) => {
+          console.log(`🔄 Real-time ${payload.eventType} on receipts (for expenses)`);
+          // Refetch expenses when receipts change
+          fetchData()
+            .then(({ data, error }) => {
+              if (error) {
+                console.error('❌ Failed to refetch expenses after receipt change:', error);
+                return;
+              }
+              console.log(`📥 Refetched ${data?.length || 0} expenses after receipt ${payload.eventType}`);
+              callback(convertSupabaseData(data || [], collection));
+            });
+        }
+      )
+      .subscribe((status) => {
+        console.log(`📡 Receipts subscription status (for expenses):`, status);
+      });
+  }
+
   // Return unsubscribe function
   return () => {
     console.log(`🔕 Unsubscribing from ${tableName}`);
     subscription.unsubscribe();
+    if (receiptsSubscription) {
+      console.log('🔕 Unsubscribing from receipts (for expenses)');
+      receiptsSubscription.unsubscribe();
+    }
   };
 }
 
@@ -711,16 +778,34 @@ function convertSupabaseData(data: any[], collection?: string): DataItem[] {
       converted.assigneeId = getAppUserIdFromUuid(item.assignee_id);
     }
     
-    // For expenses: ensure receiptUrl is properly set from receipt_url and normalize date
-    // The snake_case to camelCase conversion already handles receipt_url -> receiptUrl,
-    // but we explicitly ensure it's set correctly
+    // For expenses: ensure receiptUrl is properly set and normalize date
+    // Priority: 1. Joined receipts data (receipts.image_url), 2. expenses.receipt_url
     if (collection === 'expenses') {
-      if (item.receipt_url) {
+      // Check for joined receipts data first (from LEFT JOIN)
+      // The joined data comes as an array: item.receipts = [{image_url: '...'}] or null
+      let receiptImageUrl: string | undefined = undefined;
+      
+      if (item.receipts) {
+        // receipts can be an array (multiple receipts) or an object (single receipt)
+        if (Array.isArray(item.receipts) && item.receipts.length > 0 && item.receipts[0]?.image_url) {
+          receiptImageUrl = item.receipts[0].image_url;
+        } else if (!Array.isArray(item.receipts) && item.receipts.image_url) {
+          receiptImageUrl = item.receipts.image_url;
+        }
+      }
+      
+      // Set receiptUrl from joined data or fallback to receipt_url column
+      if (receiptImageUrl) {
+        converted.receiptUrl = receiptImageUrl;
+      } else if (item.receipt_url) {
         converted.receiptUrl = item.receipt_url;
       } else {
         // Explicitly set to undefined if not present (not null, to match TypeScript type)
         converted.receiptUrl = undefined;
       }
+      
+      // Remove the joined receipts data from converted object (not needed in final output)
+      delete converted.receipts;
       
       // Normalize date to YYYY-MM-DD format if it exists
       if (converted.date && typeof converted.date === 'string') {

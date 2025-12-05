@@ -136,25 +136,61 @@ export async function markReceiptFailed(
 
 /**
  * Link receipt to expense
+ * Also updates the expenses.receipt_url field for backward compatibility
  */
 export async function linkReceiptToExpense(
   receiptId: string,
   expenseId: string
 ): Promise<void> {
-  const { error } = await supabase
+  // First, get the receipt's image_url
+  const { data: receiptData, error: fetchError } = await supabase
+    .from('receipts')
+    .select('image_url')
+    .eq('id', receiptId)
+    .single();
+
+  if (fetchError) {
+    console.error('[ReceiptService] Failed to fetch receipt for linking:', {
+      receiptId,
+      error: fetchError.message,
+    });
+    throw new Error(`Failed to fetch receipt: ${fetchError.message}`);
+  }
+
+  // Update the receipt with the expense_id
+  const { error: linkError } = await supabase
     .from('receipts')
     .update({ expense_id: expenseId })
     .eq('id', receiptId);
 
-  if (error) {
+  if (linkError) {
     console.error('[ReceiptService] Failed to link receipt to expense:', {
       receiptId,
       expenseId,
-      error: error.message,
-      details: error.details,
-      hint: error.hint,
+      error: linkError.message,
+      details: linkError.details,
+      hint: linkError.hint,
     });
-    throw new Error(`Failed to link receipt to expense: ${error.message}`);
+    throw new Error(`Failed to link receipt to expense: ${linkError.message}`);
+  }
+
+  // Also update the expenses.receipt_url field for backward compatibility
+  // This ensures the receipt is visible even if JOIN doesn't work
+  if (receiptData?.image_url) {
+    const { error: updateError } = await supabase
+      .from('expenses')
+      .update({ receipt_url: receiptData.image_url })
+      .eq('id', expenseId);
+
+    if (updateError) {
+      console.warn('[ReceiptService] Failed to update expenses.receipt_url (non-fatal):', {
+        expenseId,
+        error: updateError.message,
+      });
+      // Non-fatal: the receipt is linked, just the denormalized field isn't set
+    } else {
+      console.log('[ReceiptService] Successfully updated expenses.receipt_url for expense:', expenseId);
+    }
   }
 }
 

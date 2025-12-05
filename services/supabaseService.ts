@@ -666,14 +666,6 @@ function convertSupabaseData(data: any[], collection?: string): DataItem[] {
       converted[camelKey] = item[key];
     }
     
-    // Debug: Log receipt_url conversion for expenses
-    if (collection === 'expenses' && item.receipt_url) {
-      console.log('[SupabaseService] Converting receipt_url to receiptUrl:', {
-        receipt_url: item.receipt_url,
-        receiptUrl: converted.receiptUrl,
-      });
-    }
-    
     // For users with clerk_id, use it as the app's user id
     // For pending users (no clerk_id), keep the Supabase UUID
     if (collection === 'users') {
@@ -703,10 +695,11 @@ function convertSupabaseData(data: any[], collection?: string): DataItem[] {
     }
     
     // For expenses: ensure receiptUrl is properly set from receipt_url
+    // The snake_case to camelCase conversion already handles receipt_url -> receiptUrl,
+    // but we explicitly ensure it's set correctly
     if (collection === 'expenses') {
       if (item.receipt_url) {
         converted.receiptUrl = item.receipt_url;
-        console.log('[SupabaseService] Converted receipt_url to receiptUrl for expense:', item.id, converted.receiptUrl);
       } else {
         // Explicitly set to undefined if not present (not null, to match TypeScript type)
         converted.receiptUrl = undefined;

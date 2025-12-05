@@ -64,6 +64,12 @@ export async function extractTextFromImage(base64Image: string): Promise<string>
    * Why: OCR API returns raw text, we need structured data for the expense
    */
   export function parseReceiptText(rawText: string): ParsedReceipt {
+    // Ensure rawText is a string
+    if (typeof rawText !== 'string') {
+      console.warn('[VisionService] parseReceiptText received non-string input:', typeof rawText, rawText);
+      rawText = String(rawText || '');
+    }
+    
     const lines = rawText.split('\n').map(l => l.trim()).filter(Boolean);
     
     // Initialize with defaults

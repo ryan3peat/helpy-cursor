@@ -11,6 +11,14 @@ export interface ParsedReceipt {
   lineItems: Array<{ name: string; price: number }>;
 }
 
+export interface ProcessReceiptOptions {
+  /**
+   * Known merchant names for the household (user-corrected history).
+   * Used to snap OCR guesses to a previously confirmed merchant.
+   */
+  knownMerchants?: string[];
+}
+
 // API endpoint for OCR processing (server-side proxy to avoid CORS)
 const OCR_API_URL = '/api/ocr-process';
 
@@ -59,11 +67,54 @@ export async function extractTextFromImage(base64Image: string): Promise<string>
   return data.text;
 }
   
-  /**
-   * Parse raw OCR text into structured receipt data
-   * Why: OCR API returns raw text, we need structured data for the expense
-   */
-  export function parseReceiptText(rawText: string): ParsedReceipt {
+function normalize(str: string): string {
+  return str.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+function levenshtein(a: string, b: string): number {
+  if (a === b) return 0;
+  if (!a.length) return b.length;
+  if (!b.length) return a.length;
+  const matrix = Array.from({ length: a.length + 1 }, (_, i) => [i]);
+  for (let j = 0; j <= b.length; j++) matrix[0][j] = j;
+  for (let i = 1; i <= a.length; i++) {
+    for (let j = 1; j <= b.length; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      matrix[i][j] = Math.min(
+        matrix[i - 1][j] + 1, // deletion
+        matrix[i][j - 1] + 1, // insertion
+        matrix[i - 1][j - 1] + cost // substitution
+      );
+    }
+  }
+  return matrix[a.length][b.length];
+}
+
+function similarity(a: string, b: string): number {
+  const na = normalize(a);
+  const nb = normalize(b);
+  if (!na || !nb) return 0;
+  const dist = levenshtein(na, nb);
+  const maxLen = Math.max(na.length, nb.length);
+  return maxLen === 0 ? 0 : 1 - dist / maxLen;
+}
+
+function findBestMerchantMatch(candidate: string, knownMerchants: string[]): { value: string; score: number } | null {
+  let best: { value: string; score: number } | null = null;
+  for (const merchant of knownMerchants) {
+    const score = similarity(candidate, merchant);
+    if (!best || score > best.score) {
+      best = { value: merchant, score };
+    }
+  }
+  return best;
+}
+
+/**
+ * Parse raw OCR text into structured receipt data
+ * Why: OCR API returns raw text, we need structured data for the expense
+ */
+export function parseReceiptText(rawText: string, options?: ProcessReceiptOptions): ParsedReceipt {
     // Ensure rawText is a string
     if (typeof rawText !== 'string') {
       console.warn('[VisionService] parseReceiptText received non-string input:', typeof rawText, rawText);
@@ -160,6 +211,30 @@ export async function extractTextFromImage(base64Image: string): Promise<string>
       // Extract first phrase from first line
       const firstPhrase = firstLine.split(/[\n,，。\-\s]{2,}/)[0].trim();
       merchant = firstPhrase.substring(0, 50);
+    }
+
+    // Snap merchant to a known value (user-corrected history) when the match is strong
+    const knownMerchants = options?.knownMerchants?.filter(Boolean) || [];
+    if (knownMerchants.length > 0) {
+      const candidatePhrases = [
+        merchant,
+        ...textLines.slice(0, 3), // top lines often contain the merchant
+      ].filter(Boolean);
+
+      let best: { value: string; score: number } | null = null;
+      for (const phrase of candidatePhrases) {
+        const match = findBestMerchantMatch(phrase, knownMerchants);
+        if (match && (!best || match.score > best.score)) {
+          best = match;
+        }
+      }
+
+      // Require a reasonably high similarity to avoid false positives.
+      // If OCR found something (not "Unknown"), use a higher bar; otherwise allow a slightly lower bar.
+      const threshold = merchant !== 'Unknown' ? 0.78 : 0.7;
+      if (best && best.score >= threshold) {
+        merchant = best.value.substring(0, 50);
+      }
     }
   
     // --- Extract Total ---
@@ -301,7 +376,7 @@ export async function extractTextFromImage(base64Image: string): Promise<string>
   /**
    * Main function: Process receipt image end-to-end
    */
-  export async function processReceipt(base64Image: string): Promise<ParsedReceipt> {
+  export async function processReceipt(base64Image: string, options?: ProcessReceiptOptions): Promise<ParsedReceipt> {
     const rawText = await extractTextFromImage(base64Image);
-    return parseReceiptText(rawText);
+    return parseReceiptText(rawText, options);
   }

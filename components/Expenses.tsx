@@ -37,6 +37,7 @@ import {
   updateReceiptWithOCR,
   linkReceiptToExpense,
   deleteReceiptByExpenseId,
+  getKnownMerchants,
 } from '../services/receiptService';
 import { processReceipt, ParsedReceipt } from '../services/visionService';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
@@ -445,6 +446,9 @@ const Expenses: React.FC<ExpensesProps> = ({
     setIsScanning(true);
     setError(null);
     try {
+      // Start fetching known merchants in parallel with file reading/OCR upload
+      const knownMerchantsPromise = getKnownMerchants(householdId).catch(() => [] as string[]);
+
       const base64 = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onloadend = () => resolve(reader.result as string);
@@ -457,7 +461,8 @@ const Expenses: React.FC<ExpensesProps> = ({
 
       const { url, path } = await uploadReceiptImage(householdId, base64Data, fileType);
       const receiptId = await createReceiptRecord(householdId, path, url);
-      const parsed = await processReceipt(base64Data);
+      const knownMerchants = await knownMerchantsPromise;
+      const parsed = await processReceipt(base64Data, { knownMerchants });
       await updateReceiptWithOCR(receiptId, parsed);
 
       setPendingReceipt({ receiptId, imageUrl: url, thumbnailBase64, parsed });

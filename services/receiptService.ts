@@ -3,6 +3,26 @@
 
 import { supabase } from './supabase';
 import { ParsedReceipt, processReceipt } from './visionService';
+/**
+ * Fetch known merchant names for a household (user-corrected history).
+ */
+export async function getKnownMerchants(householdId: string): Promise<string[]> {
+  const { data, error } = await supabase
+    .from('expenses')
+    .select('merchant')
+    .eq('household_id', householdId)
+    .not('merchant', 'is', null)
+    .neq('merchant', '')
+    .limit(500);
+
+  if (error) {
+    console.warn('[ReceiptService] Failed to fetch known merchants (non-fatal):', error.message);
+    return [];
+  }
+
+  const unique = Array.from(new Set((data || []).map((row: any) => row.merchant).filter(Boolean)));
+  return unique;
+}
 
 interface ReceiptRecord {
   id: string;
@@ -222,6 +242,9 @@ export async function processReceiptFull(
   imageUrl: string;
   parsed: ParsedReceipt;
 }> {
+  // Fetch known merchants in parallel (fast, so it won't slow down OCR)
+  const knownMerchantsPromise = getKnownMerchants(householdId);
+
   // 1. Upload image
   const { path, url } = await uploadReceiptImage(householdId, base64Image, fileType);
 
@@ -229,8 +252,9 @@ export async function processReceiptFull(
   const receiptId = await createReceiptRecord(householdId, path, url);
 
   try {
-    // 3. Process with Vision API
-    const parsed = await processReceipt(base64Image);
+    // 3. Process with Vision API (with learning from known merchants)
+    const knownMerchants = await knownMerchantsPromise.catch(() => [] as string[]);
+    const parsed = await processReceipt(base64Image, { knownMerchants });
 
     // 4. Update receipt with results
     await updateReceiptWithOCR(receiptId, parsed);

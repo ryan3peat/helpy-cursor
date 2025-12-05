@@ -296,7 +296,22 @@ const Expenses: React.FC<ExpensesProps> = ({
     setExAmount(selectedExpense.amount.toFixed(2));
     setExMerchant(selectedExpense.merchant || '');
     setExCategory(selectedExpense.category || EXPENSE_CATEGORIES[0]);
-    const iso = new Date(selectedExpense.date).toISOString().slice(0, 10);
+    // Normalize date to YYYY-MM-DD format
+    let iso: string;
+    try {
+      if (/^\d{4}-\d{2}-\d{2}$/.test(selectedExpense.date)) {
+        iso = selectedExpense.date;
+      } else {
+        const parsed = new Date(selectedExpense.date);
+        if (!isNaN(parsed.getTime())) {
+          iso = parsed.toISOString().slice(0, 10);
+        } else {
+          iso = new Date().toISOString().slice(0, 10);
+        }
+      }
+    } catch {
+      iso = new Date().toISOString().slice(0, 10);
+    }
     setExDate(iso);
   }, [selectedExpense]);
 
@@ -314,10 +329,64 @@ const Expenses: React.FC<ExpensesProps> = ({
   const isModalOpen = addExpenseStage !== 'closed' || selectedExpense || isMonthPickerOpen;
 
   // Filter expenses by selected month/year
-  // Parse date string directly to avoid timezone issues (YYYY-MM-DD format)
+  // Handle multiple date formats: YYYY-MM-DD, DD-MM-YYYY, MM/DD/YYYY, etc.
   const filteredExpenses = useMemo(() => {
     return localExpenses.filter((expense) => {
-      const [year, month] = expense.date.split('-').map(Number);
+      if (!expense.date || typeof expense.date !== 'string') {
+        console.warn('[Expenses] Invalid date for expense:', expense.id, expense.date);
+        return false;
+      }
+
+      let year: number | null = null;
+      let month: number | null = null;
+
+      // Try YYYY-MM-DD format first (standard ISO format)
+      const isoMatch = expense.date.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+      if (isoMatch) {
+        year = parseInt(isoMatch[1], 10);
+        month = parseInt(isoMatch[2], 10);
+      } else {
+        // Try DD-MM-YYYY format
+        const ddmmyyyyMatch = expense.date.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+        if (ddmmyyyyMatch) {
+          year = parseInt(ddmmyyyyMatch[3], 10);
+          month = parseInt(ddmmyyyyMatch[2], 10);
+        } else {
+          // Try MM/DD/YYYY format
+          const mmddyyyyMatch = expense.date.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+          if (mmddyyyyMatch) {
+            year = parseInt(mmddyyyyMatch[3], 10);
+            month = parseInt(mmddyyyyMatch[1], 10);
+          } else {
+            // Try DD/MM/YYYY format
+            const ddmmyyyySlashMatch = expense.date.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+            if (ddmmyyyySlashMatch) {
+              year = parseInt(ddmmyyyySlashMatch[3], 10);
+              month = parseInt(ddmmyyyySlashMatch[2], 10);
+            } else {
+              // Try parsing as Date object (fallback)
+              try {
+                const parsedDate = new Date(expense.date);
+                if (!isNaN(parsedDate.getTime())) {
+                  year = parsedDate.getFullYear();
+                  month = parsedDate.getMonth() + 1; // getMonth() returns 0-11
+                }
+              } catch (e) {
+                console.warn('[Expenses] Could not parse date:', expense.date, 'for expense:', expense.id);
+                return false;
+              }
+            }
+          }
+        }
+      }
+
+      // Validate parsed values
+      if (year === null || month === null || isNaN(year) || isNaN(month) || month < 1 || month > 12) {
+        console.warn('[Expenses] Invalid parsed date values:', { year, month, date: expense.date, expenseId: expense.id });
+        return false;
+      }
+
+      // Compare with selected month/year (month is 0-indexed in selectedMonth)
       return (month - 1) === selectedMonth && year === selectedYear;
     });
   }, [localExpenses, selectedMonth, selectedYear]);
@@ -413,12 +482,28 @@ const Expenses: React.FC<ExpensesProps> = ({
     setError(null); // Clear any previous errors
     
     try {
+      // Normalize date to YYYY-MM-DD format
+      let normalizedDate = editDate || new Date().toISOString().split('T')[0];
+      if (normalizedDate && !/^\d{4}-\d{2}-\d{2}$/.test(normalizedDate)) {
+        // Try to parse and normalize the date
+        try {
+          const parsed = new Date(normalizedDate);
+          if (!isNaN(parsed.getTime())) {
+            normalizedDate = parsed.toISOString().split('T')[0];
+          } else {
+            normalizedDate = new Date().toISOString().split('T')[0];
+          }
+        } catch {
+          normalizedDate = new Date().toISOString().split('T')[0];
+        }
+      }
+
       const newExpense: Expense = {
         id: Date.now().toString(),
         amount: amount,
         merchant: editMerchant.trim() || 'Unknown',
         category: editCategory || 'Miscellaneous',
-        date: editDate || new Date().toISOString().split('T')[0],
+        date: normalizedDate,
         receiptUrl: pendingReceipt?.imageUrl || undefined,
         merchantLang: detectInputLanguage(currentLang) || null,
         merchantTranslations: {},
@@ -534,12 +619,28 @@ const Expenses: React.FC<ExpensesProps> = ({
       const merchantChanged = selectedExpense.merchant !== exMerchant;
       const detectedLang = merchantChanged ? detectInputLanguage(currentLang) : undefined;
       
+      // Normalize date to YYYY-MM-DD format
+      let normalizedDate = exDate || selectedExpense.date;
+      if (normalizedDate && !/^\d{4}-\d{2}-\d{2}$/.test(normalizedDate)) {
+        // Try to parse and normalize the date
+        try {
+          const parsed = new Date(normalizedDate);
+          if (!isNaN(parsed.getTime())) {
+            normalizedDate = parsed.toISOString().split('T')[0];
+          } else {
+            normalizedDate = selectedExpense.date; // Fallback to original date
+          }
+        } catch {
+          normalizedDate = selectedExpense.date; // Fallback to original date
+        }
+      }
+      
       const updated: Expense = {
         ...selectedExpense,
         amount: parseFloat(exAmount) || selectedExpense.amount,
         merchant: exMerchant || selectedExpense.merchant,
         category: exCategory || selectedExpense.category,
-        date: exDate || selectedExpense.date,
+        date: normalizedDate,
         ...(merchantChanged && detectedLang !== undefined ? {
           merchantLang: detectedLang || null,
           merchantTranslations: {} // Reset translations when merchant changes

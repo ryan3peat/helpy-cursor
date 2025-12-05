@@ -161,25 +161,70 @@ export async function extractTextFromImage(base64Image: string): Promise<string>
     }
   
     // --- Extract Date ---
+    // Try multiple date formats and ensure we always return YYYY-MM-DD
     const datePatterns = [
-      /(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/,  // MM/DD/YYYY or DD-MM-YYYY
-      /(\d{4}[\/\-]\d{1,2}[\/\-]\d{1,2})/,     // YYYY-MM-DD
-      /((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{1,2},?\s+\d{4})/i, // Month DD, YYYY
+      // YYYY-MM-DD (ISO format - preferred)
+      { pattern: /(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/, handler: (m: RegExpMatchArray) => {
+          const year = parseInt(m[1], 10);
+          const month = parseInt(m[2], 10);
+          const day = parseInt(m[3], 10);
+          if (year >= 1900 && year <= 2100 && month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+            return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+          }
+          return null;
+        }
+      },
+      // DD-MM-YYYY or MM/DD/YYYY (ambiguous - try both)
+      { pattern: /(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/, handler: (m: RegExpMatchArray) => {
+          const part1 = parseInt(m[1], 10);
+          const part2 = parseInt(m[2], 10);
+          const year = parseInt(m[3], 10);
+          // Heuristic: if part1 > 12, it's likely DD-MM-YYYY (day-month-year)
+          // Otherwise, assume MM/DD/YYYY (month-day-year)
+          if (part1 > 12 && part1 <= 31 && part2 >= 1 && part2 <= 12) {
+            // DD-MM-YYYY format
+            return `${year}-${String(part2).padStart(2, '0')}-${String(part1).padStart(2, '0')}`;
+          } else if (part1 >= 1 && part1 <= 12 && part2 >= 1 && part2 <= 31) {
+            // MM/DD/YYYY format
+            return `${year}-${String(part1).padStart(2, '0')}-${String(part2).padStart(2, '0')}`;
+          }
+          return null;
+        }
+      },
+      // Month name format: "Jan 15, 2024" or "January 15, 2024"
+      { pattern: /((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{1,2},?\s+\d{4})/i, handler: (m: RegExpMatchArray) => {
+          try {
+            const parsed = new Date(m[1]);
+            if (!isNaN(parsed.getTime())) {
+              return parsed.toISOString().split('T')[0];
+            }
+          } catch {
+            // Continue to next pattern
+          }
+          return null;
+        }
+      },
     ];
   
-    for (const pattern of datePatterns) {
+    for (const { pattern, handler } of datePatterns) {
       const match = rawText.match(pattern);
       if (match) {
-        try {
-          const parsed = new Date(match[1]);
-          if (!isNaN(parsed.getTime())) {
-            date = parsed.toISOString().split('T')[0];
+        const formattedDate = handler(match);
+        if (formattedDate && /^\d{4}-\d{2}-\d{2}$/.test(formattedDate)) {
+          // Validate the date is reasonable
+          const parsed = new Date(formattedDate);
+          if (!isNaN(parsed.getTime()) && parsed.getFullYear() >= 1900 && parsed.getFullYear() <= 2100) {
+            date = formattedDate;
             break;
           }
-        } catch {
-          // Continue to next pattern
         }
       }
+    }
+    
+    // Final validation: ensure date is in YYYY-MM-DD format
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      // If date extraction failed, use today's date as fallback
+      date = new Date().toISOString().split('T')[0];
     }
   
     // --- Detect Category ---

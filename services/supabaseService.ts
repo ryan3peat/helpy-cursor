@@ -711,7 +711,7 @@ function convertSupabaseData(data: any[], collection?: string): DataItem[] {
       converted.assigneeId = getAppUserIdFromUuid(item.assignee_id);
     }
     
-    // For expenses: ensure receiptUrl is properly set from receipt_url
+    // For expenses: ensure receiptUrl is properly set from receipt_url and normalize date
     // The snake_case to camelCase conversion already handles receipt_url -> receiptUrl,
     // but we explicitly ensure it's set correctly
     if (collection === 'expenses') {
@@ -720,6 +720,20 @@ function convertSupabaseData(data: any[], collection?: string): DataItem[] {
       } else {
         // Explicitly set to undefined if not present (not null, to match TypeScript type)
         converted.receiptUrl = undefined;
+      }
+      
+      // Normalize date to YYYY-MM-DD format if it exists
+      if (converted.date && typeof converted.date === 'string') {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(converted.date)) {
+          try {
+            const parsed = new Date(converted.date);
+            if (!isNaN(parsed.getTime())) {
+              converted.date = parsed.toISOString().split('T')[0];
+            }
+          } catch {
+            // If parsing fails, keep original date (will be caught by filter validation)
+          }
+        }
       }
     }
     

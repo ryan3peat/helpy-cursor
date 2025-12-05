@@ -424,17 +424,7 @@ const Expenses: React.FC<ExpensesProps> = ({
         merchantTranslations: {},
       };
 
-      // If OCR, link receipt to expense
-      if (pendingReceipt) {
-        try {
-          await linkReceiptToExpense(pendingReceipt.receiptId, newExpense.id);
-        } catch (linkError) {
-          console.error('Failed to link receipt, but continuing with expense save:', linkError);
-          // Don't fail the entire save if receipt linking fails
-        }
-      }
-
-      // Call onAdd and wait for it to complete
+      // Call onAdd FIRST to ensure expense exists in database before linking receipt
       if (onAdd) {
         try {
           const result = onAdd(newExpense);
@@ -442,10 +432,25 @@ const Expenses: React.FC<ExpensesProps> = ({
           if (result instanceof Promise) {
             await result;
           }
-          console.log('[Expenses] onAdd completed successfully');
+          console.log('[Expenses] onAdd completed successfully, expense ID:', newExpense.id);
         } catch (addError) {
           console.error('[Expenses] Error in onAdd:', addError);
           throw addError; // Re-throw to be caught by outer catch
+        }
+      }
+
+      // If OCR, link receipt to expense AFTER expense is saved
+      // This ensures the expense exists in the database before we try to link
+      if (pendingReceipt) {
+        try {
+          // Small delay to ensure database transaction is committed
+          await new Promise(resolve => setTimeout(resolve, 200));
+          await linkReceiptToExpense(pendingReceipt.receiptId, newExpense.id);
+          console.log('[Expenses] Receipt linked to expense successfully');
+        } catch (linkError) {
+          console.error('[Expenses] Failed to link receipt, but expense is saved:', linkError);
+          // Don't fail the entire save if receipt linking fails - expense is already saved
+          // User can manually link later if needed
         }
       }
       

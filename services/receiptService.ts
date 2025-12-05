@@ -141,10 +141,21 @@ export async function linkReceiptToExpense(
   receiptId: string,
   expenseId: string
 ): Promise<void> {
-  await supabase
+  const { error } = await supabase
     .from('receipts')
     .update({ expense_id: expenseId })
     .eq('id', receiptId);
+
+  if (error) {
+    console.error('[ReceiptService] Failed to link receipt to expense:', {
+      receiptId,
+      expenseId,
+      error: error.message,
+      details: error.details,
+      hint: error.hint,
+    });
+    throw new Error(`Failed to link receipt to expense: ${error.message}`);
+  }
 }
 
 /**

@@ -61,6 +61,127 @@ const getExpenseCategoryConfig = (category: string): ExpenseCategoryConfig => {
   return EXPENSE_CATEGORY_CONFIG[category] || EXPENSE_CATEGORY_CONFIG['Miscellaneous'];
 };
 
+// Zoomable Image Component with touch gestures
+const ZoomableImage: React.FC<{ imageSrc: string; onClose: () => void }> = ({ imageSrc, onClose }) => {
+  const [scale, setScale] = useState(1);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [lastTouch, setLastTouch] = useState<{ distance: number; center: { x: number; y: number } } | null>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const handleWheel = (e: React.WheelEvent) => {
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? 0.9 : 1.1;
+    setScale(prev => Math.max(1, Math.min(5, prev * delta)));
+  };
+
+  const getTouchDistance = (touches: TouchList) => {
+    const touch1 = touches[0];
+    const touch2 = touches[1];
+    return Math.hypot(touch2.clientX - touch1.clientX, touch2.clientY - touch1.clientY);
+  };
+
+  const getTouchCenter = (touches: TouchList) => {
+    const touch1 = touches[0];
+    const touch2 = touches[1];
+    return {
+      x: (touch1.clientX + touch2.clientX) / 2,
+      y: (touch1.clientY + touch2.clientY) / 2,
+    };
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      const distance = getTouchDistance(e.touches);
+      const center = getTouchCenter(e.touches);
+      setLastTouch({ distance, center });
+    } else if (e.touches.length === 1 && scale > 1) {
+      const touch = e.touches[0];
+      setLastTouch({
+        distance: 0,
+        center: { x: touch.clientX - position.x, y: touch.clientY - position.y },
+      });
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    e.preventDefault();
+    if (e.touches.length === 2 && lastTouch) {
+      const distance = getTouchDistance(e.touches);
+      const center = getTouchCenter(e.touches);
+      const scaleChange = distance / lastTouch.distance;
+      const newScale = Math.max(1, Math.min(5, scale * scaleChange));
+      setScale(newScale);
+      setLastTouch({ distance, center });
+    } else if (e.touches.length === 1 && scale > 1 && lastTouch) {
+      const touch = e.touches[0];
+      setPosition({
+        x: touch.clientX - lastTouch.center.x,
+        y: touch.clientY - lastTouch.center.y,
+      });
+    }
+  };
+
+  const handleTouchEnd = () => {
+    setLastTouch(null);
+    if (scale < 1) setScale(1);
+    if (scale === 1) setPosition({ x: 0, y: 0 });
+  };
+
+  const handleDoubleClick = () => {
+    if (scale > 1) {
+      setScale(1);
+      setPosition({ x: 0, y: 0 });
+    } else {
+      setScale(2);
+    }
+  };
+
+  return (
+    <div 
+      ref={containerRef}
+      className="fixed inset-0 bg-black/90 z-[70] flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div className="relative max-w-full max-h-full">
+        <button
+          onClick={onClose}
+          className="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors z-10"
+          aria-label="Close"
+        >
+          <X size={24} />
+        </button>
+        <div 
+          className="overflow-hidden max-h-[90vh] max-w-[90vw]"
+          style={{ touchAction: 'none' }}
+        >
+          <img 
+            ref={imgRef}
+            src={imageSrc} 
+            alt="Receipt" 
+            className="max-w-full max-h-full object-contain select-none"
+            onClick={(e) => e.stopPropagation()}
+            onWheel={handleWheel}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            onDoubleClick={handleDoubleClick}
+            style={{
+              transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
+              transformOrigin: 'center center',
+              transition: lastTouch ? 'none' : 'transform 0.1s ease-out',
+            }}
+            draggable={false}
+          />
+        </div>
+        <p className="text-caption text-white/70 mt-4 text-center">
+          {scale > 1 ? 'Double tap to reset • Drag to pan' : 'Pinch to zoom • Double tap to zoom • Tap outside to close'}
+        </p>
+      </div>
+    </div>
+  );
+};
+
 interface ExpensesProps extends BaseViewProps {
   expenses: Expense[];
   householdId: string;
@@ -315,10 +436,30 @@ const Expenses: React.FC<ExpensesProps> = ({
 
       // Call onAdd and wait for it to complete
       if (onAdd) {
-        await Promise.resolve(onAdd(newExpense));
+        try {
+          const result = onAdd(newExpense);
+          // Handle both sync and async onAdd
+          if (result instanceof Promise) {
+            await result;
+          }
+          console.log('[Expenses] onAdd completed successfully');
+        } catch (addError) {
+          console.error('[Expenses] Error in onAdd:', addError);
+          throw addError; // Re-throw to be caught by outer catch
+        }
       }
       
-      setLocalExpenses((prev) => [...prev, newExpense]);
+      // Update local state
+      setLocalExpenses((prev) => {
+        const updated = [...prev, newExpense];
+        console.log('[Expenses] Local expenses updated, count:', updated.length);
+        return updated;
+      });
+      
+      // Small delay to ensure state updates before closing
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      console.log('[Expenses] Closing expense sheet');
       closeAddExpenseSheet();
     } catch (err) {
       console.error('Failed to save expense:', err);
@@ -1216,32 +1357,10 @@ const Expenses: React.FC<ExpensesProps> = ({
       {/* IMAGE ZOOM MODAL */}
       {/* ─────────────────────────────────────────────────────────────── */}
       {isImageZoomed && pendingReceipt && (
-        <div 
-          className="fixed inset-0 bg-black/90 z-[70] flex items-center justify-center p-4"
-          onClick={() => setIsImageZoomed(false)}
-        >
-          <div className="relative max-w-full max-h-full">
-            <button
-              onClick={() => setIsImageZoomed(false)}
-              className="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors"
-              aria-label="Close"
-            >
-              <X size={24} />
-            </button>
-            <div className="overflow-auto max-h-[90vh] max-w-[90vw]">
-              <img 
-                src={pendingReceipt.thumbnailBase64} 
-                alt="Receipt" 
-                className="max-w-full max-h-full object-contain"
-                onClick={(e) => e.stopPropagation()}
-                style={{ touchAction: 'pan-x pan-y pinch-zoom' }}
-              />
-            </div>
-            <p className="text-caption text-white/70 mt-4 text-center">
-              Pinch to zoom • Drag to pan • Tap outside to close
-            </p>
-          </div>
-        </div>
+        <ZoomableImage
+          imageSrc={pendingReceipt.thumbnailBase64}
+          onClose={() => setIsImageZoomed(false)}
+        />
       )}
 
       {/* ─────────────────────────────────────────────────────────────── */}

@@ -80,7 +80,24 @@ export async function extractTextFromImage(base64Image: string): Promise<string>
     let confidence = 0.5;
     const lineItems: Array<{ name: string; price: number }> = [];
   
-    // --- Extract Merchant (usually first non-empty line) ---
+    // --- Extract Merchant (first meaningful phrase) ---
+    // First, check if rawText contains JSON and extract the actual text
+    let actualText = rawText;
+    try {
+      // Check if rawText is a JSON string like {"text":"..."}
+      if (rawText.trim().startsWith('{') && rawText.includes('"text"')) {
+        const parsed = JSON.parse(rawText);
+        if (parsed.text && typeof parsed.text === 'string') {
+          actualText = parsed.text;
+        }
+      }
+    } catch {
+      // Not JSON, use as-is
+    }
+    
+    // Split into lines and get the first meaningful phrase
+    const textLines = actualText.split('\n').map(l => l.trim()).filter(Boolean);
+    
     // Skip code-like patterns, URLs, dates, and numbers-only lines
     const codePatterns = [
       /^[A-Z0-9]{10,}$/, // All caps alphanumeric codes
@@ -89,25 +106,31 @@ export async function extractTextFromImage(base64Image: string): Promise<string>
       /^[#*]\s*/, // Code markers
       /^[A-Z]{2,}\s*\d+/, // Codes like "ABC 123"
       /^\$\d+/, // Prices
+      /^\{.*"text"/, // JSON objects
     ];
     
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
+    for (let i = 0; i < textLines.length; i++) {
+      const line = textLines[i];
       // Skip if it looks like code, is too short, or is mostly numbers/symbols
       const isCodeLike = codePatterns.some(pattern => pattern.test(line));
       const isTooShort = line.length < 3;
       const isMostlyNumbers = /^\d+[\s\d]*$/.test(line);
-      const hasTooManySpecialChars = (line.match(/[^a-zA-Z0-9\s]/g) || []).length > line.length * 0.5;
+      const hasTooManySpecialChars = (line.match(/[^a-zA-Z0-9\s\u4e00-\u9fff]/g) || []).length > line.length * 0.5;
       
       if (!isCodeLike && !isTooShort && !isMostlyNumbers && !hasTooManySpecialChars) {
-        merchant = line.substring(0, 50); // Cap length
+        // Extract first phrase (before first newline, comma, or special separator)
+        const firstPhrase = line.split(/[\n,，。\-\s]{2,}/)[0].trim();
+        merchant = firstPhrase.substring(0, 50); // Cap length
         break;
       }
     }
     
     // Fallback to first line if no good merchant found
-    if (merchant === 'Unknown' && lines.length > 0) {
-      merchant = lines[0].substring(0, 50);
+    if (merchant === 'Unknown' && textLines.length > 0) {
+      const firstLine = textLines[0];
+      // Extract first phrase from first line
+      const firstPhrase = firstLine.split(/[\n,，。\-\s]{2,}/)[0].trim();
+      merchant = firstPhrase.substring(0, 50);
     }
   
     // --- Extract Total ---

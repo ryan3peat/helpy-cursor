@@ -510,11 +510,10 @@ const App: React.FC = () => {
         return (
           <Expenses
             expenses={expenses}
-            users={users}
+            householdId={hid}
             onAdd={handleAddExpense}
             onUpdate={handleUpdateExpense}
             onDelete={handleDeleteExpense}
-            currentUser={currentUser!}
             t={translations}
             currentLang={lang}
           />

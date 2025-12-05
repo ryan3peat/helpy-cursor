@@ -425,14 +425,25 @@ const Expenses: React.FC<ExpensesProps> = ({
       };
 
       // Call onAdd FIRST to ensure expense exists in database before linking receipt
+      let savedExpenseId = newExpense.id; // Default to temp ID
       if (onAdd) {
         try {
           const result = onAdd(newExpense);
           // Handle both sync and async onAdd
+          let savedExpense: Expense | undefined;
           if (result instanceof Promise) {
-            await result;
+            savedExpense = await result;
+          } else {
+            savedExpense = result;
           }
-          console.log('[Expenses] onAdd completed successfully, expense ID:', newExpense.id);
+          
+          // Use the actual UUID from database if returned
+          if (savedExpense && savedExpense.id) {
+            savedExpenseId = savedExpense.id;
+            console.log('[Expenses] onAdd completed successfully, expense ID (from DB):', savedExpenseId);
+          } else {
+            console.log('[Expenses] onAdd completed, using original expense ID:', savedExpenseId);
+          }
         } catch (addError) {
           console.error('[Expenses] Error in onAdd:', addError);
           throw addError; // Re-throw to be caught by outer catch
@@ -440,12 +451,13 @@ const Expenses: React.FC<ExpensesProps> = ({
       }
 
       // If OCR, link receipt to expense AFTER expense is saved
-      // This ensures the expense exists in the database before we try to link
+      // Use the actual UUID from database (not the temp timestamp ID)
       if (pendingReceipt) {
         try {
           // Small delay to ensure database transaction is committed
           await new Promise(resolve => setTimeout(resolve, 200));
-          await linkReceiptToExpense(pendingReceipt.receiptId, newExpense.id);
+          console.log('[Expenses] Linking receipt to expense ID:', savedExpenseId);
+          await linkReceiptToExpense(pendingReceipt.receiptId, savedExpenseId);
           console.log('[Expenses] Receipt linked to expense successfully');
         } catch (linkError) {
           console.error('[Expenses] Failed to link receipt, but expense is saved:', linkError);

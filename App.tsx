@@ -275,12 +275,14 @@ const App: React.FC = () => {
   };
 
   // Expense CRUD Handlers (with optimistic updates for instant UI)
-  const handleAddExpense = async (expense: Expense) => {
-    if (!hid) return;
+  const handleAddExpense = async (expense: Expense): Promise<Expense> => {
+    if (!hid) return expense;
     const tempId = `temp-${Date.now()}`;
     const newExpense = { ...expense, id: tempId };
     setExpenses(prev => [...prev, newExpense]);  // Optimistic
-    await addItem(hid, 'expenses', expense);
+    const savedExpense = await addItem(hid, 'expenses', expense);
+    // Return the expense with the actual UUID from database
+    return savedExpense as Expense;
   };
 
   const handleUpdateExpense = async (expense: Expense) => {

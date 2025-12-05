@@ -1,8 +1,8 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   AlertCircle, Heart, Settings, Plus, Trash2, X, Save, Camera,
   Image as ImageIcon, LogOut, Copy, Check, ChevronLeft, ChevronRight,
-  CreditCard, Shield, Lock, Crown, Mail, Share2, Bell, Phone, CheckCircle
+  CreditCard, Shield, Lock, Crown, Mail, Share2, Bell, Phone, CheckCircle, Loader2
 } from 'lucide-react';
 import { useUser } from '@clerk/clerk-react';
 import { User, UserRole, BaseViewProps } from '../types';
@@ -11,6 +11,13 @@ import { createCheckoutSession, createPortalSession } from '../services/stripeSe
 import { supabase } from '../services/supabase';
 import { deleteItem } from '../services/supabaseService';
 import { useScrollLock } from '@/hooks/useScrollLock';
+import {
+  isPushSupported,
+  getNotificationPermission,
+  subscribeToPush,
+  unsubscribeFromPush,
+  hasActiveSubscription
+} from '../services/pushNotificationService';
 
 interface ProfileProps extends BaseViewProps {
   users: User[];
@@ -76,6 +83,19 @@ const Profile: React.FC<ProfileProps> = ({
   const [isFinalDeleteConfirmOpen, setIsFinalDeleteConfirmOpen] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [subscriptionSuccess, setSubscriptionSuccess] = useState(false);
+
+  // Push Notification State
+  const [isTogglingNotifications, setIsTogglingNotifications] = useState(false);
+  const [pushPermission, setPushPermission] = useState<NotificationPermission>('default');
+  const [pushSupported, setPushSupported] = useState(true);
+
+  // Check push notification support and permission on mount
+  useEffect(() => {
+    setPushSupported(isPushSupported());
+    if (isPushSupported()) {
+      setPushPermission(getNotificationPermission());
+    }
+  }, []);
 
   // Lock scroll when any modal is open
   useScrollLock(isAddModalOpen || isEditModalOpen || deleteConfirmOpen || showPhotoOptions);
@@ -1617,22 +1637,80 @@ const Profile: React.FC<ProfileProps> = ({
                       </div>
                       <div>
                         <p className="font-semibold text-foreground text-body">Enable Notifications</p>
-                        <p className="text-caption text-muted-foreground">Receive updates and reminders</p>
+                        <p className="text-caption text-muted-foreground">
+                          {!pushSupported 
+                            ? 'Not supported in this browser'
+                            : pushPermission === 'denied'
+                            ? 'Blocked - enable in browser settings'
+                            : 'Get notified when family adds items'}
+                        </p>
                       </div>
                     </div>
                     <button
-                      onClick={() => setAccountData({ ...accountData, notificationsEnabled: !accountData.notificationsEnabled })}
+                      disabled={!pushSupported || pushPermission === 'denied' || isTogglingNotifications}
+                      onClick={async () => {
+                        if (!pushSupported || pushPermission === 'denied') return;
+                        
+                        setIsTogglingNotifications(true);
+                        const newValue = !accountData.notificationsEnabled;
+                        
+                        try {
+                          if (newValue) {
+                            // Enable notifications - subscribe to push
+                            const subscription = await subscribeToPush(
+                              currentUser.id,
+                              currentUser.householdId
+                            );
+                            
+                            if (subscription) {
+                              setAccountData({ ...accountData, notificationsEnabled: true });
+                              setPushPermission(getNotificationPermission());
+                            } else {
+                              // Permission denied or subscription failed
+                              setPushPermission(getNotificationPermission());
+                              console.warn('Failed to subscribe to push notifications');
+                            }
+                          } else {
+                            // Disable notifications - unsubscribe from push
+                            await unsubscribeFromPush(currentUser.id);
+                            setAccountData({ ...accountData, notificationsEnabled: false });
+                          }
+                        } catch (error) {
+                          console.error('Error toggling notifications:', error);
+                        } finally {
+                          setIsTogglingNotifications(false);
+                        }
+                      }}
                       className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                        accountData.notificationsEnabled ? 'bg-primary' : 'bg-muted-foreground/30'
+                        !pushSupported || pushPermission === 'denied'
+                          ? 'bg-muted-foreground/20 cursor-not-allowed'
+                          : accountData.notificationsEnabled 
+                          ? 'bg-primary' 
+                          : 'bg-muted-foreground/30'
                       }`}
                     >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                          accountData.notificationsEnabled ? 'translate-x-6' : 'translate-x-1'
-                        }`}
-                      />
+                      {isTogglingNotifications ? (
+                        <span className="absolute inset-0 flex items-center justify-center">
+                          <Loader2 size={14} className="animate-spin text-muted-foreground" />
+                        </span>
+                      ) : (
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            accountData.notificationsEnabled ? 'translate-x-6' : 'translate-x-1'
+                          }`}
+                        />
+                      )}
                     </button>
                   </div>
+                  
+                  {/* Permission blocked message */}
+                  {pushSupported && pushPermission === 'denied' && (
+                    <div className="bg-destructive/10 border border-destructive/20 rounded-xl p-3 mt-2">
+                      <p className="text-caption text-destructive">
+                        Notifications are blocked. To enable them, go to your browser settings and allow notifications for this site.
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

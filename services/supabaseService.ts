@@ -294,6 +294,15 @@ export async function addItem(
       finalData.assignee_id = uuid;
     }
   }
+  
+  // For all collections with created_by: convert from Clerk ID to Supabase UUID
+  if (finalData.created_by && ['todo_items', 'meals', 'expenses'].includes(collection)) {
+    const uuid = await getSupabaseUserId(finalData.created_by, householdId);
+    if (uuid) {
+      console.log(`🔄 Converting created_by ${finalData.created_by} to UUID ${uuid}`);
+      finalData.created_by = uuid;
+    }
+  }
 
   // For expenses: handle merchant_lang, merchant_translations, and receipt_url
   if (collection === 'expenses') {

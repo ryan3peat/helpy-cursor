@@ -22,6 +22,7 @@ import {
   saveFamilyNotes,
   subscribeToNotes
 } from './services/supabaseService';
+import { initializePushNotifications } from './services/pushNotificationService';
 import type { EssentialInfo } from '@src/types/essentialInfo';
 import type { TrainingModule } from '@src/types/training';
 import { 
@@ -178,6 +179,13 @@ const App: React.FC = () => {
     }
   }, [currentUser, users]);
 
+  // Initialize push notifications service worker
+  useEffect(() => {
+    initializePushNotifications().catch(err => {
+      console.warn('[App] Failed to initialize push notifications:', err);
+    });
+  }, []);
+
   // Supabase Subscriptions
   useEffect(() => {
     if (!currentUser || !currentUser.householdId) return;
@@ -235,7 +243,8 @@ const App: React.FC = () => {
     if (!hid) return item;
     const newItem = { ...item, id: `todo-${Date.now()}` };
     setTodoItems(prev => [newItem, ...prev]);
-    await addItem(hid, 'todo_items', item);
+    // Include createdBy for notifications - use currentUser's id
+    await addItem(hid, 'todo_items', { ...item, createdBy: currentUser?.id });
     return newItem;
   };
 
@@ -259,7 +268,8 @@ const App: React.FC = () => {
     const tempId = `temp-${Date.now()}`;
     const newMeal = { ...meal, id: tempId };
     setMeals(prev => [...prev, newMeal]);  // Optimistic: update UI immediately
-    await addItem(hid, 'meals', meal);      // Sync to server in background
+    // Include createdBy for notifications
+    await addItem(hid, 'meals', { ...meal, createdBy: currentUser?.id });
   };
 
   const handleUpdateMeal = async (id: string, data: Partial<Meal>) => {
@@ -286,7 +296,8 @@ const App: React.FC = () => {
     delete expenseWithoutId.id; // Remove ID so Supabase generates UUID
     
     console.log('[App] Adding expense without ID, will get UUID from DB');
-    const savedExpense = await addItem(hid, 'expenses', expenseWithoutId);
+    // Include createdBy for notifications
+    const savedExpense = await addItem(hid, 'expenses', { ...expenseWithoutId, createdBy: currentUser?.id });
     console.log('[App] Expense saved with UUID:', savedExpense.id);
     
     // Return the expense with the actual UUID from database

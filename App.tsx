@@ -280,7 +280,15 @@ const App: React.FC = () => {
     const tempId = `temp-${Date.now()}`;
     const newExpense = { ...expense, id: tempId };
     setExpenses(prev => [...prev, newExpense]);  // Optimistic
-    const savedExpense = await addItem(hid, 'expenses', expense);
+    
+    // Create expense without ID so Supabase generates UUID
+    const expenseWithoutId = { ...expense };
+    delete expenseWithoutId.id; // Remove ID so Supabase generates UUID
+    
+    console.log('[App] Adding expense without ID, will get UUID from DB');
+    const savedExpense = await addItem(hid, 'expenses', expenseWithoutId);
+    console.log('[App] Expense saved with UUID:', savedExpense.id);
+    
     // Return the expense with the actual UUID from database
     return savedExpense as Expense;
   };

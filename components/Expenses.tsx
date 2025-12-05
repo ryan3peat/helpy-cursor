@@ -425,9 +425,10 @@ const Expenses: React.FC<ExpensesProps> = ({
       };
 
       // Call onAdd FIRST to ensure expense exists in database before linking receipt
-      let savedExpenseId = newExpense.id; // Default to temp ID
+      let savedExpenseId = newExpense.id; // Default to temp ID (will be replaced)
       if (onAdd) {
         try {
+          console.log('[Expenses] Calling onAdd with expense ID:', newExpense.id);
           const result = onAdd(newExpense);
           // Handle both sync and async onAdd
           let savedExpense: Expense | undefined;
@@ -437,12 +438,26 @@ const Expenses: React.FC<ExpensesProps> = ({
             savedExpense = result;
           }
           
+          console.log('[Expenses] onAdd returned expense:', savedExpense);
+          console.log('[Expenses] Returned expense ID:', savedExpense?.id);
+          console.log('[Expenses] Is UUID format?', savedExpense?.id ? /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(savedExpense.id) : 'no ID');
+          
           // Use the actual UUID from database if returned
           if (savedExpense && savedExpense.id) {
-            savedExpenseId = savedExpense.id;
-            console.log('[Expenses] onAdd completed successfully, expense ID (from DB):', savedExpenseId);
+            // Validate it's a UUID, not a timestamp
+            const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(savedExpense.id);
+            if (isUuid) {
+              savedExpenseId = savedExpense.id;
+              console.log('[Expenses] Using UUID from database:', savedExpenseId);
+            } else {
+              console.warn('[Expenses] onAdd returned non-UUID ID, will wait for subscription update:', savedExpense.id);
+              // If it's not a UUID, we need to wait for the subscription to update with the real UUID
+              // For now, we'll skip linking and it can be done later
+              savedExpenseId = null as any; // Mark as invalid
+            }
           } else {
-            console.log('[Expenses] onAdd completed, using original expense ID:', savedExpenseId);
+            console.warn('[Expenses] onAdd did not return expense with ID, will wait for subscription');
+            savedExpenseId = null as any; // Mark as invalid
           }
         } catch (addError) {
           console.error('[Expenses] Error in onAdd:', addError);
@@ -452,18 +467,27 @@ const Expenses: React.FC<ExpensesProps> = ({
 
       // If OCR, link receipt to expense AFTER expense is saved
       // Use the actual UUID from database (not the temp timestamp ID)
-      if (pendingReceipt) {
-        try {
-          // Small delay to ensure database transaction is committed
-          await new Promise(resolve => setTimeout(resolve, 200));
-          console.log('[Expenses] Linking receipt to expense ID:', savedExpenseId);
-          await linkReceiptToExpense(pendingReceipt.receiptId, savedExpenseId);
-          console.log('[Expenses] Receipt linked to expense successfully');
-        } catch (linkError) {
-          console.error('[Expenses] Failed to link receipt, but expense is saved:', linkError);
-          // Don't fail the entire save if receipt linking fails - expense is already saved
-          // User can manually link later if needed
+      if (pendingReceipt && savedExpenseId) {
+        // Validate it's a UUID before attempting to link
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(savedExpenseId);
+        if (!isUuid) {
+          console.warn('[Expenses] Cannot link receipt - expense ID is not a valid UUID:', savedExpenseId);
+          console.warn('[Expenses] Receipt will remain unlinked. Expense is saved successfully.');
+        } else {
+          try {
+            // Small delay to ensure database transaction is committed
+            await new Promise(resolve => setTimeout(resolve, 200));
+            console.log('[Expenses] Linking receipt to expense ID (UUID):', savedExpenseId);
+            await linkReceiptToExpense(pendingReceipt.receiptId, savedExpenseId);
+            console.log('[Expenses] Receipt linked to expense successfully');
+          } catch (linkError) {
+            console.error('[Expenses] Failed to link receipt, but expense is saved:', linkError);
+            // Don't fail the entire save if receipt linking fails - expense is already saved
+            // User can manually link later if needed
+          }
         }
+      } else if (pendingReceipt && !savedExpenseId) {
+        console.warn('[Expenses] Cannot link receipt - no valid expense ID available');
       }
       
       // Update local state

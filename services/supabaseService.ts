@@ -188,6 +188,22 @@ export async function addItem(
       finalData[key] = null;
     }
   }
+
+  // For expenses: handle merchant_lang and merchant_translations
+  if (collection === 'expenses') {
+    // Convert empty merchant_translations object to null or ensure it's valid JSONB
+    if (finalData.merchant_translations !== undefined) {
+      if (finalData.merchant_translations === null || 
+          (typeof finalData.merchant_translations === 'object' && Object.keys(finalData.merchant_translations).length === 0)) {
+        // Empty object or null - set to empty JSONB object '{}'
+        finalData.merchant_translations = {};
+      }
+    }
+    // merchant_lang can be null, empty string should be null
+    if (finalData.merchant_lang === '') {
+      finalData.merchant_lang = null;
+    }
+  }
   
   // For meals: convert for_user_ids from Clerk IDs to Supabase UUIDs
   if (collection === 'meals' && Array.isArray(finalData.for_user_ids)) {
@@ -204,7 +220,32 @@ export async function addItem(
       finalData.assignee_id = uuid;
     }
   }
-  
+
+  // For expenses: handle merchant_lang, merchant_translations, and receipt_url
+  if (collection === 'expenses') {
+    // Ensure merchant_translations is a valid object (not undefined)
+    if (finalData.merchant_translations === undefined) {
+      finalData.merchant_translations = {};
+    } else if (finalData.merchant_translations === null) {
+      // Convert null to empty object for JSONB
+      finalData.merchant_translations = {};
+    }
+    // merchant_lang can be null, but empty string should be null
+    if (finalData.merchant_lang === '') {
+      finalData.merchant_lang = null;
+    }
+    // receipt_url can be null/undefined - remove if undefined to let DB handle default
+    if (finalData.receipt_url === undefined || finalData.receipt_url === null || finalData.receipt_url === '') {
+      // Only include if it has a value, otherwise let DB use default/null
+      if (finalData.receipt_url === '') {
+        finalData.receipt_url = null;
+      } else {
+        // undefined - remove the field so DB can use default
+        delete finalData.receipt_url;
+      }
+    }
+  }
+
   console.log('🟡 Sending to Supabase:', finalData);
   
   const { data, error } = await supabase
@@ -213,12 +254,29 @@ export async function addItem(
     .select()
     .single();
 
-  console.log('🟡 Response:', { data, error });
+  console.log('🟡 Response:', { 
+    hasData: !!data, 
+    hasError: !!error,
+    errorMessage: error?.message,
+    errorDetails: error?.details,
+    errorHint: error?.hint,
+    errorCode: error?.code,
+  });
 
   if (error) {
     console.error('❌ Insert failed:', error);
+    console.error('❌ Full error object:', JSON.stringify(error, null, 2));
+    console.error('❌ Data that failed to insert:', JSON.stringify(finalData, null, 2));
     throw error;
   }
+  
+  if (!data) {
+    console.error('❌ Insert succeeded but no data returned');
+    console.error('❌ Final data sent:', JSON.stringify(finalData, null, 2));
+    throw new Error('Insert succeeded but no data returned from database');
+  }
+  
+  console.log('✅ Insert successful, returned data keys:', Object.keys(data));
   
   return convertSupabaseData([data], collection)[0];
 }

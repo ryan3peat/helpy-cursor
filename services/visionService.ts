@@ -34,6 +34,16 @@ const QWEN_MODEL = 'qwen-vl-plus'; // Using qwen-vl-plus as specified
 export async function extractTextFromImage(base64Image: string): Promise<string> {
   const apiKey = import.meta.env.VITE_ALIBABA_CLOUD_API_KEY;
   
+  // Debug: Log available env vars (only in dev, and only the key prefix for security)
+  if (import.meta.env.DEV) {
+    console.log('Environment check:', {
+      hasApiKey: !!apiKey,
+      apiKeyLength: apiKey?.length || 0,
+      apiKeyPrefix: apiKey ? `${apiKey.substring(0, 7)}...` : 'missing',
+      allViteEnvKeys: Object.keys(import.meta.env).filter(k => k.startsWith('VITE_')),
+    });
+  }
+  
   if (!apiKey) {
     throw new Error('Alibaba Cloud API key not configured. Please set VITE_ALIBABA_CLOUD_API_KEY in your environment variables.');
   }

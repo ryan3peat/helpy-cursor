@@ -244,6 +244,13 @@ export async function addItem(
         delete finalData.receipt_url;
       }
     }
+    
+    // Debug: Log receipt_url for expenses
+    console.log('[DB Save] Expense receipt_url being sent:', {
+      hasReceiptUrl: !!finalData.receipt_url,
+      receiptUrl: finalData.receipt_url,
+      receiptUrlType: typeof finalData.receipt_url,
+    });
   }
 
   console.log('🟡 Sending to Supabase:', finalData);
@@ -277,6 +284,16 @@ export async function addItem(
   }
   
   console.log('✅ Insert successful, returned data keys:', Object.keys(data));
+  
+  // Debug: Log receipt_url in response for expenses
+  if (collection === 'expenses' && data) {
+    console.log('[DB Response] Expense receipt_url returned from DB:', {
+      hasReceiptUrl: !!data.receipt_url,
+      receiptUrl: data.receipt_url,
+      receiptUrlType: typeof data.receipt_url,
+      allKeys: Object.keys(data),
+    });
+  }
   
   return convertSupabaseData([data], collection)[0];
 }
@@ -698,11 +715,24 @@ function convertSupabaseData(data: any[], collection?: string): DataItem[] {
     // The snake_case to camelCase conversion already handles receipt_url -> receiptUrl,
     // but we explicitly ensure it's set correctly
     if (collection === 'expenses') {
+      // Debug: Log conversion process
+      console.log('[Conversion] Converting expense:', {
+        expenseId: item.id,
+        hasReceiptUrl: !!item.receipt_url,
+        receiptUrl: item.receipt_url,
+        convertedHasReceiptUrl: !!converted.receiptUrl,
+        convertedReceiptUrl: converted.receiptUrl,
+        allItemKeys: Object.keys(item),
+        allConvertedKeys: Object.keys(converted),
+      });
+      
       if (item.receipt_url) {
         converted.receiptUrl = item.receipt_url;
+        console.log('[Conversion] Set receiptUrl from receipt_url:', converted.receiptUrl);
       } else {
         // Explicitly set to undefined if not present (not null, to match TypeScript type)
         converted.receiptUrl = undefined;
+        console.log('[Conversion] No receipt_url found, set receiptUrl to undefined');
       }
     }
     

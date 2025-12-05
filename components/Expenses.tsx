@@ -288,6 +288,16 @@ const Expenses: React.FC<ExpensesProps> = ({
   const amountInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    console.log('[Expenses Component] Expenses prop updated:', {
+      count: expenses.length,
+      expensesWithReceipts: expenses.filter(e => e.receiptUrl).length,
+      sampleExpense: expenses.length > 0 ? {
+        id: expenses[0].id,
+        merchant: expenses[0].merchant,
+        hasReceiptUrl: !!expenses[0].receiptUrl,
+        receiptUrl: expenses[0].receiptUrl,
+      } : null,
+    });
     setLocalExpenses([...expenses]);
   }, [expenses]);
 
@@ -836,9 +846,22 @@ const Expenses: React.FC<ExpensesProps> = ({
               {/* Right Side - Amount & Receipt Indicator */}
               <div className="flex flex-col items-end gap-1 flex-shrink-0">
                 <span className="text-title text-foreground">${expense.amount.toFixed(2)}</span>
-                {expense.receiptUrl && (
-                  <ReceiptText size={14} className="text-muted-foreground" />
-                )}
+                {(() => {
+                  // Debug: Log receipt check for each expense
+                  if (expense.id === filteredExpenses[0]?.id) {
+                    console.log('[UI Render] Checking receipt for expense:', {
+                      expenseId: expense.id,
+                      merchant: expense.merchant,
+                      hasReceiptUrl: !!expense.receiptUrl,
+                      receiptUrl: expense.receiptUrl,
+                      receiptUrlType: typeof expense.receiptUrl,
+                      willShowIcon: !!expense.receiptUrl,
+                    });
+                  }
+                  return expense.receiptUrl && (
+                    <ReceiptText size={14} className="text-muted-foreground" />
+                  );
+                })()}
               </div>
             </button>
                     );
@@ -1228,17 +1251,28 @@ const Expenses: React.FC<ExpensesProps> = ({
             <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 p-5 space-y-4">
               {/* Receipt Thumbnail */}
               <div className="rounded-xl overflow-hidden border border-border">
-                {selectedExpense.receiptUrl ? (
-                  <img
-                    src={selectedExpense.receiptUrl}
-                    alt="Receipt"
-                    className="w-full max-h-64 object-contain bg-secondary"
-                  />
-                ) : (
-                  <div className="w-full h-28 bg-secondary flex items-center justify-center text-muted-foreground">
-                    No receipt image
-                  </div>
-                )}
+                {(() => {
+                  // Debug: Log receipt check in detail view
+                  console.log('[UI Detail View] Checking receipt for selected expense:', {
+                    expenseId: selectedExpense.id,
+                    merchant: selectedExpense.merchant,
+                    hasReceiptUrl: !!selectedExpense.receiptUrl,
+                    receiptUrl: selectedExpense.receiptUrl,
+                    receiptUrlType: typeof selectedExpense.receiptUrl,
+                    willShowImage: !!selectedExpense.receiptUrl,
+                  });
+                  return selectedExpense.receiptUrl ? (
+                    <img
+                      src={selectedExpense.receiptUrl}
+                      alt="Receipt"
+                      className="w-full max-h-64 object-contain bg-secondary"
+                    />
+                  ) : (
+                    <div className="w-full h-28 bg-secondary flex items-center justify-center text-muted-foreground">
+                      No receipt image
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Amount - only show when not editing */}

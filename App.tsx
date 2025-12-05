@@ -212,7 +212,19 @@ const App: React.FC = () => {
     });
     const unsubTodoItems = subscribeToCollection(hid, 'todo_items', (data) => setTodoItems(data as ToDoItem[]));
     const unsubMeals = subscribeToCollection(hid, 'meals', (data) => setMeals(data as Meal[]));
-    const unsubExpenses = subscribeToCollection(hid, 'expenses', (data) => setExpenses(data as Expense[]));
+    const unsubExpenses = subscribeToCollection(hid, 'expenses', (data) => {
+      console.log('[Subscription] Expenses updated from subscription:', {
+        count: data.length,
+        expensesWithReceipts: data.filter((e: Expense) => e.receiptUrl).length,
+        sampleExpense: data.length > 0 ? {
+          id: data[0].id,
+          merchant: data[0].merchant,
+          hasReceiptUrl: !!data[0].receiptUrl,
+          receiptUrl: data[0].receiptUrl,
+        } : null,
+      });
+      setExpenses(data as Expense[]);
+    });
     const unsubNotes = subscribeToNotes(hid, (note) => setFamilyNotes(note));
     const unsubEssential = subscribeToEssentialInfo(hid, (data) => setEssentialItems(data));
     const unsubTraining = subscribeToTrainingModules(hid, (data) => setTrainingModules(data));

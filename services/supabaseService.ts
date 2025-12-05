@@ -235,6 +235,13 @@ export async function addItem(
     ...snakeCaseItem,
     household_id: householdId
   };
+
+  // For users, treat missing/blank email as null to avoid unique conflicts
+  if (collection === 'users') {
+    if (finalData.email === '' || finalData.email === undefined) {
+      finalData.email = null;
+    }
+  }
   
   // Remove id if undefined or not a valid UUID (let Supabase generate it)
   // Temp IDs look like "temp-1234567890", "todo-1234567890", or plain timestamps like "1733139999999"

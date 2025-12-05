@@ -359,7 +359,6 @@ const Profile: React.FC<ProfileProps> = ({
       if (roleToAdd === UserRole.CHILD) {
         const newUser: Omit<User, 'id'> = {
           householdId: currentUser.householdId,
-          email: '',
           name: nameToAdd,
           role: roleToAdd,
           avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(nameToAdd)}`,

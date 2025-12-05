@@ -1,98 +1,111 @@
 // services/visionService.ts
-// Handles Google Cloud Vision API calls for receipt OCR
+// Handles Alibaba Cloud Qwen-VL API calls for receipt OCR
 
-interface VisionTextAnnotation {
-    description: string;
-    boundingPoly: {
-      vertices: Array<{ x: number; y: number }>;
-    };
-  }
-  
-  interface VisionResponse {
-    responses: Array<{
-      textAnnotations?: VisionTextAnnotation[];
-      fullTextAnnotation?: {
-        text: string;
-      };
-      error?: {
-        code: number;
-        message: string;
+interface QwenVLResponse {
+  output?: {
+    choices?: Array<{
+      message?: {
+        content?: string;
       };
     }>;
+  };
+  code?: string;
+  message?: string;
+  request_id?: string;
+}
+
+export interface ParsedReceipt {
+  rawText: string;
+  total: number;
+  merchant: string;
+  date: string;
+  category: string;
+  confidence: number;
+  lineItems: Array<{ name: string; price: number }>;
+}
+
+const DASHSCOPE_API_URL = 'https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation';
+const QWEN_MODEL = 'qwen-vl-plus'; // Using qwen-vl-plus as specified
+
+/**
+ * Send image to Alibaba Cloud Qwen-VL API for OCR
+ * Why: Extracts text from receipt images with high accuracy using Qwen-VL model
+ */
+export async function extractTextFromImage(base64Image: string): Promise<string> {
+  const apiKey = import.meta.env.VITE_ALIBABA_CLOUD_API_KEY;
+  
+  if (!apiKey) {
+    throw new Error('Alibaba Cloud API key not configured. Please set VITE_ALIBABA_CLOUD_API_KEY in your environment variables.');
   }
   
-  export interface ParsedReceipt {
-    rawText: string;
-    total: number;
-    merchant: string;
-    date: string;
-    category: string;
-    confidence: number;
-    lineItems: Array<{ name: string; price: number }>;
-  }
+  // Qwen-VL expects base64 image in data URI format
+  const imageDataUri = `data:image/jpeg;base64,${base64Image}`;
   
-  const VISION_API_URL = 'https://vision.googleapis.com/v1/images:annotate';
-  
-  /**
-   * Send image to Google Cloud Vision API for OCR
-   * Why: Extracts text from receipt images with high accuracy
-   */
-  export async function extractTextFromImage(base64Image: string): Promise<string> {
-    const apiKey = import.meta.env.VITE_GOOGLE_CLOUD_VISION_API_KEY;
-    
-    if (!apiKey) {
-      throw new Error('Google Cloud Vision API key not configured');
-    }
-  
-    const requestBody = {
-      requests: [
+  const requestBody = {
+    model: QWEN_MODEL,
+    input: {
+      messages: [
         {
-          image: {
-            content: base64Image, // Base64 without data URI prefix
-          },
-          features: [
+          role: 'user',
+          content: [
             {
-              type: 'TEXT_DETECTION',
-              maxResults: 1,
+              image: imageDataUri,
+            },
+            {
+              text: 'Extract all text from this receipt image. Return only the raw text content exactly as it appears, preserving line breaks and formatting.',
             },
           ],
         },
       ],
-    };
+    },
+    parameters: {
+      temperature: 0.1, // Low temperature for more deterministic OCR results
+    },
+  };
   
-    const response = await fetch(`${VISION_API_URL}?key=${apiKey}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(requestBody),
-    });
+  const response = await fetch(DASHSCOPE_API_URL, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(requestBody),
+  });
   
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Vision API error: ${response.status} - ${errorText}`);
-    }
-  
-    const data: VisionResponse = await response.json();
-  
-    // Check for API-level errors
-    if (data.responses[0]?.error) {
-      throw new Error(`Vision API: ${data.responses[0].error.message}`);
-    }
-  
-    // Get full text
-    const fullText = data.responses[0]?.fullTextAnnotation?.text || '';
+  if (!response.ok) {
+    const errorText = await response.text();
+    let errorMessage = `Qwen-VL API error: ${response.status}`;
     
-    if (!fullText) {
-      throw new Error('No text detected in image');
+    try {
+      const errorData = JSON.parse(errorText);
+      errorMessage = errorData.message || errorData.error?.message || errorMessage;
+    } catch {
+      errorMessage = `${errorMessage} - ${errorText}`;
     }
-  
-    return fullText;
+    
+    throw new Error(errorMessage);
   }
+  
+  const data: QwenVLResponse = await response.json();
+  
+  // Check for API-level errors
+  if (data.code && data.code !== 'Success') {
+    throw new Error(`Qwen-VL API error: ${data.message || data.code}`);
+  }
+  
+  // Extract text from response
+  const fullText = data.output?.choices?.[0]?.message?.content || '';
+  
+  if (!fullText) {
+    throw new Error('No text detected in image. The Qwen-VL model did not return any text content.');
+  }
+  
+  return fullText;
+}
   
   /**
    * Parse raw OCR text into structured receipt data
-   * Why: Vision API returns raw text, we need structured data for the expense
+   * Why: OCR API returns raw text, we need structured data for the expense
    */
   export function parseReceiptText(rawText: string): ParsedReceipt {
     const lines = rawText.split('\n').map(l => l.trim()).filter(Boolean);

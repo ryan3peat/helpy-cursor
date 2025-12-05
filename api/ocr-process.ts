@@ -3,7 +3,8 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
-const DASHSCOPE_API_URL = 'https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation';
+// Use international endpoint for international edition accounts
+const DASHSCOPE_API_URL = 'https://dashscope-intl.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation';
 const QWEN_MODEL = 'qwen-vl-plus';
 
 interface QwenVLRequest {
@@ -42,11 +43,18 @@ export default async function handler(
   }
 
   try {
-    const apiKey = process.env.ALIBABA_CLOUD_API_KEY;
+    const apiKey = process.env.ALIBABA_CLOUD_API_KEY?.trim();
     
     if (!apiKey) {
       return res.status(500).json({ 
         error: 'Alibaba Cloud API key not configured on server' 
+      });
+    }
+
+    // Validate API key format (should start with 'sk-')
+    if (!apiKey.startsWith('sk-')) {
+      return res.status(500).json({ 
+        error: 'Invalid API key format. Alibaba Cloud API keys should start with "sk-"' 
       });
     }
 
@@ -97,6 +105,13 @@ export default async function handler(
       try {
         const errorData = JSON.parse(errorText);
         errorMessage = errorData.message || errorData.error?.message || errorMessage;
+        
+        // Provide more helpful error messages for common issues
+        if (response.status === 401) {
+          if (errorMessage.includes('Invalid API-key') || errorMessage.includes('invalid') || errorMessage.includes('unauthorized')) {
+            errorMessage = 'Invalid API key. Please verify your Alibaba Cloud API key is correct and has access to DashScope services.';
+          }
+        }
       } catch {
         errorMessage = `${errorMessage} - ${errorText}`;
       }

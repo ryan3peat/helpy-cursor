@@ -244,8 +244,9 @@ const Expenses: React.FC<ExpensesProps> = ({
 
   // Month/Year Selection State
   const now = new Date();
-  const [selectedMonth, setSelectedMonth] = useState<number | null>(null); // null = all months
-  const [selectedYear, setSelectedYear] = useState<number | null>(null);
+  // Default to December of the current year
+  const [selectedMonth, setSelectedMonth] = useState<number | null>(11); // 0-indexed, 11 = December
+  const [selectedYear, setSelectedYear] = useState<number | null>(now.getFullYear());
   const [isMonthPickerOpen, setIsMonthPickerOpen] = useState(false);
   const [pickerYear, setPickerYear] = useState(now.getFullYear()); // Year shown in picker
 

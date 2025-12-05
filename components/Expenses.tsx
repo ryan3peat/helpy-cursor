@@ -244,8 +244,8 @@ const Expenses: React.FC<ExpensesProps> = ({
 
   // Month/Year Selection State
   const now = new Date();
-  const [selectedMonth, setSelectedMonth] = useState(now.getMonth()); // 0-11
-  const [selectedYear, setSelectedYear] = useState(now.getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState<number | null>(null); // null = all months
+  const [selectedYear, setSelectedYear] = useState<number | null>(null);
   const [isMonthPickerOpen, setIsMonthPickerOpen] = useState(false);
   const [pickerYear, setPickerYear] = useState(now.getFullYear()); // Year shown in picker
 
@@ -331,6 +331,10 @@ const Expenses: React.FC<ExpensesProps> = ({
   // Filter expenses by selected month/year
   // Handle multiple date formats: YYYY-MM-DD, DD-MM-YYYY, MM/DD/YYYY, etc.
   const filteredExpenses = useMemo(() => {
+    // When no month/year is selected, show all expenses (fixes missing receipts when out of current month)
+    if (selectedMonth === null || selectedYear === null) {
+      return localExpenses;
+    }
     return localExpenses.filter((expense) => {
       if (!expense.date || typeof expense.date !== 'string') {
         console.warn('[Expenses] Invalid date for expense:', expense.id, expense.date);
@@ -396,7 +400,10 @@ const Expenses: React.FC<ExpensesProps> = ({
   const MONTH_NAMES_FULL = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
   // Format selected month for display
-  const selectedMonthLabel = `${MONTH_NAMES_FULL[selectedMonth]} ${selectedYear}`;
+  const isAllTime = selectedMonth === null || selectedYear === null;
+  const selectedMonthLabel = isAllTime
+    ? 'All Expenses'
+    : `${MONTH_NAMES_FULL[selectedMonth]} ${selectedYear}`;
 
   // ─────────────────────────────────────────────────────────────────
   // Open Add Expense Sheet
@@ -713,13 +720,13 @@ const Expenses: React.FC<ExpensesProps> = ({
             {/* Month Selector Button */}
           <button
               onClick={() => {
-                setPickerYear(selectedYear);
+                setPickerYear(selectedYear ?? now.getFullYear());
                 setIsMonthPickerOpen(true);
               }}
               className="flex items-center gap-1.5 px-3 py-2 rounded-full bg-secondary text-foreground text-body hover:bg-secondary/80 transition-colors"
             >
               <Calendar size={16} />
-              <span>{MONTH_NAMES[selectedMonth]} {selectedYear}</span>
+              <span>{isAllTime ? 'All Expenses' : `${MONTH_NAMES[selectedMonth]} ${selectedYear}`}</span>
               <ChevronDown size={16} />
           </button>
           </div>
@@ -728,7 +735,9 @@ const Expenses: React.FC<ExpensesProps> = ({
         {/* Summary Card */}
         <div className="mt-4 mb-6">
           <div className="bg-primary text-primary-foreground p-6 rounded-xl shadow-md">
-            <p className="text-body opacity-80 mb-1">Total for {MONTH_NAMES_FULL[selectedMonth]}</p>
+            <p className="text-body opacity-80 mb-1">
+              {isAllTime ? 'Total for all expenses' : `Total for ${MONTH_NAMES_FULL[selectedMonth]}`}
+            </p>
             <h2 className="text-display">${totalAmount.toFixed(2)}</h2>
           </div>
         </div>
@@ -832,11 +841,15 @@ const Expenses: React.FC<ExpensesProps> = ({
                         </Pie>
                       </PieChart>
                     </ResponsiveContainer>
-                    {/* Center Label - Month/Year */}
+                    {/* Center Label - Month/Year or All */}
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                       <div className="text-center">
-                        <p className="text-title text-foreground font-semibold">{MONTH_NAMES[selectedMonth]}</p>
-                        <p className="text-caption text-muted-foreground">{selectedYear}</p>
+                        <p className="text-title text-foreground font-semibold">
+                          {isAllTime ? 'All' : MONTH_NAMES[selectedMonth]}
+                        </p>
+                        {!isAllTime && (
+                          <p className="text-caption text-muted-foreground">{selectedYear}</p>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -894,7 +907,9 @@ const Expenses: React.FC<ExpensesProps> = ({
                   <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-secondary flex items-center justify-center">
                     <Receipt size={28} className="text-muted-foreground" />
                   </div>
-                  <p className="text-body text-foreground">No expenses in {MONTH_NAMES_FULL[selectedMonth]}</p>
+                      <p className="text-body text-foreground">
+                        {isAllTime ? 'No expenses yet' : `No expenses in ${MONTH_NAMES_FULL[selectedMonth]}`}
+                      </p>
                   <p className="text-caption text-muted-foreground mt-1">
                     Tap + to add your first expense
                   </p>
@@ -1595,6 +1610,16 @@ const Expenses: React.FC<ExpensesProps> = ({
                 className="w-full py-3.5 rounded-xl bg-secondary text-foreground text-body hover:bg-secondary/80 transition-colors"
               >
                 Go to Current Month
+              </button>
+              <button
+                onClick={() => {
+                  setSelectedMonth(null);
+                  setSelectedYear(null);
+                  setIsMonthPickerOpen(false);
+                }}
+                className="w-full mt-3 py-3.5 rounded-xl bg-card text-foreground text-body border border-border hover:bg-secondary/60 transition-colors"
+              >
+                Show All Expenses
               </button>
             </div>
           </div>

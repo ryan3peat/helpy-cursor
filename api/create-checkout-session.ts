@@ -34,9 +34,31 @@ export default async function handler(req: any, res: any) {
     // Get or create Stripe customer
     const { data: household } = await supabase
       .from('households')
-      .select('stripe_customer_id, name')
+      .select('stripe_customer_id, stripe_subscription_id, subscription_status, name')
       .eq('id', householdId)
       .single();
+
+    // Prevent duplicate subscriptions - check if there's already an active subscription
+    if (household?.stripe_subscription_id && household?.subscription_status === 'active') {
+      // Check if the subscription still exists in Stripe
+      try {
+        const existingSubscription = await stripe.subscriptions.retrieve(
+          household.stripe_subscription_id
+        );
+        
+        // If subscription exists and is active or trialing, prevent creating a new one
+        if (existingSubscription.status === 'active' || existingSubscription.status === 'trialing') {
+          return res.status(400).json({ 
+            error: 'You already have an active subscription. Please manage your existing subscription instead.' 
+          });
+        }
+      } catch (error: any) {
+        // If subscription doesn't exist in Stripe, it's safe to create a new one
+        if (error.code !== 'resource_missing') {
+          console.error('Error checking existing subscription:', error);
+        }
+      }
+    }
 
     let customerId = household?.stripe_customer_id;
 

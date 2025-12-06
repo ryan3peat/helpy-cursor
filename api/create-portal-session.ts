@@ -29,9 +29,12 @@ export default async function handler(req: any, res: any) {
       return res.status(400).json({ error: 'No subscription found' });
     }
 
+    const APP_URL = process.env.NEXT_PUBLIC_APP_URL || process.env.VITE_APP_URL || 'https://helpyfam.com';
+    // For client-side routing, return to base URL with query parameter
+    // The app will handle portal_return and navigate to profile view
     const portalSession = await stripe.billingPortal.sessions.create({
       customer: household.stripe_customer_id,
-      return_url: `${process.env.NEXT_PUBLIC_APP_URL}/profile`,
+      return_url: `${APP_URL}?portal_return=true`,
     });
 
     return res.status(200).json({ url: portalSession.url });

@@ -83,6 +83,7 @@ const Profile: React.FC<ProfileProps> = ({
   const [isFinalDeleteConfirmOpen, setIsFinalDeleteConfirmOpen] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [subscriptionSuccess, setSubscriptionSuccess] = useState(false);
+  const [subscriptionCanceled, setSubscriptionCanceled] = useState(false);
 
   // Push Notification State
   const [isTogglingNotifications, setIsTogglingNotifications] = useState(false);
@@ -98,7 +99,7 @@ const Profile: React.FC<ProfileProps> = ({
   }, []);
 
   // Lock scroll when any modal is open
-  useScrollLock(isAddModalOpen || isEditModalOpen || deleteConfirmOpen || showPhotoOptions);
+  useScrollLock(isAddModalOpen || isEditModalOpen || deleteConfirmOpen || showPhotoOptions || subscriptionCanceled);
 
   // Fetch subscription info
   const fetchSubscriptionInfo = React.useCallback(async (retryCount = 0) => {
@@ -147,6 +148,36 @@ const Profile: React.FC<ProfileProps> = ({
     const hashParams = new URLSearchParams(window.location.hash.split('?')[1] || '');
     const sessionId = urlParams.get('session_id') || hashParams.get('session_id');
     const success = urlParams.get('success') || hashParams.get('success');
+    const portalReturn = urlParams.get('portal_return') || hashParams.get('portal_return');
+
+    // If we just returned from Stripe portal, check if subscription was canceled
+    if (portalReturn === 'true') {
+      // Navigate to subscription page
+      setActiveSection('settings');
+      setTimeout(() => setActiveSection('plan'), 100);
+
+      // Clear URL parameters
+      const newUrl = window.location.pathname + (window.location.hash.split('?')[0] || '');
+      window.history.replaceState({}, document.title, newUrl);
+
+      // Check subscription status after a short delay (webhook might need time)
+      setTimeout(async () => {
+        // Fetch subscription info and check if it's no longer active
+        const { data } = await supabase
+          .from('households')
+          .select('subscription_status')
+          .eq('id', currentUser.householdId)
+          .single();
+        
+        if (data && data.subscription_status !== 'active') {
+          // Subscription was canceled or is no longer active
+          setSubscriptionCanceled(true);
+        }
+        
+        // Also refresh the full subscription info
+        fetchSubscriptionInfo();
+      }, 2000);
+    }
 
     // If we just returned from Stripe checkout
     if (sessionId || success === 'true') {
@@ -1848,6 +1879,67 @@ const Profile: React.FC<ProfileProps> = ({
                   className="flex-1 py-3.5 rounded-xl bg-destructive text-destructive-foreground text-body hover:bg-destructive/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isDeletingAccount ? 'Deleting...' : 'Delete Account'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Subscription Cancellation Confirmation Modal */}
+        {subscriptionCanceled && (
+          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
+            {/* Safe area bottom cover */}
+            <div 
+              className="absolute bottom-0 left-0 right-0 bg-card"
+              style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
+            />
+            <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
+              {/* Header */}
+              <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
+                <div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto mb-4" />
+                <h2 className="text-title text-foreground text-center">Subscription Canceled</h2>
+              </div>
+
+              {/* Content */}
+              <div className="p-5">
+                <div className="mb-4 flex justify-center">
+                  <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
+                    <CheckCircle size={32} className="text-primary" />
+                  </div>
+                </div>
+                <p className="text-body text-foreground text-center mb-4">
+                  Your subscription has been successfully canceled.
+                </p>
+                <div className="p-4 bg-muted rounded-xl border border-border">
+                  <p className="text-caption text-muted-foreground mb-2">What happens next?</p>
+                  <ul className="text-body text-foreground space-y-2">
+                    <li className="flex items-start gap-2">
+                      <span className="text-primary mt-1">•</span>
+                      <span>You'll continue to have access to premium features until the end of your current billing period.</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-primary mt-1">•</span>
+                      <span>After that, your account will automatically revert to the free plan.</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-primary mt-1">•</span>
+                      <span>You can resubscribe at any time from your profile settings.</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="p-5 pb-8 border-t border-border shrink-0">
+                <button
+                  onClick={() => {
+                    setSubscriptionCanceled(false);
+                    // Refresh subscription info
+                    fetchSubscriptionInfo();
+                  }}
+                  className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground text-body hover:bg-primary/90 transition-colors font-semibold"
+                >
+                  Got it
                 </button>
               </div>
             </div>

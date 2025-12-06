@@ -10,6 +10,11 @@ if (!clerkPubKey) {
   throw new Error('Missing Clerk Publishable Key');
 }
 
+// Debug logging for Clerk initialization
+console.log('🔵 [Clerk] Initializing with key:', clerkPubKey ? `${clerkPubKey.substring(0, 15)}...` : 'MISSING');
+console.log('🔵 [Clerk] Environment:', import.meta.env.MODE);
+console.log('🔵 [Clerk] Hostname:', typeof window !== 'undefined' ? window.location.hostname : 'server');
+
 const rootElement = document.getElementById('root');
 if (!rootElement) {
   throw new Error('Could not find root element');
@@ -21,11 +26,19 @@ const getProductionUrl = () => {
 };
 
 const root = ReactDOM.createRoot(rootElement);
+
+// Only use custom domain in production
+const isProduction = typeof window !== 'undefined' && 
+  (window.location.hostname === 'helpyfam.com' || 
+   window.location.hostname === 'www.helpyfam.com');
+
 root.render(
   <React.StrictMode>
     <ClerkProvider 
       publishableKey={clerkPubKey}
-      domain={typeof window !== 'undefined' && window.location.hostname.includes('helpyfam.com') ? 'helpyfam.com' : undefined}
+      domain={isProduction ? 'helpyfam.com' : undefined}
+      afterSignInUrl={typeof window !== 'undefined' ? window.location.origin : undefined}
+      afterSignUpUrl={typeof window !== 'undefined' ? window.location.origin : undefined}
     >
       <App />
     </ClerkProvider>

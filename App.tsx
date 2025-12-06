@@ -55,6 +55,32 @@ const App: React.FC = () => {
   const { user: clerkUser, isSignedIn, isLoaded: clerkLoaded } = useUser();
   const [showIntro, setShowIntro] = useState(true);
   const [activeView, setActiveView] = useState('dashboard');
+  const [clerkLoadTimeout, setClerkLoadTimeout] = useState(false);
+  const [clerkError, setClerkError] = useState<string | null>(null);
+
+  // Add timeout fallback if Clerk takes too long to load (10 seconds)
+  useEffect(() => {
+    if (!clerkLoaded) {
+      const timeout = setTimeout(() => {
+        console.error('⚠️ [App] Clerk loading timeout - taking longer than 10 seconds');
+        console.error('⚠️ [App] Checking for network errors...');
+        
+        // Check if we can reach Clerk's API
+        fetch('https://api.clerk.dev/v1/health', { method: 'HEAD' })
+          .then(() => console.log('✅ [App] Can reach Clerk API'))
+          .catch((err) => {
+            console.error('❌ [App] Cannot reach Clerk API:', err);
+            setClerkError('Network error: Cannot connect to Clerk servers. Check your internet connection.');
+          });
+        
+        setClerkLoadTimeout(true);
+      }, 10000);
+      return () => clearTimeout(timeout);
+    } else {
+      setClerkLoadTimeout(false);
+      setClerkError(null);
+    }
+  }, [clerkLoaded]);
 
   // Localization State
   const [lang, setLang] = useState<string>(() => localStorage.getItem('helpy_lang') ?? 'en');
@@ -82,17 +108,25 @@ const App: React.FC = () => {
     localStorage.setItem('helpy_onboarding_step', String(onboardingStep));
   }, [onboardingStep]);
 
-  // Check for invite params on mount
+  // Check for invite params and portal return on mount
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const hashParams = new URLSearchParams(window.location.hash.split('?')[1]);
     const inviteFlag = urlParams.get('invite') || hashParams.get('invite');
     const hid = urlParams.get('hid') || hashParams.get('hid');
     const uid = urlParams.get('uid') || hashParams.get('uid');
+    const portalReturn = urlParams.get('portal_return') || hashParams.get('portal_return');
+    
     if (inviteFlag === 'true' && hid && uid) {
       setInviteParams({ hid, uid });
     }
-  }, []);
+    
+    // If returning from Stripe portal, navigate to profile view
+    // Profile component will handle the portal_return parameter and cancellation detection
+    if (portalReturn === 'true' && currentUser) {
+      setActiveView('profile');
+    }
+  }, [currentUser]);
 
   const handleLogin = useCallback((user: User) => {
     console.log('🔵 [App] handleLogin called with user:', user);
@@ -591,6 +625,55 @@ const App: React.FC = () => {
   // Don't make routing decisions until Clerk has finished loading
   if (!clerkLoaded) {
     console.log('🟣 [App] Clerk not loaded yet, showing loading state');
+    console.log('🟣 [App] Clerk state details:', { 
+      clerkLoaded, 
+      isSignedIn, 
+      hasClerkUser: !!clerkUser,
+      clerkUserId: clerkUser?.id 
+    });
+    
+    // If timeout occurred, show error message
+    if (clerkLoadTimeout) {
+      return (
+        <div className="min-h-screen flex flex-col justify-center items-center p-4" style={{ backgroundColor: '#3EAFD2' }}>
+          <div className="text-white text-center max-w-md">
+            <p className="text-lg font-bold mb-2">Clerk Loading Timeout</p>
+            {clerkError && (
+              <p className="text-sm mb-4 text-red-200">{clerkError}</p>
+            )}
+            <p className="text-sm mb-4">Clerk is taking longer than expected to initialize.</p>
+            <p className="text-xs text-white/80 mb-4">Please check:</p>
+            <ul className="text-xs text-white/80 text-left list-disc list-inside mb-4 space-y-1">
+              <li>Browser console for errors (F12 → Console tab)</li>
+              <li>Network tab (F12 → Network) - look for failed requests to clerk.accounts.dev</li>
+              <li>That your Clerk publishable key is correct in .env.local</li>
+              <li>That you're using test keys (pk_test_...) for local development</li>
+              <li>Firewall/antivirus blocking Clerk API requests</li>
+            </ul>
+            <div className="flex gap-2 justify-center">
+              <button 
+                onClick={() => window.location.reload()} 
+                className="px-4 py-2 bg-white text-[#3EAFD2] rounded font-semibold hover:bg-gray-100"
+              >
+                Reload Page
+              </button>
+              <button 
+                onClick={() => {
+                  console.log('🔍 [Debug] Clerk Key:', import.meta.env.VITE_CLERK_PUBLISHABLE_KEY ? 'Present' : 'MISSING');
+                  console.log('🔍 [Debug] Key preview:', import.meta.env.VITE_CLERK_PUBLISHABLE_KEY?.substring(0, 20));
+                  console.log('🔍 [Debug] Hostname:', window.location.hostname);
+                  console.log('🔍 [Debug] Full URL:', window.location.href);
+                }} 
+                className="px-4 py-2 bg-white/20 text-white rounded font-semibold hover:bg-white/30"
+              >
+                Debug Info
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    
     return (
       <div className="min-h-screen flex flex-col justify-end pb-24" style={{ backgroundColor: '#3EAFD2' }}>
         <div className="text-white text-center">

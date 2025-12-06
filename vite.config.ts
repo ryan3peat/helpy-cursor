@@ -18,7 +18,9 @@ export default defineConfig({
     proxy: {
       // ✅ Proxy API calls to Vercel local server
       '/api': {
-        target: 'http://localhost:5173', // Vercel dev server
+        // Use Vercel dev (serverless) port instead of the Vite port to avoid self-proxy loops
+        // that return 500s (e.g., Stripe webhooks hitting /api/stripe-webhook).
+        target: process.env.VITE_API_PROXY_TARGET || 'http://localhost:3000',
         changeOrigin: true,
       },
     },

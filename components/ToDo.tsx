@@ -42,11 +42,11 @@ interface ToDoProps extends BaseViewProps {
 const SHOPPING_CATEGORIES = Object.values(ShoppingCategory);
 const TASK_CATEGORIES = Object.values(TaskCategory);
 
-const RECURRENCE_OPTIONS: { value: RecurrenceFrequency; label: string }[] = [
-  { value: 'NONE', label: 'Does not repeat' },
-  { value: 'DAILY', label: 'Daily' },
-  { value: 'WEEKLY', label: 'Weekly' },
-  { value: 'MONTHLY', label: 'Monthly' },
+const RECURRENCE_OPTIONS: { value: RecurrenceFrequency; labelKey: string }[] = [
+  { value: 'NONE', labelKey: 'tasks.recurrence' },
+  { value: 'DAILY', labelKey: 'tasks.daily' },
+  { value: 'WEEKLY', labelKey: 'tasks.weekly' },
+  { value: 'MONTHLY', labelKey: 'tasks.monthly' },
 ];
 
 // Sort options - Shopping only has Added Date (no due dates)
@@ -743,22 +743,33 @@ const ToDo: React.FC<ToDoProps> = ({
                 <div className="absolute right-0 top-full mt-2 w-56 bg-card rounded-xl shadow-lg overflow-hidden z-50">
                   {/* Sort Section */}
                   <div className="p-3 pb-2">
-                    <p className="text-caption text-muted-foreground tracking-wide mb-2">Sort by</p>
+                    <p className="text-caption text-muted-foreground tracking-wide mb-2">{t['common.sort_by']}</p>
                     <div className="space-y-1">
-                      {(activeSection === 'shopping' ? SHOPPING_SORT_OPTIONS : TASK_SORT_OPTIONS).map(option => (
-                        <button
-                          key={option.value}
-                          onClick={() => setSortBy(option.value as SortOption)}
-                          className={`w-full text-left px-3 py-2 rounded-lg text-body transition-colors flex items-center justify-between ${
-                            sortBy === option.value
-                              ? 'bg-primary/10 text-primary'
-                              : 'text-foreground hover:bg-muted'
-                          }`}
-                        >
-                          {option.label}
-                          {sortBy === option.value && <Check size={16} />}
-                        </button>
-                      ))}
+                      {(activeSection === 'shopping' ? SHOPPING_SORT_OPTIONS : TASK_SORT_OPTIONS).map(option => {
+                        const getSortLabel = (value: SortOption) => {
+                          switch (value) {
+                            case 'addedDate-desc': return t['common.added_date_newest'];
+                            case 'addedDate-asc': return t['common.added_date_oldest'];
+                            case 'dueDate-desc': return t['common.due_date_newest'];
+                            case 'dueDate-asc': return t['common.due_date_oldest'];
+                            default: return option.label;
+                          }
+                        };
+                        return (
+                          <button
+                            key={option.value}
+                            onClick={() => setSortBy(option.value as SortOption)}
+                            className={`w-full text-left px-3 py-2 rounded-lg text-body transition-colors flex items-center justify-between ${
+                              sortBy === option.value
+                                ? 'bg-primary/10 text-primary'
+                                : 'text-foreground hover:bg-muted'
+                            }`}
+                          >
+                            {getSortLabel(option.value)}
+                            {sortBy === option.value && <Check size={16} />}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                   
@@ -767,7 +778,7 @@ const ToDo: React.FC<ToDoProps> = ({
                   
                   {/* Filter Section */}
                   <div className="p-3 pt-2">
-                    <p className="text-caption text-muted-foreground tracking-wide mb-2">Show</p>
+                    <p className="text-caption text-muted-foreground tracking-wide mb-2">{t['common.show']}</p>
                     <button
                       onClick={() => setShowOnlyMine(!showOnlyMine)}
                       className={`w-full text-left px-3 py-2 rounded-lg text-body transition-colors flex items-center justify-between ${
@@ -778,7 +789,7 @@ const ToDo: React.FC<ToDoProps> = ({
                     >
                       <span className="flex items-center gap-2">
                         <UserIcon size={16} />
-                        My Items Only
+                        {t['common.my_items_only']}
                       </span>
                       <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
                         showOnlyMine ? 'bg-primary border-primary' : 'border-muted-foreground/30'
@@ -800,7 +811,7 @@ const ToDo: React.FC<ToDoProps> = ({
                           }}
                           className="w-full px-3 py-2 rounded-lg text-body text-muted-foreground hover:bg-muted transition-colors text-center"
                         >
-                          Reset to Default
+                          {t['common.reset_to_default']}
                         </button>
                       </div>
                     </>
@@ -828,7 +839,7 @@ const ToDo: React.FC<ToDoProps> = ({
                 <span className="text-title">{t['todo.shopping'] || 'Shopping'}</span>
               </div>
               <div className={`text-caption mt-1 ml-6 ${activeSection === 'shopping' ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
-                {shoppingStats.total} items to buy
+                {shoppingStats.total} {t['dashboard.items_to_buy'] || 'items to buy'}
               </div>
             </button>
 
@@ -846,7 +857,7 @@ const ToDo: React.FC<ToDoProps> = ({
                 <span className="text-title">{t['todo.tasks'] || 'Tasks'}</span>
               </div>
               <div className={`text-caption mt-1 ml-6 ${activeSection === 'task' ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
-                {taskStats.total} pending
+                {taskStats.total} {t['dashboard.pending'] || 'pending'}
               </div>
             </button>
           </div>
@@ -875,20 +886,34 @@ const ToDo: React.FC<ToDoProps> = ({
               >
                 All ({getItemCount('All')})
               </button>
-              {categories.map(cat => (
-                <button
-                  key={cat}
-                  onClick={() => setSelectedCategory(cat)}
-                  className={`px-4 py-2 rounded-full text-body whitespace-nowrap transition-all flex items-center gap-1.5 ${
-                    selectedCategory === cat
-                      ? 'bg-card text-primary shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  {categoryIcons[cat]}
-                  {cat}
-                </button>
-              ))}
+              {categories.map(cat => {
+                const getCategoryLabel = (category: string) => {
+                  if (activeSection === 'shopping') {
+                    if (category === ShoppingCategory.SUPERMARKET) return t['todo.category.supermarket'] || t['category.supermarket'] || category;
+                    if (category === ShoppingCategory.WET_MARKET) return t['todo.category.wet_market'] || t['category.wet_market'] || category;
+                    if (category === ShoppingCategory.OTHERS) return t['todo.category.others'] || t['category.others'] || category;
+                  } else {
+                    if (category === TaskCategory.HOME_CARE) return t['todo.category.home_care'] || category;
+                    if (category === TaskCategory.FAMILY_CARE) return t['todo.category.family_care'] || category;
+                    if (category === TaskCategory.OTHERS) return t['todo.category.others'] || category;
+                  }
+                  return category;
+                };
+                return (
+                  <button
+                    key={cat}
+                    onClick={() => setSelectedCategory(cat)}
+                    className={`px-4 py-2 rounded-full text-body whitespace-nowrap transition-all flex items-center gap-1.5 ${
+                      selectedCategory === cat
+                        ? 'bg-card text-primary shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    {categoryIcons[cat]}
+                    {getCategoryLabel(cat)}
+                  </button>
+                );
+              })}
             </div>
             <div 
               className="absolute inset-0 rounded-full pointer-events-none"
@@ -1199,13 +1224,13 @@ const ToDo: React.FC<ToDoProps> = ({
               {/* Name Input */}
               <div>
                 <label className="block text-caption text-muted-foreground tracking-wide mb-2">
-                  {activeSection === 'shopping' ? 'Item Name' : 'Task Name'}
+                  {activeSection === 'shopping' ? t['common.item_name'] : t['common.task_name']}
                 </label>
                 <input
                   type="text"
                   value={sheetForm.name || ''}
                   onChange={e => setSheetForm(prev => ({ ...prev, name: e.target.value }))}
-                  placeholder={activeSection === 'shopping' ? 'e.g., Milk' : 'e.g., Clean bathroom'}
+                  placeholder={activeSection === 'shopping' ? t['common.eg_milk'] : t['common.eg_clean_bathroom']}
                   className="w-full px-4 py-3 bg-muted rounded-xl text-body text-foreground placeholder-muted-foreground outline-none border border-transparent focus:border-primary transition-colors"
                   autoFocus={!editingItemId}
                 />
@@ -1216,7 +1241,7 @@ const ToDo: React.FC<ToDoProps> = ({
                 <div className="flex gap-3">
                   <div className="w-24">
                     <label className="block text-caption text-muted-foreground tracking-wide mb-2">
-                      Qty
+                      {t['common.qty']}
                     </label>
                     <input
                       type="text"
@@ -1228,19 +1253,19 @@ const ToDo: React.FC<ToDoProps> = ({
                         setSheetForm(prev => ({ ...prev, quantity: value }));
                       }}
                       onFocus={e => e.target.select()}
-                      placeholder="Qty"
+                      placeholder={t['common.qty']}
                       className="w-full px-4 py-3 bg-muted rounded-xl text-body text-foreground text-center outline-none border border-transparent focus:border-primary transition-colors placeholder:text-muted-foreground"
                     />
                   </div>
                   <div className="flex-1">
                     <label className="block text-caption text-muted-foreground tracking-wide mb-2">
-                      Unit
+                      {t['common.unit']}
                     </label>
                     <input
                       type="text"
                       value={sheetForm.unit || ''}
                       onChange={e => setSheetForm(prev => ({ ...prev, unit: e.target.value }))}
-                      placeholder="pcs, kg, L..."
+                      placeholder={t['common.unit_placeholder']}
                       className="w-full px-4 py-3 bg-muted rounded-xl text-body text-foreground placeholder-muted-foreground outline-none border border-transparent focus:border-primary transition-colors"
                     />
                   </div>
@@ -1312,7 +1337,7 @@ const ToDo: React.FC<ToDoProps> = ({
                     >
                       {RECURRENCE_OPTIONS.map(opt => (
                         <option key={opt.value} value={opt.value}>
-                          {opt.label}
+                          {t[opt.labelKey] || opt.value}
                           {opt.value === 'WEEKLY' && sheetForm.dueDate && 
                             ` (${DAYS_OF_WEEK[new Date(sheetForm.dueDate + 'T00:00:00').getDay()]}s)`}
                           {opt.value === 'MONTHLY' && sheetForm.dueDate && 

@@ -42,6 +42,36 @@ export const detectInputLanguage = (currentUILang: string): string | null => {
 };
 
 /**
+ * Detects the device/browser language for UI preference
+ * Returns a supported language code, defaulting to 'en' if none match
+ * 
+ * @returns Detected language code (always returns a valid supported code)
+ */
+export const detectDeviceLanguage = (): string => {
+  const supportedCodes = SUPPORTED_LANGUAGES.map(lang => lang.code);
+  
+  // Try to detect from browser language
+  if (typeof navigator !== 'undefined') {
+    // Check primary language
+    if (navigator.language) {
+      const detected = mapBrowserLanguageToSupported(navigator.language, supportedCodes);
+      if (detected) return detected;
+    }
+    
+    // Check all browser languages
+    if (navigator.languages && navigator.languages.length > 0) {
+      for (const browserLang of navigator.languages) {
+        const detected = mapBrowserLanguageToSupported(browserLang, supportedCodes);
+        if (detected) return detected;
+      }
+    }
+  }
+  
+  // Default to English if no match found
+  return 'en';
+};
+
+/**
  * Maps browser language code to supported app language code
  * Handles variations like 'zh' -> 'zh-CN', 'zh-TW'
  */

@@ -23,6 +23,7 @@ import { ToDoItem, Meal, User, MealType, TranslationDictionary, UserRole, Expens
 import { useScrollHeader } from '../hooks/useScrollHeader';
 import { useScrollLock } from '../hooks/useScrollLock';
 import { SUPPORTED_LANGUAGES } from '../constants';
+import { useTranslatedContent } from '../hooks/useTranslatedContent';
 
 interface DashboardProps {
   todoItems: ToDoItem[];
@@ -31,13 +32,69 @@ interface DashboardProps {
   expenses: Expense[];
   onNavigate: (view: string, data?: { section?: string }) => void;
   familyNotes: string;
+  familyNotesLang?: string | null;
+  familyNotesTranslations?: Record<string, string>;
   onUpdateNotes: (notes: string) => Promise<void>;
+  onUpdateNotesTranslations?: (translations: Record<string, string>) => Promise<void>;
   currentUser: User;
   t: TranslationDictionary;
   currentLang: string;
   onLanguageChange: (lang: string) => void;
   isTranslating: boolean;
+  onUpdateMeal?: (id: string, data: Partial<Meal>) => void;
 }
+
+// Component for displaying translated meal description
+const TranslatedMealDescription: React.FC<{
+  meal: Meal;
+  currentLang: string;
+  onUpdate?: (id: string, data: Partial<Meal>) => void;
+}> = ({ meal, currentLang, onUpdate }) => {
+  const translatedDescription = useTranslatedContent({
+    content: meal.description,
+    contentLang: meal.descriptionLang,
+    currentLang,
+    translations: meal.descriptionTranslations || {},
+    onTranslationUpdate: async (translation) => {
+      if (onUpdate) {
+        const updatedTranslations = {
+          ...(meal.descriptionTranslations || {}),
+          [currentLang]: translation,
+        };
+        await onUpdate(meal.id, { descriptionTranslations: updatedTranslations });
+      }
+    },
+  });
+
+  return <>{translatedDescription}</>;
+};
+
+// Component for displaying translated family notes
+const TranslatedFamilyNotes: React.FC<{
+  notes: string;
+  notesLang?: string | null;
+  notesTranslations?: Record<string, string>;
+  currentLang: string;
+  onUpdate?: (translations: Record<string, string>) => Promise<void>;
+}> = ({ notes, notesLang, notesTranslations, currentLang, onUpdate }) => {
+  const translatedNotes = useTranslatedContent({
+    content: notes,
+    contentLang: notesLang || null,
+    currentLang,
+    translations: notesTranslations || {},
+    onTranslationUpdate: async (translation) => {
+      if (onUpdate) {
+        const updatedTranslations = {
+          ...(notesTranslations || {}),
+          [currentLang]: translation,
+        };
+        await onUpdate(updatedTranslations);
+      }
+    },
+  });
+
+  return <>{translatedNotes}</>;
+};
 
 const Dashboard: React.FC<DashboardProps> = ({
   todoItems,
@@ -46,12 +103,16 @@ const Dashboard: React.FC<DashboardProps> = ({
   expenses,
   onNavigate,
   familyNotes,
+  familyNotesLang,
+  familyNotesTranslations,
   onUpdateNotes,
+  onUpdateNotesTranslations,
   currentUser,
   t,
   currentLang,
   onLanguageChange,
-  isTranslating
+  isTranslating,
+  onUpdateMeal
 }) => {
   const shoppingCount = todoItems.filter(i => i.type === 'shopping' && !i.completed).length;
   const activeTaskCount = todoItems.filter(i => i.type === 'task' && !i.completed).length;
@@ -90,6 +151,14 @@ const Dashboard: React.FC<DashboardProps> = ({
       console.error('Failed to save notes:', error);
     } finally {
       setIsSavingNotes(false);
+    }
+  };
+
+  const handleUpdateNotesTranslations = async (translations: Record<string, string>) => {
+    // Update translations in database via App.tsx
+    // This will be called by useTranslatedContent when a translation is generated
+    if (onUpdateNotesTranslations) {
+      await onUpdateNotesTranslations(translations);
     }
   };
 
@@ -327,7 +396,13 @@ const Dashboard: React.FC<DashboardProps> = ({
             <div onClick={() => setIsEditingNotes(true)} className="min-h-[40px] cursor-pointer">
               {familyNotes ? (
                 <p className="text-white text-body leading-relaxed whitespace-pre-line">
-                  {familyNotes}
+                  <TranslatedFamilyNotes
+                    notes={familyNotes}
+                    notesLang={familyNotesLang}
+                    notesTranslations={familyNotesTranslations}
+                    currentLang={currentLang}
+                    onUpdate={handleUpdateNotesTranslations}
+                  />
                 </p>
               ) : (
                 <div className="flex items-center gap-2 py-1 text-white/70">
@@ -345,7 +420,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden cursor-pointer active:scale-[0.99] transition-transform hover:shadow-md"
       >
         <div className="bg-primary px-4 py-2.5 flex justify-between items-center">
-          <h2 className="text-title text-white">Today's Menu</h2>
+          <h2 className="text-title text-white">{t['dashboard.todays_menu']}</h2>
           <span className="text-body text-white">
             {(() => {
               const d = new Date();
@@ -377,7 +452,11 @@ const Dashboard: React.FC<DashboardProps> = ({
                         </div>
                         {meal.description ? (
                           <p className="text-title text-foreground leading-tight line-clamp-2">
-                            {meal.description}
+                            <TranslatedMealDescription 
+                              meal={meal} 
+                              currentLang={currentLang}
+                              onUpdate={onUpdateMeal}
+                            />
                           </p>
                         ) : (
                           <p className="text-body text-muted-foreground leading-tight">

@@ -296,12 +296,18 @@ export async function addItem(
   }
   
   // For all collections with created_by: convert from Clerk ID to Supabase UUID
-  if (finalData.created_by && ['todo_items', 'meals', 'expenses'].includes(collection)) {
+  // Note: expenses table doesn't have created_by column
+  if (finalData.created_by && ['todo_items', 'meals'].includes(collection)) {
     const uuid = await getSupabaseUserId(finalData.created_by, householdId);
     if (uuid) {
       console.log(`🔄 Converting created_by ${finalData.created_by} to UUID ${uuid}`);
       finalData.created_by = uuid;
     }
+  }
+  
+  // Remove created_by from expenses if it exists (table doesn't have this column)
+  if (collection === 'expenses' && finalData.created_by !== undefined) {
+    delete finalData.created_by;
   }
 
   // For expenses: handle merchant_lang, merchant_translations, and receipt_url
@@ -509,14 +515,36 @@ export async function deleteItem(
 /**
  * Save family notes (special case - stored in households table)
  * Why: Notes are household-level, not a separate collection
+ * Now supports translation: detects language and saves translation fields
  */
 export async function saveFamilyNotes(
   householdId: string,
-  notes: string
+  notes: string,
+  currentLang?: string
 ): Promise<void> {
+  // Import language detection
+  const { detectInputLanguage } = await import('./languageDetectionService');
+  
+  // Detect language if notes exist
+  const notesLang = notes && notes.trim() ? detectInputLanguage(currentLang || 'en') : null;
+  
+  // Prepare update data
+  const updateData: any = { family_notes: notes };
+  
+  // Only update language fields if notes changed (detect language)
+  if (notes && notes.trim()) {
+    updateData.family_notes_lang = notesLang;
+    // Reset translations when notes change (will be regenerated on display)
+    updateData.family_notes_translations = {};
+  } else {
+    // If notes are empty, clear language fields
+    updateData.family_notes_lang = null;
+    updateData.family_notes_translations = {};
+  }
+  
   const { error } = await supabase
     .from('households')
-    .update({ family_notes: notes })
+    .update(updateData)
     .eq('id', householdId);
 
   if (error) throw error;
@@ -525,19 +553,30 @@ export async function saveFamilyNotes(
 /**
  * Subscribe to family notes changes
  * Why: Real-time updates when anyone edits the family board
+ * Now returns full notes data including translation fields
  */
 export function subscribeToNotes(
   householdId: string,
-  callback: (notes: string) => void
+  callback: (notesData: { 
+    notes: string; 
+    notesLang?: string | null; 
+    notesTranslations?: Record<string, string> 
+  }) => void
 ): () => void {
   // Initial fetch
   supabase
     .from('households')
-    .select('family_notes')
+    .select('family_notes, family_notes_lang, family_notes_translations')
     .eq('id', householdId)
     .single()
     .then(({ data }) => {
-      if (data) callback(data.family_notes || '');
+      if (data) {
+        callback({
+          notes: data.family_notes || '',
+          notesLang: data.family_notes_lang || null,
+          notesTranslations: data.family_notes_translations || {}
+        });
+      }
     });
 
   // Subscribe to changes
@@ -552,7 +591,11 @@ export function subscribeToNotes(
         filter: `id=eq.${householdId}`
       },
       (payload: any) => {
-        callback(payload.new.family_notes || '');
+        callback({
+          notes: payload.new.family_notes || '',
+          notesLang: payload.new.family_notes_lang || null,
+          notesTranslations: payload.new.family_notes_translations || {}
+        });
       }
     )
     .subscribe();

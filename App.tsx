@@ -14,6 +14,9 @@ import InviteSetup from './components/InviteSetup';
 // InviteWelcome removed - using Option 2 flow (direct to SignUp via Auth.tsx)
 import { ToDoItem, Meal, Expense, User, TranslationDictionary } from './types';
 import { BASE_TRANSLATIONS } from './constants';
+import { detectDeviceLanguage } from './services/languageDetectionService';
+import { getAppTranslations } from './services/geminiService';
+import { supabase } from './services/supabase';
 import {
   subscribeToCollection,
   addItem,
@@ -83,9 +86,52 @@ const App: React.FC = () => {
   }, [clerkLoaded]);
 
   // Localization State
-  const [lang, setLang] = useState<string>(() => localStorage.getItem('helpy_lang') ?? 'en');
+  // Initialize language: use saved preference, or detect device language, or default to 'en'
+  const [lang, setLang] = useState<string>(() => {
+    const saved = localStorage.getItem('helpy_lang');
+    if (saved) return saved;
+    // Detect device language on first load
+    return detectDeviceLanguage();
+  });
   const [translations, setTranslations] = useState<TranslationDictionary>(BASE_TRANSLATIONS);
-  const [isTranslating, setIsTranslating] = useState(false);
+  // Set initial translating state: true if language is not English (will load translations)
+  const [isTranslating, setIsTranslating] = useState(() => lang !== 'en');
+  
+  // Load translations when language changes
+  useEffect(() => {
+    const loadTranslations = async () => {
+      // If English, use base translations directly
+      if (lang === 'en') {
+        setTranslations(BASE_TRANSLATIONS);
+        setIsTranslating(false);
+        return;
+      }
+      
+      // Load translations for other languages
+      setIsTranslating(true);
+      try {
+        const translated = await getAppTranslations(lang, BASE_TRANSLATIONS);
+        setTranslations(translated);
+      } catch (error) {
+        console.error('Failed to load translations:', error);
+        setTranslations(BASE_TRANSLATIONS); // Fallback to English
+      } finally {
+        setIsTranslating(false);
+      }
+    };
+    
+    loadTranslations();
+  }, [lang]);
+  
+  // Persist language preference to localStorage when it changes
+  useEffect(() => {
+    localStorage.setItem('helpy_lang', lang);
+  }, [lang]);
+  
+  // Wrapper for language change that persists to localStorage
+  const handleLanguageChange = useCallback((newLang: string) => {
+    setLang(newLang);
+  }, []);
 
   // Invite Logic
   const [inviteParams, setInviteParams] = useState<{ hid: string; uid: string } | null>(null);
@@ -203,6 +249,8 @@ const App: React.FC = () => {
   const [meals, setMeals] = useState<Meal[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [familyNotes, setFamilyNotes] = useState('');
+  const [familyNotesLang, setFamilyNotesLang] = useState<string | null>(null);
+  const [familyNotesTranslations, setFamilyNotesTranslations] = useState<Record<string, string>>({});
   const [essentialItems, setEssentialItems] = useState<EssentialInfo[]>([]);
   const [trainingModules, setTrainingModules] = useState<TrainingModule[]>([]);
 
@@ -255,7 +303,11 @@ const App: React.FC = () => {
     const unsubTodoItems = subscribeToCollection(hid, 'todo_items', (data) => setTodoItems(data as ToDoItem[]));
     const unsubMeals = subscribeToCollection(hid, 'meals', (data) => setMeals(data as Meal[]));
     const unsubExpenses = subscribeToCollection(hid, 'expenses', (data) => setExpenses(data as Expense[]));
-    const unsubNotes = subscribeToNotes(hid, (note) => setFamilyNotes(note));
+    const unsubNotes = subscribeToNotes(hid, (notesData) => {
+      setFamilyNotes(notesData.notes);
+      setFamilyNotesLang(notesData.notesLang || null);
+      setFamilyNotesTranslations(notesData.notesTranslations || {});
+    });
     const unsubEssential = subscribeToEssentialInfo(hid, (data) => setEssentialItems(data));
     const unsubTraining = subscribeToTrainingModules(hid, (data) => setTrainingModules(data));
     
@@ -330,8 +382,8 @@ const App: React.FC = () => {
     delete expenseWithoutId.id; // Remove ID so Supabase generates UUID
     
     console.log('[App] Adding expense without ID, will get UUID from DB');
-    // Include createdBy for notifications
-    const savedExpense = await addItem(hid, 'expenses', { ...expenseWithoutId, createdBy: currentUser?.id });
+    // Don't include createdBy - expenses table doesn't have this column
+    const savedExpense = await addItem(hid, 'expenses', expenseWithoutId);
     console.log('[App] Expense saved with UUID:', savedExpense.id);
     
     // Return the expense with the actual UUID from database
@@ -400,13 +452,32 @@ const App: React.FC = () => {
     if (!hid) return;
     const previousNotes = familyNotes; // Store previous value
     setFamilyNotes(notes); // Optimistic update
+    // Reset translation fields when notes change (will be detected and saved)
+    setFamilyNotesLang(null);
+    setFamilyNotesTranslations({});
     
     try {
-      await saveFamilyNotes(hid, notes);
+      await saveFamilyNotes(hid, notes, lang);
     } catch (error) {
       console.error('Failed to save notes:', error);
       setFamilyNotes(previousNotes); // Rollback on error
       throw error; // Re-throw so Dashboard knows save failed
+    }
+  };
+
+  // Update notes translations handler
+  const handleUpdateNotesTranslations = async (translations: Record<string, string>): Promise<void> => {
+    if (!hid) return;
+    setFamilyNotesTranslations(translations);
+    try {
+      const { error } = await supabase
+        .from('households')
+        .update({ family_notes_translations: translations })
+        .eq('id', hid);
+      if (error) throw error;
+    } catch (error) {
+      console.error('Failed to update notes translations:', error);
+      throw error;
     }
   };
 
@@ -513,12 +584,16 @@ const App: React.FC = () => {
             expenses={expenses}
             onNavigate={handleNavigate}
             familyNotes={familyNotes}
+            familyNotesLang={familyNotesLang}
+            familyNotesTranslations={familyNotesTranslations}
             onUpdateNotes={handleSaveFamilyNotes}
+            onUpdateNotesTranslations={handleUpdateNotesTranslations}
             currentUser={currentUser!}
             t={translations}
             currentLang={lang}
-            onLanguageChange={setLang}
+            onLanguageChange={handleLanguageChange}
             isTranslating={isTranslating}
+            onUpdateMeal={handleUpdateMeal}
           />
         );
 

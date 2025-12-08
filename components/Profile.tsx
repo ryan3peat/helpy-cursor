@@ -794,7 +794,7 @@ const Profile: React.FC<ProfileProps> = ({
                   <Settings size={20} className="text-primary-foreground" />
                 </div>
                 <div className="text-left">
-                  <p className="font-bold text-foreground text-title">Settings</p>
+                  <p className="font-bold text-foreground text-title">{t['common.settings']}</p>
                   <p className="text-caption text-muted-foreground">Manage your account</p>
                 </div>
               </div>
@@ -1009,7 +1009,7 @@ const Profile: React.FC<ProfileProps> = ({
 
                   {/* Allergies */}
                   <div>
-                    <label className="block text-caption text-muted-foreground mb-2 tracking-wide">Allergies</label>
+                    <label className="block text-caption text-muted-foreground mb-2 tracking-wide">{t['profile.allergies']}</label>
                     <div className="flex gap-2 mb-2">
                       <input
                         type="text"
@@ -1017,7 +1017,7 @@ const Profile: React.FC<ProfileProps> = ({
                         onChange={(e) => setNewAllergyInput(e.target.value)}
                         onKeyPress={(e) => e.key === 'Enter' && addAllergy()}
                         className="flex-1 px-4 py-2.5 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
-                        placeholder="Add allergy"
+                        placeholder={t['common.add_allergy']}
                       />
                       <button onClick={addAllergy} className="w-10 h-10 bg-primary text-primary-foreground rounded-full flex items-center justify-center hover:bg-primary/90 transition-colors">
                         <Plus size={18} />
@@ -1037,7 +1037,7 @@ const Profile: React.FC<ProfileProps> = ({
 
                   {/* Preferences */}
                   <div>
-                    <label className="block text-caption text-muted-foreground mb-2 tracking-wide">Preferences</label>
+                    <label className="block text-caption text-muted-foreground mb-2 tracking-wide">{t['profile.preferences']}</label>
                     <div className="flex gap-2 mb-2">
                       <input
                         type="text"
@@ -1045,7 +1045,7 @@ const Profile: React.FC<ProfileProps> = ({
                         onChange={(e) => setNewPreferenceInput(e.target.value)}
                         onKeyPress={(e) => e.key === 'Enter' && addPreference()}
                         className="flex-1 px-4 py-2.5 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
-                        placeholder="Add preference"
+                        placeholder={t['common.add_preference']}
                       />
                       <button onClick={addPreference} className="w-10 h-10 bg-primary text-primary-foreground rounded-full flex items-center justify-center hover:bg-primary/90 transition-colors">
                         <Plus size={18} />
@@ -1098,7 +1098,7 @@ const Profile: React.FC<ProfileProps> = ({
               {/* Header */}
               <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
                 <div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto mb-4" />
-                <h2 className="text-title text-foreground text-center">Change Photo</h2>
+                <h2 className="text-title text-foreground text-center">{t['profile.change_photo']}</h2>
               </div>
               
               {/* Options */}
@@ -1111,7 +1111,7 @@ const Profile: React.FC<ProfileProps> = ({
                   className="w-full flex items-center gap-3 p-4 bg-secondary rounded-xl hover:bg-secondary/80 transition-colors"
                 >
                   <Camera size={20} className="text-muted-foreground" />
-                  <span className="font-semibold text-foreground">Take Photo</span>
+                  <span className="font-semibold text-foreground">{t['profile.take_photo']}</span>
                 </button>
                 <button
                   onClick={() => {
@@ -1121,7 +1121,7 @@ const Profile: React.FC<ProfileProps> = ({
                   className="w-full flex items-center gap-3 p-4 bg-secondary rounded-xl hover:bg-secondary/80 transition-colors"
                 >
                   <ImageIcon size={20} className="text-muted-foreground" />
-                  <span className="font-semibold text-foreground">Choose from Library</span>
+                  <span className="font-semibold text-foreground">{t['profile.choose_library']}</span>
                 </button>
               </div>
               
@@ -1265,7 +1265,7 @@ const Profile: React.FC<ProfileProps> = ({
     const plans = [
       {
         id: 'core',
-        name: 'Core',
+        name: t['common.core'] || 'Core',
         monthlyPrice: 88,
         yearlyPrice: 850,
         features: ['Up to 6 family members', '2 helpers', 'Receipt scanning', 'Priority support'],
@@ -1273,7 +1273,7 @@ const Profile: React.FC<ProfileProps> = ({
       },
       {
         id: 'pro',
-        name: 'Pro',
+        name: t['common.pro'] || 'Pro',
         monthlyPrice: 118,
         yearlyPrice: 1080,
         features: ['Up to 10 family members', 'Unlimited helpers', 'Advanced AI', 'Data export', 'Premium support'],
@@ -1282,7 +1282,7 @@ const Profile: React.FC<ProfileProps> = ({
     ];
 
     const isAdmin = currentUser.role === UserRole.MASTER;
-    const currentPlanName = subscriptionInfo?.plan === 'core' ? 'Core' : subscriptionInfo?.plan === 'pro' ? 'Pro' : 'Free';
+    const currentPlanName = subscriptionInfo?.plan === 'core' ? (t['common.core'] || 'Core') : subscriptionInfo?.plan === 'pro' ? (t['common.pro'] || 'Pro') : (t['common.free'] || 'Free');
     const planPrice = subscriptionInfo?.plan === 'core' 
       ? (subscriptionInfo?.period === 'yearly' ? 850 : 88)
       : subscriptionInfo?.plan === 'pro'
@@ -1292,7 +1292,7 @@ const Profile: React.FC<ProfileProps> = ({
     return (
       <div className="min-h-screen bg-background pb-40">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
-          {renderSettingsHeader('Subscription', () => setActiveSection('settings'))}
+          {renderSettingsHeader(t['common.plan'] || 'Subscription', () => setActiveSection('settings'))}
           <div className="pt-6 pb-24">
 
             {/* Success Message Banner */}
@@ -1326,10 +1326,10 @@ const Profile: React.FC<ProfileProps> = ({
                     {planPrice > 0 ? (
                       <p className="text-title font-bold">
                         ${planPrice}
-                        <span className="text-body font-normal">/{subscriptionInfo?.period === 'yearly' ? 'yr' : 'mo'}</span>
+                        <span className="text-body font-normal">/{subscriptionInfo?.period === 'yearly' ? t['common.yr'] : t['common.mo']}</span>
                       </p>
                     ) : (
-                      <p className="text-title font-bold">Free</p>
+                      <p className="text-title font-bold">{t['common.free']}</p>
                     )}
                   </div>
                 </div>
@@ -1390,7 +1390,7 @@ const Profile: React.FC<ProfileProps> = ({
                           : 'text-muted-foreground hover:text-foreground'
                       } ${!isAdmin ? 'cursor-not-allowed' : ''}`}
                     >
-                      Monthly
+                      {t['common.monthly']}
                     </button>
                     <button
                       onClick={() => setBillingPeriod('yearly')}
@@ -1401,7 +1401,7 @@ const Profile: React.FC<ProfileProps> = ({
                           : 'text-muted-foreground hover:text-foreground'
                       } ${!isAdmin ? 'cursor-not-allowed' : ''}`}
                     >
-                      Yearly
+                      {t['common.yearly']}
                       <span className="ml-1 text-caption" style={{ color: 'hsl(var(--primary))' }}>Save 20%</span>
                     </button>
                   </div>
@@ -1437,7 +1437,7 @@ const Profile: React.FC<ProfileProps> = ({
                               ${price}
                             </span>
                             <span className="text-muted-foreground text-body">
-                              /{billingPeriod === 'monthly' ? 'mo' : 'yr'}
+                              /{billingPeriod === 'monthly' ? t['common.mo'] : t['common.yr']}
                             </span>
                           </div>
                         </div>
@@ -1500,7 +1500,7 @@ const Profile: React.FC<ProfileProps> = ({
     return (
       <div className="min-h-screen bg-background pb-40">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
-          {renderSettingsHeader('Account', () => setActiveSection('settings'))}
+          {renderSettingsHeader(t['common.security'] || 'Account', () => setActiveSection('settings'))}
           <div className="pt-6 pb-24">
             
             <div className="space-y-6">
@@ -1956,7 +1956,7 @@ const Profile: React.FC<ProfileProps> = ({
     return (
       <div className="min-h-screen bg-background pb-40">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
-          {renderSettingsHeader('Payment Method', () => setActiveSection('settings'))}
+          {renderSettingsHeader(t['common.payment'] || 'Payment Method', () => setActiveSection('settings'))}
           <div className="pt-6 pb-24">
 
             {/* Card Preview */}
@@ -2133,7 +2133,7 @@ const Profile: React.FC<ProfileProps> = ({
     return (
       <div className="min-h-screen bg-background pb-40">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
-          {renderSettingsHeader('Settings', () => setActiveSection('main'))}
+          {renderSettingsHeader(t['common.settings'] || 'Settings', () => setActiveSection('main'))}
           <div className="pt-6 pb-24">
 
             <div className="space-y-3">

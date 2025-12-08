@@ -1,25 +1,52 @@
 
-import { GoogleGenAI, Type } from "@google/genai";
+import { Type } from "@google/genai";
 import { MealType, TranslationDictionary } from "../types";
 
-const getAiClient = () => {
-  const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
-  if (!apiKey) {
-    console.warn("API Key not found. AI features will return mock data.");
-    return null;
+// Helper function to call Gemini API through server proxy
+const callGeminiProxy = async (contents: string | any, config?: { responseMimeType?: string; responseSchema?: any }) => {
+  try {
+    const response = await fetch('/api/gemini-proxy', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ contents, config }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || `API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    
+    // Extract text from Gemini response format
+    if (data.candidates && data.candidates[0] && data.candidates[0].content) {
+      const content = data.candidates[0].content;
+      if (content.parts && content.parts[0]) {
+        return {
+          text: content.parts[0].text || '',
+          data: data,
+        };
+      }
+    }
+    
+    // Fallback: try to extract text directly
+    return {
+      text: data.text || '',
+      data: data,
+    };
+  } catch (error) {
+    console.error('Gemini proxy error:', error);
+    throw error;
   }
-  return new GoogleGenAI({ apiKey });
 };
 
 export const suggestMeal = async (mealType: MealType, cuisinePreference: string = "healthy"): Promise<string> => {
-  const ai = getAiClient();
-  if (!ai) return "Grilled Chicken Salad with Quinoa (Mock Suggestion - No API Key)";
-
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: `Suggest a single, concise meal name for ${mealType}. Preference: ${cuisinePreference}. Keep it under 10 words. No preamble.`,
-    });
+    const response = await callGeminiProxy(
+      `Suggest a single, concise meal name for ${mealType}. Preference: ${cuisinePreference}. Keep it under 10 words. No preamble.`
+    );
     return response.text || "Oatmeal with Berries";
   } catch (error) {
     console.error("Error suggesting meal:", error);
@@ -28,20 +55,9 @@ export const suggestMeal = async (mealType: MealType, cuisinePreference: string 
 };
 
 export const parseReceipt = async (base64Image: string): Promise<{ total: number; merchant: string; date: string; category: string }> => {
-  const ai = getAiClient();
-  if (!ai) {
-    return {
-      total: 45.50,
-      merchant: "Mock Supermarket",
-      date: new Date().toISOString().split('T')[0],
-      category: "Food & Daily Needs"
-    };
-  }
-
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: {
+    const response = await callGeminiProxy(
+      {
         parts: [
           {
             inlineData: {
@@ -54,7 +70,7 @@ export const parseReceipt = async (base64Image: string): Promise<{ total: number
           },
         ],
       },
-      config: {
+      {
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
@@ -67,7 +83,7 @@ export const parseReceipt = async (base64Image: string): Promise<{ total: number
           required: ["total", "merchant", "date", "category"]
         }
       }
-    });
+    );
 
     const text = response.text;
     if (!text) throw new Error("No response from AI");
@@ -96,15 +112,11 @@ export const getAppTranslations = async (targetLangCode: string, baseDictionary:
     }
   }
 
-  const ai = getAiClient();
-  if (!ai) return baseDictionary; // Fallback
-
   // 2. Fetch from AI
   try {
     // Chunking logic could be added here if dictionary is huge, but ~50-100 keys is fine for one prompt.
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: `Translate the values of this JSON object into language code "${targetLangCode}". 
+    const response = await callGeminiProxy(
+      `Translate the values of this JSON object into language code "${targetLangCode}". 
       IMPORTANT: 
       1. Return ONLY the JSON object.
       2. Maintain the exact same keys.
@@ -112,10 +124,10 @@ export const getAppTranslations = async (targetLangCode: string, baseDictionary:
       
       JSON to translate:
       ${JSON.stringify(baseDictionary)}`,
-      config: {
+      {
         responseMimeType: "application/json"
       }
-    });
+    );
 
     const text = response.text;
     if (!text) throw new Error("Empty response from translation");
@@ -156,13 +168,9 @@ export const translateUserContent = async (
     return text;
   }
   
-  const ai = getAiClient();
-  if (!ai) return text; // Fallback to original
-  
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: `Translate the following text from language code "${sourceLang}" to language code "${targetLang}".
+    const response = await callGeminiProxy(
+      `Translate the following text from language code "${sourceLang}" to language code "${targetLang}".
       
       IMPORTANT:
       1. Return ONLY the translated text, no explanations or additional text.
@@ -170,8 +178,8 @@ export const translateUserContent = async (
       3. Keep the translation natural and contextually appropriate.
       
       Text to translate:
-      ${text}`,
-    });
+      ${text}`
+    );
     
     const translated = response.text?.trim();
     return translated || text; // Return original if empty response
@@ -204,20 +212,14 @@ export const batchTranslateUserContent = async (
     return items.map(item => item.text);
   }
   
-  const ai = getAiClient();
-  if (!ai) {
-    return items.map(item => item.text); // Fallback to originals
-  }
-  
   try {
     // Build prompt with all items
     const itemsList = itemsToTranslate.map((item, index) => 
       `${index + 1}. [${item.sourceLang}] ${item.text}`
     ).join('\n');
     
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: `Translate the following items from their source languages to language code "${targetLang}".
+    const response = await callGeminiProxy(
+      `Translate the following items from their source languages to language code "${targetLang}".
       
       IMPORTANT:
       1. Return ONLY a JSON array of translated strings in the same order.
@@ -229,10 +231,10 @@ export const batchTranslateUserContent = async (
       ${itemsList}
       
       Return format: ["translated text 1", "translated text 2", ...]`,
-      config: {
+      {
         responseMimeType: "application/json"
       }
-    });
+    );
     
     const text = response.text;
     if (!text) throw new Error("Empty response from batch translation");

@@ -30,3 +30,4 @@ After setting development env vars in Vercel, restart `vercel dev` and check:
 - Console should show: `🔵 [Clerk] Initializing with key: pk_test_...`
 - Debug button should show test key, not production key
 
+

@@ -732,7 +732,7 @@ const Expenses: React.FC<ExpensesProps> = ({
               className="flex items-center gap-1.5 px-3 py-2 rounded-full bg-secondary text-foreground text-body hover:bg-secondary/80 transition-colors"
             >
               <Calendar size={16} />
-              <span>{isAllTime ? 'All Expenses' : `${MONTH_NAMES[selectedMonth]} ${selectedYear}`}</span>
+              <span>{isAllTime ? t['common.all_expenses'] : `${MONTH_NAMES[selectedMonth]} ${selectedYear}`}</span>
               <ChevronDown size={16} />
           </button>
           </div>
@@ -742,7 +742,7 @@ const Expenses: React.FC<ExpensesProps> = ({
         <div className="mt-4 mb-6">
           <div className="bg-primary text-primary-foreground p-6 rounded-xl shadow-md">
             <p className="text-body opacity-80 mb-1">
-              {isAllTime ? 'Total for all expenses' : `Total for ${MONTH_NAMES_FULL[selectedMonth]}`}
+              {isAllTime ? t['common.total_for_all'] : `${t['common.total_for_month']} ${MONTH_NAMES_FULL[selectedMonth]}`}
             </p>
             <h2 className="text-display">${totalAmount.toFixed(2)}</h2>
           </div>
@@ -772,7 +772,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                 }`}
               >
                 <List size={18} />
-                List
+                {t['common.list']}
           </button>
           <button
                 onClick={() => setView('chart')}
@@ -783,7 +783,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                 }`}
               >
                 <PieIcon size={18} />
-                Summary
+                {t['common.summary']}
           </button>
             </div>
             <div
@@ -1129,7 +1129,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                       type="text"
                       value={editMerchant}
                       onChange={(e) => setEditMerchant(e.target.value)}
-                      placeholder="Where did you spend?"
+                      placeholder={t['common.where_did_you_spend']}
                       className="w-full px-4 py-3 rounded-lg bg-muted border border-border focus:border-primary outline-none transition-all text-body"
                     />
                   </div>
@@ -1145,11 +1145,24 @@ const Expenses: React.FC<ExpensesProps> = ({
                         onChange={(e) => setEditCategory(e.target.value)}
                         className="w-full px-4 py-3 rounded-lg bg-muted border border-border focus:border-primary outline-none transition-all text-body"
                       >
-                        {EXPENSE_CATEGORIES.map((cat) => (
-                          <option key={cat} value={cat}>
-                            {cat}
-                          </option>
-                        ))}
+                        {EXPENSE_CATEGORIES.map((cat) => {
+                          const getCategoryLabel = (category: string) => {
+                            const categoryMap: Record<string, string> = {
+                              'Housing & Utilities': t['expenses.category.housing_utilities'] || category,
+                              'Food & Daily Needs': t['expenses.category.food_daily'] || category,
+                              'Transport & Travel': t['expenses.category.transport_travel'] || category,
+                              'Health & Personal Care': t['expenses.category.health_personal'] || category,
+                              'Fun & Lifestyle': t['expenses.category.fun_lifestyle'] || category,
+                              'Miscellaneous': t['expenses.category.miscellaneous'] || category,
+                            };
+                            return categoryMap[category] || category;
+                          };
+                          return (
+                            <option key={cat} value={cat}>
+                              {getCategoryLabel(cat)}
+                            </option>
+                          );
+                        })}
                       </select>
                     </div>
                     <div>
@@ -1251,7 +1264,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                   type="text"
                   value={editMerchant}
                   onChange={(e) => setEditMerchant(e.target.value)}
-                  placeholder="Store name"
+                  placeholder={t['common.store_name']}
                       className="w-full px-4 py-3 rounded-lg bg-muted border border-border focus:border-primary outline-none transition-all text-body"
                 />
               </div>
@@ -1406,7 +1419,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                       className="w-full px-4 py-3 rounded-lg bg-muted border border-border focus:border-primary outline-none transition-all text-body"
                       value={exMerchant}
                       onChange={(e) => setExMerchant(e.target.value)}
-                      placeholder="Where did you spend?"
+                      placeholder={t['common.where_did_you_spend']}
                     />
                   </div>
 

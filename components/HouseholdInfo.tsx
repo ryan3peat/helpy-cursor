@@ -31,7 +31,7 @@ import {
   Utensils,
   Info,
 } from "lucide-react";
-import { BaseViewProps, User, UserRole } from "@/types";
+import { BaseViewProps, User, UserRole, TranslationDictionary } from "@/types";
 import { useTranslatedContent } from "@/hooks/useTranslatedContent";
 import { detectInputLanguage } from "@/services/languageDetectionService";
 
@@ -157,9 +157,10 @@ const ROLE_PRIORITY: Record<string, number> = {
 // ─────────────────────────────────────────────────────────────────
 interface FamilyProfileCarouselProps {
   users: User[];
+  t: TranslationDictionary;
 }
 
-const FamilyProfileCarousel: React.FC<FamilyProfileCarouselProps> = ({ users }) => {
+const FamilyProfileCarousel: React.FC<FamilyProfileCarouselProps> = ({ users, t }) => {
   const [activeIndex, setActiveIndex] = useState(0);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -291,7 +292,7 @@ const FamilyProfileCarousel: React.FC<FamilyProfileCarouselProps> = ({ users }) 
                       </div>
                     ) : (
                       <span className="text-caption text-muted-foreground/60 italic ml-6">
-                        None listed
+                        {t['common.none_listed']}
                       </span>
                     )}
                   </div>
@@ -301,7 +302,7 @@ const FamilyProfileCarousel: React.FC<FamilyProfileCarouselProps> = ({ users }) 
                     <div className="flex items-center gap-2 mb-2">
                       <Heart size={16} className="text-foreground" />
                       <span className="text-body text-foreground">
-                        Preferences
+                        {t['profile.preferences']}
                       </span>
                     </div>
                     {user.preferences && user.preferences.length > 0 ? (
@@ -322,7 +323,7 @@ const FamilyProfileCarousel: React.FC<FamilyProfileCarouselProps> = ({ users }) 
                       </div>
                     ) : (
                       <span className="text-caption text-muted-foreground/60 italic ml-6">
-                        None listed
+                        {t['common.none_listed']}
                       </span>
                     )}
                   </div>
@@ -778,7 +779,7 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
 
   // Get assignee name
   const getAssigneeName = (assigneeId?: string) => {
-    if (!assigneeId) return "Unassigned";
+    if (!assigneeId) return t['common.unassigned'] || "Unassigned";
     const user = users.find((u) => u.id === assigneeId);
     return user?.name || "Unknown";
   };
@@ -795,7 +796,7 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
         {/* ─────────────────────────────────────────────────────────────── */}
         <header className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm -mx-4 px-4 sm:-mx-6 sm:px-6 pt-12 pb-3">
           <h1 className="text-display text-foreground">
-            Family Info
+            {t['info.title'] || 'Family Info'}
           </h1>
         </header>
 
@@ -813,10 +814,10 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
             >
               <div className="flex items-center gap-2">
                 <FileText size={16} />
-                <span className="text-title">Essential Info</span>
+                <span className="text-title">{t['common.essential_info'] || 'Essential Info'}</span>
               </div>
               <div className={`text-caption mt-1 ml-6 ${activeSection === "essentialInfo" ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
-                {essentialStats.total} places saved
+                {essentialStats.total} {t['common.places_saved'] || 'places saved'}
               </div>
             </button>
 
@@ -831,10 +832,10 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
             >
               <div className="flex items-center gap-2">
                 <GraduationCap size={16} />
-                <span className="text-title">Training</span>
+                <span className="text-title">{t['common.training'] || 'Training'}</span>
               </div>
               <div className={`text-caption mt-1 ml-6 ${activeSection === "training" ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
-                {trainingStats.pending} pending, {trainingStats.completed} done
+                {trainingStats.pending} {t['common.pending'] || 'pending'}, {trainingStats.completed} {t['common.done'] || 'done'}
               </div>
             </button>
           </div>
@@ -866,22 +867,35 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  All
+                  {t['common.all'] || 'All'}
                 </button>
-                {ESSENTIAL_CATEGORIES.map((cat) => (
-                  <button
-                    key={cat}
-                    onClick={() => setSelectedEssentialCategory(cat)}
-                    className={`px-4 py-2 rounded-full text-body whitespace-nowrap transition-all flex items-center gap-1.5 ${
-                      selectedEssentialCategory === cat
-                        ? "bg-card text-primary shadow-sm"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    {ESSENTIAL_CATEGORY_ICONS[cat]}
-                    {cat}
-                  </button>
-                ))}
+                {ESSENTIAL_CATEGORIES.map((cat) => {
+                  const getCategoryLabel = (category: EssentialInfoCategory) => {
+                    const categoryMap: Record<EssentialInfoCategory, string> = {
+                      'Home': t['info.category.home'] || category,
+                      'School': t['info.category.school'] || category,
+                      'Doctor': t['info.category.doctor'] || category,
+                      'Hospital': t['info.category.hospital'] || category,
+                      'Shops': t['info.category.shops'] || category,
+                      'Others': t['info.category.others'] || category,
+                    };
+                    return categoryMap[category] || category;
+                  };
+                  return (
+                    <button
+                      key={cat}
+                      onClick={() => setSelectedEssentialCategory(cat)}
+                      className={`px-4 py-2 rounded-full text-body whitespace-nowrap transition-all flex items-center gap-1.5 ${
+                        selectedEssentialCategory === cat
+                          ? "bg-card text-primary shadow-sm"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {ESSENTIAL_CATEGORY_ICONS[cat]}
+                      {getCategoryLabel(cat)}
+                    </button>
+                  );
+                })}
               </div>
               {/* Inset shadow overlay - fixed to outer container, doesn't scroll */}
               <div 
@@ -942,7 +956,7 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
         {/* FAMILY PROFILE CAROUSEL - Only visible in Essential Info section */}
         {/* ─────────────────────────────────────────────────────────────── */}
         {activeSection === "essentialInfo" && (
-          <FamilyProfileCarousel users={users} />
+          <FamilyProfileCarousel users={users} t={t} />
         )}
 
         {/* ─────────────────────────────────────────────────────────────── */}
@@ -1056,6 +1070,7 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
           onClose={() => setIsEssentialModalOpen(false)}
           onSave={handleSaveEssential}
           onDelete={handleDeleteEssential}
+          t={t}
         />
       )}
 
@@ -1248,7 +1263,7 @@ const TrainingCard: React.FC<TrainingCardProps> = ({
             onClick={onView}
             className="px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-body hover:bg-primary/20 transition-colors"
           >
-            {module.isCompleted ? "View" : "Start"}
+            {module.isCompleted ? t['common.view'] : t['common.start']}
           </button>
         ) : (
           <button
@@ -1263,18 +1278,18 @@ const TrainingCard: React.FC<TrainingCardProps> = ({
       {/* Assignee & Status */}
       <div className="flex items-center justify-between text-body">
         <div className="flex items-center gap-2 text-muted-foreground">
-          <span>Assigned to: {assigneeName}</span>
+          <span>{t['common.assigned_to'] || 'Assigned to:'} {assigneeName}</span>
         </div>
         <div className="flex items-center gap-1">
           {module.isCompleted ? (
             <span className="text-[#4CAF50] flex items-center gap-1">
               <CheckCircle2 size={14} />
-              Completed
+              {t['todo.completed'] || 'Completed'}
             </span>
           ) : (
             <span className="text-[#FF9800] flex items-center gap-1">
               <Clock size={14} />
-              Pending
+              {t['common.pending'] || 'Pending'}
             </span>
           )}
         </div>
@@ -1293,6 +1308,7 @@ interface EssentialInfoModalProps {
   onClose: () => void;
   onSave: () => void;
   onDelete: () => void;
+  t: TranslationDictionary;
 }
 
 const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
@@ -1302,6 +1318,7 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
   onClose,
   onSave,
   onDelete,
+  t,
 }) => {
   const [countryCodeSearch, setCountryCodeSearch] = useState('');
   const [showCountryCodeDropdown, setShowCountryCodeDropdown] = useState(false);
@@ -1519,7 +1536,7 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
             onClick={onSave}
             className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body hover:bg-primary/90 transition-colors shadow-sm"
           >
-            {isEditing ? "Update" : "Save"}
+            {isEditing ? t['common.update'] : t['common.save']}
           </button>
         </div>
       </div>
@@ -1674,7 +1691,7 @@ const TrainingModal: React.FC<TrainingModalProps> = ({
             onClick={onSave}
             className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body hover:bg-primary/90 transition-colors shadow-sm"
           >
-            {isEditing ? "Update" : "Save"}
+            {isEditing ? t['common.update'] : t['common.save']}
           </button>
         </div>
       </div>
@@ -1744,7 +1761,7 @@ const TrainingViewModal: React.FC<TrainingViewModalProps> = ({
             />
           </h2>
           <div className="flex items-center gap-3 mt-2 text-body text-muted-foreground">
-            <span>Assigned to: {assigneeName}</span>
+            <span>{t['common.assigned_to'] || 'Assigned to:'} {assigneeName}</span>
           </div>
         </div>
 
@@ -1785,7 +1802,7 @@ const TrainingViewModal: React.FC<TrainingViewModalProps> = ({
           {module.isCompleted && (
             <div className="flex-1 py-3.5 rounded-xl bg-[#E8F5E9] text-[#4CAF50] text-body flex items-center justify-center gap-2">
               <CheckCircle2 size={18} />
-              Completed
+              {t['todo.completed'] || 'Completed'}
             </div>
           )}
         </div>

@@ -14,6 +14,9 @@ export default defineConfig({
       '@src': path.resolve(__dirname, 'src'),
     },
   },
+  build: {
+    sourcemap: true,
+  },
   server: {
     proxy: {
       // ✅ Proxy API calls to Vercel local server

@@ -1558,16 +1558,8 @@ interface TrainingModalProps {
   t: TranslationDictionary;
 }
 
-const TrainingModal: React.FC<TrainingModalProps> = ({
-  isEditing,
-  form,
-  setForm,
-  helpers,
-  onClose,
-  onSave,
-  onDelete,
-  t,
-}) => {
+const TrainingModal: React.FC<TrainingModalProps> = (props) => {
+  const { isEditing, form, setForm, helpers, onClose, onSave, onDelete, t } = props;
   return (
     <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
       {/* Safe area bottom cover - fills the gap below the sheet */}

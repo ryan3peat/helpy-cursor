@@ -110,7 +110,7 @@ export default function FeaturesContent() {
             {/* The "Glow" Image (Behind) */}
             <div className="absolute inset-0 translate-y-4 scale-95 opacity-60 blur-2xl">
               <Image
-                src="/website/features-hero.jpg"
+                src="/features-hero.jpg"
                 alt=""
                 fill
                 className="object-cover rounded-3xl"
@@ -121,7 +121,7 @@ export default function FeaturesContent() {
             {/* The Main Image (Front) */}
             <div className="relative h-full w-full overflow-hidden rounded-3xl bg-secondary shadow-sm">
               <Image
-                src="/website/features-hero.jpg"
+                src="/features-hero.jpg"
                 alt="Family using Helpy home management app to organize household tasks together"
                 fill
                 className="object-cover"

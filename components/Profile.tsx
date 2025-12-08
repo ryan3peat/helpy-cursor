@@ -60,6 +60,7 @@ const Profile: React.FC<ProfileProps> = ({
   const [isAddingUser, setIsAddingUser] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<string | null>(null);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
 
   // Edit Profile Form State
   const [editName, setEditName] = useState('');
@@ -564,6 +565,7 @@ const Profile: React.FC<ProfileProps> = ({
       return;
     }
 
+    setIsUploadingAvatar(true);
     try {
       console.log('📷 Uploading avatar for user:', selectedUser.id);
       const avatarUrl = await uploadAvatarImage(
@@ -578,6 +580,8 @@ const Profile: React.FC<ProfileProps> = ({
     } catch (error) {
       console.error('❌ Failed to upload avatar:', error);
       alert('Failed to upload image. Please try again.');
+    } finally {
+      setIsUploadingAvatar(false);
     }
 
     // Reset the input so the same file can be selected again
@@ -750,17 +754,24 @@ const Profile: React.FC<ProfileProps> = ({
                 <div className="flex items-center gap-4">
                   <div className="relative group">
                     <div
-                      className="w-20 h-20 rounded-full overflow-hidden shadow-sm bg-secondary cursor-pointer"
-                      onClick={() => setShowPhotoOptions(true)}
+                      className="w-20 h-20 rounded-full overflow-hidden shadow-sm bg-secondary cursor-pointer relative"
+                      onClick={() => !isUploadingAvatar && setShowPhotoOptions(true)}
                     >
                       <img src={getAvatarUrl(selectedUser)} alt={selectedUser.name} className="w-full h-full object-cover" />
+                      {isUploadingAvatar && (
+                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                          <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin" />
+                        </div>
+                      )}
                     </div>
-                    <button
-                      onClick={() => setShowPhotoOptions(true)}
-                      className="absolute -bottom-1 -right-1 bg-primary text-primary-foreground p-1.5 rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <Camera size={14} />
-                    </button>
+                    {!isUploadingAvatar && (
+                      <button
+                        onClick={() => setShowPhotoOptions(true)}
+                        className="absolute -bottom-1 -right-1 bg-primary text-primary-foreground p-1.5 rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <Camera size={14} />
+                      </button>
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="text-title font-bold text-foreground truncate">{selectedUser.name}</h3>

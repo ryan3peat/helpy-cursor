@@ -125,6 +125,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [tempNotes, setTempNotes] = useState(familyNotes);
   const [isSavingNotes, setIsSavingNotes] = useState(false);
+  const [isDeletingNotes, setIsDeletingNotes] = useState(false);
   const [timeOfDay, setTimeOfDay] = useState('');
   const [showLangModal, setShowLangModal] = useState(false);
   
@@ -174,7 +175,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   };
 
   const handleDeleteNotes = async () => {
-    setIsSavingNotes(true);
+    setIsDeletingNotes(true);
     try {
       await onUpdateNotes('');
       setTempNotes('');
@@ -182,7 +183,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     } catch (error) {
       console.error('Failed to delete notes:', error);
     } finally {
-      setIsSavingNotes(false);
+      setIsDeletingNotes(false);
     }
   };
 
@@ -366,7 +367,7 @@ const Dashboard: React.FC<DashboardProps> = ({
               <textarea
                 value={tempNotes}
                 onChange={(e) => setTempNotes(e.target.value)}
-                disabled={isSavingNotes}
+                disabled={isSavingNotes || isDeletingNotes}
                 className="w-full bg-white/10 border border-white/20 rounded-xl p-3 text-body text-white placeholder:text-white/60 focus:ring-2 focus:ring-white/50 focus:border-transparent outline-none resize-none leading-relaxed disabled:opacity-50"
                 rows={3}
                 placeholder={t['dashboard.type_note']}
@@ -374,15 +375,15 @@ const Dashboard: React.FC<DashboardProps> = ({
               <div className="flex justify-between items-center">
                 <button 
                   onClick={handleDeleteNotes}
-                  disabled={isSavingNotes}
+                  disabled={isSavingNotes || isDeletingNotes}
                   className="p-2.5 bg-[#F06292] rounded-full text-white shadow-sm hover:bg-[#EC407A] transition-colors disabled:opacity-50"
                 >
-                  {isSavingNotes ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18} />}
+                  {isDeletingNotes ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18} />}
                 </button>
                 <div className="flex items-center gap-3">
                   <button 
                     onClick={handleCancelNotes}
-                    disabled={isSavingNotes}
+                    disabled={isSavingNotes || isDeletingNotes}
                     className="flex items-center gap-2 px-4 py-2 bg-white/20 rounded-full text-white text-body font-medium shadow-sm hover:bg-white/30 transition-colors disabled:opacity-50"
                   >
                     <X size={16} />
@@ -390,7 +391,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                   </button>
                   <button 
                     onClick={handleSaveNotes}
-                    disabled={isSavingNotes}
+                    disabled={isSavingNotes || isDeletingNotes}
                     className="flex items-center gap-2 px-4 py-2 bg-white rounded-full text-primary text-body font-medium shadow-sm hover:bg-white/90 transition-colors disabled:opacity-50"
                   >
                     <span>Save</span>

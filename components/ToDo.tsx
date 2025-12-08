@@ -93,7 +93,7 @@ const getTaskCategoryIcon = (category: string, isSelected = false) => {
 // ─────────────────────────────────────────────────────────────────
 
 const getDefaultAssignee = (users: User[], currentUser: User): string => {
-  const helper = users.find(u => u.role === UserRole.HELPER);
+  const helper = users.find(u => u.role === UserRole.HELPER && u.status !== 'pending');
   return helper?.id || currentUser.id;
 };
 
@@ -731,7 +731,8 @@ const ToDo: React.FC<ToDoProps> = ({
     if (!userId) return '';
     if (userId === currentUser.id) return 'You';
     const user = users.find(u => u.id === userId);
-    return user?.name.split(' ')[0] || '';
+    if (!user) return 'Deleted User';
+    return user.name.split(' ')[0] || '';
   };
 
   // ─────────────────────────────────────────────────────────────────

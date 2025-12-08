@@ -823,7 +823,7 @@ const Expenses: React.FC<ExpensesProps> = ({
             <div className="mb-4 p-4 bg-destructive/10 border border-destructive/20 rounded-xl flex items-start gap-3">
               <AlertCircle className="text-destructive flex-shrink-0 mt-0.5" size={20} />
           <div className="flex-1">
-                <p className="text-title text-destructive">Error</p>
+                <p className="text-title text-destructive">{t['expenses.error'] || 'Error'}</p>
                 <p className="text-body text-destructive/80">{error}</p>
           </div>
               <button onClick={() => setError(null)} className="text-destructive/60 hover:text-destructive">
@@ -886,9 +886,9 @@ const Expenses: React.FC<ExpensesProps> = ({
                       <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-secondary flex items-center justify-center">
                         <PieIcon size={28} className="text-muted-foreground" />
                       </div>
-                      <p className="text-body text-foreground">No expense data</p>
+                      <p className="text-body text-foreground">{t['expenses.no_data'] || 'No expense data'}</p>
                       <p className="text-caption text-muted-foreground mt-1">
-                        Add an expense to get started
+                        {t['expenses.add_to_start'] || 'Add an expense to get started'}
                       </p>
                     </div>
                   </div>
@@ -1076,14 +1076,14 @@ const Expenses: React.FC<ExpensesProps> = ({
                     className="py-6 rounded-xl bg-secondary border border-border flex flex-col items-center justify-center gap-2 text-foreground hover:bg-secondary/80 transition-colors"
                   >
                     <ImageIcon size={28} />
-                    <span className="text-body font-medium">Photo Library</span>
+                    <span className="text-body font-medium">{t['expenses.photo_library'] || 'Photo Library'}</span>
                   </button>
                   <button
                     onClick={() => cameraInputRef.current?.click()}
                     className="py-6 rounded-xl bg-primary/10 border border-primary/20 flex flex-col items-center justify-center gap-2 text-primary hover:bg-primary/20 transition-colors"
                   >
                     <Camera size={28} />
-                    <span className="text-body font-medium">Scan Receipt</span>
+                    <span className="text-body font-medium">{t['expenses.scan_receipt'] || 'Scan Receipt'}</span>
                   </button>
                 </div>
 
@@ -1215,7 +1215,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                     className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground text-body hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50 flex items-center justify-center gap-2"
                   >
                     {isSaving ? (
-                      <span className="animate-pulse">Saving...</span>
+                      <span className="animate-pulse">{t['common.saving'] || 'Saving...'}</span>
                     ) : (
                       <>
                         <Check size={18} /> Save
@@ -1342,7 +1342,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                     className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground text-body hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50 flex items-center justify-center gap-2"
                   >
                     {isSaving ? (
-                      <span className="animate-pulse">Saving...</span>
+                      <span className="animate-pulse">{t['common.saving'] || 'Saving...'}</span>
                     ) : (
                       <>
                         <Check size={18} /> Save
@@ -1411,7 +1411,7 @@ const Expenses: React.FC<ExpensesProps> = ({
               {/* Amount - only show when not editing */}
               {!isEditingExisting && (
                 <div className="flex items-center justify-between">
-                  <span className="text-body text-muted-foreground">Amount</span>
+                  <span className="text-body text-muted-foreground">{t['expenses.amount'] || 'Amount'}</span>
                   <span className="text-title text-foreground">{formatCurrency(selectedExpense.amount, selectedExpense.currency)}</span>
                 </div>
               )}
@@ -1541,7 +1541,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                   onClick={saveExistingEdit}
                   disabled={savingExisting}
                 >
-                  {savingExisting ? 'Saving...' : 'Save'}
+                  {savingExisting ? (t['common.saving'] || 'Saving...') : (t['common.save'] || 'Save')}
                 </button>
               )}
 
@@ -1604,7 +1604,7 @@ const Expenses: React.FC<ExpensesProps> = ({
 
             {/* Header */}
             <div className="pt-6 pb-4 px-5 border-b border-border">
-              <h2 className="text-title text-foreground">Select Month</h2>
+              <h2 className="text-title text-foreground">{t['expenses.select_month'] || 'Select Month'}</h2>
     </div>
 
             {/* Year Selector */}

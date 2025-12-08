@@ -387,14 +387,14 @@ const Dashboard: React.FC<DashboardProps> = ({
                     className="flex items-center gap-2 px-4 py-2 bg-white/20 rounded-full text-white text-body font-medium shadow-sm hover:bg-white/30 transition-colors disabled:opacity-50"
                   >
                     <X size={16} />
-                    <span>Cancel</span>
+                    <span>{t['common.cancel'] || 'Cancel'}</span>
                   </button>
                   <button 
                     onClick={handleSaveNotes}
                     disabled={isSavingNotes || isDeletingNotes}
                     className="flex items-center gap-2 px-4 py-2 bg-white rounded-full text-primary text-body font-medium shadow-sm hover:bg-white/90 transition-colors disabled:opacity-50"
                   >
-                    <span>Save</span>
+                    <span>{t['common.save'] || 'Save'}</span>
                     {isSavingNotes ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
                   </button>
                 </div>
@@ -479,9 +479,9 @@ const Dashboard: React.FC<DashboardProps> = ({
             </div>
           ) : (
             <div className="text-center py-2 flex flex-col items-center gap-2">
-              <p className="text-body text-muted-foreground">No meals remaining for today</p>
+              <p className="text-body text-muted-foreground">{t['dashboard.no_meals_today'] || 'No meals remaining for today'}</p>
               <button className="text-body text-primary flex items-center gap-1 hover:underline">
-                <Plus size={12} /> Plan Meal
+                <Plus size={12} /> {t['meals.plan_dish'] || 'Plan Meal'}
               </button>
             </div>
           )}
@@ -555,8 +555,8 @@ const Dashboard: React.FC<DashboardProps> = ({
           >
             <Sun size={14} className="dark:hidden" />
             <Moon size={14} className="hidden dark:block" />
-            <span className="dark:hidden">Dark Mode (BETA)</span>
-            <span className="hidden dark:block">Light Mode</span>
+            <span className="dark:hidden">{t['dashboard.dark_mode'] || 'Dark Mode (BETA)'}</span>
+            <span className="hidden dark:block">{t['dashboard.light_mode'] || 'Light Mode'}</span>
           </button>
         </div>
       </div>

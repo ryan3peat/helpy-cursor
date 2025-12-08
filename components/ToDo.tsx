@@ -1131,7 +1131,7 @@ const ToDo: React.FC<ToDoProps> = ({
                   : (t['todo.no_tasks'] || 'No tasks yet')
                 }
               </p>
-              <p className="text-caption text-muted-foreground mt-1">Tap above to add one</p>
+              <p className="text-caption text-muted-foreground mt-1">{t['todo.tap_to_add'] || 'Tap above to add one'}</p>
             </div>
           )}
         </div>

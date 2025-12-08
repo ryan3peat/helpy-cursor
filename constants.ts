@@ -138,7 +138,7 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'meal.type.breakfast': 'Breakfast',
   'meal.type.lunch': 'Lunch',
   'meal.type.dinner': 'Dinner',
-  'meal.type.snacks': 'Snacks',
+  'meal.type.snacks': 'Snack',
 
   // Meal Audience
   'meals.audience_label': 'This meal is for',
@@ -276,8 +276,8 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'common.add_preference': 'Add preference',
   'common.allergy_medical': 'Allergy & Medical',
   'common.settings': 'Settings',
-  'common.plan': 'Plan',
-  'common.security': 'Security',
+  'common.plan': 'Subscription',
+  'common.security': 'Account',
   'common.payment': 'Payment',
   'common.free': 'Free',
   'common.core': 'Core',
@@ -287,6 +287,7 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'common.mo': 'mo',
   'common.yr': 'yr',
   'common.essential_info': 'Essential Info',
+  'common.house_routine': 'House Routine',
   'common.training': 'Training',
   'common.home': 'Home',
   'common.school': 'School',
@@ -350,4 +351,94 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'info.category.hospital': 'Hospital',
   'info.category.shops': 'Shops',
   'info.category.others': 'Others',
+  
+  // Profile - Settings & Account
+  'profile.invitation_link': 'Invitation Link',
+  'profile.share_link_text': 'Share this link with the new member:',
+  'profile.resend_invite': 'Resend Invite',
+  'profile.manage_account': 'Manage your account',
+  'profile.delete_family_member': 'Delete Family Member',
+  'profile.name_label': 'Name',
+  'profile.role': 'Role',
+  'profile.role_admin': 'Admin',
+  'profile.role_spouse': 'Spouse',
+  'profile.role_helper': 'Helper',
+  'profile.role_child': 'Child',
+  'profile.role_other': 'Other',
+  'profile.profile_information': 'Profile Information',
+  'profile.first_name': 'First Name',
+  'profile.last_name': 'Last Name',
+  'profile.mobile_number': 'Mobile Number',
+  'profile.email_password': 'Email & Password',
+  'profile.email_address': 'Email Address',
+  'profile.email_managed_by_google': 'Email managed by Google account',
+  'profile.current_password': 'Current Password',
+  'profile.new_password': 'New Password',
+  'profile.notifications': 'Notifications',
+  'profile.enable_notifications': 'Enable Notifications',
+  'profile.delete_account': 'Delete Account',
+  'profile.subscription_info': 'Subscription Information',
+  'profile.subscription_canceled': 'Subscription Canceled',
+  'profile.what_happens_next': 'What happens next?',
+  'profile.access_until_end': 'You\'ll continue to have access to premium features until the end of your current billing period.',
+  'profile.revert_to_free': 'After that, your account will automatically revert to the free plan.',
+  'profile.resubscribe_anytime': 'You can resubscribe at any time from your profile settings.',
+  'profile.card_holder': 'Card Holder',
+  'profile.card_expires': 'Expires',
+  'profile.card_number': 'Card Number',
+  'profile.expiry': 'Expiry',
+  'profile.cardholder_name': 'Cardholder Name',
+  'profile.card_type': 'Card Type',
+  'profile.save_payment': 'Save Payment Method',
+
+  // Dashboard
+  'dashboard.no_meals_today': 'No meals remaining for today',
+  'dashboard.dark_mode': 'Dark Mode (BETA)',
+  'dashboard.light_mode': 'Light Mode',
+
+  // Expenses
+  'expenses.error': 'Error',
+  'expenses.no_data': 'No expense data',
+  'expenses.photo_library': 'Photo Library',
+  'expenses.amount': 'Amount',
+  'expenses.select_month': 'Select Month',
+  'expenses.add_to_start': 'Add an expense to get started',
+
+  // HouseholdInfo
+  'info.no_entries_yet': 'No entries yet',
+  'info.no_countries_found': 'No countries found',
+  'info.add_contacts_hint': 'Add important contacts and places for your household',
+  'info.name_placeholder': 'e.g., City General Hospital',
+  'info.address_placeholder': '123 Main St, City',
+  'info.note_placeholder': 'Any additional details...',
+
+  // ToDo
+  'todo.tap_to_add': 'Tap above to add one',
+
+  // Auth & Loading
+  'auth.tidying_up': 'Tidying things up...',
+  'auth.please_wait': 'Please wait a moment',
+  'auth.setting_up': 'Setting up your account',
+  'auth.almost_ready': 'Almost ready',
+
+  // Invite
+  'invite.loading': 'Loading invitation...',
+  'invite.completing': 'Completing invitation...',
+
+  // Placeholders
+  'placeholder.search_country': 'Search country...',
+  'placeholder.mobile_number': 'Mobile number',
+  'placeholder.mm_yy': 'MM/YY',
+  'placeholder.name_on_card': 'Name on card',
+  'placeholder.enter_code': 'Enter 6-digit code',
+  'placeholder.first_name': 'John',
+  'placeholder.last_name': 'Doe',
+  'placeholder.enter_password': 'Enter password',
+  'placeholder.min_8_chars': 'At least 8 characters',
+
+  // Common - additional
+  'common.saving': 'Saving...',
+  'common.items': 'items',
+  'common.share': 'Share',
+  'common.deleting': 'Deleting...',
 };

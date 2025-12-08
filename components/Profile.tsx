@@ -39,6 +39,9 @@ const ROLE_PRIORITY: Record<string, number> = {
   'Other': 5,
 };
 
+// localStorage key for caching household name
+const HOUSEHOLD_NAME_CACHE_KEY = 'helpy_household_name';
+
 const Profile: React.FC<ProfileProps> = ({
   users, onAdd, onUpdate, onDelete, onBack, currentUser, onLogout, t
 }) => {
@@ -96,8 +99,21 @@ const Profile: React.FC<ProfileProps> = ({
   const [pushPermission, setPushPermission] = useState<NotificationPermission>('default');
   const [pushSupported, setPushSupported] = useState(true);
 
-  // Household Name State
-  const [householdName, setHouseholdName] = useState<string>('');
+  // Household Name State - initialize from localStorage cache for instant display
+  const [householdName, setHouseholdName] = useState<string>(() => {
+    const cached = localStorage.getItem(HOUSEHOLD_NAME_CACHE_KEY);
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        if (parsed.householdId === currentUser?.householdId) {
+          return parsed.name;
+        }
+      } catch {
+        // Invalid cache, ignore
+      }
+    }
+    return '';
+  });
 
   // Check push notification support and permission on mount
   useEffect(() => {
@@ -143,6 +159,11 @@ const Profile: React.FC<ProfileProps> = ({
         // Set household name
         if (data.name) {
           setHouseholdName(data.name);
+          // Cache for instant display on next visit
+          localStorage.setItem(HOUSEHOLD_NAME_CACHE_KEY, JSON.stringify({
+            householdId: currentUser.householdId,
+            name: data.name
+          }));
         }
         
         setSubscriptionInfo({
@@ -691,12 +712,12 @@ const Profile: React.FC<ProfileProps> = ({
 
                   {/* Header */}
                   <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
-                    <h2 className="text-title text-foreground">Invitation Link</h2>
+                    <h2 className="text-title text-foreground">{t['profile.invitation_link'] || 'Invitation Link'}</h2>
                   </div>
 
                   {/* Content */}
                   <div className="p-5">
-                    <p className="text-body text-muted-foreground mb-4">Share this link with the new member:</p>
+                    <p className="text-body text-muted-foreground mb-4">{t['profile.share_link_text'] || 'Share this link with the new member:'}</p>
                     <div className="bg-secondary p-3 rounded-lg break-all text-body font-mono text-foreground">
                       {inviteLink}
                     </div>
@@ -709,14 +730,14 @@ const Profile: React.FC<ProfileProps> = ({
                       className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body flex items-center justify-center gap-2 hover:bg-secondary/80 transition-colors"
                     >
                       {isCopied ? <Check size={18} /> : <Copy size={18} />}
-                      {isCopied ? 'Copied!' : 'Copy'}
+                      {isCopied ? (t['profile.copied'] || 'Copied!') : (t['profile.copy_link'] || 'Copy')}
                     </button>
                     <button
                       onClick={handleShareInvite}
                       className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors shadow-sm"
                     >
                       <Share2 size={18} />
-                      Share
+                      {t['common.share'] || 'Share'}
                     </button>
                   </div>
                 </div>
@@ -726,7 +747,7 @@ const Profile: React.FC<ProfileProps> = ({
             {/* User Carousel */}
             <div className="bg-card rounded-3xl px-5 py-5 shadow-sm">
               {householdName && (
-                <h2 className="text-display font-bold text-foreground mb-1">{householdName}</h2>
+                <h2 className="text-title font-bold text-foreground mb-1">{householdName}</h2>
               )}
               <p className="text-title text-muted-foreground mb-3">{t['profile.familyMembers']}</p>
               <div className="flex gap-4 overflow-x-auto pb-1 scrollbar-hide">
@@ -739,7 +760,7 @@ const Profile: React.FC<ProfileProps> = ({
                   <div id="onboarding-add-member-btn" className="w-16 h-16 rounded-full bg-secondary flex items-center justify-center border-2 border-border">
                     <Plus size={24} className="text-muted-foreground" />
                   </div>
-                  <span className="text-caption font-medium text-muted-foreground">{t['common.add']}</span>
+                  <span className="text-body font-semibold text-foreground">{t['common.add']}</span>
                 </div>
                 )}
                 {validUsers.map((user) => {
@@ -755,11 +776,11 @@ const Profile: React.FC<ProfileProps> = ({
                         }`}>
                         <img src={getAvatarUrl(user)} alt={user.name} className="w-full h-full object-cover" />
                       </div>
-                      <span className={`text-caption font-medium ${isSelected ? 'text-foreground' : 'text-muted-foreground'}`}>
+                      <span className="text-body font-semibold text-foreground">
                         {user.name.split(' ')[0]} {isCurrent ? '(You)' : ''}
                       </span>
                       {user.status === 'pending' && (
-                        <span className="text-micro text-muted-foreground">Pending</span>
+                        <span className="text-caption text-muted-foreground">{t['common.pending'] || 'Pending'}</span>
                       )}
                     </div>
                   );
@@ -800,7 +821,7 @@ const Profile: React.FC<ProfileProps> = ({
                         {selectedUser.role}
                       </span>
                       {selectedUser.status === 'pending' && (
-                        <span className="text-caption text-muted-foreground">Pending</span>
+                        <span className="text-caption text-muted-foreground">{t['common.pending'] || 'Pending'}</span>
                       )}
                     </div>
                   </div>
@@ -827,7 +848,7 @@ const Profile: React.FC<ProfileProps> = ({
                         className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 transition-colors whitespace-nowrap"
                       >
                         <Share2 size={16} className="shrink-0" />
-                        <span className="text-body font-medium">Resend Invite</span>
+                        <span className="text-body font-medium">{t['profile.resend_invite'] || 'Resend Invite'}</span>
                       </button>
                     )}
                     {/* Delete button - Hidden for Helper */}
@@ -890,15 +911,13 @@ const Profile: React.FC<ProfileProps> = ({
             {/* Quick Settings Button */}
             <button
               onClick={() => setActiveSection('settings')}
-              className="w-full bg-card p-4 rounded-2xl shadow-sm border border-border flex items-center justify-between hover:bg-secondary transition-colors"
+              className="w-full bg-card px-5 py-4 rounded-3xl shadow-sm flex items-center justify-between hover:bg-secondary transition-colors"
             >
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
-                  <Settings size={20} className="text-primary-foreground" />
-                </div>
+                <Settings size={18} className="text-primary" />
                 <div className="text-left">
                   <p className="font-bold text-foreground text-title">{t['common.settings']}</p>
-                  <p className="text-caption text-muted-foreground">Manage your account</p>
+                  <p className="text-caption text-muted-foreground">{t['profile.manage_account'] || 'Manage your account'}</p>
                 </div>
               </div>
               <ChevronRight size={20} className="text-muted-foreground" />
@@ -943,7 +962,7 @@ const Profile: React.FC<ProfileProps> = ({
                       value={newName}
                       onChange={(e) => setNewName(e.target.value)}
                       className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
-                      placeholder="Enter name"
+                      placeholder={t['common.enter_name'] || 'Enter name'}
                     />
                   </div>
                   <div>
@@ -1022,7 +1041,7 @@ const Profile: React.FC<ProfileProps> = ({
               <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
                 {/* Header */}
                 <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
-                  <h2 className="text-title text-foreground">Delete Family Member</h2>
+                  <h2 className="text-title text-foreground">{t['profile.delete_family_member'] || 'Delete Family Member'}</h2>
                 </div>
 
                 {/* Content */}
@@ -1074,14 +1093,14 @@ const Profile: React.FC<ProfileProps> = ({
 
                 {/* Header */}
                 <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
-                  <h2 className="text-title text-foreground">Edit Profile</h2>
+                  <h2 className="text-title text-foreground">{t['profile.edit_profile'] || 'Edit Profile'}</h2>
                 </div>
 
                 {/* Form */}
                 <div className="p-5 space-y-4 flex-1 overflow-y-auto">
                   {/* Name */}
                   <div>
-                    <label className="block text-caption text-muted-foreground mb-2 tracking-wide">Name</label>
+                    <label className="block text-caption text-muted-foreground mb-2 tracking-wide">{t['profile.name_label'] || 'Name'}</label>
                     <input
                       type="text"
                       value={editName}
@@ -1093,17 +1112,17 @@ const Profile: React.FC<ProfileProps> = ({
                   {/* Role - Hidden when Admin/Helper edits their own profile (prevent self-demotion/escalation) */}
                   {!((isHelper || currentUser.role === UserRole.MASTER) && selectedUser.id === currentUser.id) && (
                   <div>
-                    <label className="block text-caption text-muted-foreground mb-2 tracking-wide">Role</label>
+                    <label className="block text-caption text-muted-foreground mb-2 tracking-wide">{t['profile.role'] || 'Role'}</label>
                     <select
                       value={editRole}
                       onChange={(e) => setEditRole(e.target.value as UserRole)}
                       className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
                     >
-                      <option value={UserRole.MASTER}>Admin</option>
-                      <option value={UserRole.SPOUSE}>Spouse</option>
-                      <option value={UserRole.HELPER}>Helper</option>
-                      <option value={UserRole.CHILD}>Child</option>
-                      <option value={UserRole.OTHER}>Other</option>
+                      <option value={UserRole.MASTER}>{t['profile.role_admin'] || 'Admin'}</option>
+                      <option value={UserRole.SPOUSE}>{t['profile.role_spouse'] || 'Spouse'}</option>
+                      <option value={UserRole.HELPER}>{t['profile.role_helper'] || 'Helper'}</option>
+                      <option value={UserRole.CHILD}>{t['profile.role_child'] || 'Child'}</option>
+                      <option value={UserRole.OTHER}>{t['profile.role_other'] || 'Other'}</option>
                     </select>
                   </div>
                   )}
@@ -1418,11 +1437,11 @@ const Profile: React.FC<ProfileProps> = ({
               <div className="mt-6 bg-primary rounded-3xl p-6 shadow-md text-primary-foreground mb-6">
                 <div className="flex items-center justify-between mb-4">
                   <div>
-                    <h3 className="text-title font-semibold text-primary-foreground/90 mb-1">Current Plan</h3>
+                    <h3 className="text-title font-semibold text-primary-foreground/90 mb-1">{t['common.current_plan'] || 'Current Plan'}</h3>
                     <p className="text-display font-bold">{currentPlanName}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-body text-primary-foreground/80 mb-1">Price</p>
+                    <p className="text-body text-primary-foreground/80 mb-1">{t['common.price'] || 'Price'}</p>
                     {planPrice > 0 ? (
                       <p className="text-title font-bold">
                         HK${planPrice}
@@ -1437,17 +1456,17 @@ const Profile: React.FC<ProfileProps> = ({
                 {subscriptionInfo?.status === 'active' && subscriptionInfo?.periodEnd ? (
                   <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-primary-foreground/20">
                     <div>
-                      <p className="text-caption text-primary-foreground/70 mb-1">Expires On</p>
+                      <p className="text-caption text-primary-foreground/70 mb-1">{t['common.expires_on'] || 'Expires On'}</p>
                       <p className="text-body font-semibold">{formatDate(subscriptionInfo.periodEnd)}</p>
                     </div>
                     <div>
-                      <p className="text-caption text-primary-foreground/70 mb-1">Next Payment</p>
+                      <p className="text-caption text-primary-foreground/70 mb-1">{t['common.next_payment'] || 'Next Payment'}</p>
                       <p className="text-body font-semibold">{getNextPaymentDate(subscriptionInfo.periodEnd, subscriptionInfo.period) || 'N/A'}</p>
                     </div>
                   </div>
                 ) : subscriptionInfo?.status !== 'active' && (
                   <div className="mt-4 pt-4 border-t border-primary-foreground/20">
-                    <p className="text-body text-primary-foreground/80">No active subscription</p>
+                    <p className="text-body text-primary-foreground/80">{t['common.no_active_subscription'] || 'No active subscription'}</p>
                   </div>
                 )}
 
@@ -1457,7 +1476,7 @@ const Profile: React.FC<ProfileProps> = ({
                     disabled={isLoading}
                     className="w-full mt-4 bg-primary-foreground/20 hover:bg-primary-foreground/30 text-primary-foreground py-3 rounded-xl font-semibold transition-colors disabled:opacity-50"
                   >
-                    {isLoading ? 'Processing...' : 'Cancel Subscription'}
+                    {isLoading ? (t['common.processing'] || 'Processing...') : (t['common.cancel_subscription'] || 'Cancel Subscription')}
                   </button>
                 )}
               </div>
@@ -1502,7 +1521,7 @@ const Profile: React.FC<ProfileProps> = ({
                       } ${!isAdmin ? 'cursor-not-allowed' : ''}`}
                     >
                       {t['common.yearly']}
-                      <span className="ml-1 text-caption" style={{ color: 'hsl(var(--primary))' }}>Save 20%</span>
+                      <span className="ml-1 text-caption" style={{ color: 'hsl(var(--primary))' }}>{t['common.save_20_percent'] || 'Save 20%'}</span>
                     </button>
                   </div>
                   <div 
@@ -1544,12 +1563,12 @@ const Profile: React.FC<ProfileProps> = ({
                         <div className="flex flex-col items-end gap-1">
                           {isCurrentPlan && (
                             <span className="bg-primary text-primary-foreground text-caption font-bold px-3 py-1 rounded-full">
-                              Current Plan
+                              {t['common.current_plan'] || 'Current Plan'}
                             </span>
                           )}
                           {p.highlight && !isCurrentPlan && (
                             <span className="bg-primary text-primary-foreground text-caption font-bold px-3 py-1 rounded-full">
-                              Popular
+                              {t['common.popular'] || 'Popular'}
                             </span>
                           )}
                         </div>
@@ -1575,7 +1594,7 @@ const Profile: React.FC<ProfileProps> = ({
                             : 'bg-primary text-primary-foreground hover:bg-primary/90'
                         }`}
                       >
-                        {isLoading ? 'Processing...' : isCurrentPlan ? 'Current Plan' : !isAdmin ? 'Only Admin Can Change' : 'Select Plan'}
+                        {isLoading ? (t['common.processing'] || 'Processing...') : isCurrentPlan ? (t['common.current_plan'] || 'Current Plan') : !isAdmin ? (t['common.only_admin_can_change'] || 'Only Admin Can Change') : (t['common.change_plan'] || 'Select Plan')}
                       </button>
                     </div>
                   );
@@ -1606,11 +1625,11 @@ const Profile: React.FC<ProfileProps> = ({
             <div className="space-y-6">
               {/* Profile Information Section */}
               <div className="bg-card p-6 rounded-2xl shadow-sm border border-border">
-                <h3 className="text-title font-bold text-foreground mb-4">Profile Information</h3>
+                <h3 className="text-title font-bold text-foreground mb-4">{t['profile.profile_information'] || 'Profile Information'}</h3>
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1">
-                      <label className="text-caption font-bold text-muted-foreground ml-1">First Name</label>
+                      <label className="text-caption font-bold text-muted-foreground ml-1">{t['profile.first_name'] || 'First Name'}</label>
                       <input
                         type="text"
                         value={accountData.firstName}
@@ -1619,7 +1638,7 @@ const Profile: React.FC<ProfileProps> = ({
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-caption font-bold text-muted-foreground ml-1">Last Name</label>
+                      <label className="text-caption font-bold text-muted-foreground ml-1">{t['profile.last_name'] || 'Last Name'}</label>
                       <input
                         type="text"
                         value={accountData.lastName}
@@ -1629,7 +1648,7 @@ const Profile: React.FC<ProfileProps> = ({
                     </div>
                   </div>
                   <div className="space-y-1">
-                    <label className="text-caption font-bold text-muted-foreground ml-1">Mobile Number</label>
+                    <label className="text-caption font-bold text-muted-foreground ml-1">{t['profile.mobile_number'] || 'Mobile Number'}</label>
                     <div className="flex gap-2">
                       <div className="relative w-32 country-code-dropdown">
                         <input
@@ -1648,7 +1667,7 @@ const Profile: React.FC<ProfileProps> = ({
                                 type="text"
                                 value={countryCodeSearch}
                                 onChange={e => setCountryCodeSearch(e.target.value)}
-                                placeholder="Search country..."
+                                placeholder={t['placeholder.search_country'] || 'Search country...'}
                                 className="w-full bg-muted border border-border rounded-lg px-3 py-2 text-body focus:outline-none focus:border-primary transition-colors"
                               />
                             </div>
@@ -1670,7 +1689,7 @@ const Profile: React.FC<ProfileProps> = ({
                                   </button>
                                 ))
                               ) : (
-                                <div className="px-4 py-2 text-body text-muted-foreground">No countries found</div>
+                                <div className="px-4 py-2 text-body text-muted-foreground">{t['info.no_countries_found'] || 'No countries found'}</div>
                               )}
                             </div>
                           </div>
@@ -1681,7 +1700,7 @@ const Profile: React.FC<ProfileProps> = ({
                           type="tel"
                           value={accountData.phoneNumber}
                           onChange={e => setAccountData({ ...accountData, phoneNumber: e.target.value })}
-                          placeholder="Mobile number"
+                          placeholder={t['placeholder.mobile_number'] || 'Mobile number'}
                           className="w-full bg-muted border border-border rounded-xl px-4 py-3 text-foreground font-medium focus:border-primary outline-none pl-10 transition-colors text-body"
                         />
                         <Phone size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -1693,10 +1712,10 @@ const Profile: React.FC<ProfileProps> = ({
 
               {/* Email & Password Section */}
               <div className="bg-card p-6 rounded-2xl shadow-sm border border-border">
-                <h3 className="text-title font-bold text-foreground mb-4">Email & Password</h3>
+                <h3 className="text-title font-bold text-foreground mb-4">{t['profile.email_password'] || 'Email & Password'}</h3>
                 <div className="space-y-4">
                   <div className="space-y-1">
-                    <label className="text-caption font-bold text-muted-foreground ml-1">Email Address</label>
+                    <label className="text-caption font-bold text-muted-foreground ml-1">{t['profile.email_address'] || 'Email Address'}</label>
                     <div className="relative">
                       <input
                         type="email"
@@ -1708,14 +1727,14 @@ const Profile: React.FC<ProfileProps> = ({
                       <Mail size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                     </div>
                     {isGoogleAuth && (
-                      <p className="text-caption text-muted-foreground mt-1 ml-1">Email managed by Google account</p>
+                      <p className="text-caption text-muted-foreground mt-1 ml-1">{t['profile.email_managed_by_google'] || 'Email managed by Google account'}</p>
                     )}
                   </div>
                   
                   {!isGoogleAuth && (
                     <>
                       <div className="space-y-1">
-                        <label className="text-caption font-bold text-muted-foreground ml-1">Current Password</label>
+                        <label className="text-caption font-bold text-muted-foreground ml-1">{t['profile.current_password'] || 'Current Password'}</label>
                         <div className="relative">
                           <input
                             type="password"
@@ -1728,7 +1747,7 @@ const Profile: React.FC<ProfileProps> = ({
                         </div>
                       </div>
                       <div className="space-y-1">
-                        <label className="text-caption font-bold text-muted-foreground ml-1">New Password</label>
+                        <label className="text-caption font-bold text-muted-foreground ml-1">{t['profile.new_password'] || 'New Password'}</label>
                         <div className="relative">
                           <input
                             type="password"
@@ -1754,7 +1773,7 @@ const Profile: React.FC<ProfileProps> = ({
 
               {/* Notifications Section */}
               <div className="bg-card p-6 rounded-2xl shadow-sm border border-border">
-                <h3 className="text-title font-bold text-foreground mb-4">Notifications</h3>
+                <h3 className="text-title font-bold text-foreground mb-4">{t['profile.notifications'] || 'Notifications'}</h3>
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -1762,7 +1781,7 @@ const Profile: React.FC<ProfileProps> = ({
                         <Bell size={20} className="text-primary-foreground" />
                       </div>
                       <div>
-                        <p className="font-semibold text-foreground text-body">Enable Notifications</p>
+                        <p className="font-semibold text-foreground text-body">{t['profile.enable_notifications'] || 'Enable Notifications'}</p>
                         <p className="text-caption text-muted-foreground">
                           {!pushSupported 
                             ? 'Not supported in this browser'
@@ -1905,7 +1924,7 @@ const Profile: React.FC<ProfileProps> = ({
                   onClick={handleDeleteAccountClick}
                   className="w-full bg-destructive/10 text-destructive py-4 rounded-xl font-semibold shadow-sm hover:bg-destructive/20 transition-colors border border-destructive/20"
                 >
-                  Delete Account
+                  {t['profile.delete_account'] || 'Delete Account'}
                 </button>
               )}
             </div>
@@ -1928,7 +1947,7 @@ const Profile: React.FC<ProfileProps> = ({
             <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
               {/* Header */}
               <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
-                <h2 className="text-title text-foreground">Delete Account</h2>
+                <h2 className="text-title text-foreground">{t['profile.delete_account'] || 'Delete Account'}</h2>
               </div>
 
               {/* Content */}
@@ -1968,14 +1987,14 @@ const Profile: React.FC<ProfileProps> = ({
             <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
               {/* Header */}
               <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
-                <h2 className="text-title text-foreground">Delete Account</h2>
+                <h2 className="text-title text-foreground">{t['profile.delete_account'] || 'Delete Account'}</h2>
               </div>
 
               {/* Content */}
               <div className="p-5">
                 {subscriptionInfo?.status === 'active' && subscriptionInfo?.periodEnd && (
                   <div className="mb-4 p-4 bg-primary/10 border border-primary/20 rounded-lg">
-                    <p className="text-body text-primary font-semibold mb-1">Subscription Information</p>
+                    <p className="text-body text-primary font-semibold mb-1">{t['profile.subscription_info'] || 'Subscription Information'}</p>
                     <p className="text-body text-primary">
                       Your subscription is active until {formatDate(subscriptionInfo.periodEnd)}
                     </p>
@@ -2003,7 +2022,7 @@ const Profile: React.FC<ProfileProps> = ({
                   disabled={isDeletingAccount}
                   className="flex-1 py-3.5 rounded-xl bg-destructive text-destructive-foreground text-body hover:bg-destructive/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isDeletingAccount ? 'Deleting...' : 'Delete Account'}
+                  {isDeletingAccount ? (t['common.deleting'] || 'Deleting...') : (t['profile.delete_account'] || 'Delete Account')}
                 </button>
               </div>
             </div>
@@ -2021,7 +2040,7 @@ const Profile: React.FC<ProfileProps> = ({
             <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
               {/* Header */}
               <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
-                <h2 className="text-title text-foreground">Subscription Canceled</h2>
+                <h2 className="text-title text-foreground">{t['profile.subscription_canceled'] || 'Subscription Canceled'}</h2>
               </div>
 
               {/* Content */}
@@ -2035,19 +2054,19 @@ const Profile: React.FC<ProfileProps> = ({
                   Your subscription has been successfully canceled.
                 </p>
                 <div className="p-4 bg-muted rounded-xl border border-border">
-                  <p className="text-caption text-muted-foreground mb-2">What happens next?</p>
+                  <p className="text-caption text-muted-foreground mb-2">{t['profile.what_happens_next'] || 'What happens next?'}</p>
                   <ul className="text-body text-foreground space-y-2">
                     <li className="flex items-start gap-2">
                       <span className="text-primary mt-1">•</span>
-                      <span>You'll continue to have access to premium features until the end of your current billing period.</span>
+                      <span>{t['profile.access_until_end'] || "You'll continue to have access to premium features until the end of your current billing period."}</span>
                     </li>
                     <li className="flex items-start gap-2">
                       <span className="text-primary mt-1">•</span>
-                      <span>After that, your account will automatically revert to the free plan.</span>
+                      <span>{t['profile.revert_to_free'] || 'After that, your account will automatically revert to the free plan.'}</span>
                     </li>
                     <li className="flex items-start gap-2">
                       <span className="text-primary mt-1">•</span>
-                      <span>You can resubscribe at any time from your profile settings.</span>
+                      <span>{t['profile.resubscribe_anytime'] || 'You can resubscribe at any time from your profile settings.'}</span>
                     </li>
                   </ul>
                 </div>
@@ -2080,7 +2099,7 @@ const Profile: React.FC<ProfileProps> = ({
     return (
       <div className="min-h-screen bg-background pb-40">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
-          {renderSettingsHeader(t['common.payment'] || 'Payment Method', () => setActiveSection('settings'))}
+          {renderSettingsHeader(t['common.payment'] || 'Payment', () => setActiveSection('settings'))}
           <div className="pt-6 pb-24">
 
             {/* Card Preview */}
@@ -2126,11 +2145,11 @@ const Profile: React.FC<ProfileProps> = ({
                     </div>
                     <div className="flex justify-between text-sm">
                       <div>
-                        <div className="text-[10px] text-white/60 uppercase tracking-wider mb-0.5">Card Holder</div>
+                        <div className="text-[10px] text-white/60 uppercase tracking-wider mb-0.5">{t['profile.card_holder'] || 'Card Holder'}</div>
                         <span className="text-white/90 font-medium">{paymentData.name || 'YOUR NAME'}</span>
                       </div>
                       <div className="text-right">
-                        <div className="text-[10px] text-white/60 uppercase tracking-wider mb-0.5">Expires</div>
+                        <div className="text-[10px] text-white/60 uppercase tracking-wider mb-0.5">{t['profile.card_expires'] || 'Expires'}</div>
                         <span className="text-white/90 font-medium">{paymentData.expiry || 'MM/YY'}</span>
                       </div>
                     </div>
@@ -2141,7 +2160,7 @@ const Profile: React.FC<ProfileProps> = ({
 
             <div className="space-y-4 bg-card p-6 rounded-2xl shadow-sm border border-border">
               <div className="space-y-1">
-                <label className="text-caption font-bold text-muted-foreground ml-1">Card Number</label>
+                <label className="text-caption font-bold text-muted-foreground ml-1">{t['profile.card_number'] || 'Card Number'}</label>
                 <input
                   type="text"
                   inputMode="numeric"
@@ -2159,11 +2178,11 @@ const Profile: React.FC<ProfileProps> = ({
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-caption font-bold text-muted-foreground ml-1">Expiry</label>
+                  <label className="text-caption font-bold text-muted-foreground ml-1">{t['profile.expiry'] || 'Expiry'}</label>
                   <input
                     type="text"
                     inputMode="numeric"
-                    placeholder="MM/YY"
+                    placeholder={t['placeholder.mm_yy'] || 'MM/YY'}
                     maxLength={5}
                     value={paymentData.expiry}
                     onChange={e => {
@@ -2197,17 +2216,17 @@ const Profile: React.FC<ProfileProps> = ({
                 </div>
               </div>
               <div className="space-y-1">
-                <label className="text-caption font-bold text-muted-foreground ml-1">Cardholder Name</label>
+                <label className="text-caption font-bold text-muted-foreground ml-1">{t['profile.cardholder_name'] || 'Cardholder Name'}</label>
                 <input
                   type="text"
-                  placeholder="Name on card"
+                  placeholder={t['placeholder.name_on_card'] || 'Name on card'}
                   value={paymentData.name}
                   onChange={e => setPaymentData({ ...paymentData, name: e.target.value })}
                   className="w-full bg-muted border border-border rounded-xl px-4 py-3 text-foreground font-medium text-body focus:border-primary outline-none transition-colors"
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-caption font-bold text-muted-foreground ml-1">Card Type</label>
+                <label className="text-caption font-bold text-muted-foreground ml-1">{t['profile.card_type'] || 'Card Type'}</label>
                 <div className="grid grid-cols-3 gap-2">
                   {(['DEBIT', 'CREDIT', 'PREPAID'] as const).map(type => {
                     const isSelected = paymentData.cardType === type;
@@ -2236,7 +2255,7 @@ const Profile: React.FC<ProfileProps> = ({
 
             <div className="mt-6 pt-4">
               <button onClick={() => setActiveSection('settings')} className="w-full bg-primary text-primary-foreground py-4 rounded-xl font-semibold shadow-sm hover:bg-primary/90 transition-colors">
-                Save Payment Method
+                {t['profile.save_payment'] || 'Save Payment Method'}
               </button>
             </div>
           </div>
@@ -2260,29 +2279,29 @@ const Profile: React.FC<ProfileProps> = ({
           {renderSettingsHeader(t['common.settings'] || 'Settings', () => setActiveSection('main'))}
           <div className="pt-6 pb-24">
 
-            <div className="space-y-3">
+            <div className="bg-card rounded-3xl shadow-sm overflow-hidden">
               {[
-                { id: 'plan', label: 'Subscription', icon: Crown, helperHidden: true },
-                { id: 'security', label: 'Account', icon: Shield, helperHidden: false },
-                { id: 'payment', label: 'Manage Payment', icon: CreditCard, helperHidden: true },
+                { id: 'plan', label: t['common.plan'] || 'Subscription', icon: Crown, helperHidden: true },
+                { id: 'security', label: t['common.security'] || 'Account', icon: Shield, helperHidden: false },
+                { id: 'payment', label: t['common.payment'] || 'Payment', icon: CreditCard, helperHidden: true },
               ]
                 .filter(item => !isHelper || !item.helperHidden)
-                .map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => setActiveSection(item.id as any)}
-                  className="w-full bg-card p-4 rounded-2xl shadow-sm border border-border flex items-center justify-between hover:bg-secondary transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
-                      <item.icon size={20} className="text-primary-foreground" />
-                    </div>
-                    <div className="text-left">
+                .map((item, index, filteredArray) => (
+                <div key={item.id}>
+                  <button
+                    onClick={() => setActiveSection(item.id as any)}
+                    className="w-full px-5 py-4 flex items-center justify-between hover:bg-secondary transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <item.icon size={18} className="text-primary" />
                       <p className="font-bold text-foreground text-title">{item.label}</p>
                     </div>
-                  </div>
-                  <ChevronRight size={20} className="text-muted-foreground" />
-                </button>
+                    <ChevronRight size={20} className="text-muted-foreground" />
+                  </button>
+                  {index < filteredArray.length - 1 && (
+                    <div className="mx-5 border-t border-border" />
+                  )}
+                </div>
               ))}
             </div>
           </div>

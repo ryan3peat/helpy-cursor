@@ -268,7 +268,7 @@ const FamilyProfileCarousel: React.FC<FamilyProfileCarouselProps> = ({ users, t 
                     <div className="flex items-center gap-2 mb-2">
                       <Info size={16} className="text-destructive" />
                       <span className="text-body text-foreground">
-                        Allergy & Medical
+                        {t['common.allergy_medical'] || 'Allergy & Medical'}
                       </span>
                     </div>
                     {user.allergies && user.allergies.length > 0 ? (
@@ -947,9 +947,9 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
                   <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-secondary flex items-center justify-center">
                     <BookOpen size={28} className="text-muted-foreground" />
                   </div>
-                  <p className="text-body text-foreground">No entries yet</p>
+                  <p className="text-body text-foreground">{t['info.no_entries_yet'] || 'No entries yet'}</p>
                   <p className="text-caption text-muted-foreground mt-1">
-                    Add important contacts and places for your household
+                    {t['info.add_contacts_hint'] || 'Add important contacts and places for your household'}
                   </p>
                 </div>
               ) : (
@@ -1373,7 +1373,7 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
               type="text"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
-              placeholder="e.g., City General Hospital"
+              placeholder={t['info.name_placeholder'] || 'e.g., City General Hospital'}
               className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
             />
           </div>
@@ -1389,7 +1389,7 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
                 type="text"
                 value={form.address}
                 onChange={(e) => setForm({ ...form, address: e.target.value })}
-                placeholder="123 Main St, City"
+                placeholder={t['info.address_placeholder'] || '123 Main St, City'}
                 className="w-full pl-11 pr-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
               />
             </div>
@@ -1432,7 +1432,7 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
                           </button>
                         ))
                       ) : (
-                        <div className="px-4 py-2 text-body text-muted-foreground">No countries found</div>
+                        <div className="px-4 py-2 text-body text-muted-foreground">{t['info.no_countries_found'] || 'No countries found'}</div>
                       )}
                     </div>
                     {/* Search input - at bottom when dropdown opens upward */}
@@ -1441,7 +1441,7 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
                         type="text"
                         value={countryCodeSearch}
                         onChange={(e) => setCountryCodeSearch(e.target.value)}
-                        placeholder="Search country..."
+                        placeholder={t['placeholder.search_country'] || 'Search country...'}
                         className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-body focus:outline-none focus:border-primary transition-colors"
                       />
                     </div>
@@ -1459,7 +1459,7 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
                     const value = e.target.value.replace(/[^\d\s\-()]/g, '');
                     setForm({ ...form, phone: value });
                   }}
-                  placeholder="Mobile number"
+                  placeholder={t['placeholder.mobile_number'] || 'Mobile number'}
                   className="w-full pl-11 pr-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
                 />
               </div>
@@ -1475,7 +1475,7 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
               type="text"
               value={form.note}
               onChange={(e) => setForm({ ...form, note: e.target.value })}
-              placeholder="Any additional details..."
+              placeholder={t['info.note_placeholder'] || 'Any additional details...'}
               className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
             />
           </div>

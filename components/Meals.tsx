@@ -921,10 +921,10 @@ const Meals: React.FC<MealsProps> = ({
                                 {/* Left area: Meal type icons */}
                                 <div className="flex-1 flex items-center justify-evenly min-w-0">
                                   {[
-                                    { type: MealType.BREAKFAST, label: 'Breakfast', icon: <Coffee size={18} />, color: 'text-[#FF9800] border-[#FF9800]/30 hover:bg-[#FF9800]/10 hover:border-[#FF9800]/50' },
-                                    { type: MealType.LUNCH, label: 'Lunch', icon: <Sun size={18} />, color: 'text-[#4CAF50] border-[#4CAF50]/30 hover:bg-[#4CAF50]/10 hover:border-[#4CAF50]/50' },
-                                    { type: MealType.DINNER, label: 'Dinner', icon: <Moon size={18} />, color: 'text-[#7E57C2] border-[#7E57C2]/30 hover:bg-[#7E57C2]/10 hover:border-[#7E57C2]/50' },
-                                    { type: MealType.SNACKS, label: 'Snack', icon: <Cookie size={18} />, color: 'text-[#F06292] border-[#F06292]/30 hover:bg-[#F06292]/10 hover:border-[#F06292]/50' },
+                                    { type: MealType.BREAKFAST, label: t['meal.type.breakfast'] || 'Breakfast', icon: <Coffee size={18} />, color: 'text-[#FF9800] border-[#FF9800]/30 hover:bg-[#FF9800]/10 hover:border-[#FF9800]/50' },
+                                    { type: MealType.LUNCH, label: t['meal.type.lunch'] || 'Lunch', icon: <Sun size={18} />, color: 'text-[#4CAF50] border-[#4CAF50]/30 hover:bg-[#4CAF50]/10 hover:border-[#4CAF50]/50' },
+                                    { type: MealType.DINNER, label: t['meal.type.dinner'] || 'Dinner', icon: <Moon size={18} />, color: 'text-[#7E57C2] border-[#7E57C2]/30 hover:bg-[#7E57C2]/10 hover:border-[#7E57C2]/50' },
+                                    { type: MealType.SNACKS, label: t['meal.type.snacks'] || 'Snack', icon: <Cookie size={18} />, color: 'text-[#F06292] border-[#F06292]/30 hover:bg-[#F06292]/10 hover:border-[#F06292]/50' },
                                   ].map(({ type, label, icon, color }) => {
                                     const alreadyExists = existingMealTypes.includes(type);
                                     return (

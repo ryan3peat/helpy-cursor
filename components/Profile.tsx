@@ -9,7 +9,7 @@ import { User, UserRole, BaseViewProps } from '../types';
 import { createInvite } from '../services/inviteService';
 import { createCheckoutSession, createPortalSession } from '../services/stripeService';
 import { supabase } from '../services/supabase';
-import { deleteItem } from '../services/supabaseService';
+import { deleteItem, uploadAvatarImage } from '../services/supabaseService';
 import { useScrollLock } from '@/hooks/useScrollLock';
 import {
   isPushSupported,
@@ -42,6 +42,11 @@ const ROLE_PRIORITY: Record<string, number> = {
 const Profile: React.FC<ProfileProps> = ({
   users, onAdd, onUpdate, onDelete, onBack, currentUser, onLogout, t
 }) => {
+  // ─────────────────────────────────────────────────────────────────
+  // Role-based permissions
+  // ─────────────────────────────────────────────────────────────────
+  const isHelper = currentUser.role === UserRole.HELPER;
+
   // Navigation State
   const [activeSection, setActiveSection] = useState<'main' | 'settings' | 'plan' | 'security' | 'payment'>('main');
 
@@ -90,6 +95,9 @@ const Profile: React.FC<ProfileProps> = ({
   const [pushPermission, setPushPermission] = useState<NotificationPermission>('default');
   const [pushSupported, setPushSupported] = useState(true);
 
+  // Household Name State
+  const [householdName, setHouseholdName] = useState<string>('');
+
   // Check push notification support and permission on mount
   useEffect(() => {
     setPushSupported(isPushSupported());
@@ -101,7 +109,7 @@ const Profile: React.FC<ProfileProps> = ({
   // Lock scroll when any modal is open
   useScrollLock(isAddModalOpen || isEditModalOpen || deleteConfirmOpen || showPhotoOptions || subscriptionCanceled);
 
-  // Fetch subscription info
+  // Fetch subscription info and household name
   const fetchSubscriptionInfo = React.useCallback(async (retryCount = 0) => {
     if (!currentUser?.householdId) return;
     
@@ -109,13 +117,18 @@ const Profile: React.FC<ProfileProps> = ({
       setIsLoadingSubscription(true);
       const { data, error } = await supabase
         .from('households')
-        .select('subscription_plan, subscription_status, subscription_current_period_end, subscription_period')
+        .select('name, subscription_plan, subscription_status, subscription_current_period_end, subscription_period')
         .eq('id', currentUser.householdId)
         .single();
 
       if (error) throw error;
 
       if (data) {
+        // Set household name
+        if (data.name) {
+          setHouseholdName(data.name);
+        }
+        
         setSubscriptionInfo({
           plan: data.subscription_plan || 'free',
           status: data.subscription_status || 'inactive',
@@ -394,6 +407,22 @@ const Profile: React.FC<ProfileProps> = ({
     }
   };
 
+  // Get avatar URL with appropriate background color based on status
+  const getAvatarUrl = (user: User) => {
+    // Check if using dicebear avatar (no custom photo uploaded)
+    const isDicebearAvatar = user.avatar?.includes('dicebear');
+    
+    if (isDicebearAvatar) {
+      const seed = encodeURIComponent(user.name);
+      // Grey (#9CA3AF) for pending, Helpy blue (#3EAFD2) for accepted
+      const bgColor = user.status === 'pending' ? '9CA3AF' : '3EAFD2';
+      // Reduce font size by 20% (from default 50 to 40)
+      return `https://api.dicebear.com/7.x/initials/svg?seed=${seed}&backgroundColor=${bgColor}&fontSize=40`;
+    }
+    
+    return user.avatar;
+  };
+
   const handleAddUser = async () => {
     if (!newName.trim() || isAddingUser) return;
     
@@ -519,6 +548,42 @@ const Profile: React.FC<ProfileProps> = ({
     setIsEditModalOpen(false);
   };
 
+  const handleAvatarChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Image size must be less than 5MB');
+      return;
+    }
+
+    try {
+      console.log('📷 Uploading avatar for user:', selectedUser.id);
+      const avatarUrl = await uploadAvatarImage(
+        currentUser.householdId,
+        selectedUser.id,
+        file
+      );
+      
+      // Update user with new avatar URL
+      onUpdate(selectedUser.id, { avatar: avatarUrl });
+      console.log('✅ Avatar updated successfully');
+    } catch (error) {
+      console.error('❌ Failed to upload avatar:', error);
+      alert('Failed to upload image. Please try again.');
+    }
+
+    // Reset the input so the same file can be selected again
+    event.target.value = '';
+  };
+
   const addAllergy = () => {
     if (newAllergyInput.trim() && !editAllergies.includes(newAllergyInput.trim())) {
       setEditAllergies([...editAllergies, newAllergyInput.trim()]);
@@ -602,9 +667,7 @@ const Profile: React.FC<ProfileProps> = ({
 
                   {/* Header */}
                   <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
-                    {/* Drag Handle */}
-                    <div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto mb-4" />
-                    <h2 className="text-title text-foreground text-center">Invitation Link</h2>
+                    <h2 className="text-title text-foreground">Invitation Link</h2>
                   </div>
 
                   {/* Content */}
@@ -637,19 +700,24 @@ const Profile: React.FC<ProfileProps> = ({
             )}
 
             {/* User Carousel */}
-            <div className="bg-primary rounded-3xl px-5 py-5 shadow-md">
-              <h2 className="text-primary-foreground text-title font-bold mb-3">{t['profile.familyMembers']}</h2>
+            <div className="bg-card rounded-3xl px-5 py-5 shadow-sm">
+              {householdName && (
+                <h2 className="text-display font-bold text-foreground mb-1">{householdName}</h2>
+              )}
+              <p className="text-title text-muted-foreground mb-3">{t['profile.familyMembers']}</p>
               <div className="flex gap-4 overflow-x-auto pb-1 scrollbar-hide">
-                {/* Add button first - always visible */}
+                {/* Add button first - Hidden for Helper */}
+                {!isHelper && (
                 <div
                   onClick={() => setIsAddModalOpen(true)}
                   className="flex flex-col items-center gap-2 cursor-pointer opacity-60 hover:opacity-100 transition-opacity"
                 >
-                  <div id="onboarding-add-member-btn" className="w-16 h-16 rounded-full bg-primary-foreground/20 flex items-center justify-center border-2 border-primary-foreground/50">
-                    <Plus size={24} className="text-primary-foreground" />
+                  <div id="onboarding-add-member-btn" className="w-16 h-16 rounded-full bg-secondary flex items-center justify-center border-2 border-border">
+                    <Plus size={24} className="text-muted-foreground" />
                   </div>
-                  <span className="text-caption font-medium text-primary-foreground/70">{t['common.add']}</span>
+                  <span className="text-caption font-medium text-muted-foreground">{t['common.add']}</span>
                 </div>
+                )}
                 {validUsers.map((user) => {
                   const isCurrent = user.id === currentUser.id;
                   const isSelected = user.id === selectedUserId;
@@ -657,18 +725,17 @@ const Profile: React.FC<ProfileProps> = ({
                     <div
                       key={user.id}
                       onClick={() => setSelectedUserId(user.id)}
-                      className={`flex flex-col items-center gap-2 cursor-pointer transition-opacity ${isSelected ? 'opacity-100' : 'opacity-60'
-                        }`}
+                      className="flex flex-col items-center gap-2 cursor-pointer"
                     >
-                      <div className={`w-16 h-16 rounded-full overflow-hidden border-4 ${isSelected ? 'border-primary-foreground shadow-md' : 'border-primary-foreground/50'
+                      <div className={`w-16 h-16 rounded-full overflow-hidden border-4 ${isSelected ? 'border-primary shadow-md' : 'border-transparent'
                         }`}>
-                        <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
+                        <img src={getAvatarUrl(user)} alt={user.name} className="w-full h-full object-cover" />
                       </div>
-                      <span className={`text-caption font-medium ${isSelected ? 'text-primary-foreground' : 'text-primary-foreground/70'}`}>
+                      <span className={`text-caption font-medium ${isSelected ? 'text-foreground' : 'text-muted-foreground'}`}>
                         {user.name.split(' ')[0]} {isCurrent ? '(You)' : ''}
                       </span>
                       {user.status === 'pending' && (
-                        <span className="text-micro text-primary-foreground/80">Pending</span>
+                        <span className="text-micro text-muted-foreground">Pending</span>
                       )}
                     </div>
                   );
@@ -686,7 +753,7 @@ const Profile: React.FC<ProfileProps> = ({
                       className="w-20 h-20 rounded-full overflow-hidden shadow-sm bg-secondary cursor-pointer"
                       onClick={() => setShowPhotoOptions(true)}
                     >
-                      <img src={selectedUser.avatar} alt={selectedUser.name} className="w-full h-full object-cover" />
+                      <img src={getAvatarUrl(selectedUser)} alt={selectedUser.name} className="w-full h-full object-cover" />
                     </div>
                     <button
                       onClick={() => setShowPhotoOptions(true)}
@@ -712,23 +779,28 @@ const Profile: React.FC<ProfileProps> = ({
                 <div className="mt-4 pt-4">
                   <div className="h-px bg-border -mt-4 mb-4" />
                   <div className="flex items-center gap-2">
+                    {/* Edit button - Helper can only edit their own profile */}
+                    {(!isHelper || selectedUser.id === currentUser.id) && (
                     <button
                       onClick={handleOpenEdit}
-                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-secondary text-foreground rounded-xl hover:bg-secondary/80 transition-colors whitespace-nowrap"
+                      className="flex items-center justify-center gap-2 px-4 py-2.5 bg-secondary text-foreground rounded-xl hover:bg-secondary/80 transition-colors whitespace-nowrap"
                     >
                       <Settings size={16} className="shrink-0" />
                       <span className="text-body font-medium">{t['common.edit'] || 'Edit'}</span>
                     </button>
-                    {selectedUser.status === 'pending' && (
+                    )}
+                    {/* Resend button - Hidden for Helper */}
+                    {selectedUser.status === 'pending' && !isHelper && (
                       <button
                         onClick={() => handleReinvite(selectedUser.id)}
                         className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 transition-colors whitespace-nowrap"
                       >
                         <Share2 size={16} className="shrink-0" />
-                        <span className="text-body font-medium">Resend</span>
+                        <span className="text-body font-medium">Resend Invite</span>
                       </button>
                     )}
-                    {selectedUser.id !== currentUser.id && (
+                    {/* Delete button - Hidden for Helper */}
+                    {selectedUser.id !== currentUser.id && !isHelper && (
                       <button
                         onClick={() => handleDeleteUser(selectedUser.id)}
                         className="p-2.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl transition-colors shrink-0"
@@ -828,8 +900,7 @@ const Profile: React.FC<ProfileProps> = ({
 
                 {/* Header */}
                 <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
-                  <div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto mb-4" />
-                  <h2 className="text-title text-foreground text-center">{t['profile.addMember']}</h2>
+                  <h2 className="text-title text-foreground">{t['profile.addMember']}</h2>
                 </div>
 
                 {/* Form */}
@@ -920,13 +991,12 @@ const Profile: React.FC<ProfileProps> = ({
               <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
                 {/* Header */}
                 <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
-                  <div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto mb-4" />
-                  <h2 className="text-title text-foreground text-center">Delete Family Member</h2>
+                  <h2 className="text-title text-foreground">Delete Family Member</h2>
                 </div>
 
                 {/* Content */}
                 <div className="p-5">
-                  <p className="text-body text-muted-foreground text-center">
+                  <p className="text-body text-muted-foreground">
                     {t['profile.confirmDelete'] || 'Are you sure you want to delete this family member? This action cannot be undone.'}
                   </p>
                 </div>
@@ -973,9 +1043,7 @@ const Profile: React.FC<ProfileProps> = ({
 
                 {/* Header */}
                 <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
-                  {/* Drag Handle */}
-                  <div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto mb-4" />
-                  <h2 className="text-title text-foreground text-center">Edit Profile</h2>
+                  <h2 className="text-title text-foreground">Edit Profile</h2>
                 </div>
 
                 {/* Form */}
@@ -991,7 +1059,8 @@ const Profile: React.FC<ProfileProps> = ({
                     />
                   </div>
 
-                  {/* Role */}
+                  {/* Role - Hidden when Admin/Helper edits their own profile (prevent self-demotion/escalation) */}
+                  {!((isHelper || currentUser.role === UserRole.MASTER) && selectedUser.id === currentUser.id) && (
                   <div>
                     <label className="block text-caption text-muted-foreground mb-2 tracking-wide">Role</label>
                     <select
@@ -999,13 +1068,14 @@ const Profile: React.FC<ProfileProps> = ({
                       onChange={(e) => setEditRole(e.target.value as UserRole)}
                       className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
                     >
-                      <option value={UserRole.MASTER}>Master</option>
+                      <option value={UserRole.MASTER}>Admin</option>
                       <option value={UserRole.SPOUSE}>Spouse</option>
                       <option value={UserRole.HELPER}>Helper</option>
                       <option value={UserRole.CHILD}>Child</option>
                       <option value={UserRole.OTHER}>Other</option>
                     </select>
                   </div>
+                  )}
 
                   {/* Allergies */}
                   <div>
@@ -1097,8 +1167,7 @@ const Profile: React.FC<ProfileProps> = ({
             >
               {/* Header */}
               <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
-                <div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto mb-4" />
-                <h2 className="text-title text-foreground text-center">{t['profile.change_photo']}</h2>
+                <h2 className="text-title text-foreground">{t['profile.change_photo']}</h2>
               </div>
               
               {/* Options */}
@@ -1139,8 +1208,8 @@ const Profile: React.FC<ProfileProps> = ({
         )}
 
         {/* Hidden file inputs */}
-        <input ref={fileInputRef} type="file" accept="image/*" className="hidden" />
-        <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" />
+        <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
+        <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleAvatarChange} />
       </div>
     );
   }
@@ -1325,7 +1394,7 @@ const Profile: React.FC<ProfileProps> = ({
                     <p className="text-body text-primary-foreground/80 mb-1">Price</p>
                     {planPrice > 0 ? (
                       <p className="text-title font-bold">
-                        ${planPrice}
+                        HK${planPrice}
                         <span className="text-body font-normal">/{subscriptionInfo?.period === 'yearly' ? t['common.yr'] : t['common.mo']}</span>
                       </p>
                     ) : (
@@ -1371,7 +1440,7 @@ const Profile: React.FC<ProfileProps> = ({
 
               {!isAdmin && (
                 <div className="mb-4 p-4 bg-muted rounded-xl border border-border">
-                  <p className="text-body text-muted-foreground text-center">
+                  <p className="text-body text-muted-foreground">
                     Only Admin can make changes to the subscription
                   </p>
                 </div>
@@ -1434,7 +1503,7 @@ const Profile: React.FC<ProfileProps> = ({
                           <h3 className="text-title font-bold text-foreground">{p.name}</h3>
                           <div className="flex items-baseline gap-1 mt-1">
                             <span className="text-display font-bold text-foreground">
-                              ${price}
+                              HK${price}
                             </span>
                             <span className="text-muted-foreground text-body">
                               /{billingPeriod === 'monthly' ? t['common.mo'] : t['common.yr']}
@@ -1828,13 +1897,12 @@ const Profile: React.FC<ProfileProps> = ({
             <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
               {/* Header */}
               <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
-                <div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto mb-4" />
-                <h2 className="text-title text-foreground text-center">Delete Account</h2>
+                <h2 className="text-title text-foreground">Delete Account</h2>
               </div>
 
               {/* Content */}
               <div className="p-5">
-                <p className="text-body text-muted-foreground text-center">
+                <p className="text-body text-muted-foreground">
                   Are you sure you want to delete your account? This change will be permanent.
                 </p>
               </div>
@@ -1869,8 +1937,7 @@ const Profile: React.FC<ProfileProps> = ({
             <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
               {/* Header */}
               <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
-                <div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto mb-4" />
-                <h2 className="text-title text-foreground text-center">Delete Account</h2>
+                <h2 className="text-title text-foreground">Delete Account</h2>
               </div>
 
               {/* Content */}
@@ -1883,7 +1950,7 @@ const Profile: React.FC<ProfileProps> = ({
                     </p>
                   </div>
                 )}
-                <p className="text-body text-muted-foreground text-center">
+                <p className="text-body text-muted-foreground">
                   Are you sure you want to delete? After deletion it will be immediate.
                 </p>
               </div>
@@ -1923,8 +1990,7 @@ const Profile: React.FC<ProfileProps> = ({
             <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
               {/* Header */}
               <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
-                <div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto mb-4" />
-                <h2 className="text-title text-foreground text-center">Subscription Canceled</h2>
+                <h2 className="text-title text-foreground">Subscription Canceled</h2>
               </div>
 
               {/* Content */}
@@ -1934,7 +2000,7 @@ const Profile: React.FC<ProfileProps> = ({
                     <CheckCircle size={32} className="text-primary" />
                   </div>
                 </div>
-                <p className="text-body text-foreground text-center mb-4">
+                <p className="text-body text-foreground mb-4">
                   Your subscription has been successfully canceled.
                 </p>
                 <div className="p-4 bg-muted rounded-xl border border-border">
@@ -2165,10 +2231,12 @@ const Profile: React.FC<ProfileProps> = ({
 
             <div className="space-y-3">
               {[
-                { id: 'plan', label: 'Subscription', icon: Crown },
-                { id: 'security', label: 'Account', icon: Shield },
-                { id: 'payment', label: 'Manage Payment', icon: CreditCard },
-              ].map((item) => (
+                { id: 'plan', label: 'Subscription', icon: Crown, helperHidden: true },
+                { id: 'security', label: 'Account', icon: Shield, helperHidden: false },
+                { id: 'payment', label: 'Manage Payment', icon: CreditCard, helperHidden: true },
+              ]
+                .filter(item => !isHelper || !item.helperHidden)
+                .map((item) => (
                 <button
                   key={item.id}
                   onClick={() => setActiveSection(item.id as any)}

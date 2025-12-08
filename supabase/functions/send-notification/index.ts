@@ -77,9 +77,11 @@ function buildNotificationMessage(
     case 'expenses': {
       const merchant = record.merchant as string || 'Unknown';
       const amount = record.amount as number || 0;
+      // Format with HK$ (Hong Kong Dollar) - update when expanding to other markets
+      const formattedAmount = `HK$${amount.toFixed(2)}`;
       return {
         title: 'New Expense Added',
-        body: `${creatorName} added an expense: ${merchant} ($${amount.toFixed(2)})`,
+        body: `${creatorName} added an expense: ${merchant} (${formattedAmount})`,
         type: 'expense'
       };
     }

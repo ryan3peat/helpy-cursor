@@ -13,7 +13,7 @@ export const Navbar = () => {
   const navItems = [
     { href: "/home", label: "Home" },
     { href: "/features", label: "Features" },
-    { href: "/getapp", label: "Get the App" },
+    { href: "/plan", label: "Plan" },
     { href: "/faq", label: "FAQ" }
   ];
 

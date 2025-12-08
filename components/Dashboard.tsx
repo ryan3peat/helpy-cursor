@@ -20,6 +20,7 @@ import {
   Trash2
 } from 'lucide-react';
 import { ToDoItem, Meal, User, MealType, TranslationDictionary, UserRole, Expense } from '../types';
+import { formatCurrency } from '../currencyConfig';
 import { useScrollHeader } from '../hooks/useScrollHeader';
 import { useScrollLock } from '../hooks/useScrollLock';
 import { SUPPORTED_LANGUAGES } from '../constants';
@@ -114,6 +115,11 @@ const Dashboard: React.FC<DashboardProps> = ({
   isTranslating,
   onUpdateMeal
 }) => {
+  // ─────────────────────────────────────────────────────────────────
+  // Role-based permissions
+  // ─────────────────────────────────────────────────────────────────
+  const isHelper = currentUser.role === UserRole.HELPER;
+
   const shoppingCount = todoItems.filter(i => i.type === 'shopping' && !i.completed).length;
   const activeTaskCount = todoItems.filter(i => i.type === 'task' && !i.completed).length;
   const [isEditingNotes, setIsEditingNotes] = useState(false);
@@ -345,7 +351,8 @@ const Dashboard: React.FC<DashboardProps> = ({
               </div>
               <span className="text-title text-white">{t['dashboard.family_board']}</span>
             </div>
-            {!isEditingNotes && (
+            {/* Edit button - Hidden for Helper */}
+            {!isEditingNotes && !isHelper && (
               <button
                 onClick={() => setIsEditingNotes(true)}
                 className="p-1.5 text-white/70 hover:text-white hover:bg-white/20 rounded-full transition-colors"
@@ -393,7 +400,7 @@ const Dashboard: React.FC<DashboardProps> = ({
               </div>
             </div>
           ) : (
-            <div onClick={() => setIsEditingNotes(true)} className="min-h-[40px] cursor-pointer">
+            <div onClick={() => !isHelper && setIsEditingNotes(true)} className={`min-h-[40px] ${!isHelper ? 'cursor-pointer' : ''}`}>
               {familyNotes ? (
                 <p className="text-white text-body leading-relaxed whitespace-pre-line">
                   <TranslatedFamilyNotes
@@ -500,15 +507,11 @@ const Dashboard: React.FC<DashboardProps> = ({
         />
       </div>
 
-      {/* Expenses */}
+      {/* Expenses - Hidden for Helper */}
+      {!isHelper && (
       <StatCard
         title={t['dashboard.expenses']}
-        count={
-          <div className="flex items-baseline gap-0.5">
-            <span className="text-body text-muted-foreground align-top">$</span>
-            <span>{totalExpenses.toFixed(2)}</span>
-          </div>
-        }
+        count={formatCurrency(totalExpenses)}
         icon={DollarSign}
         label={(() => {
           const d = new Date();
@@ -520,6 +523,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         colorClass="text-primary"
         onClick={() => onNavigate('expenses')}
       />
+      )}
 
       {/* Footer */}
         <div className="helpy-footer">
@@ -579,9 +583,8 @@ const Dashboard: React.FC<DashboardProps> = ({
 
             {/* Header */}
             <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
-              <div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto mb-4" />
-              <h2 className="text-title text-foreground text-center">{t['dashboard.language']}</h2>
-              <p className="text-caption text-muted-foreground text-center mt-2">
+              <h2 className="text-title text-foreground">{t['dashboard.language']}</h2>
+              <p className="text-caption text-muted-foreground mt-2">
                 Translation provided by AI. For accuracy, please refer to the original language version if in doubt.
               </p>
             </div>

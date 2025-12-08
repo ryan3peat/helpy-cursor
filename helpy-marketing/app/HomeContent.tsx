@@ -73,7 +73,7 @@ export default function HomeContent() {
             </Link>
           </div>
 
-          <p className="text-xs text-muted-foreground -mt-4">
+          <p className="hidden lg:block text-xs text-muted-foreground -mt-4">
             "I just want you to know I'm real grateful you're here"
             <br />
             Aibileen Clark, The Help
@@ -110,6 +110,18 @@ export default function HomeContent() {
             </div>
           </div>
         </motion.div>
+
+        {/* Quote - Mobile only (appears at bottom after hero image) */}
+        <motion.p 
+          className="lg:hidden text-xs text-muted-foreground text-center w-full pt-6"
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.2 }}
+        >
+          "I just want you to know I'm real grateful you're here"
+          <br />
+          Aibileen Clark, The Help
+        </motion.p>
       </section>
     </div>
   );

@@ -28,9 +28,10 @@ import {
 import { useScrollHeader } from '@/hooks/useScrollHeader';
 import { useTranslatedContent } from '@/hooks/useTranslatedContent';
 import { useScrollLock } from '@/hooks/useScrollLock';
-import { Expense, BaseViewProps } from '../types';
+import { Expense, BaseViewProps, User, UserRole } from '../types';
 import { EXPENSE_CATEGORIES } from '../constants';
 import { detectInputLanguage } from '../services/languageDetectionService';
+import { formatCurrency, DEFAULT_CURRENCY, getCurrencySymbol } from '../currencyConfig';
 import {
   uploadReceiptImage,
   createReceiptRecord,
@@ -186,6 +187,7 @@ const ZoomableImage: React.FC<{ imageSrc: string; onClose: () => void }> = ({ im
 interface ExpensesProps extends BaseViewProps {
   expenses: Expense[];
   householdId: string;
+  currentUser: User;
   onAdd: (expense: Expense) => void;
   onUpdate?: (expense: Expense) => Promise<void> | void;
   onDelete?: (id: string) => Promise<void> | void;
@@ -233,12 +235,18 @@ const TranslatedMerchantName: React.FC<{
 const Expenses: React.FC<ExpensesProps> = ({
   expenses,
   householdId,
+  currentUser,
   onAdd,
   onUpdate,
   onDelete,
   t,
   currentLang,
 }) => {
+  // ─────────────────────────────────────────────────────────────────
+  // Role-based permissions
+  // ─────────────────────────────────────────────────────────────────
+  const isHelper = currentUser.role === UserRole.HELPER;
+
   const [view, setView] = useState<'list' | 'chart'>('list');
   const [isScanning, setIsScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -330,14 +338,21 @@ const Expenses: React.FC<ExpensesProps> = ({
   // Check if any modal is open
   const isModalOpen = addExpenseStage !== 'closed' || selectedExpense || isMonthPickerOpen;
 
-  // Filter expenses by selected month/year
+  // Filter expenses by selected month/year and ownership (for Helper)
   // Handle multiple date formats: YYYY-MM-DD, DD-MM-YYYY, MM/DD/YYYY, etc.
   const filteredExpenses = useMemo(() => {
-    // When no month/year is selected, show all expenses (fixes missing receipts when out of current month)
-    if (selectedMonth === null || selectedYear === null) {
-      return localExpenses;
+    // First, filter by ownership for Helper users
+    let baseExpenses = localExpenses;
+    if (isHelper) {
+      // Helper can only see expenses they created
+      baseExpenses = localExpenses.filter(e => e.createdBy === currentUser.id);
     }
-    return localExpenses.filter((expense) => {
+    
+    // When no month/year is selected, show all (filtered) expenses
+    if (selectedMonth === null || selectedYear === null) {
+      return baseExpenses;
+    }
+    return baseExpenses.filter((expense) => {
       if (!expense.date || typeof expense.date !== 'string') {
         console.warn('[Expenses] Invalid date for expense:', expense.id, expense.date);
         return false;
@@ -395,7 +410,7 @@ const Expenses: React.FC<ExpensesProps> = ({
       // Compare with selected month/year (month is 0-indexed in selectedMonth)
       return (month - 1) === selectedMonth && year === selectedYear;
     });
-  }, [localExpenses, selectedMonth, selectedYear]);
+  }, [localExpenses, selectedMonth, selectedYear, isHelper, currentUser.id]);
 
   // Month names for display
   const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -514,10 +529,12 @@ const Expenses: React.FC<ExpensesProps> = ({
       const newExpense: Expense = {
         id: Date.now().toString(),
         amount: amount,
+        currency: DEFAULT_CURRENCY, // HKD for now, future: detect from receipt or user preference
         merchant: editMerchant.trim() || 'Unknown',
         category: editCategory || 'Miscellaneous',
         date: normalizedDate,
         receiptUrl: pendingReceipt?.imageUrl || undefined,
+        createdBy: currentUser.id, // Track who created this expense
         merchantLang: detectInputLanguage(currentLang) || null,
         merchantTranslations: {},
       };
@@ -738,19 +755,22 @@ const Expenses: React.FC<ExpensesProps> = ({
           </div>
         </header>
 
-        {/* Summary Card */}
+        {/* Summary Card - Hidden for Helper */}
+        {!isHelper && (
         <div className="mt-4 mb-6">
           <div className="bg-primary text-primary-foreground p-6 rounded-xl shadow-md">
             <p className="text-body opacity-80 mb-1">
               {isAllTime ? t['common.total_for_all'] : `${t['common.total_for_month']} ${MONTH_NAMES_FULL[selectedMonth]}`}
             </p>
-            <h2 className="text-display">${totalAmount.toFixed(2)}</h2>
+            <h2 className="text-display">{formatCurrency(totalAmount)}</h2>
           </div>
         </div>
+        )}
 
         {/* ─────────────────────────────────────────────────────────────── */}
-        {/* STICKY TAB NAVIGATION */}
+        {/* STICKY TAB NAVIGATION - Hidden for Helper (they only see list) */}
         {/* ─────────────────────────────────────────────────────────────── */}
+        {!isHelper && (
         <div
           className="sticky z-10 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 py-3 transition-shadow duration-200"
           style={{
@@ -792,6 +812,7 @@ const Expenses: React.FC<ExpensesProps> = ({
             />
         </div>
       </div>
+        )}
 
         {/* ─────────────────────────────────────────────────────────────── */}
         {/* MAIN CONTENT */}
@@ -821,8 +842,8 @@ const Expenses: React.FC<ExpensesProps> = ({
       </div>
           )}
 
-          {/* Summary View */}
-          {view === 'chart' ? (
+          {/* Summary View - Not shown to Helper */}
+          {view === 'chart' && !isHelper ? (
             <div className="space-y-4">
               {/* Pie Chart */}
               <div className="bg-card rounded-xl p-4 shadow-sm">
@@ -898,7 +919,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                             <span className="text-caption text-muted-foreground ml-2">{percentage}%</span>
                           </div>
                         </div>
-                        <span className="text-title text-foreground">${item.amount.toFixed(2)}</span>
+                        <span className="text-title text-foreground">{formatCurrency(item.amount)}</span>
                       </div>
                     );
                   })}
@@ -957,7 +978,7 @@ const Expenses: React.FC<ExpensesProps> = ({
               
               {/* Right Side - Amount & Receipt Indicator */}
               <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                <span className="text-title text-foreground">${expense.amount.toFixed(2)}</span>
+                <span className="text-title text-foreground">{formatCurrency(expense.amount, expense.currency)}</span>
                 {expense.receiptUrl ? (
                   <ReceiptText size={14} className="text-muted-foreground" />
                 ) : null}
@@ -1033,12 +1054,14 @@ const Expenses: React.FC<ExpensesProps> = ({
 
             {/* Header */}
             <div className="pt-6 pb-4 px-5 border-b border-border">
-              <div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto mb-4" />
-              <h2 className="text-title text-foreground text-center">
-                {addExpenseStage === 'options' && 'Add Expense'}
-                {addExpenseStage === 'manual' && 'Enter Expense'}
-                {addExpenseStage === 'ocr' && 'Confirm Receipt'}
-              </h2>
+              <div className={addExpenseStage !== 'options' ? 'ml-10' : ''}>
+                <h2 className="text-title text-foreground">
+                  {addExpenseStage === 'options' && 'Add Expense'}
+                  {addExpenseStage === 'manual' && 'Enter Expense'}
+                  {addExpenseStage === 'ocr' && 'Confirm Receipt'}
+                </h2>
+                <p className="text-body text-muted-foreground mt-1">in {getCurrencySymbol()}</p>
+              </div>
           </div>
 
             {/* ─────────────────────────────────────────────────────────────── */}
@@ -1102,22 +1125,27 @@ const Expenses: React.FC<ExpensesProps> = ({
                     <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
                       Amount
                     </label>
-                    <input
-                      ref={amountInputRef}
-                      type="text"
-                      inputMode="decimal"
-                      value={editAmount}
-                      onChange={(e) => {
-                        // Only allow digits and one decimal point
-                        const value = e.target.value.replace(/[^\d.]/g, '');
-                        // Prevent multiple decimal points
-                        const parts = value.split('.');
-                        const formatted = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : value;
-                        setEditAmount(formatted);
-                      }}
-                      placeholder="0.00"
-                      className="w-full px-4 py-4 rounded-xl bg-muted border border-border focus:border-primary outline-none transition-all text-display"
-                    />
+                    <div className="flex items-center gap-3">
+                      <span className="text-display text-foreground flex-shrink-0">
+                        {getCurrencySymbol()}
+                      </span>
+                      <input
+                        ref={amountInputRef}
+                        type="text"
+                        inputMode="decimal"
+                        value={editAmount}
+                        onChange={(e) => {
+                          // Only allow digits and one decimal point
+                          const value = e.target.value.replace(/[^\d.]/g, '');
+                          // Prevent multiple decimal points
+                          const parts = value.split('.');
+                          const formatted = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : value;
+                          setEditAmount(formatted);
+                        }}
+                        placeholder="0.00"
+                        className="flex-1 px-4 py-4 rounded-xl bg-muted border border-border focus:border-primary outline-none transition-all text-display"
+                      />
+                    </div>
             </div>
 
                   {/* Shop Name */}
@@ -1238,21 +1266,26 @@ const Expenses: React.FC<ExpensesProps> = ({
                     <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
                       Amount
                     </label>
-                <input
-                  type="text"
-                      inputMode="decimal"
-                  value={editAmount}
-                  onChange={(e) => {
-                    // Only allow digits and one decimal point
-                    const value = e.target.value.replace(/[^\d.]/g, '');
-                    // Prevent multiple decimal points
-                    const parts = value.split('.');
-                    const formatted = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : value;
-                    setEditAmount(formatted);
-                  }}
-                  placeholder="0.00"
-                      className="w-full px-4 py-4 rounded-xl bg-muted border border-border focus:border-primary outline-none transition-all text-display"
-                />
+                    <div className="flex items-center gap-3">
+                      <span className="text-display text-foreground flex-shrink-0">
+                        {getCurrencySymbol()}
+                      </span>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={editAmount}
+                        onChange={(e) => {
+                          // Only allow digits and one decimal point
+                          const value = e.target.value.replace(/[^\d.]/g, '');
+                          // Prevent multiple decimal points
+                          const parts = value.split('.');
+                          const formatted = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : value;
+                          setEditAmount(formatted);
+                        }}
+                        placeholder="0.00"
+                        className="flex-1 px-4 py-4 rounded-xl bg-muted border border-border focus:border-primary outline-none transition-all text-display"
+                      />
+                    </div>
               </div>
 
                   {/* Shop Name */}
@@ -1348,7 +1381,6 @@ const Expenses: React.FC<ExpensesProps> = ({
 
             {/* Header */}
             <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
-              <div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto mb-4" />
               <h2 className="text-title text-foreground">{selectedExpense.merchant}</h2>
               <p className="text-caption text-muted-foreground">
                 {selectedExpense.category || 'Uncategorized'} ·{' '}
@@ -1380,7 +1412,7 @@ const Expenses: React.FC<ExpensesProps> = ({
               {!isEditingExisting && (
                 <div className="flex items-center justify-between">
                   <span className="text-body text-muted-foreground">Amount</span>
-                  <span className="text-title text-foreground">${selectedExpense.amount.toFixed(2)}</span>
+                  <span className="text-title text-foreground">{formatCurrency(selectedExpense.amount, selectedExpense.currency)}</span>
                 </div>
               )}
 
@@ -1392,21 +1424,26 @@ const Expenses: React.FC<ExpensesProps> = ({
                     <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
                       Amount
                     </label>
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      className="w-full px-4 py-4 rounded-xl bg-muted border border-border focus:border-primary outline-none transition-all text-display"
-                      value={exAmount}
-                      onChange={(e) => {
-                        // Only allow digits and one decimal point
-                        const value = e.target.value.replace(/[^\d.]/g, '');
-                        // Prevent multiple decimal points
-                        const parts = value.split('.');
-                        const formatted = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : value;
-                        setExAmount(formatted);
-                      }}
-                      placeholder="0.00"
-                    />
+                    <div className="flex items-center gap-3">
+                      <span className="text-display text-foreground flex-shrink-0">
+                        {getCurrencySymbol()}
+                      </span>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        className="flex-1 px-4 py-4 rounded-xl bg-muted border border-border focus:border-primary outline-none transition-all text-display"
+                        value={exAmount}
+                        onChange={(e) => {
+                          // Only allow digits and one decimal point
+                          const value = e.target.value.replace(/[^\d.]/g, '');
+                          // Prevent multiple decimal points
+                          const parts = value.split('.');
+                          const formatted = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : value;
+                          setExAmount(formatted);
+                        }}
+                        placeholder="0.00"
+                      />
+                    </div>
                   </div>
 
                   {/* Shop Name - Full width */}
@@ -1471,6 +1508,8 @@ const Expenses: React.FC<ExpensesProps> = ({
               {/* Default Actions */}
               {!isEditingExisting && !confirmDeleteExisting && (
                 <div className="flex items-center gap-3">
+                  {/* Delete button - Hidden for Helper */}
+                  {!isHelper && (
                   <button
                     className="p-3 rounded-xl bg-destructive/10 text-destructive hover:bg-destructive/20 disabled:opacity-60 transition-colors"
                     onClick={() => {
@@ -1481,6 +1520,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                   >
                     <Trash2 size={20} />
                   </button>
+                  )}
                   <button
                     className="flex-1 rounded-xl bg-primary px-4 py-3 text-primary-foreground hover:bg-primary/90 disabled:opacity-60 inline-flex items-center justify-center gap-2 text-body transition-colors shadow-sm"
                     onClick={() => {
@@ -1564,8 +1604,7 @@ const Expenses: React.FC<ExpensesProps> = ({
 
             {/* Header */}
             <div className="pt-6 pb-4 px-5 border-b border-border">
-              <div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto mb-4" />
-              <h2 className="text-title text-foreground text-center">Select Month</h2>
+              <h2 className="text-title text-foreground">Select Month</h2>
     </div>
 
             {/* Year Selector */}

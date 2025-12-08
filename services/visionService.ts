@@ -238,8 +238,14 @@ export function parseReceiptText(rawText: string, options?: ProcessReceiptOption
     }
   
     // --- Extract Total ---
-    // Common patterns: "Total: $XX.XX", "TOTAL $XX.XX", "Grand Total XX.XX"
+    // Common patterns for HKD: "Total: HK$XX.XX", "TOTAL $XX.XX", "Grand Total XX.XX"
+    // Supports: HK$, HKD, $ (all map to HKD for Hong Kong market)
     const totalPatterns = [
+      // HKD-specific patterns (prioritize)
+      /(?:grand\s*)?total[:\s]*(?:HK\$|HKD\s*)\s*([\d,]+\.?\d*)/i,
+      /(?:amount\s*due|balance\s*due)[:\s]*(?:HK\$|HKD\s*)\s*([\d,]+\.?\d*)/i,
+      /(?:HK\$|HKD\s*)\s*([\d,]+\.\d{2})\s*$/m, // Last HK$ price on a line
+      // Generic $ patterns (fallback - common on HK receipts too)
       /(?:grand\s*)?total[:\s]*\$?\s*([\d,]+\.?\d*)/i,
       /(?:amount\s*due|balance\s*due)[:\s]*\$?\s*([\d,]+\.?\d*)/i,
       /\$\s*([\d,]+\.\d{2})\s*$/m, // Last price on a line
@@ -256,8 +262,9 @@ export function parseReceiptText(rawText: string, options?: ProcessReceiptOption
   
     // If no total found, try to find the largest number (likely the total)
     if (total === 0) {
-      const priceMatches = rawText.match(/\$?\s*(\d+\.\d{2})/g) || [];
-      const prices = priceMatches.map(p => parseFloat(p.replace(/[$\s]/g, '')));
+      // Match HK$, HKD, $ or plain numbers with 2 decimal places
+      const priceMatches = rawText.match(/(?:HK\$|HKD\s*|\$)?\s*(\d+\.\d{2})/g) || [];
+      const prices = priceMatches.map(p => parseFloat(p.replace(/[HK$\s]/gi, '')));
       if (prices.length > 0) {
         total = Math.max(...prices);
         confidence = 0.5; // Lower confidence for guessed total
@@ -349,8 +356,8 @@ export function parseReceiptText(rawText: string, options?: ProcessReceiptOption
     }
   
     // --- Extract Line Items (best effort) ---
-    // Pattern: "Item name    $XX.XX" or "Item name XX.XX"
-    const itemPattern = /^(.+?)\s+\$?\s*(\d+\.\d{2})\s*$/gm;
+    // Pattern: "Item name    HK$XX.XX" or "Item name $XX.XX" or "Item name XX.XX"
+    const itemPattern = /^(.+?)\s+(?:HK\$|HKD\s*|\$)?\s*(\d+\.\d{2})\s*$/gm;
     let itemMatch;
     while ((itemMatch = itemPattern.exec(rawText)) !== null) {
       const itemName = itemMatch[1].trim();

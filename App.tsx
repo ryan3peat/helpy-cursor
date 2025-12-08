@@ -322,6 +322,29 @@ const App: React.FC = () => {
     };
   }, [currentUser]);
 
+  // Sync currentUser with users array when user data changes (e.g., role updates)
+  // This ensures role changes take effect immediately without requiring logout/login
+  useEffect(() => {
+    if (currentUser && users.length > 0) {
+      const updatedCurrentUser = users.find(u => u.id === currentUser.id);
+      if (updatedCurrentUser) {
+        // Check if any relevant fields changed
+        const hasChanges = 
+          updatedCurrentUser.role !== currentUser.role ||
+          updatedCurrentUser.name !== currentUser.name ||
+          updatedCurrentUser.avatar !== currentUser.avatar ||
+          JSON.stringify(updatedCurrentUser.allergies) !== JSON.stringify(currentUser.allergies) ||
+          JSON.stringify(updatedCurrentUser.preferences) !== JSON.stringify(currentUser.preferences) ||
+          updatedCurrentUser.notificationsEnabled !== currentUser.notificationsEnabled;
+        
+        if (hasChanges) {
+          setCurrentUser(updatedCurrentUser);
+          localStorage.setItem('helpy_current_session_user', JSON.stringify(updatedCurrentUser));
+        }
+      }
+    }
+  }, [users]);
+
   const hid = currentUser?.householdId ?? '';
 
   // ToDo CRUD Handlers
@@ -633,6 +656,7 @@ const App: React.FC = () => {
           <Expenses
             expenses={expenses}
             householdId={hid}
+            currentUser={currentUser}
             onAdd={handleAddExpense}
             onUpdate={handleUpdateExpense}
             onDelete={handleDeleteExpense}

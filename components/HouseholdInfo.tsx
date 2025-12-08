@@ -29,6 +29,8 @@ import {
   AlertTriangle,
   Utensils,
   Info,
+  Lamp,
+  BookOpen,
 } from "lucide-react";
 import { BaseViewProps, User, UserRole, TranslationDictionary } from "@/types";
 import { useTranslatedContent } from "@/hooks/useTranslatedContent";
@@ -786,7 +788,7 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
               }`}
             >
               <div className="flex items-center gap-2">
-                <FileText size={16} />
+                <BookOpen size={16} className={activeSection === "essentialInfo" ? "" : undefined} />
                 <span className="text-title">{t['common.essential_info'] || 'Essential Info'}</span>
               </div>
               <div className={`text-caption mt-1 ml-6 ${activeSection === "essentialInfo" ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
@@ -804,7 +806,7 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
               }`}
             >
               <div className="flex items-center gap-2">
-                <ClipboardList size={16} />
+                <Lamp size={16} className={activeSection === "houseRoutine" ? "" : undefined} />
                 <span className="text-title">{t['common.house_routine'] || 'House Routine'}</span>
               </div>
               <div className={`text-caption mt-1 ml-6 ${activeSection === "houseRoutine" ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
@@ -943,7 +945,7 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
               {filteredEssentialItems.length === 0 ? (
                 <div className="text-center py-12">
                   <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-secondary flex items-center justify-center">
-                    <FileText size={28} className="text-muted-foreground" />
+                    <BookOpen size={28} className="text-muted-foreground" />
                   </div>
                   <p className="text-body text-foreground">No entries yet</p>
                   <p className="text-caption text-muted-foreground mt-1">
@@ -978,7 +980,7 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
               {filteredHouseRoutineItems.length === 0 ? (
                 <div className="text-center py-12">
                   <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-secondary flex items-center justify-center">
-                    <ClipboardList size={28} className="text-muted-foreground" />
+                    <Lamp size={28} className="text-muted-foreground" />
                   </div>
                   <p className="text-body text-foreground">{t['info.no_routines'] || 'No routines yet'}</p>
                   <p className="text-caption text-muted-foreground mt-1">
@@ -1326,9 +1328,7 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
 
         {/* Header */}
         <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
-          {/* Drag Handle */}
-          <div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto mb-4" />
-          <h2 className="text-title text-foreground text-center">
+          <h2 className="text-title text-foreground">
             {isEditing ? "Edit Info" : "Add New Info"}
           </h2>
         </div>
@@ -1544,9 +1544,7 @@ const HouseRoutineModal: React.FC<HouseRoutineModalProps> = ({
 
         {/* Header */}
         <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
-          {/* Drag Handle */}
-          <div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto mb-4" />
-          <h2 className="text-title text-foreground text-center">
+          <h2 className="text-title text-foreground">
             {isEditing ? (t['info.edit_routine'] || 'Edit Routine') : (t['info.add_routine'] || 'Add Routine')}
           </h2>
         </div>
@@ -1691,8 +1689,6 @@ const HouseRoutineViewModal: React.FC<HouseRoutineViewModalProps> = ({
 
         {/* Header */}
         <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
-          {/* Drag Handle */}
-          <div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto mb-4" />
           <span
             className="text-caption px-2 py-0.5 rounded-full inline-block mb-2"
             style={{ backgroundColor: config.bgColor, color: config.color }}

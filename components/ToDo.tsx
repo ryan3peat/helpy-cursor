@@ -67,16 +67,25 @@ const TASK_SORT_OPTIONS: { value: SortOption; label: string }[] = [
 const DAYS_OF_WEEK = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 // Category icons for tabs
-const SHOPPING_CATEGORY_ICONS: Record<string, React.ReactNode> = {
-  [ShoppingCategory.SUPERMARKET]: <ShoppingCart size={16} />,
-  [ShoppingCategory.WET_MARKET]: <Home size={16} />,
-  [ShoppingCategory.OTHERS]: <MoreHorizontal size={16} />,
+// When isSelected is true, icon inherits parent color (e.g., text-primary-foreground)
+const getShoppingCategoryIcon = (category: string, isSelected = false) => {
+  const className = isSelected ? '' : undefined;
+  switch (category) {
+    case ShoppingCategory.SUPERMARKET: return <ShoppingCart size={16} className={className} />;
+    case ShoppingCategory.WET_MARKET: return <Home size={16} className={className} />;
+    case ShoppingCategory.OTHERS: return <MoreHorizontal size={16} className={className} />;
+    default: return null;
+  }
 };
 
-const TASK_CATEGORY_ICONS: Record<string, React.ReactNode> = {
-  [TaskCategory.HOME_CARE]: <Home size={16} />,
-  [TaskCategory.FAMILY_CARE]: <Users size={16} />,
-  [TaskCategory.OTHERS]: <MoreHorizontal size={16} />,
+const getTaskCategoryIcon = (category: string, isSelected = false) => {
+  const className = isSelected ? '' : undefined;
+  switch (category) {
+    case TaskCategory.HOME_CARE: return <Home size={16} className={className} />;
+    case TaskCategory.FAMILY_CARE: return <Users size={16} className={className} />;
+    case TaskCategory.OTHERS: return <MoreHorizontal size={16} className={className} />;
+    default: return null;
+  }
 };
 
 // ─────────────────────────────────────────────────────────────────
@@ -223,6 +232,11 @@ const ToDo: React.FC<ToDoProps> = ({
   initialSection,
 }) => {
   // ─────────────────────────────────────────────────────────────────
+  // Role-based permissions
+  // ─────────────────────────────────────────────────────────────────
+  const isHelper = currentUser.role === UserRole.HELPER;
+
+  // ─────────────────────────────────────────────────────────────────
   // Scroll Header Hook
   // ─────────────────────────────────────────────────────────────────
   const { isScrolled } = useScrollHeader();
@@ -276,7 +290,14 @@ const ToDo: React.FC<ToDoProps> = ({
   // ─────────────────────────────────────────────────────────────────
   
   const categories = activeSection === 'shopping' ? SHOPPING_CATEGORIES : TASK_CATEGORIES;
-  const categoryIcons = activeSection === 'shopping' ? SHOPPING_CATEGORY_ICONS : TASK_CATEGORY_ICONS;
+  const getCategoryIcon = activeSection === 'shopping' 
+    ? (cat: string, isSelected = false) => getShoppingCategoryIcon(cat, isSelected)
+    : (cat: string, isSelected = false) => getTaskCategoryIcon(cat, isSelected);
+  // Legacy categoryIcons for segmented control (uses bg-card, not bg-primary)
+  const categoryIcons: Record<string, React.ReactNode> = {};
+  categories.forEach(cat => {
+    categoryIcons[cat] = getCategoryIcon(cat, false);
+  });
   const defaultCategory = activeSection === 'shopping' ? ShoppingCategory.SUPERMARKET : TaskCategory.HOME_CARE;
   
   // Stats for section cards
@@ -990,8 +1011,8 @@ const ToDo: React.FC<ToDoProps> = ({
                       setIsAddingInline(false);
                     }
                   }}
-                  placeholder={activeSection === 'shopping' ? 'Add item...' : 'Add task...'}
-                  className="flex-1 bg-transparent text-body text-foreground placeholder-muted-foreground outline-none"
+                  placeholder={t['todo.add_hint'] || 'Press Enter to add / tap (+) to set details'}
+                  className="flex-1 bg-transparent text-body text-foreground placeholder-muted-foreground/50 outline-none"
                 />
               ) : (
                 <span className="flex-1 text-body text-muted-foreground">
@@ -1126,8 +1147,8 @@ const ToDo: React.FC<ToDoProps> = ({
                 </span>
               </button>
               
-              {/* Clear All Button */}
-              {showCompleted && (
+              {/* Clear All Button - Hidden for Helper */}
+              {showCompleted && !isHelper && (
                 <button
                   onClick={handleClearAllCompleted}
                   className="flex items-center gap-1.5 px-3 py-1.5 text-caption text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
@@ -1165,12 +1186,15 @@ const ToDo: React.FC<ToDoProps> = ({
                       </span>
                     </div>
                     
-                    <button
-                      onClick={() => handleDelete(item.id)}
-                      className="text-muted-foreground hover:text-destructive transition-colors shrink-0"
-                    >
-                      <Trash2 size={18} />
-                    </button>
+                    {/* Delete button - Hidden for Helper */}
+                    {!isHelper && (
+                      <button
+                        onClick={() => handleDelete(item.id)}
+                        className="text-muted-foreground hover:text-destructive transition-colors shrink-0"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
@@ -1210,8 +1234,7 @@ const ToDo: React.FC<ToDoProps> = ({
 
             {/* Header */}
             <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
-              <div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto mb-4" />
-              <h2 className="text-title text-foreground text-center">
+              <h2 className="text-title text-foreground">
                 {editingItemId 
                   ? (sheetForm.type === 'shopping' ? 'Edit Shopping Item' : 'Edit Task')
                   : (activeSection === 'shopping' ? 'Add Shopping Item' : 'Add Task')
@@ -1369,7 +1392,7 @@ const ToDo: React.FC<ToDoProps> = ({
                           : 'bg-card text-foreground ring-1 ring-border hover:ring-input'
                       }`}
                     >
-                      {categoryIcons[cat]}
+                      {getCategoryIcon(cat, sheetForm.category === cat)}
                       <span className="truncate">{cat}</span>
                     </button>
                   ))}
@@ -1382,7 +1405,7 @@ const ToDo: React.FC<ToDoProps> = ({
                   Assign to
                 </label>
                 <div className="flex flex-wrap gap-2">
-                  {users.map(user => (
+                  {users.filter(u => u.status !== 'pending').map(user => (
                     <button
                       key={user.id}
                       onClick={() => setSheetForm(prev => ({ ...prev, assigneeId: user.id }))}
@@ -1408,7 +1431,8 @@ const ToDo: React.FC<ToDoProps> = ({
             
             {/* Fixed Footer with Delete + Save */}
             <div className="shrink-0 p-5 pb-8 border-t border-border flex gap-3">
-              {editingItemId && (
+              {/* Delete button - Hidden for Helper */}
+              {editingItemId && !isHelper && (
                 <button
                   onClick={async () => {
                     const itemId = editingItemId;

@@ -126,10 +126,12 @@ export interface Meal {
 export interface Expense {
   id: string;
   amount: number;
+  currency: string; // ISO 4217 currency code (e.g., 'HKD', 'USD') - defaults to 'HKD'
   category: string;
   date: string;
   merchant: string;
   receiptUrl?: string;
+  createdBy?: string; // User ID who created this expense
   // Translation fields
   merchantLang?: string | null; // Language code of the merchant field (null if undetectable)
   merchantTranslations?: Record<string, string>; // Translations: { "en": "original", "zh-CN": "translated", ... }

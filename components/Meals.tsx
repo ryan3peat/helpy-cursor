@@ -73,6 +73,11 @@ const Meals: React.FC<MealsProps> = ({
   t,
   currentLang
 }) => {
+  // ─────────────────────────────────────────────────────────────────
+  // Role-based permissions
+  // ─────────────────────────────────────────────────────────────────
+  const isHelper = currentUser.role === UserRole.HELPER;
+
   const [view, setView] = useState<'day' | 'week'>('day');
   const [loadingAi, setLoadingAi] = useState(false);
   
@@ -186,12 +191,20 @@ const Meals: React.FC<MealsProps> = ({
 
   // --- Icons ---
   // Colors based on brand palette: #3EAFD2, #FF9800, #7E57C2, #4CAF50, #F06292, #AB47BC
-  const getMealIcon = (type: MealType) => {
+  // When isSelected is true, icon inherits parent color (e.g., text-primary-foreground)
+  const getMealIcon = (type: MealType, isSelected = false) => {
+    const colorClass = isSelected ? '' : {
+      [MealType.BREAKFAST]: 'text-[#FF9800]',
+      [MealType.LUNCH]: 'text-[#4CAF50]',
+      [MealType.DINNER]: 'text-[#7E57C2]',
+      [MealType.SNACKS]: 'text-[#F06292]',
+    }[type];
+    
     switch (type) {
-      case MealType.BREAKFAST: return <Coffee size={14} className="text-[#FF9800]" />;
-      case MealType.LUNCH: return <Sun size={14} className="text-[#4CAF50]" />;
-      case MealType.DINNER: return <Moon size={14} className="text-[#7E57C2]" />;
-      case MealType.SNACKS: return <Cookie size={14} className="text-[#F06292]" />;
+      case MealType.BREAKFAST: return <Coffee size={14} className={colorClass} />;
+      case MealType.LUNCH: return <Sun size={14} className={colorClass} />;
+      case MealType.DINNER: return <Moon size={14} className={colorClass} />;
+      case MealType.SNACKS: return <Cookie size={14} className={colorClass} />;
     }
   };
 
@@ -248,10 +261,12 @@ const Meals: React.FC<MealsProps> = ({
   };
 
   const getUsersForAudience = (audience: MealAudience): User[] => {
+    // Filter out pending users - they haven't accepted invite yet
+    const activeUsers = users.filter(u => u.status !== 'pending');
     switch (audience) {
-      case 'ALL': return users;
-      case 'ADULTS': return users.filter(u => u.role !== UserRole.CHILD);
-      case 'KIDS': return users.filter(u => u.role === UserRole.CHILD);
+      case 'ALL': return activeUsers;
+      case 'ADULTS': return activeUsers.filter(u => u.role !== UserRole.CHILD);
+      case 'KIDS': return activeUsers.filter(u => u.role === UserRole.CHILD);
     }
   };
 
@@ -325,8 +340,8 @@ const Meals: React.FC<MealsProps> = ({
     setModalType(type);
     setModalAudience('ALL');
     setDescription('');
-    // Auto-select all non-helper users
-    setSelectedUserIds(users.filter(u => u.role !== UserRole.HELPER).map(u => u.id));
+    // Auto-select all non-helper active users (exclude pending)
+    setSelectedUserIds(users.filter(u => u.role !== UserRole.HELPER && u.status !== 'pending').map(u => u.id));
     setIsModalOpen(true);
   };
 
@@ -1172,8 +1187,7 @@ const Meals: React.FC<MealsProps> = ({
 
             {/* Header */}
             <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
-              <div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto mb-4" />
-              <h2 className="text-title text-foreground text-center">
+              <h2 className="text-title text-foreground">
                 {`${modalDate.toLocaleDateString(langCode, { weekday: 'short' })}, ${modalDate.getDate()} ${modalDate.toLocaleDateString(langCode, { month: 'short' })}`}
               </h2>
             </div>
@@ -1198,7 +1212,7 @@ const Meals: React.FC<MealsProps> = ({
                               : 'bg-card ring-1 ring-border text-muted-foreground hover:ring-input'
                           }`}
                         >
-                          {getMealIcon(type)}
+                          {getMealIcon(type, isSelected)}
                           <span className="text-caption font-semibold">{getMealLabel(type)}</span>
                         </button>
                       );
@@ -1300,7 +1314,8 @@ const Meals: React.FC<MealsProps> = ({
 
             {/* Fixed Footer with Delete + Save */}
             <div className="shrink-0 p-5 pb-8 border-t border-border flex gap-3">
-              {editingMealId && (
+              {/* Delete button - Hidden for Helper */}
+              {editingMealId && !isHelper && (
                 <button
                   onClick={handleDelete}
                   className="p-3 rounded-xl bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors"

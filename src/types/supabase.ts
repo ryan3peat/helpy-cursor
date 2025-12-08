@@ -70,76 +70,7 @@ export interface Database {
           created_at?: string
         }
       }
-      shopping: {
-        Row: {
-          id: string
-          household_id: string | null
-          name: string
-          category: string
-          quantity: string
-          completed: boolean
-          added_by: string | null
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          household_id?: string | null
-          name: string
-          category: string
-          quantity?: string
-          completed?: boolean
-          added_by?: string | null
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          household_id?: string | null
-          name?: string
-          category?: string
-          quantity?: string
-          completed?: boolean
-          added_by?: string | null
-          created_at?: string
-        }
-      }
-      tasks: {
-        Row: {
-          id: string
-          household_id: string | null
-          title: string
-          assignees: string[] | null
-          due_date: string
-          due_time: string | null
-          completed: boolean
-          recurrence: Json | null
-          created_at: string
-          category: string
-        }
-        Insert: {
-          id?: string
-          household_id?: string | null
-          title: string
-          assignees?: string[] | null
-          due_date: string
-          due_time?: string | null
-          completed?: boolean
-          recurrence?: Json | null
-          created_at?: string
-          category?: string
-        }
-        Update: {
-          id?: string
-          household_id?: string | null
-          title?: string
-          assignees?: string[] | null
-          due_date?: string
-          due_time?: string | null
-          completed?: boolean
-          recurrence?: Json | null
-          created_at?: string
-          category?: string
-        }
-      }
+      // NOTE: 'shopping' and 'tasks' tables are OBSOLETE - replaced by unified 'todo_items' table
       todo_items: {
         Row: {
           id: string

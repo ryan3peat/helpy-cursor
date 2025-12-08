@@ -5,10 +5,9 @@ import { User, ShoppingItem, Task, Meal, Expense, Section, ToDoItem } from '../t
 type DataItem = User | ShoppingItem | Task | Meal | Expense | Section | ToDoItem;
 
 // CRITICAL: Map your app's collection names to Supabase table names
+// NOTE: 'shopping' and 'tasks' tables are OBSOLETE - replaced by unified 'todo_items' table
 const COLLECTION_MAP: Record<string, string> = {
   'users': 'users',
-  'shopping': 'shopping',
-  'tasks': 'tasks',
   'todo_items': 'todo_items',
   'meals': 'meals',
   'expenses': 'expenses',
@@ -296,22 +295,21 @@ export async function addItem(
   }
   
   // For all collections with created_by: convert from Clerk ID to Supabase UUID
-  // Note: expenses table doesn't have created_by column
-  if (finalData.created_by && ['todo_items', 'meals'].includes(collection)) {
+  if (finalData.created_by && ['todo_items', 'meals', 'expenses'].includes(collection)) {
     const uuid = await getSupabaseUserId(finalData.created_by, householdId);
     if (uuid) {
       console.log(`🔄 Converting created_by ${finalData.created_by} to UUID ${uuid}`);
       finalData.created_by = uuid;
     }
   }
-  
-  // Remove created_by from expenses if it exists (table doesn't have this column)
-  if (collection === 'expenses' && finalData.created_by !== undefined) {
-    delete finalData.created_by;
-  }
 
-  // For expenses: handle merchant_lang, merchant_translations, and receipt_url
+  // For expenses: handle currency, merchant_lang, merchant_translations, and receipt_url
   if (collection === 'expenses') {
+    // Ensure currency has a default value (HKD for Hong Kong market)
+    if (!finalData.currency || finalData.currency === '') {
+      finalData.currency = 'HKD';
+    }
+    
     // Ensure merchant_translations is a valid object (not undefined)
     if (finalData.merchant_translations === undefined) {
       finalData.merchant_translations = {};
@@ -334,8 +332,9 @@ export async function addItem(
       }
     }
     
-    // Debug: Log receipt_url for expenses
-    console.log('[DB Save] Expense receipt_url being sent:', {
+    // Debug: Log expense data being sent
+    console.log('[DB Save] Expense data being sent:', {
+      currency: finalData.currency,
       hasReceiptUrl: !!finalData.receipt_url,
       receiptUrl: finalData.receipt_url,
       receiptUrlType: typeof finalData.receipt_url,
@@ -939,4 +938,46 @@ function convertToSnakeCase(obj: any): any {
     converted[snakeKey] = obj[key];
   }
   return converted;
+}
+
+/**
+ * Upload avatar image to Supabase Storage
+ * Why: User profile photos need persistent storage
+ */
+export async function uploadAvatarImage(
+  householdId: string,
+  userId: string,
+  file: File
+): Promise<string> {
+  // Generate unique filename
+  const timestamp = Date.now();
+  const extension = file.name.split('.').pop() || 'jpg';
+  const filename = `${userId}_${timestamp}.${extension}`;
+  const filePath = `${householdId}/${filename}`;
+
+  console.log(`📷 Uploading avatar for user ${userId} to path: ${filePath}`);
+
+  // Upload to Supabase Storage (using 'avatars' bucket)
+  const { data, error } = await supabase.storage
+    .from('avatars')
+    .upload(filePath, file, {
+      contentType: file.type,
+      upsert: true, // Allow overwriting existing avatar
+    });
+
+  if (error) {
+    console.error('❌ Avatar upload failed:', error);
+    throw new Error(`Failed to upload avatar: ${error.message}`);
+  }
+
+  // Get public URL
+  const { data: publicData } = supabase.storage.from('avatars').getPublicUrl(filePath);
+  const publicUrl = publicData?.publicUrl;
+
+  if (!publicUrl) {
+    throw new Error('Failed to get avatar public URL');
+  }
+
+  console.log(`✅ Avatar uploaded successfully: ${publicUrl}`);
+  return publicUrl;
 }

@@ -2,7 +2,6 @@
 
 import { motion } from "framer-motion";
 import Image from "next/image";
-import Link from "next/link";
 import {
   Home,
   ClipboardList,
@@ -93,12 +92,12 @@ export default function FeaturesContent() {
               It gathers meals, tasks, and spending in one spot.
               The ideal <span className="text-red-500">family collaboration app</span> for families and helpers to work as a team.
             </p>
-            <Link
-              href="/getapp"
+            <a
+              href="https://www.helpyfam.com"
               className="inline-flex items-center justify-center rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-soft transition-colors"
             >
               Get Started
-            </Link>
+            </a>
           </motion.div>
 
           {/* Right: Hero Image with Colored Shadow */}

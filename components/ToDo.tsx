@@ -452,6 +452,8 @@ const ToDo: React.FC<ToDoProps> = ({
     
     try {
       await onAdd(newItem);
+      // Success: clear optimistic item, real item comes from App state
+      setOptimisticItems(prev => prev.filter(i => i.id !== newItem.id));
     } catch (error) {
       console.error('Failed to add item:', error);
       setOptimisticItems(prev => prev.filter(i => i.id !== newItem.id));
@@ -481,6 +483,8 @@ const ToDo: React.FC<ToDoProps> = ({
     
     try {
       await onAdd(newItem);
+      // Success: clear optimistic item, real item comes from App state
+      setOptimisticItems(prev => prev.filter(i => i.id !== newItem.id));
     } catch (error) {
       console.error('Failed to add item:', error);
       setOptimisticItems(prev => prev.filter(i => i.id !== newItem.id));
@@ -714,6 +718,8 @@ const ToDo: React.FC<ToDoProps> = ({
       
       try {
         await onAdd(newItem);
+        // Success: clear optimistic item, real item comes from App state
+        setOptimisticItems(prev => prev.filter(i => i.id !== newItem.id));
       } catch (error) {
         console.error('Failed to add item:', error);
         setOptimisticItems(prev => prev.filter(i => i.id !== newItem.id));

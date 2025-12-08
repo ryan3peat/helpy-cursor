@@ -540,7 +540,9 @@ const App: React.FC = () => {
     };
     setTrainingModules(prev => [tempModule, ...prev]);  // Optimistic
     try {
-      await createTrainingModule(hid, module, createdBy);
+      const saved = await createTrainingModule(hid, module, createdBy);
+      // Replace the temp item with the saved record so assignee/ids persist
+      setTrainingModules(prev => prev.map(m => m.id === tempId ? saved : m));
     } catch (error) {
       console.error('Failed to add training module:', error);
       setTrainingModules(prev => prev.filter(m => m.id !== tempId));  // Rollback
@@ -554,7 +556,9 @@ const App: React.FC = () => {
       m.id === id ? { ...m, ...data } : m
     ));  // Optimistic
     try {
-      await updateTrainingModule(hid, id, data);
+      const updated = await updateTrainingModule(hid, id, data);
+      // Ensure state reflects server-mapped IDs (assignee, translations, etc.)
+      setTrainingModules(prev => prev.map(m => m.id === id ? updated : m));
     } catch (error) {
       console.error('Failed to update training module:', error);
       setTrainingModules(previousModules);  // Rollback

@@ -429,6 +429,37 @@ export async function updateItem(
     }
   }
   
+  // For users: filter out fields that don't exist in the database
+  // The users table doesn't have country_code column, so remove it
+  if (collection === 'users') {
+    // Remove country_code if it exists (column doesn't exist in database)
+    if ('country_code' in snakeCaseUpdates) {
+      console.log('⚠️ Removing country_code from update (column does not exist in database)');
+      delete snakeCaseUpdates.country_code;
+    }
+    // Only keep valid user fields that exist in the database
+    const validUserFields = [
+      'name', 'first_name', 'last_name', 'phone_number', 
+      'email', 'role', 'avatar', 'allergies', 'preferences', 
+      'status', 'expires_at', 'notifications_enabled'
+    ];
+    const filteredUpdates: Record<string, any> = {};
+    for (const key of Object.keys(snakeCaseUpdates)) {
+      if (validUserFields.includes(key)) {
+        filteredUpdates[key] = snakeCaseUpdates[key];
+      } else {
+        console.log(`⚠️ Removing invalid field '${key}' from user update (column does not exist)`);
+      }
+    }
+    Object.assign(snakeCaseUpdates, filteredUpdates);
+    // Clear out any fields not in filteredUpdates
+    for (const key of Object.keys(snakeCaseUpdates)) {
+      if (!validUserFields.includes(key)) {
+        delete snakeCaseUpdates[key];
+      }
+    }
+  }
+  
   console.log('🔄 Snake case updates:', snakeCaseUpdates);
   
   let actualId = id;

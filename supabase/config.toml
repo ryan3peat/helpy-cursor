@@ -39,6 +39,7 @@ enable_signup = true
 double_confirm_changes = true
 enable_confirmations = false
 
-[functions]
-enabled = true
+# [functions]
+# Functions configuration - commented out to avoid CLI parsing errors
+# For remote deployment, functions are managed via Dashboard or direct deploy
 

@@ -1688,26 +1688,55 @@ const Profile: React.FC<ProfileProps> = ({
                         try {
                           if (newValue) {
                             // Enable notifications - subscribe to push
-                            const subscription = await subscribeToPush(
-                              currentUser.id,
-                              currentUser.householdId
-                            );
+                            // Update local state first for immediate UI feedback
+                            setAccountData({ ...accountData, notificationsEnabled: true });
                             
-                            if (subscription) {
-                              setAccountData({ ...accountData, notificationsEnabled: true });
+                            // Save to database immediately (even if subscription fails)
+                            await onUpdate(currentUser.id, { notificationsEnabled: true });
+                            
+                            // Then try to subscribe to push (non-blocking)
+                            try {
+                              const subscription = await subscribeToPush(
+                                currentUser.id,
+                                currentUser.householdId
+                              );
+                              
+                              if (subscription) {
+                                console.log('[Profile] Successfully subscribed to push notifications');
+                                setPushPermission(getNotificationPermission());
+                              } else {
+                                // Permission denied or subscription failed, but DB is already updated
+                                setPushPermission(getNotificationPermission());
+                                console.warn('[Profile] Failed to subscribe to push notifications, but notifications_enabled is set to true in database');
+                                // User can still receive notifications via other means or fix subscription later
+                              }
+                            } catch (subError) {
+                              // Subscription failed but DB is already updated
+                              console.error('[Profile] Error subscribing to push:', subError);
                               setPushPermission(getNotificationPermission());
-                            } else {
-                              // Permission denied or subscription failed
-                              setPushPermission(getNotificationPermission());
-                              console.warn('Failed to subscribe to push notifications');
                             }
                           } else {
                             // Disable notifications - unsubscribe from push
-                            await unsubscribeFromPush(currentUser.id);
+                            // Update local state first
                             setAccountData({ ...accountData, notificationsEnabled: false });
+                            
+                            // Save to database immediately
+                            await onUpdate(currentUser.id, { notificationsEnabled: false });
+                            
+                            // Then unsubscribe (non-blocking)
+                            try {
+                              await unsubscribeFromPush(currentUser.id);
+                              console.log('[Profile] Successfully unsubscribed from push notifications');
+                            } catch (unsubError) {
+                              console.error('[Profile] Error unsubscribing from push:', unsubError);
+                              // DB is already updated, so continue
+                            }
                           }
                         } catch (error) {
-                          console.error('Error toggling notifications:', error);
+                          console.error('[Profile] Error toggling notifications:', error);
+                          // Revert local state on error
+                          setAccountData({ ...accountData, notificationsEnabled: !newValue });
+                          // Show error to user (you could add a toast notification here)
                         } finally {
                           setIsTogglingNotifications(false);
                         }
@@ -1754,10 +1783,13 @@ const Profile: React.FC<ProfileProps> = ({
                     firstName: accountData.firstName,
                     lastName: accountData.lastName,
                     phoneNumber: accountData.phoneNumber,
-                    countryCode: accountData.countryCode,
                     email: accountData.email,
                     notificationsEnabled: accountData.notificationsEnabled
                   };
+                  
+                  // Only include countryCode if it exists (database doesn't have this column)
+                  // The service will filter it out anyway, but we can avoid sending it
+                  // Note: countryCode is stored in phone_number format or can be omitted
                   
                   // Update name if firstName or lastName changed
                   if (accountData.firstName || accountData.lastName) {

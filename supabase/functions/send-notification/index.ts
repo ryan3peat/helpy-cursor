@@ -13,9 +13,7 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
-
-// Import web-push compatible functions
-import * as base64 from 'https://deno.land/std@0.168.0/encoding/base64.ts';
+import webPush from 'https://esm.sh/web-push@3.5.0?target=deno';
 
 interface PushSubscriptionRecord {
   id: string;
@@ -96,91 +94,6 @@ function buildNotificationMessage(
 }
 
 /**
- * URL-safe Base64 encoding
- */
-function base64UrlEncode(data: Uint8Array): string {
-  return base64.encode(data)
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=+$/, '');
-}
-
-/**
- * URL-safe Base64 decoding
- */
-function base64UrlDecode(str: string): Uint8Array {
-  // Add padding if needed
-  let base64Str = str.replace(/-/g, '+').replace(/_/g, '/');
-  const padding = (4 - (base64Str.length % 4)) % 4;
-  base64Str += '='.repeat(padding);
-  return base64.decode(base64Str);
-}
-
-/**
- * Create a VAPID JWT token for Web Push authentication
- */
-async function createVapidJwt(
-  audience: string,
-  subject: string,
-  publicKey: string,
-  privateKey: string
-): Promise<string> {
-  // JWT Header
-  const header = { typ: 'JWT', alg: 'ES256' };
-  
-  // JWT Payload (expires in 12 hours)
-  const payload = {
-    aud: audience,
-    exp: Math.floor(Date.now() / 1000) + (12 * 60 * 60),
-    sub: subject
-  };
-
-  const encoder = new TextEncoder();
-  const headerB64 = base64UrlEncode(encoder.encode(JSON.stringify(header)));
-  const payloadB64 = base64UrlEncode(encoder.encode(JSON.stringify(payload)));
-  const unsignedToken = `${headerB64}.${payloadB64}`;
-
-  // Import the private key for signing
-  // The private key should be the raw 32-byte key in base64url format
-  const privateKeyBytes = base64UrlDecode(privateKey);
-  
-  // Create the key in JWK format for ES256
-  const jwk = {
-    kty: 'EC',
-    crv: 'P-256',
-    d: base64UrlEncode(privateKeyBytes),
-    x: '', // Will be derived
-    y: '', // Will be derived
-  };
-
-  try {
-    // For signing, we need to import as PKCS8 or use the raw key
-    // This is a simplified approach - in production use proper key handling
-    const key = await crypto.subtle.importKey(
-      'raw',
-      privateKeyBytes,
-      { name: 'ECDSA', namedCurve: 'P-256' },
-      false,
-      ['sign']
-    );
-
-    const signature = await crypto.subtle.sign(
-      { name: 'ECDSA', hash: 'SHA-256' },
-      key,
-      encoder.encode(unsignedToken)
-    );
-
-    // Convert signature to concatenated r||s format (64 bytes)
-    const signatureB64 = base64UrlEncode(new Uint8Array(signature));
-    
-    return `${unsignedToken}.${signatureB64}`;
-  } catch (error) {
-    console.error('[VAPID] Failed to sign JWT:', error);
-    throw error;
-  }
-}
-
-/**
  * Send a Web Push notification using the standard Web Push protocol
  * 
  * Note: Full encryption requires complex ECDH + HKDF + AES-GCM implementation.
@@ -195,41 +108,44 @@ async function sendWebPushNotification(
   vapidSubject: string
 ): Promise<{ success: boolean; expired: boolean }> {
   try {
-    const url = new URL(subscription.endpoint);
-    const audience = `${url.protocol}//${url.host}`;
+    // Configure VAPID for each send to ensure keys are available in cold starts
+    webPush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
 
-    // Create VAPID JWT
-    const jwt = await createVapidJwt(
-      audience,
-      vapidSubject,
-      vapidPublicKey,
-      vapidPrivateKey
+    const response = await webPush.sendNotification(
+      {
+        endpoint: subscription.endpoint,
+        keys: {
+          p256dh: subscription.p256dh_key,
+          auth: subscription.auth_key,
+        },
+      },
+      JSON.stringify(payload),
+      { TTL: 86400 }
     );
 
-    // For now, send a simple notification without encrypted payload
-    // Most push services accept this for basic notifications
-    const response = await fetch(subscription.endpoint, {
-      method: 'POST',
-      headers: {
-        'Authorization': `vapid t=${jwt}, k=${vapidPublicKey}`,
-        'TTL': '86400',
-        'Urgency': 'normal',
-        'Content-Length': '0'
-      }
-    });
-
-    if (response.status === 201 || response.status === 200) {
+    // web-push returns statusCode on the response object
+    if (response.statusCode === 201 || response.statusCode === 200) {
       console.log(`[Push] Sent to ${subscription.endpoint.substring(0, 50)}...`);
       return { success: true, expired: false };
-    } else if (response.status === 410 || response.status === 404) {
+    }
+
+    if (response.statusCode === 410 || response.statusCode === 404) {
       console.log(`[Push] Subscription expired: ${subscription.endpoint.substring(0, 50)}...`);
       return { success: false, expired: true };
-    } else {
-      const body = await response.text();
-      console.error(`[Push] Failed (${response.status}): ${body}`);
-      return { success: false, expired: false };
     }
+
+    console.error(`[Push] Failed (${response.statusCode}): ${response.body}`);
+    return { success: false, expired: false };
   } catch (error) {
+    // Detect expired/invalid subscriptions to prune them
+    if (error && typeof error === 'object' && 'statusCode' in error) {
+      const statusCode = (error as { statusCode: number }).statusCode;
+      if (statusCode === 410 || statusCode === 404) {
+        console.log(`[Push] Subscription expired: ${subscription.endpoint.substring(0, 50)}...`);
+        return { success: false, expired: true };
+      }
+    }
+
     console.error('[Push] Error:', error);
     return { success: false, expired: false };
   }

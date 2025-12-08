@@ -1025,6 +1025,7 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
                     isHelper={isHelper}
                     currentLang={currentLang}
                     householdId={householdId}
+                    t={t}
                   />
                 ))
               )}
@@ -1084,6 +1085,7 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
           onClose={() => setIsTrainingModalOpen(false)}
           onSave={handleSaveTraining}
           onDelete={handleDeleteTraining}
+          t={t}
         />
       )}
 
@@ -1097,6 +1099,7 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
           isHelper={isHelper}
           currentLang={currentLang}
           householdId={householdId}
+          t={t}
         />
       )}
     </div>
@@ -1216,6 +1219,7 @@ interface TrainingCardProps {
   isHelper: boolean;
   currentLang: string;
   householdId: string;
+  t: TranslationDictionary;
 }
 
 const TrainingCard: React.FC<TrainingCardProps> = ({
@@ -1226,6 +1230,7 @@ const TrainingCard: React.FC<TrainingCardProps> = ({
   isHelper,
   currentLang,
   householdId,
+  t,
 }) => {
   const config = TRAINING_CATEGORY_CONFIG[module.category];
   const displayCategory = module.category === "Others" && module.customCategory
@@ -1281,15 +1286,10 @@ const TrainingCard: React.FC<TrainingCardProps> = ({
           <span>{t['common.assigned_to'] || 'Assigned to:'} {assigneeName}</span>
         </div>
         <div className="flex items-center gap-1">
-          {module.isCompleted ? (
+          {module.isCompleted && (
             <span className="text-[#4CAF50] flex items-center gap-1">
               <CheckCircle2 size={14} />
               {t['todo.completed'] || 'Completed'}
-            </span>
-          ) : (
-            <span className="text-[#FF9800] flex items-center gap-1">
-              <Clock size={14} />
-              {t['common.pending'] || 'Pending'}
             </span>
           )}
         </div>
@@ -1555,6 +1555,7 @@ interface TrainingModalProps {
   onClose: () => void;
   onSave: () => void;
   onDelete: () => void;
+  t: TranslationDictionary;
 }
 
 const TrainingModal: React.FC<TrainingModalProps> = ({
@@ -1565,6 +1566,7 @@ const TrainingModal: React.FC<TrainingModalProps> = ({
   onClose,
   onSave,
   onDelete,
+  t,
 }) => {
   return (
     <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
@@ -1710,6 +1712,7 @@ interface TrainingViewModalProps {
   isHelper: boolean;
   currentLang: string;
   householdId: string;
+  t: TranslationDictionary;
 }
 
 const TrainingViewModal: React.FC<TrainingViewModalProps> = ({
@@ -1720,6 +1723,7 @@ const TrainingViewModal: React.FC<TrainingViewModalProps> = ({
   isHelper,
   currentLang,
   householdId,
+  t,
 }) => {
   const config = TRAINING_CATEGORY_CONFIG[module.category];
   const displayCategory = module.category === "Others" && module.customCategory

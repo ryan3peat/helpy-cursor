@@ -11,6 +11,8 @@ const TABLE_NAME = 'training_modules';
 
 // Cache to store clerk_id -> supabase uuid mapping
 const userIdCache: Record<string, string> = {};
+// Cache to store supabase uuid -> app user id (clerk_id if active, uuid if pending)
+const uuidToAppIdCache: Record<string, string> = {};
 
 /**
  * Get the actual Supabase UUID for a user ID
@@ -77,6 +79,39 @@ function toCamelCase(data: any): TrainingModule {
 }
 
 /**
+ * Map a Supabase UUID back to the app's user id (Clerk id for active users).
+ * Falls back to the UUID if no clerk_id exists (pending users).
+ */
+async function getAppUserIdFromUuid(uuid: string, householdId: string): Promise<string | null> {
+  if (!uuid) return null;
+  if (uuidToAppIdCache[uuid]) return uuidToAppIdCache[uuid];
+
+  const { data, error } = await supabase
+    .from('users')
+    .select('id, clerk_id')
+    .eq('id', uuid)
+    .eq('household_id', householdId)
+    .maybeSingle();
+
+  if (error || !data) {
+    console.error('Error converting UUID to app user id:', error);
+    return uuid;
+  }
+
+  const appId = data.clerk_id || data.id;
+  uuidToAppIdCache[uuid] = appId;
+  // Keep forward cache in sync for future lookups
+  userIdCache[appId] = data.id;
+  return appId;
+}
+
+async function attachAssigneeAppId(module: TrainingModule, householdId: string): Promise<TrainingModule> {
+  if (!module.assigneeId) return module;
+  const appId = await getAppUserIdFromUuid(module.assigneeId, householdId);
+  return { ...module, assigneeId: appId || module.assigneeId };
+}
+
+/**
  * Convert camelCase to snake_case for Supabase
  * Note: Empty strings for UUID fields are converted to null
  */
@@ -118,7 +153,8 @@ export async function listTrainingModules(householdId: string): Promise<Training
     throw error;
   }
 
-  return (data || []).map(toCamelCase);
+  const modules = (data || []).map(toCamelCase);
+  return Promise.all(modules.map((m) => attachAssigneeAppId(m, householdId)));
 }
 
 /**
@@ -147,7 +183,8 @@ export async function listTrainingModulesForUser(
     throw error;
   }
 
-  return (data || []).map(toCamelCase);
+  const modules = (data || []).map(toCamelCase);
+  return Promise.all(modules.map((m) => attachAssigneeAppId(m, householdId)));
 }
 
 /**
@@ -200,7 +237,8 @@ export async function createTrainingModule(
     throw error;
   }
 
-  return toCamelCase(data);
+  const moduleData = toCamelCase(data);
+  return attachAssigneeAppId(moduleData, householdId);
 }
 
 /**
@@ -232,7 +270,8 @@ export async function updateTrainingModule(
     throw error;
   }
 
-  return toCamelCase(data);
+  const moduleData = toCamelCase(data);
+  return attachAssigneeAppId(moduleData, householdId);
 }
 
 /**
@@ -258,7 +297,8 @@ export async function completeTrainingModule(
     throw error;
   }
 
-  return toCamelCase(data);
+  const moduleData = toCamelCase(data);
+  return attachAssigneeAppId(moduleData, householdId);
 }
 
 /**

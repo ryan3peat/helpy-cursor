@@ -10,26 +10,23 @@ export const Navbar = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const navItems = [
-    { href: "/", label: "Home" },
+    { href: "/home", label: "Home" },
     { href: "/features", label: "Features" },
-    { href: "/pricing", label: "Pricing" },
-    { href: "/intro", label: "Intro" }
+    { href: "/getapp", label: "Get the App" },
+    { href: "/faq", label: "FAQ" }
   ];
 
   return (
     <header className="sticky top-0 z-20 border-b border-border bg-background/80 backdrop-blur">
       <nav className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
-        <Link href="/" className="flex items-center gap-2">
+        <Link href="/home" className="flex items-center gap-2">
           <span className="helpy-logo font-normal text-xl tracking-tight">helpy</span>
         </Link>
         
         {/* Desktop Navigation */}
         <div className="hidden items-center gap-4 text-sm text-muted-foreground sm:flex">
           {navItems.map((item) => {
-            const isActive =
-              item.href === "/"
-                ? pathname === "/"
-                : pathname.startsWith(item.href);
+            const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
             return (
               <Link
                 key={item.href}

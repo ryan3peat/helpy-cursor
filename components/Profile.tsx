@@ -84,7 +84,7 @@ const Profile: React.FC<ProfileProps> = ({
     periodEnd?: string;
     period?: string;
   } | null>(null);
-  const [isLoadingSubscription, setIsLoadingSubscription] = useState(false);
+  const [isLoadingSubscription, setIsLoadingSubscription] = useState(true);
   const [isDeleteAccountModalOpen, setIsDeleteAccountModalOpen] = useState(false);
   const [isFinalDeleteConfirmOpen, setIsFinalDeleteConfirmOpen] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
@@ -110,12 +110,27 @@ const Profile: React.FC<ProfileProps> = ({
   // Lock scroll when any modal is open
   useScrollLock(isAddModalOpen || isEditModalOpen || deleteConfirmOpen || showPhotoOptions || subscriptionCanceled);
 
+  // Pre-fetch subscription info on component mount (for admins)
+  // This eliminates latency when navigating to the Plan page
+  React.useEffect(() => {
+    if (currentUser?.householdId && currentUser?.role === UserRole.MASTER) {
+      fetchSubscriptionInfo();
+    } else {
+      // Non-admins don't need subscription info, stop loading
+      setIsLoadingSubscription(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser?.householdId, currentUser?.role]);
+
   // Fetch subscription info and household name
-  const fetchSubscriptionInfo = React.useCallback(async (retryCount = 0) => {
+  const fetchSubscriptionInfo = React.useCallback(async (retryCount = 0, showLoading = true) => {
     if (!currentUser?.householdId) return;
     
     try {
-      setIsLoadingSubscription(true);
+      // Only show loading spinner on initial fetch (when we have no data yet)
+      if (showLoading && !subscriptionInfo) {
+        setIsLoadingSubscription(true);
+      }
       const { data, error } = await supabase
         .from('households')
         .select('name, subscription_plan, subscription_status, subscription_current_period_end, subscription_period')
@@ -152,7 +167,7 @@ const Profile: React.FC<ProfileProps> = ({
     } finally {
       setIsLoadingSubscription(false);
     }
-  }, [currentUser?.householdId]);
+  }, [currentUser?.householdId, subscriptionInfo]);
 
   // Check for Stripe checkout redirect and refetch subscription info
   React.useEffect(() => {
@@ -247,12 +262,12 @@ const Profile: React.FC<ProfileProps> = ({
     }
   }, [currentUser?.householdId, fetchSubscriptionInfo]);
 
-  // Fetch subscription info when navigating to plan/security sections
+  // Fetch subscription info when navigating to plan/security sections (only if missing)
   React.useEffect(() => {
-    if (activeSection === 'plan' || activeSection === 'security') {
+    if ((activeSection === 'plan' || activeSection === 'security') && !subscriptionInfo) {
       fetchSubscriptionInfo();
     }
-  }, [currentUser?.householdId, activeSection, fetchSubscriptionInfo]);
+  }, [currentUser?.householdId, activeSection, subscriptionInfo, fetchSubscriptionInfo]);
   
   // Get Clerk user to detect authentication method
   const { user: clerkUser } = useUser();
@@ -356,6 +371,11 @@ const Profile: React.FC<ProfileProps> = ({
       setSelectedUserId(currentUser.id);
     }
   }, [validUsers, selectedUserId, currentUser.id]);
+
+  // Scroll to top when changing sections
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [activeSection]);
 
   const resetForm = () => {
     setNewName('');

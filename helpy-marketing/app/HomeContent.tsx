@@ -16,7 +16,14 @@ export default function HomeContent() {
           transition={{ duration: 0.4 }}
         >
           <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl lg:text-5xl">
-            <span className="helpy-logo font-normal text-4xl sm:text-5xl lg:text-6xl">helpy</span>
+            <Image
+              src="/helpy-logo-text.png"
+              alt="helpy"
+              width={200}
+              height={70}
+              className="h-12 sm:h-14 lg:h-16 w-auto mb-2"
+              priority
+            />
             <span className="block mt-2 sm:mt-3">
               <span className="text-2xl sm:text-3xl lg:text-4xl font-semibold">
                 The <span className="text-red-500">home management app</span> that brings families and helpers closer.

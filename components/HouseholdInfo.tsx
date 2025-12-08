@@ -790,7 +790,7 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
                 <span className="text-title">{t['common.essential_info'] || 'Essential Info'}</span>
               </div>
               <div className={`text-caption mt-1 ml-6 ${activeSection === "essentialInfo" ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
-                {essentialStats.total} {t['common.places_saved'] || 'places saved'}
+                {essentialStats.total} {t['common.items'] || 'items'}
               </div>
             </button>
 

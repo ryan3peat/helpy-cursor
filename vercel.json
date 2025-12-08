@@ -6,7 +6,8 @@
     { "source": "/getapp", "destination": "https://helpy-cursor-website.vercel.app/getapp" },
     { "source": "/_next/image", "destination": "https://helpy-cursor-website.vercel.app/_next/image" },
     { "source": "/home-hero.jpg", "destination": "https://helpy-cursor-website.vercel.app/home-hero.jpg" },
-    { "source": "/features-hero.jpg", "destination": "https://helpy-cursor-website.vercel.app/features-hero.jpg" }
+    { "source": "/features-hero.jpg", "destination": "https://helpy-cursor-website.vercel.app/features-hero.jpg" },
+    { "source": "/helpy-logo-text.png", "destination": "https://helpy-cursor-website.vercel.app/helpy-logo-text.png" }
   ],
   "headers": [
     {

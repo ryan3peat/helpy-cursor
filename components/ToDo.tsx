@@ -1279,39 +1279,35 @@ const ToDo: React.FC<ToDoProps> = ({
                     <label className="block text-caption text-muted-foreground tracking-wide mb-2">
                       Due Date & Time
                     </label>
-                    {/* Hidden native picker - positioned off-screen */}
-                    <input
-                      id="datetime-picker"
-                      type="datetime-local"
-                      value={sheetForm.dueDate && sheetForm.dueTime 
-                        ? `${sheetForm.dueDate}T${sheetForm.dueTime}`
-                        : sheetForm.dueDate 
-                          ? `${sheetForm.dueDate}T09:00`
-                          : ''
-                      }
-                      onChange={e => {
-                        const [date, time] = e.target.value.split('T');
-                        setSheetForm(prev => ({ ...prev, dueDate: date, dueTime: time }));
-                      }}
-                      className="sr-only"
-                    />
-                    {/* Display formatted date */}
-                    <button 
-                      type="button"
-                      className="w-full px-4 py-3 bg-muted rounded-xl text-body cursor-pointer border border-transparent hover:border-foreground/30 transition-colors flex items-center justify-between text-left"
-                      onClick={() => {
-                        const input = document.getElementById('datetime-picker') as HTMLInputElement;
-                        input?.showPicker?.();
-                      }}
-                    >
-                      <span className={sheetForm.dueDate ? 'text-foreground' : 'text-muted-foreground'}>
-                        {sheetForm.dueDate 
-                          ? formatDateTime(sheetForm.dueDate, sheetForm.dueTime || '09:00')
-                          : 'Select date & time'
+                    {/* Date/time picker with transparent native input overlay for iOS compatibility */}
+                    <div className="relative">
+                      {/* Visual display layer */}
+                      <div className="w-full px-4 py-3 bg-muted rounded-xl text-body border border-transparent flex items-center justify-between pointer-events-none">
+                        <span className={sheetForm.dueDate ? 'text-foreground' : 'text-muted-foreground'}>
+                          {sheetForm.dueDate 
+                            ? formatDateTime(sheetForm.dueDate, sheetForm.dueTime || '09:00')
+                            : 'Select date & time'
+                          }
+                        </span>
+                        <Calendar size={18} className="text-muted-foreground" />
+                      </div>
+                      {/* Transparent native input overlay - captures taps on iOS */}
+                      <input
+                        type="datetime-local"
+                        value={sheetForm.dueDate && sheetForm.dueTime 
+                          ? `${sheetForm.dueDate}T${sheetForm.dueTime}`
+                          : sheetForm.dueDate 
+                            ? `${sheetForm.dueDate}T09:00`
+                            : ''
                         }
-                      </span>
-                      <Calendar size={18} className="text-muted-foreground" />
-                    </button>
+                        onChange={e => {
+                          const [date, time] = e.target.value.split('T');
+                          setSheetForm(prev => ({ ...prev, dueDate: date, dueTime: time }));
+                        }}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                        style={{ WebkitAppearance: 'none' }}
+                      />
+                    </div>
                   </div>
                   
                   <div>

@@ -83,7 +83,7 @@ export default function HomeContent() {
             {/* The "Glow" Image (Behind) */}
             <div className="absolute inset-0 translate-y-4 scale-95 opacity-60 blur-2xl">
               <Image
-                src="https://images.unsplash.com/photo-1601972599720-36938d4ecd31?auto=format&fit=crop&w=800&q=80"
+                src="/home-hero.jpg"
                 alt=""
                 fill
                 className="object-cover rounded-3xl"
@@ -94,8 +94,8 @@ export default function HomeContent() {
             {/* The Main Image (Front) */}
             <div className="relative aspect-[3/4] w-full overflow-hidden rounded-3xl bg-secondary shadow-sm">
               <Image
-                src="https://images.unsplash.com/photo-1601972599720-36938d4ecd31?auto=format&fit=crop&w=800&q=80"
-                alt="Family using Helpy home management app on smartphone to organize household tasks and meal planning"
+                src="/home-hero.jpg"
+                alt="Person using Helpy app on smartphone to manage household to-do lists and shopping tasks"
                 fill
                 className="object-cover"
                 priority

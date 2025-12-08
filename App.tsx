@@ -27,7 +27,7 @@ import {
 } from './services/supabaseService';
 import { initializePushNotifications } from './services/pushNotificationService';
 import type { EssentialInfo } from '@src/types/essentialInfo';
-import type { TrainingModule } from '@src/types/training';
+import type { HouseRoutine } from '@src/types/houseRoutine';
 import { 
   subscribeToEssentialInfo,
   createEssentialInfo,
@@ -35,13 +35,13 @@ import {
   deleteEssentialInfo,
 } from './services/essentialInfoService';
 import { 
-  subscribeToTrainingModules,
-  createTrainingModule,
-  updateTrainingModule,
-  deleteTrainingModule,
-} from './services/trainingService';
+  subscribeToHouseRoutine,
+  createHouseRoutine,
+  updateHouseRoutine,
+  deleteHouseRoutine,
+} from './services/houseRoutineService';
 import type { CreateEssentialInfo } from '@src/types/essentialInfo';
-import type { CreateTrainingModule } from '@src/types/training';
+import type { CreateHouseRoutine } from '@src/types/houseRoutine';
 
 // Broom icon component for loading animation (matching flaticon clean_9755169)
 const BroomIcon = ({ className }: { className?: string }) => (
@@ -252,7 +252,7 @@ const App: React.FC = () => {
   const [familyNotesLang, setFamilyNotesLang] = useState<string | null>(null);
   const [familyNotesTranslations, setFamilyNotesTranslations] = useState<Record<string, string>>({});
   const [essentialItems, setEssentialItems] = useState<EssentialInfo[]>([]);
-  const [trainingModules, setTrainingModules] = useState<TrainingModule[]>([]);
+  const [houseRoutineItems, setHouseRoutineItems] = useState<HouseRoutine[]>([]);
 
   // Ensure currentUser is always in the users array (for assignee selection)
   useEffect(() => {
@@ -309,7 +309,7 @@ const App: React.FC = () => {
       setFamilyNotesTranslations(notesData.notesTranslations || {});
     });
     const unsubEssential = subscribeToEssentialInfo(hid, (data) => setEssentialItems(data));
-    const unsubTraining = subscribeToTrainingModules(hid, (data) => setTrainingModules(data));
+    const unsubHouseRoutine = subscribeToHouseRoutine(hid, (data) => setHouseRoutineItems(data));
     
     return () => {
       unsubUsers();
@@ -318,7 +318,7 @@ const App: React.FC = () => {
       unsubExpenses();
       unsubNotes();
       unsubEssential();
-      unsubTraining();
+      unsubHouseRoutine();
     };
   }, [currentUser]);
 
@@ -526,54 +526,52 @@ const App: React.FC = () => {
     }
   };
 
-  // Training Module CRUD Handlers (with optimistic updates for instant UI)
-  const handleAddTrainingModule = async (module: CreateTrainingModule, createdBy: string) => {
+  // House Routine CRUD Handlers (with optimistic updates for instant UI)
+  const handleAddHouseRoutine = async (item: CreateHouseRoutine) => {
     if (!hid) return;
     const tempId = `temp-${Date.now()}`;
-    const tempModule: TrainingModule = {
-      ...module,
+    const tempItem: HouseRoutine = {
+      ...item,
       id: tempId,
       householdId: hid,
       createdAt: new Date().toISOString(),
-      createdBy,
-      isCompleted: false,
     };
-    setTrainingModules(prev => [tempModule, ...prev]);  // Optimistic
+    setHouseRoutineItems(prev => [tempItem, ...prev]);  // Optimistic
     try {
-      const saved = await createTrainingModule(hid, module, createdBy);
-      // Replace the temp item with the saved record so assignee/ids persist
-      setTrainingModules(prev => prev.map(m => m.id === tempId ? saved : m));
+      const saved = await createHouseRoutine(hid, item);
+      // Replace the temp item with the saved record
+      setHouseRoutineItems(prev => prev.map(i => i.id === tempId ? saved : i));
     } catch (error) {
-      console.error('Failed to add training module:', error);
-      setTrainingModules(prev => prev.filter(m => m.id !== tempId));  // Rollback
+      console.error('Failed to add house routine:', error);
+      setHouseRoutineItems(prev => prev.filter(i => i.id !== tempId));  // Rollback
     }
   };
 
-  const handleUpdateTrainingModule = async (id: string, data: Partial<CreateTrainingModule>) => {
+  const handleUpdateHouseRoutine = async (id: string, data: Partial<CreateHouseRoutine>) => {
     if (!hid) return;
-    const previousModules = trainingModules;
-    setTrainingModules(prev => prev.map(m => 
-      m.id === id ? { ...m, ...data } : m
+    const previousItems = houseRoutineItems;
+    setHouseRoutineItems(prev => prev.map(i => 
+      i.id === id ? { ...i, ...data } : i
     ));  // Optimistic
     try {
-      const updated = await updateTrainingModule(hid, id, data);
-      // Ensure state reflects server-mapped IDs (assignee, translations, etc.)
-      setTrainingModules(prev => prev.map(m => m.id === id ? updated : m));
+      const updated = await updateHouseRoutine(hid, id, data);
+      // Ensure state reflects server-mapped data (translations, etc.)
+      setHouseRoutineItems(prev => prev.map(i => i.id === id ? updated : i));
     } catch (error) {
-      console.error('Failed to update training module:', error);
-      setTrainingModules(previousModules);  // Rollback
+      console.error('Failed to update house routine:', error);
+      setHouseRoutineItems(previousItems);  // Rollback
     }
   };
 
-  const handleDeleteTrainingModule = async (id: string) => {
+  const handleDeleteHouseRoutine = async (id: string) => {
     if (!hid) return;
-    const previousModules = trainingModules;
-    setTrainingModules(prev => prev.filter(m => m.id !== id));  // Optimistic
+    const previousItems = houseRoutineItems;
+    setHouseRoutineItems(prev => prev.filter(i => i.id !== id));  // Optimistic
     try {
-      await deleteTrainingModule(hid, id);
+      await deleteHouseRoutine(hid, id);
     } catch (error) {
-      console.error('Failed to delete training module:', error);
-      setTrainingModules(previousModules);  // Rollback
+      console.error('Failed to delete house routine:', error);
+      setHouseRoutineItems(previousItems);  // Rollback
     }
   };
 
@@ -650,13 +648,13 @@ const App: React.FC = () => {
             currentUser={currentUser!}
             users={users}
             essentialItems={essentialItems}
-            trainingModules={trainingModules}
+            houseRoutineItems={houseRoutineItems}
             onAddEssentialInfo={handleAddEssentialInfo}
             onUpdateEssentialInfo={handleUpdateEssentialInfo}
             onDeleteEssentialInfo={handleDeleteEssentialInfo}
-            onAddTrainingModule={handleAddTrainingModule}
-            onUpdateTrainingModule={handleUpdateTrainingModule}
-            onDeleteTrainingModule={handleDeleteTrainingModule}
+            onAddHouseRoutine={handleAddHouseRoutine}
+            onUpdateHouseRoutine={handleUpdateHouseRoutine}
+            onDeleteHouseRoutine={handleDeleteHouseRoutine}
             t={translations}
             currentLang={lang}
           />

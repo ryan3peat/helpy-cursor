@@ -16,7 +16,6 @@ import {
   Building2,
   ShoppingCart,
   MoreHorizontal,
-  CheckCircle2,
   Clock,
   ChevronRight,
   ClipboardList,
@@ -45,36 +44,36 @@ import { COUNTRY_CODES, CATEGORY_CONFIG } from "@src/types/essentialInfo";
 // Keep updateEssentialInfo for translation updates in card components
 import { updateEssentialInfo } from "@/services/essentialInfoService";
 
-// Training Types & Services
+// House Routine Types & Services
 import type {
-  TrainingModule,
-  CreateTrainingModule,
-  TrainingCategory,
-} from "@src/types/training";
+  HouseRoutine,
+  CreateHouseRoutine,
+  HouseRoutineCategory,
+} from "@src/types/houseRoutine";
 import {
-  TRAINING_CATEGORIES,
-  TRAINING_CATEGORY_CONFIG,
-} from "@src/types/training";
-// Keep updateTrainingModule and completeTrainingModule for translation updates and completion
-import { updateTrainingModule, completeTrainingModule } from "@/services/trainingService";
+  HOUSE_ROUTINE_CATEGORIES,
+  HOUSE_ROUTINE_CATEGORY_CONFIG,
+} from "@src/types/houseRoutine";
+// Keep updateHouseRoutine for translation updates in card components
+import { updateHouseRoutine } from "@/services/houseRoutineService";
 
 interface HouseholdInfoProps extends BaseViewProps {
   householdId: string;
   currentUser: User;
   users: User[];
   essentialItems: EssentialInfo[];
-  trainingModules: TrainingModule[];
+  houseRoutineItems: HouseRoutine[];
   // Essential Info handlers (with optimistic updates in App.tsx)
   onAddEssentialInfo: (info: CreateEssentialInfo) => Promise<void>;
   onUpdateEssentialInfo: (id: string, data: Partial<CreateEssentialInfo>) => Promise<void>;
   onDeleteEssentialInfo: (id: string) => Promise<void>;
-  // Training Module handlers (with optimistic updates in App.tsx)
-  onAddTrainingModule: (module: CreateTrainingModule, createdBy: string) => Promise<void>;
-  onUpdateTrainingModule: (id: string, data: Partial<CreateTrainingModule>) => Promise<void>;
-  onDeleteTrainingModule: (id: string) => Promise<void>;
+  // House Routine handlers (with optimistic updates in App.tsx)
+  onAddHouseRoutine: (item: CreateHouseRoutine) => Promise<void>;
+  onUpdateHouseRoutine: (id: string, data: Partial<CreateHouseRoutine>) => Promise<void>;
+  onDeleteHouseRoutine: (id: string) => Promise<void>;
 }
 
-type ActiveSection = "essentialInfo" | "training";
+type ActiveSection = "essentialInfo" | "houseRoutine";
 
 const ESSENTIAL_CATEGORIES: EssentialInfoCategory[] = [
   "Home",
@@ -95,8 +94,8 @@ const ESSENTIAL_CATEGORY_ICONS: Record<EssentialInfoCategory, React.ReactNode> =
   Others: <MoreHorizontal size={18} />,
 };
 
-// Map training categories to Lucide icons
-const TRAINING_CATEGORY_ICONS: Record<TrainingCategory, React.ReactNode> = {
+// Map house routine categories to Lucide icons
+const HOUSE_ROUTINE_CATEGORY_ICONS: Record<HouseRoutineCategory, React.ReactNode> = {
   'House Rules': <ClipboardList size={18} />,
   'Routine': <Clock size={18} />,
   'Meal Preparations': <UtensilsCrossed size={18} />,
@@ -412,24 +411,24 @@ const TranslatedEssentialNote: React.FC<{
   return <>{translatedNote}</>;
 };
 
-// Component for displaying translated TrainingModule name
-const TranslatedTrainingName: React.FC<{
-  module: TrainingModule;
+// Component for displaying translated HouseRoutine name
+const TranslatedHouseRoutineName: React.FC<{
+  item: HouseRoutine;
   currentLang: string;
-  onUpdate?: (id: string, data: Partial<TrainingModule>) => void;
-}> = ({ module, currentLang, onUpdate }) => {
+  onUpdate?: (id: string, data: Partial<HouseRoutine>) => void;
+}> = ({ item, currentLang, onUpdate }) => {
   const translatedName = useTranslatedContent({
-    content: module.name,
-    contentLang: module.nameLang,
+    content: item.name,
+    contentLang: item.nameLang,
     currentLang,
-    translations: module.nameTranslations || {},
+    translations: item.nameTranslations || {},
     onTranslationUpdate: async (translation) => {
       if (onUpdate) {
         const updatedTranslations = {
-          ...(module.nameTranslations || {}),
+          ...(item.nameTranslations || {}),
           [currentLang]: translation,
         };
-        await onUpdate(module.id, { nameTranslations: updatedTranslations });
+        await onUpdate(item.id, { nameTranslations: updatedTranslations });
       }
     },
   });
@@ -437,31 +436,31 @@ const TranslatedTrainingName: React.FC<{
   return <>{translatedName}</>;
 };
 
-// Component for displaying translated TrainingModule content
-const TranslatedTrainingContent: React.FC<{
-  module: TrainingModule;
+// Component for displaying translated HouseRoutine note
+const TranslatedHouseRoutineNote: React.FC<{
+  item: HouseRoutine;
   currentLang: string;
-  onUpdate?: (id: string, data: Partial<TrainingModule>) => void;
-}> = ({ module, currentLang, onUpdate }) => {
-  if (!module.content) return null;
+  onUpdate?: (id: string, data: Partial<HouseRoutine>) => void;
+}> = ({ item, currentLang, onUpdate }) => {
+  if (!item.note) return null;
   
-  const translatedContent = useTranslatedContent({
-    content: module.content,
-    contentLang: module.contentLang,
+  const translatedNote = useTranslatedContent({
+    content: item.note,
+    contentLang: item.noteLang,
     currentLang,
-    translations: module.contentTranslations || {},
+    translations: item.noteTranslations || {},
     onTranslationUpdate: async (translation) => {
       if (onUpdate) {
         const updatedTranslations = {
-          ...(module.contentTranslations || {}),
+          ...(item.noteTranslations || {}),
           [currentLang]: translation,
         };
-        await onUpdate(module.id, { contentTranslations: updatedTranslations });
+        await onUpdate(item.id, { noteTranslations: updatedTranslations });
       }
     },
   });
 
-  return <>{translatedContent}</>;
+  return <>{translatedNote}</>;
 };
 
 const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
@@ -469,13 +468,13 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
   currentUser,
   users,
   essentialItems,
-  trainingModules,
+  houseRoutineItems,
   onAddEssentialInfo,
   onUpdateEssentialInfo,
   onDeleteEssentialInfo,
-  onAddTrainingModule,
-  onUpdateTrainingModule,
-  onDeleteTrainingModule,
+  onAddHouseRoutine,
+  onUpdateHouseRoutine,
+  onDeleteHouseRoutine,
   t,
   currentLang,
 }) => {
@@ -501,22 +500,21 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
   });
 
   // ─────────────────────────────────────────────────────────────────
-  // Training State (data comes from props, only UI state here)
+  // House Routine State (data comes from props, only UI state here)
   // ─────────────────────────────────────────────────────────────────
-  const [selectedTrainingCategory, setSelectedTrainingCategory] = useState<TrainingCategory | "All">("All");
-  const [isTrainingModalOpen, setIsTrainingModalOpen] = useState(false);
-  const [editingTrainingModule, setEditingTrainingModule] = useState<TrainingModule | null>(null);
-  const [viewingTrainingModule, setViewingTrainingModule] = useState<TrainingModule | null>(null);
+  const [selectedHouseRoutineCategory, setSelectedHouseRoutineCategory] = useState<HouseRoutineCategory | "All">("All");
+  const [isHouseRoutineModalOpen, setIsHouseRoutineModalOpen] = useState(false);
+  const [editingHouseRoutineItem, setEditingHouseRoutineItem] = useState<HouseRoutine | null>(null);
+  const [viewingHouseRoutineItem, setViewingHouseRoutineItem] = useState<HouseRoutine | null>(null);
   
   // Lock body scroll when any modal is open
-  useScrollLock(isEssentialModalOpen || isTrainingModalOpen || !!viewingTrainingModule);
+  useScrollLock(isEssentialModalOpen || isHouseRoutineModalOpen || !!viewingHouseRoutineItem);
   
-  const [trainingForm, setTrainingForm] = useState<CreateTrainingModule>({
+  const [houseRoutineForm, setHouseRoutineForm] = useState<CreateHouseRoutine>({
     category: "House Rules",
     customCategory: "",
     name: "",
-    content: "",
-    assigneeId: "",
+    note: "",
   });
 
   // ─────────────────────────────────────────────────────────────────
@@ -531,14 +529,9 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
     total: essentialItems.length,
   };
 
-  const trainingStats = {
-    total: trainingModules.length,
-    pending: trainingModules.filter((m) => !m.isCompleted).length,
-    completed: trainingModules.filter((m) => m.isCompleted).length,
+  const houseRoutineStats = {
+    total: houseRoutineItems.length,
   };
-
-  // Get helpers for assignee dropdown
-  const helpers = users.filter((u) => u.role === UserRole.HELPER);
 
   // ─────────────────────────────────────────────────────────────────
   // Essential Info Handlers
@@ -669,119 +662,99 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
   };
 
   // ─────────────────────────────────────────────────────────────────
-  // Training Handlers
+  // House Routine Handlers
   // ─────────────────────────────────────────────────────────────────
-  const filteredTrainingModules =
-    selectedTrainingCategory === "All"
-      ? trainingModules
-      : trainingModules.filter((m) => m.category === selectedTrainingCategory);
+  const filteredHouseRoutineItems =
+    selectedHouseRoutineCategory === "All"
+      ? houseRoutineItems
+      : houseRoutineItems.filter((item) => item.category === selectedHouseRoutineCategory);
 
-  const handleAddTrainingClick = () => {
-    setEditingTrainingModule(null);
-    setTrainingForm({
-      category: selectedTrainingCategory === "All" ? "House Rules" : selectedTrainingCategory,
+  const handleAddHouseRoutineClick = () => {
+    setEditingHouseRoutineItem(null);
+    setHouseRoutineForm({
+      category: selectedHouseRoutineCategory === "All" ? "House Rules" : selectedHouseRoutineCategory,
       customCategory: "",
       name: "",
-      content: "",
-      assigneeId: helpers[0]?.id || "",
+      note: "",
     });
-    setIsTrainingModalOpen(true);
+    setIsHouseRoutineModalOpen(true);
   };
 
-  const handleEditTrainingClick = (module: TrainingModule) => {
-    setEditingTrainingModule(module);
-    setTrainingForm({
-      category: module.category,
-      customCategory: module.customCategory || "",
-      name: module.name,
-      content: module.content || "",
-      assigneeId: module.assigneeId || "",
+  const handleEditHouseRoutineClick = (item: HouseRoutine) => {
+    setEditingHouseRoutineItem(item);
+    setHouseRoutineForm({
+      category: item.category,
+      customCategory: item.customCategory || "",
+      name: item.name,
+      note: item.note || "",
     });
-    setIsTrainingModalOpen(true);
+    setIsHouseRoutineModalOpen(true);
   };
 
-  const handleViewTrainingClick = (module: TrainingModule) => {
-    setViewingTrainingModule(module);
+  const handleViewHouseRoutineClick = (item: HouseRoutine) => {
+    setViewingHouseRoutineItem(item);
   };
 
-  const handleSaveTraining = async () => {
+  const handleSaveHouseRoutine = async () => {
     // Close modal FIRST for instant feedback & double-click prevention
-    setIsTrainingModalOpen(false);
+    setIsHouseRoutineModalOpen(false);
     
     try {
-      if (editingTrainingModule) {
-        // Re-detect language if name or content changed
-        const existingModule = trainingModules.find(m => m.id === editingTrainingModule.id);
-        const nameChanged = existingModule && existingModule.name !== trainingForm.name;
-        const contentChanged = existingModule && existingModule.content !== trainingForm.content;
+      if (editingHouseRoutineItem) {
+        // Re-detect language if name or note changed
+        const existingItem = houseRoutineItems.find(item => item.id === editingHouseRoutineItem.id);
+        const nameChanged = existingItem && existingItem.name !== houseRoutineForm.name;
+        const noteChanged = existingItem && existingItem.note !== houseRoutineForm.note;
         const nameLang = nameChanged ? detectInputLanguage(currentLang) : undefined;
-        const contentLang = contentChanged ? detectInputLanguage(currentLang) : undefined;
+        const noteLang = noteChanged ? detectInputLanguage(currentLang) : undefined;
         
-        const updateData: Partial<CreateTrainingModule> = { ...trainingForm };
+        const updateData: Partial<CreateHouseRoutine> = { ...houseRoutineForm };
         if (nameChanged && nameLang !== undefined) {
           (updateData as any).nameLang = nameLang || null;
           (updateData as any).nameTranslations = {};
         }
-        if (contentChanged && contentLang !== undefined) {
-          (updateData as any).contentLang = contentLang || null;
-          (updateData as any).contentTranslations = {};
+        if (noteChanged && noteLang !== undefined) {
+          (updateData as any).noteLang = noteLang || null;
+          (updateData as any).noteTranslations = {};
         }
         
         // Update existing - use optimistic handler
-        await onUpdateTrainingModule(editingTrainingModule.id, updateData);
+        await onUpdateHouseRoutine(editingHouseRoutineItem.id, updateData);
       } else {
-        // Detect language for new training module
-        const nameLang = trainingForm.name ? detectInputLanguage(currentLang) : null;
-        const contentLang = trainingForm.content ? detectInputLanguage(currentLang) : null;
+        // Detect language for new house routine
+        const nameLang = houseRoutineForm.name ? detectInputLanguage(currentLang) : null;
+        const noteLang = houseRoutineForm.note ? detectInputLanguage(currentLang) : null;
         
-        const createData: CreateTrainingModule = {
-          ...trainingForm,
+        const createData: CreateHouseRoutine = {
+          ...houseRoutineForm,
           nameLang: nameLang || null,
           nameTranslations: {},
-          contentLang: contentLang || null,
-          contentTranslations: {},
+          noteLang: noteLang || null,
+          noteTranslations: {},
         };
         
         // Add new - use optimistic handler
-        await onAddTrainingModule(createData, currentUser.id);
+        await onAddHouseRoutine(createData);
       }
     } catch (error) {
-      console.error("Failed to save training:", error);
+      console.error("Failed to save house routine:", error);
     }
   };
 
-  const handleDeleteTraining = async () => {
-    if (!editingTrainingModule) return;
+  const handleDeleteHouseRoutine = async () => {
+    if (!editingHouseRoutineItem) return;
     
-    const moduleToDelete = editingTrainingModule;
+    const itemToDelete = editingHouseRoutineItem;
     
     // Close modal immediately for responsive UX
-    setIsTrainingModalOpen(false);
+    setIsHouseRoutineModalOpen(false);
     
     // Use optimistic delete handler
     try {
-      await onDeleteTrainingModule(moduleToDelete.id);
+      await onDeleteHouseRoutine(itemToDelete.id);
     } catch (error) {
-      console.error("Failed to delete training:", error);
+      console.error("Failed to delete house routine:", error);
     }
-  };
-
-  const handleCompleteTraining = async (module: TrainingModule) => {
-    // Close modal FIRST for instant feedback & double-click prevention
-    setViewingTrainingModule(null);
-    
-    try {
-      await completeTrainingModule(householdId, module.id);
-    } catch (error) {
-      console.error("Failed to complete training:", error);
-    }
-  };
-
-  // Get assignee name
-  const getAssigneeName = (assigneeId?: string) => {
-    if (!assigneeId) return t['common.unassigned'] || "Unassigned";
-    const user = users.find((u) => u.id === assigneeId);
-    return user?.name || "Unknown";
   };
 
   // ─────────────────────────────────────────────────────────────────
@@ -821,21 +794,21 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
               </div>
             </button>
 
-            {/* Training Card */}
+            {/* House Routine Card */}
             <button
-              onClick={() => setActiveSection("training")}
+              onClick={() => setActiveSection("houseRoutine")}
               className={`px-3 py-2.5 rounded-xl text-left transition-all ${
-                activeSection === "training"
+                activeSection === "houseRoutine"
                   ? "bg-primary text-primary-foreground shadow-md"
                   : "bg-card text-foreground shadow-sm"
               }`}
             >
               <div className="flex items-center gap-2">
-                <GraduationCap size={16} />
-                <span className="text-title">{t['common.training'] || 'Training'}</span>
+                <ClipboardList size={16} />
+                <span className="text-title">{t['common.house_routine'] || 'House Routine'}</span>
               </div>
-              <div className={`text-caption mt-1 ml-6 ${activeSection === "training" ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
-                {trainingStats.pending} {t['common.pending'] || 'pending'}, {trainingStats.completed} {t['common.done'] || 'done'}
+              <div className={`text-caption mt-1 ml-6 ${activeSection === "houseRoutine" ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
+                {houseRoutineStats.total} {t['common.items'] || 'items'}
               </div>
             </button>
           </div>
@@ -905,8 +878,8 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
             </div>
           )}
 
-          {/* Training Tabs */}
-          {activeSection === "training" && (
+          {/* House Routine Tabs */}
+          {activeSection === "houseRoutine" && (
             <div 
               className="relative rounded-full overflow-hidden"
               style={{ backgroundColor: 'hsl(var(--muted))' }}
@@ -914,26 +887,26 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
               {/* Scrollable button container */}
               <div className="flex p-1 overflow-x-auto scrollbar-hide">
                 <button
-                  onClick={() => setSelectedTrainingCategory("All")}
+                  onClick={() => setSelectedHouseRoutineCategory("All")}
                   className={`px-4 py-2 rounded-full text-body whitespace-nowrap transition-all ${
-                    selectedTrainingCategory === "All"
+                    selectedHouseRoutineCategory === "All"
                       ? "bg-card text-primary shadow-sm"
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  All
+                  {t['common.all'] || 'All'}
                 </button>
-                {TRAINING_CATEGORIES.map((cat) => (
+                {HOUSE_ROUTINE_CATEGORIES.map((cat) => (
                   <button
                     key={cat}
-                    onClick={() => setSelectedTrainingCategory(cat)}
+                    onClick={() => setSelectedHouseRoutineCategory(cat)}
                     className={`px-4 py-2 rounded-full text-body whitespace-nowrap transition-all flex items-center gap-1.5 ${
-                      selectedTrainingCategory === cat
+                      selectedHouseRoutineCategory === cat
                         ? "bg-card text-primary shadow-sm"
                         : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
-                    {TRAINING_CATEGORY_ICONS[cat]}
+                    {HOUSE_ROUTINE_CATEGORY_ICONS[cat]}
                     {cat}
                   </button>
                 ))}
@@ -996,36 +969,32 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
         )}
 
         {/* ─────────────────────────────────────────────────────────────── */}
-        {/* TRAINING SECTION */}
+        {/* HOUSE ROUTINE SECTION */}
         {/* ─────────────────────────────────────────────────────────────── */}
-        {activeSection === "training" && (
+        {activeSection === "houseRoutine" && (
           <>
-            {/* Training Cards */}
+            {/* House Routine Cards */}
             <div className="space-y-4">
-              {filteredTrainingModules.length === 0 ? (
+              {filteredHouseRoutineItems.length === 0 ? (
                 <div className="text-center py-12">
                   <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-secondary flex items-center justify-center">
-                    <GraduationCap size={28} className="text-muted-foreground" />
+                    <ClipboardList size={28} className="text-muted-foreground" />
                   </div>
-                  <p className="text-body text-foreground">No training modules yet</p>
+                  <p className="text-body text-foreground">{t['info.no_routines'] || 'No routines yet'}</p>
                   <p className="text-caption text-muted-foreground mt-1">
-                    {isHelper
-                      ? "No training assigned to you yet"
-                      : "Add training modules for your helpers"}
+                    {t['info.add_routines_hint'] || 'Add house routines and instructions for your household'}
                   </p>
                 </div>
               ) : (
-                filteredTrainingModules.map((module) => (
-                  <TrainingCard
-                    key={module.id}
-                    module={module}
-                    assigneeName={getAssigneeName(module.assigneeId)}
-                    onEdit={() => handleEditTrainingClick(module)}
-                    onView={() => handleViewTrainingClick(module)}
-                    isHelper={isHelper}
+                filteredHouseRoutineItems.map((item) => (
+                  <HouseRoutineCard
+                    key={item.id}
+                    item={item}
+                    onEdit={() => handleEditHouseRoutineClick(item)}
+                    onView={() => handleViewHouseRoutineClick(item)}
+                    canEdit={!isHelper}
                     currentLang={currentLang}
                     householdId={householdId}
-                    t={t}
                   />
                 ))
               )}
@@ -1048,11 +1017,11 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
       {/* ─────────────────────────────────────────────────────────────── */}
       {!isHelper && (
         <button
-          onClick={activeSection === "essentialInfo" ? handleAddEssentialClick : handleAddTrainingClick}
+          onClick={activeSection === "essentialInfo" ? handleAddEssentialClick : handleAddHouseRoutineClick}
           className={`fixed bottom-28 right-6 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-colors flex items-center justify-center z-30 ${
-            (isEssentialModalOpen || isTrainingModalOpen || viewingTrainingModule) ? 'fab-hiding' : ''
+            (isEssentialModalOpen || isHouseRoutineModalOpen || viewingHouseRoutineItem) ? 'fab-hiding' : ''
           }`}
-          aria-label={activeSection === "essentialInfo" ? "Add Essential Info" : "Add Training Module"}
+          aria-label={activeSection === "essentialInfo" ? "Add Essential Info" : "Add House Routine"}
         >
           <Plus size={24} />
         </button>
@@ -1075,28 +1044,24 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
         />
       )}
 
-      {/* Training Modal (Create/Edit) */}
-      {isTrainingModalOpen && (
-        <TrainingModal
-          isEditing={!!editingTrainingModule}
-          form={trainingForm}
-          setForm={setTrainingForm}
-          helpers={helpers}
-          onClose={() => setIsTrainingModalOpen(false)}
-          onSave={handleSaveTraining}
-          onDelete={handleDeleteTraining}
+      {/* House Routine Modal */}
+      {isHouseRoutineModalOpen && (
+        <HouseRoutineModal
+          isEditing={!!editingHouseRoutineItem}
+          form={houseRoutineForm}
+          setForm={setHouseRoutineForm}
+          onClose={() => setIsHouseRoutineModalOpen(false)}
+          onSave={handleSaveHouseRoutine}
+          onDelete={handleDeleteHouseRoutine}
           t={t}
         />
       )}
 
-      {/* Training View Modal (for helpers to view and complete) */}
-      {viewingTrainingModule && (
-        <TrainingViewModal
-          module={viewingTrainingModule}
-          assigneeName={getAssigneeName(viewingTrainingModule.assigneeId)}
-          onClose={() => setViewingTrainingModule(null)}
-          onComplete={() => handleCompleteTraining(viewingTrainingModule)}
-          isHelper={isHelper}
+      {/* House Routine View Modal (for helpers - read-only) */}
+      {viewingHouseRoutineItem && (
+        <HouseRoutineViewModal
+          item={viewingHouseRoutineItem}
+          onClose={() => setViewingHouseRoutineItem(null)}
           currentLang={currentLang}
           householdId={householdId}
           t={t}
@@ -1209,68 +1174,61 @@ const EssentialInfoCard: React.FC<EssentialInfoCardProps> = ({
 };
 
 // ─────────────────────────────────────────────────────────────────
-// Training Card Component
+// House Routine Card Component
 // ─────────────────────────────────────────────────────────────────
-interface TrainingCardProps {
-  module: TrainingModule;
-  assigneeName: string;
+interface HouseRoutineCardProps {
+  item: HouseRoutine;
   onEdit: () => void;
   onView: () => void;
-  isHelper: boolean;
+  canEdit: boolean;
   currentLang: string;
   householdId: string;
-  t: TranslationDictionary;
 }
 
-const TrainingCard: React.FC<TrainingCardProps> = ({
-  module,
-  assigneeName,
+const HouseRoutineCard: React.FC<HouseRoutineCardProps> = ({
+  item,
   onEdit,
   onView,
-  isHelper,
+  canEdit,
   currentLang,
   householdId,
-  t,
 }) => {
-  const config = TRAINING_CATEGORY_CONFIG[module.category];
-  const displayCategory = module.category === "Others" && module.customCategory
-    ? module.customCategory
-    : module.category;
+  const config = HOUSE_ROUTINE_CATEGORY_CONFIG[item.category];
+  const displayCategory = item.category === "Others" && item.customCategory
+    ? item.customCategory
+    : item.category;
+
+  // Use edit for owners, view for helpers
+  const handleTap = canEdit ? onEdit : onView;
 
   return (
-    <div className="bg-card rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
+    <div className="bg-card rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
       {/* Header */}
-      <div className="flex items-start justify-between mb-3">
-        <div className="flex-1">
-          <div className="flex items-center gap-2 mb-1">
+      <div className="flex items-start justify-between mb-2">
+        <div className="flex items-center gap-3">
+          <div
+            className="w-9 h-9 rounded-lg flex items-center justify-center"
+            style={{ backgroundColor: config.bgColor, color: config.color }}
+          >
+            {HOUSE_ROUTINE_CATEGORY_ICONS[item.category]}
+          </div>
+          <div>
             <h3 className="text-title text-foreground">
-              <TranslatedTrainingName 
-                module={module} 
+              <TranslatedHouseRoutineName 
+                item={item} 
                 currentLang={currentLang} 
-                onUpdate={(id, data) => updateTrainingModule(householdId, id, data as any)} 
+                onUpdate={(id, data) => updateHouseRoutine(householdId, id, data as any)} 
               />
             </h3>
-            {module.isCompleted && (
-              <CheckCircle2 size={16} className="text-[#4CAF50]" />
-            )}
-          </div>
-          <div className="flex items-center gap-2">
             <span
-              className="text-caption px-2 py-0.5 rounded-full"
+              className="text-caption px-2 py-0.5 rounded-full inline-block mt-1"
               style={{ backgroundColor: config.bgColor, color: config.color }}
             >
               {displayCategory}
             </span>
-              </div>
-            </div>
-        {isHelper ? (
-          <button
-            onClick={onView}
-            className="px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-body hover:bg-primary/20 transition-colors"
-          >
-            {module.isCompleted ? t['common.view'] : t['common.start']}
-          </button>
-        ) : (
+          </div>
+        </div>
+        {canEdit && (
           <button
             onClick={onEdit}
             className="p-2 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
@@ -1280,20 +1238,26 @@ const TrainingCard: React.FC<TrainingCardProps> = ({
         )}
       </div>
 
-      {/* Assignee & Status */}
-      <div className="flex items-center justify-between text-body">
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <span>{t['common.assigned_to'] || 'Assigned to:'} {assigneeName}</span>
-        </div>
-        <div className="flex items-center gap-1">
-          {module.isCompleted && (
-            <span className="text-[#4CAF50] flex items-center gap-1">
-              <CheckCircle2 size={14} />
-              {t['todo.completed'] || 'Completed'}
+      {/* Note Preview */}
+      {item.note && (
+        <div 
+          className="mt-3 pt-3 border-t border-border cursor-pointer"
+          onClick={handleTap}
+        >
+          <p className="text-body text-muted-foreground line-clamp-3">
+            <TranslatedHouseRoutineNote 
+              item={item} 
+              currentLang={currentLang} 
+              onUpdate={(id, data) => updateHouseRoutine(householdId, id, data as any)} 
+            />
+          </p>
+          {item.note.length > 150 && (
+            <span className="text-caption text-primary mt-1 inline-block">
+              tap to see more
             </span>
           )}
         </div>
-      </div>
+      )}
     </div>
   );
 };
@@ -1440,14 +1404,9 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
               <div className="relative w-28 country-code-dropdown">
                 <input
                   type="text"
+                  readOnly
                   value={form.countryCode}
                   onClick={() => setShowCountryCodeDropdown(true)}
-                  onFocus={() => setShowCountryCodeDropdown(true)}
-                  onChange={(e) => {
-                    setForm({ ...form, countryCode: e.target.value });
-                    setCountryCodeSearch(e.target.value);
-                    setShowCountryCodeDropdown(true);
-                  }}
                   placeholder="+852"
                   className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none cursor-pointer transition-all text-body"
                 />
@@ -1545,21 +1504,27 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
 };
 
 // ─────────────────────────────────────────────────────────────────
-// Training Modal (Create/Edit)
+// House Routine Modal (Create/Edit)
 // ─────────────────────────────────────────────────────────────────
-interface TrainingModalProps {
+interface HouseRoutineModalProps {
   isEditing: boolean;
-  form: CreateTrainingModule;
-  setForm: React.Dispatch<React.SetStateAction<CreateTrainingModule>>;
-  helpers: User[];
+  form: CreateHouseRoutine;
+  setForm: React.Dispatch<React.SetStateAction<CreateHouseRoutine>>;
   onClose: () => void;
   onSave: () => void;
   onDelete: () => void;
   t: TranslationDictionary;
 }
 
-const TrainingModal: React.FC<TrainingModalProps> = (props) => {
-  const { isEditing, form, setForm, helpers, onClose, onSave, onDelete, t } = props;
+const HouseRoutineModal: React.FC<HouseRoutineModalProps> = ({
+  isEditing,
+  form,
+  setForm,
+  onClose,
+  onSave,
+  onDelete,
+  t,
+}) => {
   return (
     <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
       {/* Safe area bottom cover - fills the gap below the sheet */}
@@ -1578,45 +1543,56 @@ const TrainingModal: React.FC<TrainingModalProps> = (props) => {
         </button>
 
         {/* Header */}
-        <div className="pt-6 pb-4 px-5 border-b border-border">
+        <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
           {/* Drag Handle */}
           <div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto mb-4" />
           <h2 className="text-title text-foreground text-center">
-            {isEditing ? "Edit Training" : "Add Training Module"}
+            {isEditing ? (t['info.edit_routine'] || 'Edit Routine') : (t['info.add_routine'] || 'Add Routine')}
           </h2>
         </div>
 
         {/* Form */}
-        <div className="p-5 space-y-4 max-h-[75vh] overflow-y-auto">
+        <div className="p-5 space-y-4 flex-1 overflow-y-auto">
           {/* Category */}
           <div>
             <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
-              Category
+              {t['common.category'] || 'Category'}
             </label>
-            <select
-              value={form.category}
-              onChange={(e) => setForm({ ...form, category: e.target.value as TrainingCategory })}
-              className="w-full pl-4 pr-14 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
-            >
-              {TRAINING_CATEGORIES.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat}
-                </option>
-              ))}
-            </select>
+            <div className="flex flex-wrap gap-2">
+              {HOUSE_ROUTINE_CATEGORIES.map((cat) => {
+                const config = HOUSE_ROUTINE_CATEGORY_CONFIG[cat];
+                const isSelected = form.category === cat;
+                return (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => setForm({ ...form, category: cat })}
+                    className={`px-3 py-2 rounded-lg text-body transition-all flex items-center gap-1.5 ${
+                      isSelected
+                        ? "text-white shadow-sm"
+                        : "bg-secondary text-foreground hover:bg-secondary/80"
+                    }`}
+                    style={isSelected ? { backgroundColor: config.color } : undefined}
+                  >
+                    {HOUSE_ROUTINE_CATEGORY_ICONS[cat]}
+                    {cat}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {/* Custom Category (for Others) */}
           {form.category === "Others" && (
             <div>
               <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
-                Custom Category Name
+                {t['info.custom_category'] || 'Custom Category Name'}
               </label>
               <input
                 type="text"
                 value={form.customCategory}
                 onChange={(e) => setForm({ ...form, customCategory: e.target.value })}
-                placeholder="Enter custom category"
+                placeholder={t['info.custom_category_placeholder'] || 'Enter custom category'}
                 className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
               />
             </div>
@@ -1625,54 +1601,34 @@ const TrainingModal: React.FC<TrainingModalProps> = (props) => {
           {/* Name */}
           <div>
             <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
-              Training Name
+              {t['common.name'] || 'Name'}
             </label>
             <input
               type="text"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
-              placeholder="e.g., Morning Routine Checklist"
+              placeholder={t['info.routine_name_placeholder'] || 'e.g., How to make the bed'}
               className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
-                />
-              </div>
-
-              {/* Content */}
-              <div>
-            <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
-              Training Content
-            </label>
-                <textarea
-              value={form.content}
-              onChange={(e) => setForm({ ...form, content: e.target.value })}
-              placeholder="Enter the training instructions, steps, or details..."
-                  rows={6}
-              className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all resize-none text-body"
             />
           </div>
 
-          {/* Assignee */}
+          {/* Note */}
           <div>
             <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
-              Assign To
+              {t['common.note'] || 'Note'}
             </label>
-            <select
-              value={form.assigneeId}
-              onChange={(e) => setForm({ ...form, assigneeId: e.target.value })}
-              className="w-full pl-4 pr-14 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
-            >
-              <option value="">Select a helper</option>
-              {helpers.map((helper) => (
-                <option key={helper.id} value={helper.id}>
-                  {helper.name}
-                </option>
-              ))}
-            </select>
+            <textarea
+              value={form.note}
+              onChange={(e) => setForm({ ...form, note: e.target.value })}
+              placeholder={t['info.routine_note_placeholder'] || 'Enter the instructions, steps, or details...'}
+              rows={6}
+              className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all resize-none text-body"
+            />
           </div>
-
         </div>
 
         {/* Footer */}
-        <div className="p-5 pb-8 border-t border-border flex gap-3">
+        <div className="p-5 pb-8 border-t border-border flex gap-3 shrink-0">
           {isEditing && (
             <button
               onClick={onDelete}
@@ -1694,33 +1650,27 @@ const TrainingModal: React.FC<TrainingModalProps> = (props) => {
 };
 
 // ─────────────────────────────────────────────────────────────────
-// Training View Modal (for helpers)
+// House Routine View Modal (Read-only for Helpers)
 // ─────────────────────────────────────────────────────────────────
-interface TrainingViewModalProps {
-  module: TrainingModule;
-  assigneeName: string;
+interface HouseRoutineViewModalProps {
+  item: HouseRoutine;
   onClose: () => void;
-  onComplete: () => void;
-  isHelper: boolean;
   currentLang: string;
   householdId: string;
   t: TranslationDictionary;
 }
 
-const TrainingViewModal: React.FC<TrainingViewModalProps> = ({
-  module,
-  assigneeName,
+const HouseRoutineViewModal: React.FC<HouseRoutineViewModalProps> = ({
+  item,
   onClose,
-  onComplete,
-  isHelper,
   currentLang,
   householdId,
   t,
 }) => {
-  const config = TRAINING_CATEGORY_CONFIG[module.category];
-  const displayCategory = module.category === "Others" && module.customCategory
-    ? module.customCategory
-    : module.category;
+  const config = HOUSE_ROUTINE_CATEGORY_CONFIG[item.category];
+  const displayCategory = item.category === "Others" && item.customCategory
+    ? item.customCategory
+    : item.category;
 
   return (
     <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
@@ -1750,57 +1700,39 @@ const TrainingViewModal: React.FC<TrainingViewModalProps> = ({
             {displayCategory}
           </span>
           <h2 className="text-display text-foreground">
-            <TranslatedTrainingName 
-              module={module} 
+            <TranslatedHouseRoutineName 
+              item={item} 
               currentLang={currentLang} 
-              onUpdate={(id, data) => updateTrainingModule(householdId, id, data as any)} 
+              onUpdate={(id, data) => updateHouseRoutine(householdId, id, data as any)} 
             />
           </h2>
-          <div className="flex items-center gap-3 mt-2 text-body text-muted-foreground">
-            <span>{t['common.assigned_to'] || 'Assigned to:'} {assigneeName}</span>
-          </div>
         </div>
 
         {/* Content */}
         <div className="p-5 flex-1 overflow-y-auto">
           <div className="prose prose-gray prose-sm">
-            {module.content ? (
+            {item.note ? (
               <div className="whitespace-pre-wrap text-body text-foreground">
-                <TranslatedTrainingContent 
-                  module={module} 
+                <TranslatedHouseRoutineNote 
+                  item={item} 
                   currentLang={currentLang} 
-                  onUpdate={(id, data) => updateTrainingModule(householdId, id, data as any)} 
+                  onUpdate={(id, data) => updateHouseRoutine(householdId, id, data as any)} 
                 />
               </div>
             ) : (
-              <p className="text-body text-muted-foreground italic">No content provided.</p>
+              <p className="text-body text-muted-foreground">{t['info.no_note'] || 'No details provided.'}</p>
             )}
           </div>
         </div>
 
         {/* Footer */}
-        <div className="p-5 pb-8 border-t border-border flex gap-3">
+        <div className="p-5 pb-8 border-t border-border shrink-0">
           <button
             onClick={onClose}
-            className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body hover:bg-secondary/80 transition-colors"
+            className="w-full py-3.5 rounded-xl bg-secondary text-foreground text-body hover:bg-secondary/80 transition-colors"
           >
-            Close
+            {t['common.close'] || 'Close'}
           </button>
-          {isHelper && !module.isCompleted && (
-            <button
-              onClick={onComplete}
-              className="flex-1 py-3.5 rounded-xl bg-[#4CAF50] text-white text-body hover:bg-[#43A047] transition-colors shadow-sm flex items-center justify-center gap-2"
-            >
-              <CheckCircle2 size={18} />
-              Mark Complete
-            </button>
-          )}
-          {module.isCompleted && (
-            <div className="flex-1 py-3.5 rounded-xl bg-[#E8F5E9] text-[#4CAF50] text-body flex items-center justify-center gap-2">
-              <CheckCircle2 size={18} />
-              {t['todo.completed'] || 'Completed'}
-            </div>
-          )}
         </div>
       </div>
     </div>

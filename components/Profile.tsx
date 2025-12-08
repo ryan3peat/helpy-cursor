@@ -1534,14 +1534,9 @@ const Profile: React.FC<ProfileProps> = ({
                       <div className="relative w-32 country-code-dropdown">
                         <input
                           type="text"
+                          readOnly
                           value={accountData.countryCode}
                           onClick={() => setShowCountryCodeDropdown(true)}
-                          onFocus={() => setShowCountryCodeDropdown(true)}
-                          onChange={e => {
-                            setAccountData({ ...accountData, countryCode: e.target.value });
-                            setCountryCodeSearch(e.target.value);
-                            setShowCountryCodeDropdown(true);
-                          }}
                           placeholder="+852"
                           className="w-full bg-muted border border-border rounded-xl px-4 py-3 text-foreground font-medium focus:border-primary outline-none cursor-pointer transition-colors text-body"
                         />

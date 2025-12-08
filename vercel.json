@@ -7,7 +7,23 @@
   ],
   "headers": [
     {
-      "source": "/(.*)",
+      "source": "/home",
+      "headers": []
+    },
+    {
+      "source": "/features",
+      "headers": []
+    },
+    {
+      "source": "/faq",
+      "headers": []
+    },
+    {
+      "source": "/getapp",
+      "headers": []
+    },
+    {
+      "source": "/((?!home|features|faq|getapp).*)",
       "headers": [
         {
           "key": "Content-Security-Policy",

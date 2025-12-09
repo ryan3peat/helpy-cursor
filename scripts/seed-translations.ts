@@ -27,9 +27,15 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
+import { config } from 'dotenv';
+import { resolve } from 'path';
+
+// Load .env files (try multiple locations)
+config({ path: resolve(process.cwd(), '.env') });
+config({ path: resolve(process.cwd(), '.env.local') });
 
 // Import BASE_TRANSLATIONS from constants.ts (single source of truth!)
-import { BASE_TRANSLATIONS, SUPPORTED_LANGUAGES } from '../constants.ts';
+import { BASE_TRANSLATIONS, SUPPORTED_LANGUAGES } from '../constants';
 
 // ============================================
 // Configuration
@@ -38,7 +44,7 @@ import { BASE_TRANSLATIONS, SUPPORTED_LANGUAGES } from '../constants.ts';
 // Get environment variables
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.API_KEY;
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.API_KEY || process.env.VITE_GOOGLE_CLOUD_VISION_API_KEY;
 
 // Validate environment
 if (!SUPABASE_URL) {

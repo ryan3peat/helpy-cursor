@@ -1034,9 +1034,9 @@ const Expenses: React.FC<ExpensesProps> = ({
             <div className="pt-6 pb-4 px-5 border-b border-border">
               <div className={addExpenseStage !== 'options' ? 'ml-10' : ''}>
                 <h2 className="text-title text-foreground">
-                  {addExpenseStage === 'options' && 'Add Expense'}
-                  {addExpenseStage === 'manual' && 'Enter Expense'}
-                  {addExpenseStage === 'ocr' && 'Confirm Receipt'}
+                  {addExpenseStage === 'options' && (t['expenses.add_expense'] || 'Add Expense')}
+                  {addExpenseStage === 'manual' && (t['expenses.enter_expense'] || 'Enter Expense')}
+                  {addExpenseStage === 'ocr' && (t['expenses.confirm_receipt'] || 'Confirm Receipt')}
                 </h2>
                 <p className="text-body text-muted-foreground mt-1">in {getCurrencySymbol()}</p>
               </div>
@@ -1475,7 +1475,7 @@ const Expenses: React.FC<ExpensesProps> = ({
               {confirmDeleteExisting && (
                 <div className="border-t border-border pt-4">
                   <p className="text-body text-foreground">
-                    Are you sure you want to delete this receipt/expense?
+                    {t['confirm.delete_expense'] || 'Are you sure you want to delete this receipt/expense?'}
                   </p>
                 </div>
               )}

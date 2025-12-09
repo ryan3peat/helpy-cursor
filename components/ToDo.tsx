@@ -93,7 +93,7 @@ const getTaskCategoryIcon = (category: string, isSelected = false) => {
 // ─────────────────────────────────────────────────────────────────
 
 const getDefaultAssignee = (users: User[], currentUser: User): string => {
-  const helper = users.find(u => u.role === UserRole.HELPER && u.status !== 'pending');
+  const helper = users.find(u => u.role === UserRole.HELPER && u.status === 'active');
   return helper?.id || currentUser.id;
 };
 
@@ -574,7 +574,7 @@ const ToDo: React.FC<ToDoProps> = ({
   
   const handleClearAllCompleted = async () => {
     const confirmed = window.confirm(
-      'Delete all completed items?\n\nThis action cannot be undone.'
+      t['confirm.clear_completed'] || 'Delete all completed items?\n\nThis action cannot be undone.'
     );
     
     if (!confirmed) return;
@@ -1018,7 +1018,7 @@ const ToDo: React.FC<ToDoProps> = ({
                       setIsAddingInline(false);
                     }
                   }}
-                  placeholder={t['todo.add_hint'] || 'Press Enter to add / tap (+) to set details'}
+                  placeholder={t['todo.add_hint'] || 'Press Enter to add | tap (+) for more'}
                   className="flex-1 bg-transparent text-body text-foreground placeholder-muted-foreground/50 outline-none"
                 />
               ) : (
@@ -1412,7 +1412,7 @@ const ToDo: React.FC<ToDoProps> = ({
                   Assign to
                 </label>
                 <div className="flex flex-wrap gap-2">
-                  {users.filter(u => u.status !== 'pending').map(user => (
+                  {users.filter(u => u.status === 'active').map(user => (
                     <button
                       key={user.id}
                       onClick={() => setSheetForm(prev => ({ ...prev, assigneeId: user.id }))}

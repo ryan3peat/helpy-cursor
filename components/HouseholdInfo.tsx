@@ -165,15 +165,17 @@ const FamilyProfileCarousel: React.FC<FamilyProfileCarouselProps> = ({ users, t 
   const [activeIndex, setActiveIndex] = useState(0);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // Sort users by role priority, then alphabetically
+  // Filter to active users only, then sort by role priority
   const sortedUsers = React.useMemo(() => {
-    return [...users].sort((a, b) => {
-      const priorityA = ROLE_PRIORITY[a.role] ?? 99;
-      const priorityB = ROLE_PRIORITY[b.role] ?? 99;
-      const roleDiff = priorityA - priorityB;
-      if (roleDiff !== 0) return roleDiff;
-      return a.name.localeCompare(b.name);
-    });
+    return [...users]
+      .filter(u => u.status === 'active')
+      .sort((a, b) => {
+        const priorityA = ROLE_PRIORITY[a.role] ?? 99;
+        const priorityB = ROLE_PRIORITY[b.role] ?? 99;
+        const roleDiff = priorityA - priorityB;
+        if (roleDiff !== 0) return roleDiff;
+        return a.name.localeCompare(b.name);
+      });
   }, [users]);
 
   const handleScroll = () => {
@@ -640,7 +642,7 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
         if (!appOpened && document.visibilityState === 'visible') {
           // Google Maps didn't open - ask user instead of auto-opening
           const openAppleMaps = window.confirm(
-            'Google Maps is not installed.\n\nOpen in Apple Maps instead?'
+            t['maps.google_not_installed'] || 'Google Maps is not installed.\n\nOpen in Apple Maps instead?'
           );
           if (openAppleMaps) {
             // Apple Maps URI scheme - returns where you left off

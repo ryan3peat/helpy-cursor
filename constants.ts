@@ -441,4 +441,34 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'common.items': 'items',
   'common.share': 'Share',
   'common.deleting': 'Deleting...',
+
+  // Language & Translation
+  'language.ai_disclaimer': 'Translation provided by AI. For accuracy, please refer to the original language version if in doubt.',
+
+  // Meals - additional
+  'meals.hungry_no_menu': "Someone's hungry, menu unknown...",
+
+  // Subscription & Payment
+  'subscription.payment_success': 'Payment successful! Your subscription is being updated...',
+  'subscription.change_plan': 'Change Plan',
+  'subscription.choose_plan': 'Choose Your Plan',
+  'subscription.admin_only': 'Only Admin can make changes to the subscription',
+  'subscription.active_until': 'Your subscription is active until',
+  'subscription.canceled_success': 'Your subscription has been successfully canceled.',
+  'subscription.confirm_cancel': 'Are you sure you want to cancel your subscription? You will lose access to premium features at the end of your billing period.',
+
+  // Confirmation Dialogs
+  'confirm.delete_member': 'Are you sure you want to delete this family member? This action cannot be undone.',
+  'confirm.delete_account': 'Are you sure you want to delete your account? This change will be permanent.',
+  'confirm.delete_account_final': 'Are you sure you want to delete? After deletion it will be immediate.',
+  'confirm.clear_completed': 'Delete all completed items? This action cannot be undone.',
+  'confirm.delete_expense': 'Are you sure you want to delete this receipt/expense?',
+
+  // Expenses - additional
+  'expenses.add_expense': 'Add Expense',
+  'expenses.enter_expense': 'Enter Expense',
+  'expenses.confirm_receipt': 'Confirm Receipt',
+
+  // Maps
+  'maps.google_not_installed': 'Google Maps is not installed. Open in Apple Maps instead?',
 };

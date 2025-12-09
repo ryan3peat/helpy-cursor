@@ -26,6 +26,8 @@ import { useScrollLock } from '../hooks/useScrollLock';
 import { SUPPORTED_LANGUAGES } from '../constants';
 import { useTranslatedContent } from '../hooks/useTranslatedContent';
 
+import type { ConnectionStatus } from '../hooks/useRealtimeStatus';
+
 interface DashboardProps {
   todoItems: ToDoItem[];
   meals: Meal[];
@@ -43,6 +45,8 @@ interface DashboardProps {
   onLanguageChange: (lang: string) => void;
   isTranslating: boolean;
   onUpdateMeal?: (id: string, data: Partial<Meal>) => void;
+  /** Real-time connection status */
+  realtimeStatus?: ConnectionStatus;
 }
 
 // Component for displaying translated meal description
@@ -113,7 +117,8 @@ const Dashboard: React.FC<DashboardProps> = ({
   currentLang,
   onLanguageChange,
   isTranslating,
-  onUpdateMeal
+  onUpdateMeal,
+  realtimeStatus = 'connected',
 }) => {
   // ─────────────────────────────────────────────────────────────────
   // Role-based permissions
@@ -211,9 +216,9 @@ const Dashboard: React.FC<DashboardProps> = ({
   };
   const todaysMenu = getTodaysRemainingMeals();
 
-  // Render audience icons with counts
+  // Render audience icons with counts (only active users)
   const renderAudienceIcons = (forUserIds: string[]) => {
-    const eaters = users.filter(u => forUserIds.includes(u.id));
+    const eaters = users.filter(u => forUserIds.includes(u.id) && u.status === 'active');
     const adultCount = eaters.filter(u => u.role !== UserRole.CHILD).length;
     const kidCount = eaters.filter(u => u.role === UserRole.CHILD).length;
 
@@ -558,6 +563,24 @@ const Dashboard: React.FC<DashboardProps> = ({
             <span className="dark:hidden">{t['dashboard.dark_mode'] || 'Dark Mode (BETA)'}</span>
             <span className="hidden dark:block">{t['dashboard.light_mode'] || 'Light Mode'}</span>
           </button>
+          
+          {/* Connection Status Indicator */}
+          <div 
+            className={`mt-3 mx-auto w-[14px] h-[14px] rounded-full transition-colors ${
+              realtimeStatus === 'connected' 
+                ? 'bg-primary' 
+                : realtimeStatus === 'connecting'
+                  ? 'bg-primary animate-pulse'
+                  : 'bg-destructive'
+            }`}
+            title={
+              realtimeStatus === 'connected' 
+                ? 'Real-time sync active' 
+                : realtimeStatus === 'connecting'
+                  ? 'Connecting...'
+                  : 'Disconnected - tap to reconnect'
+            }
+          />
         </div>
       </div>
 
@@ -586,7 +609,7 @@ const Dashboard: React.FC<DashboardProps> = ({
             <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
               <h2 className="text-title text-foreground">{t['dashboard.language']}</h2>
               <p className="text-caption text-muted-foreground mt-2">
-                Translation provided by AI. For accuracy, please refer to the original language version if in doubt.
+                {t['language.ai_disclaimer'] || 'Translation provided by AI. For accuracy, please refer to the original language version if in doubt.'}
               </p>
             </div>
             

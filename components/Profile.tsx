@@ -1268,7 +1268,7 @@ const Profile: React.FC<ProfileProps> = ({
   // PLAN SELECTION VIEW
   // =====================================================
   const handleCancelSubscription = async () => {
-    if (!window.confirm('Are you sure you want to cancel your subscription? You will lose access to premium features at the end of your billing period.')) {
+    if (!window.confirm(t['subscription.confirm_cancel'] || 'Are you sure you want to cancel your subscription? You will lose access to premium features at the end of your billing period.')) {
       return;
     }
     
@@ -1420,7 +1420,7 @@ const Profile: React.FC<ProfileProps> = ({
                 <CheckCircle size={20} className="text-green-500 flex-shrink-0" />
                 <div className="flex-1">
                   <p className="text-body font-semibold text-green-700 dark:text-green-400">
-                    Payment successful! Your subscription is being updated...
+                    {t['subscription.payment_success'] || 'Payment successful! Your subscription is being updated...'}
                   </p>
                 </div>
               </div>
@@ -1485,13 +1485,13 @@ const Profile: React.FC<ProfileProps> = ({
             {/* Upgrade/Change Plan Section */}
             <div className="mb-6">
               <h3 className="text-title font-bold text-foreground mb-4">
-                {subscriptionInfo && subscriptionInfo.status === 'active' ? 'Change Plan' : 'Choose Your Plan'}
+                {subscriptionInfo && subscriptionInfo.status === 'active' ? (t['subscription.change_plan'] || 'Change Plan') : (t['subscription.choose_plan'] || 'Choose Your Plan')}
               </h3>
 
               {!isAdmin && (
                 <div className="mb-4 p-4 bg-muted rounded-xl border border-border">
                   <p className="text-body text-muted-foreground">
-                    Only Admin can make changes to the subscription
+                    {t['subscription.admin_only'] || 'Only Admin can make changes to the subscription'}
                   </p>
                 </div>
               )}
@@ -1953,7 +1953,7 @@ const Profile: React.FC<ProfileProps> = ({
               {/* Content */}
               <div className="p-5">
                 <p className="text-body text-muted-foreground">
-                  Are you sure you want to delete your account? This change will be permanent.
+                  {t['confirm.delete_account'] || 'Are you sure you want to delete your account? This change will be permanent.'}
                 </p>
               </div>
 
@@ -1996,12 +1996,12 @@ const Profile: React.FC<ProfileProps> = ({
                   <div className="mb-4 p-4 bg-primary/10 border border-primary/20 rounded-lg">
                     <p className="text-body text-primary font-semibold mb-1">{t['profile.subscription_info'] || 'Subscription Information'}</p>
                     <p className="text-body text-primary">
-                      Your subscription is active until {formatDate(subscriptionInfo.periodEnd)}
+                      {t['subscription.active_until'] || 'Your subscription is active until'} {formatDate(subscriptionInfo.periodEnd)}
                     </p>
                   </div>
                 )}
                 <p className="text-body text-muted-foreground">
-                  Are you sure you want to delete? After deletion it will be immediate.
+                  {t['confirm.delete_account_final'] || 'Are you sure you want to delete? After deletion it will be immediate.'}
                 </p>
               </div>
 
@@ -2051,7 +2051,7 @@ const Profile: React.FC<ProfileProps> = ({
                   </div>
                 </div>
                 <p className="text-body text-foreground mb-4">
-                  Your subscription has been successfully canceled.
+                  {t['subscription.canceled_success'] || 'Your subscription has been successfully canceled.'}
                 </p>
                 <div className="p-4 bg-muted rounded-xl border border-border">
                   <p className="text-caption text-muted-foreground mb-2">{t['profile.what_happens_next'] || 'What happens next?'}</p>

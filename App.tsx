@@ -15,7 +15,7 @@ import InviteSetup from './components/InviteSetup';
 import { ToDoItem, Meal, Expense, User, TranslationDictionary } from './types';
 import { BASE_TRANSLATIONS } from './constants';
 import { detectDeviceLanguage } from './services/languageDetectionService';
-import { getAppTranslations } from './services/geminiService';
+import { getStaticTranslations } from './services/translationService';
 import { supabase } from './services/supabase';
 import {
   subscribeToCollection,
@@ -23,7 +23,8 @@ import {
   updateItem,
   deleteItem,
   saveFamilyNotes,
-  subscribeToNotes
+  subscribeToNotes,
+  fetchCollection,
 } from './services/supabaseService';
 import { initializePushNotifications, autoSubscribeIfNeeded } from './services/pushNotificationService';
 import type { EssentialInfo } from '@src/types/essentialInfo';
@@ -42,6 +43,7 @@ import {
 } from './services/houseRoutineService';
 import type { CreateEssentialInfo } from '@src/types/essentialInfo';
 import type { CreateHouseRoutine } from '@src/types/houseRoutine';
+import { useRealtimeStatus } from './hooks/useRealtimeStatus';
 
 // Broom icon component for loading animation (matching flaticon clean_9755169)
 const BroomIcon = ({ className }: { className?: string }) => (
@@ -98,6 +100,7 @@ const App: React.FC = () => {
   const [isTranslating, setIsTranslating] = useState(() => lang !== 'en');
   
   // Load translations when language changes
+  // Uses pre-translated strings from Supabase (fast, no AI call)
   useEffect(() => {
     const loadTranslations = async () => {
       // If English, use base translations directly
@@ -107,10 +110,10 @@ const App: React.FC = () => {
         return;
       }
       
-      // Load translations for other languages
+      // Load pre-translated strings from Supabase (or cache)
       setIsTranslating(true);
       try {
-        const translated = await getAppTranslations(lang, BASE_TRANSLATIONS);
+        const translated = await getStaticTranslations(lang);
         setTranslations(translated);
       } catch (error) {
         console.error('Failed to load translations:', error);
@@ -284,6 +287,44 @@ const App: React.FC = () => {
   const [familyNotesTranslations, setFamilyNotesTranslations] = useState<Record<string, string>>({});
   const [essentialItems, setEssentialItems] = useState<EssentialInfo[]>([]);
   const [houseRoutineItems, setHouseRoutineItems] = useState<HouseRoutine[]>([]);
+
+  // Sync function for periodic backup fetching
+  const syncAllData = useCallback(async () => {
+    if (!currentUser?.householdId) return;
+    const hid = currentUser.householdId;
+    
+    console.log('[App] Running periodic sync...');
+    
+    try {
+      // Fetch all collections in parallel
+      const [usersData, todoData, mealsData, expensesData] = await Promise.all([
+        fetchCollection(hid, 'users'),
+        fetchCollection(hid, 'todo_items'),
+        fetchCollection(hid, 'meals'),
+        fetchCollection(hid, 'expenses'),
+      ]);
+      
+      // Update state with fresh data
+      if (usersData.length > 0) {
+        const uniqueUsers = Array.from(new Map(usersData.map(u => [u.id, u])).values());
+        setUsers(uniqueUsers as User[]);
+      }
+      if (todoData) setTodoItems(todoData as ToDoItem[]);
+      if (mealsData) setMeals(mealsData as Meal[]);
+      if (expensesData) setExpenses(expensesData as Expense[]);
+      
+      console.log('[App] Periodic sync completed');
+    } catch (error) {
+      console.error('[App] Periodic sync failed:', error);
+    }
+  }, [currentUser?.householdId]);
+
+  // Real-time connection status with auto-reconnect and periodic sync
+  const { status: realtimeStatus } = useRealtimeStatus({
+    enablePeriodicSync: true,
+    syncInterval: 1 * 60 * 1000, // 1 minute - backup sync if real-time fails
+    onSyncRequest: syncAllData,
+  });
 
   // Ensure currentUser is always in the users array (for assignee selection)
   useEffect(() => {
@@ -686,6 +727,7 @@ const App: React.FC = () => {
             onLanguageChange={handleLanguageChange}
             isTranslating={isTranslating}
             onUpdateMeal={handleUpdateMeal}
+            realtimeStatus={realtimeStatus}
           />
         );
 

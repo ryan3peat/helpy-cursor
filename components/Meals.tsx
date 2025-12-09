@@ -116,9 +116,15 @@ const Meals: React.FC<MealsProps> = ({
   // Ref: Track if we should auto-scroll (only on view change or Today click)
   const shouldAutoScroll = useRef(false);
 
+  // Track if component has mounted (to prevent transition flash on initial render)
+  const [mounted, setMounted] = useState(false);
+
   // Auto-scroll to today on mount (when navigating from Dashboard)
   useEffect(() => {
     shouldAutoScroll.current = true;
+    // Delay setting mounted to allow initial scroll to complete without transition flash
+    const timer = setTimeout(() => setMounted(true), 50);
+    return () => clearTimeout(timer);
   }, []);
 
   const mealTypes = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER, MealType.SNACKS];
@@ -261,8 +267,8 @@ const Meals: React.FC<MealsProps> = ({
   };
 
   const getUsersForAudience = (audience: MealAudience): User[] => {
-    // Filter out pending users - they haven't accepted invite yet
-    const activeUsers = users.filter(u => u.status !== 'pending');
+    // Only include active users
+    const activeUsers = users.filter(u => u.status === 'active');
     switch (audience) {
       case 'ALL': return activeUsers;
       case 'ADULTS': return activeUsers.filter(u => u.role !== UserRole.CHILD);
@@ -340,8 +346,8 @@ const Meals: React.FC<MealsProps> = ({
     setModalType(type);
     setModalAudience('ALL');
     setDescription('');
-    // Auto-select all non-helper active users (exclude pending)
-    setSelectedUserIds(users.filter(u => u.role !== UserRole.HELPER && u.status !== 'pending').map(u => u.id));
+    // Auto-select all non-helper active users
+    setSelectedUserIds(users.filter(u => u.role !== UserRole.HELPER && u.status === 'active').map(u => u.id));
     setIsModalOpen(true);
   };
 
@@ -444,10 +450,10 @@ const Meals: React.FC<MealsProps> = ({
     if (view !== 'day') return;
     if (!shouldAutoScroll.current) return;
 
-    // Small delay to ensure DOM is updated after week change
-    const timeoutId = setTimeout(() => {
+    // Use requestAnimationFrame for immediate scroll (before first paint)
+    requestAnimationFrame(() => {
       const targetDateStr = formatDateStr(new Date(currentViewDate));
-    const targetEl = document.getElementById(`day-${targetDateStr}`);
+      const targetEl = document.getElementById(`day-${targetDateStr}`);
       
       if (targetEl) {
         // Calculate scroll position with offset for sticky header + breathing room
@@ -456,9 +462,7 @@ const Meals: React.FC<MealsProps> = ({
         window.scrollTo({ top: elementPosition - headerOffset, behavior: 'auto' });
       }
       shouldAutoScroll.current = false;
-    }, 50);
-    
-    return () => clearTimeout(timeoutId);
+    });
   }, [view, currentViewDate]);
 
   // Close quick join popover when clicking outside
@@ -489,7 +493,7 @@ const Meals: React.FC<MealsProps> = ({
     const hasDish = meal.description.trim().length > 0;
     const isIn = isUserInMeal(meal);
     const canJoin = canUserJoinMeal(meal);
-    const eaterCount = meal.forUserIds.length;
+    // Filter to only existing users (excludes deleted users)
     const eaters = meal.forUserIds
       .map(uid => users.find(u => u.id === uid))
       .filter((u): u is User => !!u);
@@ -525,7 +529,7 @@ const Meals: React.FC<MealsProps> = ({
               <div className="flex-1 flex flex-col items-center justify-center">
                 <button className="flex items-center gap-1.5 px-3 py-2 bg-muted hover:bg-muted/80 rounded-lg text-caption font-semibold text-muted-foreground transition-colors">
                   <Plus size={14} />
-                  {t['meals.plan_dish'] ?? 'Plan Dish'}
+                  {t['meals.add_meal_plan'] ?? 'Add Meal Plan'}
                 </button>
                 <span className="text-caption text-muted-foreground mt-1.5">
                   {t['meals.no_dish_yet'] ?? 'No dish yet'}
@@ -539,12 +543,12 @@ const Meals: React.FC<MealsProps> = ({
             <div className="flex items-center gap-1 mb-2">
               <Users size={12} className="text-muted-foreground" />
               <span className="text-caption font-semibold text-muted-foreground tracking-wide">
-                {t['meals.eating'] ?? 'Eating'} ({eaterCount})
+                {t['meals.eating'] ?? 'Eating'} ({eaters.length})
               </span>
             </div>
 
             {/* Avatars Grid */}
-            {eaterCount > 0 ? (
+            {eaters.length > 0 ? (
               <div className="flex flex-wrap gap-1.5 mb-2 flex-1">
                 {eaters.slice(0, 6).map(u => (
                   <div key={u.id} className="flex flex-col items-center">
@@ -565,10 +569,10 @@ const Meals: React.FC<MealsProps> = ({
                     )}
                   </div>
                 ))}
-                {eaterCount > 6 && (
+                {eaters.length > 6 && (
                   <div className="flex flex-col items-center">
                     <span className="w-7 h-7 rounded-full bg-muted border-2 border-card flex items-center justify-center text-caption font-semibold text-muted-foreground">
-                      +{eaterCount - 6}
+                      +{eaters.length - 6}
                     </span>
                   </div>
                 )}
@@ -586,7 +590,7 @@ const Meals: React.FC<MealsProps> = ({
                   e.stopPropagation();
                   handleQuickRsvp(meal, e);
                 }}
-                className={`text-caption font-semibold px-4 py-1.5 rounded-full transition-all flex items-center justify-center gap-1.5 ${
+                className={`text-caption font-semibold px-4 py-1.5 rounded-full transition-colors flex items-center justify-center gap-1.5 ${
                   isIn
                     ? 'bg-destructive/15 text-destructive hover:bg-destructive/25'
                     : 'bg-primary/15 text-primary hover:bg-primary/25'
@@ -616,7 +620,7 @@ const Meals: React.FC<MealsProps> = ({
   // --- Render Empty Slot Card (same split design) ---
   const renderEmptySlotCard = (date: Date, type: MealType) => {
     return (
-      <div className="rounded-xl border border-dashed border-border bg-card overflow-hidden hover:border-foreground/20 transition-all">
+      <div className="rounded-xl border border-dashed border-border bg-card overflow-hidden hover:border-foreground/20 transition-colors">
         {/* Split Content: LEFT (Dish) | RIGHT (Who's Eating) */}
         <div className="flex divide-x divide-border min-h-[100px]">
           {/* LEFT: Plan Dish Section */}
@@ -626,7 +630,7 @@ const Meals: React.FC<MealsProps> = ({
           >
             <button className="flex items-center gap-1.5 px-4 py-2.5 bg-muted hover:bg-muted/80 rounded-xl text-caption font-semibold text-muted-foreground transition-colors">
               <Plus size={16} />
-              {t['meals.plan_dish'] ?? 'Plan Dish'}
+              {t['meals.add_meal_plan'] ?? 'Add Meal Plan'}
             </button>
             <span className="text-caption text-muted-foreground mt-2">
               {t['meals.whats_for'] ?? "What's for"} {getMealLabel(type).toLowerCase()}?
@@ -649,7 +653,7 @@ const Meals: React.FC<MealsProps> = ({
             {/* Quick RSVP Button */}
             <button
               onClick={() => handleQuickRsvpEmpty(date, type)}
-              className="w-full py-2 rounded-lg text-caption font-semibold transition-all flex items-center justify-center gap-1.5 bg-muted text-muted-foreground hover:bg-muted/80 border border-dashed border-border"
+              className="w-full py-2 rounded-lg text-caption font-semibold transition-colors flex items-center justify-center gap-1.5 bg-muted text-muted-foreground hover:bg-muted/80 border border-dashed border-border"
             >
               <UserPlus size={14} />
               {t['meals.ill_be_eating'] ?? "I'll be eating"}
@@ -684,7 +688,7 @@ const Meals: React.FC<MealsProps> = ({
                     <button
                       key={v}
                       onClick={() => setView(v as 'day' | 'week')}
-                      className={`py-1.5 px-3 rounded-full text-caption font-medium transition-all flex items-center gap-1.5 ${
+                      className={`py-1.5 px-3 rounded-full text-caption font-medium transition-colors flex items-center gap-1.5 ${
                         isActive
                           ? 'bg-card text-primary shadow-sm'
                           : 'text-muted-foreground hover:text-foreground'
@@ -712,7 +716,7 @@ const Meals: React.FC<MealsProps> = ({
         {/* WEEK NAVIGATION */}
         {/* ─────────────────────────────────────────────────────────────── */}
         <div 
-          className="sticky z-10 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 py-3 transition-shadow duration-200"
+          className={`sticky z-10 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 py-3 ${mounted ? 'transition-shadow duration-200' : ''}`}
           style={{ 
             top: '92px',
             boxShadow: isScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none'
@@ -748,7 +752,7 @@ const Meals: React.FC<MealsProps> = ({
               <button
               onClick={goToTodayWithScroll}
               disabled={isCurrentWeek}
-              className={`px-4 rounded-xl font-semibold text-body transition-all h-12 ${
+              className={`px-4 rounded-xl font-semibold text-body transition-colors h-12 ${
                 isCurrentWeek
                   ? 'bg-muted text-primary cursor-default'
                   : 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm'
@@ -814,7 +818,7 @@ const Meals: React.FC<MealsProps> = ({
                         const { adultCount, kidCount } = getParticipantCounts(meal.forUserIds);
 
                         return (
-                          <div key={meal.id} className="grid grid-cols-[1fr_1px_4rem_1px_7rem] h-[72px] items-center">
+                          <div key={meal.id} className="grid grid-cols-[1fr_1px_4rem_1px_7rem] h-[80px] items-center">
                             {/* Left Column: Meal Info */}
                             <div 
                               onClick={() => openEditModal(meal)}
@@ -825,7 +829,7 @@ const Meals: React.FC<MealsProps> = ({
                                 {getMealLabel(meal.type)}
                               </span>
                               {hasDish ? (
-                                <span className="text-body font-semibold text-foreground leading-tight truncate">
+                                <span className="text-body font-semibold text-foreground leading-tight line-clamp-2 block">
                                   <TranslatedMealDescription meal={meal} currentLang={currentLang} onUpdate={onUpdate} />
                                 </span>
                               ) : (
@@ -884,7 +888,7 @@ const Meals: React.FC<MealsProps> = ({
                                     e.stopPropagation();
                                     handleQuickRsvp(meal, e);
                                   }}
-                                  className={`w-[100px] px-3 text-caption font-semibold py-2 rounded-full transition-all text-center whitespace-nowrap ${
+                                  className={`w-[100px] px-3 text-caption font-semibold py-2 rounded-full transition-colors text-center whitespace-nowrap ${
                                     isIn
                                       ? 'bg-primary text-primary-foreground hover:bg-primary/90'
                                       : 'bg-muted text-muted-foreground hover:bg-muted/80'
@@ -916,7 +920,7 @@ const Meals: React.FC<MealsProps> = ({
                             {isExpanded && (
                               <div 
                                 ref={quickJoinPopoverRef}
-                                className="absolute inset-0 bg-card z-10 flex items-center h-[72px] px-4"
+                                className="absolute inset-0 bg-card z-10 flex items-center h-[80px] px-4"
                               >
                                 {/* Left area: Meal type icons */}
                                 <div className="flex-1 flex items-center justify-evenly min-w-0">
@@ -969,7 +973,7 @@ const Meals: React.FC<MealsProps> = ({
                             )}
 
                             {/* Grid row - same structure as meal rows */}
-                            <div className="grid grid-cols-[1fr_1px_4rem_1px_7rem] h-[72px] items-center">
+                            <div className="grid grid-cols-[1fr_1px_4rem_1px_7rem] h-[80px] items-center">
                               {/* Left Column: Add Meal Plan button */}
                               <div 
                                 onClick={() => openAddModal(dayDate, MealType.DINNER)}
@@ -1008,7 +1012,7 @@ const Meals: React.FC<MealsProps> = ({
                               <div className="h-full p-2 flex items-center justify-center">
                                 <button
                                   onClick={() => setQuickJoinPopoverDate(dateStr)}
-                                  className="w-[100px] px-3 text-caption font-semibold py-2 rounded-full transition-all text-center whitespace-nowrap bg-muted text-muted-foreground hover:bg-muted/80"
+                                  className="w-[100px] px-3 text-caption font-semibold py-2 rounded-full transition-colors text-center whitespace-nowrap bg-muted text-muted-foreground hover:bg-muted/80"
                                 >
                                   {t['meals.tap_to_join'] ?? 'Tap to Join'}
                                 </button>
@@ -1236,7 +1240,7 @@ const Meals: React.FC<MealsProps> = ({
                           <button
                             key={aud}
                             onClick={() => handleAudienceChange(aud)}
-                            className={`flex-1 py-2 text-body font-medium rounded-full transition-all ${
+                            className={`flex-1 py-2 text-body font-medium rounded-full transition-colors ${
                               active ? 'bg-card text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground'
                             }`}
                           >
@@ -1293,7 +1297,7 @@ const Meals: React.FC<MealsProps> = ({
                         <button
                           key={user.id}
                           onClick={() => toggleUser(user.id)}
-                          className={`flex items-center gap-2 px-3 py-2 rounded-xl text-body transition-all ${
+                          className={`flex items-center gap-2 px-3 py-2 rounded-xl text-body transition-colors ${
                             isSelected
                               ? 'bg-primary text-primary-foreground'
                               : 'bg-card text-foreground ring-1 ring-border hover:ring-input'

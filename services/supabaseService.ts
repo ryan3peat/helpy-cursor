@@ -18,6 +18,85 @@ const COLLECTION_MAP: Record<string, string> = {
 // Cache to store clerk_id -> supabase uuid mapping
 const userIdCache: Record<string, string> = {};
 
+// ─────────────────────────────────────────────────────────────────
+// Real-time Subscription Status Tracking
+// ─────────────────────────────────────────────────────────────────
+
+type SubscriptionStatus = 'SUBSCRIBED' | 'CLOSED' | 'CHANNEL_ERROR' | 'TIMED_OUT' | 'SUBSCRIBING';
+
+// Track status of each subscription channel
+const subscriptionStatuses: Record<string, SubscriptionStatus> = {};
+
+// Listeners for status changes
+const statusListeners: Set<(statuses: Record<string, SubscriptionStatus>) => void> = new Set();
+
+/**
+ * Get the overall connection status based on all subscriptions
+ * Returns 'connected' if ANY subscription is connected (we have at least one working channel)
+ * Returns 'disconnected' if ALL subscriptions are disconnected
+ * Returns 'connecting' if we're still setting up
+ */
+export function getOverallConnectionStatus(): 'connected' | 'disconnected' | 'connecting' {
+  const statuses = Object.values(subscriptionStatuses);
+  
+  if (statuses.length === 0) {
+    return 'connecting';
+  }
+  
+  // If any subscription is connected, we're connected
+  if (statuses.some(s => s === 'SUBSCRIBED')) {
+    return 'connected';
+  }
+  
+  // If any is still subscribing, we're connecting
+  if (statuses.some(s => s === 'SUBSCRIBING')) {
+    return 'connecting';
+  }
+  
+  // All are disconnected
+  return 'disconnected';
+}
+
+/**
+ * Subscribe to connection status changes
+ * Returns unsubscribe function
+ */
+export function onConnectionStatusChange(
+  callback: (status: 'connected' | 'disconnected' | 'connecting') => void
+): () => void {
+  const listener = () => {
+    callback(getOverallConnectionStatus());
+  };
+  
+  statusListeners.add(listener);
+  
+  // Immediately call with current status
+  callback(getOverallConnectionStatus());
+  
+  return () => {
+    statusListeners.delete(listener);
+  };
+}
+
+// Internal: Update subscription status and notify listeners
+function updateSubscriptionStatus(channelName: string, status: SubscriptionStatus) {
+  const previousOverall = getOverallConnectionStatus();
+  subscriptionStatuses[channelName] = status;
+  const newOverall = getOverallConnectionStatus();
+  
+  // Only notify if overall status changed
+  if (previousOverall !== newOverall) {
+    console.log(`📡 [Connection] Overall status changed: ${previousOverall} → ${newOverall}`);
+    statusListeners.forEach(listener => listener(subscriptionStatuses));
+  }
+}
+
+// Internal: Remove subscription from tracking
+function removeSubscriptionStatus(channelName: string) {
+  delete subscriptionStatuses[channelName];
+  statusListeners.forEach(listener => listener(subscriptionStatuses));
+}
+
 /**
  * Get the actual Supabase UUID for a user
  * 
@@ -151,7 +230,12 @@ export function subscribeToCollection(
   )
   .subscribe((status) => {
     console.log(`📡 Subscription status for ${tableName}:`, status);
+    // Track this subscription's status
+    updateSubscriptionStatus(`${tableName}-${householdId}`, status as SubscriptionStatus);
   });
+  
+  // Mark as subscribing initially
+  updateSubscriptionStatus(`${tableName}-${householdId}`, 'SUBSCRIBING');
 
   // For expenses, also subscribe to receipts table changes
   // This ensures receiptUrl updates when a receipt is linked/unlinked
@@ -183,16 +267,21 @@ export function subscribeToCollection(
       )
       .subscribe((status) => {
         console.log(`📡 Receipts subscription status (for expenses):`, status);
+        updateSubscriptionStatus(`receipts-for-expenses-${householdId}`, status as SubscriptionStatus);
       });
+    
+    updateSubscriptionStatus(`receipts-for-expenses-${householdId}`, 'SUBSCRIBING');
   }
 
   // Return unsubscribe function
   return () => {
     console.log(`🔕 Unsubscribing from ${tableName}`);
     subscription.unsubscribe();
+    removeSubscriptionStatus(`${tableName}-${householdId}`);
     if (receiptsSubscription) {
       console.log('🔕 Unsubscribing from receipts (for expenses)');
       receiptsSubscription.unsubscribe();
+      removeSubscriptionStatus(`receipts-for-expenses-${householdId}`);
     }
   };
 }
@@ -994,4 +1083,49 @@ export async function uploadAvatarImage(
 
   console.log(`✅ Avatar uploaded successfully: ${publicUrl}`);
   return publicUrl;
+}
+
+/**
+ * One-time fetch of a collection (for periodic sync backup)
+ * Why: Backup mechanism in case real-time subscription misses updates
+ */
+export async function fetchCollection(
+  householdId: string,
+  collection: string
+): Promise<DataItem[]> {
+  const tableName = COLLECTION_MAP[collection];
+  
+  if (!tableName) {
+    console.error(`❌ Unknown collection: ${collection}`);
+    return [];
+  }
+  
+  console.log(`🔄 [Sync] Fetching ${tableName} for household ${householdId}`);
+  
+  // Build the select query - for expenses, LEFT JOIN receipts to get image_url
+  const selectQuery = collection === 'expenses' 
+    ? '*, receipts!receipts_expense_id_fkey(image_url, image_path)'
+    : '*';
+  
+  const { data, error } = await supabase
+    .from(tableName)
+    .select(selectQuery)
+    .eq('household_id', householdId);
+
+  if (error) {
+    console.error(`❌ [Sync] Fetch error for ${tableName}:`, error);
+    
+    // Fallback for expenses if JOIN fails
+    if (collection === 'expenses') {
+      const { data: fallbackData } = await supabase
+        .from(tableName)
+        .select('*')
+        .eq('household_id', householdId);
+      return convertSupabaseData(fallbackData || [], collection);
+    }
+    return [];
+  }
+  
+  console.log(`✅ [Sync] Fetched ${data?.length || 0} items from ${tableName}`);
+  return convertSupabaseData(data || [], collection);
 }

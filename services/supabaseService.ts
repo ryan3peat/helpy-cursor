@@ -451,9 +451,9 @@ export async function updateItem(
     }
     
     // Only keep valid user fields that exist in the database
+    // Note: phone_number column does NOT exist in the database - remove if present
     const validUserFields = [
-      'name', 'phone_number', 
-      'email', 'role', 'avatar', 'allergies', 'preferences', 
+      'name', 'email', 'role', 'avatar', 'allergies', 'preferences', 
       'status', 'expires_at', 'notifications_enabled'
     ];
     const filteredUpdates: Record<string, any> = {};

@@ -25,7 +25,7 @@ import {
   saveFamilyNotes,
   subscribeToNotes
 } from './services/supabaseService';
-import { initializePushNotifications } from './services/pushNotificationService';
+import { initializePushNotifications, autoSubscribeIfNeeded } from './services/pushNotificationService';
 import type { EssentialInfo } from '@src/types/essentialInfo';
 import type { HouseRoutine } from '@src/types/houseRoutine';
 import { 
@@ -176,6 +176,12 @@ const App: React.FC = () => {
 
   const handleLogin = useCallback((user: User) => {
     console.log('🔵 [App] handleLogin called with user:', user);
+    console.log('🔵 [App] User details:', {
+      id: user.id,
+      householdId: user.householdId,
+      notificationsEnabled: user.notificationsEnabled,
+      hasNotificationsEnabled: 'notificationsEnabled' in user
+    });
     console.log('🔵 [App] loginProcessedRef.current:', loginProcessedRef.current);
     console.log('🔵 [App] currentUser before update:', currentUser);
     
@@ -187,11 +193,36 @@ const App: React.FC = () => {
     const newUrl = window.location.pathname + window.location.hash.split('?')[0];
     window.history.replaceState({}, document.title, newUrl);
     setInviteParams(null);
+    
+    console.log('🔵 [App] User details before setCurrentUser:', {
+      id: user.id,
+      householdId: user.householdId,
+      notificationsEnabled: user.notificationsEnabled,
+      hasNotificationsEnabled: 'notificationsEnabled' in user,
+      userKeys: Object.keys(user)
+    });
+    
     setCurrentUser(user);
     localStorage.setItem('helpy_current_session_user', JSON.stringify(user));
     setShowIntro(false);
     setActiveView('dashboard');
     console.log('✅ [App] handleLogin completed, currentUser should be set');
+    
+    // Trigger auto-subscribe immediately after login
+    console.log('[App] Triggering auto-subscribe after login...');
+    autoSubscribeIfNeeded(
+      user.id,
+      user.householdId,
+      user.notificationsEnabled ?? true
+    ).then(success => {
+      if (success) {
+        console.log('[App] Push notifications auto-subscribed successfully (from handleLogin)');
+      } else {
+        console.log('[App] Auto-subscribe returned false (check push service logs)');
+      }
+    }).catch(err => {
+      console.warn('[App] Failed to auto-subscribe to push notifications (from handleLogin):', err);
+    });
     setTimeout(() => {
       loginProcessedRef.current = false;
       console.log('✅ [App] loginProcessedRef reset');
@@ -267,6 +298,40 @@ const App: React.FC = () => {
       console.warn('[App] Failed to initialize push notifications:', err);
     });
   }, []);
+
+  // Auto-subscribe to push notifications if user has them enabled
+  // This ensures users with notificationsEnabled=true get subscribed automatically
+  useEffect(() => {
+    console.log('[App] Auto-subscribe useEffect triggered', {
+      hasCurrentUser: !!currentUser,
+      userId: currentUser?.id,
+      householdId: currentUser?.householdId,
+      notificationsEnabled: currentUser?.notificationsEnabled,
+      fullCurrentUser: currentUser
+    });
+    
+    if (!currentUser || !currentUser.householdId) {
+      console.log('[App] Auto-subscribe skipped: missing currentUser or householdId');
+      return;
+    }
+    
+    console.log('[App] Calling autoSubscribeIfNeeded...');
+    
+    // Check if user has notifications enabled and auto-subscribe
+    autoSubscribeIfNeeded(
+      currentUser.id,
+      currentUser.householdId,
+      currentUser.notificationsEnabled ?? true  // Default to true if not set
+    ).then(success => {
+      if (success) {
+        console.log('[App] Push notifications auto-subscribed successfully');
+      } else {
+        console.log('[App] Auto-subscribe returned false (check push service logs)');
+      }
+    }).catch(err => {
+      console.warn('[App] Failed to auto-subscribe to push notifications:', err);
+    });
+  }, [currentUser]); // Changed to depend on entire currentUser object instead of individual properties
 
   // Supabase Subscriptions
   useEffect(() => {

@@ -539,7 +539,8 @@ const Expenses: React.FC<ExpensesProps> = ({
     };
 
     let savedExpenseId: string | null = null;
-    let expenseLikelySaved = false; // optimistic add already showed it, or onAdd returned
+    // UI already shows the expense via optimistic update (handleAddExpense), so treat as "likely saved"
+    let expenseLikelySaved = true;
 
     try {
       if (onAdd) {
@@ -594,6 +595,7 @@ const Expenses: React.FC<ExpensesProps> = ({
       } else {
         // Expense was likely saved (optimistic or returned), so avoid blocking banner
         console.warn('[Expenses] Expense likely saved; suppressing error banner.');
+        setError(null);
       }
     } finally {
       // Always close dialog and clear saving state so the user isn't stuck

@@ -549,7 +549,6 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'common.deleted_user': 'Deleted User',
   'common.add_item': 'Add Item',
   'common.add_task': 'Add Task',
-  'common.add_with_details': 'Add with details',
   'common.back': 'Back',
 
   // Profile - Additional
@@ -557,7 +556,6 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
 
   // Meals - Additional
   'meals.meal_type': 'Meal Type',
-  'meals.join': 'Join',
 
   // Dashboard - Connection Status
   'dashboard.realtime_active': 'Real-time sync active',

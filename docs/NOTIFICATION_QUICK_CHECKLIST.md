@@ -119,3 +119,4 @@ FROM todo_items;
 2. Check edge function logs
 3. See full guide: `docs/NOTIFICATION_DEPLOYMENT_GUIDE.md`
 
+

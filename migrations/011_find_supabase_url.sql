@@ -32,3 +32,4 @@ SELECT
   '3. Extract the project reference (the part before .supabase.co)' as step3,
   '4. Update migration 010_fix_trigger_url.sql with that value' as step4;
 
+

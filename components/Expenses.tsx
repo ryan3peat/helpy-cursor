@@ -188,7 +188,7 @@ interface ExpensesProps extends BaseViewProps {
   expenses: Expense[];
   householdId: string;
   currentUser: User;
-  onAdd: (expense: Expense) => void;
+  onAdd: (expense: Expense) => Promise<Expense> | Expense | void;
   onUpdate?: (expense: Expense) => Promise<void> | void;
   onDelete?: (id: string) => Promise<void> | void;
 }
@@ -509,121 +509,100 @@ const Expenses: React.FC<ExpensesProps> = ({
     setIsSaving(true);
     setError(null); // Clear any previous errors
     
-    try {
-      // Normalize date to YYYY-MM-DD format
-      let normalizedDate = editDate || new Date().toISOString().split('T')[0];
-      if (normalizedDate && !/^\d{4}-\d{2}-\d{2}$/.test(normalizedDate)) {
-        // Try to parse and normalize the date
-        try {
-          const parsed = new Date(normalizedDate);
-          if (!isNaN(parsed.getTime())) {
-            normalizedDate = parsed.toISOString().split('T')[0];
-          } else {
-            normalizedDate = new Date().toISOString().split('T')[0];
-          }
-        } catch {
+    // Normalize date to YYYY-MM-DD format
+    let normalizedDate = editDate || new Date().toISOString().split('T')[0];
+    if (normalizedDate && !/^\d{4}-\d{2}-\d{2}$/.test(normalizedDate)) {
+      try {
+        const parsed = new Date(normalizedDate);
+        if (!isNaN(parsed.getTime())) {
+          normalizedDate = parsed.toISOString().split('T')[0];
+        } else {
           normalizedDate = new Date().toISOString().split('T')[0];
         }
+      } catch {
+        normalizedDate = new Date().toISOString().split('T')[0];
       }
-
-      const newExpense: Expense = {
-        id: Date.now().toString(),
-        amount: amount,
-        currency: DEFAULT_CURRENCY, // HKD for now, future: detect from receipt or user preference
-        merchant: editMerchant.trim() || 'Unknown',
-        category: editCategory || 'Miscellaneous',
-        date: normalizedDate,
-        receiptUrl: pendingReceipt?.imageUrl || undefined,
-        createdBy: currentUser.id, // Track who created this expense
-        merchantLang: detectInputLanguage(currentLang) || null,
-        merchantTranslations: {},
-      };
-
-      // Call onAdd FIRST to ensure expense exists in database before linking receipt
-      let savedExpenseId = newExpense.id; // Default to temp ID (will be replaced)
-      if (onAdd) {
-        try {
-          console.log('[Expenses] Calling onAdd with expense ID:', newExpense.id);
-          const result = onAdd(newExpense);
-          // Handle both sync and async onAdd
-          let savedExpense: Expense | undefined;
-          if (result instanceof Promise) {
-            savedExpense = await result;
-          } else {
-            savedExpense = result;
-          }
-          
-          console.log('[Expenses] onAdd returned expense:', savedExpense);
-          console.log('[Expenses] Returned expense ID:', savedExpense?.id);
-          console.log('[Expenses] Is UUID format?', savedExpense?.id ? /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(savedExpense.id) : 'no ID');
-          
-          // Use the actual UUID from database if returned
-          if (savedExpense && savedExpense.id) {
-            // Validate it's a UUID, not a timestamp
-            const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(savedExpense.id);
-            if (isUuid) {
-              savedExpenseId = savedExpense.id;
-              console.log('[Expenses] Using UUID from database:', savedExpenseId);
-            } else {
-              console.warn('[Expenses] onAdd returned non-UUID ID, will wait for subscription update:', savedExpense.id);
-              // If it's not a UUID, we need to wait for the subscription to update with the real UUID
-              // For now, we'll skip linking and it can be done later
-              savedExpenseId = null as any; // Mark as invalid
-            }
-          } else {
-            console.warn('[Expenses] onAdd did not return expense with ID, will wait for subscription');
-            savedExpenseId = null as any; // Mark as invalid
-          }
-        } catch (addError) {
-          console.error('[Expenses] Error in onAdd:', addError);
-          throw addError; // Re-throw to be caught by outer catch
-        }
-      }
-
-      // If OCR, link receipt to expense AFTER expense is saved
-      // Use the actual UUID from database (not the temp timestamp ID)
-      if (pendingReceipt && savedExpenseId) {
-        // Validate it's a UUID before attempting to link
-        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(savedExpenseId);
-        if (!isUuid) {
-          console.warn('[Expenses] Cannot link receipt - expense ID is not a valid UUID:', savedExpenseId);
-          console.warn('[Expenses] Receipt will remain unlinked. Expense is saved successfully.');
-        } else {
-          try {
-            // Small delay to ensure database transaction is committed
-            await new Promise(resolve => setTimeout(resolve, 200));
-            console.log('[Expenses] Linking receipt to expense ID (UUID):', savedExpenseId);
-            await linkReceiptToExpense(pendingReceipt.receiptId, savedExpenseId);
-            console.log('[Expenses] Receipt linked to expense successfully');
-          } catch (linkError) {
-            console.error('[Expenses] Failed to link receipt, but expense is saved:', linkError);
-            // Don't fail the entire save if receipt linking fails - expense is already saved
-            // User can manually link later if needed
-          }
-        }
-      } else if (pendingReceipt && !savedExpenseId) {
-        console.warn('[Expenses] Cannot link receipt - no valid expense ID available');
-      }
-      
-      // Update local state
-      setLocalExpenses((prev) => {
-        const updated = [...prev, newExpense];
-        console.log('[Expenses] Local expenses updated, count:', updated.length);
-        return updated;
-      });
-      
-      // Small delay to ensure state updates before closing
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      console.log('[Expenses] Closing expense sheet');
-      closeAddExpenseSheet();
-    } catch (err) {
-      console.error('Failed to save expense:', err);
-      setError(err instanceof Error ? err.message : 'Failed to save expense. Please try again.');
-      // Don't close the sheet on error so user can retry
-    } finally {
-      setIsSaving(false);
     }
+
+    const newExpense: Expense = {
+      id: Date.now().toString(),
+      amount: amount,
+      currency: DEFAULT_CURRENCY,
+      merchant: editMerchant.trim() || 'Unknown',
+      category: editCategory || 'Miscellaneous',
+      date: normalizedDate,
+      receiptUrl: pendingReceipt?.imageUrl || undefined,
+      createdBy: currentUser.id,
+      merchantLang: detectInputLanguage(currentLang) || null,
+      merchantTranslations: {},
+    };
+
+    // STEP 1: Save the expense to database (this is the critical part)
+    let savedExpenseId: string | null = null;
+    let expenseSavedSuccessfully = false;
+    
+    try {
+      if (onAdd) {
+        console.log('[Expenses] Calling onAdd with expense ID:', newExpense.id);
+        const result = onAdd(newExpense);
+        
+        // Handle both sync and async onAdd
+        let savedExpense: Expense | undefined;
+        if (result && typeof result === 'object') {
+          if ('then' in result && typeof result.then === 'function') {
+            // It's a Promise
+            savedExpense = await (result as Promise<Expense>);
+          } else {
+            // It's an Expense object directly
+            savedExpense = result as Expense;
+          }
+        }
+        
+        console.log('[Expenses] onAdd returned expense:', savedExpense);
+        
+        // Use the actual UUID from database if returned
+        if (savedExpense && savedExpense.id) {
+          const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(savedExpense.id);
+          if (isUuid) {
+            savedExpenseId = savedExpense.id;
+            console.log('[Expenses] Using UUID from database:', savedExpenseId);
+          } else {
+            console.warn('[Expenses] onAdd returned non-UUID ID:', savedExpense.id);
+          }
+        }
+      }
+      
+      // Mark expense as saved successfully - the critical operation succeeded
+      expenseSavedSuccessfully = true;
+      console.log('[Expenses] Expense saved successfully');
+      
+    } catch (addError) {
+      console.error('[Expenses] Error saving expense:', addError);
+      setError(addError instanceof Error ? addError.message : 'Failed to save expense. Please try again.');
+      setIsSaving(false);
+      return; // Don't close sheet on expense save failure
+    }
+
+    // STEP 2: Link receipt to expense (non-critical - don't block on failure)
+    if (pendingReceipt && savedExpenseId) {
+      try {
+        // Small delay to ensure database transaction is committed
+        await new Promise(resolve => setTimeout(resolve, 200));
+        console.log('[Expenses] Linking receipt to expense ID (UUID):', savedExpenseId);
+        await linkReceiptToExpense(pendingReceipt.receiptId, savedExpenseId);
+        console.log('[Expenses] Receipt linked to expense successfully');
+      } catch (linkError) {
+        // Log but don't show error - expense was saved, receipt linking is secondary
+        console.warn('[Expenses] Failed to link receipt (non-fatal):', linkError);
+      }
+    } else if (pendingReceipt) {
+      console.warn('[Expenses] Cannot link receipt - no valid expense UUID available');
+    }
+
+    // STEP 3: Close the dialog (expense was saved successfully)
+    console.log('[Expenses] Closing expense sheet');
+    closeAddExpenseSheet();
+    setIsSaving(false);
   };
 
   // ─────────────────────────────────────────────────────────────────

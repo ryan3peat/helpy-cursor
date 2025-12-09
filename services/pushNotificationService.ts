@@ -157,7 +157,23 @@ export async function getServiceWorkerRegistration(): Promise<ServiceWorkerRegis
   }
 
   try {
-    const registration = await navigator.serviceWorker.getRegistration(SW_PATH);
+    // getRegistration() expects a scope URL, not a script path
+    // Since we register with scope '/', we should look for registrations with scope '/'
+    // Or we can get all registrations and find the one that matches
+    const registrations = await navigator.serviceWorker.getRegistrations();
+    const registration = registrations.find(reg => {
+      // Check if this registration's script matches our service worker
+      return reg.active?.scriptURL?.endsWith(SW_PATH) || 
+             reg.waiting?.scriptURL?.endsWith(SW_PATH) ||
+             reg.installing?.scriptURL?.endsWith(SW_PATH);
+    });
+    
+    // If not found, try getting registration by scope (since we register with scope '/')
+    if (!registration) {
+      const scopeRegistration = await navigator.serviceWorker.getRegistration('/');
+      return scopeRegistration || null;
+    }
+    
     return registration || null;
   } catch (error) {
     console.error('[Push] Failed to get service worker registration:', error);

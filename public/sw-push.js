@@ -30,7 +30,13 @@ const DEFAULT_NOTIFICATION_OPTIONS = {
 // ============================================================================
 
 self.addEventListener('push', (event) => {
-  console.log('[SW] Push received:', event);
+  console.log('[SW] Push event received');
+  console.log('[SW] Push event details:', {
+    hasData: !!event.data,
+    dataType: event.data ? typeof event.data : 'none',
+    isArrayBuffer: event.data instanceof ArrayBuffer,
+    timestamp: new Date().toISOString()
+  });
 
   let data = {
     title: 'Helpy',
@@ -42,11 +48,24 @@ self.addEventListener('push', (event) => {
   // Parse the push data
   if (event.data) {
     try {
-      data = { ...data, ...event.data.json() };
+      // Try to parse as JSON first (for encrypted Web Push, browser decrypts automatically)
+      const jsonData = event.data.json();
+      console.log('[SW] Parsed push data:', jsonData);
+      data = { ...data, ...jsonData };
     } catch (e) {
-      console.error('[SW] Failed to parse push data:', e);
-      data.body = event.data.text();
+      console.error('[SW] Failed to parse push data as JSON:', e);
+      try {
+        // Fallback: try to get text
+        const textData = event.data.text();
+        console.log('[SW] Push data as text:', textData);
+        data.body = textData || data.body;
+      } catch (textError) {
+        console.error('[SW] Failed to parse push data as text:', textError);
+        // Use default data
+      }
     }
+  } else {
+    console.log('[SW] No push data, using defaults');
   }
 
   // Determine the action URL based on notification type
@@ -90,8 +109,21 @@ self.addEventListener('push', (event) => {
   };
 
   // Show the notification
+  console.log('[SW] Showing notification:', { title: data.title, body: data.body, type: data.type });
+  
   event.waitUntil(
     self.registration.showNotification(data.title, options)
+      .then(() => {
+        console.log('[SW] Notification shown successfully');
+      })
+      .catch((error) => {
+        console.error('[SW] Failed to show notification:', error);
+        console.error('[SW] Error details:', {
+          message: error.message,
+          stack: error.stack,
+          name: error.name
+        });
+      })
   );
 });
 
@@ -161,19 +193,52 @@ self.addEventListener('notificationclose', (event) => {
 
 
 // ============================================================================
+// MESSAGE HANDLER (for debugging)
+// ============================================================================
+// Handle messages from the main app
+self.addEventListener('message', (event) => {
+  console.log('[SW] Message received:', event.data);
+  
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+  
+  if (event.data && event.data.type === 'PING') {
+    event.ports[0].postMessage({ 
+      success: true, 
+      message: 'Service worker is active',
+      scope: self.registration?.scope 
+    });
+  }
+});
+
+// ============================================================================
 // SERVICE WORKER LIFECYCLE
 // ============================================================================
 
 self.addEventListener('install', (event) => {
   console.log('[SW] Installing push service worker...');
+  console.log('[SW] Service worker scope:', self.registration?.scope);
   // Skip waiting to activate immediately
   self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
   console.log('[SW] Push service worker activated');
+  console.log('[SW] Service worker state:', self.registration?.active?.state);
   // Take control of all clients immediately
-  event.waitUntil(clients.claim());
+  event.waitUntil(
+    Promise.all([
+      clients.claim(),
+      // Log all controlled clients
+      clients.matchAll().then(clientList => {
+        console.log('[SW] Controlling', clientList.length, 'client(s)');
+        clientList.forEach((client, index) => {
+          console.log(`[SW] Client ${index + 1}:`, client.url);
+        });
+      })
+    ])
+  );
 });
 
 

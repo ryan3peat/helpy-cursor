@@ -564,7 +564,7 @@ const Meals: React.FC<MealsProps> = ({
                       <span className={`text-micro mt-0.5 ${
                         u.id === currentUser.id ? 'text-primary' : 'text-muted-foreground'
                       }`}>
-                        {u.id === currentUser.id ? 'You' : u.name.split(' ')[0]}
+                        {u.id === currentUser.id ? (t['common.you'] ?? 'You') : u.name.split(' ')[0]}
                       </span>
                     )}
                   </div>
@@ -602,7 +602,7 @@ const Meals: React.FC<MealsProps> = ({
                   </>
                 ) : (
                   <>
-                    Join <Plus size={12} />
+                    {t['meals.join'] ?? 'Join'} <Plus size={12} />
                   </>
                 )}
               </button>
@@ -688,7 +688,7 @@ const Meals: React.FC<MealsProps> = ({
                     <button
                       key={v}
                       onClick={() => setView(v as 'day' | 'week')}
-                      className={`py-1.5 px-3 rounded-full text-caption font-medium transition-colors flex items-center gap-1.5 ${
+                      className={`py-1.5 px-3 rounded-full text-caption font-medium flex items-center gap-1.5 ${
                         isActive
                           ? 'bg-card text-primary shadow-sm'
                           : 'text-muted-foreground hover:text-foreground'
@@ -1184,7 +1184,7 @@ const Meals: React.FC<MealsProps> = ({
             <button
               onClick={() => setIsModalOpen(false)}
               className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center hover:bg-secondary transition-colors right-4 top-4 text-muted-foreground"
-              aria-label="Close"
+              aria-label={t['common.close'] || 'Close'}
             >
               <X size={20} />
             </button>
@@ -1308,7 +1308,7 @@ const Meals: React.FC<MealsProps> = ({
                             alt={user.name}
                             className="w-6 h-6 rounded-full object-cover bg-muted"
                           />
-                          <span>{user.id === currentUser.id ? 'You' : user.name.split(' ')[0]}</span>
+                          <span>{user.id === currentUser.id ? (t['common.you'] ?? 'You') : user.name.split(' ')[0]}</span>
                         </button>
                       );
                     })}

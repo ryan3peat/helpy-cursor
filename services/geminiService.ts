@@ -2,6 +2,24 @@
 import { Type } from "@google/genai";
 import { MealType, TranslationDictionary } from "../types";
 
+// Regex patterns for content that should NOT be translated based on ISO/industry standards
+const NON_TRANSLATABLE_PATTERNS = [
+  /^[A-Z]{2,3}$/,              // Country codes (HK, US, USA)
+  /^\+\d+[\d\s-]*$/,           // Phone numbers with country code
+  /^https?:\/\//,              // URLs
+  /^[\w.-]+@[\w.-]+\.\w+$/,    // Email addresses
+  /^HK\$[\d,.]+$/,             // Currency amounts (HK$)
+  /^\d{4}-\d{2}-\d{2}$/,       // ISO Dates
+];
+
+/**
+ * Checks if text matches any non-translatable pattern
+ */
+const isNonTranslatable = (text: string): boolean => {
+  const trimmed = text.trim();
+  return NON_TRANSLATABLE_PATTERNS.some(pattern => pattern.test(trimmed));
+};
+
 // Helper function to call Gemini API through server proxy
 const callGeminiProxy = async (contents: string | any, config?: { responseMimeType?: string; responseSchema?: any }) => {
   try {
@@ -168,14 +186,24 @@ export const translateUserContent = async (
     return text;
   }
   
+  // Check for non-translatable content first
+  if (isNonTranslatable(text)) {
+    return text;
+  }
+  
   try {
     const response = await callGeminiProxy(
       `Translate the following text from language code "${sourceLang}" to language code "${targetLang}".
       
-      IMPORTANT:
+      IMPORTANT RULES:
       1. Return ONLY the translated text, no explanations or additional text.
       2. Preserve any formatting, numbers, or special characters.
       3. Keep the translation natural and contextually appropriate.
+      4. DO NOT translate:
+         - Proper names (people, specific places)
+         - Addresses (keep street names/numbers as is)
+         - Business names / Brands
+         - URLs, Emails, Phone numbers
       
       Text to translate:
       ${text}`
@@ -204,7 +232,8 @@ export const batchTranslateUserContent = async (
   const itemsToTranslate = items.filter(item => 
     item.sourceLang && 
     item.sourceLang !== targetLang && 
-    item.text.trim().length > 0
+    item.text.trim().length > 0 &&
+    !isNonTranslatable(item.text)
   );
   
   // If nothing to translate, return originals
@@ -221,11 +250,16 @@ export const batchTranslateUserContent = async (
     const response = await callGeminiProxy(
       `Translate the following items from their source languages to language code "${targetLang}".
       
-      IMPORTANT:
+      IMPORTANT RULES:
       1. Return ONLY a JSON array of translated strings in the same order.
       2. Preserve any formatting, numbers, or special characters.
       3. Keep translations natural and contextually appropriate.
       4. If an item is already in the target language, return it unchanged.
+      5. DO NOT translate:
+         - Proper names (people, specific places)
+         - Addresses (keep street names/numbers as is)
+         - Business names / Brands
+         - URLs, Emails, Phone numbers
       
       Items to translate:
       ${itemsList}

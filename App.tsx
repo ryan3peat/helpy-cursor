@@ -16,6 +16,7 @@ import { ToDoItem, Meal, Expense, User, TranslationDictionary } from './types';
 import { BASE_TRANSLATIONS } from './constants';
 import { detectDeviceLanguage } from './services/languageDetectionService';
 import { getStaticTranslations } from './services/translationService';
+import { TranslationProvider, useTranslationContext } from './contexts/TranslationContext';
 import { supabase } from './services/supabase';
 import {
   subscribeToCollection,
@@ -55,9 +56,11 @@ const BroomIcon = ({ className }: { className?: string }) => (
   />
 );
 
-const App: React.FC = () => {
+// Inner App component that uses the translation context
+const AppContent: React.FC = () => {
   const { signOut } = useClerk();
   const { user: clerkUser, isSignedIn, isLoaded: clerkLoaded } = useUser();
+  const { setStaticTranslating, isAnyTranslating } = useTranslationContext();
   const [showIntro, setShowIntro] = useState(true);
   const [activeView, setActiveView] = useState('dashboard');
   const [clerkLoadTimeout, setClerkLoadTimeout] = useState(false);
@@ -96,8 +99,13 @@ const App: React.FC = () => {
     return detectDeviceLanguage();
   });
   const [translations, setTranslations] = useState<TranslationDictionary>(BASE_TRANSLATIONS);
-  // Set initial translating state: true if language is not English (will load translations)
-  const [isTranslating, setIsTranslating] = useState(() => lang !== 'en');
+  
+  // Set initial static translating state if language is not English
+  useEffect(() => {
+    if (lang !== 'en') {
+      setStaticTranslating(true);
+    }
+  }, []); // Only on mount
   
   // Load translations when language changes
   // Uses pre-translated strings from Supabase (fast, no AI call)
@@ -106,12 +114,12 @@ const App: React.FC = () => {
       // If English, use base translations directly
       if (lang === 'en') {
         setTranslations(BASE_TRANSLATIONS);
-        setIsTranslating(false);
+        setStaticTranslating(false);
         return;
       }
       
       // Load pre-translated strings from Supabase (or cache)
-      setIsTranslating(true);
+      setStaticTranslating(true);
       try {
         const translated = await getStaticTranslations(lang);
         setTranslations(translated);
@@ -119,12 +127,12 @@ const App: React.FC = () => {
         console.error('Failed to load translations:', error);
         setTranslations(BASE_TRANSLATIONS); // Fallback to English
       } finally {
-        setIsTranslating(false);
+        setStaticTranslating(false);
       }
     };
     
     loadTranslations();
-  }, [lang]);
+  }, [lang, setStaticTranslating]);
   
   // Persist language preference to localStorage when it changes
   useEffect(() => {
@@ -725,7 +733,7 @@ const App: React.FC = () => {
             t={translations}
             currentLang={lang}
             onLanguageChange={handleLanguageChange}
-            isTranslating={isTranslating}
+            isTranslating={isAnyTranslating}
             onUpdateMeal={handleUpdateMeal}
             realtimeStatus={realtimeStatus}
           />
@@ -940,6 +948,15 @@ const App: React.FC = () => {
         {renderView()}
       </Layout>
     </>
+  );
+};
+
+// Main App component that wraps everything with TranslationProvider
+const App: React.FC = () => {
+  return (
+    <TranslationProvider>
+      <AppContent />
+    </TranslationProvider>
   );
 };
 

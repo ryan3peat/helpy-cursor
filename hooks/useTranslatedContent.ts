@@ -1,8 +1,10 @@
 // hooks/useTranslatedContent.ts
 // Hook for managing translated user-generated content
+// Registers with TranslationContext to track global translation state
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { translateUserContent } from '../services/geminiService';
+import { useTranslationContextOptional } from '../contexts/TranslationContext';
 
 interface UseTranslatedContentOptions {
   content: string;
@@ -25,6 +27,22 @@ export const useTranslatedContent = ({
 }: UseTranslatedContentOptions): string => {
   const [translatedText, setTranslatedText] = useState<string>(content);
   const [isTranslating, setIsTranslating] = useState(false);
+  
+  // Get translation context (optional - may be null if not wrapped in provider)
+  const translationContext = useTranslationContextOptional();
+  
+  // Track the current translation ID for cleanup
+  const translationIdRef = useRef<string | null>(null);
+
+  // Cleanup function to unregister translation on unmount or when done
+  useEffect(() => {
+    return () => {
+      if (translationIdRef.current && translationContext) {
+        translationContext.unregisterTranslation(translationIdRef.current);
+        translationIdRef.current = null;
+      }
+    };
+  }, [translationContext]);
 
   useEffect(() => {
     // If contentLang is null/empty, always display original (undetectable)
@@ -51,6 +69,12 @@ export const useTranslatedContent = ({
     // Translate the content
     const performTranslation = async () => {
       setIsTranslating(true);
+      
+      // Register with global context
+      if (translationContext) {
+        translationIdRef.current = translationContext.registerTranslation();
+      }
+      
       try {
         const translated = await translateUserContent(content, contentLang, currentLang);
         if (translated && translated !== content) {
@@ -68,12 +92,17 @@ export const useTranslatedContent = ({
         setTranslatedText(content); // Fallback to original
       } finally {
         setIsTranslating(false);
+        
+        // Unregister from global context
+        if (translationIdRef.current && translationContext) {
+          translationContext.unregisterTranslation(translationIdRef.current);
+          translationIdRef.current = null;
+        }
       }
     };
 
     performTranslation();
-  }, [content, contentLang, currentLang, translations, isTranslating, onTranslationUpdate]);
+  }, [content, contentLang, currentLang, translations, isTranslating, onTranslationUpdate, translationContext]);
 
   return translatedText;
 };
-

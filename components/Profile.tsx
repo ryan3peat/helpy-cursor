@@ -506,7 +506,7 @@ const Profile: React.FC<ProfileProps> = ({
       }
     } catch (error) {
       console.error('Failed to add user:', error);
-      alert('Failed to add user. Please try again.');
+      alert(t['error.add_user'] || 'Failed to add user. Please try again.');
     } finally {
       setIsAddingUser(false);
     }
@@ -538,7 +538,7 @@ const Profile: React.FC<ProfileProps> = ({
       setIsCopied(false);
     } catch (error) {
       console.error('Failed to resend invite:', error);
-      alert('Failed to generate new invite link');
+      alert(t['error.generate_invite'] || 'Failed to generate new invite link');
     }
   };
 
@@ -596,13 +596,13 @@ const Profile: React.FC<ProfileProps> = ({
 
     // Validate file type
     if (!file.type.startsWith('image/')) {
-      alert('Please select an image file');
+      alert(t['error.select_image'] || 'Please select an image file');
       return;
     }
 
     // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      alert('Image size must be less than 5MB');
+      alert(t['error.image_too_large'] || 'Image size must be less than 5MB');
       return;
     }
 
@@ -620,7 +620,7 @@ const Profile: React.FC<ProfileProps> = ({
       console.log('✅ Avatar updated successfully');
     } catch (error) {
       console.error('❌ Failed to upload avatar:', error);
-      alert('Failed to upload image. Please try again.');
+      alert(t['error.upload_image'] || 'Failed to upload image. Please try again.');
     } finally {
       setIsUploadingAvatar(false);
     }
@@ -705,7 +705,7 @@ const Profile: React.FC<ProfileProps> = ({
                   <button 
                     onClick={() => setInviteLink(null)} 
                     className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center hover:bg-secondary transition-colors right-4 top-4 text-muted-foreground"
-                    aria-label="Close"
+                    aria-label={t['common.close'] || 'Close'}
                   >
                     <X size={20} />
                   </button>
@@ -856,7 +856,7 @@ const Profile: React.FC<ProfileProps> = ({
                       <button
                         onClick={() => handleDeleteUser(selectedUser.id)}
                         className="p-2.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl transition-colors shrink-0"
-                        aria-label="Delete member"
+                        aria-label={t['profile.delete_member'] || 'Delete member'}
                       >
                         <Trash2 size={18} />
                       </button>
@@ -943,7 +943,7 @@ const Profile: React.FC<ProfileProps> = ({
                 <button 
                   onClick={() => setIsAddModalOpen(false)} 
                   className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center hover:bg-secondary transition-colors right-4 top-4 text-muted-foreground"
-                  aria-label="Close"
+                  aria-label={t['common.close'] || 'Close'}
                 >
                   <X size={20} />
                 </button>
@@ -1023,7 +1023,7 @@ const Profile: React.FC<ProfileProps> = ({
                     disabled={isAddingUser || !newName.trim()}
                     className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground text-body hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {isAddingUser ? 'Adding...' : t['common.add']}
+                    {isAddingUser ? (t['common.adding'] || 'Adding...') : t['common.add']}
                   </button>
                 </div>
               </div>
@@ -1086,7 +1086,7 @@ const Profile: React.FC<ProfileProps> = ({
                 <button 
                   onClick={() => setIsEditModalOpen(false)} 
                   className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center hover:bg-secondary transition-colors right-4 top-4 text-muted-foreground"
-                  aria-label="Close"
+                  aria-label={t['common.close'] || 'Close'}
                 >
                   <X size={20} />
                 </button>
@@ -1278,21 +1278,21 @@ const Profile: React.FC<ProfileProps> = ({
       await handleManageSubscription();
     } catch (error) {
       console.error('Error canceling subscription:', error);
-      alert('Failed to cancel subscription. Please try again.');
+      alert(t['error.cancel_subscription'] || 'Failed to cancel subscription. Please try again.');
       setIsLoading(false);
     }
   };
 
   const formatDate = (dateString?: string) => {
-    if (!dateString) return 'N/A';
+    if (!dateString) return t['common.na'] || 'N/A';
     try {
       const date = new Date(dateString);
       const day = date.getDate();
-      const month = date.toLocaleDateString('en-GB', { month: 'short' });
+      const month = date.toLocaleDateString(currentLang === 'en' ? 'en-GB' : currentLang, { month: 'short' });
       const year = date.getFullYear();
       return `${day} ${month} ${year}`;
     } catch {
-      return 'N/A';
+      return t['common.na'] || 'N/A';
     }
   };
 
@@ -1308,7 +1308,7 @@ const Profile: React.FC<ProfileProps> = ({
 
   const handleDeleteAccount = async () => {
     if (!currentUser?.householdId || !clerkUser) {
-      alert('Unable to delete account. Please try again.');
+      alert(t['error.delete_account_unable'] || 'Unable to delete account. Please try again.');
       return;
     }
 
@@ -1361,7 +1361,7 @@ const Profile: React.FC<ProfileProps> = ({
       onLogout();
     } catch (error) {
       console.error('Error deleting account:', error);
-      alert('Failed to delete account. Please try again or contact support.');
+      alert(t['error.delete_account'] || 'Failed to delete account. Please try again or contact support.');
       setIsDeletingAccount(false);
       setIsFinalDeleteConfirmOpen(false);
     }
@@ -1387,7 +1387,12 @@ const Profile: React.FC<ProfileProps> = ({
         name: t['common.core'] || 'Core',
         monthlyPrice: 88,
         yearlyPrice: 850,
-        features: ['Up to 6 family members', '2 helpers', 'Receipt scanning', 'Priority support'],
+        features: [
+          t['plan.feature.family_6'] || 'Up to 6 family members',
+          t['plan.feature.helpers_2'] || '2 helpers',
+          t['plan.feature.receipt_scan'] || 'Receipt scanning',
+          t['plan.feature.priority_support'] || 'Priority support'
+        ],
         highlight: false
       },
       {
@@ -1395,7 +1400,13 @@ const Profile: React.FC<ProfileProps> = ({
         name: t['common.pro'] || 'Pro',
         monthlyPrice: 118,
         yearlyPrice: 1080,
-        features: ['Up to 10 family members', 'Unlimited helpers', 'Advanced AI', 'Data export', 'Premium support'],
+        features: [
+          t['plan.feature.family_10'] || 'Up to 10 family members',
+          t['plan.feature.unlimited_helpers'] || 'Unlimited helpers',
+          t['plan.feature.advanced_ai'] || 'Advanced AI',
+          t['plan.feature.data_export'] || 'Data export',
+          t['plan.feature.premium_support'] || 'Premium support'
+        ],
         highlight: true
       }
     ];
@@ -1461,7 +1472,7 @@ const Profile: React.FC<ProfileProps> = ({
                     </div>
                     <div>
                       <p className="text-caption text-primary-foreground/70 mb-1">{t['common.next_payment'] || 'Next Payment'}</p>
-                      <p className="text-body font-semibold">{getNextPaymentDate(subscriptionInfo.periodEnd, subscriptionInfo.period) || 'N/A'}</p>
+                      <p className="text-body font-semibold">{getNextPaymentDate(subscriptionInfo.periodEnd, subscriptionInfo.period) || (t['common.na'] || 'N/A')}</p>
                     </div>
                   </div>
                 ) : subscriptionInfo?.status !== 'active' && (
@@ -1784,10 +1795,10 @@ const Profile: React.FC<ProfileProps> = ({
                         <p className="font-semibold text-foreground text-body">{t['profile.enable_notifications'] || 'Enable Notifications'}</p>
                         <p className="text-caption text-muted-foreground">
                           {!pushSupported 
-                            ? 'Not supported in this browser'
+                            ? (t['settings.push_not_supported'] || 'Not supported in this browser')
                             : pushPermission === 'denied'
-                            ? 'Blocked - enable in browser settings'
-                            : 'Get notified when family adds items'}
+                            ? (t['settings.push_blocked'] || 'Blocked - enable in browser settings')
+                            : (t['settings.push_description'] || 'Get notified when family adds items')}
                         </p>
                       </div>
                     </div>

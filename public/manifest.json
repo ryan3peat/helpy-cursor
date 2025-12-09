@@ -1,16 +1,19 @@
 {
   "name": "Helpy",
   "short_name": "Helpy",
-  "description": "Your household helper app",
-  "id": "/",
-  "start_url": "/",
+  "description": "Your household helper app - manage meals, tasks, shopping lists, and expenses together",
+  "id": "com.helpy.app",
+  "start_url": "/?source=pwa",
   "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
   "orientation": "portrait",
-  "background_color": "#ffffff",
-  "theme_color": "#5ec5e8",
+  "background_color": "#fafafa",
+  "theme_color": "#3EAFD2",
   "prefer_related_applications": false,
-  "categories": ["productivity", "lifestyle"],
+  "categories": ["productivity", "lifestyle", "utilities"],
+  "dir": "ltr",
+  "lang": "en",
   "icons": [
     {
       "src": "/icons/favicon-32.png",
@@ -43,6 +46,34 @@
       "purpose": "maskable"
     }
   ],
-  "dir": "ltr",
-  "lang": "en"
+  "shortcuts": [
+    {
+      "name": "Shopping List",
+      "short_name": "Shopping",
+      "description": "View your shopping list",
+      "url": "/#todo?section=shopping",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Meals",
+      "short_name": "Meals",
+      "description": "View meal plans",
+      "url": "/#meals",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Tasks",
+      "short_name": "Tasks",
+      "description": "View tasks",
+      "url": "/#todo?section=task",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ],
+  "launch_handler": {
+    "client_mode": ["navigate-existing", "auto"]
+  },
+  "handle_links": "preferred",
+  "edge_side_panel": {
+    "preferred_width": 400
+  }
 }

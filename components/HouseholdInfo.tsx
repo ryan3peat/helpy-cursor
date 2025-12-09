@@ -289,7 +289,7 @@ const FamilyProfileCarousel: React.FC<FamilyProfileCarouselProps> = ({ users, t 
                         ))}
                         {user.allergies.length > 6 && (
                           <span className="text-caption text-muted-foreground px-2.5 py-1">
-                            +{user.allergies.length - 6} more
+                            +{user.allergies.length - 6} {t['common.more'] || 'more'}
                           </span>
                         )}
                       </div>
@@ -320,7 +320,7 @@ const FamilyProfileCarousel: React.FC<FamilyProfileCarouselProps> = ({ users, t 
                         ))}
                         {user.preferences.length > 6 && (
                           <span className="text-caption text-muted-foreground px-2.5 py-1">
-                            +{user.preferences.length - 6} more
+                            +{user.preferences.length - 6} {t['common.more'] || 'more'}
                           </span>
                         )}
                       </div>
@@ -535,6 +535,36 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
 
   const houseRoutineStats = {
     total: houseRoutineItems.length,
+  };
+
+  // Category translation helpers
+  const getEssentialCategoryLabel = (category: EssentialInfoCategory): string => {
+    const categoryMap: Record<EssentialInfoCategory, string> = {
+      'Home': t['info.category.home'] || category,
+      'School': t['info.category.school'] || category,
+      'Doctor': t['info.category.doctor'] || category,
+      'Hospital': t['info.category.hospital'] || category,
+      'Shops': t['info.category.shops'] || category,
+      'Others': t['info.category.others'] || category,
+    };
+    return categoryMap[category] || category;
+  };
+
+  const getRoutineCategoryLabel = (category: HouseRoutineCategory): string => {
+    const categoryMap: Record<HouseRoutineCategory, string> = {
+      'House Rules': t['routine.category.house_rules'] || category,
+      'Routine': t['routine.category.routine'] || category,
+      'Meal Preparations': t['routine.category.meal_preparations'] || category,
+      'Child Care': t['routine.category.child_care'] || category,
+      'Cleaning': t['routine.category.cleaning'] || category,
+      'Grocery & Market': t['routine.category.grocery_market'] || category,
+      'Laundry & Wardrobe': t['routine.category.laundry_wardrobe'] || category,
+      'Safety & Emergency': t['routine.category.safety_emergency'] || category,
+      'Energy & Bills': t['routine.category.energy_bills'] || category,
+      'Helper Self-Care': t['routine.category.helper_self_care'] || category,
+      'Others': t['routine.category.others'] || category,
+    };
+    return categoryMap[category] || category;
   };
 
   // ─────────────────────────────────────────────────────────────────
@@ -901,18 +931,18 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
                   {t['common.all'] || 'All'}
                 </button>
                 {HOUSE_ROUTINE_CATEGORIES.map((cat) => (
-                  <button
-                    key={cat}
-                    onClick={() => setSelectedHouseRoutineCategory(cat)}
-                    className={`px-4 py-2 rounded-full text-body whitespace-nowrap transition-all flex items-center gap-1.5 ${
-                      selectedHouseRoutineCategory === cat
-                        ? "bg-card text-primary shadow-sm"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    {HOUSE_ROUTINE_CATEGORY_ICONS[cat]}
-                    {cat}
-                  </button>
+                    <button
+                      key={cat}
+                      onClick={() => setSelectedHouseRoutineCategory(cat)}
+                      className={`px-4 py-2 rounded-full text-body whitespace-nowrap transition-all flex items-center gap-1.5 ${
+                        selectedHouseRoutineCategory === cat
+                          ? "bg-card text-primary shadow-sm"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {HOUSE_ROUTINE_CATEGORY_ICONS[cat]}
+                      {getRoutineCategoryLabel(cat)}
+                    </button>
                 ))}
               </div>
               {/* Inset shadow overlay - fixed to outer container, doesn't scroll */}
@@ -965,6 +995,7 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
                     canEdit={!isHelper}
                     currentLang={currentLang}
                     householdId={householdId}
+                    t={t}
                   />
                 ))
               )}
@@ -999,6 +1030,7 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
                     canEdit={!isHelper}
                     currentLang={currentLang}
                     householdId={householdId}
+                    t={t}
                   />
                 ))
               )}
@@ -1086,6 +1118,7 @@ interface EssentialInfoCardProps {
   canEdit: boolean;
   currentLang: string;
   householdId: string;
+  t: TranslationDictionary;
 }
 
 const EssentialInfoCard: React.FC<EssentialInfoCardProps> = ({
@@ -1096,8 +1129,21 @@ const EssentialInfoCard: React.FC<EssentialInfoCardProps> = ({
   canEdit,
   currentLang,
   householdId,
+  t,
 }) => {
   const config = CATEGORY_CONFIG[item.category];
+
+  const getEssentialCategoryLabel = (category: EssentialInfoCategory): string => {
+    const categoryMap: Record<EssentialInfoCategory, string> = {
+      'Home': t['info.category.home'] || category,
+      'School': t['info.category.school'] || category,
+      'Doctor': t['info.category.doctor'] || category,
+      'Hospital': t['info.category.hospital'] || category,
+      'Shops': t['info.category.shops'] || category,
+      'Others': t['info.category.others'] || category,
+    };
+    return categoryMap[category] || category;
+  };
 
   return (
     <div className="bg-card rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
@@ -1122,7 +1168,7 @@ const EssentialInfoCard: React.FC<EssentialInfoCardProps> = ({
               className="text-caption px-2 py-0.5 rounded-full"
               style={{ backgroundColor: config.bgColor, color: config.color }}
             >
-              {item.category}
+              {getEssentialCategoryLabel(item.category)}
             </span>
           </div>
         </div>
@@ -1187,6 +1233,7 @@ interface HouseRoutineCardProps {
   canEdit: boolean;
   currentLang: string;
   householdId: string;
+  t: TranslationDictionary;
 }
 
 const HouseRoutineCard: React.FC<HouseRoutineCardProps> = ({
@@ -1196,11 +1243,30 @@ const HouseRoutineCard: React.FC<HouseRoutineCardProps> = ({
   canEdit,
   currentLang,
   householdId,
+  t,
 }) => {
   const config = HOUSE_ROUTINE_CATEGORY_CONFIG[item.category];
+
+  const getRoutineCategoryLabel = (category: HouseRoutineCategory): string => {
+    const categoryMap: Record<HouseRoutineCategory, string> = {
+      'House Rules': t['routine.category.house_rules'] || category,
+      'Routine': t['routine.category.routine'] || category,
+      'Meal Preparations': t['routine.category.meal_preparations'] || category,
+      'Child Care': t['routine.category.child_care'] || category,
+      'Cleaning': t['routine.category.cleaning'] || category,
+      'Grocery & Market': t['routine.category.grocery_market'] || category,
+      'Laundry & Wardrobe': t['routine.category.laundry_wardrobe'] || category,
+      'Safety & Emergency': t['routine.category.safety_emergency'] || category,
+      'Energy & Bills': t['routine.category.energy_bills'] || category,
+      'Helper Self-Care': t['routine.category.helper_self_care'] || category,
+      'Others': t['routine.category.others'] || category,
+    };
+    return categoryMap[category] || category;
+  };
+
   const displayCategory = item.category === "Others" && item.customCategory
     ? item.customCategory
-    : item.category;
+    : getRoutineCategoryLabel(item.category);
 
   // Use edit for owners, view for helpers
   const handleTap = canEdit ? onEdit : onView;
@@ -1257,7 +1323,7 @@ const HouseRoutineCard: React.FC<HouseRoutineCardProps> = ({
           </p>
           {item.note.length > 150 && (
             <span className="text-caption text-primary mt-1 inline-block">
-              tap to see more
+              {t['info.tap_see_more'] || 'tap to see more'}
             </span>
           )}
         </div>
@@ -1323,7 +1389,7 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
         <button 
           onClick={onClose} 
           className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center hover:bg-secondary transition-colors right-4 top-4 text-muted-foreground"
-          aria-label="Close"
+          aria-label={t['common.close'] || 'Close'}
         >
           <X size={20} />
         </button>
@@ -1331,7 +1397,7 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
         {/* Header */}
         <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
           <h2 className="text-title text-foreground">
-            {isEditing ? "Edit Info" : "Add New Info"}
+            {isEditing ? (t['info.edit_info'] || "Edit Info") : (t['info.add_new_info'] || "Add New Info")}
           </h2>
         </div>
 
@@ -1340,12 +1406,23 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
               {/* Category */}
               <div>
             <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
-              Category
+              {t['common.category'] || 'Category'}
             </label>
             <div className="flex flex-wrap gap-2">
               {ESSENTIAL_CATEGORIES.map((cat) => {
                 const config = CATEGORY_CONFIG[cat];
                 const isSelected = form.category === cat;
+                const getCatLabel = (category: EssentialInfoCategory): string => {
+                  const categoryMap: Record<EssentialInfoCategory, string> = {
+                    'Home': t['info.category.home'] || category,
+                    'School': t['info.category.school'] || category,
+                    'Doctor': t['info.category.doctor'] || category,
+                    'Hospital': t['info.category.hospital'] || category,
+                    'Shops': t['info.category.shops'] || category,
+                    'Others': t['info.category.others'] || category,
+                  };
+                  return categoryMap[category] || category;
+                };
                 return (
                   <button
                     key={cat}
@@ -1359,7 +1436,7 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
                     style={isSelected ? { backgroundColor: config.color } : undefined}
                   >
                     {ESSENTIAL_CATEGORY_ICONS[cat]}
-                    {cat}
+                    {getCatLabel(cat)}
                   </button>
                 );
               })}
@@ -1369,7 +1446,7 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
           {/* Name */}
           <div>
             <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
-              Name
+              {t['common.name'] || 'Name'}
             </label>
             <input
               type="text"
@@ -1383,7 +1460,7 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
           {/* Address */}
           <div>
             <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
-              Address
+              {t['info.address'] || 'Address'}
             </label>
             <div className="relative">
               <MapPin size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -1400,7 +1477,7 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
           {/* Phone */}
               <div>
             <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
-              Phone Number
+              {t['info.phone_number'] || 'Phone Number'}
             </label>
             <div className="flex gap-2">
               <div className="relative w-28 country-code-dropdown">
@@ -1471,7 +1548,7 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
           {/* Note */}
           <div>
             <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
-              Note
+              {t['info.note'] || 'Note'}
             </label>
             <input
               type="text"
@@ -1539,7 +1616,7 @@ const HouseRoutineModal: React.FC<HouseRoutineModalProps> = ({
         <button 
           onClick={onClose} 
           className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center hover:bg-secondary transition-colors right-4 top-4 text-muted-foreground"
-          aria-label="Close"
+          aria-label={t['common.close'] || 'Close'}
         >
           <X size={20} />
         </button>
@@ -1562,6 +1639,22 @@ const HouseRoutineModal: React.FC<HouseRoutineModalProps> = ({
               {HOUSE_ROUTINE_CATEGORIES.map((cat) => {
                 const config = HOUSE_ROUTINE_CATEGORY_CONFIG[cat];
                 const isSelected = form.category === cat;
+                const getCatLabel = (category: HouseRoutineCategory): string => {
+                  const categoryMap: Record<HouseRoutineCategory, string> = {
+                    'House Rules': t['routine.category.house_rules'] || category,
+                    'Routine': t['routine.category.routine'] || category,
+                    'Meal Preparations': t['routine.category.meal_preparations'] || category,
+                    'Child Care': t['routine.category.child_care'] || category,
+                    'Cleaning': t['routine.category.cleaning'] || category,
+                    'Grocery & Market': t['routine.category.grocery_market'] || category,
+                    'Laundry & Wardrobe': t['routine.category.laundry_wardrobe'] || category,
+                    'Safety & Emergency': t['routine.category.safety_emergency'] || category,
+                    'Energy & Bills': t['routine.category.energy_bills'] || category,
+                    'Helper Self-Care': t['routine.category.helper_self_care'] || category,
+                    'Others': t['routine.category.others'] || category,
+                  };
+                  return categoryMap[category] || category;
+                };
                 return (
                   <button
                     key={cat}
@@ -1575,7 +1668,7 @@ const HouseRoutineModal: React.FC<HouseRoutineModalProps> = ({
                     style={isSelected ? { backgroundColor: config.color } : undefined}
                   >
                     {HOUSE_ROUTINE_CATEGORY_ICONS[cat]}
-                    {cat}
+                    {getCatLabel(cat)}
                   </button>
                 );
               })}
@@ -1668,9 +1761,27 @@ const HouseRoutineViewModal: React.FC<HouseRoutineViewModalProps> = ({
   t,
 }) => {
   const config = HOUSE_ROUTINE_CATEGORY_CONFIG[item.category];
+  
+  const getRoutineCategoryLabel = (category: HouseRoutineCategory): string => {
+    const categoryMap: Record<HouseRoutineCategory, string> = {
+      'House Rules': t['routine.category.house_rules'] || category,
+      'Routine': t['routine.category.routine'] || category,
+      'Meal Preparations': t['routine.category.meal_preparations'] || category,
+      'Child Care': t['routine.category.child_care'] || category,
+      'Cleaning': t['routine.category.cleaning'] || category,
+      'Grocery & Market': t['routine.category.grocery_market'] || category,
+      'Laundry & Wardrobe': t['routine.category.laundry_wardrobe'] || category,
+      'Safety & Emergency': t['routine.category.safety_emergency'] || category,
+      'Energy & Bills': t['routine.category.energy_bills'] || category,
+      'Helper Self-Care': t['routine.category.helper_self_care'] || category,
+      'Others': t['routine.category.others'] || category,
+    };
+    return categoryMap[category] || category;
+  };
+
   const displayCategory = item.category === "Others" && item.customCategory
     ? item.customCategory
-    : item.category;
+    : getRoutineCategoryLabel(item.category);
 
   return (
     <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
@@ -1684,7 +1795,7 @@ const HouseRoutineViewModal: React.FC<HouseRoutineViewModalProps> = ({
         <button 
           onClick={onClose} 
           className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center hover:bg-secondary transition-colors right-4 top-4 text-muted-foreground"
-          aria-label="Close"
+          aria-label={t['common.close'] || 'Close'}
         >
           <X size={20} />
         </button>

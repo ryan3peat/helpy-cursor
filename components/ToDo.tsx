@@ -729,9 +729,9 @@ const ToDo: React.FC<ToDoProps> = ({
   
   const getUserName = (userId?: string): string => {
     if (!userId) return '';
-    if (userId === currentUser.id) return 'You';
+    if (userId === currentUser.id) return t['common.you'] || 'You';
     const user = users.find(u => u.id === userId);
-    if (!user) return 'Deleted User';
+    if (!user) return t['common.deleted_user'] || 'Deleted User';
     return user.name.split(' ')[0] || '';
   };
 
@@ -1023,7 +1023,7 @@ const ToDo: React.FC<ToDoProps> = ({
                 />
               ) : (
                 <span className="flex-1 text-body text-muted-foreground">
-                  {activeSection === 'shopping' ? 'Add item...' : 'Add task...'}
+                  {activeSection === 'shopping' ? (t['todo.add_item'] || 'Add item...') : (t['todo.add_task'] || 'Add task...')}
                 </span>
               )}
               
@@ -1034,7 +1034,7 @@ const ToDo: React.FC<ToDoProps> = ({
                   openDetailedSheet();
                 }}
                 className="p-1.5 rounded-full bg-primary text-primary-foreground hover:opacity-90 transition-opacity shrink-0"
-                title="Add with details"
+                title={t['common.add_with_details'] || 'Add with details'}
               >
                 <Plus size={16} />
               </button>
@@ -1155,13 +1155,13 @@ const ToDo: React.FC<ToDoProps> = ({
               </button>
               
               {/* Clear All Button - Hidden for Helper */}
-              {showCompleted && !isHelper && (
+                              {showCompleted && !isHelper && (
                 <button
                   onClick={handleClearAllCompleted}
                   className="flex items-center gap-1.5 px-3 py-1.5 text-caption text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
                 >
                   <Trash2 size={14} />
-                  Clear All
+                  {t['todo.clear_all'] || 'Clear All'}
                 </button>
               )}
             </div>
@@ -1234,7 +1234,7 @@ const ToDo: React.FC<ToDoProps> = ({
                 setEditingItemId(null);
               }}
               className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center hover:bg-secondary transition-colors right-4 top-4 text-muted-foreground"
-              aria-label="Close"
+              aria-label={t['common.close'] || 'Close'}
             >
               <X size={20} />
             </button>
@@ -1243,8 +1243,12 @@ const ToDo: React.FC<ToDoProps> = ({
             <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
               <h2 className="text-title text-foreground">
                 {editingItemId 
-                  ? (sheetForm.type === 'shopping' ? 'Edit Shopping Item' : 'Edit Task')
-                  : (activeSection === 'shopping' ? 'Add Shopping Item' : 'Add Task')
+                  ? (sheetForm.type === 'shopping' 
+                      ? (t['todo.edit_shopping_item'] || 'Edit Shopping Item') 
+                      : (t['todo.edit_task'] || 'Edit Task'))
+                  : (activeSection === 'shopping' 
+                      ? (t['todo.add_shopping_item'] || 'Add Shopping Item') 
+                      : (t['common.add_task'] || 'Add Task'))
                 }
               </h2>
             </div>
@@ -1307,7 +1311,7 @@ const ToDo: React.FC<ToDoProps> = ({
                 <>
                   <div>
                     <label className="block text-caption text-muted-foreground tracking-wide mb-2">
-                      Due Date & Time
+                      {t['todo.due_date_time'] || 'Due Date & Time'}
                     </label>
                     {/* Date/time picker with transparent native input overlay for iOS compatibility */}
                     <div className="relative">
@@ -1316,7 +1320,7 @@ const ToDo: React.FC<ToDoProps> = ({
                         <span className={sheetForm.dueDate ? 'text-foreground' : 'text-muted-foreground'}>
                           {sheetForm.dueDate 
                             ? formatDateTime(sheetForm.dueDate, sheetForm.dueTime || '09:00')
-                            : 'Select date & time'
+                            : (t['todo.select_date_time'] || 'Select date & time')
                           }
                         </span>
                         <Calendar size={18} className="text-muted-foreground" />
@@ -1342,7 +1346,7 @@ const ToDo: React.FC<ToDoProps> = ({
                   
                   <div>
                     <label className="block text-caption text-muted-foreground tracking-wide mb-2">
-                      Repeat
+                      {t['todo.repeat'] || 'Repeat'}
                     </label>
                     <select
                       value={sheetForm.recurrence?.frequency || 'NONE'}
@@ -1386,30 +1390,44 @@ const ToDo: React.FC<ToDoProps> = ({
               {/* Category Selection */}
               <div>
                 <label className="block text-caption text-muted-foreground tracking-wide mb-2">
-                  Category
+                  {t['common.category'] || 'Category'}
                 </label>
                 <div className="flex gap-2">
-                  {categories.map(cat => (
-                    <button
-                      key={cat}
-                      onClick={() => setSheetForm(prev => ({ ...prev, category: cat }))}
-                      className={`flex-1 px-2 py-2 rounded-xl text-sm transition-all flex items-center justify-center gap-1 ${
-                        sheetForm.category === cat
-                          ? 'bg-primary text-primary-foreground'
-                          : 'bg-card text-foreground ring-1 ring-border hover:ring-input'
-                      }`}
-                    >
-                      {getCategoryIcon(cat, sheetForm.category === cat)}
-                      <span className="truncate">{cat}</span>
-                    </button>
-                  ))}
+                  {categories.map(cat => {
+                    const getCatLabel = (category: string): string => {
+                      if (activeSection === 'shopping') {
+                        if (category === ShoppingCategory.SUPERMARKET) return t['todo.category.supermarket'] || category;
+                        if (category === ShoppingCategory.WET_MARKET) return t['todo.category.wet_market'] || category;
+                        if (category === ShoppingCategory.OTHERS) return t['todo.category.others'] || category;
+                      } else {
+                        if (category === TaskCategory.HOME_CARE) return t['todo.category.home_care'] || category;
+                        if (category === TaskCategory.FAMILY_CARE) return t['todo.category.family_care'] || category;
+                        if (category === TaskCategory.OTHERS) return t['todo.category.others'] || category;
+                      }
+                      return category;
+                    };
+                    return (
+                      <button
+                        key={cat}
+                        onClick={() => setSheetForm(prev => ({ ...prev, category: cat }))}
+                        className={`flex-1 px-2 py-2 rounded-xl text-sm transition-all flex items-center justify-center gap-1 ${
+                          sheetForm.category === cat
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-card text-foreground ring-1 ring-border hover:ring-input'
+                        }`}
+                      >
+                        {getCategoryIcon(cat, sheetForm.category === cat)}
+                        <span className="truncate">{getCatLabel(cat)}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
               
               {/* Assignee Selection */}
               <div>
                 <label className="block text-caption text-muted-foreground tracking-wide mb-2">
-                  Assign to
+                  {t['todo.assign_to'] || 'Assign to'}
                 </label>
                 <div className="flex flex-wrap gap-2">
                   {users.filter(u => u.status === 'active').map(user => (
@@ -1429,7 +1447,7 @@ const ToDo: React.FC<ToDoProps> = ({
                           <UserIcon size={14} className="text-muted-foreground" />
                         </div>
                       )}
-                      <span>{user.id === currentUser.id ? 'You' : user.name.split(' ')[0]}</span>
+                      <span>{user.id === currentUser.id ? (t['todo.you'] || 'You') : user.name.split(' ')[0]}</span>
                     </button>
                   ))}
                 </div>
@@ -1459,8 +1477,8 @@ const ToDo: React.FC<ToDoProps> = ({
               >
                 <Check size={18} />
                 {editingItemId 
-                  ? 'Save Changes'
-                  : (activeSection === 'shopping' ? 'Add Item' : 'Add Task')
+                  ? (t['meals.save_changes'] || 'Save Changes')
+                  : (activeSection === 'shopping' ? (t['common.add_item'] || 'Add Item') : (t['common.add_task'] || 'Add Task'))
                 }
               </button>
             </div>

@@ -64,7 +64,7 @@ const getExpenseCategoryConfig = (category: string): ExpenseCategoryConfig => {
 };
 
 // Zoomable Image Component with touch gestures
-const ZoomableImage: React.FC<{ imageSrc: string; onClose: () => void }> = ({ imageSrc, onClose }) => {
+const ZoomableImage: React.FC<{ imageSrc: string; onClose: () => void; t: Record<string, string> }> = ({ imageSrc, onClose, t }) => {
   const [scale, setScale] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [lastTouch, setLastTouch] = useState<{ distance: number; center: { x: number; y: number } } | null>(null);
@@ -149,7 +149,7 @@ const ZoomableImage: React.FC<{ imageSrc: string; onClose: () => void }> = ({ im
         <button
           onClick={onClose}
           className="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors z-10"
-          aria-label="Close"
+          aria-label={t['common.close'] || 'Close'}
         >
           <X size={24} />
         </button>
@@ -176,8 +176,10 @@ const ZoomableImage: React.FC<{ imageSrc: string; onClose: () => void }> = ({ im
             draggable={false}
           />
         </div>
-        <p className="text-caption text-white/70 mt-4 text-center">
-          {scale > 1 ? 'Double tap to reset • Drag to pan' : 'Pinch to zoom • Double tap to zoom • Tap outside to close'}
+                <p className="text-caption text-white/70 mt-4 text-center">
+          {scale > 1 
+            ? `${t['expenses.double_tap_reset'] || 'Double tap to reset'} • ${t['expenses.drag_to_pan'] || 'Drag to pan'}` 
+            : `${t['expenses.pinch_to_zoom'] || 'Pinch to zoom'} • ${t['expenses.double_tap_zoom'] || 'Double tap to zoom'} • ${t['expenses.tap_outside_close'] || 'Tap outside to close'}`}
         </p>
       </div>
     </div>
@@ -412,14 +414,19 @@ const Expenses: React.FC<ExpensesProps> = ({
     });
   }, [localExpenses, selectedMonth, selectedYear, isHelper, currentUser.id]);
 
-  // Month names for display
-  const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const MONTH_NAMES_FULL = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  // Month names for display - locale-based
+  const langCode = currentLang === 'en' ? 'en-GB' : currentLang;
+  const MONTH_NAMES = Array.from({ length: 12 }, (_, i) => 
+    new Date(2000, i, 1).toLocaleDateString(langCode, { month: 'short' })
+  );
+  const MONTH_NAMES_FULL = Array.from({ length: 12 }, (_, i) => 
+    new Date(2000, i, 1).toLocaleDateString(langCode, { month: 'long' })
+  );
 
   // Format selected month for display
   const isAllTime = selectedMonth === null || selectedYear === null;
   const selectedMonthLabel = isAllTime
-    ? 'All Expenses'
+    ? (t['expenses.all_expenses'] || 'All Expenses')
     : `${MONTH_NAMES_FULL[selectedMonth]} ${selectedYear}`;
 
   // ─────────────────────────────────────────────────────────────────
@@ -503,7 +510,7 @@ const Expenses: React.FC<ExpensesProps> = ({
     // Validate amount before saving
     const amount = parseFloat(editAmount);
     if (!amount || amount <= 0) {
-      setError('Please enter a valid amount');
+      setError(t['expenses.error_invalid_amount'] || 'Please enter a valid amount');
       return;
     }
 
@@ -707,6 +714,19 @@ const Expenses: React.FC<ExpensesProps> = ({
   // Total for selected month
   const totalAmount = filteredExpenses.reduce((acc, curr) => acc + curr.amount, 0);
 
+  // Category label translation helper
+  const getCategoryLabel = (category: string): string => {
+    const categoryMap: Record<string, string> = {
+      'Housing & Utilities': t['expenses.category.housing_utilities'] || category,
+      'Food & Daily Needs': t['expenses.category.food_daily'] || category,
+      'Transport & Travel': t['expenses.category.transport_travel'] || category,
+      'Health & Personal Care': t['expenses.category.health_personal'] || category,
+      'Fun & Lifestyle': t['expenses.category.fun_lifestyle'] || category,
+      'Miscellaneous': t['expenses.category.miscellaneous'] || category,
+    };
+    return categoryMap[category] || category;
+  };
+
   return (
     <div className="min-h-screen bg-background pb-40">
       <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
@@ -850,7 +870,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                       <div className="text-center">
                         <p className="text-title text-foreground font-semibold">
-                          {isAllTime ? 'All' : MONTH_NAMES[selectedMonth]}
+                          {isAllTime ? (t['common.all'] || 'All') : MONTH_NAMES[selectedMonth]}
                         </p>
                         {!isAllTime && (
                           <p className="text-caption text-muted-foreground">{selectedYear}</p>
@@ -893,7 +913,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                             {item.config.icon}
                           </div>
                           <div>
-                            <span className="text-body text-foreground">{item.category}</span>
+                            <span className="text-body text-foreground">{getCategoryLabel(item.category)}</span>
                             <span className="text-caption text-muted-foreground ml-2">{percentage}%</span>
                           </div>
                         </div>
@@ -913,10 +933,12 @@ const Expenses: React.FC<ExpensesProps> = ({
                     <Receipt size={28} className="text-muted-foreground" />
                   </div>
                       <p className="text-body text-foreground">
-                        {isAllTime ? 'No expenses yet' : `No expenses in ${MONTH_NAMES_FULL[selectedMonth]}`}
+                        {isAllTime 
+                          ? (t['expenses.no_expenses_yet'] || 'No expenses yet') 
+                          : `${t['expenses.no_expenses_month'] || 'No expenses in'} ${MONTH_NAMES_FULL[selectedMonth]}`}
                       </p>
                   <p className="text-caption text-muted-foreground mt-1">
-                    Tap + to add your first expense
+                    {t['expenses.tap_add_first'] || 'Tap + to add your first expense'}
                   </p>
                 </div>
               ) : (
@@ -945,7 +967,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                 <p className="text-title text-foreground truncate">
                   <TranslatedMerchantName expense={expense} currentLang={currentLang} onUpdate={onUpdate} />
                 </p>
-                <p className="text-caption text-muted-foreground">{expense.category}</p>
+                <p className="text-caption text-muted-foreground">{getCategoryLabel(expense.category)}</p>
                 <p className="text-caption text-muted-foreground">
                   {new Date(expense.date).toLocaleDateString(
                     currentLang === 'en' ? 'en-GB' : currentLang,
@@ -985,7 +1007,7 @@ const Expenses: React.FC<ExpensesProps> = ({
         className={`fixed bottom-28 right-6 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-colors flex items-center justify-center z-30 disabled:opacity-50 ${
           isModalOpen ? 'fab-hiding' : ''
         }`}
-        aria-label="Add Expense"
+        aria-label={t['expenses.add_expense'] || 'Add Expense'}
       >
         <Plus size={24} />
               </button>
@@ -1025,7 +1047,7 @@ const Expenses: React.FC<ExpensesProps> = ({
             <button
               onClick={closeAddExpenseSheet}
               className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center hover:bg-secondary transition-colors right-4 top-4 text-muted-foreground"
-              aria-label="Close"
+              aria-label={t['common.close'] || 'Close'}
             >
               <X size={20} />
             </button>
@@ -1038,7 +1060,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                   {addExpenseStage === 'manual' && (t['expenses.enter_expense'] || 'Enter Expense')}
                   {addExpenseStage === 'ocr' && (t['expenses.confirm_receipt'] || 'Confirm Receipt')}
                 </h2>
-                <p className="text-body text-muted-foreground mt-1">in {getCurrencySymbol()}</p>
+                <p className="text-body text-muted-foreground mt-1">{t['expenses.in_currency'] || 'in'} {getCurrencySymbol()}</p>
               </div>
           </div>
 
@@ -1068,7 +1090,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                 {/* Divider */}
                 <div className="flex items-center gap-3 py-2">
                   <div className="flex-1 h-px bg-border" />
-                  <span className="text-caption text-muted-foreground">or</span>
+                  <span className="text-caption text-muted-foreground">{t['expenses.or'] || 'or'}</span>
                   <div className="flex-1 h-px bg-border" />
           </div>
 
@@ -1078,7 +1100,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                   className="w-full py-4 rounded-xl bg-secondary border border-border flex items-center justify-center gap-3 text-title text-foreground hover:bg-secondary/80 transition-colors"
                 >
                   <Pencil size={20} />
-                  Enter Manually
+                  {t['expenses.enter_manually'] || 'Enter Manually'}
                 </button>
         </div>
       )}
@@ -1092,7 +1114,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                 <button
                   onClick={() => setAddExpenseStage('options')}
                   className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center hover:bg-secondary transition-colors left-4 top-4 text-muted-foreground"
-                  aria-label="Back"
+                  aria-label={t['common.back'] || 'Back'}
                 >
                   <ArrowLeft size={20} />
               </button>
@@ -1101,7 +1123,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                   {/* Amount - Auto-focused */}
                   <div>
                     <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
-                      Amount
+                      {t['expenses.amount'] || 'Amount'}
                     </label>
                     <div className="flex items-center gap-3">
                       <span className="text-display text-foreground flex-shrink-0">
@@ -1129,7 +1151,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                   {/* Shop Name */}
                   <div>
                     <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
-                      Shop Name
+                      {t['expenses.shop_name'] || 'Shop Name'}
                     </label>
                     <input
                       type="text"
@@ -1144,7 +1166,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
-                        Category
+                        {t['common.category'] || 'Category'}
                       </label>
                       <select
                         value={editCategory}
@@ -1173,7 +1195,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                     </div>
                     <div>
                       <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
-                        Date
+                        {t['expenses.date'] || 'Date'}
                       </label>
                       <input
                         type="date"
@@ -1196,7 +1218,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                       <span className="animate-pulse">{t['common.saving'] || 'Saving...'}</span>
                     ) : (
                       <>
-                        <Check size={18} /> Save
+                        <Check size={18} /> {t['common.save'] || 'Save'}
                       </>
                     )}
                   </button>
@@ -1216,7 +1238,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                     setAddExpenseStage('options');
                   }}
                   className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center hover:bg-secondary transition-colors left-4 top-4 text-muted-foreground"
-                  aria-label="Back"
+                  aria-label={t['common.back'] || 'Back'}
                 >
                   <ArrowLeft size={20} />
                 </button>
@@ -1234,7 +1256,7 @@ const Expenses: React.FC<ExpensesProps> = ({
               />
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
                 <span className="text-caption text-white opacity-0 group-hover:opacity-100 bg-black/50 px-2 py-1 rounded">
-                  Tap to zoom
+                  {t['expenses.tap_to_zoom'] || 'Tap to zoom'}
                 </span>
               </div>
             </div>
@@ -1242,7 +1264,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                   {/* Amount */}
               <div>
                     <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
-                      Amount
+                      {t['expenses.amount'] || 'Amount'}
                     </label>
                     <div className="flex items-center gap-3">
                       <span className="text-display text-foreground flex-shrink-0">
@@ -1269,7 +1291,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                   {/* Shop Name */}
               <div>
                     <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
-                      Shop Name
+                      {t['expenses.shop_name'] || 'Shop Name'}
                     </label>
                 <input
                   type="text"
@@ -1284,7 +1306,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                   <div className="grid grid-cols-2 gap-3">
               <div>
                       <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
-                        Category
+                        {t['common.category'] || 'Category'}
                       </label>
                 <select
                   value={editCategory}
@@ -1293,14 +1315,14 @@ const Expenses: React.FC<ExpensesProps> = ({
                 >
                   {EXPENSE_CATEGORIES.map((cat) => (
                     <option key={cat} value={cat}>
-                      {cat}
+                      {getCategoryLabel(cat)}
                     </option>
                   ))}
                 </select>
               </div>
               <div>
                       <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
-                        Date
+                        {t['expenses.date'] || 'Date'}
                       </label>
                 <input
                   type="date"
@@ -1323,7 +1345,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                       <span className="animate-pulse">{t['common.saving'] || 'Saving...'}</span>
                     ) : (
                       <>
-                        <Check size={18} /> Save
+                        <Check size={18} /> {t['common.save'] || 'Save'}
                       </>
                     )}
                   </button>
@@ -1352,7 +1374,7 @@ const Expenses: React.FC<ExpensesProps> = ({
             <button
               onClick={closeExistingModal}
               className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center hover:bg-secondary transition-colors right-4 top-4 text-muted-foreground"
-              aria-label="Close"
+              aria-label={t['common.close'] || 'Close'}
             >
               <X size={20} />
             </button>
@@ -1361,7 +1383,7 @@ const Expenses: React.FC<ExpensesProps> = ({
             <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
               <h2 className="text-title text-foreground">{selectedExpense.merchant}</h2>
               <p className="text-caption text-muted-foreground">
-                {selectedExpense.category || 'Uncategorized'} ·{' '}
+                {getCategoryLabel(selectedExpense.category || 'Miscellaneous')} ·{' '}
                 {new Date(selectedExpense.date).toLocaleDateString(
                   currentLang === 'en' ? 'en-GB' : currentLang,
                   { day: 'numeric', month: 'short', year: 'numeric' }
@@ -1381,7 +1403,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                 />
               ) : (
                 <div className="w-full h-28 bg-secondary flex items-center justify-center text-muted-foreground">
-                  No receipt image
+                  {t['expenses.no_receipt_image'] || 'No receipt image'}
                 </div>
               )}
             </div>
@@ -1400,7 +1422,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                   {/* Amount - Full width, prominent */}
                   <div>
                     <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
-                      Amount
+                      {t['expenses.amount'] || 'Amount'}
                     </label>
                     <div className="flex items-center gap-3">
                       <span className="text-display text-foreground flex-shrink-0">
@@ -1427,7 +1449,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                   {/* Shop Name - Full width */}
                   <div>
                     <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
-                      Shop Name
+                      {t['expenses.shop_name'] || 'Shop Name'}
                     </label>
                     <input
                       type="text"
@@ -1442,7 +1464,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
-                        Category
+                        {t['common.category'] || 'Category'}
                       </label>
                       <select
                         className="w-full px-4 py-3 rounded-lg bg-muted border border-border focus:border-primary outline-none transition-all text-body"
@@ -1451,14 +1473,14 @@ const Expenses: React.FC<ExpensesProps> = ({
                       >
                         {EXPENSE_CATEGORIES.map((c) => (
                           <option key={c} value={c}>
-                            {c}
+                            {getCategoryLabel(c)}
                           </option>
                         ))}
                       </select>
                     </div>
                     <div>
                       <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
-                        Date
+                        {t['expenses.date'] || 'Date'}
                       </label>
                       <input
                         type="date"
@@ -1507,7 +1529,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                     }}
                     disabled={savingExisting}
                   >
-                    <Edit size={18} /> Edit
+                    <Edit size={18} /> {t['common.edit'] || 'Edit'}
                   </button>
                 </div>
               )}
@@ -1531,14 +1553,14 @@ const Expenses: React.FC<ExpensesProps> = ({
                     onClick={() => setConfirmDeleteExisting(false)}
                     disabled={savingExisting}
                   >
-                    Cancel
+                    {t['common.cancel'] || 'Cancel'}
                   </button>
                   <button
                     className="flex-1 py-3.5 rounded-xl bg-destructive text-primary-foreground text-body hover:bg-destructive/90 transition-colors disabled:opacity-50"
                     onClick={confirmExistingDelete}
                     disabled={savingExisting}
                   >
-                    {savingExisting ? 'Deleting...' : 'Yes, delete'}
+                    {savingExisting ? (t['common.deleting'] || 'Deleting...') : (t['expenses.yes_delete'] || 'Yes, delete')}
                   </button>
                 </div>
               )}
@@ -1554,6 +1576,7 @@ const Expenses: React.FC<ExpensesProps> = ({
         <ZoomableImage
           imageSrc={pendingReceipt.thumbnailBase64}
           onClose={() => setIsImageZoomed(false)}
+          t={t}
         />
       )}
 
@@ -1575,7 +1598,7 @@ const Expenses: React.FC<ExpensesProps> = ({
             <button
               onClick={() => setIsMonthPickerOpen(false)}
               className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center hover:bg-secondary transition-colors right-4 top-4 text-muted-foreground"
-              aria-label="Close"
+              aria-label={t['common.close'] || 'Close'}
             >
               <X size={20} />
             </button>
@@ -1645,7 +1668,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                 }}
                 className="w-full py-3.5 rounded-xl bg-secondary text-foreground text-body hover:bg-secondary/80 transition-colors"
               >
-                Go to Current Month
+                {t['expenses.go_current_month'] || 'Go to Current Month'}
               </button>
               <button
                 onClick={() => {
@@ -1655,7 +1678,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                 }}
                 className="w-full mt-3 py-3.5 rounded-xl bg-card text-foreground text-body border border-border hover:bg-secondary/60 transition-colors"
               >
-                Show All Expenses
+                {t['expenses.show_all_expenses'] || 'Show All Expenses'}
               </button>
             </div>
           </div>

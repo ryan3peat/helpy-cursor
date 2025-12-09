@@ -471,4 +471,139 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
 
   // Maps
   'maps.google_not_installed': 'Google Maps is not installed. Open in Apple Maps instead?',
+
+  // Expenses - Form Labels & Buttons
+  'expenses.shop_name': 'Shop Name',
+  'expenses.date': 'Date',
+  'expenses.enter_manually': 'Enter Manually',
+  'expenses.or': 'or',
+  'expenses.tap_to_zoom': 'Tap to zoom',
+  'expenses.no_receipt_image': 'No receipt image',
+  'expenses.no_expenses_yet': 'No expenses yet',
+  'expenses.no_expenses_month': 'No expenses in',
+  'expenses.tap_add_first': 'Tap + to add your first expense',
+  'expenses.go_current_month': 'Go to Current Month',
+  'expenses.show_all_expenses': 'Show All Expenses',
+  'expenses.yes_delete': 'Yes, delete',
+  'expenses.in_currency': 'in',
+
+  // Expenses - Image Viewer
+  'expenses.double_tap_reset': 'Double tap to reset',
+  'expenses.drag_to_pan': 'Drag to pan',
+  'expenses.pinch_to_zoom': 'Pinch to zoom',
+  'expenses.double_tap_zoom': 'Double tap to zoom',
+  'expenses.tap_outside_close': 'Tap outside to close',
+
+  // House Routine Categories
+  'routine.category.house_rules': 'House Rules',
+  'routine.category.routine': 'Routine',
+  'routine.category.meal_preparations': 'Meal Preparations',
+  'routine.category.child_care': 'Child Care',
+  'routine.category.cleaning': 'Cleaning',
+  'routine.category.grocery_market': 'Grocery & Market',
+  'routine.category.laundry_wardrobe': 'Laundry & Wardrobe',
+  'routine.category.safety_emergency': 'Safety & Emergency',
+  'routine.category.energy_bills': 'Energy & Bills',
+  'routine.category.helper_self_care': 'Helper Self-Care',
+  'routine.category.others': 'Others',
+
+  // HouseholdInfo - Form Labels
+  'info.address': 'Address',
+  'info.phone_number': 'Phone Number',
+  'info.note': 'Note',
+  'info.tap_see_more': 'tap to see more',
+  'info.add_new_info': 'Add New Info',
+  'info.no_routines': 'No routines yet',
+  'info.add_routines_hint': 'Add house routines and instructions for your household',
+  'info.edit_routine': 'Edit Routine',
+  'info.add_routine': 'Add Routine',
+  'info.custom_category': 'Custom Category Name',
+  'info.custom_category_placeholder': 'Enter custom category',
+  'info.routine_name_placeholder': 'e.g., How to make the bed',
+  'info.routine_note_placeholder': 'Enter the instructions, steps, or details...',
+  'info.no_note': 'No details provided.',
+
+  // ToDo - Form Labels
+  'todo.add_item': 'Add item...',
+  'todo.add_task': 'Add task...',
+  'todo.edit_shopping_item': 'Edit Shopping Item',
+  'todo.edit_task': 'Edit Task',
+  'todo.add_shopping_item': 'Add Shopping Item',
+  'todo.due_date_time': 'Due Date & Time',
+  'todo.select_date_time': 'Select date & time',
+  'todo.repeat': 'Repeat',
+  'todo.assign_to': 'Assign to',
+  'todo.clear_all': 'Clear All',
+  'todo.you': 'You',
+
+  // ToDo - Recurrence Text
+  'recurrence.repeats_every_day': 'Repeats every day',
+  'recurrence.every': 'Every',
+  'recurrence.weekly': 'Weekly',
+  'recurrence.on_the': 'On the',
+  'recurrence.of_each_month': 'of each month',
+  'recurrence.monthly': 'Monthly',
+
+  // Common - Additional
+  'common.you': 'You',
+  'common.deleted_user': 'Deleted User',
+  'common.add_item': 'Add Item',
+  'common.add_task': 'Add Task',
+  'common.add_with_details': 'Add with details',
+  'common.back': 'Back',
+
+  // Profile - Additional
+  'profile.delete_member': 'Delete member',
+
+  // Meals - Additional
+  'meals.meal_type': 'Meal Type',
+  'meals.join': 'Join',
+
+  // Dashboard - Connection Status
+  'dashboard.realtime_active': 'Real-time sync active',
+  'dashboard.connecting': 'Connecting...',
+  'dashboard.disconnected': 'Disconnected - tap to reconnect',
+
+  // Expenses - Additional
+  'expenses.all_expenses': 'All Expenses',
+  'expenses.error_invalid_amount': 'Please enter a valid amount',
+
+  // Common - Additional
+  'common.na': 'N/A',
+  'common.adding': 'Adding...',
+
+  // Error Messages
+  'error.add_user': 'Failed to add user. Please try again.',
+  'error.generate_invite': 'Failed to generate new invite link',
+  'error.select_image': 'Please select an image file',
+  'error.image_too_large': 'Image size must be less than 5MB',
+  'error.upload_image': 'Failed to upload image. Please try again.',
+  'error.cancel_subscription': 'Failed to cancel subscription. Please try again.',
+  'error.delete_account_unable': 'Unable to delete account. Please try again.',
+  'error.delete_account': 'Failed to delete account. Please try again or contact support.',
+
+  // Settings - Push Notifications
+  'settings.push_not_supported': 'Not supported in this browser',
+  'settings.push_blocked': 'Blocked - enable in browser settings',
+  'settings.push_description': 'Get notified when family adds items',
+
+  // Plan Features
+  'plan.feature.family_6': 'Up to 6 family members',
+  'plan.feature.helpers_2': '2 helpers',
+  'plan.feature.receipt_scan': 'Receipt scanning',
+  'plan.feature.priority_support': 'Priority support',
+  'plan.feature.family_10': 'Up to 10 family members',
+  'plan.feature.unlimited_helpers': 'Unlimited helpers',
+  'plan.feature.advanced_ai': 'Advanced AI',
+  'plan.feature.data_export': 'Data export',
+  'plan.feature.premium_support': 'Premium support',
+
+  // Household Switch Modal
+  'household.already_member': 'Already a Member',
+  'household.already_member_of': 'You are already a member of',
+  'household.possessive_household': "'s household",
+  'household.invited_to_join': "You've been invited to join:",
+  'household.switch_to_this': 'Switch to This Household',
+  'household.stay_in_current': 'Stay in Current Household',
+  'household.only_one_at_time': 'You can only belong to one household at a time',
 };

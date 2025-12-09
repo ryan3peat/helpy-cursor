@@ -307,13 +307,27 @@ const Dashboard: React.FC<DashboardProps> = ({
           <div className="flex gap-2">
             <button
               onClick={() => setShowLangModal(true)}
-              className="w-14 h-14 rounded-full bg-card border border-border shadow-sm flex flex-col items-center justify-center text-muted-foreground"
+              className="relative w-14 h-14 rounded-full bg-card border border-border shadow-sm flex flex-col items-center justify-center text-muted-foreground overflow-visible"
             >
-              {isTranslating ? (
-                <Loader2 size={18} className="animate-spin text-primary" />
-              ) : (
-                <Languages size={18} />
+              {/* Spinning ring overlay when translating - positioned outside button edge */}
+              {isTranslating && (
+                <svg 
+                  className="absolute -inset-1 w-[calc(100%+8px)] h-[calc(100%+8px)] animate-spin"
+                  viewBox="0 0 64 64"
+                >
+                  <circle
+                    cx="32"
+                    cy="32"
+                    r="30"
+                    fill="none"
+                    stroke="#3EAFD2"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeDasharray="45 140"
+                  />
+                </svg>
               )}
+              <Languages size={18} />
               <span className="text-caption text-primary mt-0.5">
                 {(() => {
                   switch(currentLang) {
@@ -575,10 +589,10 @@ const Dashboard: React.FC<DashboardProps> = ({
             }`}
             title={
               realtimeStatus === 'connected' 
-                ? 'Real-time sync active' 
+                ? (t['dashboard.realtime_active'] || 'Real-time sync active')
                 : realtimeStatus === 'connecting'
-                  ? 'Connecting...'
-                  : 'Disconnected - tap to reconnect'
+                  ? (t['dashboard.connecting'] || 'Connecting...')
+                  : (t['dashboard.disconnected'] || 'Disconnected - tap to reconnect')
             }
           />
         </div>
@@ -600,7 +614,7 @@ const Dashboard: React.FC<DashboardProps> = ({
             <button
               onClick={() => setShowLangModal(false)}
               className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center hover:bg-secondary transition-colors right-4 top-4 text-muted-foreground"
-              aria-label="Close"
+              aria-label={t['common.close'] || 'Close'}
             >
               <X size={20} />
             </button>

@@ -104,3 +104,4 @@ Copy the Public Key and Private Key to use in the secrets above.
 **For quickest setup, use Option 4 (Dashboard)** - it's the easiest and doesn't require any CLI installation.
 
 **For automation/CI, use Option 1 (npx)** - works without installation and can be scripted.
+

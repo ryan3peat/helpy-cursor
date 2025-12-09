@@ -118,3 +118,4 @@ FROM todo_items;
 1. Run verification: `migrations/009_verify_notifications.sql`
 2. Check edge function logs
 3. See full guide: `docs/NOTIFICATION_DEPLOYMENT_GUIDE.md`
+

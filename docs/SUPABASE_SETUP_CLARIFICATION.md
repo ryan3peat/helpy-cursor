@@ -46,3 +46,4 @@ Most developers use hosted Supabase for development and production.
 ## If You Want Local Supabase (Optional)
 
 See installation instructions below. But you probably don't need it unless you specifically want local development.
+

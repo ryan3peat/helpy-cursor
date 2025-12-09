@@ -186,3 +186,4 @@ Only install local Supabase if you specifically want to:
 - Test changes offline
 - Develop without internet
 - Test migrations before deploying
+

@@ -314,3 +314,4 @@ If notifications still don't work after following this guide:
 2. Check edge function logs for errors
 3. Verify all environment variables are set correctly
 4. Test with browser DevTools open to see console messages
+

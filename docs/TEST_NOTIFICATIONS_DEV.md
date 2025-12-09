@@ -292,3 +292,4 @@ Once notifications work in dev:
    - Add notification preferences (users choose what to be notified about)
    - Add in-app notification center (display from `notifications` table)
    - Add notification sounds/badges
+

@@ -59,3 +59,4 @@ SELECT
   '2. Edge Function Secrets: Dashboard → Edge Functions → send-notification → Settings → Secrets' as check2,
   '3. Required Secrets: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT' as check3,
   '4. Edge Function Logs: Dashboard → Edge Functions → send-notification → Logs' as check4;
+

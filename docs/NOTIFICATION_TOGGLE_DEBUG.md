@@ -87,3 +87,4 @@ If not, run: `migrations/014_verify_notifications_default.sql`
 4. Check console for `[Push]` messages
 5. Check database: `SELECT notifications_enabled FROM users WHERE id = 'your-id'`
 6. Should be `true` even if subscription failed
+

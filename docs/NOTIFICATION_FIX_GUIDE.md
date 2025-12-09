@@ -163,3 +163,4 @@ LEFT JOIN users u2 ON n.triggered_by_user_id = u2.id
 ORDER BY n.created_at DESC
 LIMIT 10;
 ```
+

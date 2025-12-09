@@ -432,6 +432,7 @@ const Expenses: React.FC<ExpensesProps> = ({
     setEditCategory(EXPENSE_CATEGORIES[0]);
     setEditDate(new Date().toISOString().split('T')[0]);
     setPendingReceipt(null);
+    setError(null); // Clear any previous errors
     setAddExpenseStage('options');
   };
 
@@ -537,10 +538,9 @@ const Expenses: React.FC<ExpensesProps> = ({
       merchantTranslations: {},
     };
 
-    // STEP 1: Save the expense to database (this is the critical part)
     let savedExpenseId: string | null = null;
-    let expenseSavedSuccessfully = false;
-    
+    let expenseLikelySaved = false; // optimistic add already showed it, or onAdd returned
+
     try {
       if (onAdd) {
         console.log('[Expenses] Calling onAdd with expense ID:', newExpense.id);
@@ -570,39 +570,36 @@ const Expenses: React.FC<ExpensesProps> = ({
             console.warn('[Expenses] onAdd returned non-UUID ID:', savedExpense.id);
           }
         }
+        expenseLikelySaved = true;
       }
-      
-      // Mark expense as saved successfully - the critical operation succeeded
-      expenseSavedSuccessfully = true;
-      console.log('[Expenses] Expense saved successfully');
-      
+
+      // Link receipt (non-blocking)
+      if (pendingReceipt && savedExpenseId) {
+        try {
+          await new Promise(resolve => setTimeout(resolve, 200)); // ensure commit
+          console.log('[Expenses] Linking receipt to expense ID (UUID):', savedExpenseId);
+          await linkReceiptToExpense(pendingReceipt.receiptId, savedExpenseId);
+          console.log('[Expenses] Receipt linked to expense successfully');
+        } catch (linkError) {
+          console.warn('[Expenses] Failed to link receipt (non-fatal):', linkError);
+        }
+      } else if (pendingReceipt) {
+        console.warn('[Expenses] Cannot link receipt - no valid expense UUID available');
+      }
+
     } catch (addError) {
       console.error('[Expenses] Error saving expense:', addError);
-      setError(addError instanceof Error ? addError.message : 'Failed to save expense. Please try again.');
-      setIsSaving(false);
-      return; // Don't close sheet on expense save failure
-    }
-
-    // STEP 2: Link receipt to expense (non-critical - don't block on failure)
-    if (pendingReceipt && savedExpenseId) {
-      try {
-        // Small delay to ensure database transaction is committed
-        await new Promise(resolve => setTimeout(resolve, 200));
-        console.log('[Expenses] Linking receipt to expense ID (UUID):', savedExpenseId);
-        await linkReceiptToExpense(pendingReceipt.receiptId, savedExpenseId);
-        console.log('[Expenses] Receipt linked to expense successfully');
-      } catch (linkError) {
-        // Log but don't show error - expense was saved, receipt linking is secondary
-        console.warn('[Expenses] Failed to link receipt (non-fatal):', linkError);
+      if (!expenseLikelySaved) {
+        setError(addError instanceof Error ? addError.message : 'Failed to save expense. Please try again.');
+      } else {
+        // Expense was likely saved (optimistic or returned), so avoid blocking banner
+        console.warn('[Expenses] Expense likely saved; suppressing error banner.');
       }
-    } else if (pendingReceipt) {
-      console.warn('[Expenses] Cannot link receipt - no valid expense UUID available');
+    } finally {
+      // Always close dialog and clear saving state so the user isn't stuck
+      closeAddExpenseSheet();
+      setIsSaving(false);
     }
-
-    // STEP 3: Close the dialog (expense was saved successfully)
-    console.log('[Expenses] Closing expense sheet');
-    closeAddExpenseSheet();
-    setIsSaving(false);
   };
 
   // ─────────────────────────────────────────────────────────────────

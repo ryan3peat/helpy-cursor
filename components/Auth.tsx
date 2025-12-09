@@ -143,7 +143,8 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                 avatar: activatedUser.avatar,
                 allergies: activatedUser.allergies || [],
                 preferences: activatedUser.preferences || [],
-                status: 'active'
+                status: 'active',
+                notificationsEnabled: activatedUser.notifications_enabled ?? true
               });
               
               // Reset state after successful login
@@ -204,7 +205,8 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
             avatar: activatedUser.avatar,
             allergies: activatedUser.allergies || [],
             preferences: activatedUser.preferences || [],
-            status: 'active'
+            status: 'active',
+            notificationsEnabled: activatedUser.notifications_enabled ?? true
           });
           setIsCreatingUser(false);
           console.log('✅ [Auth] onLogin() called successfully, resetting isCreatingUser');
@@ -239,7 +241,8 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
           avatar: existingUser.avatar,
           allergies: existingUser.allergies || [],
           preferences: existingUser.preferences || [],
-          status: existingUser.status || 'active'
+          status: existingUser.status || 'active',
+          notificationsEnabled: existingUser.notifications_enabled ?? true
         });
         setIsCreatingUser(false);
         console.log('✅ [Auth] onLogin() called successfully, resetting isCreatingUser');
@@ -285,7 +288,8 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
             avatar: existingUserByEmail.avatar,
             allergies: existingUserByEmail.allergies || [],
             preferences: existingUserByEmail.preferences || [],
-            status: existingUserByEmail.status || 'active'
+            status: existingUserByEmail.status || 'active',
+            notificationsEnabled: existingUserByEmail.notifications_enabled ?? true
           });
           setIsCreatingUser(false);
           console.log('✅ [Auth] onLogin() called successfully, resetting isCreatingUser');
@@ -338,7 +342,8 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                 avatar: activatedUser.avatar,
                 allergies: activatedUser.allergies || [],
                 preferences: activatedUser.preferences || [],
-                status: 'active'
+                status: 'active',
+                notificationsEnabled: activatedUser.notifications_enabled ?? true
               });
               setIsCreatingUser(false);
               console.log('✅ [Auth] onLogin() called successfully, resetting isCreatingUser');
@@ -377,7 +382,8 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
           avatar: clerkUser.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${clerkUser.firstName || 'User'}`,
           allergies: [],
           preferences: [],
-          status: 'active'
+          status: 'active',
+          notifications_enabled: true  // Explicitly enable notifications for new users
         }])
         .select()
         .single();
@@ -488,7 +494,8 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                 avatar: existingUserByEmail.avatar,
                 allergies: existingUserByEmail.allergies || [],
                 preferences: existingUserByEmail.preferences || [],
-                status: existingUserByEmail.status || 'active'
+                status: existingUserByEmail.status || 'active',
+                notificationsEnabled: existingUserByEmail.notifications_enabled ?? true
               });
               setIsCreatingUser(false);
               return;
@@ -502,7 +509,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
       console.log('✅ [Auth] User created:', createdUser);
       console.log('✅ [Auth] Calling onLogin() with new user');
 
-      // Login
+      // Login - new users default to notifications enabled
       onLogin({
         id: createdUser.clerk_id,
         householdId: createdUser.household_id,
@@ -512,7 +519,8 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
         avatar: createdUser.avatar,
         allergies: createdUser.allergies || [],
         preferences: createdUser.preferences || [],
-        status: 'active'
+        status: 'active',
+        notificationsEnabled: createdUser.notifications_enabled ?? true
       });
       setIsCreatingUser(false);
       console.log('✅ [Auth] onLogin() called successfully, resetting isCreatingUser');
@@ -558,7 +566,8 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
         avatar: existingUser.avatar,
         allergies: existingUser.allergies || [],
         preferences: existingUser.preferences || [],
-        status: existingUser.status || 'active'
+        status: existingUser.status || 'active',
+        notificationsEnabled: existingUser.notifications_enabled ?? true
       });
       setIsCreatingUser(false);
     } else {
@@ -621,7 +630,8 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
             avatar: activatedUser.avatar,
             allergies: activatedUser.allergies || [],
             preferences: activatedUser.preferences || [],
-            status: 'active'
+            status: 'active',
+            notificationsEnabled: activatedUser.notifications_enabled ?? true
           });
           setIsCreatingUser(false);
           return;
@@ -653,7 +663,8 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
           avatar: updatedUser.avatar,
           allergies: updatedUser.allergies || [],
           preferences: updatedUser.preferences || [],
-          status: updatedUser.status || 'active'
+          status: updatedUser.status || 'active',
+          notificationsEnabled: updatedUser.notifications_enabled ?? true
         });
         setIsCreatingUser(false);
       } else {

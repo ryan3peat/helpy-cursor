@@ -1839,7 +1839,7 @@ const Profile: React.FC<ProfileProps> = ({
                             
                             // Then unsubscribe (non-blocking)
                             try {
-                              await unsubscribeFromPush(currentUser.id);
+                              await unsubscribeFromPush(currentUser.id, currentUser.householdId);
                               console.log('[Profile] Successfully unsubscribed from push notifications');
                             } catch (unsubError) {
                               console.error('[Profile] Error unsubscribing from push:', unsubError);

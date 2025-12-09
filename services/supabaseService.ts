@@ -436,9 +436,23 @@ export async function updateItem(
       console.log('⚠️ Removing country_code from update (column does not exist in database)');
       delete snakeCaseUpdates.country_code;
     }
+    
+    // Convert first_name + last_name to 'name' field (database only has 'name' column)
+    if ('first_name' in snakeCaseUpdates || 'last_name' in snakeCaseUpdates) {
+      const firstName = snakeCaseUpdates.first_name || '';
+      const lastName = snakeCaseUpdates.last_name || '';
+      const combinedName = [firstName, lastName].filter(Boolean).join(' ').trim();
+      if (combinedName) {
+        snakeCaseUpdates.name = combinedName;
+        console.log(`🔄 Combined first_name + last_name into name: "${combinedName}"`);
+      }
+      delete snakeCaseUpdates.first_name;
+      delete snakeCaseUpdates.last_name;
+    }
+    
     // Only keep valid user fields that exist in the database
     const validUserFields = [
-      'name', 'first_name', 'last_name', 'phone_number', 
+      'name', 'phone_number', 
       'email', 'role', 'avatar', 'allergies', 'preferences', 
       'status', 'expires_at', 'notifications_enabled'
     ];

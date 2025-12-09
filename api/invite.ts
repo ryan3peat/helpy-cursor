@@ -50,6 +50,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`,
         allergies: [],
         preferences: [],
+        notifications_enabled: true, // Enable notifications by default for new users
       })
       .select()
       .single();

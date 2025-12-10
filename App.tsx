@@ -225,21 +225,11 @@ const AppContent: React.FC = () => {
     setActiveView('dashboard');
     console.log('✅ [App] handleLogin completed, currentUser should be set');
     
-    // Trigger auto-subscribe immediately after login
-    console.log('[App] Triggering auto-subscribe after login...');
-    autoSubscribeIfNeeded(
-      user.id,
-      user.householdId,
-      user.notificationsEnabled ?? true
-    ).then(success => {
-      if (success) {
-        console.log('[App] Push notifications auto-subscribed successfully (from handleLogin)');
-      } else {
-        console.log('[App] Auto-subscribe returned false (check push service logs)');
-      }
-    }).catch(err => {
-      console.warn('[App] Failed to auto-subscribe to push notifications (from handleLogin):', err);
-    });
+    // NOTE: Auto-subscribe is now handled by the useEffect that watches users.length
+    // This ensures the clerk_id -> UUID cache is populated before subscribing.
+    // The useEffect will trigger when users are loaded after login.
+    console.log('[App] Push subscription will be triggered once users are loaded');
+    
     setTimeout(() => {
       loginProcessedRef.current = false;
       console.log('✅ [App] loginProcessedRef reset');
@@ -365,13 +355,17 @@ const AppContent: React.FC = () => {
 
   // Auto-subscribe to push notifications if user has them enabled
   // This ensures users with notificationsEnabled=true get subscribed automatically
-  // FIXED: Only trigger when notificationsEnabled is true, not when toggling OFF
+  // 
+  // IMPORTANT: We wait for `users` to be loaded (length > 0) before subscribing.
+  // This ensures the clerk_id -> UUID cache is populated in supabaseService.ts,
+  // which is needed for proper ID resolution when saving the push subscription.
   useEffect(() => {
     console.log('[App] Auto-subscribe useEffect triggered', {
       hasCurrentUser: !!currentUser,
       userId: currentUser?.id,
       householdId: currentUser?.householdId,
       notificationsEnabled: currentUser?.notificationsEnabled,
+      usersLoaded: users.length,
     });
     
     if (!currentUser || !currentUser.householdId) {
@@ -379,7 +373,14 @@ const AppContent: React.FC = () => {
       return;
     }
     
-    // FIXED: Only auto-subscribe when notifications are explicitly enabled
+    // CRITICAL: Wait for users to be loaded before subscribing
+    // This ensures the clerk_id -> UUID cache is populated
+    if (users.length === 0) {
+      console.log('[App] Auto-subscribe skipped: waiting for users to load (ID cache not ready)');
+      return;
+    }
+    
+    // Only auto-subscribe when notifications are explicitly enabled
     // Don't trigger when notificationsEnabled is false or undefined
     const notificationsEnabled = currentUser.notificationsEnabled ?? false;
     if (!notificationsEnabled) {
@@ -387,9 +388,9 @@ const AppContent: React.FC = () => {
       return;
     }
     
-    console.log('[App] Calling autoSubscribeIfNeeded...');
+    console.log('[App] Calling autoSubscribeIfNeeded (users loaded, cache should be ready)...');
     
-    // Auto-subscribe only when notifications are enabled
+    // Auto-subscribe only when notifications are enabled AND users are loaded
     autoSubscribeIfNeeded(
       currentUser.id,
       currentUser.householdId,
@@ -403,7 +404,7 @@ const AppContent: React.FC = () => {
     }).catch(err => {
       console.warn('[App] Failed to auto-subscribe to push notifications:', err);
     });
-  }, [currentUser?.id, currentUser?.householdId]); // Don't depend on notificationsEnabled - Profile handles toggle logic
+  }, [currentUser?.id, currentUser?.householdId, users.length]); // Added users.length dependency
 
   // Supabase Subscriptions
   useEffect(() => {

@@ -6,27 +6,95 @@
  * - Subscribing to push notifications
  * - Storing subscriptions in Supabase
  * - Unsubscribing when disabled
+ * 
+ * IMPORTANT: This service handles the mapping between Clerk IDs (used in the app)
+ * and Supabase UUIDs (used in the database). The push_subscriptions table requires
+ * Supabase UUIDs for the user_id column.
  */
 
 import { supabase } from './supabase';
+import { getCachedSupabaseUuid, isUserCachePopulated, getUserCacheStats } from './supabaseService';
+
+// ============================================================================
+// ID VALIDATION HELPERS
+// ============================================================================
+
+/**
+ * Check if a string is a valid UUID format
+ */
+function isValidUuid(id: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+}
+
+/**
+ * Check if a string looks like a Clerk ID (starts with user_)
+ */
+function isClerkId(id: string): boolean {
+  return id.startsWith('user_');
+}
+
+/**
+ * Get ID type for logging
+ */
+function getIdType(id: string): string {
+  if (isValidUuid(id)) return 'UUID';
+  if (isClerkId(id)) return 'Clerk ID';
+  return 'Unknown';
+}
+
+// ============================================================================
+// USER ID RESOLUTION
+// ============================================================================
 
 /**
  * Resolve a user ID (which may be a Clerk ID) to the actual Supabase UUID
  * This is necessary because the app uses Clerk IDs as user identifiers,
  * but the database and edge functions use Supabase UUIDs.
+ * 
+ * Resolution order:
+ * 1. Check if already a valid UUID that exists in the database
+ * 2. Check the supabaseService cache (populated when users are loaded)
+ * 3. Query database by clerk_id
+ * 4. Query database directly by id
  */
 async function resolveSupabaseUserId(userId: string, householdId: string): Promise<string | null> {
-  console.log(`[Push] Resolving user ID: ${userId} in household: ${householdId}`);
+  const idType = getIdType(userId);
+  console.log(`[Push] Resolving user ID: ${userId} (${idType}) in household: ${householdId}`);
   
   try {
-    // First try: Query users in the household
+    // OPTIMIZATION: If it's already a valid UUID, verify it exists before returning
+    if (isValidUuid(userId)) {
+      // Quick check if this UUID exists as a user
+      const { data: existingUser, error: existsError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('id', userId)
+        .eq('household_id', householdId)
+        .maybeSingle();
+      
+      if (existingUser && !existsError) {
+        console.log(`[Push] ✅ ID ${userId} is already a valid Supabase UUID`);
+        return userId;
+      }
+      // UUID format but doesn't exist in database - might be stale, continue with other methods
+      console.log(`[Push] ⚠️ UUID format but not found in database, trying other methods...`);
+    }
+    
+    // Check the supabaseService cache first (fast, no DB query)
+    const cachedUuid = getCachedSupabaseUuid(userId);
+    if (cachedUuid !== userId && isValidUuid(cachedUuid)) {
+      console.log(`[Push] ✅ Found cached mapping: ${userId} -> ${cachedUuid}`);
+      return cachedUuid;
+    }
+    
+    // Query users in the household
     const { data, error } = await supabase
       .from('users')
       .select('id, clerk_id')
       .eq('household_id', householdId);
 
     if (error) {
-      console.error('[Push] Failed to query users:', error);
+      console.error('[Push] ❌ Failed to query users:', error);
       // Fall through to try direct lookup
     }
     
@@ -36,21 +104,21 @@ async function resolveSupabaseUserId(userId: string, householdId: string): Promi
       // Check if it's a clerk_id (active users)
       const userByClerkId = data.find(u => u.clerk_id === userId);
       if (userByClerkId) {
-        console.log(`[Push] Resolved clerk_id ${userId} to UUID ${userByClerkId.id}`);
+        console.log(`[Push] ✅ Resolved clerk_id ${userId} to UUID ${userByClerkId.id}`);
         return userByClerkId.id;
       }
 
       // Check if it's already a Supabase UUID (pending users)
       const userByUuid = data.find(u => u.id === userId);
       if (userByUuid) {
-        console.log(`[Push] ID ${userId} is already a Supabase UUID`);
+        console.log(`[Push] ✅ ID ${userId} found as Supabase UUID in household`);
         return userId;
       }
       
       console.log('[Push] User not found in household users list, trying direct lookup...');
     }
     
-    // Second try: Direct lookup by clerk_id (in case household query failed or user not in results)
+    // Direct lookup by clerk_id (in case household query failed or user not in results)
     const { data: directUser, error: directError } = await supabase
       .from('users')
       .select('id, clerk_id, household_id')
@@ -58,22 +126,41 @@ async function resolveSupabaseUserId(userId: string, householdId: string): Promi
       .maybeSingle();
     
     if (directUser && !directError) {
-      console.log(`[Push] Found user by direct clerk_id lookup: UUID ${directUser.id}`);
+      console.log(`[Push] ✅ Found user by direct clerk_id lookup: UUID ${directUser.id}`);
       // Verify household matches
       if (directUser.household_id !== householdId) {
-        console.warn(`[Push] User household mismatch: expected ${householdId}, got ${directUser.household_id}`);
+        console.warn(`[Push] ⚠️ User household mismatch: expected ${householdId}, got ${directUser.household_id}`);
+        // Still return the ID, but log the mismatch for debugging
       }
       return directUser.id;
     }
 
-    console.error(`[Push] Could not find user with ID: ${userId}`, { 
+    // Last resort: Direct lookup by id (in case it's a UUID that wasn't in the household query)
+    if (!isClerkId(userId)) {
+      const { data: directById, error: directByIdError } = await supabase
+        .from('users')
+        .select('id, household_id')
+        .eq('id', userId)
+        .maybeSingle();
+      
+      if (directById && !directByIdError) {
+        console.log(`[Push] ✅ Found user by direct id lookup: ${directById.id}`);
+        if (directById.household_id !== householdId) {
+          console.warn(`[Push] ⚠️ User household mismatch: expected ${householdId}, got ${directById.household_id}`);
+        }
+        return directById.id;
+      }
+    }
+
+    console.error(`[Push] ❌ Could not resolve user ID: ${userId}`, { 
+      idType,
       householdId, 
       directError,
       usersInHousehold: data?.length || 0 
     });
     return null;
   } catch (err) {
-    console.error('[Push] Error resolving user ID:', err);
+    console.error('[Push] ❌ Error resolving user ID:', err);
     return null;
   }
 }
@@ -280,26 +367,45 @@ export async function subscribeToPush(
 
 /**
  * Save push subscription to Supabase database
+ * 
+ * CRITICAL: This function must save the subscription with a valid Supabase UUID,
+ * not a Clerk ID. The edge function will query push_subscriptions by user_id (UUID).
  */
 async function saveSubscriptionToDatabase(
   subscription: PushSubscription,
   userId: string,
   householdId: string
 ): Promise<void> {
+  const idType = getIdType(userId);
+  console.log(`[Push] Saving subscription for user: ${userId} (${idType})`);
+  
   const subscriptionJson = subscription.toJSON();
   
   if (!subscriptionJson.endpoint || !subscriptionJson.keys) {
-    throw new Error('Invalid subscription data');
+    throw new Error('Invalid subscription data - missing endpoint or keys');
   }
 
   // IMPORTANT: Resolve to Supabase UUID (userId may be a Clerk ID)
   const supabaseUserId = await resolveSupabaseUserId(userId, householdId);
   
   // Validate that we got a valid UUID, not a Clerk ID or other invalid value
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  if (!supabaseUserId || !uuidRegex.test(supabaseUserId)) {
-    console.error('[Push] Invalid user ID resolution:', { input: userId, resolved: supabaseUserId });
-    throw new Error(`Could not resolve user ID to valid Supabase UUID: ${userId} -> ${supabaseUserId}`);
+  if (!supabaseUserId) {
+    console.error('[Push] ❌ Failed to resolve user ID:', { 
+      input: userId, 
+      inputType: idType,
+      resolved: null 
+    });
+    throw new Error(`Could not resolve user ID to Supabase UUID. Input: ${userId} (${idType})`);
+  }
+  
+  if (!isValidUuid(supabaseUserId)) {
+    console.error('[Push] ❌ Resolved ID is not a valid UUID:', { 
+      input: userId, 
+      inputType: idType,
+      resolved: supabaseUserId,
+      resolvedType: getIdType(supabaseUserId)
+    });
+    throw new Error(`Resolved user ID is not a valid UUID: ${supabaseUserId}`);
   }
 
   const data = {
@@ -312,9 +418,11 @@ async function saveSubscriptionToDatabase(
     updated_at: new Date().toISOString()
   };
 
-  // Upsert - update if exists (same user + endpoint), insert if not
+  // Log the save attempt with clear ID mapping
   console.log('[Push] Saving subscription to database:', {
-    user_id: supabaseUserId,
+    original_user_id: userId,
+    original_id_type: idType,
+    resolved_user_id: supabaseUserId,
     household_id: householdId,
     endpoint: data.endpoint.substring(0, 50) + '...',
     has_p256dh: !!data.p256dh_key,
@@ -331,14 +439,19 @@ async function saveSubscriptionToDatabase(
     .select();
 
   if (error) {
-    console.error('[Push] Failed to save subscription:', error);
-    console.error('[Push] Error code:', error.code);
-    console.error('[Push] Error message:', error.message);
-    console.error('[Push] Error details:', error.details);
+    console.error('[Push] ❌ Failed to save subscription:', error);
+    console.error('[Push] Error details:', {
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+      user_id_attempted: supabaseUserId,
+      household_id: householdId
+    });
     throw error;
   }
 
-  console.log('[Push] Subscription saved to database successfully:', savedData ? '✅' : '⚠️ No data returned');
+  console.log('[Push] ✅ Subscription saved to database successfully:', savedData ? `ID: ${savedData[0]?.id}` : '(no data returned)');
 }
 
 /**
@@ -601,62 +714,95 @@ export async function sendTestNotification(): Promise<void> {
  * Call this from browser console: window.helpyDebugPush()
  */
 export async function debugPushNotifications(userId?: string, householdId?: string): Promise<void> {
-  console.log('=== PUSH NOTIFICATION DIAGNOSTICS ===');
+  console.log('╔════════════════════════════════════════════════════════════╗');
+  console.log('║         HELPY PUSH NOTIFICATION DIAGNOSTICS                ║');
+  console.log('╠════════════════════════════════════════════════════════════╣');
   
   // 1. Check VAPID key
-  console.log('1. VAPID Public Key:', VAPID_PUBLIC_KEY ? `✅ Set (${VAPID_PUBLIC_KEY.length} chars)` : '❌ MISSING');
-  console.log('   From env:', import.meta.env.VITE_VAPID_PUBLIC_KEY ? '✅' : '❌');
+  const vapidStatus = VAPID_PUBLIC_KEY ? `✅ Set (${VAPID_PUBLIC_KEY.length} chars)` : '❌ MISSING';
+  console.log(`║ 1. VAPID Public Key: ${vapidStatus}`);
+  if (!VAPID_PUBLIC_KEY) {
+    console.log('║    FIX: Add VITE_VAPID_PUBLIC_KEY to .env.local');
+  }
   
   // 2. Check browser support
-  console.log('2. Browser Support:', isPushSupported() ? '✅ Supported' : '❌ Not supported');
+  const browserSupport = isPushSupported() ? '✅ Supported' : '❌ Not supported';
+  console.log(`║ 2. Browser Support: ${browserSupport}`);
   
   // 3. Check permission
   const permission = getNotificationPermission();
-  console.log('3. Notification Permission:', permission);
+  const permissionIcon = permission === 'granted' ? '✅' : permission === 'denied' ? '❌' : '⚠️';
+  console.log(`║ 3. Notification Permission: ${permissionIcon} ${permission}`);
+  if (permission === 'denied') {
+    console.log('║    FIX: Enable in browser settings (click lock icon)');
+  }
   
   // 4. Check service worker
   const registration = await getServiceWorkerRegistration();
-  console.log('4. Service Worker:', registration ? '✅ Registered' : '❌ Not registered');
+  console.log(`║ 4. Service Worker: ${registration ? '✅ Registered' : '❌ Not registered'}`);
   
+  // 5. Check browser subscription
   if (registration) {
     const subscription = await registration.pushManager.getSubscription();
-    console.log('5. Browser Subscription:', subscription ? '✅ Exists' : '❌ None');
+    console.log(`║ 5. Browser Subscription: ${subscription ? '✅ Active' : '❌ None'}`);
     if (subscription) {
-      console.log('   Endpoint:', subscription.endpoint.substring(0, 50) + '...');
+      console.log(`║    Endpoint: ${subscription.endpoint.substring(0, 40)}...`);
     }
   }
   
-  // 5. Check database subscriptions
+  // 6. Check user ID cache status
+  const cachePopulated = isUserCachePopulated();
+  const cacheStats = getUserCacheStats();
+  console.log(`║ 6. User ID Cache: ${cachePopulated ? `✅ Populated (${cacheStats.size} entries)` : '❌ Empty'}`);
+  if (!cachePopulated) {
+    console.log('║    FIX: Users may not be loaded yet. Wait or refresh.');
+  }
+  
+  // 7. Check ID resolution (if userId provided)
   if (userId && householdId) {
-    console.log('6. Checking database subscriptions...');
-    const supabaseUserId = await resolveSupabaseUserId(userId, householdId);
-    console.log('   User ID resolved:', supabaseUserId ? `✅ ${supabaseUserId}` : '❌ Failed');
+    console.log('║ 7. ID Resolution Test:');
+    console.log(`║    Input: ${userId} (${getIdType(userId)})`);
     
-    if (supabaseUserId) {
+    // First try cache
+    const cachedId = getCachedSupabaseUuid(userId);
+    console.log(`║    Cached: ${cachedId === userId ? '(not in cache)' : cachedId}`);
+    
+    // Then try full resolution
+    const resolvedId = await resolveSupabaseUserId(userId, householdId);
+    console.log(`║    Resolved: ${resolvedId ? `✅ ${resolvedId}` : '❌ Failed'}`);
+    
+    // 8. Check database subscriptions
+    if (resolvedId) {
+      console.log('║ 8. Database Subscriptions:');
       const { data, error } = await supabase
         .from('push_subscriptions')
-        .select('*')
-        .eq('user_id', supabaseUserId);
+        .select('id, endpoint, created_at')
+        .eq('user_id', resolvedId);
       
       if (error) {
-        console.log('   Database query error:', error);
+        console.log(`║    ❌ Query error: ${error.message}`);
+      } else if (data && data.length > 0) {
+        console.log(`║    ✅ Found ${data.length} subscription(s)`);
+        data.forEach((sub, i) => {
+          console.log(`║    [${i + 1}] ${sub.endpoint.substring(0, 35)}...`);
+        });
       } else {
-        console.log(`   Database subscriptions: ${data?.length || 0} found`);
-        if (data && data.length > 0) {
-          data.forEach((sub, i) => {
-            console.log(`   [${i + 1}] Endpoint: ${sub.endpoint.substring(0, 50)}...`);
-          });
-        }
+        console.log('║    ⚠️ No subscriptions in database');
+        console.log('║    FIX: Toggle notifications OFF then ON in Settings');
       }
     }
+  } else {
+    console.log('║ 7-8. (Provide userId and householdId for full test)');
+    console.log('║      Usage: helpyDebugPush("user_xxx", "household-uuid")');
   }
   
-  console.log('=== END DIAGNOSTICS ===');
+  console.log('╚════════════════════════════════════════════════════════════╝');
 }
 
 // Make it available globally for debugging
 if (typeof window !== 'undefined') {
   (window as any).helpyDebugPush = debugPushNotifications;
 }
+
 
 

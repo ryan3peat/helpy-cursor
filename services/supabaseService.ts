@@ -16,20 +16,63 @@ const COLLECTION_MAP: Record<string, string> = {
 };
 
 // Cache to store clerk_id -> supabase uuid mapping
+// This cache is populated when users are loaded via subscribeToCollection
 const userIdCache: Record<string, string> = {};
+
+// UUID validation helper
+const isValidUuidFormat = (id: string): boolean => 
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+
+// Clerk ID detection helper  
+const isClerkIdFormat = (id: string): boolean => id.startsWith('user_');
 
 /**
  * Get the Supabase UUID for a user ID (which may be a Clerk ID or already a UUID)
- * Uses the cached mapping from when users were loaded
- * Returns the input if no mapping found (assumes it's already a UUID)
+ * Uses the cached mapping from when users were loaded.
+ * 
+ * IMPORTANT: This cache is populated by convertSupabaseData when users are loaded.
+ * If called before users are loaded, it may return the input unchanged.
+ * 
+ * @param userId - Either a Clerk ID (user_xxx) or Supabase UUID
+ * @returns The Supabase UUID if found in cache, otherwise the input unchanged
  */
 export function getCachedSupabaseUuid(userId: string): string {
   // Check if we have a cached mapping (clerk_id -> uuid)
   if (userIdCache[userId]) {
     return userIdCache[userId];
   }
-  // If not in cache, assume it's already a UUID (e.g., pending users)
+  
+  // If it's already a valid UUID format, return it
+  if (isValidUuidFormat(userId)) {
+    return userId;
+  }
+  
+  // If it's a Clerk ID but not in cache, we can't resolve it yet
+  // This might happen if called before users are loaded
+  if (isClerkIdFormat(userId)) {
+    console.warn(`[Cache] Clerk ID not in cache (users may not be loaded yet): ${userId}`);
+  }
+  
+  // Return as-is (caller should handle the case where it's not a valid UUID)
   return userId;
+}
+
+/**
+ * Check if the user ID cache has been populated (users have been loaded)
+ */
+export function isUserCachePopulated(): boolean {
+  return Object.keys(userIdCache).length > 0;
+}
+
+/**
+ * Get cache statistics for debugging
+ */
+export function getUserCacheStats(): { size: number; hasClerkIds: boolean } {
+  const keys = Object.keys(userIdCache);
+  return {
+    size: keys.length,
+    hasClerkIds: keys.some(k => isClerkIdFormat(k))
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -398,11 +441,28 @@ export async function addItem(
   }
   
   // For all collections with created_by: convert from Clerk ID to Supabase UUID
+  // IMPORTANT: The edge function for notifications needs created_by to be a valid UUID
+  // to properly identify who created the item and filter them from recipients
   if (finalData.created_by && ['todo_items', 'meals', 'expenses'].includes(collection)) {
+    const originalCreatedBy = finalData.created_by;
     const uuid = await getSupabaseUserId(finalData.created_by, householdId);
+    
     if (uuid) {
-      console.log(`🔄 Converting created_by ${finalData.created_by} to UUID ${uuid}`);
-      finalData.created_by = uuid;
+      // Validate it's a proper UUID format before saving
+      const isValidUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(uuid);
+      if (isValidUuid) {
+        console.log(`🔄 Converting created_by ${originalCreatedBy} to UUID ${uuid}`);
+        finalData.created_by = uuid;
+      } else {
+        // UUID resolution returned a non-UUID value (should not happen, but defensive)
+        console.warn(`⚠️ getSupabaseUserId returned invalid UUID for created_by: ${uuid} - setting to null`);
+        finalData.created_by = null;
+      }
+    } else {
+      // Could not resolve user ID - log warning but don't block the insert
+      // Notifications will still work, but creator might receive their own notification
+      console.warn(`⚠️ Could not resolve created_by ID: ${originalCreatedBy} - setting to null`);
+      finalData.created_by = null;
     }
   }
 

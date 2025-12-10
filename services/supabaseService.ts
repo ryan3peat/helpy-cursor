@@ -18,11 +18,6 @@ const COLLECTION_MAP: Record<string, string> = {
 // Cache to store clerk_id -> supabase uuid mapping
 const userIdCache: Record<string, string> = {};
 
-// Expose cache to window for debugging
-if (typeof window !== 'undefined') {
-  (window as any).__userIdCache = userIdCache;
-}
-
 /**
  * Get the Supabase UUID for a user ID (which may be a Clerk ID or already a UUID)
  * Uses the cached mapping from when users were loaded
@@ -30,14 +25,10 @@ if (typeof window !== 'undefined') {
  */
 export function getCachedSupabaseUuid(userId: string): string {
   // Check if we have a cached mapping (clerk_id -> uuid)
-  const cached = userIdCache[userId];
-  if (cached) {
-    console.log(`[Cache] HIT: ${userId} -> ${cached}`);
-    return cached;
+  if (userIdCache[userId]) {
+    return userIdCache[userId];
   }
   // If not in cache, assume it's already a UUID (e.g., pending users)
-  console.warn(`[Cache] MISS: ${userId} (cache has ${Object.keys(userIdCache).length} entries)`);
-  console.log(`[Cache] Available keys:`, Object.keys(userIdCache));
   return userId;
 }
 

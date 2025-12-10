@@ -445,15 +445,10 @@ const AppContent: React.FC = () => {
         try {
           // Resolve to Supabase UUID (user.id may be a Clerk ID)
           const supabaseUserId = getCachedSupabaseUuid(user.id);
-          const { count, error } = await supabase
+          const { count } = await supabase
             .from('push_subscriptions')
             .select('*', { count: 'exact', head: true })
             .eq('user_id', supabaseUserId);
-          
-          if (error) {
-            console.error(`[App] Subscription check error for ${user.name}:`, error);
-          }
-          console.log(`[App] Subscription check: ${user.name} (${supabaseUserId}) = ${count}`);
             
           return {
             ...user,

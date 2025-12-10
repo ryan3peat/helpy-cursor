@@ -96,6 +96,7 @@ const Profile: React.FC<ProfileProps> = ({
 
   // Push Notification State
   const [isTogglingNotifications, setIsTogglingNotifications] = useState(false);
+  const isTogglingRef = useRef(false); // Ref version to check in useEffect without triggering re-runs
   const [pushPermission, setPushPermission] = useState<NotificationPermission>('default');
   const [pushSupported, setPushSupported] = useState(true);
 
@@ -368,10 +369,10 @@ const Profile: React.FC<ProfileProps> = ({
       countryCode: currentUser.countryCode || '+1',
       currentPassword: '',
       newPassword: '',
-      // Preserve notificationsEnabled if user is actively toggling, otherwise sync from currentUser
-      notificationsEnabled: isTogglingNotifications ? prev.notificationsEnabled : (currentUser.notificationsEnabled ?? true)
+      // Preserve notificationsEnabled if user is actively toggling (use ref to avoid re-triggering)
+      notificationsEnabled: isTogglingRef.current ? prev.notificationsEnabled : (currentUser.notificationsEnabled ?? true)
     }));
-  }, [currentUser, isTogglingNotifications]);
+  }, [currentUser]);
   const [paymentData, setPaymentData] = useState({
     cardNumber: '',
     expiry: '',
@@ -1899,6 +1900,7 @@ const Profile: React.FC<ProfileProps> = ({
                         if (!pushSupported || pushPermission === 'denied') return;
                         
                         setIsTogglingNotifications(true);
+                        isTogglingRef.current = true; // Set ref to prevent useEffect from resetting
                         const newValue = !accountData.notificationsEnabled;
                         
                         try {
@@ -1957,9 +1959,16 @@ const Profile: React.FC<ProfileProps> = ({
                           // Revert local state on error
                           setAccountData({ ...accountData, notificationsEnabled: !newValue });
                           // Show error to user (you could add a toast notification here)
-                        } finally {
                           setIsTogglingNotifications(false);
+                          isTogglingRef.current = false;
+                          return;
                         }
+                        // Delay clearing toggling flag to let real-time update propagate
+                        // This prevents the toggle from flipping back during the sync
+                        setTimeout(() => {
+                          isTogglingRef.current = false;
+                          setIsTogglingNotifications(false);
+                        }, 800);
                       }}
                       className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
                         !pushSupported || pushPermission === 'denied'

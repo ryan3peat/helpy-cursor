@@ -991,9 +991,14 @@ function convertSupabaseData(data: any[], collection?: string): DataItem[] {
       converted.forUserIds = convertUuidsToAppUserIds(item.for_user_ids);
     }
     
-    // For todo_items: convert assignee_id from Supabase UUID to app user ID
-    if (collection === 'todo_items' && item.assignee_id) {
-      converted.assigneeId = getAppUserIdFromUuid(item.assignee_id);
+    // For todo_items: convert assignee_id and created_by from Supabase UUID to app user ID
+    if (collection === 'todo_items') {
+      if (item.assignee_id) {
+        converted.assigneeId = getAppUserIdFromUuid(item.assignee_id);
+      }
+      if (item.created_by) {
+        converted.createdBy = getAppUserIdFromUuid(item.created_by);
+      }
     }
     
     // For expenses: ensure receiptUrl is properly set and normalize date
@@ -1038,6 +1043,17 @@ function convertSupabaseData(data: any[], collection?: string): DataItem[] {
           }
         }
       }
+      
+      // Convert created_by from Supabase UUID to app user ID (Clerk ID for active users)
+      // This ensures Helpers can filter expenses by their own createdBy field
+      if (item.created_by) {
+        converted.createdBy = getAppUserIdFromUuid(item.created_by);
+      }
+    }
+    
+    // For meals: convert created_by from Supabase UUID to app user ID
+    if (collection === 'meals' && item.created_by) {
+      converted.createdBy = getAppUserIdFromUuid(item.created_by);
     }
     
     return converted;

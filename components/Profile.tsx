@@ -116,11 +116,28 @@ const Profile: React.FC<ProfileProps> = ({
   });
 
   // Check push notification support and permission on mount
+  // Also re-check when app becomes visible (e.g., returning from iOS/Android Settings)
   useEffect(() => {
     setPushSupported(isPushSupported());
     if (isPushSupported()) {
       setPushPermission(getNotificationPermission());
     }
+    
+    // Re-check permission when app becomes visible
+    // Works on: iOS, Android, and Desktop (when returning from settings or switching tabs)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && isPushSupported()) {
+        const currentPermission = getNotificationPermission();
+        setPushPermission(currentPermission);
+        console.log('[Profile] Re-checked notification permission:', currentPermission);
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   // Lock scroll when any modal is open

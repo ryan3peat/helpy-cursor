@@ -388,7 +388,7 @@ const AppContent: React.FC = () => {
     }).catch(err => {
       console.warn('[App] Failed to auto-subscribe to push notifications:', err);
     });
-  }, [currentUser?.id, currentUser?.householdId, currentUser?.notificationsEnabled]); // FIXED: Depend on specific properties, not entire object
+  }, [currentUser?.id, currentUser?.householdId]); // Don't depend on notificationsEnabled - Profile handles toggle logic
 
   // Supabase Subscriptions
   useEffect(() => {

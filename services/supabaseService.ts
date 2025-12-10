@@ -18,6 +18,20 @@ const COLLECTION_MAP: Record<string, string> = {
 // Cache to store clerk_id -> supabase uuid mapping
 const userIdCache: Record<string, string> = {};
 
+/**
+ * Get the Supabase UUID for a user ID (which may be a Clerk ID or already a UUID)
+ * Uses the cached mapping from when users were loaded
+ * Returns the input if no mapping found (assumes it's already a UUID)
+ */
+export function getCachedSupabaseUuid(userId: string): string {
+  // Check if we have a cached mapping (clerk_id -> uuid)
+  if (userIdCache[userId]) {
+    return userIdCache[userId];
+  }
+  // If not in cache, assume it's already a UUID (e.g., pending users)
+  return userId;
+}
+
 // ─────────────────────────────────────────────────────────────────
 // Real-time Subscription Status Tracking
 // ─────────────────────────────────────────────────────────────────

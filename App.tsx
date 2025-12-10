@@ -26,6 +26,7 @@ import {
   saveFamilyNotes,
   subscribeToNotes,
   fetchCollection,
+  getCachedSupabaseUuid,
 } from './services/supabaseService';
 import { initializePushNotifications, autoSubscribeIfNeeded } from './services/pushNotificationService';
 import type { EssentialInfo } from '@src/types/essentialInfo';
@@ -428,10 +429,12 @@ const AppContent: React.FC = () => {
         }
         
         try {
+          // Resolve to Supabase UUID (user.id may be a Clerk ID)
+          const supabaseUserId = getCachedSupabaseUuid(user.id);
           const { count } = await supabase
             .from('push_subscriptions')
             .select('*', { count: 'exact', head: true })
-            .eq('user_id', user.id);
+            .eq('user_id', supabaseUserId);
             
           return {
             ...user,

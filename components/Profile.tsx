@@ -1905,10 +1905,10 @@ const Profile: React.FC<ProfileProps> = ({
                             // Update local state first for immediate UI feedback
                             setAccountData({ ...accountData, notificationsEnabled: true });
                             
-                            // Save to database immediately (even if subscription fails)
-                            await onUpdate(currentUser.id, { notificationsEnabled: true });
-                            
-                            // Then try to subscribe to push (non-blocking)
+                            // IMPORTANT: Subscribe to push FIRST, before updating DB
+                            // This prevents race condition where DB update triggers refetch 
+                            // before subscription is saved
+                            let subscriptionSuccess = false;
                             try {
                               const subscription = await subscribeToPush(
                                 currentUser.id,
@@ -1917,17 +1917,21 @@ const Profile: React.FC<ProfileProps> = ({
                               
                               if (subscription) {
                                 console.log('[Profile] Successfully subscribed to push notifications');
-                                setPushPermission(getNotificationPermission());
+                                subscriptionSuccess = true;
                               } else {
-                                // Permission denied or subscription failed, but DB is already updated
-                                setPushPermission(getNotificationPermission());
-                                console.warn('[Profile] Failed to subscribe to push notifications, but notifications_enabled is set to true in database');
-                                // User can still receive notifications via other means or fix subscription later
+                                console.warn('[Profile] Failed to subscribe to push notifications');
                               }
+                              setPushPermission(getNotificationPermission());
                             } catch (subError) {
-                              // Subscription failed but DB is already updated
                               console.error('[Profile] Error subscribing to push:', subError);
                               setPushPermission(getNotificationPermission());
+                            }
+                            
+                            // Now update database (this triggers refetch, but subscription is already saved)
+                            await onUpdate(currentUser.id, { notificationsEnabled: true });
+                            
+                            if (!subscriptionSuccess) {
+                              console.warn('[Profile] notifications_enabled is set to true but push subscription failed');
                             }
                           } else {
                             // Disable notifications - unsubscribe from push

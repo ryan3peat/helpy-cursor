@@ -266,6 +266,14 @@ const ToDo: React.FC<ToDoProps> = ({
   // Track items animating to completed (iOS-style delayed move)
   const [completingIds, setCompletingIds] = useState<Set<string>>(new Set());
   
+  // Swipe gesture tracking
+  const [swipeState, setSwipeState] = useState<{
+    id: string | null;
+    startX: number;
+    offset: number;
+    isDragging: boolean;
+  }>({ id: null, startX: 0, offset: 0, isDragging: false });
+  
   // Sort & Filter
   const [sortBy, setSortBy] = useState<SortOption>('addedDate-desc');
   const [showOnlyMine, setShowOnlyMine] = useState(false);
@@ -736,6 +744,43 @@ const ToDo: React.FC<ToDoProps> = ({
   };
 
   // ─────────────────────────────────────────────────────────────────
+  // Swipe Gesture Handlers
+  // ─────────────────────────────────────────────────────────────────
+
+  const handleTouchStart = (e: React.TouchEvent, itemId: string) => {
+    // Don't start swipe if already completing
+    if (completingIds.has(itemId)) return;
+    
+    setSwipeState({
+      id: itemId,
+      startX: e.touches[0].clientX,
+      offset: 0,
+      isDragging: true,
+    });
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!swipeState.isDragging || !swipeState.id) return;
+    
+    const delta = e.touches[0].clientX - swipeState.startX;
+    // Only allow right swipe, cap at 100px
+    const newOffset = Math.max(0, Math.min(delta, 100));
+    setSwipeState(prev => ({ ...prev, offset: newOffset }));
+  };
+
+  const handleTouchEnd = (itemId: string) => {
+    if (!swipeState.isDragging || swipeState.id !== itemId) return;
+    
+    if (swipeState.offset > 70) {
+      // Threshold reached - complete the item
+      handleToggleComplete(itemId, true);
+    }
+    
+    // Reset swipe state
+    setSwipeState({ id: null, startX: 0, offset: 0, isDragging: false });
+  };
+
+  // ─────────────────────────────────────────────────────────────────
   // Render
   // ─────────────────────────────────────────────────────────────────
   
@@ -1045,79 +1090,120 @@ const ToDo: React.FC<ToDoProps> = ({
           {activeItems.map((item, index) => {
             const isCompleting = completingIds.has(item.id);
             const isCollapsing = collapsingIds.has(item.id);
+            const isSwiping = swipeState.id === item.id;
+            const swipeOffset = isSwiping ? swipeState.offset : 0;
+            const swipeThresholdReached = swipeOffset > 70;
             
             return (
               <div
                 key={item.id}
-                className={`flex items-start gap-3 ${
+                className={`relative ${
                   index !== activeItems.length - 1 && !isCollapsing ? 'list-item-separator' : ''
-                } overflow-hidden cursor-pointer hover:bg-muted/30 transition-colors`}
+                } overflow-hidden`}
                 style={{
                   transition: isCollapsing 
-                    ? 'max-height 0.2s ease-out, padding 0.2s ease-out, opacity 0.2s ease-out'
-                    : 'opacity 0.2s ease-out, transform 0.2s ease-out, background-color 0.15s ease',
-                  opacity: isCompleting ? 0 : 1,
-                  transform: isCompleting && !isCollapsing ? 'translateX(16px)' : 'translateX(0)',
+                    ? 'max-height 0.2s ease-out, opacity 0.2s ease-out'
+                    : undefined,
                   maxHeight: isCollapsing ? '0px' : '120px',
-                  padding: isCollapsing ? '0 1rem' : '1rem',
                 }}
-                onClick={() => !isCompleting && openEditSheet(item)}
               >
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation(); // Don't open edit when clicking checkbox
-                    !isCompleting && handleToggleComplete(item.id, true);
+                {/* Swipe reveal background - primary color */}
+                <div 
+                  className="absolute inset-y-0 left-0 flex items-center pl-5 transition-colors duration-150"
+                  style={{ 
+                    width: '100px',
+                    backgroundColor: swipeThresholdReached 
+                      ? 'hsl(var(--primary))' 
+                      : 'hsl(var(--primary) / 0.15)',
                   }}
-                  className="mt-0.5 shrink-0 transition-all"
                 >
-                  {isCompleting ? (
-                    <div className="w-[22px] h-[22px] rounded-full bg-primary flex items-center justify-center">
-                      <Check size={14} className="text-primary-foreground" strokeWidth={3} />
-                    </div>
-                  ) : (
-                    <Circle size={22} className="text-muted-foreground/50 hover:text-primary transition-colors" />
-                  )}
-                </button>
+                  <div 
+                    className={`transition-all duration-150 ${
+                      swipeThresholdReached ? 'text-primary-foreground' : 'text-primary'
+                    }`}
+                    style={{ 
+                      transform: swipeThresholdReached ? 'scale(1.15)' : 'scale(1)',
+                    }}
+                  >
+                    <Check size={22} strokeWidth={3} />
+                  </div>
+                </div>
                 
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center">
-                    <span className={`text-body ${isCompleting ? 'text-muted-foreground line-through' : 'text-foreground'}`}>
-                      <TranslatedItemName item={item} currentLang={currentLang} onUpdate={onUpdate} />
-                      {item.type === 'shopping' && item.quantity && item.quantity !== '1' && (
-                        <span className="text-muted-foreground font-normal">
-                          {' · '}{item.quantity}{item.unit ? ` ${item.unit}` : ''}
+                {/* Item content - swipeable */}
+                <div
+                  className="flex items-start gap-3 p-4 bg-card cursor-pointer relative"
+                  style={{
+                    transition: isSwiping 
+                      ? 'none' 
+                      : isCompleting 
+                        ? 'opacity 0.2s ease-out, transform 0.2s ease-out'
+                        : 'transform 0.2s ease-out, background-color 0.15s ease',
+                    opacity: isCompleting ? 0 : 1,
+                    transform: isCompleting && !isCollapsing 
+                      ? 'translateX(16px)' 
+                      : `translateX(${swipeOffset}px)`,
+                  }}
+                  onTouchStart={(e) => handleTouchStart(e, item.id)}
+                  onTouchMove={handleTouchMove}
+                  onTouchEnd={() => handleTouchEnd(item.id)}
+                  onClick={() => !isCompleting && !isSwiping && openEditSheet(item)}
+                >
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation(); // Don't open edit when clicking checkbox
+                      !isCompleting && handleToggleComplete(item.id, true);
+                    }}
+                    className="mt-0.5 shrink-0 transition-all"
+                  >
+                    {isCompleting ? (
+                      <div className="w-[22px] h-[22px] rounded-full bg-primary flex items-center justify-center">
+                        <Check size={14} className="text-primary-foreground" strokeWidth={3} />
+                      </div>
+                    ) : (
+                      <Circle size={22} className="text-muted-foreground/50 hover:text-primary transition-colors" />
+                    )}
+                  </button>
+                  
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center">
+                      <span className={`text-body ${isCompleting ? 'text-muted-foreground line-through' : 'text-foreground'}`}>
+                        <TranslatedItemName item={item} currentLang={currentLang} onUpdate={onUpdate} />
+                        {item.type === 'shopping' && item.quantity && item.quantity !== '1' && (
+                          <span className="text-muted-foreground font-normal">
+                            {' · '}{item.quantity}{item.unit ? ` ${item.unit}` : ''}
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                    
+                    <div className="flex items-center flex-wrap gap-1.5 mt-1.5">
+                      {/* Category Badge */}
+                      <span className={`px-2 py-0.5 rounded-full text-micro ${getCategoryBadgeStyle(item.category)}`}>
+                        {item.category}
+                      </span>
+                      {item.type === 'task' && item.dueDate && (
+                        <span className={`flex items-center gap-1 text-caption ${isOverdue(item.dueDate) ? 'text-[#F06292]' : 'text-muted-foreground'}`}>
+                          <Calendar size={11} />
+                          {formatDateTime(item.dueDate, item.dueTime)}
                         </span>
                       )}
-                    </span>
-                  </div>
-                  
-                  <div className="flex items-center flex-wrap gap-1.5 mt-1.5">
-                    {/* Category Badge */}
-                    <span className={`px-2 py-0.5 rounded-full text-micro ${getCategoryBadgeStyle(item.category)}`}>
-                      {item.category}
-                    </span>
-                    {item.type === 'task' && item.dueDate && (
-                      <span className={`flex items-center gap-1 text-caption ${isOverdue(item.dueDate) ? 'text-[#F06292]' : 'text-muted-foreground'}`}>
-                        <Calendar size={11} />
-                        {formatDateTime(item.dueDate, item.dueTime)}
-                      </span>
+                    </div>
+                    
+                    {item.type === 'task' && item.recurrence && item.recurrence.frequency !== 'NONE' && (
+                      <div className="flex items-center gap-1 mt-1 text-caption text-primary">
+                        <Repeat size={12} />
+                        {formatRecurrence(item.recurrence)}
+                      </div>
                     )}
                   </div>
                   
-                  {item.type === 'task' && item.recurrence && item.recurrence.frequency !== 'NONE' && (
-                    <div className="flex items-center gap-1 mt-1 text-caption text-primary">
-                      <Repeat size={12} />
-                      {formatRecurrence(item.recurrence)}
-                    </div>
+                  {/* Assignee - positioned on the right */}
+                  {item.assigneeId && (
+                    <span className="text-caption text-muted-foreground shrink-0 self-center">
+                      {getUserName(item.assigneeId)}
+                    </span>
                   )}
                 </div>
-                
-                {/* Assignee - positioned on the right */}
-                {item.assigneeId && (
-                  <span className="text-caption text-muted-foreground shrink-0 self-center">
-                    {getUserName(item.assigneeId)}
-                  </span>
-                )}
               </div>
             );
           })}

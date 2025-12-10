@@ -1104,44 +1104,50 @@ const ToDo: React.FC<ToDoProps> = ({
                   transition: isCollapsing 
                     ? 'max-height 0.2s ease-out, opacity 0.2s ease-out'
                     : undefined,
-                  maxHeight: isCollapsing ? '0px' : '120px',
+                  maxHeight: isCollapsing ? '0px' : '150px',
                 }}
               >
-                {/* Swipe reveal background - primary color */}
+                {/* iOS-style swipe reveal - background stretches with swipe */}
                 <div 
-                  className="absolute inset-y-0 left-0 flex items-center pl-5 transition-colors duration-150"
+                  className="absolute inset-y-0 left-0 flex items-center justify-center transition-colors duration-100"
                   style={{ 
-                    width: '100px',
+                    width: `${Math.max(swipeOffset, 0)}px`,
                     backgroundColor: swipeThresholdReached 
                       ? 'hsl(var(--primary))' 
-                      : 'hsl(var(--primary) / 0.15)',
+                      : 'hsl(var(--primary) / 0.2)',
                   }}
                 >
-                  <div 
-                    className={`transition-all duration-150 ${
-                      swipeThresholdReached ? 'text-primary-foreground' : 'text-primary'
-                    }`}
-                    style={{ 
-                      transform: swipeThresholdReached ? 'scale(1.15)' : 'scale(1)',
-                    }}
-                  >
-                    <Check size={22} strokeWidth={3} />
-                  </div>
+                  {swipeOffset > 30 && (
+                    <div 
+                      className={`transition-all duration-100 ${
+                        swipeThresholdReached ? 'text-primary-foreground' : 'text-primary'
+                      }`}
+                      style={{ 
+                        transform: swipeThresholdReached ? 'scale(1.1)' : 'scale(1)',
+                        opacity: Math.min(swipeOffset / 50, 1),
+                      }}
+                    >
+                      <Check size={22} strokeWidth={3} />
+                    </div>
+                  )}
                 </div>
                 
-                {/* Item content - swipeable */}
+                {/* Item card - iOS style slide as one unit */}
                 <div
                   className="flex items-start gap-3 p-4 bg-card cursor-pointer relative"
                   style={{
                     transition: isSwiping 
                       ? 'none' 
                       : isCompleting 
-                        ? 'opacity 0.2s ease-out, transform 0.2s ease-out'
-                        : 'transform 0.2s ease-out, background-color 0.15s ease',
+                        ? 'opacity 0.2s ease-out, transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                        : 'transform 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
                     opacity: isCompleting ? 0 : 1,
                     transform: isCompleting && !isCollapsing 
-                      ? 'translateX(16px)' 
+                      ? 'translateX(100%)' 
                       : `translateX(${swipeOffset}px)`,
+                    boxShadow: swipeOffset > 10 
+                      ? `0 2px 12px rgba(0, 0, 0, ${Math.min(swipeOffset / 150, 0.12)})` 
+                      : 'none',
                   }}
                   onTouchStart={(e) => handleTouchStart(e, item.id)}
                   onTouchMove={handleTouchMove}

@@ -43,7 +43,7 @@ const ROLE_PRIORITY: Record<string, number> = {
 const HOUSEHOLD_NAME_CACHE_KEY = 'helpy_household_name';
 
 const Profile: React.FC<ProfileProps> = ({
-  users, onAdd, onUpdate, onDelete, onBack, currentUser, onLogout, t
+  users, onAdd, onUpdate, onDelete, onBack, currentUser, onLogout, t, currentLang
 }) => {
   // ─────────────────────────────────────────────────────────────────
   // Role-based permissions

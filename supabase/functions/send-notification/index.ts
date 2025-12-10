@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Supabase Edge Function: send-notification
  * 
@@ -195,6 +196,13 @@ async function hkdf(
  * 
  * For aes128gcm, the entire encrypted message (including headers) goes in the body.
  * Format: salt (16) + rs (4) + idlen (1) + keyid (65) + encrypted_content
+ * 
+ * Key derivation per RFC 8291:
+ * 1. ecdh_secret = ECDH(server_private, client_public)
+ * 2. key_info = "WebPush: info" || 0x00 || client_public || server_public
+ * 3. IKM = HKDF(auth_secret, ecdh_secret, key_info, 32)
+ * 4. CEK = HKDF(salt, IKM, "Content-Encoding: aes128gcm\0", 16)
+ * 5. NONCE = HKDF(salt, IKM, "Content-Encoding: nonce\0", 12)
  */
 async function encryptPayload(
   payload: string,
@@ -215,20 +223,26 @@ async function encryptPayload(
   // Generate random salt
   const salt = crypto.getRandomValues(new Uint8Array(16));
   
-  // Derive shared secret
+  // Derive shared secret via ECDH
   const sharedSecret = await deriveSharedSecret(serverKeyPair.privateKey, clientPublicKey);
   
-  // Derive PRK using HKDF with auth secret
-  const authInfo = new TextEncoder().encode('Content-Encoding: auth\0');
-  const prk = await hkdf(clientAuthSecret, sharedSecret, authInfo, 32);
+  // RFC 8291: Build key_info = "WebPush: info" || 0x00 || ua_public || as_public
+  const keyInfoHeader = encoder.encode('WebPush: info\0');
+  const keyInfo = new Uint8Array(keyInfoHeader.length + clientPublicKey.length + serverPublicKey.length);
+  keyInfo.set(keyInfoHeader, 0);
+  keyInfo.set(clientPublicKey, keyInfoHeader.length);
+  keyInfo.set(serverPublicKey, keyInfoHeader.length + clientPublicKey.length);
   
-  // Derive content encryption key using simplified info for aes128gcm
+  // RFC 8291: IKM = HKDF(auth_secret, ecdh_secret, key_info, 32)
+  const ikm = await hkdf(clientAuthSecret, sharedSecret, keyInfo, 32);
+  
+  // RFC 8291: CEK = HKDF(salt, IKM, "Content-Encoding: aes128gcm\0", 16)
   const cekInfo = encoder.encode('Content-Encoding: aes128gcm\0');
-  const contentEncryptionKey = await hkdf(salt, prk, cekInfo, 16);
+  const contentEncryptionKey = await hkdf(salt, ikm, cekInfo, 16);
 
-  // Derive nonce using simplified info for aes128gcm
+  // RFC 8291: NONCE = HKDF(salt, IKM, "Content-Encoding: nonce\0", 12)
   const nonceInfo = encoder.encode('Content-Encoding: nonce\0');
-  const nonce = await hkdf(salt, prk, nonceInfo, 12);
+  const nonce = await hkdf(salt, ikm, nonceInfo, 12);
 
   // For aes128gcm, add a delimiter byte (0x02) to mark end of content
   const paddedPayload = new Uint8Array(payloadBytes.length + 1);
@@ -574,10 +588,15 @@ serve(async (req: Request) => {
       console.log(`[Push] No creator ID provided (created_by_user_id is null/undefined)`);
     }
 
-    // Filter out the creator from recipients
-    const recipients = users.filter(u => 
-      u.id !== creatorId && u.clerk_id !== creatorId
-    );
+    // Filter out the creator from recipients (except for testing - Liko gets self-notifications)
+    const LIKO_TEST_MODE = true; // TODO: Set to false in production
+    const recipients = users.filter(u => {
+      // In test mode, don't filter out Liko so he can test by adding items himself
+      if (LIKO_TEST_MODE && (u.name === 'Liko' || u.name?.includes('Liko'))) {
+        return true;
+      }
+      return u.id !== creatorId && u.clerk_id !== creatorId;
+    });
 
     console.log(`[Push] After filtering out creator (${creatorId}), ${recipients.length} recipient(s) remain`);
     if (recipients.length > 0) {

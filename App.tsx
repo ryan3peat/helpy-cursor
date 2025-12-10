@@ -28,7 +28,12 @@ import {
   fetchCollection,
   getCachedSupabaseUuid,
 } from './services/supabaseService';
-import { initializePushNotifications, autoSubscribeIfNeeded } from './services/pushNotificationService';
+import { initializePushNotifications, autoSubscribeIfNeeded, debugPushNotifications } from './services/pushNotificationService';
+
+// Make debug function available globally in browser console
+if (typeof window !== 'undefined') {
+  (window as any).helpyDebugPush = debugPushNotifications;
+}
 import type { EssentialInfo } from '@src/types/essentialInfo';
 import type { HouseRoutine } from '@src/types/houseRoutine';
 import { 

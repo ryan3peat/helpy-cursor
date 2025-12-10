@@ -1,4 +1,15 @@
 /**
+ * BACKUP - Ryan's Original Edge Function Code
+ * Date: Before Dec 10, 2024
+ * 
+ * This is the OLD code that was replaced with the fixed version.
+ * The issue was: Using aes128gcm Content-Encoding but sending salt/key 
+ * in separate headers (Encryption, Crypto-Key) which is the OLD aesgcm format.
+ * 
+ * Keep this for reference in case we need to revert.
+ */
+
+/**
  * Supabase Edge Function: send-notification
  * 
  * This function is triggered by database triggers when items are added.
@@ -189,18 +200,59 @@ async function hkdf(
   return new Uint8Array(derived);
 }
 
+/**
+ * Create info string for HKDF
+ * 
+ * NOTE: This function was used in the OLD aesgcm format.
+ * The NEW aes128gcm format uses simpler info strings.
+ */
+function createInfo(
+  type: string,
+  clientPublicKey: Uint8Array,
+  serverPublicKey: Uint8Array
+): Uint8Array {
+  const encoder = new TextEncoder();
+  const typeBytes = encoder.encode(type);
+  
+  // Content-Encoding: <type>\0P-256\0\0A<clientPublicKey>\0A<serverPublicKey>
+  const info = new Uint8Array(
+    typeBytes.length + 1 + 5 + 1 + 2 + clientPublicKey.length + 2 + serverPublicKey.length
+  );
+  
+  let offset = 0;
+  info.set(typeBytes, offset);
+  offset += typeBytes.length + 1; // +1 for null byte
+  
+  info.set(encoder.encode('P-256'), offset);
+  offset += 5 + 1; // +1 for null byte
+  
+  // Client public key length (2 bytes, big endian)
+  info[offset] = 0;
+  info[offset + 1] = clientPublicKey.length;
+  offset += 2;
+  info.set(clientPublicKey, offset);
+  offset += clientPublicKey.length;
+  
+  // Server public key length (2 bytes, big endian)
+  info[offset] = 0;
+  info[offset + 1] = serverPublicKey.length;
+  offset += 2;
+  info.set(serverPublicKey, offset);
+  
+  return info;
+}
 
 /**
  * Encrypt payload using AES-128-GCM (RFC 8291 - aes128gcm encoding)
  * 
- * For aes128gcm, the entire encrypted message (including headers) goes in the body.
- * Format: salt (16) + rs (4) + idlen (1) + keyid (65) + encrypted_content
+ * BUG: This returned separate ciphertext, salt, serverPublicKey
+ * but aes128gcm format requires them to be combined in the body.
  */
 async function encryptPayload(
   payload: string,
   p256dhKey: string,
   authKey: string
-): Promise<Uint8Array> {
+): Promise<{ ciphertext: Uint8Array; salt: Uint8Array; serverPublicKey: Uint8Array }> {
   const encoder = new TextEncoder();
   const payloadBytes = encoder.encode(payload);
   
@@ -222,19 +274,15 @@ async function encryptPayload(
   const authInfo = new TextEncoder().encode('Content-Encoding: auth\0');
   const prk = await hkdf(clientAuthSecret, sharedSecret, authInfo, 32);
   
-  // Derive content encryption key using simplified info for aes128gcm
-  const cekInfo = encoder.encode('Content-Encoding: aes128gcm\0');
+  // Derive content encryption key
+  const cekInfo = createInfo('aes128gcm', clientPublicKey, serverPublicKey);
   const contentEncryptionKey = await hkdf(salt, prk, cekInfo, 16);
 
-  // Derive nonce using simplified info for aes128gcm
-  const nonceInfo = encoder.encode('Content-Encoding: nonce\0');
+  // Derive nonce
+  const nonceInfo = createInfo('nonce', clientPublicKey, serverPublicKey);
   const nonce = await hkdf(salt, prk, nonceInfo, 12);
 
-  // For aes128gcm, add a delimiter byte (0x02) to mark end of content
-  const paddedPayload = new Uint8Array(payloadBytes.length + 1);
-  paddedPayload.set(payloadBytes);
-  paddedPayload[payloadBytes.length] = 0x02; // Delimiter byte
-
+  // RFC 8291 (aes128gcm) doesn't use padding - encrypt payload directly
   // Encrypt with AES-GCM
   const key = await crypto.subtle.importKey(
     'raw',
@@ -247,35 +295,14 @@ async function encryptPayload(
   const encrypted = await crypto.subtle.encrypt(
     { name: 'AES-GCM', iv: nonce },
     key,
-    paddedPayload
+    payloadBytes
   );
   
-  const ciphertext = new Uint8Array(encrypted);
-  
-  // Build the complete aes128gcm body:
-  // salt (16) + rs (4) + idlen (1) + keyid (65) + ciphertext
-  const recordSize = 4096;
-  const rs = new Uint8Array(4);
-  rs[0] = (recordSize >> 24) & 0xff;
-  rs[1] = (recordSize >> 16) & 0xff;
-  rs[2] = (recordSize >> 8) & 0xff;
-  rs[3] = recordSize & 0xff;
-  
-  const idlen = new Uint8Array([serverPublicKey.length]); // 65 for uncompressed P-256
-  
-  // Combine all parts
-  const body = new Uint8Array(
-    salt.length + rs.length + idlen.length + serverPublicKey.length + ciphertext.length
-  );
-  
-  let offset = 0;
-  body.set(salt, offset); offset += salt.length;
-  body.set(rs, offset); offset += rs.length;
-  body.set(idlen, offset); offset += idlen.length;
-  body.set(serverPublicKey, offset); offset += serverPublicKey.length;
-  body.set(ciphertext, offset);
-  
-  return body;
+  return {
+    ciphertext: new Uint8Array(encrypted),
+    salt,
+    serverPublicKey
+  };
 }
 
 /**
@@ -324,6 +351,10 @@ async function signJwt(
 
 /**
  * Send a Web Push notification using native Deno crypto
+ * 
+ * BUG: This sent Encryption and Crypto-Key as separate headers,
+ * which is the OLD aesgcm format. For aes128gcm, they should be
+ * embedded in the body.
  */
 async function sendWebPushNotification(
   subscription: PushSubscriptionRecord,
@@ -378,45 +409,54 @@ async function sendWebPushNotification(
       authLength: subscription.auth_key?.length || 0
     });
     
-    // encryptPayload returns the complete aes128gcm body including headers
-    const body = await encryptPayload(
+    // BUG: This returns separate parts instead of combined body
+    const { ciphertext, salt, serverPublicKey } = await encryptPayload(
       payloadJson,
       subscription.p256dh_key,
       subscription.auth_key
     );
     
     console.log(`[Push] Encryption complete:`, {
-      bodyLength: body.length,
+      ciphertextLength: ciphertext.length,
+      saltLength: salt.length,
+      serverPublicKeyLength: serverPublicKey.length,
       encoding: 'aes128gcm'
     });
     
-    // Build authorization header for VAPID
+    // Build authorization header
     const vapidAuth = `vapid t=${jwt}, k=${vapidPublicKey}`;
     
-    console.log(`[Push] Sending to push endpoint:`, {
+    // BUG: These headers are for OLD aesgcm format, not aes128gcm
+    const encryptionHeader = `salt=${uint8ArrayToBase64Url(salt)}`;
+    const cryptoKeyHeader = `dh=${uint8ArrayToBase64Url(serverPublicKey)}`;
+    
+    console.log(`[Push] Sending to FCM endpoint:`, {
       endpoint: endpoint,
       method: 'POST',
       headers: {
         'Content-Encoding': 'aes128gcm',
+        'Encryption': encryptionHeader.substring(0, 50) + '...',
+        'Crypto-Key': cryptoKeyHeader.substring(0, 50) + '...',
         'TTL': '86400',
         'Urgency': 'normal',
         'Authorization': 'vapid t=... (JWT present)'
       },
-      bodyLength: body.length
+      bodyLength: ciphertext.length
     });
     
-    // Send the push message
-    // For aes128gcm, salt and server key are embedded in the body, not in headers
+    // BUG: Sending just ciphertext, but aes128gcm needs salt+rs+idlen+key+ciphertext
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Authorization': vapidAuth,
         'Content-Type': 'application/octet-stream',
         'Content-Encoding': 'aes128gcm',
+        'Encryption': encryptionHeader,      // BUG: Not needed for aes128gcm
+        'Crypto-Key': cryptoKeyHeader,       // BUG: Not needed for aes128gcm
         'TTL': '86400',
         'Urgency': 'normal'
       },
-      body: body
+      body: ciphertext  // BUG: Should be full aes128gcm body with headers
     });
     
     // Log response details
@@ -740,3 +780,4 @@ serve(async (req: Request) => {
     );
   }
 });
+

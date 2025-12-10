@@ -395,7 +395,7 @@ const AppContent: React.FC = () => {
     if (!currentUser || !currentUser.householdId) return;
     const hid = currentUser.householdId;
     
-    const unsubUsers = subscribeToCollection(hid, 'users', (data) => {
+    const unsubUsers = subscribeToCollection(hid, 'users', async (data) => {
       // Deduplicate users by id to prevent duplicates
       const uniqueUsers = Array.from(new Map(data.map(u => [u.id, u])).values());
       
@@ -420,7 +420,30 @@ const AppContent: React.FC = () => {
         return acc;
       }, []);
       
-      setUsers(finalUsers as User[]);
+      // Fetch push subscription status for each user to determine "Incomplete" vs "Ready" state
+      const usersWithStatus = await Promise.all(finalUsers.map(async (user) => {
+        // Skip check for children or temp users
+        if (user.role === 'Child' || user.id.startsWith('temp-')) {
+          return { ...user, hasPushSubscription: false };
+        }
+        
+        try {
+          const { count } = await supabase
+            .from('push_subscriptions')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', user.id);
+            
+          return {
+            ...user,
+            hasPushSubscription: (count || 0) > 0
+          };
+        } catch (e) {
+          console.warn('Failed to check push subscription for user', user.id, e);
+          return { ...user, hasPushSubscription: false };
+        }
+      }));
+      
+      setUsers(usersWithStatus as User[]);
     });
     const unsubTodoItems = subscribeToCollection(hid, 'todo_items', (data) => setTodoItems(data as ToDoItem[]));
     const unsubMeals = subscribeToCollection(hid, 'meals', (data) => setMeals(data as Meal[]));

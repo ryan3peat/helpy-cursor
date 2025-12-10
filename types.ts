@@ -26,6 +26,7 @@ export interface User {
   password?: string;
   pin?: string;
   notificationsEnabled?: boolean;
+  hasPushSubscription?: boolean;
 }
 
 export interface Section {

@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
   AlertCircle, Heart, Settings, Plus, Trash2, X, Save, Camera,
   Image as ImageIcon, LogOut, Copy, Check, ChevronLeft, ChevronRight,
-  CreditCard, Shield, Lock, Crown, Mail, Share2, Bell, Phone, CheckCircle, Loader2
+  CreditCard, Shield, Lock, Crown, Mail, Share2, Bell, BellOff, BellDot, Phone, CheckCircle, Loader2
 } from 'lucide-react';
 import { useUser } from '@clerk/clerk-react';
 import { User, UserRole, BaseViewProps } from '../types';
@@ -766,15 +766,27 @@ const Profile: React.FC<ProfileProps> = ({
                 {validUsers.map((user) => {
                   const isCurrent = user.id === currentUser.id;
                   const isSelected = user.id === selectedUserId;
+                  const hasNotifications = user.notificationsEnabled === true;
                   return (
                     <div
                       key={user.id}
                       onClick={() => setSelectedUserId(user.id)}
                       className="flex flex-col items-center gap-2 cursor-pointer"
                     >
-                      <div className={`w-16 h-16 rounded-full overflow-hidden border-4 ${isSelected ? 'border-primary shadow-md' : 'border-transparent'
-                        }`}>
-                        <img src={getAvatarUrl(user)} alt={user.name} className="w-full h-full object-cover" />
+                      <div className="relative">
+                        <div className={`w-16 h-16 rounded-full overflow-hidden border-4 ${isSelected ? 'border-primary shadow-md' : 'border-transparent'
+                          }`}>
+                          <img src={getAvatarUrl(user)} alt={user.name} className="w-full h-full object-cover" />
+                        </div>
+                        {/* Notification indicator */}
+                        <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-white shadow-sm flex items-center justify-center">
+                          {(() => {
+                            if (user.role === 'Child') return <BellOff size={12} className="text-muted-foreground" />;
+                            if (!user.notificationsEnabled) return <BellOff size={12} className="text-destructive" />;
+                            if (!user.hasPushSubscription) return <BellDot size={12} className="text-orange-500" />;
+                            return <Bell size={12} className="text-primary" />;
+                          })()}
+                        </div>
                       </div>
                       <span className="text-body font-semibold text-foreground">
                         {user.name.split(' ')[0]} {isCurrent ? '(You)' : ''}
@@ -825,6 +837,66 @@ const Profile: React.FC<ProfileProps> = ({
                       )}
                     </div>
                   </div>
+                </div>
+
+                {/* Notifications Status */}
+                <div className="flex items-start gap-2 mt-3">
+                  {(() => {
+                    // Child
+                    if (selectedUser.role === 'UserRole.CHILD' || selectedUser.role === 'Child') {
+                      return (
+                        <>
+                          <BellOff size={16} className="text-muted-foreground shrink-0 mt-0.5" />
+                          <span className="text-body text-muted-foreground">
+                            {t['notifications.child'] || "Children accounts don't receive notifications."}
+                          </span>
+                        </>
+                      );
+                    }
+                    
+                    // Off
+                    if (!selectedUser.notificationsEnabled) {
+                      return (
+                        <>
+                          <BellOff size={16} className="text-destructive shrink-0 mt-0.5" />
+                          <div className="text-body text-muted-foreground">
+                             <p className="font-bold text-foreground mb-1">Notifications off.</p>
+                             <ol className="list-decimal pl-4 space-y-1">
+                               <li>Enable in <strong>Settings &gt; Account</strong> below</li>
+                               <li>Tap <strong>Allow</strong> if asked</li>
+                             </ol>
+                          </div>
+                        </>
+                      );
+                    }
+                    
+                    // Incomplete (Enabled but no subscription)
+                    if (!selectedUser.hasPushSubscription) {
+                      return (
+                        <>
+                          <BellDot size={16} className="text-orange-500 shrink-0 mt-0.5" />
+                          <div className="text-body text-muted-foreground">
+                             <p className="font-bold text-foreground mb-1">Setup incomplete. <span className="font-normal">Ask {selectedUser.name.split(' ')[0]} to:</span></p>
+                             <ol className="list-decimal pl-4 space-y-1">
+                               <li>Add to Home Screen (iPhone/Android)</li>
+                               <li>Enable Notification in <strong>Settings &gt; Account</strong></li>
+                               <li>Tap <strong>Allow</strong> if asked</li>
+                             </ol>
+                          </div>
+                        </>
+                      );
+                    }
+                    
+                    // Ready
+                    return (
+                      <>
+                        <Bell size={16} className="text-primary shrink-0 mt-0.5" />
+                        <span className="text-body text-foreground font-bold">
+                          {t['notifications.ready'] || "Notifications active."}
+                        </span>
+                      </>
+                    );
+                  })()}
                 </div>
 
                 {/* Action Row */}

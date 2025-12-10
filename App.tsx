@@ -318,10 +318,19 @@ const AppContent: React.FC = () => {
         fetchCollection(hid, 'expenses'),
       ]);
       
-      // Update state with fresh data
+      // Update state with fresh data, preserving hasPushSubscription from current state
       if (usersData.length > 0) {
         const uniqueUsers = Array.from(new Map(usersData.map(u => [u.id, u])).values());
-        setUsers(uniqueUsers as User[]);
+        setUsers(prev => {
+          // Merge new data with existing hasPushSubscription values
+          return uniqueUsers.map(newUser => {
+            const existingUser = prev.find(u => u.id === newUser.id);
+            return {
+              ...newUser,
+              hasPushSubscription: existingUser?.hasPushSubscription ?? (newUser as any).hasPushSubscription
+            };
+          }) as User[];
+        });
       }
       if (todoData) setTodoItems(todoData as ToDoItem[]);
       if (mealsData) setMeals(mealsData as Meal[]);

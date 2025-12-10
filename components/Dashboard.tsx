@@ -17,7 +17,10 @@ import {
   User as UserIcon,
   Plus,
   Languages,
-  Trash2
+  Trash2,
+  Bell,
+  BellOff,
+  BellDot
 } from 'lucide-react';
 import { ToDoItem, Meal, User, MealType, TranslationDictionary, UserRole, Expense } from '../types';
 import { formatCurrency } from '../currencyConfig';
@@ -353,6 +356,15 @@ const Dashboard: React.FC<DashboardProps> = ({
                 alt="Profile"
                 className="w-14 h-14 rounded-full border-4 border-card shadow-sm bg-muted object-cover"
               />
+              {/* Notification indicator - synced with Profile page */}
+              <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-white shadow-sm flex items-center justify-center">
+                {(() => {
+                  if (currentUser.role === UserRole.CHILD) return <BellOff size={12} className="text-muted-foreground" />;
+                  if (!currentUser.notificationsEnabled) return <BellOff size={12} className="text-destructive" />;
+                  if (!currentUser.hasPushSubscription) return <BellDot size={12} className="text-orange-500" />;
+                  return <Bell size={12} className="text-primary" />;
+                })()}
+              </div>
             </button>
           </div>
         </div>

@@ -357,26 +357,68 @@ async function sendWebPushNotification(
     // Try to sign JWT - if this fails, VAPID private key format might be wrong
     let jwt: string;
     try {
+      console.log(`[Push] Signing VAPID JWT:`, {
+        audience: audience,
+        subject: vapidSubject,
+        expiresIn: '12 hours',
+        hasPrivateKey: !!vapidPrivateKey,
+        privateKeyLength: vapidPrivateKey?.length || 0
+      });
       jwt = await signJwt(claims, vapidPrivateKey);
+      console.log(`[Push] JWT signed successfully (length: ${jwt.length})`);
     } catch (jwtError) {
-      console.error('[Push] Failed to sign VAPID JWT:', jwtError);
-      // Fall back to sending without encryption for debugging
-      console.log('[Push] Attempting unencrypted notification (for debugging only)');
-      
-      // For now, just log and return - we need proper VAPID keys
+      console.error('[Push] ❌ Failed to sign VAPID JWT:', {
+        error: jwtError instanceof Error ? jwtError.message : String(jwtError),
+        stack: jwtError instanceof Error ? jwtError.stack : undefined,
+        hasPrivateKey: !!vapidPrivateKey,
+        privateKeyLength: vapidPrivateKey?.length || 0
+      });
       return { success: false, expired: false };
     }
     
     // Encrypt the payload
     const payloadJson = JSON.stringify(payload);
+    console.log(`[Push] Encrypting payload:`, {
+      payloadLength: payloadJson.length,
+      payloadPreview: payloadJson.substring(0, 100) + '...',
+      endpoint: endpoint.substring(0, 50) + '...',
+      hasP256dh: !!subscription.p256dh_key,
+      hasAuth: !!subscription.auth_key,
+      p256dhLength: subscription.p256dh_key?.length || 0,
+      authLength: subscription.auth_key?.length || 0
+    });
+    
     const { ciphertext, salt, serverPublicKey } = await encryptPayload(
       payloadJson,
       subscription.p256dh_key,
       subscription.auth_key
     );
     
+    console.log(`[Push] Encryption complete:`, {
+      ciphertextLength: ciphertext.length,
+      saltLength: salt.length,
+      serverPublicKeyLength: serverPublicKey.length,
+      encoding: 'aes128gcm'
+    });
+    
     // Build authorization header
     const vapidAuth = `vapid t=${jwt}, k=${vapidPublicKey}`;
+    const encryptionHeader = `salt=${uint8ArrayToBase64Url(salt)}`;
+    const cryptoKeyHeader = `dh=${uint8ArrayToBase64Url(serverPublicKey)}`;
+    
+    console.log(`[Push] Sending to FCM endpoint:`, {
+      endpoint: endpoint,
+      method: 'POST',
+      headers: {
+        'Content-Encoding': 'aes128gcm',
+        'Encryption': encryptionHeader.substring(0, 50) + '...',
+        'Crypto-Key': cryptoKeyHeader.substring(0, 50) + '...',
+        'TTL': '86400',
+        'Urgency': 'normal',
+        'Authorization': 'vapid t=... (JWT present)'
+      },
+      bodyLength: ciphertext.length
+    });
     
     // Send the push message
     const response = await fetch(endpoint, {
@@ -385,30 +427,65 @@ async function sendWebPushNotification(
         'Authorization': vapidAuth,
         'Content-Type': 'application/octet-stream',
         'Content-Encoding': 'aes128gcm',
-        'Encryption': `salt=${uint8ArrayToBase64Url(salt)}`,
-        'Crypto-Key': `dh=${uint8ArrayToBase64Url(serverPublicKey)}`,
+        'Encryption': encryptionHeader,
+        'Crypto-Key': cryptoKeyHeader,
         'TTL': '86400',
         'Urgency': 'normal'
       },
       body: ciphertext
     });
     
+    // Log response details
+    const responseHeaders: Record<string, string> = {};
+    response.headers.forEach((value, key) => {
+      responseHeaders[key] = value;
+    });
+    
+    console.log(`[Push] FCM Response:`, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: responseHeaders,
+      endpoint: endpoint.substring(0, 50) + '...'
+    });
+    
     if (response.status === 201 || response.status === 200) {
-      console.log(`[Push] Sent to ${endpoint.substring(0, 50)}...`);
+      console.log(`[Push] ✅ Successfully sent to ${endpoint.substring(0, 50)}...`);
+      const responseBody = await response.text();
+      if (responseBody) {
+        console.log(`[Push] Response body:`, responseBody);
+      }
       return { success: true, expired: false };
     }
     
     if (response.status === 410 || response.status === 404) {
-      console.log(`[Push] Subscription expired: ${endpoint.substring(0, 50)}...`);
+      console.log(`[Push] ⚠️ Subscription expired (${response.status}): ${endpoint.substring(0, 50)}...`);
+      const responseBody = await response.text();
+      if (responseBody) {
+        console.log(`[Push] Expiration response:`, responseBody);
+      }
       return { success: false, expired: true };
     }
     
+    // Log detailed error information
     const errorText = await response.text();
-    console.error(`[Push] Failed (${response.status}): ${errorText}`);
+    console.error(`[Push] ❌ Failed to send (${response.status} ${response.statusText}):`, {
+      endpoint: endpoint,
+      status: response.status,
+      statusText: response.statusText,
+      headers: responseHeaders,
+      errorBody: errorText,
+      errorBodyLength: errorText.length,
+      timestamp: new Date().toISOString()
+    });
     return { success: false, expired: false };
     
   } catch (error) {
-    console.error('[Push] Error:', error);
+    console.error('[Push] ❌ Exception during send:', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      endpoint: subscription.endpoint?.substring(0, 50) + '...',
+      timestamp: new Date().toISOString()
+    });
     return { success: false, expired: false };
   }
 }
@@ -589,19 +666,32 @@ serve(async (req: Request) => {
     const message = buildNotificationMessage(table, record, creatorName);
     const referenceId = record.id as string;
 
-    console.log(`[Push] Sending to ${subscriptions.length} subscription(s)...`);
+    console.log(`[Push] 📤 Sending to ${subscriptions.length} subscription(s)...`);
+    console.log(`[Push] Notification details:`, {
+      title: message.title,
+      body: message.body,
+      type: message.type,
+      referenceId: referenceId,
+      creatorName: creatorName
+    });
 
-    // Send to all subscriptions
+    // Send to all subscriptions with detailed logging
     const results = await Promise.all(
-      subscriptions.map(sub => 
-        sendWebPushNotification(
+      subscriptions.map((sub, index) => {
+        console.log(`[Push] [${index + 1}/${subscriptions.length}] Sending to subscription:`, {
+          subscriptionId: sub.id,
+          userId: sub.user_id,
+          endpoint: sub.endpoint.substring(0, 50) + '...',
+          hasKeys: !!(sub.p256dh_key && sub.auth_key)
+        });
+        return sendWebPushNotification(
           sub,
           { ...message, referenceId },
           vapidPublicKey,
           vapidPrivateKey,
           vapidSubject
-        )
-      )
+        );
+      })
     );
 
     // Remove expired subscriptions
@@ -638,7 +728,16 @@ serve(async (req: Request) => {
     }
 
     const successCount = results.filter(r => r.success).length;
-    console.log(`[Push] Sent ${successCount}/${subscriptions.length} notifications`);
+    const expiredCount = results.filter(r => r.expired).length;
+    const failedCount = results.filter(r => !r.success && !r.expired).length;
+    
+    console.log(`[Push] 📊 Final results:`, {
+      total: subscriptions.length,
+      successful: successCount,
+      expired: expiredCount,
+      failed: failedCount,
+      successRate: `${Math.round((successCount / subscriptions.length) * 100)}%`
+    });
 
     return new Response(
       JSON.stringify({ 

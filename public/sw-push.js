@@ -30,101 +30,146 @@ const DEFAULT_NOTIFICATION_OPTIONS = {
 // ============================================================================
 
 self.addEventListener('push', (event) => {
-  console.log('[SW] Push event received');
+  console.log('[SW] 🔔 Push event received');
   console.log('[SW] Push event details:', {
     hasData: !!event.data,
     dataType: event.data ? typeof event.data : 'none',
     isArrayBuffer: event.data instanceof ArrayBuffer,
+    isBlob: event.data instanceof Blob,
+    isText: event.data ? typeof event.data.text === 'function' : false,
+    isJson: event.data ? typeof event.data.json === 'function' : false,
     timestamp: new Date().toISOString()
   });
 
-  let data = {
-    title: 'Helpy',
-    body: 'Something new was added to your household!',
-    type: 'general',
-    url: '/',
-  };
+  // Wrap async parsing in event.waitUntil
+  event.waitUntil((async () => {
+    let data = {
+      title: 'Helpy',
+      body: 'Something new was added to your household!',
+      type: 'general',
+      url: '/',
+    };
 
-  // Parse the push data
-  if (event.data) {
-    try {
-      // Try to parse as JSON first (for encrypted Web Push, browser decrypts automatically)
-      const jsonData = event.data.json();
-      console.log('[SW] Parsed push data:', jsonData);
-      data = { ...data, ...jsonData };
-    } catch (e) {
-      console.error('[SW] Failed to parse push data as JSON:', e);
+    // Parse the push data
+    if (event.data) {
       try {
-        // Fallback: try to get text
-        const textData = event.data.text();
-        console.log('[SW] Push data as text:', textData);
-        data.body = textData || data.body;
-      } catch (textError) {
-        console.error('[SW] Failed to parse push data as text:', textError);
-        // Use default data
-      }
-    }
-  } else {
-    console.log('[SW] No push data, using defaults');
-  }
-
-  // Determine the action URL based on notification type
-  const getActionUrl = (type) => {
-    switch (type) {
-      case 'todo_item':
-      case 'shopping':
-        return '/#todo?section=shopping';
-      case 'task':
-        return '/#todo?section=task';
-      case 'meal':
-        return '/#meals';
-      case 'expense':
-        return '/#expenses';
-      default:
-        return '/';
-    }
-  };
-
-  // Build notification options
-  const options = {
-    ...DEFAULT_NOTIFICATION_OPTIONS,
-    body: data.body,
-    tag: data.tag || `helpy-${data.type}-${Date.now()}`,
-    data: {
-      url: data.url || getActionUrl(data.type),
-      type: data.type,
-      referenceId: data.referenceId,
-      notificationId: data.notificationId,
-    },
-    actions: [
-      {
-        action: 'view',
-        title: 'View',
-      },
-      {
-        action: 'dismiss',
-        title: 'Dismiss',
-      },
-    ],
-  };
-
-  // Show the notification
-  console.log('[SW] Showing notification:', { title: data.title, body: data.body, type: data.type });
-  
-  event.waitUntil(
-    self.registration.showNotification(data.title, options)
-      .then(() => {
-        console.log('[SW] Notification shown successfully');
-      })
-      .catch((error) => {
-        console.error('[SW] Failed to show notification:', error);
-        console.error('[SW] Error details:', {
-          message: error.message,
-          stack: error.stack,
-          name: error.name
+        // Try to parse as JSON first (for encrypted Web Push, browser decrypts automatically)
+        const jsonData = event.data.json();
+        console.log('[SW] ✅ Successfully parsed push data as JSON:', jsonData);
+        data = { ...data, ...jsonData };
+      } catch (e) {
+        console.error('[SW] ❌ Failed to parse push data as JSON:', {
+          error: e.message || String(e),
+          errorName: e.name,
+          hasText: typeof event.data.text === 'function',
+          hasArrayBuffer: typeof event.data.arrayBuffer === 'function'
         });
-      })
-  );
+        try {
+          // Fallback: try to get text
+          const textData = await event.data.text();
+          console.log('[SW] ⚠️ Push data as text (fallback):', textData);
+          if (textData) {
+            try {
+              // Try to parse text as JSON
+              const parsedText = JSON.parse(textData);
+              console.log('[SW] ✅ Parsed text as JSON:', parsedText);
+              data = { ...data, ...parsedText };
+            } catch {
+              // Use as plain text
+              data.body = textData || data.body;
+            }
+          }
+        } catch (textError) {
+          console.error('[SW] ❌ Failed to parse push data as text:', {
+            error: textError.message || String(textError),
+            errorName: textError.name
+          });
+          // Try arrayBuffer as last resort
+          try {
+            const arrayBuffer = await event.data.arrayBuffer();
+            console.log('[SW] ⚠️ Got push data as ArrayBuffer (length:', arrayBuffer.byteLength, ')');
+            // Browser should have decrypted it, but if we get raw bytes, something went wrong
+            console.error('[SW] ❌ Received raw encrypted data - browser decryption may have failed');
+          } catch (abError) {
+            console.error('[SW] ❌ Failed to get push data as ArrayBuffer:', abError);
+          }
+          // Use default data
+        }
+      }
+    } else {
+      console.log('[SW] ⚠️ No push data in event, using defaults');
+    }
+
+    // Determine the action URL based on notification type
+    const getActionUrl = (type) => {
+      switch (type) {
+        case 'todo_item':
+        case 'shopping':
+          return '/#todo?section=shopping';
+        case 'task':
+          return '/#todo?section=task';
+        case 'meal':
+          return '/#meals';
+        case 'expense':
+          return '/#expenses';
+        default:
+          return '/';
+      }
+    };
+
+    // Build notification options
+    const options = {
+      ...DEFAULT_NOTIFICATION_OPTIONS,
+      body: data.body,
+      tag: data.tag || `helpy-${data.type}-${Date.now()}`,
+      data: {
+        url: data.url || getActionUrl(data.type),
+        type: data.type,
+        referenceId: data.referenceId,
+        notificationId: data.notificationId,
+      },
+      actions: [
+        {
+          action: 'view',
+          title: 'View',
+        },
+        {
+          action: 'dismiss',
+          title: 'Dismiss',
+        },
+      ],
+    };
+
+    // Show the notification
+    console.log('[SW] 📱 Showing notification:', { 
+      title: data.title, 
+      body: data.body, 
+      type: data.type,
+      tag: options.tag,
+      url: options.data?.url
+    });
+    
+    try {
+      await self.registration.showNotification(data.title, options);
+      console.log('[SW] ✅ Notification shown successfully');
+      console.log('[SW] Notification details:', {
+        title: data.title,
+        body: data.body,
+        type: data.type,
+        tag: options.tag,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('[SW] ❌ Failed to show notification:', {
+        error: error.message || String(error),
+        errorName: error.name,
+        stack: error.stack,
+        notificationTitle: data.title,
+        notificationBody: data.body,
+        timestamp: new Date().toISOString()
+      });
+    }
+  })());
 });
 
 

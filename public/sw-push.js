@@ -204,41 +204,76 @@ self.addEventListener('push', (event) => {
 // ============================================================================
 
 self.addEventListener('notificationclick', (event) => {
-  console.log('[SW] Notification clicked:', event);
+  console.log('[SW] 🔔 Notification clicked:', {
+    action: event.action,
+    tag: event.notification.tag,
+    data: event.notification.data
+  });
 
   const notification = event.notification;
   const action = event.action;
   const data = notification.data || {};
 
-  // Close the notification
+  // Always close the notification first
   notification.close();
 
-  // Handle different actions
+  // Handle dismiss action - just close, nothing else needed
   if (action === 'dismiss') {
-    // User dismissed - just close
-    console.log('[SW] Notification dismissed');
+    console.log('[SW] Notification dismissed by user');
     return;
   }
 
   // Default action or 'view' action - open the app
   const urlToOpen = data.url || '/';
+  const fullUrl = APP_BASE_URL + urlToOpen;
+  
+  console.log('[SW] Opening URL:', fullUrl);
 
+  // IMPORTANT: Must wrap ALL async operations in event.waitUntil()
+  // This keeps the service worker alive until the window opens
   event.waitUntil(
-    // Check if the app is already open
-    clients.matchAll({ type: 'window', includeUncontrolled: true })
-      .then((windowClients) => {
+    (async () => {
+      try {
+        // Check if the app is already open
+        const windowClients = await clients.matchAll({ 
+          type: 'window', 
+          includeUncontrolled: true 
+        });
+        
+        console.log('[SW] Found', windowClients.length, 'open window(s)');
+
         // Try to find an existing window with our app
         for (const client of windowClients) {
-          if (client.url.startsWith(APP_BASE_URL) && 'focus' in client) {
-            // Found an open window - navigate and focus it
-            return client.navigate(APP_BASE_URL + urlToOpen)
-              .then(() => client.focus())
-              .catch(() => client.focus()); // If navigate fails, just focus
+          console.log('[SW] Checking client:', client.url);
+          if (client.url.startsWith(APP_BASE_URL)) {
+            console.log('[SW] Found existing app window, navigating and focusing...');
+            // Navigate to the target URL
+            try {
+              await client.navigate(fullUrl);
+            } catch (navError) {
+              console.log('[SW] Navigate failed (may already be on page):', navError.message);
+            }
+            // Focus the window
+            await client.focus();
+            console.log('[SW] ✅ Focused existing window');
+            return;
           }
         }
-        // No open window - open a new one
-        return clients.openWindow(APP_BASE_URL + urlToOpen);
-      })
+
+        // No open window found - open a new one
+        console.log('[SW] No existing window found, opening new window...');
+        const newWindow = await clients.openWindow(fullUrl);
+        console.log('[SW] ✅ Opened new window:', newWindow?.url);
+      } catch (error) {
+        console.error('[SW] ❌ Error handling notification click:', error);
+        // Last resort: try to open window anyway
+        try {
+          await clients.openWindow(fullUrl);
+        } catch (e) {
+          console.error('[SW] ❌ Failed to open window:', e);
+        }
+      }
+    })()
   );
 });
 

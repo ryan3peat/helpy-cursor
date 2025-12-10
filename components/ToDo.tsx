@@ -1107,24 +1107,23 @@ const ToDo: React.FC<ToDoProps> = ({
                   maxHeight: isCollapsing ? '0px' : '150px',
                 }}
               >
-                {/* iOS-style swipe reveal - background stretches with swipe */}
+                {/* iOS-style swipe reveal - full width background */}
                 <div 
-                  className="absolute inset-y-0 left-0 flex items-center justify-center transition-colors duration-100"
+                  className="absolute inset-0 flex items-center pl-5 transition-colors duration-150"
                   style={{ 
-                    width: `${Math.max(swipeOffset, 0)}px`,
-                    backgroundColor: swipeThresholdReached 
-                      ? 'hsl(var(--primary))' 
-                      : 'hsl(var(--primary) / 0.2)',
+                    backgroundColor: swipeOffset > 0 || isCompleting
+                      ? (swipeThresholdReached || isCompleting
+                          ? 'hsl(var(--primary))' 
+                          : 'hsl(var(--primary) / 0.25)')
+                      : 'transparent',
                   }}
                 >
-                  {swipeOffset > 30 && (
+                  {(swipeOffset > 30 || isCompleting) && (
                     <div 
-                      className={`transition-all duration-100 ${
-                        swipeThresholdReached ? 'text-primary-foreground' : 'text-primary'
-                      }`}
+                      className="text-primary-foreground transition-all duration-150"
                       style={{ 
-                        transform: swipeThresholdReached ? 'scale(1.1)' : 'scale(1)',
-                        opacity: Math.min(swipeOffset / 50, 1),
+                        transform: swipeThresholdReached || isCompleting ? 'scale(1.1)' : 'scale(1)',
+                        opacity: isCompleting ? 1 : Math.min(swipeOffset / 50, 1),
                       }}
                     >
                       <Check size={22} strokeWidth={3} />

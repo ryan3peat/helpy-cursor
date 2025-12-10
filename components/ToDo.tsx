@@ -764,15 +764,16 @@ const ToDo: React.FC<ToDoProps> = ({
     
     const delta = e.touches[0].clientX - swipeState.startX;
     // Only allow right swipe, cap at 100px
-    const newOffset = Math.max(0, Math.min(delta, 100));
+    // Allow swipe up to ~75% of card width for iOS-style feel
+    const newOffset = Math.max(0, Math.min(delta, 280));
     setSwipeState(prev => ({ ...prev, offset: newOffset }));
   };
 
   const handleTouchEnd = (itemId: string) => {
     if (!swipeState.isDragging || swipeState.id !== itemId) return;
     
-    if (swipeState.offset > 70) {
-      // Threshold reached - complete the item
+    if (swipeState.offset > 90) {
+      // Threshold reached (~22-25% of card width) - complete the item
       handleToggleComplete(itemId, true);
     }
     
@@ -1092,7 +1093,7 @@ const ToDo: React.FC<ToDoProps> = ({
             const isCollapsing = collapsingIds.has(item.id);
             const isSwiping = swipeState.id === item.id;
             const swipeOffset = isSwiping ? swipeState.offset : 0;
-            const swipeThresholdReached = swipeOffset > 70;
+            const swipeThresholdReached = swipeOffset > 90;
             
             return (
               <div

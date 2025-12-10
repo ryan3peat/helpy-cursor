@@ -52,50 +52,74 @@ self.addEventListener('push', (event) => {
 
     // Parse the push data
     if (event.data) {
+      // First, check what type of data we have
+      let dataType = 'unknown';
+      let rawData = null;
+      
       try {
-        // Try to parse as JSON first (for encrypted Web Push, browser decrypts automatically)
-        const jsonData = event.data.json();
-        console.log('[SW] ✅ Successfully parsed push data as JSON:', jsonData);
-        data = { ...data, ...jsonData };
-      } catch (e) {
-        console.error('[SW] ❌ Failed to parse push data as JSON:', {
-          error: e.message || String(e),
-          errorName: e.name,
-          hasText: typeof event.data.text === 'function',
-          hasArrayBuffer: typeof event.data.arrayBuffer === 'function'
-        });
-        try {
-          // Fallback: try to get text
-          const textData = await event.data.text();
-          console.log('[SW] ⚠️ Push data as text (fallback):', textData);
-          if (textData) {
-            try {
-              // Try to parse text as JSON
-              const parsedText = JSON.parse(textData);
-              console.log('[SW] ✅ Parsed text as JSON:', parsedText);
-              data = { ...data, ...parsedText };
-            } catch {
-              // Use as plain text
-              data.body = textData || data.body;
-            }
+        // Try to get as text first to see what we're dealing with
+        const textData = await event.data.text();
+        console.log('[SW] Raw push data as text:', textData);
+        console.log('[SW] Text data length:', textData.length);
+        console.log('[SW] Text data preview (first 100 chars):', textData.substring(0, 100));
+        
+        // Check if it looks like JSON
+        const trimmed = textData.trim();
+        if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+          try {
+            const jsonData = JSON.parse(textData);
+            console.log('[SW] ✅ Successfully parsed push data as JSON:', jsonData);
+            data = { ...data, ...jsonData };
+            dataType = 'json';
+          } catch (parseError) {
+            console.error('[SW] ❌ Text looks like JSON but failed to parse:', parseError.message);
+            dataType = 'text';
+            data.body = textData || data.body;
           }
-        } catch (textError) {
-          console.error('[SW] ❌ Failed to parse push data as text:', {
-            error: textError.message || String(textError),
-            errorName: textError.name
+        } else {
+          // Plain text
+          console.log('[SW] ⚠️ Push data is plain text (not JSON)');
+          dataType = 'text';
+          data.body = textData || data.body;
+        }
+      } catch (textError) {
+        console.error('[SW] ❌ Failed to get push data as text:', {
+          error: textError.message || String(textError),
+          errorName: textError.name
+        });
+        
+        // Try JSON directly (browser might have already decrypted)
+        try {
+          const jsonData = event.data.json();
+          console.log('[SW] ✅ Successfully got push data as JSON (direct):', jsonData);
+          data = { ...data, ...jsonData };
+          dataType = 'json-direct';
+        } catch (jsonError) {
+          console.error('[SW] ❌ Failed to get push data as JSON (direct):', {
+            error: jsonError.message || String(jsonError),
+            errorName: jsonError.name
           });
+          
           // Try arrayBuffer as last resort
           try {
             const arrayBuffer = await event.data.arrayBuffer();
             console.log('[SW] ⚠️ Got push data as ArrayBuffer (length:', arrayBuffer.byteLength, ')');
+            console.log('[SW] ⚠️ First 20 bytes:', Array.from(new Uint8Array(arrayBuffer.slice(0, 20))));
             // Browser should have decrypted it, but if we get raw bytes, something went wrong
             console.error('[SW] ❌ Received raw encrypted data - browser decryption may have failed');
+            console.error('[SW] This usually means:');
+            console.error('[SW]   1. Content-Encoding header mismatch (should be aes128gcm)');
+            console.error('[SW]   2. Subscription keys (p256dh, auth) don\'t match');
+            console.error('[SW]   3. VAPID keys don\'t match between client and server');
+            dataType = 'arraybuffer';
           } catch (abError) {
             console.error('[SW] ❌ Failed to get push data as ArrayBuffer:', abError);
+            dataType = 'error';
           }
-          // Use default data
         }
       }
+      
+      console.log('[SW] Final data type detected:', dataType);
     } else {
       console.log('[SW] ⚠️ No push data in event, using defaults');
     }
@@ -246,14 +270,45 @@ self.addEventListener('message', (event) => {
   
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
+    return; // No response needed
   }
   
   if (event.data && event.data.type === 'PING') {
-    event.ports[0].postMessage({ 
-      success: true, 
-      message: 'Service worker is active',
-      scope: self.registration?.scope 
-    });
+    // Only respond if a port is available
+    if (event.ports && event.ports.length > 0 && event.ports[0]) {
+      try {
+        event.ports[0].postMessage({ 
+          success: true, 
+          message: 'Service worker is active',
+          scope: self.registration?.scope 
+        });
+      } catch (error) {
+        console.error('[SW] Failed to send PING response:', error);
+      }
+    } else {
+      console.log('[SW] PING received but no message port available');
+    }
+    return; // Don't continue processing
+  }
+  
+  if (event.data && event.data.type === 'TEST') {
+    console.log('[SW] ✅ Test message received - service worker is active and responding');
+    console.log('[SW] Test message content:', event.data.message);
+    // No response needed for TEST messages
+    return;
+  }
+  
+  // For any other messages, optionally respond if port is available
+  if (event.ports && event.ports.length > 0 && event.ports[0]) {
+    try {
+      event.ports[0].postMessage({ 
+        received: true,
+        message: 'Message received by service worker'
+      });
+    } catch (error) {
+      // Port might be closed, that's okay
+      console.log('[SW] Could not send response (port may be closed):', error.message);
+    }
   }
 });
 

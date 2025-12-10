@@ -64,41 +64,133 @@ Look for these log entries in order:
 ```
 → **Fix:** VAPID authentication failed. Check VAPID keys and subject.
 
-### 2. Check Service Worker Logs (Browser Console)
+### 2. Check Notification Permission (Browser Console)
 
-Open **Browser DevTools → Console** and filter for `[SW]`
+**Step-by-step:**
 
-#### ✅ Success Flow:
-```
-[SW] 🔔 Push event received
-[SW] Push event details: {...}
-[SW] ✅ Successfully parsed push data as JSON: {...}
-[SW] 📱 Showing notification: {...}
-[SW] ✅ Notification shown successfully
-```
+1. **Open Browser DevTools:**
+   - Press `F12` or `Ctrl+Shift+I` (Windows/Linux) or `Cmd+Option+I` (Mac)
+   - Or right-click on the page → "Inspect" or "Inspect Element"
 
-#### ❌ Common Errors:
+2. **Go to Console Tab:**
+   - Click the "Console" tab at the top of DevTools
 
-**No push event received:**
-- Check if service worker is registered: `navigator.serviceWorker.getRegistrations()`
-- Check if subscription exists: `registration.pushManager.getSubscription()`
-- Verify service worker is active in DevTools → Application → Service Workers
+3. **Run this command:**
+   ```javascript
+   console.log('Notification Permission:', Notification.permission);
+   ```
 
-**Failed to parse push data:**
-```
-[SW] ❌ Failed to parse push data as JSON: {...}
-[SW] ❌ Received raw encrypted data - browser decryption may have failed
-```
-→ **Fix:** Browser couldn't decrypt. Check:
-  - Content-Encoding header matches (should be `aes128gcm`)
-  - Subscription keys (p256dh, auth) are correct
-  - VAPID keys match between client and server
+4. **Check the result:**
+   - ✅ `"granted"` = Permission is granted, notifications should work
+   - ⚠️ `"default"` = Permission not yet requested, user needs to allow
+   - ❌ `"denied"` = Permission denied, user must enable in browser settings
 
-**Notification permission denied:**
-```
-[SW] ❌ Failed to show notification: NotAllowedError
-```
-→ **Fix:** User needs to grant notification permission in browser settings
+5. **If permission is denied, fix it:**
+   - **Chrome/Edge:** Click the lock icon (🔒) in the address bar → Site settings → Notifications → Allow
+   - **Firefox:** Click the lock icon → More information → Permissions → Notifications → Allow
+   - **Safari:** Safari → Settings → Websites → Notifications → Find your site → Allow
+
+### 3. Check Push Subscription (Browser Console)
+
+**Step-by-step:**
+
+1. **In the same Console tab**, run this command:
+   ```javascript
+   navigator.serviceWorker.getRegistration('/')
+     .then(reg => {
+       if (!reg) {
+         console.log('❌ No service worker registration found');
+         return null;
+       }
+       console.log('✅ Service worker found:', reg.scope);
+       return reg.pushManager.getSubscription();
+     })
+     .then(sub => {
+       if (sub) {
+         console.log('✅ Push subscription exists!');
+         console.log('Endpoint:', sub.endpoint);
+         console.log('Subscription object:', sub.toJSON());
+       } else {
+         console.log('❌ No push subscription found');
+         console.log('User needs to enable notifications in the app');
+       }
+     })
+     .catch(err => {
+       console.error('❌ Error checking subscription:', err);
+     });
+   ```
+
+2. **What to look for:**
+   - ✅ If you see `"✅ Push subscription exists!"` with an endpoint URL, subscription is active
+   - ❌ If you see `"❌ No push subscription found"`, the user needs to re-enable notifications
+
+3. **Alternative - One-line check:**
+   ```javascript
+   navigator.serviceWorker.getRegistration('/').then(r => r?.pushManager.getSubscription()).then(s => console.log(s ? '✅ Has subscription' : '❌ No subscription', s));
+   ```
+
+### 4. Check Service Worker Logs (Browser Console)
+
+**Step-by-step:**
+
+1. **In the Console tab**, you'll see logs automatically when a push notification arrives
+
+2. **Filter logs to see only service worker messages:**
+   - Look for the filter/search box at the top of the console
+   - Type `[SW]` to filter for service worker logs only
+   - Or type `SW` to see all service worker related messages
+
+3. **What you should see when a notification arrives:**
+
+   **✅ Success Flow:**
+   ```
+   [SW] 🔔 Push event received
+   [SW] Push event details: {hasData: true, dataType: "object", ...}
+   [SW] ✅ Successfully parsed push data as JSON: {title: "...", body: "...", ...}
+   [SW] 📱 Showing notification: {title: "...", body: "...", type: "..."}
+   [SW] ✅ Notification shown successfully
+   ```
+
+4. **If you don't see any logs:**
+   - The push event might not be reaching the service worker
+   - Check if service worker is active: Go to **Application tab → Service Workers** (see below)
+   - Make sure the page is open (service workers only receive pushes when browser is running)
+
+5. **Check Service Worker Status:**
+   - Click the **"Application"** tab (or "Storage" in Firefox) in DevTools
+   - In the left sidebar, click **"Service Workers"**
+   - You should see your service worker listed with status **"activated and is running"**
+   - If it says "waiting" or "redundant", click "Update" or "Unregister" and refresh
+
+6. **Common Error Logs to Look For:**
+
+   **❌ Failed to parse push data:**
+   ```
+   [SW] ❌ Failed to parse push data as JSON: {...}
+   [SW] ❌ Received raw encrypted data - browser decryption may have failed
+   ```
+   → **Fix:** Browser couldn't decrypt. This means:
+   - Content-Encoding header might not match (should be `aes128gcm`)
+   - Subscription keys (p256dh, auth) might be wrong
+   - VAPID keys might not match between client and server
+
+   **❌ Failed to show notification:**
+   ```
+   [SW] ❌ Failed to show notification: NotAllowedError
+   ```
+   → **Fix:** Notification permission is denied. See #2 above to fix.
+
+   **❌ No push event received:**
+   - If you see FCM success logs but no `[SW] 🔔 Push event received`:
+   - Service worker might not be active
+   - Browser might be closed or tab inactive
+   - Subscription might be expired (check #3 above)
+
+7. **Real-time Monitoring:**
+   - Keep the Console tab open
+   - Trigger a notification (create a todo item, expense, etc.)
+   - Watch for the `[SW]` logs to appear immediately
+   - If logs don't appear, the push isn't reaching the service worker
 
 ### 3. Check Client-Side Subscription
 

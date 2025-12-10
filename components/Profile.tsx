@@ -358,8 +358,9 @@ const Profile: React.FC<ProfileProps> = ({
   );
 
   // Update accountData when currentUser changes
+  // But don't reset notificationsEnabled while user is actively toggling (prevents toggle flip)
   React.useEffect(() => {
-    setAccountData({
+    setAccountData(prev => ({
       email: currentUser.email || '',
       firstName: currentUser.firstName || currentUser.name?.split(' ')[0] || '',
       lastName: currentUser.lastName || currentUser.name?.split(' ').slice(1).join(' ') || '',
@@ -367,9 +368,10 @@ const Profile: React.FC<ProfileProps> = ({
       countryCode: currentUser.countryCode || '+1',
       currentPassword: '',
       newPassword: '',
-      notificationsEnabled: currentUser.notificationsEnabled ?? true
-    });
-  }, [currentUser]);
+      // Preserve notificationsEnabled if user is actively toggling, otherwise sync from currentUser
+      notificationsEnabled: isTogglingNotifications ? prev.notificationsEnabled : (currentUser.notificationsEnabled ?? true)
+    }));
+  }, [currentUser, isTogglingNotifications]);
   const [paymentData, setPaymentData] = useState({
     cardNumber: '',
     expiry: '',

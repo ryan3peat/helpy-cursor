@@ -229,7 +229,7 @@ function createInfo(
 }
 
 /**
- * Encrypt payload using AES-128-GCM (RFC 8291)
+ * Encrypt payload using AES-128-GCM (RFC 8291 - aes128gcm encoding)
  */
 async function encryptPayload(
   payload: string,
@@ -258,20 +258,14 @@ async function encryptPayload(
   const prk = await hkdf(clientAuthSecret, sharedSecret, authInfo, 32);
   
   // Derive content encryption key
-  const cekInfo = createInfo('aesgcm', clientPublicKey, serverPublicKey);
+  const cekInfo = createInfo('aes128gcm', clientPublicKey, serverPublicKey);
   const contentEncryptionKey = await hkdf(salt, prk, cekInfo, 16);
-  
+
   // Derive nonce
   const nonceInfo = createInfo('nonce', clientPublicKey, serverPublicKey);
   const nonce = await hkdf(salt, prk, nonceInfo, 12);
-  
-  // Add padding (2 bytes for padding length + padding)
-  const paddingLength = 0;
-  const paddedPayload = new Uint8Array(2 + paddingLength + payloadBytes.length);
-  paddedPayload[0] = (paddingLength >> 8) & 0xff;
-  paddedPayload[1] = paddingLength & 0xff;
-  paddedPayload.set(payloadBytes, 2 + paddingLength);
-  
+
+  // RFC 8291 (aes128gcm) doesn't use padding - encrypt payload directly
   // Encrypt with AES-GCM
   const key = await crypto.subtle.importKey(
     'raw',
@@ -284,7 +278,7 @@ async function encryptPayload(
   const encrypted = await crypto.subtle.encrypt(
     { name: 'AES-GCM', iv: nonce },
     key,
-    paddedPayload
+    payloadBytes
   );
   
   return {
@@ -390,7 +384,7 @@ async function sendWebPushNotification(
       headers: {
         'Authorization': vapidAuth,
         'Content-Type': 'application/octet-stream',
-        'Content-Encoding': 'aesgcm',
+        'Content-Encoding': 'aes128gcm',
         'Encryption': `salt=${uint8ArrayToBase64Url(salt)}`,
         'Crypto-Key': `dh=${uint8ArrayToBase64Url(serverPublicKey)}`,
         'TTL': '86400',

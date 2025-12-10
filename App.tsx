@@ -350,13 +350,13 @@ const AppContent: React.FC = () => {
 
   // Auto-subscribe to push notifications if user has them enabled
   // This ensures users with notificationsEnabled=true get subscribed automatically
+  // FIXED: Only trigger when notificationsEnabled is true, not when toggling OFF
   useEffect(() => {
     console.log('[App] Auto-subscribe useEffect triggered', {
       hasCurrentUser: !!currentUser,
       userId: currentUser?.id,
       householdId: currentUser?.householdId,
       notificationsEnabled: currentUser?.notificationsEnabled,
-      fullCurrentUser: currentUser
     });
     
     if (!currentUser || !currentUser.householdId) {
@@ -364,13 +364,21 @@ const AppContent: React.FC = () => {
       return;
     }
     
+    // FIXED: Only auto-subscribe when notifications are explicitly enabled
+    // Don't trigger when notificationsEnabled is false or undefined
+    const notificationsEnabled = currentUser.notificationsEnabled ?? false;
+    if (!notificationsEnabled) {
+      console.log('[App] Auto-subscribe skipped: notifications not enabled');
+      return;
+    }
+    
     console.log('[App] Calling autoSubscribeIfNeeded...');
     
-    // Check if user has notifications enabled and auto-subscribe
+    // Auto-subscribe only when notifications are enabled
     autoSubscribeIfNeeded(
       currentUser.id,
       currentUser.householdId,
-      currentUser.notificationsEnabled ?? true  // Default to true if not set
+      true  // We already checked it's enabled above
     ).then(success => {
       if (success) {
         console.log('[App] Push notifications auto-subscribed successfully');
@@ -380,7 +388,7 @@ const AppContent: React.FC = () => {
     }).catch(err => {
       console.warn('[App] Failed to auto-subscribe to push notifications:', err);
     });
-  }, [currentUser]); // Changed to depend on entire currentUser object instead of individual properties
+  }, [currentUser?.id, currentUser?.householdId, currentUser?.notificationsEnabled]); // FIXED: Depend on specific properties, not entire object
 
   // Supabase Subscriptions
   useEffect(() => {

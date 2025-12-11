@@ -22,6 +22,7 @@ interface IntroAnimationProps {
 }
 
 const IntroAnimation: React.FC<IntroAnimationProps> = ({ onComplete }) => {
+  console.log('[IntroAnimation] Rendering intro animation');
   const [fallenCount, setFallenCount] = useState(0);
   const [isBurping, setIsBurping] = useState(false);
   const [burpsDone, setBurpsDone] = useState<number[]>([]);

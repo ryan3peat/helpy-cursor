@@ -1,9 +1,13 @@
-
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { ClerkProvider } from '@clerk/clerk-react';
 import './index.css';
 import App from './App';
+
+// Log URL immediately on script load (before React)
+console.log('[Index] App starting. URL:', window.location.href);
+console.log('[Index] Hash:', window.location.hash);
+console.log('[Index] Pathname:', window.location.pathname);
 
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 if (!clerkPubKey) {

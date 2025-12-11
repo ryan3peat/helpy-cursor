@@ -671,10 +671,7 @@ const Meals: React.FC<MealsProps> = ({
             </h1>
             
             {/* Day/Week Toggle - Compact pill in header */}
-            <div 
-              className="relative rounded-full overflow-hidden shrink-0"
-              style={{ backgroundColor: 'hsl(var(--muted))' }}
-            >
+            <div className="relative rounded-full overflow-hidden shrink-0 bg-muted">
               <div className="flex p-0.5">
                 {['day', 'week'].map(v => {
                   const isActive = view === v;
@@ -698,10 +695,7 @@ const Meals: React.FC<MealsProps> = ({
                 })}
               </div>
               {/* Inset shadow overlay */}
-              <div 
-                className="absolute inset-0 rounded-full pointer-events-none"
-                style={{ boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.06)' }}
-              />
+              <div className="absolute inset-0 rounded-full pointer-events-none shadow-[inset_0_1px_2px_rgba(0,0,0,0.06)]" />
             </div>
           </div>
         </header>
@@ -718,10 +712,7 @@ const Meals: React.FC<MealsProps> = ({
         >
           <div className="flex items-center gap-3">
             {/* Week Selector */}
-            <div 
-              className="relative flex-1 flex items-center justify-between px-2 rounded-xl h-12 overflow-hidden"
-              style={{ backgroundColor: 'hsl(var(--muted))' }}
-            >
+            <div className="relative flex-1 flex items-center justify-between px-2 rounded-xl h-12 overflow-hidden bg-muted">
               <button
                 onClick={prevWeek}
                 className="p-2 hover:bg-muted rounded-lg text-muted-foreground transition-colors z-10"
@@ -736,10 +727,7 @@ const Meals: React.FC<MealsProps> = ({
                 <ChevronRight size={20} />
               </button>
               {/* Inset shadow overlay */}
-              <div 
-                className="absolute inset-0 rounded-xl pointer-events-none"
-                style={{ boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.06)' }}
-              />
+              <div className="absolute inset-0 rounded-xl pointer-events-none shadow-[inset_0_2px_4px_rgba(0,0,0,0.06)]" />
             </div>
 
             {/* Today Button - Always visible */}

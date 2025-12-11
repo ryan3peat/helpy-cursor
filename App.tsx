@@ -66,11 +66,15 @@ const BroomIcon = ({ className }: { className?: string }) => (
 // Used when user taps on a push notification to go directly to the relevant page
 const parseNotificationDeepLink = (): { view: string; navData: { section?: string } | null; isDeepLink: boolean } => {
   const hash = window.location.hash;
+  const fullUrl = window.location.href;
+  
+  console.log('[DeepLink] Parsing deep link:', { hash, fullUrl });
   
   // Check for deep link patterns: #todo, #meals, #expenses, #profile, #info
   if (hash.startsWith('#todo')) {
     const params = new URLSearchParams(hash.split('?')[1] || '');
     const section = params.get('section');
+    console.log('[DeepLink] Matched #todo, section:', section);
     return { 
       view: 'todo', 
       navData: section ? { section } : null,
@@ -78,18 +82,23 @@ const parseNotificationDeepLink = (): { view: string; navData: { section?: strin
     };
   }
   if (hash.startsWith('#meals')) {
+    console.log('[DeepLink] Matched #meals');
     return { view: 'meals', navData: null, isDeepLink: true };
   }
   if (hash.startsWith('#expenses')) {
+    console.log('[DeepLink] Matched #expenses');
     return { view: 'expenses', navData: null, isDeepLink: true };
   }
   if (hash.startsWith('#profile')) {
+    console.log('[DeepLink] Matched #profile');
     return { view: 'profile', navData: null, isDeepLink: true };
   }
   if (hash.startsWith('#info')) {
+    console.log('[DeepLink] Matched #info');
     return { view: 'info', navData: null, isDeepLink: true };
   }
   
+  console.log('[DeepLink] No deep link detected, defaulting to dashboard');
   return { view: 'dashboard', navData: null, isDeepLink: false };
 };
 
@@ -101,16 +110,76 @@ const AppContent: React.FC = () => {
   
   // Parse deep link on mount to determine initial view and whether to skip intro
   // This enables direct navigation when user taps on a push notification
-  const initialDeepLinkRef = useRef(parseNotificationDeepLink());
+  const initialDeepLinkRef = useRef(() => {
+    const result = parseNotificationDeepLink();
+    console.log('[App] Initial deep link parsed:', result);
+    return result;
+  });
+  
+  // Lazy initialize to ensure parseNotificationDeepLink runs only once
+  const getInitialDeepLink = () => {
+    if (typeof initialDeepLinkRef.current === 'function') {
+      initialDeepLinkRef.current = initialDeepLinkRef.current();
+    }
+    return initialDeepLinkRef.current;
+  };
+  
+  const initialDeepLink = getInitialDeepLink();
   
   // Skip intro animation if coming from a notification deep link
-  const [showIntro, setShowIntro] = useState(!initialDeepLinkRef.current.isDeepLink);
+  const [showIntro, setShowIntro] = useState(() => {
+    const shouldSkip = initialDeepLink.isDeepLink;
+    console.log('[App] showIntro initial:', !shouldSkip, '(isDeepLink:', shouldSkip, ')');
+    return !shouldSkip;
+  });
   
   // Initialize activeView from URL hash (for notification deep links)
-  const [activeView, setActiveView] = useState(initialDeepLinkRef.current.view);
+  const [activeView, setActiveView] = useState(() => {
+    console.log('[App] activeView initial:', initialDeepLink.view);
+    return initialDeepLink.view;
+  });
   
   const [clerkLoadTimeout, setClerkLoadTimeout] = useState(false);
   const [clerkError, setClerkError] = useState<string | null>(null);
+  
+  // Debug: Log when component mounts/renders
+  useEffect(() => {
+    console.log('[App] Component mounted. Current state:', {
+      showIntro,
+      activeView,
+      hash: window.location.hash,
+      href: window.location.href,
+      clerkLoaded,
+      isSignedIn,
+      hasCurrentUser: !!localStorage.getItem('helpy_current_session_user')
+    });
+    
+    // Check for deep link again after mount (for PWA cold start scenarios)
+    // The hash might not be available at initial parse but becomes available shortly after
+    const checkDeepLinkAfterMount = () => {
+      const hash = window.location.hash;
+      console.log('[App] Post-mount deep link check. Hash:', hash);
+      
+      if (hash && (hash.startsWith('#todo') || hash.startsWith('#meals') || hash.startsWith('#expenses'))) {
+        const deepLink = parseNotificationDeepLink();
+        console.log('[App] Post-mount deep link detected:', deepLink);
+        
+        if (deepLink.isDeepLink) {
+          setShowIntro(false);
+          setActiveView(deepLink.view);
+          setNavData(deepLink.navData);
+          // Clear the hash after processing
+          window.history.replaceState({}, '', window.location.pathname);
+        }
+      }
+    };
+    
+    // Check immediately and after a short delay (for PWA timing issues)
+    checkDeepLinkAfterMount();
+    const timer = setTimeout(checkDeepLinkAfterMount, 100);
+    
+    return () => clearTimeout(timer);
+  }, []);
 
   // Add timeout fallback if Clerk takes too long to load (10 seconds)
   useEffect(() => {
@@ -311,7 +380,10 @@ const AppContent: React.FC = () => {
 
   // Navigation data (e.g., initialSection for ToDo)
   // Initialize from deep link if present (for notification deep links)
-  const [navData, setNavData] = useState<{ section?: string } | null>(initialDeepLinkRef.current.navData);
+  const [navData, setNavData] = useState<{ section?: string } | null>(() => {
+    console.log('[App] navData initial:', initialDeepLink.navData);
+    return initialDeepLink.navData;
+  });
 
   // Navigation
   const handleNavigate = (view: string, data?: { section?: string }) => {
@@ -566,12 +638,11 @@ const AppContent: React.FC = () => {
   // Handle URL hash changes (for when app is already open and notification is tapped)
   // This navigates to the correct page when service worker calls client.navigate()
   useEffect(() => {
-    const handleHashChange = () => {
-      if (!currentUser) return; // Only handle if logged in
-      
+    const handleDeepLink = () => {
       const deepLink = parseNotificationDeepLink();
       if (deepLink.isDeepLink) {
-        console.log('[App] Hash changed, navigating to:', deepLink.view, deepLink.navData);
+        console.log('[App] Deep link detected, navigating to:', deepLink.view, deepLink.navData);
+        setShowIntro(false); // Always skip intro for deep links
         setActiveView(deepLink.view);
         setNavData(deepLink.navData);
         // Clear the hash parameters after navigation to keep URL clean
@@ -579,9 +650,36 @@ const AppContent: React.FC = () => {
       }
     };
     
+    // Handle hash changes (for when app is open and SW navigates)
+    const handleHashChange = () => {
+      console.log('[App] Hash change event detected. Hash:', window.location.hash);
+      handleDeepLink();
+    };
+    
+    // Handle visibility changes (for when PWA becomes visible after notification tap)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('[App] App became visible. Hash:', window.location.hash);
+        handleDeepLink();
+      }
+    };
+    
+    // Handle focus (another way to detect app becoming active)
+    const handleFocus = () => {
+      console.log('[App] Window focused. Hash:', window.location.hash);
+      handleDeepLink();
+    };
+    
     window.addEventListener('hashchange', handleHashChange);
-    return () => window.removeEventListener('hashchange', handleHashChange);
-  }, [currentUser]);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+    
+    return () => {
+      window.removeEventListener('hashchange', handleHashChange);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, []);
 
   const hid = currentUser?.householdId ?? '';
 

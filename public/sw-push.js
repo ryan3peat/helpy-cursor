@@ -47,7 +47,7 @@ self.addEventListener('push', (event) => {
       title: 'Helpy',
       body: 'Something new was added to your household!',
       type: 'general',
-      url: '/',
+      // Note: Don't set default url here - let getActionUrl() determine it based on type
     };
 
     // Parse the push data

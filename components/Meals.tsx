@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo, useLayoutEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Sparkles,
   Plus,
@@ -81,11 +81,6 @@ const Meals: React.FC<MealsProps> = ({
   const [view, setView] = useState<'day' | 'week'>('day');
   const [loadingAi, setLoadingAi] = useState(false);
   
-  // Prevent content flash - wait for first render cycle to complete
-  const [isReady, setIsReady] = useState(false);
-  useLayoutEffect(() => {
-    setIsReady(true);
-  }, []);
   
   // Scroll header hook for animation
   // - cooldown: 300ms to handle elastic bounce
@@ -666,56 +661,56 @@ const Meals: React.FC<MealsProps> = ({
     );
   };
 
-  // Wait for first render cycle to prevent content flash
-  if (!isReady) {
-    return <div className="min-h-screen bg-background" />;
-  }
-
   return (
-    <div className="min-h-screen bg-background pb-40">
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
-        {/* ─────────────────────────────────────────────────────────────── */}
-        {/* STICKY HEADER - Push Up (No Shrink) */}
-        {/* ─────────────────────────────────────────────────────────────── */}
-        <header 
-          className="sticky top-0 z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 pb-3 flex items-end" 
-          style={{ height: '120px' }}
-        >
-          <div className="flex items-center justify-between w-full">
-            <h1 className="text-display text-foreground">
-              {t['meals.title']}
-            </h1>
-            
-            {/* Day/Week Toggle - Compact pill in header */}
-            <div className="relative rounded-full overflow-hidden shrink-0 bg-muted">
-              <div className="flex p-0.5">
-                {['day', 'week'].map(v => {
-                  const isActive = view === v;
-                  return (
-                    <button
-                      key={v}
-                      onClick={() => setView(v as 'day' | 'week')}
-                      className={`py-1.5 px-3 rounded-full text-caption font-medium flex items-center gap-1.5 transition-colors ${
-                        isActive
-                          ? 'bg-background text-primary shadow-sm'
-                          : 'text-muted-foreground hover:text-foreground'
-                      }`}
-                    >
-                      {v === 'day' ? (
-                        <><LayoutList size={14} /> {t['meals.view_day'] ?? 'Day'}</>
-                      ) : (
-                        <><LayoutGrid size={14} /> {t['meals.view_week'] ?? 'Week'}</>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-              {/* Inset shadow overlay */}
-              <div className="absolute inset-0 rounded-full pointer-events-none shadow-[inset_0_1px_2px_rgba(0,0,0,0.06)]" />
+    <div className="min-h-screen bg-background pb-40" style={{ paddingTop: '120px' }}>
+      {/* FIXED HEADER - Always at top from first paint */}
+      <header 
+        className="fixed top-0 left-0 right-0 z-20 bg-background flex items-end pb-3 px-4 sm:px-6" 
+        style={{ 
+          height: '120px',
+          transform: 'translateZ(0)',
+          WebkitTransform: 'translateZ(0)',
+          backfaceVisibility: 'hidden',
+          WebkitBackfaceVisibility: 'hidden'
+        }}
+      >
+        <div className="max-w-2xl mx-auto w-full flex items-center justify-between">
+          <h1 className="text-display text-foreground">
+            {t['meals.title']}
+          </h1>
+          
+          {/* Day/Week Toggle - Compact pill in header */}
+          <div className="relative rounded-full overflow-hidden shrink-0 bg-muted">
+            <div className="flex p-0.5">
+              {['day', 'week'].map(v => {
+                const isActive = view === v;
+                return (
+                  <button
+                    key={v}
+                    onClick={() => setView(v as 'day' | 'week')}
+                    className={`py-1.5 px-3 rounded-full text-caption font-medium flex items-center gap-1.5 transition-colors ${
+                      isActive
+                        ? 'bg-background text-primary shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    {v === 'day' ? (
+                      <><LayoutList size={14} /> {t['meals.view_day'] ?? 'Day'}</>
+                    ) : (
+                      <><LayoutGrid size={14} /> {t['meals.view_week'] ?? 'Week'}</>
+                    )}
+                  </button>
+                );
+              })}
             </div>
+            {/* Inset shadow overlay */}
+            <div className="absolute inset-0 rounded-full pointer-events-none shadow-[inset_0_1px_2px_rgba(0,0,0,0.06)]" />
           </div>
-        </header>
+        </div>
+      </header>
 
+      {/* Content */}
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
         {/* ─────────────────────────────────────────────────────────────── */}
         {/* WEEK NAVIGATION */}
         {/* ─────────────────────────────────────────────────────────────── */}

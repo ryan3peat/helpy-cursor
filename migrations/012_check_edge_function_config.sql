@@ -61,3 +61,4 @@ SELECT
   '4. Edge Function Logs: Dashboard → Edge Functions → send-notification → Logs' as check4;
 
 
+

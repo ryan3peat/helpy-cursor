@@ -13,9 +13,10 @@ const supabase = createClient(
 );
 
 const PLAN_LIMITS = {
-  free: { maxFamily: 4, maxHelpers: 0 },
-  core: { maxFamily: 6, maxHelpers: 2 },
-  pro: { maxFamily: 10, maxHelpers: 999 },
+  free: { maxFamily: 3, maxHelpers: 1 },
+  core: { maxFamily: 4, maxHelpers: 1 },
+  pro: { maxFamily: 8, maxHelpers: 4 },
+  test: { maxFamily: 4, maxHelpers: 1 }, // Test plan for Stripe testing
 };
 
 // Helper to extract household_id from various event objects
@@ -380,7 +381,7 @@ async function handleWebhookRequest(req: any, res: any) {
       if (hid) {
         try {
           // Determine plan from price if available
-          let plan: 'free' | 'core' | 'pro' | null = null;
+          let plan: 'free' | 'core' | 'pro' | 'test' | null = null;
           const priceId = subscription.items?.data?.[0]?.price?.id;
           
           if (priceId) {
@@ -391,6 +392,8 @@ async function handleWebhookRequest(req: any, res: any) {
             } else if (priceId === process.env.STRIPE_PRO_MONTHLY_PRICE_ID || 
                        priceId === process.env.STRIPE_PRO_YEARLY_PRICE_ID) {
               plan = 'pro';
+            } else if (priceId === process.env.STRIPE_TEST_PRICE_ID) {
+              plan = 'test';
             }
           }
 

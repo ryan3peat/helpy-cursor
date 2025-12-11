@@ -89,3 +89,4 @@ If not, run: `migrations/014_verify_notifications_default.sql`
 6. Should be `true` even if subscription failed
 
 
+

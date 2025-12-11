@@ -16,6 +16,7 @@ const PRICE_IDS: Record<string, string> = {
   core_yearly: process.env.STRIPE_CORE_YEARLY_PRICE_ID!,
   pro_monthly: process.env.STRIPE_PRO_MONTHLY_PRICE_ID!,
   pro_yearly: process.env.STRIPE_PRO_YEARLY_PRICE_ID!,
+  test_monthly: process.env.STRIPE_TEST_PRICE_ID!,
 };
 
 export default async function handler(req: any, res: any) {

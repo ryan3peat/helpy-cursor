@@ -1,7 +1,7 @@
 // services/stripeService.ts
 
 export interface SubscriptionPlan {
-  id: 'free' | 'core' | 'pro';
+  id: 'free' | 'core' | 'pro' | 'test';
   name: string;
   monthlyPrice: number;
   yearlyPrice: number;
@@ -16,44 +16,56 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     name: 'Free',
     monthlyPrice: 0,
     yearlyPrice: 0,
-    features: ['Up to 4 family members', 'Basic features'],
-    maxFamily: 4,
-    maxHelpers: 0,
+    features: [
+      'Up to 3 family members (incl. admin)',
+      '1 Helper',
+      'Manual expense entry only',
+    ],
+    maxFamily: 3,
+    maxHelpers: 1,
   },
   {
     id: 'core',
     name: 'Core',
     monthlyPrice: 88,
-    yearlyPrice: 850,
+    yearlyPrice: 845,
     features: [
-      'Up to 6 family members',
-      '2 helpers',
-      'Receipt scanning',
-      'Priority support',
+      'Up to 4 family members (incl. admin)',
+      '1 Helper',
+      'All Expense Functions',
+      'Helper Management (Coming Soon)',
     ],
-    maxFamily: 6,
-    maxHelpers: 2,
+    maxFamily: 4,
+    maxHelpers: 1,
   },
   {
     id: 'pro',
     name: 'Pro',
     monthlyPrice: 118,
-    yearlyPrice: 1080,
+    yearlyPrice: 1133,
     features: [
-      'Up to 10 family members',
-      'Unlimited helpers',
-      'Advanced AI features',
-      'Data export',
-      'Premium support',
+      'Up to 8 family members (incl. admin)',
+      'Up to 4 Helpers',
+      'All Expense Functions',
+      'Helper Management (Coming Soon)',
     ],
-    maxFamily: 10,
-    maxHelpers: 'unlimited',
+    maxFamily: 8,
+    maxHelpers: 4,
+  },
+  {
+    id: 'test',
+    name: 'Test',
+    monthlyPrice: 5,
+    yearlyPrice: 5,
+    features: ['Test plan for Stripe payment testing'],
+    maxFamily: 4,
+    maxHelpers: 1,
   },
 ];
 
 export async function createCheckoutSession(
   householdId: string,
-  plan: 'core' | 'pro',
+  plan: 'core' | 'pro' | 'test',
   period: 'monthly' | 'yearly',
   userEmail: string
 ): Promise<string> {

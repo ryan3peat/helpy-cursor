@@ -585,16 +585,27 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'settings.push_blocked': 'Blocked - enable in browser settings',
   'settings.push_description': 'Get notified when family adds items',
 
-  // Plan Features
-  'plan.feature.family_6': 'Up to 6 family members',
-  'plan.feature.helpers_2': '2 helpers',
-  'plan.feature.receipt_scan': 'Receipt scanning',
-  'plan.feature.priority_support': 'Priority support',
-  'plan.feature.family_10': 'Up to 10 family members',
-  'plan.feature.unlimited_helpers': 'Unlimited helpers',
-  'plan.feature.advanced_ai': 'Advanced AI',
-  'plan.feature.data_export': 'Data export',
-  'plan.feature.premium_support': 'Premium support',
+  // Plan Features - Free
+  'plan.feature.free_family': 'Up to 3 family members (incl. admin)',
+  'plan.feature.free_helper': '1 Helper',
+  'plan.feature.free_expenses': 'Manual expense entry only',
+  'plan.feature.free_no_scan': 'No receipt scanning',
+  
+  // Plan Features - Core
+  'plan.feature.core_family': 'Up to 4 family members (incl. admin)',
+  'plan.feature.core_helper': '1 Helper',
+  'plan.feature.core_expenses': 'All Expense Functions',
+  'plan.feature.core_helper_mgmt': 'Helper Management (Coming Soon)',
+  
+  // Plan Features - Pro
+  'plan.feature.pro_family': 'Up to 8 family members (incl. admin)',
+  'plan.feature.pro_helpers': 'Up to 4 Helpers',
+  'plan.feature.pro_expenses': 'All Expense Functions',
+  'plan.feature.pro_helper_mgmt': 'Helper Management (Coming Soon)',
+  
+  // Plan Features - Test (for Stripe testing)
+  'plan.feature.test_desc': 'Test plan for payment testing',
+  'common.test': 'Test',
 
   // Household Switch Modal
   'household.already_member': 'Already a Member',

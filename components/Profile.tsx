@@ -81,7 +81,7 @@ const Profile: React.FC<ProfileProps> = ({
   const [selectedPlan, setSelectedPlan] = useState<'free' | 'core' | 'pro'>('free');
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
   const [isLoading, setIsLoading] = useState(false);
-  const [loadingPlan, setLoadingPlan] = useState<'core' | 'pro' | null>(null);
+  const [loadingPlan, setLoadingPlan] = useState<'core' | 'pro' | 'test' | null>(null);
   const [subscriptionInfo, setSubscriptionInfo] = useState<{
     plan: string;
     status: string;
@@ -425,7 +425,7 @@ const Profile: React.FC<ProfileProps> = ({
   };
 
   // Stripe Checkout Handler
-  const handleSelectPlan = async (plan: 'core' | 'pro', period: 'monthly' | 'yearly') => {
+  const handleSelectPlan = async (plan: 'core' | 'pro' | 'test', period: 'monthly' | 'yearly') => {
     try {
       setLoadingPlan(plan);
       const checkoutUrl = await createCheckoutSession(
@@ -1476,40 +1476,80 @@ const Profile: React.FC<ProfileProps> = ({
   if (activeSection === 'plan') {
     const plans = [
       {
+        id: 'free',
+        name: t['common.free'] || 'Free',
+        monthlyPrice: 0,
+        yearlyPrice: 0,
+        features: [
+          t['plan.feature.free_family'] || 'Up to 3 family members (incl. admin)',
+          t['plan.feature.free_helper'] || '1 Helper',
+          t['plan.feature.free_expenses'] || 'Manual expense entry only',
+        ],
+        limitations: [
+          t['plan.feature.free_no_scan'] || 'No receipt scanning or summary',
+        ],
+        highlight: false,
+        isFree: true
+      },
+      {
         id: 'core',
         name: t['common.core'] || 'Core',
         monthlyPrice: 88,
-        yearlyPrice: 850,
+        yearlyPrice: 845,
         features: [
-          t['plan.feature.family_6'] || 'Up to 6 family members',
-          t['plan.feature.helpers_2'] || '2 helpers',
-          t['plan.feature.receipt_scan'] || 'Receipt scanning',
-          t['plan.feature.priority_support'] || 'Priority support'
+          t['plan.feature.core_family'] || 'Up to 4 family members (incl. admin)',
+          t['plan.feature.core_helper'] || '1 Helper',
+          t['plan.feature.core_expenses'] || 'All Expense Functions',
+          t['plan.feature.core_helper_mgmt'] || 'Helper Management (Coming Soon)',
         ],
-        highlight: false
+        limitations: [],
+        highlight: false,
+        isFree: false
       },
       {
         id: 'pro',
         name: t['common.pro'] || 'Pro',
         monthlyPrice: 118,
-        yearlyPrice: 1080,
+        yearlyPrice: 1133,
         features: [
-          t['plan.feature.family_10'] || 'Up to 10 family members',
-          t['plan.feature.unlimited_helpers'] || 'Unlimited helpers',
-          t['plan.feature.advanced_ai'] || 'Advanced AI',
-          t['plan.feature.data_export'] || 'Data export',
-          t['plan.feature.premium_support'] || 'Premium support'
+          t['plan.feature.pro_family'] || 'Up to 8 family members (incl. admin)',
+          t['plan.feature.pro_helpers'] || 'Up to 4 Helpers',
+          t['plan.feature.pro_expenses'] || 'All Expense Functions',
+          t['plan.feature.pro_helper_mgmt'] || 'Helper Management (Coming Soon)',
         ],
-        highlight: true
+        limitations: [],
+        highlight: true,
+        isFree: false
+      },
+      {
+        id: 'test',
+        name: t['common.test'] || '🧪 Test',
+        monthlyPrice: 5,
+        yearlyPrice: 5,
+        features: [
+          t['plan.feature.test_desc'] || 'Test plan for Stripe payment testing',
+        ],
+        limitations: [],
+        highlight: false,
+        isFree: false,
+        isTest: true
       }
     ];
 
     const isAdmin = currentUser.role === UserRole.MASTER;
-    const currentPlanName = subscriptionInfo?.plan === 'core' ? (t['common.core'] || 'Core') : subscriptionInfo?.plan === 'pro' ? (t['common.pro'] || 'Pro') : (t['common.free'] || 'Free');
+    const currentPlanName = subscriptionInfo?.plan === 'core' 
+      ? (t['common.core'] || 'Core') 
+      : subscriptionInfo?.plan === 'pro' 
+      ? (t['common.pro'] || 'Pro') 
+      : subscriptionInfo?.plan === 'test'
+      ? (t['common.test'] || '🧪 Test')
+      : (t['common.free'] || 'Free');
     const planPrice = subscriptionInfo?.plan === 'core' 
-      ? (subscriptionInfo?.period === 'yearly' ? 850 : 88)
+      ? (subscriptionInfo?.period === 'yearly' ? 845 : 88)
       : subscriptionInfo?.plan === 'pro'
-      ? (subscriptionInfo?.period === 'yearly' ? 1080 : 118)
+      ? (subscriptionInfo?.period === 'yearly' ? 1133 : 118)
+      : subscriptionInfo?.plan === 'test'
+      ? 5
       : 0;
 
     return (
@@ -1639,7 +1679,10 @@ const Profile: React.FC<ProfileProps> = ({
               <div className="space-y-4">
                 {plans.map((p) => {
                   const price = billingPeriod === 'monthly' ? p.monthlyPrice : p.yearlyPrice;
-                  const isCurrentPlan = subscriptionInfo?.plan === p.id && subscriptionInfo?.status === 'active';
+                  // For free plan, check if user has no active paid subscription
+                  const isCurrentPlan = p.isFree 
+                    ? (!subscriptionInfo?.plan || subscriptionInfo?.plan === 'free' || subscriptionInfo?.status !== 'active')
+                    : (subscriptionInfo?.plan === p.id && subscriptionInfo?.status === 'active');
 
                   return (
                     <div
@@ -1656,12 +1699,20 @@ const Profile: React.FC<ProfileProps> = ({
                         <div>
                           <h3 className="text-title font-bold text-foreground">{p.name}</h3>
                           <div className="flex items-baseline gap-1 mt-1">
-                            <span className="text-display font-bold text-foreground">
-                              HK${price}
-                            </span>
-                            <span className="text-muted-foreground text-body">
-                              /{billingPeriod === 'monthly' ? t['common.mo'] : t['common.yr']}
-                            </span>
+                            {p.isFree ? (
+                              <span className="text-display font-bold text-foreground">
+                                {t['common.free'] || 'Free'}
+                              </span>
+                            ) : (
+                              <>
+                                <span className="text-display font-bold text-foreground">
+                                  HK${price}
+                                </span>
+                                <span className="text-muted-foreground text-body">
+                                  /{billingPeriod === 'monthly' ? t['common.mo'] : t['common.yr']}
+                                </span>
+                              </>
+                            )}
                           </div>
                         </div>
                         <div className="flex flex-col items-end gap-1">
@@ -1678,7 +1729,7 @@ const Profile: React.FC<ProfileProps> = ({
                         </div>
                       </div>
 
-                      <ul className="space-y-2 mb-6">
+                      <ul className="space-y-2 mb-4">
                         {p.features.map((feature, idx) => (
                           <li key={idx} className="flex items-center gap-2 text-body text-muted-foreground">
                             <Check size={16} className="text-primary flex-shrink-0" />
@@ -1687,19 +1738,41 @@ const Profile: React.FC<ProfileProps> = ({
                         ))}
                       </ul>
 
-                      <button
-                        onClick={() => handleSelectPlan(p.id as 'core' | 'pro', billingPeriod)}
-                        disabled={loadingPlan !== null || isCurrentPlan || !isAdmin}
-                        className={`w-full py-3 rounded-xl font-semibold transition-colors ${
-                          isCurrentPlan
-                            ? 'bg-secondary text-muted-foreground cursor-not-allowed'
-                            : !isAdmin
-                            ? 'bg-muted text-muted-foreground cursor-not-allowed'
-                            : 'bg-primary text-primary-foreground hover:bg-primary/90'
-                        }`}
-                      >
-                        {loadingPlan === p.id ? (t['common.processing'] || 'Processing...') : isCurrentPlan ? (t['common.current_plan'] || 'Current Plan') : !isAdmin ? (t['common.only_admin_can_change'] || 'Only Admin Can Change') : (t['common.change_plan'] || 'Select Plan')}
-                      </button>
+                      {/* Limitations for Free plan */}
+                      {p.limitations && p.limitations.length > 0 && (
+                        <ul className="space-y-2 mb-4">
+                          {p.limitations.map((limitation, idx) => (
+                            <li key={idx} className="flex items-center gap-2 text-body text-muted-foreground/70">
+                              <X size={16} className="text-muted-foreground/50 flex-shrink-0" />
+                              {limitation}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+
+                      {/* Only show button for paid plans */}
+                      {!p.isFree && (
+                        <button
+                          onClick={() => handleSelectPlan(p.id as 'core' | 'pro' | 'test', billingPeriod)}
+                          disabled={loadingPlan !== null || isCurrentPlan || !isAdmin}
+                          className={`w-full py-3 rounded-xl font-semibold transition-colors ${
+                            isCurrentPlan
+                              ? 'bg-secondary text-muted-foreground cursor-not-allowed'
+                              : !isAdmin
+                              ? 'bg-muted text-muted-foreground cursor-not-allowed'
+                              : 'bg-primary text-primary-foreground hover:bg-primary/90'
+                          }`}
+                        >
+                          {loadingPlan === p.id ? (t['common.processing'] || 'Processing...') : isCurrentPlan ? (t['common.current_plan'] || 'Current Plan') : !isAdmin ? (t['common.only_admin_can_change'] || 'Only Admin Can Change') : (t['common.change_plan'] || 'Select Plan')}
+                        </button>
+                      )}
+
+                      {/* Free plan indicator */}
+                      {p.isFree && isCurrentPlan && (
+                        <div className="w-full py-3 rounded-xl font-semibold text-center bg-secondary text-muted-foreground">
+                          {t['common.current_plan'] || 'Current Plan'}
+                        </div>
+                      )}
                     </div>
                   );
                 })}

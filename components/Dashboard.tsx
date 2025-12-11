@@ -295,7 +295,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     <div className="pb-16 animate-fade-in page-content bg-background">
       {/* Sticky Header - Push Up (No Shrink) */}
       <header 
-        className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm px-5 pt-12 pb-3 transition-shadow duration-200"
+        className="sticky top-0 z-20 bg-background px-5 pt-12 pb-3 transition-shadow duration-200"
         style={{ 
           boxShadow: isScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none'
         }}

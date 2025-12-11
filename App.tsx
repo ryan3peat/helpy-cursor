@@ -535,6 +535,18 @@ const AppContent: React.FC = () => {
     });
   }, []);
 
+  // Background session validation: If Clerk is loaded and says user is NOT signed in,
+  // but we have a cached session, clear it and redirect to auth.
+  // This handles expired sessions after optimistic rendering for notification deep links.
+  useEffect(() => {
+    if (clerkLoaded && !isSignedIn && currentUser) {
+      console.log('⚠️ [App] Clerk loaded but user not signed in. Cached session expired, clearing...');
+      setCurrentUser(null);
+      localStorage.removeItem('helpy_current_session_user');
+      setShowIntro(true);
+    }
+  }, [clerkLoaded, isSignedIn, currentUser]);
+
   // Auto-subscribe to push notifications if user has them enabled
   // This ensures users with notificationsEnabled=true get subscribed automatically
   // 
@@ -1123,12 +1135,19 @@ const AppContent: React.FC = () => {
   }
 
   // Show loading while Clerk is initializing (after OAuth redirect)
-  // Don't make routing decisions until Clerk has finished loading
-  // Just show the friendly broom animation - no confusing timeout screen
-  if (!clerkLoaded) {
+  // OPTIMIZATION: For notification deep links with cached session, skip the loading screen
+  // and render the content immediately. This provides instant navigation when tapping notifications.
+  // We'll validate the session in the background and only redirect to auth if it's invalid.
+  const shouldSkipClerkLoading = !clerkLoaded && !!currentUser && !!currentUser.householdId && initialDeepLink.isDeepLink;
+  
+  if (!clerkLoaded && !shouldSkipClerkLoading) {
+    // For regular app launches (not from notifications), wait for Clerk
     console.log('🟣 [App] Clerk not loaded yet, showing loading state');
-    
     return <ClerkLoadingScreen />;
+  }
+  
+  if (shouldSkipClerkLoading) {
+    console.log('🟢 [App] Clerk not loaded, but cached session exists + deep link detected. Rendering content optimistically.');
   }
 
   // OPTION 2: Skip InviteWelcome - go directly to Auth/SignUp for faster flow

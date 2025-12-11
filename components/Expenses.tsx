@@ -808,7 +808,7 @@ const Expenses: React.FC<ExpensesProps> = ({
         {/* ─────────────────────────────────────────────────────────────── */}
         {/* STICKY HEADER - Push Up (No Shrink) */}
         {/* ─────────────────────────────────────────────────────────────── */}
-        <header className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm -mx-4 px-4 sm:-mx-6 sm:px-6 pt-12 pb-3">
+        <header className="sticky top-0 z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 pt-12 pb-3">
           <div className="flex items-center justify-between">
             <h1 className="text-display text-foreground">
               {t['expenses.title']}

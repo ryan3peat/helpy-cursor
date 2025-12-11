@@ -1412,7 +1412,10 @@ const Profile: React.FC<ProfileProps> = ({
       await downgradeToFree(currentUser.householdId);
       // Refresh subscription info
       await fetchSubscriptionInfo();
+      // Show brief confirmation without trapping user in a modal
       setSubscriptionCanceled(true);
+      setActiveSection('plan');
+      setTimeout(() => setSubscriptionCanceled(false), 2500);
     } catch (error) {
       console.error('Downgrade error:', error);
       alert(t['error.downgrade_free'] || 'Failed to downgrade. Please try again.');

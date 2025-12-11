@@ -62,6 +62,35 @@ const BroomIcon = ({ className }: { className?: string }) => (
   />
 );
 
+// Loading screen shown while Clerk initializes
+// Shows a helpful hint after 8 seconds if loading takes too long
+const ClerkLoadingScreen = () => {
+  const [showHint, setShowHint] = useState(false);
+  
+  useEffect(() => {
+    const timer = setTimeout(() => setShowHint(true), 8000);
+    return () => clearTimeout(timer);
+  }, []);
+  
+  return (
+    <div className="min-h-screen flex flex-col justify-end pb-24" style={{ backgroundColor: '#3EAFD2' }}>
+      <div className="text-white text-center">
+        <div className="broom-loader-wrapper">
+          <div className="broom-loader mb-4">
+            <BroomIcon className="broom-icon-svg" />
+            <div className="broom-track"></div>
+            <div className="broom-trail"></div>
+          </div>
+          <p className="text-sm font-bold whitespace-nowrap">Tidying things up...</p>
+        </div>
+        <p className="text-xs text-white/60 mt-2">
+          {showHint ? (<>Sorry, too much dust here!<br />Close the app and open it again.</>) : "Please wait a moment"}
+        </p>
+      </div>
+    </div>
+  );
+};
+
 // Helper function to parse notification deep links from URL hash
 // Used when user taps on a push notification to go directly to the relevant page
 const parseNotificationDeepLink = (): { view: string; navData: { section?: string } | null; isDeepLink: boolean } => {
@@ -141,8 +170,7 @@ const AppContent: React.FC = () => {
     return initialDeepLink.view;
   });
   
-  const [clerkLoadTimeout, setClerkLoadTimeout] = useState(false);
-  const [clerkError, setClerkError] = useState<string | null>(null);
+  // Removed clerkLoadTimeout - was causing bad UX with frozen buttons on mobile
   
   // Debug: Log when component mounts/renders
   useEffect(() => {
@@ -183,29 +211,8 @@ const AppContent: React.FC = () => {
     return () => clearTimeout(timer);
   }, []);
 
-  // Add timeout fallback if Clerk takes too long to load (10 seconds)
-  useEffect(() => {
-    if (!clerkLoaded) {
-      const timeout = setTimeout(() => {
-        console.error('⚠️ [App] Clerk loading timeout - taking longer than 10 seconds');
-        console.error('⚠️ [App] Checking for network errors...');
-        
-        // Check if we can reach Clerk's API
-        fetch('https://api.clerk.dev/v1/health', { method: 'HEAD' })
-          .then(() => console.log('✅ [App] Can reach Clerk API'))
-          .catch((err) => {
-            console.error('❌ [App] Cannot reach Clerk API:', err);
-            setClerkError('Network error: Cannot connect to Clerk servers. Check your internet connection.');
-          });
-        
-        setClerkLoadTimeout(true);
-      }, 10000);
-      return () => clearTimeout(timeout);
-    } else {
-      setClerkLoadTimeout(false);
-      setClerkError(null);
-    }
-  }, [clerkLoaded]);
+  // Removed Clerk timeout - was causing bad UX (frozen buttons, confusing developer messages)
+  // If Clerk is slow, we just keep showing the loading animation - users can naturally close/reopen
 
   // Localization State
   // Initialize language: use saved preference, or detect device language, or default to 'en'
@@ -1116,74 +1123,13 @@ const AppContent: React.FC = () => {
     );
   }
 
-  // CRITICAL: Show loading while Clerk is initializing (after OAuth redirect)
+  // Show loading while Clerk is initializing (after OAuth redirect)
   // Don't make routing decisions until Clerk has finished loading
+  // Just show the friendly broom animation - no confusing timeout screen
   if (!clerkLoaded) {
     console.log('🟣 [App] Clerk not loaded yet, showing loading state');
-    console.log('🟣 [App] Clerk state details:', { 
-      clerkLoaded, 
-      isSignedIn, 
-      hasClerkUser: !!clerkUser,
-      clerkUserId: clerkUser?.id 
-    });
     
-    // If timeout occurred, show error message
-    if (clerkLoadTimeout) {
-      return (
-        <div className="min-h-screen flex flex-col justify-center items-center p-4" style={{ backgroundColor: '#3EAFD2' }}>
-          <div className="text-white text-center max-w-md">
-            <p className="text-lg font-bold mb-2">Clerk Loading Timeout</p>
-            {clerkError && (
-              <p className="text-sm mb-4 text-red-200">{clerkError}</p>
-            )}
-            <p className="text-sm mb-4">Clerk is taking longer than expected to initialize.</p>
-            <p className="text-xs text-white/80 mb-4">Please check:</p>
-            <ul className="text-xs text-white/80 text-left list-disc list-inside mb-4 space-y-1">
-              <li>Browser console for errors (F12 → Console tab)</li>
-              <li>Network tab (F12 → Network) - look for failed requests to clerk.accounts.dev</li>
-              <li>That your Clerk publishable key is correct in .env.local</li>
-              <li>That you're using test keys (pk_test_...) for local development</li>
-              <li>Firewall/antivirus blocking Clerk API requests</li>
-            </ul>
-            <div className="flex gap-2 justify-center">
-              <button 
-                onClick={() => window.location.reload()} 
-                className="px-4 py-2 bg-white text-[#3EAFD2] rounded font-semibold hover:bg-gray-100"
-              >
-                Reload Page
-              </button>
-              <button 
-                onClick={() => {
-                  console.log('🔍 [Debug] Clerk Key:', import.meta.env.VITE_CLERK_PUBLISHABLE_KEY ? 'Present' : 'MISSING');
-                  console.log('🔍 [Debug] Key preview:', import.meta.env.VITE_CLERK_PUBLISHABLE_KEY?.substring(0, 20));
-                  console.log('🔍 [Debug] Hostname:', window.location.hostname);
-                  console.log('🔍 [Debug] Full URL:', window.location.href);
-                }} 
-                className="px-4 py-2 bg-white/20 text-white rounded font-semibold hover:bg-white/30"
-              >
-                Debug Info
-              </button>
-            </div>
-          </div>
-        </div>
-      );
-    }
-    
-    return (
-      <div className="min-h-screen flex flex-col justify-end pb-24" style={{ backgroundColor: '#3EAFD2' }}>
-        <div className="text-white text-center">
-          <div className="broom-loader-wrapper">
-            <div className="broom-loader mb-4">
-              <BroomIcon className="broom-icon-svg" />
-              <div className="broom-track"></div>
-              <div className="broom-trail"></div>
-            </div>
-            <p className="text-sm font-bold whitespace-nowrap">Tidying things up...</p>
-          </div>
-          <p className="text-xs text-white/60 mt-2">Please wait a moment</p>
-        </div>
-      </div>
-    );
+    return <ClerkLoadingScreen />;
   }
 
   // OPTION 2: Skip InviteWelcome - go directly to Auth/SignUp for faster flow

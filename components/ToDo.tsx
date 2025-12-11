@@ -448,6 +448,7 @@ const ToDo: React.FC<ToDoProps> = ({
       category,
       completed: false,
       assigneeId: getDefaultAssignee(users, currentUser),
+      createdBy: currentUser.id, // Track who created this item for notifications
       createdAt: new Date().toISOString(),
       nameLang: detectedLang || null,
       nameTranslations: {},
@@ -481,6 +482,7 @@ const ToDo: React.FC<ToDoProps> = ({
       category: suggestion.category,
       completed: false,
       assigneeId: getDefaultAssignee(users, currentUser),
+      createdBy: currentUser.id, // Track who created this item for notifications
       createdAt: new Date().toISOString(),
       nameLang: detectedLang || null,
       nameTranslations: {},
@@ -711,6 +713,7 @@ const ToDo: React.FC<ToDoProps> = ({
         category: sheetForm.category || defaultCategory,
         completed: false,
         assigneeId: sheetForm.assigneeId,
+        createdBy: currentUser.id, // Track who created this item for notifications
         createdAt: new Date().toISOString(),
         nameLang: detectedLang || null,
         nameTranslations: {},

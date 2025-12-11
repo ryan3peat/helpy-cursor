@@ -434,6 +434,12 @@ export async function addItem(
   // For todo_items: convert assignee_id and created_by IN PARALLEL for better performance
   // Both conversions are independent, so we can await them together
   if (collection === 'todo_items') {
+    console.log('🔍 [DEBUG] todo_items created_by before conversion:', {
+      created_by: finalData.created_by,
+      has_created_by: 'created_by' in finalData,
+      all_keys: Object.keys(finalData)
+    });
+    
     const [assigneeUuid, createdByUuid] = await Promise.all([
       finalData.assignee_id ? getSupabaseUserId(finalData.assignee_id, householdId) : Promise.resolve(null),
       finalData.created_by ? getSupabaseUserId(finalData.created_by, householdId) : Promise.resolve(null),

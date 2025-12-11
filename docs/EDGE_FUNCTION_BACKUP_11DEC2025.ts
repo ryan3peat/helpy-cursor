@@ -1,3 +1,11 @@
+// ============================================================================
+// BACKUP: Edge Function - send-notification (Working as of Dec 11, 2025)
+// 
+// This is a backup of the working notification edge function.
+// If anything breaks, restore this file to:
+//   supabase/functions/send-notification/index.ts
+// ============================================================================
+
 // @ts-nocheck
 /**
  * Supabase Edge Function: send-notification
@@ -25,19 +33,6 @@ interface NotificationPayload {
   record: Record<string, unknown>;
   household_id: string;
   created_by_user_id?: string;
-  // Event type for UPDATE/DELETE support (defaults to INSERT for backward compatibility)
-  event?: 'INSERT' | 'UPDATE' | 'DELETE';
-  // Old record for UPDATE events (to detect what changed)
-  old_record?: Record<string, unknown>;
-  // BATCHING: New fields for batched notifications
-  is_batch?: boolean;
-  item_type?: string; // 'shopping' or 'task' for todo_items
-  items?: Array<{
-    id: string;
-    record: Record<string, unknown>;
-    old_record?: Record<string, unknown>;
-  }>;
-  item_count?: number;
 }
 
 // CORS headers for edge function
@@ -47,303 +42,57 @@ const corsHeaders = {
 };
 
 /**
- * Build notification message based on the table, record, and event type
- * 
- * NEW FORMAT (3 lines):
- * Line 1 (Title): [Emoji] [Page Name]
- * Line 2 (Body):  [Item/Content]
- * Line 3 (Body):  [action] by [User]
- * 
- * Body is combined as: "Line2\nLine3"
+ * Build notification message based on the table and record
  */
 function buildNotificationMessage(
   table: string,
   record: Record<string, unknown>,
-  creatorName: string,
-  event: 'INSERT' | 'UPDATE' | 'DELETE' = 'INSERT',
-  oldRecord?: Record<string, unknown>
+  creatorName: string
 ): { title: string; body: string; type: string } {
-  
   switch (table) {
     case 'todo_items': {
       const itemType = record.type as string;
       const itemName = record.name as string || 'an item';
-      const isCompleted = record.completed as boolean;
-      const wasCompleted = oldRecord?.completed as boolean;
       
       if (itemType === 'shopping') {
-        // Shopping List notifications
-        if (event === 'UPDATE' && isCompleted && !wasCompleted) {
-          // Item was bought (completed changed false → true)
-          return {
-            title: '✅ Shopping',
-            body: `${itemName}\nbought by ${creatorName}`,
-            type: 'shopping'
-          };
-        } else if (event === 'DELETE') {
-          return {
-            title: '🛒 Shopping',
-            body: `${itemName}\nremoved by ${creatorName}`,
-            type: 'shopping'
-          };
-        } else if (event === 'UPDATE') {
-          return {
-            title: '🛒 Shopping',
-            body: `${itemName}\nchanged by ${creatorName}`,
-            type: 'shopping'
-          };
-        } else {
-          // INSERT (default)
-          return {
-            title: '🛒 Shopping',
-            body: `${itemName}\nadded by ${creatorName}`,
-            type: 'shopping'
-          };
-        }
+        return {
+          title: 'Shopping List Updated',
+          body: `${creatorName} added "${itemName}" to the Shopping List`,
+          type: 'shopping'
+        };
       } else {
-        // Tasks notifications
-        if (event === 'UPDATE' && isCompleted && !wasCompleted) {
-          // Task was completed
-          return {
-            title: '✅ Tasks',
-            body: `${itemName}\ndone by ${creatorName}`,
-            type: 'task'
-          };
-        } else if (event === 'DELETE') {
-          return {
-            title: '📝 Tasks',
-            body: `${itemName}\nremoved by ${creatorName}`,
-            type: 'task'
-          };
-        } else if (event === 'UPDATE') {
-          return {
-            title: '📝 Tasks',
-            body: `${itemName}\nchanged by ${creatorName}`,
-            type: 'task'
-          };
-        } else {
-          // INSERT (default)
-          return {
-            title: '📝 Tasks',
-            body: `${itemName}\nadded by ${creatorName}`,
-            type: 'task'
-          };
-        }
+        return {
+          title: 'New Task Added',
+          body: `${creatorName} added a task: "${itemName}"`,
+          type: 'task'
+        };
       }
     }
     
     case 'meals': {
       const mealType = record.type as string || 'meal';
-      const mealDate = record.date as string;
-      
-      // Determine if it's today or tomorrow
-      const today = new Date().toISOString().split('T')[0];
-      const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
-      let dateLabel = '';
-      if (mealDate === today) {
-        dateLabel = "Today's";
-      } else if (mealDate === tomorrow) {
-        dateLabel = "Tomorrow's";
-      } else {
-        dateLabel = ''; // Skip notification for other dates (handled in filtering)
-      }
-      
-      const mealLabel = dateLabel ? `${dateLabel} ${mealType}` : mealType;
-      
-      if (event === 'DELETE') {
-        return {
-          title: '🍽️ Meals',
-          body: `${mealLabel}\nremoved by ${creatorName}`,
-          type: 'meal'
-        };
-      } else if (event === 'UPDATE') {
-        return {
-          title: '🍽️ Meals',
-          body: `${mealLabel}\nchanged by ${creatorName}`,
-          type: 'meal'
-        };
-      } else {
-        // INSERT
-        return {
-          title: '🍽️ Meals',
-          body: `${mealLabel}\nadded by ${creatorName}`,
-          type: 'meal'
-        };
-      }
+      const description = record.description as string || 'a meal';
+      return {
+        title: 'Meal Plan Updated',
+        body: `${creatorName} added ${mealType}: "${description}"`,
+        type: 'meal'
+      };
     }
     
     case 'expenses': {
       const merchant = record.merchant as string || 'Unknown';
       const amount = record.amount as number || 0;
-      const amountStr = `$${amount.toFixed(2)}`;
-      
-      if (event === 'DELETE') {
-        return {
-          title: '💰 Expenses',
-          body: `${merchant} ${amountStr}\nremoved by ${creatorName}`,
-          type: 'expense'
-        };
-      } else if (event === 'UPDATE') {
-        // Use "expense updated" format for clarity
-        return {
-          title: '💰 Expenses',
-          body: `${merchant} expense\nupdated by ${creatorName}`,
-          type: 'expense'
-        };
-      } else {
-        // INSERT
-        return {
-          title: '💰 Expenses',
-          body: `${merchant} ${amountStr}\nadded by ${creatorName}`,
-          type: 'expense'
-        };
-      }
-    }
-    
-    // NEW: Family Board (households table)
-    case 'households': {
-      if (event === 'DELETE') {
-        return {
-          title: '📌 Family Board',
-          body: `Note removed\nby ${creatorName}`,
-          type: 'family_board'
-        };
-      } else if (event === 'UPDATE') {
-        return {
-          title: '📌 Family Board',
-          body: `Note updated\nby ${creatorName}`,
-          type: 'family_board'
-        };
-      } else {
-        // INSERT (new note pinned)
-        return {
-          title: '📌 Family Board',
-          body: `Note pinned\nby ${creatorName}`,
-          type: 'family_board'
-        };
-      }
-    }
-    
-    default:
       return {
-        title: 'Helpy Update',
-        body: `Something new\nby ${creatorName}`,
-        type: 'general'
-      };
-  }
-}
-
-/**
- * Build notification message for BATCHED items
- * 
- * Format: "Milk, Eggs +3 more — added by Ryan"
- */
-function buildBatchedNotificationMessage(
-  table: string,
-  items: Array<{ id: string; record: Record<string, unknown>; old_record?: Record<string, unknown> }>,
-  creatorName: string,
-  event: 'INSERT' | 'UPDATE' | 'DELETE',
-  itemType?: string // 'shopping' or 'task' for todo_items
-): { title: string; body: string; type: string } {
-  
-  const count = items.length;
-  
-  // Get item names for display
-  const getItemName = (item: { record: Record<string, unknown> }) => {
-    return (item.record.name as string) || 
-           (item.record.merchant as string) || 
-           (item.record.description as string) || 
-           'item';
-  };
-  
-  // Format items list: "Item1, Item2 +N more" or just "Item1" or "Item1, Item2, Item3"
-  const formatItemsList = () => {
-    if (count === 1) {
-      return getItemName(items[0]);
-    } else if (count === 2) {
-      return `${getItemName(items[0])}, ${getItemName(items[1])}`;
-    } else if (count === 3) {
-      return `${getItemName(items[0])}, ${getItemName(items[1])}, ${getItemName(items[2])}`;
-    } else {
-      return `${getItemName(items[0])}, ${getItemName(items[1])} +${count - 2} more`;
-    }
-  };
-  
-  // Detect if this is a "completion" batch (items marked as bought/done)
-  const isCompletionBatch = event === 'UPDATE' && items.some(item => {
-    const isCompleted = item.record.completed as boolean;
-    const wasCompleted = item.old_record?.completed as boolean;
-    return isCompleted && !wasCompleted;
-  });
-  
-  // Build message based on table type
-  switch (table) {
-    case 'todo_items': {
-      const isShopping = itemType === 'shopping';
-      
-      if (isCompletionBatch) {
-        // Bought/Done batch
-        return {
-          title: isShopping ? '✅ Shopping' : '✅ Tasks',
-          body: `${formatItemsList()}\n${isShopping ? 'bought' : 'done'} by ${creatorName}`,
-          type: isShopping ? 'shopping' : 'task'
-        };
-      }
-      
-      const actionWord = event === 'DELETE' ? 'removed' : event === 'UPDATE' ? 'changed' : 'added';
-      
-      return {
-        title: isShopping ? '🛒 Shopping' : '📝 Tasks',
-        body: `${formatItemsList()}\n${actionWord} by ${creatorName}`,
-        type: isShopping ? 'shopping' : 'task'
-      };
-    }
-    
-    case 'expenses': {
-      const actionWord = event === 'DELETE' ? 'removed' : event === 'UPDATE' ? 'updated' : 'added';
-      
-      if (count === 1) {
-        const merchant = items[0].record.merchant as string || 'Unknown';
-        const amount = items[0].record.amount as number || 0;
-        return {
-          title: '💰 Expenses',
-          body: `${merchant} $${amount.toFixed(2)}\n${actionWord} by ${creatorName}`,
-          type: 'expense'
-        };
-      }
-      
-      return {
-        title: '💰 Expenses',
-        body: `${count} items ${actionWord}\nby ${creatorName}`,
+        title: 'New Expense Added',
+        body: `${creatorName} added an expense: ${merchant} ($${amount.toFixed(2)})`,
         type: 'expense'
       };
     }
     
-    case 'meals': {
-      // Meals are instant (no batching), but handle just in case
-      const mealType = items[0].record.type as string || 'meal';
-      const actionWord = event === 'DELETE' ? 'removed' : event === 'UPDATE' ? 'changed' : 'added';
-      
-      return {
-        title: '🍽️ Meals',
-        body: `${mealType}\n${actionWord} by ${creatorName}`,
-        type: 'meal'
-      };
-    }
-    
-    case 'households': {
-      // Family Board - instant
-      return {
-        title: '📌 Family Board',
-        body: `Note updated\nby ${creatorName}`,
-        type: 'family_board'
-      };
-    }
-    
     default:
       return {
         title: 'Helpy Update',
-        body: `${count} items\nby ${creatorName}`,
+        body: `${creatorName} added something new`,
         type: 'general'
       };
   }
@@ -775,25 +524,9 @@ serve(async (req: Request) => {
 
     // Parse request body
     const body: NotificationPayload = await req.json();
-    const { 
-      table, 
-      record, 
-      household_id, 
-      created_by_user_id, 
-      event = 'INSERT', 
-      old_record,
-      // Batching fields
-      is_batch = false,
-      item_type,
-      items,
-      item_count
-    } = body;
+    const { table, record, household_id, created_by_user_id } = body;
 
-    console.log(`[Push] Processing ${table} ${event} notification for household ${household_id}`, {
-      is_batch,
-      item_count: is_batch ? item_count : 1,
-      item_type
-    });
+    console.log(`[Push] Processing ${table} notification for household ${household_id}`);
 
     // Create Supabase client with service role key
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -870,23 +603,7 @@ serve(async (req: Request) => {
       if (LIKO_TEST_MODE && (u.name === 'Liko' || u.name?.includes('Liko'))) {
         return true;
       }
-      
-      // Exclude self-actions
-      if (u.id === creatorId || u.clerk_id === creatorId) {
-        return false;
-      }
-      
-      // HELPER ROLE RESTRICTION: Helpers only see their own expenses
-      // If this is an expense notification and user is a Helper, skip them
-      // (unless they created it themselves, which is already filtered above)
-      if (table === 'expenses' && u.role === 'Helper') {
-        // Helper should only get notified for their own expenses
-        // Since we already excluded self-actions, this means Helpers don't get others' expense notifications
-        console.log(`[Push] Skipping Helper ${u.name} for expense notification (not their expense)`);
-        return false;
-      }
-      
-      return true;
+      return u.id !== creatorId && u.clerk_id !== creatorId;
     });
 
     console.log(`[Push] After filtering out creator (${creatorId}), ${recipients.length} recipient(s) remain`);
@@ -935,24 +652,13 @@ serve(async (req: Request) => {
       console.log('[Push] No push subscriptions found for recipients');
       
       // Still save to notifications table for in-app history
-      let msgForHistory: { title: string; body: string; type: string };
-      let refId: string;
-      
-      if (is_batch && items && items.length > 0) {
-        msgForHistory = buildBatchedNotificationMessage(table, items, creatorName, event, item_type);
-        refId = items[0].id;
-      } else {
-        msgForHistory = buildNotificationMessage(table, record, creatorName, event, old_record);
-        refId = record.id as string;
-      }
-      
       const notificationRecords = recipients.map(user => ({
         household_id,
         recipient_user_id: user.id,
         type: table === 'todo_items' ? 'todo_item' : table.replace(/s$/, ''),
-        title: msgForHistory.title,
-        body: msgForHistory.body,
-        reference_id: refId,
+        title: buildNotificationMessage(table, record, creatorName).title,
+        body: buildNotificationMessage(table, record, creatorName).body,
+        reference_id: record.id as string,
         reference_table: table,
         triggered_by_user_id: creatorId,
         triggered_by_name: creatorName,
@@ -967,20 +673,9 @@ serve(async (req: Request) => {
       );
     }
 
-    // Build notification message - use batched function if this is a batch
-    let message: { title: string; body: string; type: string };
-    let referenceId: string;
-    
-    if (is_batch && items && items.length > 0) {
-      // BATCHED notification
-      message = buildBatchedNotificationMessage(table, items, creatorName, event, item_type);
-      referenceId = items[0].id; // Use first item's ID for reference
-      console.log(`[Push] 📦 Building BATCHED notification for ${items.length} items`);
-    } else {
-      // Single item notification (backwards compatible)
-      message = buildNotificationMessage(table, record, creatorName, event, old_record);
-      referenceId = record.id as string;
-    }
+    // Build notification message
+    const message = buildNotificationMessage(table, record, creatorName);
+    const referenceId = record.id as string;
 
     console.log(`[Push] 📤 Sending to ${subscriptions.length} subscription(s)...`);
     console.log(`[Push] Notification details:`, {
@@ -1072,3 +767,4 @@ serve(async (req: Request) => {
     );
   }
 });
+

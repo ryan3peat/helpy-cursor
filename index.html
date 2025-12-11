@@ -5,14 +5,18 @@
     <script>
       (function() {
         var saved = localStorage.getItem('helpy_theme');
-        if (saved === 'dark') {
+        var isDark = saved === 'dark';
+        if (isDark) {
           document.documentElement.classList.remove('light');
           document.documentElement.classList.add('dark');
         }
-        // Set background based on session state to prevent flash
-        // Returning users: neutral background | New users: brand blue (matches intro/auth)
+        // Set background based on session state AND theme to prevent flash
+        // Must match theme to avoid light leak through backdrop-blur headers
         var hasSession = !!localStorage.getItem('helpy_current_session_user');
-        document.documentElement.style.setProperty('--initial-bg', hasSession ? '#fafafa' : '#3EAFD2');
+        var bgColor = hasSession 
+          ? (isDark ? '#121212' : '#fafafa')  // Match theme: dark=#121212, light=#fafafa
+          : '#3EAFD2';  // New users: brand blue (matches intro/auth)
+        document.documentElement.style.setProperty('--initial-bg', bgColor);
       })();
     </script>
     <meta charset="UTF-8" />

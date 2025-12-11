@@ -431,36 +431,52 @@ export async function addItem(
     console.log('✅ Converted for_user_ids:', finalData.for_user_ids);
   }
   
-  // For todo_items: convert assignee_id from Clerk ID to Supabase UUID
-  if (collection === 'todo_items' && finalData.assignee_id) {
-    const uuid = await getSupabaseUserId(finalData.assignee_id, householdId);
-    if (uuid) {
-      console.log(`🔄 Converting assignee_id ${finalData.assignee_id} to UUID ${uuid}`);
-      finalData.assignee_id = uuid;
+  // For todo_items: convert assignee_id and created_by IN PARALLEL for better performance
+  // Both conversions are independent, so we can await them together
+  if (collection === 'todo_items') {
+    const [assigneeUuid, createdByUuid] = await Promise.all([
+      finalData.assignee_id ? getSupabaseUserId(finalData.assignee_id, householdId) : Promise.resolve(null),
+      finalData.created_by ? getSupabaseUserId(finalData.created_by, householdId) : Promise.resolve(null),
+    ]);
+    
+    // Apply assignee_id conversion
+    if (assigneeUuid) {
+      console.log(`🔄 Converting assignee_id ${finalData.assignee_id} to UUID ${assigneeUuid}`);
+      finalData.assignee_id = assigneeUuid;
+    }
+    
+    // Apply created_by conversion with validation
+    if (createdByUuid) {
+      const isValidUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(createdByUuid);
+      if (isValidUuid) {
+        console.log(`🔄 Converting created_by ${finalData.created_by} to UUID ${createdByUuid}`);
+        finalData.created_by = createdByUuid;
+      } else {
+        console.warn(`⚠️ getSupabaseUserId returned invalid UUID for created_by: ${createdByUuid} - setting to null`);
+        finalData.created_by = null;
+      }
+    } else if (finalData.created_by) {
+      console.warn(`⚠️ Could not resolve created_by ID: ${finalData.created_by} - setting to null`);
+      finalData.created_by = null;
     }
   }
   
-  // For all collections with created_by: convert from Clerk ID to Supabase UUID
+  // For meals and expenses: convert created_by from Clerk ID to Supabase UUID
   // IMPORTANT: The edge function for notifications needs created_by to be a valid UUID
-  // to properly identify who created the item and filter them from recipients
-  if (finalData.created_by && ['todo_items', 'meals', 'expenses'].includes(collection)) {
+  if (finalData.created_by && ['meals', 'expenses'].includes(collection)) {
     const originalCreatedBy = finalData.created_by;
     const uuid = await getSupabaseUserId(finalData.created_by, householdId);
     
     if (uuid) {
-      // Validate it's a proper UUID format before saving
       const isValidUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(uuid);
       if (isValidUuid) {
         console.log(`🔄 Converting created_by ${originalCreatedBy} to UUID ${uuid}`);
         finalData.created_by = uuid;
       } else {
-        // UUID resolution returned a non-UUID value (should not happen, but defensive)
         console.warn(`⚠️ getSupabaseUserId returned invalid UUID for created_by: ${uuid} - setting to null`);
         finalData.created_by = null;
       }
     } else {
-      // Could not resolve user ID - log warning but don't block the insert
-      // Notifications will still work, but creator might receive their own notification
       console.warn(`⚠️ Could not resolve created_by ID: ${originalCreatedBy} - setting to null`);
       finalData.created_by = null;
     }

@@ -661,14 +661,14 @@ const Meals: React.FC<MealsProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-background pb-40 animate-fade-in">
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
+    <div className="min-h-screen bg-background pb-40">
+        <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
         {/* ─────────────────────────────────────────────────────────────── */}
         {/* STICKY HEADER - Push Up (No Shrink) */}
         {/* ─────────────────────────────────────────────────────────────── */}
         <header 
           className="sticky top-0 z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 pb-3 flex items-end" 
-          style={{ height: '120px', animation: 'none', opacity: 1 }}
+          style={{ height: '120px' }}
         >
           <div className="flex items-center justify-between w-full">
             <h1 className="text-display text-foreground">
@@ -712,9 +712,7 @@ const Meals: React.FC<MealsProps> = ({
           className="sticky z-10 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 py-3 transition-shadow duration-200"
           style={{ 
             top: '120px',
-            boxShadow: isScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none',
-            animation: 'none',
-            opacity: 1
+            boxShadow: isScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none'
           }}
         >
           <div className="flex items-center gap-3">

@@ -295,12 +295,13 @@ const Dashboard: React.FC<DashboardProps> = ({
     <div className="pb-16 animate-fade-in page-content bg-background">
       {/* Sticky Header - Push Up (No Shrink) */}
       <header 
-        className="sticky top-0 z-20 bg-background px-5 pt-12 pb-3 transition-shadow duration-200"
+        className="sticky top-0 z-20 bg-background px-5 pb-3 flex items-end transition-shadow duration-200"
         style={{ 
+          height: '120px',
           boxShadow: isScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none'
         }}
       >
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between items-center w-full">
           <div>
             <h1>
               <span className="text-foreground font-bold" style={{ fontSize: '20px' }}>{timeOfDay},</span><br />

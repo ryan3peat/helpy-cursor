@@ -801,8 +801,11 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
         {/* STICKY HEADER - Push Up (No Shrink) */}
         {/* Fixed size header, collapsible content fades out */}
         {/* ─────────────────────────────────────────────────────────────── */}
-        <header className="sticky top-0 z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 pt-12 pb-3">
-          <h1>
+        <header 
+          className="sticky top-0 z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 pb-3 flex items-end" 
+          style={{ height: '120px' }}
+        >
+          <h1 className="w-full">
             <span className="text-foreground font-bold" style={{ fontSize: '20px' }}>{t['info.title'] || 'Family Info'}</span><br />
             <span className="text-display text-foreground">{activeSection === 'essentialInfo' ? (t['common.essential_info'] || 'Essential') : (t['common.house_routine'] || 'House Routine')}</span>
           </h1>

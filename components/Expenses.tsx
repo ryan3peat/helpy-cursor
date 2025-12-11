@@ -808,8 +808,11 @@ const Expenses: React.FC<ExpensesProps> = ({
         {/* ─────────────────────────────────────────────────────────────── */}
         {/* STICKY HEADER - Push Up (No Shrink) */}
         {/* ─────────────────────────────────────────────────────────────── */}
-        <header className="sticky top-0 z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 pt-12 pb-3">
-          <div className="flex items-center justify-between">
+        <header 
+          className="sticky top-0 z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 pb-3 flex items-end" 
+          style={{ height: '120px' }}
+        >
+          <div className="flex items-center justify-between w-full">
             <h1 className="text-display text-foreground">
               {t['expenses.title']}
             </h1>
@@ -847,7 +850,7 @@ const Expenses: React.FC<ExpensesProps> = ({
         <div
           className="sticky z-10 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 py-3 transition-shadow duration-200"
           style={{
-            top: '92px',
+            top: '120px',
             boxShadow: isScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none',
           }}
         >

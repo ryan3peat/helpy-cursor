@@ -838,8 +838,11 @@ const Profile: React.FC<ProfileProps> = ({
   };
 
   const renderSettingsHeader = (title: string, onBackOverride?: () => void) => (
-    <header className="sticky top-0 z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 pt-12 pb-3">
-      <div className="flex items-center gap-2">
+    <header 
+      className="sticky top-0 z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 pb-3 flex items-end"
+      style={{ height: '120px' }}
+    >
+      <div className="flex items-center gap-2 w-full">
         <button
           onClick={onBackOverride || (() => setActiveSection('main'))}
           className="p-2 hover:bg-secondary rounded-full transition-colors"
@@ -859,8 +862,11 @@ const Profile: React.FC<ProfileProps> = ({
       <div className="min-h-screen bg-background pb-40 animate-fade-in">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
           {/* Header with Logout */}
-          <header className="sticky top-0 z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 pt-12 pb-3">
-            <div className="flex items-center justify-between">
+          <header 
+            className="sticky top-0 z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 pb-3 flex items-end"
+            style={{ height: '120px' }}
+          >
+            <div className="flex items-center justify-between w-full">
               <div className="flex items-center gap-2">
                 <button onClick={onBack} className="p-2 hover:bg-secondary rounded-full transition-colors">
                   <ChevronLeft size={24} className="text-foreground" />

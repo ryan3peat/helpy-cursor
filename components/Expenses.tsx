@@ -1201,10 +1201,10 @@ const Expenses: React.FC<ExpensesProps> = ({
                         <AlertCircle size={18} className="mt-0.5" />
                         <div>
                           <p className="text-body font-semibold">
-                            {t['expenses.free_limit_title'] || 'Manual entry only on Free'}
+                            {t['expenses.free_limit_title'] || 'Upgrade your plan to enable Receipt Scanner!'}
                           </p>
                           <p className="text-caption text-amber-800 mt-1">
-                            {t['expenses.free_limit_body'] || 'Upgrade to scan receipts with the camera or photo upload.'}
+                            {t['expenses.free_limit_body'] || 'Scan with your phone\'s camera or upload from the photo gallery.'}
                           </p>
                         </div>
                       </div>

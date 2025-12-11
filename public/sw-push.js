@@ -386,11 +386,22 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('pushsubscriptionchange', (event) => {
   console.log('[SW] Push subscription changed:', event);
   
+  // Get the applicationServerKey from the old subscription
+  const applicationServerKey = event.oldSubscription?.options?.applicationServerKey;
+  
+  // If we don't have the key, we can't resubscribe here
+  // The main app will handle resubscription when the user opens it
+  if (!applicationServerKey) {
+    console.log('[SW] No applicationServerKey available, skipping auto-resubscribe');
+    console.log('[SW] The app will resubscribe when opened');
+    return;
+  }
+  
   // Re-subscribe and update the server
   event.waitUntil(
     self.registration.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: event.oldSubscription?.options?.applicationServerKey
+      applicationServerKey: applicationServerKey
     })
     .then((newSubscription) => {
       // Send the new subscription to the server
@@ -405,6 +416,7 @@ self.addEventListener('pushsubscriptionchange', (event) => {
     })
     .catch((error) => {
       console.error('[SW] Failed to resubscribe:', error);
+      console.log('[SW] The app will attempt resubscription when opened');
     })
   );
 });

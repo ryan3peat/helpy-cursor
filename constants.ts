@@ -571,6 +571,8 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   // Expenses - Additional
   'expenses.all_expenses': 'All Expenses',
   'expenses.error_invalid_amount': 'Please enter a valid amount',
+  'expenses.free_limit_title': 'Upgrade your plan to enable Receipt Scanner!',
+  'expenses.free_limit_body': 'Scan with your phone\'s camera or upload from the photo gallery.',
 
   // Common - Additional
   'common.na': 'N/A',

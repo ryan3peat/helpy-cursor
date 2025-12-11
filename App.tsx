@@ -795,11 +795,10 @@ const AppContent: React.FC = () => {
     // Create expense without ID so Supabase generates UUID
     const expenseWithoutId = { ...expense };
     delete expenseWithoutId.id; // Remove ID so Supabase generates UUID
-    // Strip createdBy; expenses table doesn’t have this column
-    delete (expenseWithoutId as any).createdBy;
+    // Add createdBy so notifications show who added the expense
+    expenseWithoutId.createdBy = currentUser?.id;
     
     console.log('[App] Adding expense without ID, will get UUID from DB');
-    // Don't include createdBy - expenses table doesn't have this column
     const savedExpense = await addItem(hid, 'expenses', expenseWithoutId);
     console.log('[App] Expense saved with UUID:', savedExpense.id);
     

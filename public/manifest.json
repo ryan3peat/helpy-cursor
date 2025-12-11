@@ -3,6 +3,7 @@
   "short_name": "Helpy",
   "description": "Your household helper app - manage meals, tasks, shopping lists, and expenses together",
   "id": "com.helpy.app",
+  "gcm_sender_id": "103953800507",
   "start_url": "/?source=pwa",
   "scope": "/",
   "display": "standalone",

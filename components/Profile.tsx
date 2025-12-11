@@ -274,6 +274,19 @@ const Profile: React.FC<ProfileProps> = ({
       setSubscriptionSuccess(true);
       setTimeout(() => setSubscriptionSuccess(false), 10000);
 
+      // Attempt immediate sync from Stripe session to avoid waiting on webhook
+      const syncSubscription = async () => {
+        try {
+          await fetch('/api/sync-subscription', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ householdId: currentUser.householdId, sessionId }),
+          });
+        } catch (err) {
+          console.warn('Sync subscription failed, will rely on webhook + retries', err);
+        }
+      };
+
       // Refetch with retry logic (webhook might take a few seconds)
       const retryFetch = async (attempt: number = 0) => {
         const maxRetries = 10;
@@ -303,7 +316,17 @@ const Profile: React.FC<ProfileProps> = ({
 
       // Initial fetch immediately, then retry if needed
       setTimeout(() => {
-        fetchSubscriptionInfo(0).then((isActive) => {
+        syncSubscription().finally(() => {
+          fetchSubscriptionInfo(0).then((isActive) => {
+            if (!isActive) {
+              // Wait 2 seconds before first retry (give webhook time to process)
+              setTimeout(() => retryFetch(1), 2000);
+            }
+          });
+        });
+      }, 500);
+    }
+  }, [currentUser?.householdId, fetchSubscriptionInfo]);
           if (!isActive) {
             // Wait 2 seconds before first retry (give webhook time to process)
             setTimeout(() => retryFetch(1), 2000);

@@ -268,13 +268,13 @@ async function handleWebhookRequest(req: any, res: any) {
     case 'checkout.session.completed': {
       // Payment successful, subscription created
       const session = event.data.object as Stripe.Checkout.Session;
-      const plan = session.metadata?.plan as 'core' | 'pro';
+      const plan = session.metadata?.plan as 'core' | 'pro' | 'test';
       const period = session.metadata?.period;
       const hid = session.metadata?.household_id;
 
       console.log(`✅ checkout.session.completed for household: ${hid}, plan: ${plan}`);
 
-      if (hid && plan && session.subscription) {
+      if (hid && plan && session.subscription && PLAN_LIMITS[plan]) {
         const limits = PLAN_LIMITS[plan];
         
         // Retrieve subscription to get period end date
@@ -425,10 +425,14 @@ async function handleWebhookRequest(req: any, res: any) {
             console.log(`⚠️ Subscription canceled immediately for household ${hid}`);
           } else if (isScheduledToCancel) {
             // Subscription is scheduled to cancel at period end - still active but will cancel
-            // Keep current plan and limits until period ends, but log the cancellation
+            // Set status to 'canceling' so UI can show appropriate messaging
+            updateData.subscription_status = 'canceling';
             console.log(`⏰ Subscription scheduled to cancel at period end for household ${hid} (${cancelAt || 'end of period'})`);
-            // Status remains 'active' but we know it's scheduled to cancel
+            // Keep current plan and limits until period ends
             // The subscription will be handled by customer.subscription.deleted when it actually ends
+          } else if (subscription.status === 'active' && !isScheduledToCancel) {
+            // Subscription is active and NOT scheduled to cancel (e.g., user resubscribed or cancellation was reversed)
+            updateData.subscription_status = 'active';
           }
 
           const { error } = await supabase.from('households').update(updateData).eq('id', hid);

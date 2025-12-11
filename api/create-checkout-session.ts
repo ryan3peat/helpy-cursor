@@ -26,7 +26,7 @@ export default async function handler(req: any, res: any) {
 
   try {
     const { householdId, priceKey, userEmail } = req.body;
-    // priceKey: 'core_monthly' | 'core_yearly' | 'pro_monthly' | 'pro_yearly'
+    // priceKey: 'core_monthly' | 'core_yearly' | 'pro_monthly' | 'pro_yearly' | 'test_monthly'
 
     if (!householdId || !priceKey || !PRICE_IDS[priceKey]) {
       return res.status(400).json({ error: 'Invalid parameters' });

@@ -456,6 +456,9 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'subscription.active_until': 'Your subscription is active until',
   'subscription.canceled_success': 'Your subscription has been successfully canceled.',
   'subscription.confirm_cancel': 'Are you sure you want to cancel your subscription? You will lose access to premium features at the end of your billing period.',
+  'subscription.canceling': 'Subscription Canceling',
+  'subscription.access_until': 'Access until',
+  'subscription.will_revert_free': 'Your plan will revert to Free after this date.',
 
   // Confirmation Dialogs
   'confirm.delete_member': 'Are you sure you want to delete this family member? This action cannot be undone.',

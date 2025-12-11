@@ -225,27 +225,38 @@ const Profile: React.FC<ProfileProps> = ({
       setActiveSection('settings');
       setTimeout(() => setActiveSection('plan'), 100);
 
-      // Clear URL parameters
-      const newUrl = window.location.pathname + (window.location.hash.split('?')[0] || '');
-      window.history.replaceState({}, document.title, newUrl);
+      // Clear URL parameters (both query and hash)
+      const cleanPath = window.location.pathname;
+      const cleanHash = window.location.hash.split('?')[0].replace('#portal_return=true', '') || '';
+      window.history.replaceState({}, document.title, cleanPath + cleanHash);
 
-      // Check subscription status after a short delay (webhook might need time)
-      setTimeout(async () => {
-        // Fetch subscription info and check if it's no longer active
+      // Immediately refresh subscription info and check status
+      // Use multiple retries as webhook might take a few seconds to process
+      const checkSubscriptionStatus = async (attempt: number = 0) => {
+        const maxAttempts = 5;
+        
         const { data } = await supabase
           .from('households')
-          .select('subscription_status')
+          .select('subscription_status, subscription_plan')
           .eq('id', currentUser.householdId)
           .single();
         
-        if (data && data.subscription_status !== 'active') {
-          // Subscription was canceled or is no longer active
-          setSubscriptionCanceled(true);
+        if (data) {
+          // Refresh the subscription info display
+          fetchSubscriptionInfo(0, false);
+          
+          // If subscription was canceled or changed, show appropriate message
+          if (data.subscription_status === 'canceling' || data.subscription_status === 'canceled' || data.subscription_plan === 'free') {
+            setSubscriptionCanceled(true);
+          } else if (attempt < maxAttempts) {
+            // Keep checking in case webhook is still processing
+            setTimeout(() => checkSubscriptionStatus(attempt + 1), 2000);
+          }
         }
-        
-        // Also refresh the full subscription info
-        fetchSubscriptionInfo();
-      }, 2000);
+      };
+      
+      // Start checking after a brief delay for webhook processing
+      setTimeout(() => checkSubscriptionStatus(0), 1500);
     }
 
     // If we just returned from Stripe checkout
@@ -1537,13 +1548,15 @@ const Profile: React.FC<ProfileProps> = ({
     ];
 
     const isAdmin = currentUser.role === UserRole.MASTER;
-    const currentPlanName = subscriptionInfo?.plan === 'core' 
+    const isCanceling = subscriptionInfo?.status === 'canceling';
+    const basePlanName = subscriptionInfo?.plan === 'core' 
       ? (t['common.core'] || 'Core') 
       : subscriptionInfo?.plan === 'pro' 
       ? (t['common.pro'] || 'Pro') 
       : subscriptionInfo?.plan === 'test'
       ? (t['common.test'] || '🧪 Test')
       : (t['common.free'] || 'Free');
+    const currentPlanName = isCanceling ? `${basePlanName} (${t['subscription.canceling'] || 'Canceling'})` : basePlanName;
     const planPrice = subscriptionInfo?.plan === 'core' 
       ? (subscriptionInfo?.period === 'yearly' ? 845 : 88)
       : subscriptionInfo?.plan === 'pro'
@@ -1597,7 +1610,20 @@ const Profile: React.FC<ProfileProps> = ({
                   </div>
                 </div>
                 
-                {subscriptionInfo?.status === 'active' && subscriptionInfo?.periodEnd ? (
+                {subscriptionInfo?.status === 'canceling' && subscriptionInfo?.periodEnd ? (
+                  <div className="mt-4 pt-4 border-t border-primary-foreground/20">
+                    <div className="flex items-center gap-2 mb-2">
+                      <AlertCircle size={16} className="text-primary-foreground/80" />
+                      <p className="text-body font-semibold text-primary-foreground">{t['subscription.canceling'] || 'Subscription Canceling'}</p>
+                    </div>
+                    <p className="text-caption text-primary-foreground/70">
+                      {t['subscription.access_until'] || 'Access until'}: {formatDate(subscriptionInfo.periodEnd)}
+                    </p>
+                    <p className="text-caption text-primary-foreground/60 mt-1">
+                      {t['subscription.will_revert_free'] || 'Your plan will revert to Free after this date.'}
+                    </p>
+                  </div>
+                ) : subscriptionInfo?.status === 'active' && subscriptionInfo?.periodEnd ? (
                   <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-primary-foreground/20">
                     <div>
                       <p className="text-caption text-primary-foreground/70 mb-1">{t['common.expires_on'] || 'Expires On'}</p>
@@ -1608,7 +1634,7 @@ const Profile: React.FC<ProfileProps> = ({
                       <p className="text-body font-semibold">{getNextPaymentDate(subscriptionInfo.periodEnd, subscriptionInfo.period) || (t['common.na'] || 'N/A')}</p>
                     </div>
                   </div>
-                ) : subscriptionInfo?.status !== 'active' && (
+                ) : subscriptionInfo?.status !== 'active' && subscriptionInfo?.status !== 'canceling' && (
                   <div className="mt-4 pt-4 border-t border-primary-foreground/20">
                     <p className="text-body text-primary-foreground/80">{t['common.no_active_subscription'] || 'No active subscription'}</p>
                   </div>
@@ -1629,7 +1655,7 @@ const Profile: React.FC<ProfileProps> = ({
             {/* Upgrade/Change Plan Section */}
             <div className="mb-6">
               <h3 className="text-title font-bold text-foreground mb-4">
-                {subscriptionInfo && subscriptionInfo.status === 'active' ? (t['subscription.change_plan'] || 'Change Plan') : (t['subscription.choose_plan'] || 'Choose Your Plan')}
+                {subscriptionInfo && (subscriptionInfo.status === 'active' || subscriptionInfo.status === 'canceling') ? (t['subscription.change_plan'] || 'Change Plan') : (t['subscription.choose_plan'] || 'Choose Your Plan')}
               </h3>
 
               {!isAdmin && (

@@ -11,6 +11,15 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+const PLAN_LIMITS = {
+  free: { maxFamily: 3, maxHelpers: 1 },
+  core: { maxFamily: 4, maxHelpers: 1 },
+  pro: { maxFamily: 8, maxHelpers: 4 },
+  test: { maxFamily: 4, maxHelpers: 1 },
+} as const;
+
+const isHelperRole = (role?: string | null) => (role || '').toLowerCase() === 'helper';
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -35,6 +44,53 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
+    // ─────────────────────────────────────────────────────────────
+    // Enforce household limits before creating the pending user
+    // ─────────────────────────────────────────────────────────────
+    const { data: household, error: householdError } = await supabase
+      .from('households')
+      .select('subscription_plan, max_family_members, max_helpers')
+      .eq('id', householdId)
+      .single();
+
+    if (householdError) {
+      console.error('Supabase household fetch error:', householdError);
+      return res.status(500).json({ error: 'Unable to verify subscription limits' });
+    }
+
+    const planKey = (household?.subscription_plan || 'free') as keyof typeof PLAN_LIMITS;
+    const defaults = PLAN_LIMITS[planKey] || PLAN_LIMITS.free;
+    const limits = {
+      maxFamily: household?.max_family_members ?? defaults.maxFamily,
+      maxHelpers: household?.max_helpers ?? defaults.maxHelpers,
+    };
+
+    const { data: existingUsers, error: usersError } = await supabase
+      .from('users')
+      .select('role, status')
+      .eq('household_id', householdId);
+
+    if (usersError) {
+      console.error('Supabase users fetch error:', usersError);
+      return res.status(500).json({ error: 'Unable to check current household members' });
+    }
+
+    const activeUsers = (existingUsers || []).filter(u => u?.status !== 'inactive');
+    const helperCount = activeUsers.filter(u => isHelperRole(u.role)).length;
+    const familyCount = activeUsers.filter(u => !isHelperRole(u.role)).length;
+
+    if (isHelperRole(role) && helperCount >= limits.maxHelpers) {
+      return res.status(403).json({
+        error: `Helper limit reached for your plan (${limits.maxHelpers} allowed). Please upgrade to add more helpers.`,
+      });
+    }
+
+    if (!isHelperRole(role) && familyCount >= limits.maxFamily) {
+      return res.status(403).json({
+        error: `Family member limit reached for your plan (${limits.maxFamily} allowed). Please upgrade to add more family members.`,
+      });
+    }
+
     // 1. Create pending user in Supabase (no email needed)
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 

@@ -604,22 +604,43 @@ const Profile: React.FC<ProfileProps> = ({
   const handleAddUser = async () => {
     if (!newName.trim() || isAddingUser) return;
     
+    setIsAddingUser(true);
+
     const { plan, maxFamily, maxHelpers } = resolvePlanLimits();
-    const activeUsers = users.filter(u => u.status !== 'inactive');
-    const helperCount = activeUsers.filter(u => isHelperRole(u.role)).length;
-    const familyCount = activeUsers.filter(u => !isHelperRole(u.role)).length;
+
+    // Fetch latest counts from Supabase to avoid stale client state
+    let helperCount = 0;
+    let familyCount = 0;
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('role, status')
+        .eq('household_id', currentUser.householdId);
+
+      if (error) throw error;
+
+      const activeUsers = (data || []).filter(u => u?.status !== 'inactive');
+      helperCount = activeUsers.filter(u => isHelperRole(u.role)).length;
+      familyCount = activeUsers.filter(u => !isHelperRole(u.role)).length;
+    } catch (err) {
+      console.warn('[Profile] Failed to load latest user counts, falling back to state', err);
+      const activeUsers = users.filter(u => u.status !== 'inactive');
+      helperCount = activeUsers.filter(u => isHelperRole(u.role)).length;
+      familyCount = activeUsers.filter(u => !isHelperRole(u.role)).length;
+    }
 
     if (isHelperRole(newRole) && helperCount >= maxHelpers) {
       openPlanLimitModal('helper', plan, maxHelpers, helperCount);
+      setIsAddingUser(false);
       return;
     }
 
     if (!isHelperRole(newRole) && familyCount >= maxFamily) {
       openPlanLimitModal('family', plan, maxFamily, familyCount);
+      setIsAddingUser(false);
       return;
     }
 
-    setIsAddingUser(true);
     const nameToAdd = newName.trim();
     const roleToAdd = newRole;
     

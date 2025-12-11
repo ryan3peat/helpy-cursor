@@ -137,3 +137,27 @@ export async function createPortalSession(householdId: string): Promise<string> 
     throw error instanceof Error ? error : new Error('Unknown error creating portal session');
   }
 }
+
+export async function downgradeToFree(householdId: string): Promise<void> {
+  try {
+    const response = await fetch('/api/cancel-subscription', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ householdId }),
+    });
+
+    if (!response.ok) {
+      let errorMessage = 'Failed to downgrade subscription';
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.error || errorMessage;
+      } catch {
+        errorMessage = `Server error: ${response.status} ${response.statusText}`;
+      }
+      throw new Error(errorMessage);
+    }
+  } catch (error) {
+    console.error('Downgrade to free error:', error);
+    throw error instanceof Error ? error : new Error('Unknown error downgrading subscription');
+  }
+}

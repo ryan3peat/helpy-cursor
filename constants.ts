@@ -459,6 +459,9 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'subscription.canceling': 'Subscription Canceling',
   'subscription.access_until': 'Access until',
   'subscription.will_revert_free': 'Your plan will revert to Free after this date.',
+  'subscription.downgrade_to_free': 'Downgrade to Free',
+  'subscription.confirm_downgrade_free': 'Downgrading to Free will immediately remove paid features. Continue?',
+  'subscription.downgraded_success': 'Your subscription has been downgraded to Free.',
 
   // Confirmation Dialogs
   'confirm.delete_member': 'Are you sure you want to delete this family member? This action cannot be undone.',

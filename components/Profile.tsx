@@ -7,7 +7,7 @@ import {
 import { useUser } from '@clerk/clerk-react';
 import { User, UserRole, BaseViewProps } from '../types';
 import { createInvite } from '../services/inviteService';
-import { createCheckoutSession, createPortalSession } from '../services/stripeService';
+import { createCheckoutSession, createPortalSession, downgradeToFree } from '../services/stripeService';
 import { supabase } from '../services/supabase';
 import { deleteItem, uploadAvatarImage } from '../services/supabaseService';
 import { useScrollLock } from '@/hooks/useScrollLock';
@@ -81,7 +81,7 @@ const Profile: React.FC<ProfileProps> = ({
   const [selectedPlan, setSelectedPlan] = useState<'free' | 'core' | 'pro'>('free');
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
   const [isLoading, setIsLoading] = useState(false);
-  const [loadingPlan, setLoadingPlan] = useState<'core' | 'pro' | 'test' | null>(null);
+  const [loadingPlan, setLoadingPlan] = useState<'free' | 'core' | 'pro' | 'test' | null>(null);
   const [subscriptionInfo, setSubscriptionInfo] = useState<{
     plan: string;
     status: string;
@@ -1387,6 +1387,25 @@ const Profile: React.FC<ProfileProps> = ({
     }
   };
 
+  const handleDowngradeToFree = async () => {
+    if (!window.confirm(t['subscription.confirm_downgrade_free'] || 'Are you sure you want to downgrade to Free immediately? You will lose access to paid features right away.')) {
+      return;
+    }
+
+    try {
+      setLoadingPlan('free');
+      await downgradeToFree(currentUser.householdId);
+      // Refresh subscription info
+      await fetchSubscriptionInfo();
+      setSubscriptionCanceled(true);
+    } catch (error) {
+      console.error('Downgrade error:', error);
+      alert(t['error.downgrade_free'] || 'Failed to downgrade. Please try again.');
+    } finally {
+      setLoadingPlan(null);
+    }
+  };
+
   const formatDate = (dateString?: string) => {
     if (!dateString) return t['common.na'] || 'N/A';
     try {
@@ -1500,7 +1519,8 @@ const Profile: React.FC<ProfileProps> = ({
           t['plan.feature.free_no_scan'] || 'No receipt scanning or summary',
         ],
         highlight: false,
-        isFree: true
+        isFree: true,
+        isDowngrade: true
       },
       {
         id: 'core',
@@ -1708,7 +1728,7 @@ const Profile: React.FC<ProfileProps> = ({
                   // For free plan, check if user has no active paid subscription
                   const isCurrentPlan = p.isFree 
                     ? (!subscriptionInfo?.plan || subscriptionInfo?.plan === 'free' || subscriptionInfo?.status !== 'active')
-                    : (subscriptionInfo?.plan === p.id && subscriptionInfo?.status === 'active');
+                    : (subscriptionInfo?.plan === p.id && (subscriptionInfo?.status === 'active' || subscriptionInfo?.status === 'canceling'));
 
                   return (
                     <div
@@ -1776,8 +1796,8 @@ const Profile: React.FC<ProfileProps> = ({
                         </ul>
                       )}
 
-                      {/* Only show button for paid plans */}
-                      {!p.isFree && (
+                      {/* Plan action buttons */}
+                      {!p.isFree ? (
                         <button
                           onClick={() => handleSelectPlan(p.id as 'core' | 'pro' | 'test', billingPeriod)}
                           disabled={loadingPlan !== null || isCurrentPlan || !isAdmin}
@@ -1791,13 +1811,20 @@ const Profile: React.FC<ProfileProps> = ({
                         >
                           {loadingPlan === p.id ? (t['common.processing'] || 'Processing...') : isCurrentPlan ? (t['common.current_plan'] || 'Current Plan') : !isAdmin ? (t['common.only_admin_can_change'] || 'Only Admin Can Change') : (t['common.change_plan'] || 'Select Plan')}
                         </button>
-                      )}
-
-                      {/* Free plan indicator */}
-                      {p.isFree && isCurrentPlan && (
-                        <div className="w-full py-3 rounded-xl font-semibold text-center bg-secondary text-muted-foreground">
-                          {t['common.current_plan'] || 'Current Plan'}
-                        </div>
+                      ) : (
+                        <button
+                          onClick={handleDowngradeToFree}
+                          disabled={loadingPlan !== null || isCurrentPlan || !isAdmin}
+                          className={`w-full py-3 rounded-xl font-semibold transition-colors ${
+                            isCurrentPlan
+                              ? 'bg-secondary text-muted-foreground cursor-not-allowed'
+                              : !isAdmin
+                              ? 'bg-muted text-muted-foreground cursor-not-allowed'
+                              : 'bg-primary text-primary-foreground hover:bg-primary/90'
+                          }`}
+                        >
+                          {loadingPlan === 'free' ? (t['common.processing'] || 'Processing...') : isCurrentPlan ? (t['common.current_plan'] || 'Current Plan') : !isAdmin ? (t['common.only_admin_can_change'] || 'Only Admin Can Change') : (t['subscription.downgrade_to_free'] || 'Downgrade to Free')}
+                        </button>
                       )}
                     </div>
                   );

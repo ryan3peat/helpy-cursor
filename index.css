@@ -372,6 +372,12 @@ button:focus-visible {
   margin-top: auto;
 }
 
+@media (max-width: 640px) {
+  .helpy-footer {
+    padding: 1rem 0;
+  }
+}
+
 /* Wrapper to ensure minimum page height for footer positioning */
 .page-content {
   min-height: calc(100vh - 180px); /* Account for header + bottom nav */

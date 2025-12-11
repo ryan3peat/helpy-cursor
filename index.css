@@ -232,6 +232,17 @@ div:where(.scale-95, .scale-105, .scale-110, [class*="hover:scale"], [class*="ac
 }
 
 /* ─────────────────────────────────────────────────────────────────
+   PAGE TRANSITION FIX - Prevent header light leak
+   
+   Sticky headers must NOT participate in the page fade-in animation.
+   Otherwise there's a split-second flash at the top edge where the
+   header background hasn't painted yet.
+   ───────────────────────────────────────────────────────────────── */
+.animate-fade-in .sticky {
+  opacity: 1 !important;
+}
+
+/* ─────────────────────────────────────────────────────────────────
    UTILITY CLASSES
    ───────────────────────────────────────────────────────────────── */
 

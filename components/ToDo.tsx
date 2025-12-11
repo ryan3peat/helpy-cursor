@@ -37,6 +37,7 @@ interface ToDoProps extends BaseViewProps {
   onUpdate: (id: string, data: Partial<ToDoItem>) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   initialSection?: 'shopping' | 'task';
+  onSectionChange?: (section: string) => void;
 }
 
 const SHOPPING_CATEGORIES = Object.values(ShoppingCategory);
@@ -230,6 +231,7 @@ const ToDo: React.FC<ToDoProps> = ({
   t,
   currentLang,
   initialSection,
+  onSectionChange,
 }) => {
   // ─────────────────────────────────────────────────────────────────
   // Role-based permissions
@@ -246,6 +248,18 @@ const ToDo: React.FC<ToDoProps> = ({
   // ─────────────────────────────────────────────────────────────────
   
   const [activeSection, setActiveSection] = useState<ToDoType>(initialSection || 'shopping');
+  
+  // Notify parent of section changes (for onboarding)
+  useEffect(() => {
+    onSectionChange?.(activeSection);
+  }, [activeSection, onSectionChange]);
+  
+  // Update active section when initialSection changes (from navigation)
+  useEffect(() => {
+    if (initialSection) {
+      setActiveSection(initialSection);
+    }
+  }, [initialSection]);
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [isAddingInline, setIsAddingInline] = useState(false);
   const [inlineInputValue, setInlineInputValue] = useState('');

@@ -73,6 +73,9 @@ interface HouseholdInfoProps extends BaseViewProps {
   onAddHouseRoutine: (item: CreateHouseRoutine) => Promise<void>;
   onUpdateHouseRoutine: (id: string, data: Partial<CreateHouseRoutine>) => Promise<void>;
   onDeleteHouseRoutine: (id: string) => Promise<void>;
+  // Section control for onboarding
+  initialSection?: 'essentialInfo' | 'houseRoutine';
+  onSectionChange?: (section: string) => void;
 }
 
 type ActiveSection = "essentialInfo" | "houseRoutine";
@@ -481,11 +484,25 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
   onDeleteHouseRoutine,
   t,
   currentLang,
+  initialSection,
+  onSectionChange,
 }) => {
   // ─────────────────────────────────────────────────────────────────
   // Section Toggle State
   // ─────────────────────────────────────────────────────────────────
-  const [activeSection, setActiveSection] = useState<ActiveSection>("essentialInfo");
+  const [activeSection, setActiveSection] = useState<ActiveSection>(initialSection || "essentialInfo");
+  
+  // Notify parent of section changes (for onboarding)
+  useEffect(() => {
+    onSectionChange?.(activeSection);
+  }, [activeSection, onSectionChange]);
+  
+  // Update active section when initialSection changes (from navigation)
+  useEffect(() => {
+    if (initialSection) {
+      setActiveSection(initialSection);
+    }
+  }, [initialSection]);
   const isHelper = currentUser.role === UserRole.HELPER;
 
   // ─────────────────────────────────────────────────────────────────

@@ -279,15 +279,18 @@ const AppContent: React.FC = () => {
     return saved ? JSON.parse(saved) : null;
   });
 
-  // Onboarding State
-  const [onboardingStep, setOnboardingStep] = useState<number>(() => {
-    const saved = localStorage.getItem('helpy_onboarding_step');
-    return saved ? parseInt(saved, 10) : 1;
+  // Onboarding State (index-based: 0, 1, 2... or -1 for complete)
+  const [onboardingStepIndex, setOnboardingStepIndex] = useState<number>(() => {
+    const saved = localStorage.getItem('helpy_onboarding_step_index');
+    return saved ? parseInt(saved, 10) : 0;
   });
+  
+  // State to trigger add member sheet from onboarding
+  const [openAddMemberFromOnboarding, setOpenAddMemberFromOnboarding] = useState(false);
 
   useEffect(() => {
-    localStorage.setItem('helpy_onboarding_step', String(onboardingStep));
-  }, [onboardingStep]);
+    localStorage.setItem('helpy_onboarding_step_index', String(onboardingStepIndex));
+  }, [onboardingStepIndex]);
 
   // Check for invite params and portal return on mount
   useEffect(() => {
@@ -400,21 +403,50 @@ const AppContent: React.FC = () => {
     setNavData(data ?? null);
     // Scroll to top when navigating to a new view
     window.scrollTo(0, 0);
-    if (onboardingStep === 1 && view === 'profile') {
-      setOnboardingStep(2);
-    }
   };
 
-  const advanceOnboarding = () => {
-    if (onboardingStep === 1) {
-      setActiveView('profile');
-      setOnboardingStep(2);
-      return;
+  // Track current section for onboarding (info: essentialInfo/houseRoutine, todo: shopping/task)
+  const [onboardingSection, setOnboardingSection] = useState<string | undefined>(undefined);
+
+  // Handle onboarding action and advance to next step
+  const handleOnboardingAction = (action: { type: string; target?: string; section?: string; sheet?: string }) => {
+    if (action.type === 'navigate' && action.target) {
+      setActiveView(action.target);
+      // Set section for the target page if specified
+      if (action.section) {
+        setOnboardingSection(action.section);
+        setNavData({ section: action.section });
+      } else {
+        setOnboardingSection(undefined);
+        setNavData(null);
+      }
+      window.scrollTo(0, 0);
+    } else if (action.type === 'openSheet' && action.sheet === 'addMember') {
+      setOpenAddMemberFromOnboarding(true);
+    } else if (action.type === 'complete') {
+      // Onboarding complete - set to -1 to hide overlay
+      setOnboardingStepIndex(-1);
+      setOnboardingSection(undefined);
+      return; // Don't advance step index
     }
-    setOnboardingStep(0);
+    // Advance to next step
+    setOnboardingStepIndex(prev => prev + 1);
   };
 
-  const skipOnboarding = () => setOnboardingStep(0);
+  const skipOnboarding = () => {
+    setOnboardingStepIndex(-1);
+    setOnboardingSection(undefined);
+  };
+  
+  const goBackOnboarding = () => {
+    setOnboardingStepIndex(prev => Math.max(0, prev - 1));
+  };
+  
+  const restartOnboarding = () => {
+    setOnboardingStepIndex(0);
+    setOnboardingSection(undefined);
+    setActiveView('dashboard');
+  };
 
   // Global Data State
   const [users, setUsers] = useState<User[]>([]);
@@ -1025,6 +1057,7 @@ const AppContent: React.FC = () => {
             isTranslating={isAnyTranslating}
             onUpdateMeal={handleUpdateMeal}
             realtimeStatus={realtimeStatus}
+            onRestartOnboarding={restartOnboarding}
           />
         );
 
@@ -1040,6 +1073,7 @@ const AppContent: React.FC = () => {
             t={translations}
             currentLang={lang}
             initialSection={navData?.section as 'shopping' | 'task' | undefined}
+            onSectionChange={setOnboardingSection}
           />
         );
 
@@ -1092,6 +1126,8 @@ const AppContent: React.FC = () => {
             onDeleteHouseRoutine={handleDeleteHouseRoutine}
             t={translations}
             currentLang={lang}
+            initialSection={navData?.section as 'essentialInfo' | 'houseRoutine' | undefined}
+            onSectionChange={setOnboardingSection}
           />
         );
 
@@ -1108,6 +1144,8 @@ const AppContent: React.FC = () => {
             householdPlan={householdPlan}
             t={translations}
             currentLang={lang}
+            openAddMemberFromOnboarding={openAddMemberFromOnboarding}
+            onAddMemberSheetOpened={() => setOpenAddMemberFromOnboarding(false)}
           />
         );
 
@@ -1176,11 +1214,14 @@ const AppContent: React.FC = () => {
   return (
     <>
       {showIntro && <IntroAnimation onComplete={() => setShowIntro(false)} />}
-      {onboardingStep > 0 && (
+      {onboardingStepIndex >= 0 && (
         <OnboardingOverlay
-          step={onboardingStep}
-          userName={currentUser.name?.split(' ')[0] ?? 'User'}
-          onNext={advanceOnboarding}
+          stepIndex={onboardingStepIndex}
+          userRole={currentUser.role}
+          currentPage={activeView}
+          currentSection={onboardingSection}
+          onNext={handleOnboardingAction}
+          onBack={goBackOnboarding}
           onSkip={skipOnboarding}
           t={translations}
         />

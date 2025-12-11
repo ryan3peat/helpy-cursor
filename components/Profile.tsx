@@ -28,6 +28,10 @@ interface ProfileProps extends BaseViewProps {
   currentUser: User;
   onLogout: () => void;
   householdPlan?: HouseholdPlan | null;
+  /** Trigger to open add member sheet from onboarding */
+  openAddMemberFromOnboarding?: boolean;
+  /** Callback when add member sheet is opened */
+  onAddMemberSheetOpened?: () => void;
 }
 
 // Role priority for consistent sorting across all family members
@@ -65,7 +69,8 @@ const isHelperRole = (role: string | UserRole | undefined | null) =>
 const HOUSEHOLD_NAME_CACHE_KEY = 'helpy_household_name';
 
 const Profile: React.FC<ProfileProps> = ({
-  users, onAdd, onUpdate, onDelete, onBack, currentUser, onLogout, t, currentLang, householdPlan
+  users, onAdd, onUpdate, onDelete, onBack, currentUser, onLogout, t, currentLang, householdPlan,
+  openAddMemberFromOnboarding, onAddMemberSheetOpened
 }) => {
   // ─────────────────────────────────────────────────────────────────
   // Role-based permissions
@@ -171,6 +176,14 @@ const Profile: React.FC<ProfileProps> = ({
 
   // Lock scroll when any modal is open
   useScrollLock(isAddModalOpen || isEditModalOpen || deleteConfirmOpen || showPhotoOptions || subscriptionCanceled || isPlanConfirmOpen || !!planLimitModal);
+
+  // Handle opening add member sheet from onboarding
+  React.useEffect(() => {
+    if (openAddMemberFromOnboarding) {
+      setIsAddModalOpen(true);
+      onAddMemberSheetOpened?.();
+    }
+  }, [openAddMemberFromOnboarding, onAddMemberSheetOpened]);
 
   // Pre-fetch subscription info on component mount (for admins)
   // This eliminates latency when navigating to the Plan page
@@ -1267,6 +1280,9 @@ const Profile: React.FC<ProfileProps> = ({
                 style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
               />
               <div className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ maxHeight: '80vh', marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
+                {/* Drag Handle */}
+                <div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto mt-3 mb-2" />
+                
                 {/* Close Button */}
                 <button 
                   onClick={() => setIsAddModalOpen(false)} 
@@ -1277,14 +1293,14 @@ const Profile: React.FC<ProfileProps> = ({
                 </button>
 
                 {/* Header */}
-                <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
-                  <h2 className="text-title text-foreground">{t['profile.addMember']}</h2>
+                <div className="pt-2 pb-4 px-5 shrink-0">
+                  <h2 className="text-title font-bold text-foreground">{t['profile.addFamilyMember'] || 'Add Family Member'}</h2>
                 </div>
 
                 {/* Form */}
-                <div className="p-5 space-y-4 flex-1 overflow-y-auto">
+                <div className="p-5 pt-0 space-y-4 flex-1 overflow-y-auto">
                   <div>
-                    <label className="block text-caption text-muted-foreground mb-2 tracking-wide">{t['common.name']}</label>
+                    <label className="block text-caption text-muted-foreground mb-2">{t['common.name']}</label>
                     <input
                       type="text"
                       value={newName}
@@ -1294,51 +1310,51 @@ const Profile: React.FC<ProfileProps> = ({
                     />
                   </div>
                   <div>
-                    <label className="block text-caption text-muted-foreground mb-2 tracking-wide">{t['profile.role']}</label>
+                    <label className="block text-caption text-muted-foreground mb-2">{t['profile.role']}</label>
                     <div className="grid grid-cols-2 gap-2">
                       <button
                         type="button"
                         onClick={() => setNewRole(UserRole.SPOUSE)}
-                        className={`px-4 py-3 rounded-lg font-semibold transition-colors ${
+                        className={`px-4 py-3 rounded-lg text-body font-semibold transition-colors ${
                           newRole === UserRole.SPOUSE
                             ? 'bg-[#F3E5F5] text-[#AB47BC] border-2 border-[#AB47BC]'
                             : 'bg-secondary text-muted-foreground border-2 border-transparent hover:bg-secondary/80'
                         }`}
                       >
-                        Spouse
+                        {t['profile.role.spouse'] || 'Spouse'}
                       </button>
                       <button
                         type="button"
                         onClick={() => setNewRole(UserRole.HELPER)}
-                        className={`px-4 py-3 rounded-lg font-semibold transition-colors ${
+                        className={`px-4 py-3 rounded-lg text-body font-semibold transition-colors ${
                           newRole === UserRole.HELPER
                             ? 'bg-[#FFF3E0] text-[#FF9800] border-2 border-[#FF9800]'
                             : 'bg-secondary text-muted-foreground border-2 border-transparent hover:bg-secondary/80'
                         }`}
                       >
-                        Helper
+                        {t['profile.role.helper'] || 'Helper'}
                       </button>
                       <button
                         type="button"
                         onClick={() => setNewRole(UserRole.CHILD)}
-                        className={`px-4 py-3 rounded-lg font-semibold transition-colors ${
+                        className={`px-4 py-3 rounded-lg text-body font-semibold transition-colors ${
                           newRole === UserRole.CHILD
                             ? 'bg-[#E8F5E9] text-[#4CAF50] border-2 border-[#4CAF50]'
                             : 'bg-secondary text-muted-foreground border-2 border-transparent hover:bg-secondary/80'
                         }`}
                       >
-                        Child
+                        {t['profile.role.child'] || 'Child'}
                       </button>
                       <button
                         type="button"
                         onClick={() => setNewRole(UserRole.OTHER)}
-                        className={`px-4 py-3 rounded-lg font-semibold transition-colors ${
+                        className={`px-4 py-3 rounded-lg text-body font-semibold transition-colors ${
                           newRole === UserRole.OTHER
                             ? 'bg-[#FCE4EC] text-[#F06292] border-2 border-[#F06292]'
                             : 'bg-secondary text-muted-foreground border-2 border-transparent hover:bg-secondary/80'
                         }`}
                       >
-                        Other
+                        {t['profile.role.other'] || 'Other'}
                       </button>
                     </div>
                   </div>

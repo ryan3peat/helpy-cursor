@@ -261,6 +261,10 @@ const Profile: React.FC<ProfileProps> = ({
 
     // If we just returned from Stripe checkout
     if (sessionId || success === 'true') {
+      // Hide stale plan data to avoid flashing old plan while we sync
+      setSubscriptionInfo(null);
+      setIsLoadingSubscription(true);
+
       // Navigate to subscription page
       setActiveSection('settings');
       // Small delay to allow settings to render, then navigate to plan
@@ -1409,6 +1413,8 @@ const Profile: React.FC<ProfileProps> = ({
 
     try {
       setLoadingPlan('free');
+      setSubscriptionInfo(null);
+      setIsLoadingSubscription(true);
       await downgradeToFree(currentUser.householdId);
       // Refresh subscription info
       await fetchSubscriptionInfo();

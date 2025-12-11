@@ -40,6 +40,7 @@ import {
   deleteReceiptByExpenseId,
   getKnownMerchants,
 } from '../services/receiptService';
+import { supabase } from '../services/supabase';
 import { processReceipt, ParsedReceipt } from '../services/visionService';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 
@@ -289,6 +290,8 @@ const Expenses: React.FC<ExpensesProps> = ({
   const [isEditingExisting, setIsEditingExisting] = useState(false);
   const [confirmDeleteExisting, setConfirmDeleteExisting] = useState(false);
   const [savingExisting, setSavingExisting] = useState(false);
+  const [receiptPreviewUrl, setReceiptPreviewUrl] = useState<string | null>(null);
+  const [triedReceiptRefresh, setTriedReceiptRefresh] = useState(false);
 
   const [exAmount, setExAmount] = useState<string>('');
   const [exMerchant, setExMerchant] = useState<string>('');
@@ -314,7 +317,11 @@ const Expenses: React.FC<ExpensesProps> = ({
   }, [expenses]);
 
   useEffect(() => {
-    if (!selectedExpense) return;
+    if (!selectedExpense) {
+      setReceiptPreviewUrl(null);
+      setTriedReceiptRefresh(false);
+      return;
+    }
     setExAmount(selectedExpense.amount.toFixed(2));
     setExMerchant(selectedExpense.merchant || '');
     setExCategory(selectedExpense.category || EXPENSE_CATEGORIES[0]);
@@ -335,6 +342,8 @@ const Expenses: React.FC<ExpensesProps> = ({
       iso = new Date().toISOString().slice(0, 10);
     }
     setExDate(iso);
+    setReceiptPreviewUrl(selectedExpense.receiptUrl || null);
+    setTriedReceiptRefresh(false);
   }, [selectedExpense]);
 
   // Auto-focus amount field when entering manual mode
@@ -646,6 +655,36 @@ const Expenses: React.FC<ExpensesProps> = ({
     setSelectedExpense(null);
     setIsEditingExisting(false);
     setConfirmDeleteExisting(false);
+  }
+
+  // Refresh a receipt URL with a fresh signed link when the stored one has expired or is private
+  async function refreshReceiptUrl(originalUrl?: string): Promise<string | null> {
+    if (!originalUrl) return null;
+    try {
+      let path = originalUrl;
+
+      // If we were given a full URL, extract the path after the bucket name
+      if (originalUrl.startsWith('http')) {
+        const parsed = new URL(originalUrl);
+        const marker = '/receipts/';
+        const idx = parsed.pathname.indexOf(marker);
+        if (idx === -1) return null;
+        path = decodeURIComponent(parsed.pathname.slice(idx + marker.length));
+      }
+
+      const { data, error } = await supabase.storage
+        .from('receipts')
+        .createSignedUrl(path, 60 * 60 * 24 * 7); // 7 days
+
+      if (error) {
+        console.warn('[Expenses] Failed to refresh signed receipt URL:', error.message);
+        return null;
+      }
+      return data?.signedUrl || null;
+    } catch (err) {
+      console.warn('[Expenses] Could not parse receipt URL for signing:', err);
+      return null;
+    }
   }
 
   async function saveExistingEdit() {
@@ -1449,9 +1488,17 @@ const Expenses: React.FC<ExpensesProps> = ({
             <div className="rounded-xl overflow-hidden border border-border">
               {selectedExpense.receiptUrl ? (
                 <img
-                  src={selectedExpense.receiptUrl}
+                  src={receiptPreviewUrl || selectedExpense.receiptUrl}
                   alt="Receipt"
                   className="w-full max-h-64 object-contain bg-secondary"
+                  onError={async () => {
+                    if (triedReceiptRefresh) return;
+                    setTriedReceiptRefresh(true);
+                    const refreshed = await refreshReceiptUrl(selectedExpense.receiptUrl);
+                    if (refreshed) {
+                      setReceiptPreviewUrl(refreshed);
+                    }
+                  }}
                 />
               ) : (
                 <div className="w-full h-28 bg-secondary flex items-center justify-center text-muted-foreground">

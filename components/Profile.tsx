@@ -58,6 +58,9 @@ interface PlanLimitState {
   current: number;
 }
 
+const isHelperRole = (role: string | UserRole | undefined | null) =>
+  (role || '').toString().toLowerCase() === 'helper';
+
 // localStorage key for caching household name
 const HOUSEHOLD_NAME_CACHE_KEY = 'helpy_household_name';
 
@@ -603,15 +606,15 @@ const Profile: React.FC<ProfileProps> = ({
     
     const { plan, maxFamily, maxHelpers } = resolvePlanLimits();
     const activeUsers = users.filter(u => u.status !== 'inactive');
-    const helperCount = activeUsers.filter(u => u.role === UserRole.HELPER).length;
-    const familyCount = activeUsers.length - helperCount;
+    const helperCount = activeUsers.filter(u => isHelperRole(u.role)).length;
+    const familyCount = activeUsers.filter(u => !isHelperRole(u.role)).length;
 
-    if (newRole === UserRole.HELPER && helperCount >= maxHelpers) {
+    if (isHelperRole(newRole) && helperCount >= maxHelpers) {
       openPlanLimitModal('helper', plan, maxHelpers, helperCount);
       return;
     }
 
-    if (newRole !== UserRole.HELPER && familyCount >= maxFamily) {
+    if (!isHelperRole(newRole) && familyCount >= maxFamily) {
       openPlanLimitModal('family', plan, maxFamily, familyCount);
       return;
     }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useLayoutEffect } from 'react';
 import {
   Sparkles,
   Plus,
@@ -80,6 +80,12 @@ const Meals: React.FC<MealsProps> = ({
 
   const [view, setView] = useState<'day' | 'week'>('day');
   const [loadingAi, setLoadingAi] = useState(false);
+  
+  // Prevent content flash - wait for first render cycle to complete
+  const [isReady, setIsReady] = useState(false);
+  useLayoutEffect(() => {
+    setIsReady(true);
+  }, []);
   
   // Scroll header hook for animation
   // - cooldown: 300ms to handle elastic bounce
@@ -660,9 +666,14 @@ const Meals: React.FC<MealsProps> = ({
     );
   };
 
+  // Wait for first render cycle to prevent content flash
+  if (!isReady) {
+    return <div className="min-h-screen bg-background" />;
+  }
+
   return (
     <div className="min-h-screen bg-background pb-40">
-        <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
         {/* ─────────────────────────────────────────────────────────────── */}
         {/* STICKY HEADER - Push Up (No Shrink) */}
         {/* ─────────────────────────────────────────────────────────────── */}

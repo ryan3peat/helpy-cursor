@@ -327,14 +327,6 @@ const Profile: React.FC<ProfileProps> = ({
       }, 500);
     }
   }, [currentUser?.householdId, fetchSubscriptionInfo]);
-          if (!isActive) {
-            // Wait 2 seconds before first retry (give webhook time to process)
-            setTimeout(() => retryFetch(1), 2000);
-          }
-        });
-      }, 500);
-    }
-  }, [currentUser?.householdId, fetchSubscriptionInfo]);
 
   // Fetch subscription info when navigating to plan/security sections (only if missing)
   React.useEffect(() => {

@@ -1065,7 +1065,7 @@ const ToDo: React.FC<ToDoProps> = ({
                       setIsAddingInline(false);
                     }
                   }}
-                  placeholder={t['todo.add_hint'] || 'Press Enter to add | tap (+) for more'}
+                  placeholder={t['todo.add_hint'] || 'Press Enter to add | tap + to set details'}
                   className="flex-1 bg-transparent text-body text-foreground placeholder-muted-foreground/50 outline-none"
                 />
               ) : (

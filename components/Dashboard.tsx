@@ -375,7 +375,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 
       {/* Family Notes */}
       <div className="relative group">
-        <div className="relative bg-primary p-5 rounded-2xl shadow-sm border border-border transition-all hover:shadow-md">
+        <div className="relative bg-primary p-5 rounded-2xl shadow-sm transition-all hover:shadow-md">
           <div className="flex justify-between items-start mb-3">
             <div className="flex items-center gap-2">
               <div className="text-white">

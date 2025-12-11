@@ -218,7 +218,7 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'todo.completed': 'Completed',
   'todo.no_shopping': 'No shopping items yet',
   'todo.no_tasks': 'No tasks yet',
-  'todo.add_hint': 'Press Enter to add / tap (+) to set details',
+  'todo.add_hint': 'Press Enter to add | tap + to set details',
   'todo.category.home_care': 'Home Care',
   'todo.category.family_care': 'Family Care',
   'todo.category.others': 'Others',

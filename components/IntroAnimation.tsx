@@ -44,15 +44,12 @@ const IntroAnimation: React.FC<IntroAnimationProps> = ({ onComplete }) => {
     setFallenCount((c) => c + 1);
   };
 
-  // When all icons have fallen, start exit animation
+  // When all icons have fallen, start exit animation (optimized for speed)
   useEffect(() => {
     if (fallenCount >= icons.length && !isExiting) {
-      // Small delay to show the full logo
-      const timer = setTimeout(() => {
-        setIsExiting(true);
-        setTimeout(onComplete, 500); // Allow fade out time
-      }, 600);
-      return () => clearTimeout(timer);
+      // Minimal delay, then quick fade
+      setIsExiting(true);
+      setTimeout(onComplete, 130); // Quick fade out
     }
   }, [fallenCount, isExiting, onComplete]);
 
@@ -60,7 +57,7 @@ const IntroAnimation: React.FC<IntroAnimationProps> = ({ onComplete }) => {
     return icons.map((Icon, i) => ({
       Icon,
       startX: 15 + seededRandom(i) * 70,
-      delay: i * 0.075, // 25 icons over ~1.8s
+      delay: i * 0.032, // 25 icons over ~0.8s (faster for 1.6s total)
     }));
   }, []);
 
@@ -74,7 +71,7 @@ const IntroAnimation: React.FC<IntroAnimationProps> = ({ onComplete }) => {
       }}
       initial={{ opacity: 1 }}
       animate={{ opacity: isExiting ? 0 : 1 }}
-      transition={{ duration: 0.5, ease: 'easeOut' }}
+      transition={{ duration: 0.13, ease: 'easeOut' }}
     >
       {/* Inner wrapper to ensure overflow clipping works on iOS Safari */}
       <div 
@@ -143,7 +140,7 @@ function FallingIcon({ Icon, startX, delay, onLanded }: FallingIconProps) {
         scale: [1, 1, 0.5, 0],
       }}
       transition={{
-        duration: 1.2,
+        duration: 0.7,
         delay: delay,
         ease: [0.4, 0, 0.9, 1],
         times: [0, 0.65, 0.9, 1],

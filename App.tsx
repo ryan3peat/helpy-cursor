@@ -126,10 +126,12 @@ const AppContent: React.FC = () => {
   
   const initialDeepLink = getInitialDeepLink();
   
-  // Skip intro animation if coming from a notification deep link
+  // Skip intro animation if coming from a notification deep link OR returning user with cached session
   const [showIntro, setShowIntro] = useState(() => {
-    const shouldSkip = initialDeepLink.isDeepLink;
-    console.log('[App] showIntro initial:', !shouldSkip, '(isDeepLink:', shouldSkip, ')');
+    const shouldSkipDeepLink = initialDeepLink.isDeepLink;
+    const hasCachedSession = !!localStorage.getItem('helpy_current_session_user');
+    const shouldSkip = shouldSkipDeepLink || hasCachedSession;
+    console.log('[App] showIntro initial:', !shouldSkip, '(isDeepLink:', shouldSkipDeepLink, ', hasCachedSession:', hasCachedSession, ')');
     return !shouldSkip;
   });
   

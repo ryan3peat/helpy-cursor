@@ -121,6 +121,14 @@ const Meals: React.FC<MealsProps> = ({
     shouldAutoScroll.current = true;
   }, []);
 
+  // Header backdrop-blur render fix: start solid, then fade to transparent
+  // This prevents the "white flash" caused by backdrop-blur computing after content scrolls
+  const [headerReady, setHeaderReady] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setHeaderReady(true), 80);
+    return () => clearTimeout(timer);
+  }, []);
+
   const mealTypes = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER, MealType.SNACKS];
   const langCode = currentLang === 'en' ? 'en-GB' : currentLang;
 
@@ -664,7 +672,13 @@ const Meals: React.FC<MealsProps> = ({
         {/* ─────────────────────────────────────────────────────────────── */}
         {/* STICKY HEADER - Push Up (No Shrink) */}
         {/* ─────────────────────────────────────────────────────────────── */}
-        <header className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm -mx-4 px-4 sm:-mx-6 sm:px-6 pt-12 pb-3">
+        <header 
+          className={`sticky top-0 z-20 -mx-4 px-4 sm:-mx-6 sm:px-6 pt-12 pb-3 transition-[background-color] duration-100 ${
+            headerReady 
+              ? 'bg-background/95 backdrop-blur-sm' 
+              : 'bg-background'
+          }`}
+        >
           <div className="flex items-center justify-between">
             <h1 className="text-display text-foreground">
               {t['meals.title']}

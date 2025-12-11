@@ -25,7 +25,7 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
-    const { householdId, priceKey, userEmail } = req.body;
+    const { householdId, priceKey, userEmail, promoCode } = req.body;
     // priceKey: 'core_monthly' | 'core_yearly' | 'pro_monthly' | 'pro_yearly' | 'test_monthly'
 
     if (!householdId || !priceKey || !PRICE_IDS[priceKey]) {
@@ -79,6 +79,25 @@ export default async function handler(req: any, res: any) {
     // Use environment variable with fallback
     const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://helpyfam.com';
 
+    let promotionCodeId: string | undefined;
+
+    if (promoCode && typeof promoCode === 'string') {
+      const trimmed = promoCode.trim();
+      if (trimmed) {
+        const promotionCodes = await stripe.promotionCodes.list({
+          code: trimmed,
+          active: true,
+          limit: 1,
+        });
+
+        if (!promotionCodes.data.length) {
+          return res.status(400).json({ error: 'Invalid or inactive promo code' });
+        }
+
+        promotionCodeId = promotionCodes.data[0].id;
+      }
+    }
+
     // Create Checkout Session
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
@@ -86,16 +105,19 @@ export default async function handler(req: any, res: any) {
       line_items: [{ price: PRICE_IDS[priceKey], quantity: 1 }],
       success_url: `${APP_URL}/?session_id={CHECKOUT_SESSION_ID}&success=true`,
       cancel_url: `${APP_URL}/?canceled=true`,
+      allow_promotion_codes: true,
       metadata: {
         household_id: householdId,
         plan: priceKey.split('_')[0], // 'core' or 'pro'
         period: priceKey.split('_')[1], // 'monthly' or 'yearly'
+        promo_code: promoCode || '',
       },
       subscription_data: {
         metadata: {
           household_id: householdId,
         },
       },
+      discounts: promotionCodeId ? [{ promotion_code: promotionCodeId }] : undefined,
     });
 
     return res.status(200).json({ url: session.url });

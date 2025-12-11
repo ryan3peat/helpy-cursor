@@ -82,6 +82,10 @@ const Profile: React.FC<ProfileProps> = ({
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
   const [isLoading, setIsLoading] = useState(false);
   const [loadingPlan, setLoadingPlan] = useState<'free' | 'core' | 'pro' | 'test' | null>(null);
+  const [isPlanConfirmOpen, setIsPlanConfirmOpen] = useState(false);
+  const [pendingPlan, setPendingPlan] = useState<{ plan: 'core' | 'pro' | 'test'; period: 'monthly' | 'yearly' } | null>(null);
+  const [promoCodeInput, setPromoCodeInput] = useState('');
+  const [promoCodeError, setPromoCodeError] = useState<string | null>(null);
   const [subscriptionInfo, setSubscriptionInfo] = useState<{
     plan: string;
     status: string;
@@ -143,7 +147,7 @@ const Profile: React.FC<ProfileProps> = ({
   }, []);
 
   // Lock scroll when any modal is open
-  useScrollLock(isAddModalOpen || isEditModalOpen || deleteConfirmOpen || showPhotoOptions || subscriptionCanceled);
+  useScrollLock(isAddModalOpen || isEditModalOpen || deleteConfirmOpen || showPhotoOptions || subscriptionCanceled || isPlanConfirmOpen);
 
   // Pre-fetch subscription info on component mount (for admins)
   // This eliminates latency when navigating to the Plan page
@@ -455,23 +459,37 @@ const Profile: React.FC<ProfileProps> = ({
   };
 
   // Stripe Checkout Handler
-  const handleSelectPlan = async (plan: 'core' | 'pro' | 'test', period: 'monthly' | 'yearly') => {
+  const handleSelectPlan = async (plan: 'core' | 'pro' | 'test', period: 'monthly' | 'yearly', promoCode?: string) => {
     try {
+      setPromoCodeError(null);
       setLoadingPlan(plan);
       const checkoutUrl = await createCheckoutSession(
         currentUser.householdId,
         plan,
         period,
-        currentUser.email || ''
+        currentUser.email || '',
+        promoCode
       );
       
       // Redirect to Stripe Checkout
       window.location.href = checkoutUrl;
     } catch (error) {
       console.error('Checkout error:', error);
-      alert(error instanceof Error ? error.message : 'Failed to start checkout. Please try again.');
+      setPromoCodeError(error instanceof Error ? error.message : 'Failed to start checkout. Please try again.');
       setLoadingPlan(null);
     }
+  };
+
+  const handleOpenPlanConfirm = (plan: 'core' | 'pro' | 'test', period: 'monthly' | 'yearly') => {
+    setPendingPlan({ plan, period });
+    setPromoCodeInput('');
+    setPromoCodeError(null);
+    setIsPlanConfirmOpen(true);
+  };
+
+  const handleConfirmPlan = async () => {
+    if (!pendingPlan) return;
+    await handleSelectPlan(pendingPlan.plan, pendingPlan.period, promoCodeInput);
   };
 
   // Stripe Portal Handler (for managing existing subscription)
@@ -1527,6 +1545,13 @@ const Profile: React.FC<ProfileProps> = ({
     }
   };
 
+  const getPlanDisplayName = (plan: 'core' | 'pro' | 'test' | 'free') => {
+    if (plan === 'core') return t['common.core'] || 'Core';
+    if (plan === 'pro') return t['common.pro'] || 'Pro';
+    if (plan === 'test') return t['common.test'] || '🧪 Test';
+    return t['common.free'] || 'Free';
+  };
+
   if (activeSection === 'plan') {
     const plans = [
       {
@@ -1823,7 +1848,7 @@ const Profile: React.FC<ProfileProps> = ({
                       {/* Plan action buttons */}
                       {!p.isFree ? (
                         <button
-                          onClick={() => handleSelectPlan(p.id as 'core' | 'pro' | 'test', billingPeriod)}
+                          onClick={() => handleOpenPlanConfirm(p.id as 'core' | 'pro' | 'test', billingPeriod)}
                           disabled={loadingPlan !== null || isCurrentPlan || !isAdmin}
                           className={`w-full py-3 rounded-xl font-semibold transition-colors ${
                             isCurrentPlan
@@ -1856,6 +1881,75 @@ const Profile: React.FC<ProfileProps> = ({
               </div>
             </div>
           </div>
+
+          {/* Plan confirmation + promo code modal */}
+          {isPlanConfirmOpen && pendingPlan && (
+            <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
+              {/* Safe area bottom cover */}
+              <div 
+                className="absolute bottom-0 left-0 right-0 bg-card"
+                style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
+              />
+              <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
+                {/* Header */}
+                <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
+                  <h2 className="text-title text-foreground">{t['subscription.change_plan'] || 'Change Plan'}</h2>
+                </div>
+
+                {/* Content */}
+                <div className="p-5 space-y-4">
+                  <p className="text-body text-foreground">
+                    {`You are about to upgrade to the ${getPlanDisplayName(pendingPlan.plan)} plan.`}
+                  </p>
+                  <div className="space-y-2">
+                    <label className="text-caption font-bold text-muted-foreground ml-1">
+                      {t['subscription.promo_code'] || 'Promo code (optional)'}
+                    </label>
+                    <input
+                      type="text"
+                      value={promoCodeInput}
+                      onChange={(e) => {
+                        setPromoCodeInput(e.target.value);
+                        setPromoCodeError(null);
+                      }}
+                      placeholder={t['subscription.promo_code_placeholder'] || 'Enter promo code'}
+                      className="w-full bg-muted border border-border rounded-xl px-4 py-3 text-foreground font-medium focus:border-primary outline-none transition-colors text-body"
+                    />
+                    {promoCodeError && (
+                      <p className="text-caption text-destructive">{promoCodeError}</p>
+                    )}
+                    <p className="text-caption text-muted-foreground">
+                      {t['subscription.promo_code_hint'] || 'We will apply this code on the Stripe checkout page.'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div className="p-5 pb-8 border-t border-border flex gap-3 shrink-0">
+                  <button
+                    onClick={() => {
+                      if (loadingPlan !== null) return;
+                      setIsPlanConfirmOpen(false);
+                      setPendingPlan(null);
+                      setPromoCodeInput('');
+                      setPromoCodeError(null);
+                    }}
+                    disabled={loadingPlan !== null}
+                    className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body hover:bg-secondary/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {t['common.cancel'] || 'Cancel'}
+                  </button>
+                  <button
+                    onClick={handleConfirmPlan}
+                    disabled={loadingPlan !== null}
+                    className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {loadingPlan !== null ? (t['common.processing'] || 'Processing...') : (t['common.confirm'] || 'Confirm')}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Footer */}
           <div className="helpy-footer">

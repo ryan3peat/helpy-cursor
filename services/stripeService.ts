@@ -67,7 +67,8 @@ export async function createCheckoutSession(
   householdId: string,
   plan: 'core' | 'pro' | 'test',
   period: 'monthly' | 'yearly',
-  userEmail: string
+  userEmail: string,
+  promoCode?: string
 ): Promise<string> {
   try {
     const response = await fetch('/api/create-checkout-session', {
@@ -77,6 +78,7 @@ export async function createCheckoutSession(
         householdId,
         priceKey: `${plan}_${period}`,
         userEmail,
+        promoCode: promoCode?.trim() || undefined,
       }),
     });
 

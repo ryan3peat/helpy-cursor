@@ -438,10 +438,6 @@ const AppContent: React.FC = () => {
     setOnboardingSection(undefined);
   };
   
-  const goBackOnboarding = () => {
-    setOnboardingStepIndex(prev => Math.max(0, prev - 1));
-  };
-  
   const restartOnboarding = () => {
     setOnboardingStepIndex(0);
     setOnboardingSection(undefined);
@@ -1221,7 +1217,6 @@ const AppContent: React.FC = () => {
           currentPage={activeView}
           currentSection={onboardingSection}
           onNext={handleOnboardingAction}
-          onBack={goBackOnboarding}
           onSkip={skipOnboarding}
           t={translations}
         />

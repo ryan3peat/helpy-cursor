@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronRight, ChevronLeft } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { TranslationDictionary, UserRole } from '../types';
 
 // Action types for onboarding steps
@@ -344,7 +344,6 @@ interface OnboardingOverlayProps {
   currentPage: string;
   currentSection?: string;
   onNext: (action: OnboardingAction) => void;
-  onBack: () => void;
   onSkip: () => void;
   t: TranslationDictionary;
 }
@@ -355,13 +354,11 @@ const OnboardingOverlay: React.FC<OnboardingOverlayProps> = ({
   currentPage,
   currentSection,
   onNext, 
-  onBack,
   onSkip, 
   t 
 }) => {
   const steps = getStepsForRole(userRole, t);
   const currentStep = steps[stepIndex];
-  const canGoBack = stepIndex > 0;
   
   // Don't render if no step
   if (!currentStep) return null;
@@ -382,7 +379,8 @@ const OnboardingOverlay: React.FC<OnboardingOverlayProps> = ({
       case 'top-left':
         return 'top-36 left-4 flex items-start justify-start';
       case 'below-add-button':
-        return 'top-[340px] left-4 flex items-start justify-start';
+        // Position just below the "Add" label text
+        return 'top-[300px] left-4 flex items-start justify-start';
       case 'center-near-tabnav':
         return 'top-[200px] inset-x-0 flex items-start justify-center';
       case 'bottom-center':
@@ -444,15 +442,6 @@ const OnboardingOverlay: React.FC<OnboardingOverlayProps> = ({
                 {currentStep.buttonText}
                 <ChevronRight size={18} />
               </button>
-              {canGoBack && (
-                <button 
-                  onClick={onBack}
-                  className="flex items-center gap-1 text-body font-bold text-muted-foreground hover:text-foreground transition-colors py-2"
-                >
-                  <ChevronLeft size={16} />
-                  {t['onboarding.back'] || 'Back'}
-                </button>
-              )}
               {currentStep.allowSkip && (
                 <button 
                   onClick={onSkip}
@@ -499,21 +488,13 @@ const OnboardingOverlay: React.FC<OnboardingOverlayProps> = ({
               {currentStep.description}
             </p>
             <div className="flex items-center justify-between gap-4">
-              {canGoBack ? (
+              {currentStep.allowSkip ? (
                 <button 
-                  onClick={onBack}
-                  className="flex items-center gap-1 text-body font-bold text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <ChevronLeft size={16} />
-                  {t['onboarding.back'] || 'Back'}
-                </button>
-              ) : currentStep.allowSkip ? (
-                      <button 
-                          onClick={onSkip}
+                  onClick={onSkip}
                   className="text-body font-bold text-muted-foreground hover:text-foreground transition-colors"
-                      >
+                >
                   {t['onboarding.skip'] || 'Skip'}
-                      </button>
+                </button>
               ) : (
                 <div />
               )}

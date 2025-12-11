@@ -286,7 +286,7 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'common.yearly': 'Yearly',
   'common.mo': 'mo',
   'common.yr': 'yr',
-  'common.essential_info': 'Essential Info',
+  'common.essential_info': 'Essential',
   'common.house_routine': 'House Routine',
   'common.training': 'Training',
   'common.home': 'Home',
@@ -399,7 +399,7 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   // Expenses
   'expenses.error': 'Error',
   'expenses.no_data': 'No expense data',
-  'expenses.photo_library': 'Photo Library',
+  'expenses.upload_photo': 'Upload Photo',
   'expenses.amount': 'Amount',
   'expenses.select_month': 'Select Month',
   'expenses.add_to_start': 'Add an expense to get started',

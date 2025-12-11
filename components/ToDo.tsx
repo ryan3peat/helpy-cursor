@@ -786,15 +786,16 @@ const ToDo: React.FC<ToDoProps> = ({
   // ─────────────────────────────────────────────────────────────────
   
   return (
-    <div className="min-h-screen bg-background pb-40">
+    <div className="min-h-screen bg-background pb-40 animate-fade-in">
       <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
         {/* ─────────────────────────────────────────────────────────────── */}
         {/* STICKY HEADER - Push Up (No Shrink) */}
         {/* ─────────────────────────────────────────────────────────────── */}
         <header className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm -mx-4 px-4 sm:-mx-6 sm:px-6 pt-12 pb-3">
           <div className="flex items-center justify-between">
-            <h1 className="text-display text-foreground">
-              {t['todo.title'] || 'To Do'}
+            <h1>
+              <span className="text-foreground font-bold" style={{ fontSize: '20px' }}>{t['todo.title'] || 'To Do'}</span><br />
+              <span className="text-display text-foreground">{activeSection === 'shopping' ? (t['todo.shopping'] || 'Shopping') : (t['todo.tasks'] || 'Tasks')}</span>
             </h1>
             
             {/* Filter/Sort Button */}
@@ -1035,7 +1036,7 @@ const ToDo: React.FC<ToDoProps> = ({
           {/* Inline Add Row at TOP - always visible for rapid entry */}
           <div
             className={`flex items-center gap-3 p-4 ${
-              activeItems.length > 0 ? 'list-item-separator' : ''
+              activeItems.length > 0 || !isAddingInline ? 'list-item-separator' : ''
             } ${!isAddingInline ? 'hover:bg-muted/30 cursor-pointer' : ''}`}
             onClick={() => !isAddingInline && setIsAddingInline(true)}
           >
@@ -1216,7 +1217,7 @@ const ToDo: React.FC<ToDoProps> = ({
           
           {/* Empty State */}
           {activeItems.length === 0 && !isAddingInline && (
-            <div className="p-8 text-center border-t border-border">
+            <div className="p-8 text-center">
               <p className="text-body text-foreground">
                 {activeSection === 'shopping' 
                   ? (t['todo.no_shopping'] || 'No shopping items yet')

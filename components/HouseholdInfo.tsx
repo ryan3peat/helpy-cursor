@@ -795,15 +795,16 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
   // Render
   // ─────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-background pb-40">
+    <div className="min-h-screen bg-background pb-40 animate-fade-in">
       <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
         {/* ─────────────────────────────────────────────────────────────── */}
         {/* STICKY HEADER - Push Up (No Shrink) */}
         {/* Fixed size header, collapsible content fades out */}
         {/* ─────────────────────────────────────────────────────────────── */}
         <header className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm -mx-4 px-4 sm:-mx-6 sm:px-6 pt-12 pb-3">
-          <h1 className="text-display text-foreground">
-            {t['info.title'] || 'Family Info'}
+          <h1>
+            <span className="text-foreground font-bold" style={{ fontSize: '20px' }}>{t['info.title'] || 'Family Info'}</span><br />
+            <span className="text-display text-foreground">{activeSection === 'essentialInfo' ? (t['common.essential_info'] || 'Essential') : (t['common.house_routine'] || 'House Routine')}</span>
           </h1>
         </header>
 
@@ -821,7 +822,7 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
             >
               <div className="flex items-center gap-2">
                 <BookOpen size={16} className={activeSection === "essentialInfo" ? "" : undefined} />
-                <span className="text-title">{t['common.essential_info'] || 'Essential Info'}</span>
+                <span className="text-title">{t['common.essential_info'] || 'Essential'}</span>
               </div>
               <div className={`text-caption mt-1 ml-6 ${activeSection === "essentialInfo" ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
                 {essentialStats.total} {t['common.items'] || 'items'}

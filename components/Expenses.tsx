@@ -728,7 +728,7 @@ const Expenses: React.FC<ExpensesProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-background pb-40">
+    <div className="min-h-screen bg-background pb-40 animate-fade-in">
       <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
         {/* ─────────────────────────────────────────────────────────────── */}
         {/* STICKY HEADER - Push Up (No Shrink) */}
@@ -1076,7 +1076,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                     className="py-6 rounded-xl bg-secondary border border-border flex flex-col items-center justify-center gap-2 text-foreground hover:bg-secondary/80 transition-colors"
                   >
                     <ImageIcon size={28} />
-                    <span className="text-body font-medium">{t['expenses.photo_library'] || 'Photo Library'}</span>
+                    <span className="text-body font-medium">{t['expenses.upload_photo'] || 'Upload Photo'}</span>
                   </button>
                   <button
                     onClick={() => cameraInputRef.current?.click()}

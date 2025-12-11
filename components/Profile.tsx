@@ -81,6 +81,7 @@ const Profile: React.FC<ProfileProps> = ({
   const [selectedPlan, setSelectedPlan] = useState<'free' | 'core' | 'pro'>('free');
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingPlan, setLoadingPlan] = useState<'core' | 'pro' | null>(null);
   const [subscriptionInfo, setSubscriptionInfo] = useState<{
     plan: string;
     status: string;
@@ -426,7 +427,7 @@ const Profile: React.FC<ProfileProps> = ({
   // Stripe Checkout Handler
   const handleSelectPlan = async (plan: 'core' | 'pro', period: 'monthly' | 'yearly') => {
     try {
-      setIsLoading(true);
+      setLoadingPlan(plan);
       const checkoutUrl = await createCheckoutSession(
         currentUser.householdId,
         plan,
@@ -439,7 +440,7 @@ const Profile: React.FC<ProfileProps> = ({
     } catch (error) {
       console.error('Checkout error:', error);
       alert(error instanceof Error ? error.message : 'Failed to start checkout. Please try again.');
-      setIsLoading(false);
+      setLoadingPlan(null);
     }
   };
 
@@ -690,7 +691,7 @@ const Profile: React.FC<ProfileProps> = ({
   // =====================================================
   if (activeSection === 'main') {
     return (
-      <div className="min-h-screen bg-background pb-40">
+      <div className="min-h-screen bg-background pb-40 animate-fade-in">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
           {/* Header with Logout */}
           <header className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm -mx-4 px-4 sm:-mx-6 sm:px-6 pt-12 pb-3">
@@ -770,7 +771,7 @@ const Profile: React.FC<ProfileProps> = ({
                 <h2 className="text-title font-bold text-foreground mb-1">{householdName}</h2>
               )}
               <p className="text-title text-muted-foreground mb-3">{t['profile.familyMembers']}</p>
-              <div className="flex gap-4 overflow-x-auto pb-1 scrollbar-hide">
+              <div className="flex gap-4 overflow-x-auto pt-2 pb-1 scrollbar-hide">
                 {/* Add button first - Hidden for Helper */}
                 {!isHelper && (
                 <div
@@ -822,7 +823,17 @@ const Profile: React.FC<ProfileProps> = ({
 
             {/* Selected User Profile Card */}
             {selectedUser && (
-              <div className="bg-card rounded-3xl shadow-sm p-6 mb-6">
+              <div className="bg-card rounded-3xl shadow-sm p-6 mb-6 relative">
+                {/* Delete button - Hidden for Helper, positioned top right */}
+                {selectedUser.id !== currentUser.id && !isHelper && (
+                  <button
+                    onClick={() => handleDeleteUser(selectedUser.id)}
+                    className="absolute top-4 right-4 p-2.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl transition-colors"
+                    aria-label={t['profile.delete_member'] || 'Delete member'}
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                )}
                 {/* Header: Avatar + Name + Role */}
                 <div className="flex items-center gap-4">
                   <div className="relative group">
@@ -941,16 +952,6 @@ const Profile: React.FC<ProfileProps> = ({
                       >
                         <Share2 size={16} className="shrink-0" />
                         <span className="text-body font-medium">{t['profile.resend_invite'] || 'Resend Invite'}</span>
-                      </button>
-                    )}
-                    {/* Delete button - Hidden for Helper */}
-                    {selectedUser.id !== currentUser.id && !isHelper && (
-                      <button
-                        onClick={() => handleDeleteUser(selectedUser.id)}
-                        className="p-2.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl transition-colors shrink-0"
-                        aria-label={t['profile.delete_member'] || 'Delete member'}
-                      >
-                        <Trash2 size={18} />
                       </button>
                     )}
                   </div>
@@ -1512,7 +1513,7 @@ const Profile: React.FC<ProfileProps> = ({
       : 0;
 
     return (
-      <div className="min-h-screen bg-background pb-40">
+      <div className="min-h-screen bg-background pb-40 animate-fade-in">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
           {renderSettingsHeader(t['common.plan'] || 'Subscription', () => setActiveSection('settings'))}
           <div className="pt-6 pb-24">
@@ -1688,7 +1689,7 @@ const Profile: React.FC<ProfileProps> = ({
 
                       <button
                         onClick={() => handleSelectPlan(p.id as 'core' | 'pro', billingPeriod)}
-                        disabled={isLoading || isCurrentPlan || !isAdmin}
+                        disabled={loadingPlan !== null || isCurrentPlan || !isAdmin}
                         className={`w-full py-3 rounded-xl font-semibold transition-colors ${
                           isCurrentPlan
                             ? 'bg-secondary text-muted-foreground cursor-not-allowed'
@@ -1697,7 +1698,7 @@ const Profile: React.FC<ProfileProps> = ({
                             : 'bg-primary text-primary-foreground hover:bg-primary/90'
                         }`}
                       >
-                        {isLoading ? (t['common.processing'] || 'Processing...') : isCurrentPlan ? (t['common.current_plan'] || 'Current Plan') : !isAdmin ? (t['common.only_admin_can_change'] || 'Only Admin Can Change') : (t['common.change_plan'] || 'Select Plan')}
+                        {loadingPlan === p.id ? (t['common.processing'] || 'Processing...') : isCurrentPlan ? (t['common.current_plan'] || 'Current Plan') : !isAdmin ? (t['common.only_admin_can_change'] || 'Only Admin Can Change') : (t['common.change_plan'] || 'Select Plan')}
                       </button>
                     </div>
                   );
@@ -1720,7 +1721,7 @@ const Profile: React.FC<ProfileProps> = ({
   // =====================================================
   if (activeSection === 'security') {
     return (
-      <div className="min-h-screen bg-background pb-40">
+      <div className="min-h-screen bg-background pb-40 animate-fade-in">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
           {renderSettingsHeader(t['common.security'] || 'Account', () => setActiveSection('settings'))}
           <div className="pt-6 pb-24">
@@ -2212,7 +2213,7 @@ const Profile: React.FC<ProfileProps> = ({
   // =====================================================
   if (activeSection === 'payment') {
     return (
-      <div className="min-h-screen bg-background pb-40">
+      <div className="min-h-screen bg-background pb-40 animate-fade-in">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
           {renderSettingsHeader(t['common.payment'] || 'Payment', () => setActiveSection('settings'))}
           <div className="pt-6 pb-24">
@@ -2261,11 +2262,11 @@ const Profile: React.FC<ProfileProps> = ({
                     <div className="flex justify-between text-sm">
                       <div>
                         <div className="text-[10px] text-white/60 uppercase tracking-wider mb-0.5">{t['profile.card_holder'] || 'Card Holder'}</div>
-                        <span className="text-white/90 font-medium">{paymentData.name || 'YOUR NAME'}</span>
+                        <div className="text-white font-medium drop-shadow-sm">{paymentData.name || 'YOUR NAME'}</div>
                       </div>
                       <div className="text-right">
                         <div className="text-[10px] text-white/60 uppercase tracking-wider mb-0.5">{t['profile.card_expires'] || 'Expires'}</div>
-                        <span className="text-white/90 font-medium">{paymentData.expiry || 'MM/YY'}</span>
+                        <div className="text-white font-medium drop-shadow-sm">{paymentData.expiry || 'MM/YY'}</div>
                       </div>
                     </div>
                   </div>
@@ -2389,7 +2390,7 @@ const Profile: React.FC<ProfileProps> = ({
   // =====================================================
   if (activeSection === 'settings') {
     return (
-      <div className="min-h-screen bg-background pb-40">
+      <div className="min-h-screen bg-background pb-40 animate-fade-in">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
           {renderSettingsHeader(t['common.settings'] || 'Settings', () => setActiveSection('main'))}
           <div className="pt-6 pb-24">

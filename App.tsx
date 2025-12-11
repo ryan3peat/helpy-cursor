@@ -62,13 +62,53 @@ const BroomIcon = ({ className }: { className?: string }) => (
   />
 );
 
+// Helper function to parse notification deep links from URL hash
+// Used when user taps on a push notification to go directly to the relevant page
+const parseNotificationDeepLink = (): { view: string; navData: { section?: string } | null; isDeepLink: boolean } => {
+  const hash = window.location.hash;
+  
+  // Check for deep link patterns: #todo, #meals, #expenses, #profile, #info
+  if (hash.startsWith('#todo')) {
+    const params = new URLSearchParams(hash.split('?')[1] || '');
+    const section = params.get('section');
+    return { 
+      view: 'todo', 
+      navData: section ? { section } : null,
+      isDeepLink: true 
+    };
+  }
+  if (hash.startsWith('#meals')) {
+    return { view: 'meals', navData: null, isDeepLink: true };
+  }
+  if (hash.startsWith('#expenses')) {
+    return { view: 'expenses', navData: null, isDeepLink: true };
+  }
+  if (hash.startsWith('#profile')) {
+    return { view: 'profile', navData: null, isDeepLink: true };
+  }
+  if (hash.startsWith('#info')) {
+    return { view: 'info', navData: null, isDeepLink: true };
+  }
+  
+  return { view: 'dashboard', navData: null, isDeepLink: false };
+};
+
 // Inner App component that uses the translation context
 const AppContent: React.FC = () => {
   const { signOut } = useClerk();
   const { user: clerkUser, isSignedIn, isLoaded: clerkLoaded } = useUser();
   const { setStaticTranslating, isAnyTranslating } = useTranslationContext();
-  const [showIntro, setShowIntro] = useState(true);
-  const [activeView, setActiveView] = useState('dashboard');
+  
+  // Parse deep link on mount to determine initial view and whether to skip intro
+  // This enables direct navigation when user taps on a push notification
+  const initialDeepLinkRef = useRef(parseNotificationDeepLink());
+  
+  // Skip intro animation if coming from a notification deep link
+  const [showIntro, setShowIntro] = useState(!initialDeepLinkRef.current.isDeepLink);
+  
+  // Initialize activeView from URL hash (for notification deep links)
+  const [activeView, setActiveView] = useState(initialDeepLinkRef.current.view);
+  
   const [clerkLoadTimeout, setClerkLoadTimeout] = useState(false);
   const [clerkError, setClerkError] = useState<string | null>(null);
 
@@ -207,6 +247,11 @@ const AppContent: React.FC = () => {
       return;
     }
     loginProcessedRef.current = true;
+    
+    // Check for pending deep link BEFORE clearing URL
+    // This preserves the notification destination through the auth flow
+    const pendingDeepLink = parseNotificationDeepLink();
+    
     const newUrl = window.location.pathname + window.location.hash.split('?')[0];
     window.history.replaceState({}, document.title, newUrl);
     setInviteParams(null);
@@ -222,7 +267,15 @@ const AppContent: React.FC = () => {
     setCurrentUser(user);
     localStorage.setItem('helpy_current_session_user', JSON.stringify(user));
     setShowIntro(false);
-    setActiveView('dashboard');
+    
+    // Navigate to deep link destination or default to dashboard
+    if (pendingDeepLink.isDeepLink) {
+      console.log('🔵 [App] Navigating to deep link:', pendingDeepLink.view, pendingDeepLink.navData);
+      setActiveView(pendingDeepLink.view);
+      setNavData(pendingDeepLink.navData);
+    } else {
+      setActiveView('dashboard');
+    }
     console.log('✅ [App] handleLogin completed, currentUser should be set');
     
     // NOTE: Auto-subscribe is now handled by the useEffect that watches users.length
@@ -257,7 +310,8 @@ const AppContent: React.FC = () => {
   }, [signOut]);
 
   // Navigation data (e.g., initialSection for ToDo)
-  const [navData, setNavData] = useState<{ section?: string } | null>(null);
+  // Initialize from deep link if present (for notification deep links)
+  const [navData, setNavData] = useState<{ section?: string } | null>(initialDeepLinkRef.current.navData);
 
   // Navigation
   const handleNavigate = (view: string, data?: { section?: string }) => {
@@ -508,6 +562,26 @@ const AppContent: React.FC = () => {
       }
     }
   }, [users]);
+
+  // Handle URL hash changes (for when app is already open and notification is tapped)
+  // This navigates to the correct page when service worker calls client.navigate()
+  useEffect(() => {
+    const handleHashChange = () => {
+      if (!currentUser) return; // Only handle if logged in
+      
+      const deepLink = parseNotificationDeepLink();
+      if (deepLink.isDeepLink) {
+        console.log('[App] Hash changed, navigating to:', deepLink.view, deepLink.navData);
+        setActiveView(deepLink.view);
+        setNavData(deepLink.navData);
+        // Clear the hash parameters after navigation to keep URL clean
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+    };
+    
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, [currentUser]);
 
   const hid = currentUser?.householdId ?? '';
 

@@ -116,15 +116,9 @@ const Meals: React.FC<MealsProps> = ({
   // Ref: Track if we should auto-scroll (only on view change or Today click)
   const shouldAutoScroll = useRef(false);
 
-  // Track if component has mounted (to prevent transition flash on initial render)
-  const [mounted, setMounted] = useState(false);
-
   // Auto-scroll to today on mount (when navigating from Dashboard)
   useEffect(() => {
     shouldAutoScroll.current = true;
-    // Delay setting mounted to allow initial scroll to complete without transition flash
-    const timer = setTimeout(() => setMounted(true), 50);
-    return () => clearTimeout(timer);
   }, []);
 
   const mealTypes = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER, MealType.SNACKS];
@@ -665,7 +659,7 @@ const Meals: React.FC<MealsProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-background pb-40">
+    <div className="min-h-screen bg-background pb-40 animate-fade-in">
       <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
         {/* ─────────────────────────────────────────────────────────────── */}
         {/* STICKY HEADER - Push Up (No Shrink) */}
@@ -688,9 +682,9 @@ const Meals: React.FC<MealsProps> = ({
                     <button
                       key={v}
                       onClick={() => setView(v as 'day' | 'week')}
-                      className={`py-1.5 px-3 rounded-full text-caption font-medium flex items-center gap-1.5 ${
+                      className={`py-1.5 px-3 rounded-full text-caption font-medium flex items-center gap-1.5 transition-colors ${
                         isActive
-                          ? 'bg-card text-primary shadow-sm'
+                          ? 'bg-background text-primary shadow-sm'
                           : 'text-muted-foreground hover:text-foreground'
                       }`}
                     >
@@ -716,7 +710,7 @@ const Meals: React.FC<MealsProps> = ({
         {/* WEEK NAVIGATION */}
         {/* ─────────────────────────────────────────────────────────────── */}
         <div 
-          className={`sticky z-10 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 py-3 ${mounted ? 'transition-shadow duration-200' : ''}`}
+          className="sticky z-10 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 py-3 transition-shadow duration-200"
           style={{ 
             top: '92px',
             boxShadow: isScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none'
@@ -726,7 +720,7 @@ const Meals: React.FC<MealsProps> = ({
             {/* Week Selector */}
             <div 
               className="relative flex-1 flex items-center justify-between px-2 rounded-xl h-12 overflow-hidden"
-              style={{ backgroundColor: 'hsl(var(--card))' }}
+              style={{ backgroundColor: 'hsl(var(--muted))' }}
             >
               <button
                 onClick={prevWeek}

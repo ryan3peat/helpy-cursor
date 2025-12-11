@@ -93,6 +93,41 @@ async function getExistingKeys(langCode: string): Promise<Set<string>> {
 }
 
 /**
+ * Get existing English translations with their values
+ */
+async function getEnglishTranslations(): Promise<Map<string, string>> {
+  const { data, error } = await supabase
+    .from('ui_translations')
+    .select('key, value')
+    .eq('lang_code', 'en');
+
+  if (error) {
+    console.error('Error fetching English translations:', error);
+    return new Map();
+  }
+
+  return new Map(data?.map(row => [row.key, row.value]) || []);
+}
+
+/**
+ * Find keys where the English value has changed in BASE_TRANSLATIONS
+ */
+async function getChangedEnglishKeys(): Promise<string[]> {
+  const existingEnglish = await getEnglishTranslations();
+  const changedKeys: string[] = [];
+  
+  for (const [key, newValue] of Object.entries(BASE_TRANSLATIONS)) {
+    const existingValue = existingEnglish.get(key);
+    if (existingValue !== undefined && existingValue !== newValue) {
+      changedKeys.push(key);
+      console.log(`  Changed: "${key}": "${existingValue}" -> "${newValue}"`);
+    }
+  }
+  
+  return changedKeys;
+}
+
+/**
  * Find keys that are in BASE_TRANSLATIONS but not in Supabase
  */
 async function getMissingKeys(langCode: string): Promise<string[]> {
@@ -194,13 +229,37 @@ async function main() {
   console.log(`  Supabase URL: ${SUPABASE_URL}`);
   console.log(`  Languages: ${LANGUAGES_TO_TRANSLATE.map(l => l.code).join(', ')}`);
   console.log(`  Total strings in BASE_TRANSLATIONS: ${Object.keys(BASE_TRANSLATIONS).length}`);
-  console.log(`  Mode: ${forceOverwrite ? 'FORCE (re-translate all)' : 'INCREMENTAL (new keys only)'}`);
+  console.log(`  Mode: ${forceOverwrite ? 'FORCE (re-translate all)' : 'INCREMENTAL (new + changed keys)'}`);
   console.log(`  Dry run: ${dryRun}`);
   console.log('========================================\n');
 
   let totalNewKeys = 0;
   let totalTranslated = 0;
   let errorCount = 0;
+
+  // Step 1: Check for changed English source values
+  console.log('[en] Checking for changed English source values...');
+  console.log('─'.repeat(40));
+  const changedKeys = await getChangedEnglishKeys();
+  
+  if (changedKeys.length > 0) {
+    console.log(`  Found ${changedKeys.length} keys with changed English values`);
+    
+    if (!dryRun) {
+      // Update English translations first
+      const englishUpdates: Record<string, string> = {};
+      for (const key of changedKeys) {
+        englishUpdates[key] = BASE_TRANSLATIONS[key];
+      }
+      console.log(`  Updating English translations...`);
+      await saveTranslations('en', englishUpdates);
+      console.log(`  Updated ${changedKeys.length} English keys`);
+    } else {
+      console.log(`  Would update ${changedKeys.length} English keys`);
+    }
+  } else {
+    console.log(`  No changed English values detected`);
+  }
 
   for (const { code, name } of LANGUAGES_TO_TRANSLATE) {
     console.log(`\n[${code}] ${name}`);
@@ -215,15 +274,24 @@ async function main() {
         keysToTranslate = Object.keys(BASE_TRANSLATIONS);
         console.log(`  Force mode: will translate all ${keysToTranslate.length} keys`);
       } else {
-        // Incremental mode: only translate missing keys
-        keysToTranslate = await getMissingKeys(code);
+        // Incremental mode: translate missing keys + changed keys
+        const missingKeys = await getMissingKeys(code);
+        
+        // Combine missing keys with changed keys (deduplicated)
+        const keysSet = new Set([...missingKeys, ...changedKeys]);
+        keysToTranslate = Array.from(keysSet);
         
         if (keysToTranslate.length === 0) {
-          console.log(`  All ${Object.keys(BASE_TRANSLATIONS).length} keys already translated`);
+          console.log(`  All ${Object.keys(BASE_TRANSLATIONS).length} keys already translated and up to date`);
           continue;
         }
         
-        console.log(`  Found ${keysToTranslate.length} new keys to translate`);
+        if (missingKeys.length > 0) {
+          console.log(`  Found ${missingKeys.length} new keys to translate`);
+        }
+        if (changedKeys.length > 0) {
+          console.log(`  Found ${changedKeys.length} changed keys to re-translate`);
+        }
         totalNewKeys += keysToTranslate.length;
       }
 

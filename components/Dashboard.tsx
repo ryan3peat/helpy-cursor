@@ -302,9 +302,9 @@ const Dashboard: React.FC<DashboardProps> = ({
       >
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-display text-foreground">
-              {timeOfDay},<br />
-              <span className="text-primary">{currentUser.name.split(' ')[0]}</span>
+            <h1>
+              <span className="text-foreground font-bold" style={{ fontSize: '20px' }}>{timeOfDay},</span><br />
+              <span className="text-display text-primary">{currentUser.name.split(' ')[0]}</span>
             </h1>
           </div>
           <div className="flex gap-2">
@@ -509,7 +509,7 @@ const Dashboard: React.FC<DashboardProps> = ({
               })}
             </div>
           ) : (
-            <div className="text-center py-2 flex flex-col items-center gap-2">
+            <div className="py-2 flex flex-col items-start gap-2">
               <p className="text-body text-muted-foreground">{t['dashboard.no_meals_today'] || 'No meals remaining for today'}</p>
               <button className="text-body text-primary flex items-center gap-1 hover:underline">
                 <Plus size={12} /> {t['meals.plan_dish'] || 'Plan Meal'}

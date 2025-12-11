@@ -276,7 +276,7 @@ const Expenses: React.FC<ExpensesProps> = ({
 
   // OCR State (for stage: 'ocr')
   const [pendingReceipt, setPendingReceipt] = useState<PendingReceipt | null>(null);
-  const [isImageZoomed, setIsImageZoomed] = useState(false);
+  const [zoomImageSrc, setZoomImageSrc] = useState<string | null>(null);
 
   // Shared form fields (used by both OCR and Manual entry)
   const [editAmount, setEditAmount] = useState<string>('');
@@ -344,6 +344,20 @@ const Expenses: React.FC<ExpensesProps> = ({
     setExDate(iso);
     setReceiptPreviewUrl(selectedExpense.receiptUrl || null);
     setTriedReceiptRefresh(false);
+
+    // Proactively refresh signed receipt URLs so images remain viewable even when cached links expire
+    let cancelled = false;
+    (async () => {
+      if (!selectedExpense.receiptUrl) return;
+      const refreshed = await refreshReceiptUrl(selectedExpense.receiptUrl);
+      if (!cancelled && refreshed) {
+        setReceiptPreviewUrl(refreshed);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [selectedExpense]);
 
   // Auto-focus amount field when entering manual mode
@@ -1338,19 +1352,19 @@ const Expenses: React.FC<ExpensesProps> = ({
             {/* Receipt Thumbnail - Clickable to zoom */}
                   <div 
                     className="rounded-xl overflow-hidden border border-border cursor-pointer relative group"
-                    onClick={() => setIsImageZoomed(true)}
+                    onClick={() => setZoomImageSrc(pendingReceipt.thumbnailBase64)}
                   >
-              <img 
-                src={pendingReceipt.thumbnailBase64} 
-                alt="Receipt" 
-                className="w-full h-32 object-contain bg-secondary transition-transform group-hover:scale-105" 
-              />
-              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-                <span className="text-caption text-white opacity-0 group-hover:opacity-100 bg-black/50 px-2 py-1 rounded">
-                  {t['expenses.tap_to_zoom'] || 'Tap to zoom'}
-                </span>
-              </div>
-            </div>
+                    <img 
+                      src={pendingReceipt.thumbnailBase64} 
+                      alt="Receipt" 
+                      className="w-full h-32 object-contain bg-secondary transition-transform group-hover:scale-105" 
+                    />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                      <span className="text-caption text-white opacity-0 group-hover:opacity-100 bg-black/50 px-2 py-1 rounded">
+                        {t['expenses.tap_to_zoom'] || 'Tap to zoom'}
+                      </span>
+                    </div>
+                  </div>
 
                   {/* Amount */}
               <div>
@@ -1487,19 +1501,37 @@ const Expenses: React.FC<ExpensesProps> = ({
             {/* Receipt Thumbnail */}
             <div className="rounded-xl overflow-hidden border border-border">
               {selectedExpense.receiptUrl ? (
-                <img
-                  src={receiptPreviewUrl || selectedExpense.receiptUrl}
-                  alt="Receipt"
-                  className="w-full max-h-64 object-contain bg-secondary"
-                  onError={async () => {
-                    if (triedReceiptRefresh) return;
-                    setTriedReceiptRefresh(true);
+                <button
+                  type="button"
+                  className="relative w-full group"
+                  onClick={async () => {
                     const refreshed = await refreshReceiptUrl(selectedExpense.receiptUrl);
+                    const urlToUse = refreshed || receiptPreviewUrl || selectedExpense.receiptUrl;
                     if (refreshed) {
                       setReceiptPreviewUrl(refreshed);
                     }
+                    setZoomImageSrc(urlToUse);
                   }}
-                />
+                >
+                  <img
+                    src={receiptPreviewUrl || selectedExpense.receiptUrl}
+                    alt="Receipt"
+                    className="w-full max-h-64 object-contain bg-secondary"
+                    onError={async () => {
+                      if (triedReceiptRefresh) return;
+                      setTriedReceiptRefresh(true);
+                      const refreshed = await refreshReceiptUrl(selectedExpense.receiptUrl);
+                      if (refreshed) {
+                        setReceiptPreviewUrl(refreshed);
+                      }
+                    }}
+                  />
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center pointer-events-none">
+                    <span className="text-caption text-white opacity-0 group-hover:opacity-100 bg-black/60 px-2 py-1 rounded">
+                      {t['expenses.tap_to_zoom'] || 'Tap to view'}
+                    </span>
+                  </div>
+                </button>
               ) : (
                 <div className="w-full h-28 bg-secondary flex items-center justify-center text-muted-foreground">
                   {t['expenses.no_receipt_image'] || 'No receipt image'}
@@ -1671,10 +1703,10 @@ const Expenses: React.FC<ExpensesProps> = ({
       {/* ─────────────────────────────────────────────────────────────── */}
       {/* IMAGE ZOOM MODAL */}
       {/* ─────────────────────────────────────────────────────────────── */}
-      {isImageZoomed && pendingReceipt && (
+      {zoomImageSrc && (
         <ZoomableImage
-          imageSrc={pendingReceipt.thumbnailBase64}
-          onClose={() => setIsImageZoomed(false)}
+          imageSrc={zoomImageSrc}
+          onClose={() => setZoomImageSrc(null)}
           t={t}
         />
       )}

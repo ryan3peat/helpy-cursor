@@ -29,6 +29,13 @@ export interface User {
   hasPushSubscription?: boolean;
 }
 
+export interface HouseholdPlan {
+  plan: 'free' | 'core' | 'pro' | 'test';
+  status?: string;
+  maxFamilyMembers?: number | null;
+  maxHelpers?: number | null;
+}
+
 export interface Section {
   id: string;
   category: string;

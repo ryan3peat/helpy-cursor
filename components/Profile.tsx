@@ -5,7 +5,7 @@ import {
   CreditCard, Shield, Lock, Crown, Mail, Share2, Bell, BellOff, BellDot, Phone, CheckCircle, Loader2
 } from 'lucide-react';
 import { useUser } from '@clerk/clerk-react';
-import { User, UserRole, BaseViewProps } from '../types';
+import { User, UserRole, BaseViewProps, HouseholdPlan } from '../types';
 import { createInvite } from '../services/inviteService';
 import { createCheckoutSession, createPortalSession, downgradeToFree } from '../services/stripeService';
 import { supabase } from '../services/supabase';
@@ -27,6 +27,7 @@ interface ProfileProps extends BaseViewProps {
   onBack: () => void;
   currentUser: User;
   onLogout: () => void;
+  householdPlan?: HouseholdPlan | null;
 }
 
 // Role priority for consistent sorting across all family members
@@ -39,11 +40,29 @@ const ROLE_PRIORITY: Record<string, number> = {
   'Other': 5,
 };
 
+type PlanKey = HouseholdPlan['plan'];
+
+const DEFAULT_PLAN_LIMITS: Record<PlanKey, { maxFamily: number; maxHelpers: number }> = {
+  free: { maxFamily: 3, maxHelpers: 1 },
+  core: { maxFamily: 4, maxHelpers: 1 },
+  pro: { maxFamily: 8, maxHelpers: 4 },
+  test: { maxFamily: 4, maxHelpers: 1 },
+};
+
+type PlanLimitReason = 'family' | 'helper';
+
+interface PlanLimitState {
+  plan: PlanKey;
+  reason: PlanLimitReason;
+  allowed: number;
+  current: number;
+}
+
 // localStorage key for caching household name
 const HOUSEHOLD_NAME_CACHE_KEY = 'helpy_household_name';
 
 const Profile: React.FC<ProfileProps> = ({
-  users, onAdd, onUpdate, onDelete, onBack, currentUser, onLogout, t, currentLang
+  users, onAdd, onUpdate, onDelete, onBack, currentUser, onLogout, t, currentLang, householdPlan
 }) => {
   // ─────────────────────────────────────────────────────────────────
   // Role-based permissions
@@ -61,6 +80,7 @@ const Profile: React.FC<ProfileProps> = ({
   const [isCopied, setIsCopied] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAddingUser, setIsAddingUser] = useState(false);
+  const [planLimitModal, setPlanLimitModal] = useState<PlanLimitState | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<string | null>(null);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
@@ -147,7 +167,7 @@ const Profile: React.FC<ProfileProps> = ({
   }, []);
 
   // Lock scroll when any modal is open
-  useScrollLock(isAddModalOpen || isEditModalOpen || deleteConfirmOpen || showPhotoOptions || subscriptionCanceled || isPlanConfirmOpen);
+  useScrollLock(isAddModalOpen || isEditModalOpen || deleteConfirmOpen || showPhotoOptions || subscriptionCanceled || isPlanConfirmOpen || !!planLimitModal);
 
   // Pre-fetch subscription info on component mount (for admins)
   // This eliminates latency when navigating to the Plan page
@@ -453,6 +473,15 @@ const Profile: React.FC<ProfileProps> = ({
     window.scrollTo(0, 0);
   }, [activeSection]);
 
+  // Open target section when requested via global flag (e.g., from other views)
+  useEffect(() => {
+    const targetSection = localStorage.getItem('helpy_profile_target_section') as typeof activeSection | null;
+    if (targetSection) {
+      setActiveSection(targetSection);
+      localStorage.removeItem('helpy_profile_target_section');
+    }
+  }, []);
+
   const resetForm = () => {
     setNewName('');
     setNewRole(UserRole.CHILD);
@@ -534,9 +563,59 @@ const Profile: React.FC<ProfileProps> = ({
     return user.avatar;
   };
 
+  const resolvePlanLimits = React.useCallback(() => {
+    const planKey = (householdPlan?.plan || (subscriptionInfo?.plan as PlanKey) || 'free') as PlanKey;
+    const defaults = DEFAULT_PLAN_LIMITS[planKey] || DEFAULT_PLAN_LIMITS.free;
+
+    return {
+      plan: planKey,
+      maxFamily: householdPlan?.maxFamilyMembers ?? defaults.maxFamily,
+      maxHelpers: householdPlan?.maxHelpers ?? defaults.maxHelpers,
+    };
+  }, [householdPlan, subscriptionInfo?.plan]);
+
+  const openPlanLimitModal = (reason: PlanLimitReason, planKey: PlanKey, allowed: number, current: number) => {
+    setPlanLimitModal({ plan: planKey, reason, allowed, current });
+    setIsAddModalOpen(false);
+  };
+
+  const formatPlanLabel = (plan: PlanKey) => {
+    switch (plan) {
+      case 'core':
+        return 'Core';
+      case 'pro':
+        return 'Pro';
+      case 'test':
+        return 'Test';
+      default:
+        return 'Free';
+    }
+  };
+
+  const handleUpgradeClick = () => {
+    setPlanLimitModal(null);
+    setActiveSection('settings');
+    setTimeout(() => setActiveSection('plan'), 80);
+  };
+
   const handleAddUser = async () => {
     if (!newName.trim() || isAddingUser) return;
     
+    const { plan, maxFamily, maxHelpers } = resolvePlanLimits();
+    const activeUsers = users.filter(u => u.status !== 'inactive');
+    const helperCount = activeUsers.filter(u => u.role === UserRole.HELPER).length;
+    const familyCount = activeUsers.length - helperCount;
+
+    if (newRole === UserRole.HELPER && helperCount >= maxHelpers) {
+      openPlanLimitModal('helper', plan, maxHelpers, helperCount);
+      return;
+    }
+
+    if (newRole !== UserRole.HELPER && familyCount >= maxFamily) {
+      openPlanLimitModal('family', plan, maxFamily, familyCount);
+      return;
+    }
+
     setIsAddingUser(true);
     const nameToAdd = newName.trim();
     const roleToAdd = newRole;
@@ -807,6 +886,60 @@ const Profile: React.FC<ProfileProps> = ({
                     >
                       <Share2 size={18} />
                       {t['common.share'] || 'Share'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {planLimitModal && (
+              <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center px-4">
+                <div className="bg-card rounded-2xl shadow-lg max-w-lg w-full p-6 space-y-4">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 rounded-full bg-amber-100 text-amber-700">
+                      <AlertCircle size={20} />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-title font-semibold text-foreground">
+                        {planLimitModal.reason === 'helper'
+                          ? (t['profile.limit_helper_title'] || 'Helper limit reached')
+                          : (t['profile.limit_family_title'] || 'Member limit reached')}
+                      </p>
+                      <p className="text-body text-muted-foreground mt-1">
+                        {(() => {
+                          const planName = formatPlanLabel(planLimitModal.plan);
+                          const limitLabel = planLimitModal.reason === 'helper'
+                            ? `${planLimitModal.allowed} helper${planLimitModal.allowed === 1 ? '' : 's'}`
+                            : `${planLimitModal.allowed} family member${planLimitModal.allowed === 1 ? '' : 's'}`;
+                          return planLimitModal.reason === 'helper'
+                            ? `Your ${planName} plan includes up to ${limitLabel}. Upgrade to add another helper.`
+                            : `Your ${planName} plan includes up to ${limitLabel} (including the admin). Upgrade to add another member.`;
+                        })()}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="bg-secondary/40 border border-border rounded-xl p-3">
+                    <p className="text-caption text-muted-foreground">{t['common.current'] || 'Current usage'}</p>
+                    <p className="text-body font-semibold text-foreground">
+                      {planLimitModal.reason === 'helper'
+                        ? `${planLimitModal.current} / ${planLimitModal.allowed} helper${planLimitModal.allowed === 1 ? '' : 's'}`
+                        : `${planLimitModal.current} / ${planLimitModal.allowed} family member${planLimitModal.allowed === 1 ? '' : 's'}`}
+                    </p>
+                  </div>
+
+                  <div className="flex gap-3 pt-1">
+                    <button
+                      onClick={handleUpgradeClick}
+                      className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body font-semibold hover:bg-primary/90 transition-colors shadow-sm"
+                    >
+                      Upgrade
+                    </button>
+                    <button
+                      onClick={() => setPlanLimitModal(null)}
+                      className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body font-semibold hover:bg-secondary/80 transition-colors"
+                    >
+                      Return
                     </button>
                   </div>
                 </div>

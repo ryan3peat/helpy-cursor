@@ -28,7 +28,7 @@ import {
 import { useScrollHeader } from '@/hooks/useScrollHeader';
 import { useTranslatedContent } from '@/hooks/useTranslatedContent';
 import { useScrollLock } from '@/hooks/useScrollLock';
-import { Expense, BaseViewProps, User, UserRole } from '../types';
+import { Expense, BaseViewProps, User, UserRole, HouseholdPlan } from '../types';
 import { EXPENSE_CATEGORIES } from '../constants';
 import { detectInputLanguage } from '../services/languageDetectionService';
 import { formatCurrency, DEFAULT_CURRENCY, getCurrencySymbol } from '../currencyConfig';
@@ -190,6 +190,8 @@ interface ExpensesProps extends BaseViewProps {
   expenses: Expense[];
   householdId: string;
   currentUser: User;
+  householdPlan?: HouseholdPlan | null;
+  onNavigateToPlan?: () => void;
   onAdd: (expense: Expense) => Promise<Expense> | Expense | void;
   onUpdate?: (expense: Expense) => Promise<void> | void;
   onDelete?: (id: string) => Promise<void> | void;
@@ -238,6 +240,8 @@ const Expenses: React.FC<ExpensesProps> = ({
   expenses,
   householdId,
   currentUser,
+  householdPlan,
+  onNavigateToPlan,
   onAdd,
   onUpdate,
   onDelete,
@@ -248,6 +252,11 @@ const Expenses: React.FC<ExpensesProps> = ({
   // Role-based permissions
   // ─────────────────────────────────────────────────────────────────
   const isHelper = currentUser.role === UserRole.HELPER;
+
+  const planKey = (householdPlan?.plan || 'free') as 'free' | 'core' | 'pro' | 'test';
+  const isFreePlan = planKey === 'free';
+  const planLabel =
+    planKey === 'core' ? 'Core' : planKey === 'pro' ? 'Pro' : planKey === 'test' ? 'Test' : 'Free';
 
   const [view, setView] = useState<'list' | 'chart'>('list');
   const [isScanning, setIsScanning] = useState(false);
@@ -287,6 +296,7 @@ const Expenses: React.FC<ExpensesProps> = ({
   const [exDate, setExDate] = useState<string>('');
 
   const [localExpenses, setLocalExpenses] = useState<Expense[]>([...expenses]);
+  const [showFreeUpgradeBanner, setShowFreeUpgradeBanner] = useState(false);
 
   // Scroll header hook
   const { isScrolled } = useScrollHeader();
@@ -440,7 +450,8 @@ const Expenses: React.FC<ExpensesProps> = ({
     setEditDate(new Date().toISOString().split('T')[0]);
     setPendingReceipt(null);
     setError(null); // Clear any previous errors
-    setAddExpenseStage('options');
+    setShowFreeUpgradeBanner(isFreePlan);
+    setAddExpenseStage(isFreePlan ? 'manual' : 'options');
   };
 
   const closeAddExpenseSheet = () => {
@@ -450,6 +461,7 @@ const Expenses: React.FC<ExpensesProps> = ({
     setEditMerchant('');
     setEditCategory(EXPENSE_CATEGORIES[0]);
     setEditDate(new Date().toISOString().split('T')[0]);
+    setShowFreeUpgradeBanner(false);
   };
 
   // ─────────────────────────────────────────────────────────────────
@@ -457,6 +469,16 @@ const Expenses: React.FC<ExpensesProps> = ({
   // ─────────────────────────────────────────────────────────────────
   const enterManualMode = () => {
     setAddExpenseStage('manual');
+  };
+
+  const handleExpenseUpgrade = () => {
+    localStorage.setItem('helpy_profile_target_section', 'plan');
+    onNavigateToPlan?.();
+    closeAddExpenseSheet();
+  };
+
+  const handleExpenseReturn = () => {
+    closeAddExpenseSheet();
   };
 
   // ─────────────────────────────────────────────────────────────────
@@ -1112,7 +1134,7 @@ const Expenses: React.FC<ExpensesProps> = ({
               <>
                 {/* Back Button */}
                 <button
-                  onClick={() => setAddExpenseStage('options')}
+                  onClick={() => setAddExpenseStage(isFreePlan ? 'manual' : 'options')}
                   className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center hover:bg-secondary transition-colors left-4 top-4 text-muted-foreground"
                   aria-label={t['common.back'] || 'Back'}
                 >
@@ -1120,6 +1142,36 @@ const Expenses: React.FC<ExpensesProps> = ({
               </button>
 
                 <div className="p-5 space-y-4 max-h-[50vh] overflow-y-auto overflow-x-hidden">
+                  {showFreeUpgradeBanner && (
+                    <div className="border border-amber-200 bg-amber-50 text-amber-900 rounded-xl p-4 space-y-2">
+                      <div className="flex items-start gap-2">
+                        <AlertCircle size={18} className="mt-0.5" />
+                        <div>
+                          <p className="text-body font-semibold">
+                            {t['expenses.free_limit_title'] || 'Manual entry only on Free'}
+                          </p>
+                          <p className="text-caption text-amber-800 mt-1">
+                            {t['expenses.free_limit_body'] || 'Upgrade to scan receipts with the camera or photo upload.'}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex gap-2 pt-1">
+                        <button
+                          onClick={handleExpenseUpgrade}
+                          className="flex-1 py-3 rounded-lg bg-primary text-primary-foreground text-body font-semibold hover:bg-primary/90 transition-colors"
+                        >
+                          {t['common.upgrade'] || 'Upgrade'}
+                        </button>
+                        <button
+                          onClick={handleExpenseReturn}
+                          className="flex-1 py-3 rounded-lg bg-white text-amber-900 border border-amber-200 text-body font-semibold hover:bg-amber-100 transition-colors"
+                        >
+                          {t['common.return'] || 'Return'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Amount - Auto-focused */}
                   <div>
                     <label className="block text-caption text-muted-foreground mb-2 tracking-wide">

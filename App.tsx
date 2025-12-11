@@ -12,7 +12,7 @@ import Auth from './components/Auth';
 import OnboardingOverlay from './components/OnboardingOverlay';
 import InviteSetup from './components/InviteSetup';
 // InviteWelcome removed - using Option 2 flow (direct to SignUp via Auth.tsx)
-import { ToDoItem, Meal, Expense, User, TranslationDictionary } from './types';
+import { ToDoItem, Meal, Expense, User, TranslationDictionary, HouseholdPlan } from './types';
 import { BASE_TRANSLATIONS } from './constants';
 import { detectDeviceLanguage } from './services/languageDetectionService';
 import { getStaticTranslations } from './services/translationService';
@@ -417,6 +417,29 @@ const AppContent: React.FC = () => {
   const [familyNotesTranslations, setFamilyNotesTranslations] = useState<Record<string, string>>({});
   const [essentialItems, setEssentialItems] = useState<EssentialInfo[]>([]);
   const [houseRoutineItems, setHouseRoutineItems] = useState<HouseRoutine[]>([]);
+  const [householdPlan, setHouseholdPlan] = useState<HouseholdPlan | null>(null);
+
+  const fetchHouseholdPlan = useCallback(async (householdId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('households')
+        .select('subscription_plan, subscription_status, max_family_members, max_helpers')
+        .eq('id', householdId)
+        .single();
+
+      if (error) throw error;
+
+      setHouseholdPlan({
+        plan: (data?.subscription_plan || 'free') as HouseholdPlan['plan'],
+        status: data?.subscription_status || 'inactive',
+        maxFamilyMembers: data?.max_family_members ?? null,
+        maxHelpers: data?.max_helpers ?? null,
+      });
+    } catch (error) {
+      console.error('[App] Failed to load household plan info:', error);
+      setHouseholdPlan(prev => prev || null);
+    }
+  }, []);
 
   // Sync function for periodic backup fetching
   const syncAllData = useCallback(async () => {
@@ -464,6 +487,30 @@ const AppContent: React.FC = () => {
     syncInterval: 1 * 60 * 1000, // 1 minute - backup sync if real-time fails
     onSyncRequest: syncAllData,
   });
+
+  // Keep household subscription + limits in sync
+  useEffect(() => {
+    if (!currentUser?.householdId) {
+      setHouseholdPlan(null);
+      return;
+    }
+
+    const hid = currentUser.householdId;
+    fetchHouseholdPlan(hid);
+
+    const channel = supabase
+      .channel(`household-plan-${hid}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'households', filter: `id=eq.${hid}` },
+        () => fetchHouseholdPlan(hid)
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentUser?.householdId, fetchHouseholdPlan]);
 
   // Ensure currentUser is always in the users array (for assignee selection)
   useEffect(() => {
@@ -996,6 +1043,11 @@ const AppContent: React.FC = () => {
             expenses={expenses}
             householdId={hid}
             currentUser={currentUser}
+            householdPlan={householdPlan}
+            onNavigateToPlan={() => {
+              localStorage.setItem('helpy_profile_target_section', 'plan');
+              handleNavigate('profile');
+            }}
             onAdd={handleAddExpense}
             onUpdate={handleUpdateExpense}
             onDelete={handleDeleteExpense}
@@ -1033,6 +1085,7 @@ const AppContent: React.FC = () => {
             onBack={() => setActiveView('dashboard')}
             currentUser={currentUser!}
             onLogout={handleLogout}
+            householdPlan={householdPlan}
             t={translations}
             currentLang={lang}
           />

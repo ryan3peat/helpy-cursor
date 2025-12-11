@@ -19,7 +19,8 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     features: [
       'Up to 3 family members (incl. admin)',
       '1 Helper',
-      'Manual expense entry only',
+      'Manual expense entry only (no scan)',
+      'No Helper Management',
     ],
     maxFamily: 3,
     maxHelpers: 1,

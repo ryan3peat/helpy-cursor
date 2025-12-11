@@ -15,7 +15,7 @@ const supabase = createClient(
 const PLAN_LIMITS = {
   free: { maxFamily: 3, maxHelpers: 1 },
   core: { maxFamily: 4, maxHelpers: 1 },
-  pro: { maxFamily: 8, maxHelpers: 4 },
+  pro: { maxFamily: 8, maxHelpers: 4 }, // Pro helpers capped at 4
   test: { maxFamily: 4, maxHelpers: 1 }, // Test plan for Stripe testing
 };
 

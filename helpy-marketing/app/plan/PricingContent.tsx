@@ -26,11 +26,11 @@ export default function PricingContent() {
       id: 'core',
       name: "Core",
       monthlyPrice: 88,
-      yearlyPrice: 850,
+      yearlyPrice: 845,
       description: "For growing families who need more organization.",
       features: [
-        "Up to 6 family members",
-        "2 helpers",
+        "Up to 4 family members",
+        "1 helper",
         "Receipt scanning",
         "Priority support"
       ],
@@ -40,11 +40,11 @@ export default function PricingContent() {
       id: 'pro',
       name: "Pro",
       monthlyPrice: 118,
-      yearlyPrice: 1080,
+      yearlyPrice: 1133,
       description: "For busy families with multiple helpers or complex schedules.",
       features: [
-        "Up to 10 family members",
-        "Unlimited helpers",
+        "Up to 8 family members",
+        "Up to 4 helpers",
         "Advanced AI",
         "Data export",
         "Premium support"

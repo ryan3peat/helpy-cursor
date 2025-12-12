@@ -14,6 +14,42 @@ const supabase = createClient(
 
 type ActionType = 'delete_self' | 'deactivate_admin' | 'delete_household';
 
+/**
+ * Resolve a user ID to Supabase UUID
+ * Handles both Clerk IDs (user_xxx) and Supabase UUIDs
+ */
+async function resolveUserIdToUuid(userId: string, householdId: string): Promise<string | null> {
+  // If it looks like a Clerk ID (starts with 'user_'), look up by clerk_id
+  if (userId.startsWith('user_')) {
+    const { data, error } = await supabase
+      .from('users')
+      .select('id')
+      .eq('clerk_id', userId)
+      .eq('household_id', householdId)
+      .single();
+    
+    if (error || !data) {
+      console.log(`Could not find user with clerk_id ${userId}`);
+      return null;
+    }
+    return data.id;
+  }
+  
+  // Otherwise assume it's already a UUID, verify it exists
+  const { data, error } = await supabase
+    .from('users')
+    .select('id')
+    .eq('id', userId)
+    .eq('household_id', householdId)
+    .single();
+  
+  if (error || !data) {
+    console.log(`Could not find user with id ${userId}`);
+    return null;
+  }
+  return data.id;
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -51,11 +87,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    // Get the user making the request
+    // Resolve the user ID (handles both Clerk ID and Supabase UUID)
+    const resolvedUserId = await resolveUserIdToUuid(userId, householdId);
+    if (!resolvedUserId) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Get the user making the request using resolved UUID
     const { data: currentUser, error: userError } = await supabase
       .from('users')
       .select('id, household_id, role, name, clerk_id')
-      .eq('id', userId)
+      .eq('id', resolvedUserId)
       .eq('household_id', householdId)
       .single();
 
@@ -79,20 +121,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         await supabase
           .from('push_subscriptions')
           .delete()
-          .eq('user_id', userId);
+          .eq('user_id', resolvedUserId);
 
         // Delete the user
         const { error: deleteError } = await supabase
           .from('users')
           .delete()
-          .eq('id', userId);
+          .eq('id', resolvedUserId);
 
         if (deleteError) {
           console.error('Error deleting user:', deleteError);
           return res.status(500).json({ error: 'Failed to delete user' });
         }
 
-        console.log(`✅ User ${currentUser.name} (${userId}) deleted their account`);
+        console.log(`✅ User ${currentUser.name} (${resolvedUserId}) deleted their account`);
         
         return res.status(200).json({
           success: true,
@@ -115,11 +157,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           });
         }
 
+        // Resolve new owner ID (handles both Clerk ID and UUID)
+        const resolvedNewOwnerId = await resolveUserIdToUuid(newOwnerId, householdId);
+        if (!resolvedNewOwnerId) {
+          return res.status(404).json({ error: 'New owner not found in household' });
+        }
+
         // Verify new owner exists and is in the same household
         const { data: newOwner, error: newOwnerError } = await supabase
           .from('users')
           .select('id, household_id, role, name')
-          .eq('id', newOwnerId)
+          .eq('id', resolvedNewOwnerId)
           .eq('household_id', householdId)
           .single();
 
@@ -128,7 +176,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
 
         // Cannot transfer to self
-        if (newOwnerId === userId) {
+        if (resolvedNewOwnerId === resolvedUserId) {
           return res.status(400).json({ error: 'Cannot transfer ownership to yourself' });
         }
 
@@ -136,7 +184,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const { error: updateNewOwnerError } = await supabase
           .from('users')
           .update({ role: 'Admin' })
-          .eq('id', newOwnerId);
+          .eq('id', resolvedNewOwnerId);
 
         if (updateNewOwnerError) {
           console.error('Error updating new owner:', updateNewOwnerError);
@@ -147,20 +195,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         await supabase
           .from('push_subscriptions')
           .delete()
-          .eq('user_id', userId);
+          .eq('user_id', resolvedUserId);
 
         // Delete the old admin's user record
         const { error: deleteAdminError } = await supabase
           .from('users')
           .delete()
-          .eq('id', userId);
+          .eq('id', resolvedUserId);
 
         if (deleteAdminError) {
           // Try to rollback the role change
           await supabase
             .from('users')
             .update({ role: newOwner.role })
-            .eq('id', newOwnerId);
+            .eq('id', resolvedNewOwnerId);
           
           console.error('Error deleting admin:', deleteAdminError);
           return res.status(500).json({ error: 'Failed to remove admin account' });
@@ -184,6 +232,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (!isAdmin) {
           return res.status(403).json({ 
             error: 'Only admin users can delete the entire household' 
+          });
+        }
+
+        // Verify the requesting user is indeed the admin of this household
+        if (currentUser.id !== resolvedUserId) {
+          return res.status(403).json({ 
+            error: 'User ID mismatch - not authorized' 
           });
         }
 

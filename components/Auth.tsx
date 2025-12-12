@@ -421,142 +421,45 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
 
       const signupData = await signupResponse.json();
       console.log('✅ User and household created via API:', signupData);
+      console.log('🔍 User data:', signupData.user);
+      console.log('🔍 User name field:', signupData.user?.name);
 
       // Use the created user data from API
       const createdUser = signupData.user;
       const newHousehold = signupData.household;
-        
-        // Check if it's a duplicate email error (code 23505)
-        if (userError.code === '23505' && userError.message?.includes('email')) {
-          console.log('⚠️ [Auth] Duplicate email error detected, checking for existing user...');
-          
-          // Check if we're in an invite flow
-          const urlParams = new URLSearchParams(window.location.search);
-          const hashParams = new URLSearchParams(window.location.hash.split('?')[1] || '');
-          const isInvite = urlParams.get('invite') === 'true' || hashParams.get('invite') === 'true';
-          const hid = urlParams.get('hid') || hashParams.get('hid');
-          const uid = urlParams.get('uid') || hashParams.get('uid');
-          
-          if (isInvite && hid && uid && clerkEmail) {
-            // Find existing user with this email
-            const { data: existingUser } = await clientToUse
-              .from('users')
-              .select('id, household_id, email')
-              .eq('email', clerkEmail)
-              .maybeSingle();
-            
-            if (existingUser && existingUser.household_id !== hid) {
-              // User exists in different household - show switch modal
-              const { data: currentHousehold } = await clientToUse
-                .from('households')
-                .select('name')
-                .eq('id', existingUser.household_id)
-                .maybeSingle();
-              
-              const { data: newHouseholdData } = await clientToUse
-                .from('households')
-                .select('name')
-                .eq('id', hid)
-                .maybeSingle();
-              
-              // Get admin name for new household
-              const { data: adminUser } = await clientToUse
-                .from('users')
-                .select('name')
-                .eq('household_id', hid)
-                .eq('role', 'Admin')
-                .eq('status', 'active')
-                .maybeSingle();
-              
-              setHouseholdSwitchInfo({
-                currentHouseholdName: currentHousehold?.name || 'your current household',
-                newHouseholdName: newHouseholdData?.name || 'the new household',
-                adminName: adminUser?.name || null,
-                existingUserId: existingUser.id,
-                newHouseholdId: hid,
-                newUserId: uid
-              });
-              setShowHouseholdSwitch(true);
-              setIsCreatingUser(false);
-              return;
-            }
-          }
-          
-          // Fallback: Check for existing user by email and log them in
-          // This handles cases where our earlier checks somehow missed the user
-          if (clerkEmail) {
-            console.log('🔍 [Auth] Checking for existing user by email as fallback...');
-            const { data: existingUserByEmail, error: emailCheckError } = await clientToUse
-              .from('users')
-              .select('*')
-              .eq('email', clerkEmail)
-              .eq('status', 'active')
-              .maybeSingle();
-            
-            if (existingUserByEmail && !emailCheckError) {
-              console.log('✅ [Auth] Found existing user by email in error handler, updating clerk_id and logging in');
-              
-              // Update clerk_id if it's missing or different
-              if (!existingUserByEmail.clerk_id || existingUserByEmail.clerk_id !== clerkUser.id) {
-                const { error: updateError } = await clientToUse
-                  .from('users')
-                  .update({ clerk_id: clerkUser.id })
-                  .eq('id', existingUserByEmail.id);
-                
-                if (updateError) {
-                  console.error('❌ Failed to update clerk_id:', updateError);
-                } else {
-                  console.log('✅ Updated clerk_id for existing user');
-                }
-              }
-              
-              // Clean up the household we just created since user already exists
-              if (newHousehold) {
-                await clientToUse
-                  .from('households')
-                  .delete()
-                  .eq('id', newHousehold.id);
-                console.log('🧹 Cleaned up duplicate household');
-              }
-              
-              console.log('✅ [Auth] Calling onLogin() with existing user (from error handler)');
-              onLogin({
-                id: clerkUser.id,
-                householdId: existingUserByEmail.household_id,
-                email: existingUserByEmail.email,
-                name: existingUserByEmail.name,
-                role: existingUserByEmail.role,
-                avatar: existingUserByEmail.avatar,
-                allergies: existingUserByEmail.allergies || [],
-                preferences: existingUserByEmail.preferences || [],
-                status: existingUserByEmail.status || 'active',
-                notificationsEnabled: existingUserByEmail.notifications_enabled ?? true
-              });
-              setIsCreatingUser(false);
-              return;
-            }
-          }
-        }
-        
-        throw userError;
+
+      // Ensure name field exists
+      if (!createdUser.name) {
+        console.error('❌ User name is missing from API response!');
+        createdUser.name = clerkUser.fullName || clerkUser.firstName || 'User';
       }
 
       console.log('✅ [Auth] User created:', createdUser);
       console.log('✅ [Auth] Calling onLogin() with new user');
-
-      // Login - new users default to notifications enabled
-      onLogin({
+      console.log('✅ [Auth] User data being passed:', {
         id: createdUser.clerk_id,
         householdId: createdUser.household_id,
         email: createdUser.email,
         name: createdUser.name,
+        role: createdUser.role
+      });
+
+      // Login - new users default to notifications enabled
+      const userData = {
+        id: createdUser.clerk_id,
+        householdId: createdUser.household_id,
+        email: createdUser.email,
+        name: createdUser.name || clerkUser.fullName || clerkUser.firstName || 'User',
         role: createdUser.role,
         avatar: createdUser.avatar,
         allergies: createdUser.allergies || [],
         preferences: createdUser.preferences || [],
         status: 'active',
         notificationsEnabled: createdUser.notifications_enabled ?? true
-      });
+      };
+
+      console.log('✅ [Auth] Final user data for onLogin:', userData);
+      onLogin(userData);
       setIsCreatingUser(false);
       console.log('✅ [Auth] onLogin() called successfully, resetting isCreatingUser');
     } catch (error: any) {

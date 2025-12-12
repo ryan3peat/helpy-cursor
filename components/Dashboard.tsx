@@ -128,6 +128,21 @@ const Dashboard: React.FC<DashboardProps> = ({
   onRestartOnboarding,
 }) => {
   // ─────────────────────────────────────────────────────────────────
+  // Safety check for currentUser
+  // ─────────────────────────────────────────────────────────────────
+  if (!currentUser || !currentUser.name) {
+    console.error('❌ Dashboard: currentUser is missing or malformed:', currentUser);
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <h2 className="text-xl font-semibold text-destructive mb-2">Account Setup Incomplete</h2>
+          <p className="text-muted-foreground">Please try logging out and signing in again.</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────
   // Role-based permissions
   // ─────────────────────────────────────────────────────────────────
   const isHelper = currentUser.role === UserRole.HELPER;
@@ -309,7 +324,7 @@ const Dashboard: React.FC<DashboardProps> = ({
           <div>
             <h1>
               <span className="text-foreground font-bold" style={{ fontSize: '20px' }}>{timeOfDay},</span><br />
-              <span className="text-display text-primary">{currentUser.name.split(' ')[0]}</span>
+              <span className="text-display text-primary">{currentUser.name?.split(' ')[0] || 'User'}</span>
             </h1>
           </div>
           <div className="flex gap-2">

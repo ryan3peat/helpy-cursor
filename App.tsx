@@ -278,7 +278,24 @@ const AppContent: React.FC = () => {
   // Authentication State
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
     const saved = localStorage.getItem('helpy_current_session_user');
-    return saved ? JSON.parse(saved) : null;
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        // Validate that the user object has required fields
+        if (parsed && typeof parsed === 'object' && parsed.id && parsed.householdId && parsed.name) {
+          return parsed;
+        } else {
+          console.warn('🔄 [App] Invalid user data in localStorage, clearing...');
+          localStorage.removeItem('helpy_current_session_user');
+          return null;
+        }
+      } catch (e) {
+        console.warn('🔄 [App] Failed to parse user data from localStorage, clearing...');
+        localStorage.removeItem('helpy_current_session_user');
+        return null;
+      }
+    }
+    return null;
   });
 
   // Onboarding State (index-based: 0, 1, 2... or -1 for complete)

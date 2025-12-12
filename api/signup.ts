@@ -33,9 +33,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const { clerkId, email, name, role = 'admin' } = req.body;
 
+  console.log('[Signup API] Received request:', { clerkId, email, name, role });
+
   if (!clerkId || !email || !name) {
     return res.status(400).json({
-      error: 'Missing required fields: clerkId, email, name'
+      error: `Missing required fields: clerkId=${!!clerkId}, email=${!!email}, name=${!!name}`
     });
   }
 
@@ -80,20 +82,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log('[Signup API] Household created:', newHousehold.id);
 
     // Create user
+    const userData = {
+      clerk_id: clerkId,
+      email: email,
+      name: name,
+      role: role,
+      household_id: newHousehold.id,
+      avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${name}`,
+      allergies: [],
+      preferences: [],
+      status: 'active',
+      notifications_enabled: true
+    };
+
+    console.log('[Signup API] Creating user with data:', userData);
+
     const { data: newUser, error: userError } = await supabase
       .from('users')
-      .insert([{
-        clerk_id: clerkId,
-        email: email,
-        name: name,
-        role: role,
-        household_id: newHousehold.id,
-        avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${name}`,
-        allergies: [],
-        preferences: [],
-        status: 'active',
-        notifications_enabled: true
-      }])
+      .insert([userData])
       .select()
       .single();
 
@@ -113,6 +119,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     console.log('[Signup API] User created successfully:', newUser.id);
+    console.log('[Signup API] Returning user data:', { id: newUser.id, name: newUser.name, email: newUser.email });
 
     return res.status(200).json({
       user: newUser,

@@ -741,6 +741,18 @@ export async function deleteItem(
     actualId = supabaseId;
     console.log(`🗑️ Resolved id ${id} to Supabase UUID ${actualId}`);
     
+    // Also convert requesterId (Clerk ID) to Supabase UUID
+    let requesterUuid = requesterId;
+    if (requesterId) {
+      const resolvedRequesterId = await getSupabaseUserId(requesterId, householdId);
+      if (resolvedRequesterId) {
+        requesterUuid = resolvedRequesterId;
+        console.log(`🗑️ Resolved requesterId ${requesterId} to Supabase UUID ${requesterUuid}`);
+      } else {
+        console.warn(`⚠️ Could not resolve requesterId ${requesterId} to UUID`);
+      }
+    }
+    
     // Use API endpoint for user deletion (bypasses RLS)
     const apiUrl = import.meta.env.VITE_API_URL || '';
     const response = await fetch(`${apiUrl}/api/delete-user`, {
@@ -749,7 +761,7 @@ export async function deleteItem(
       body: JSON.stringify({
         userId: actualId,
         householdId,
-        requesterId,
+        requesterId: requesterUuid,
       }),
     });
     

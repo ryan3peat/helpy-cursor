@@ -131,6 +131,13 @@ const Profile: React.FC<ProfileProps> = ({
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [subscriptionSuccess, setSubscriptionSuccess] = useState(false);
   const [subscriptionCanceled, setSubscriptionCanceled] = useState(false);
+  
+  // Admin Deactivate/Delete Account State
+  const [isAdminDeleteOptionsOpen, setIsAdminDeleteOptionsOpen] = useState(false);
+  const [isTransferOwnershipOpen, setIsTransferOwnershipOpen] = useState(false);
+  const [selectedNewOwnerId, setSelectedNewOwnerId] = useState<string | null>(null);
+  const [isDeactivatingAdmin, setIsDeactivatingAdmin] = useState(false);
+  const [isDeleteHouseholdConfirmOpen, setIsDeleteHouseholdConfirmOpen] = useState(false);
 
   // Push Notification State
   const [isTogglingNotifications, setIsTogglingNotifications] = useState(false);
@@ -180,7 +187,7 @@ const Profile: React.FC<ProfileProps> = ({
   }, []);
 
   // Lock scroll when any modal is open
-  useScrollLock(isAddModalOpen || isEditModalOpen || deleteConfirmOpen || showPhotoOptions || subscriptionCanceled || isPlanConfirmOpen || !!planLimitModal);
+  useScrollLock(isAddModalOpen || isEditModalOpen || deleteConfirmOpen || showPhotoOptions || subscriptionCanceled || isPlanConfirmOpen || !!planLimitModal || isAdminDeleteOptionsOpen || isTransferOwnershipOpen || isDeleteHouseholdConfirmOpen);
 
   // Handle opening add member sheet from onboarding
   React.useEffect(() => {
@@ -1674,7 +1681,14 @@ const Profile: React.FC<ProfileProps> = ({
 
   // Handle Delete Account
   const handleDeleteAccountClick = () => {
-    setIsDeleteAccountModalOpen(true);
+    const isAdmin = currentUser.role === UserRole.MASTER;
+    if (isAdmin) {
+      // Admin gets options: Deactivate (transfer) or Delete (whole household)
+      setIsAdminDeleteOptionsOpen(true);
+    } else {
+      // Non-admin gets simple delete confirmation
+      setIsDeleteAccountModalOpen(true);
+    }
   };
 
   const handleFirstDeleteConfirm = () => {
@@ -1682,7 +1696,8 @@ const Profile: React.FC<ProfileProps> = ({
     setIsFinalDeleteConfirmOpen(true);
   };
 
-  const handleDeleteAccount = async () => {
+  // Handle non-admin account deletion (self-delete)
+  const handleDeleteSelfAccount = async () => {
     if (!currentUser?.householdId || !clerkUser) {
       alert(t['error.delete_account_unable'] || 'Unable to delete account. Please try again.');
       return;
@@ -1691,36 +1706,21 @@ const Profile: React.FC<ProfileProps> = ({
     setIsDeletingAccount(true);
 
     try {
-      // Get all users in the household except the master user
-      const familyMembers = users.filter(user => user.id !== currentUser.id);
+      // Call the API to delete the user's own account
+      const response = await fetch('/api/delete-account', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: currentUser.id,
+          householdId: currentUser.householdId,
+          action: 'delete_self'
+        })
+      });
 
-      // Delete each family member
-      for (const member of familyMembers) {
-        try {
-          await deleteItem(currentUser.householdId, 'users', member.id);
-        } catch (error) {
-          console.error(`Error deleting family member ${member.id}:`, error);
-          // Continue with deletion even if one fails
-        }
-      }
-
-      // Delete the master user from Supabase
-      try {
-        await deleteItem(currentUser.householdId, 'users', currentUser.id);
-      } catch (error) {
-        console.error('Error deleting master user:', error);
-        throw error;
-      }
-
-      // Delete the household record
-      const { error: householdError } = await supabase
-        .from('households')
-        .delete()
-        .eq('id', currentUser.householdId);
-
-      if (householdError) {
-        console.error('Error deleting household:', householdError);
-        throw householdError;
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to delete account');
       }
 
       // Delete the Clerk account
@@ -1728,8 +1728,6 @@ const Profile: React.FC<ProfileProps> = ({
         await clerkUser.delete();
       } catch (error) {
         console.error('Error deleting Clerk account:', error);
-        // Even if Clerk deletion fails, we've deleted everything else
-        // So we should still sign out
       }
 
       // Sign out the user
@@ -1742,6 +1740,108 @@ const Profile: React.FC<ProfileProps> = ({
       setIsFinalDeleteConfirmOpen(false);
     }
   };
+
+  // Handle admin deactivation (transfer ownership)
+  const handleAdminDeactivate = async () => {
+    if (!currentUser?.householdId || !clerkUser || !selectedNewOwnerId) {
+      alert(t['error.select_new_owner'] || 'Please select a new owner for the household.');
+      return;
+    }
+
+    setIsDeactivatingAdmin(true);
+
+    try {
+      // Call the API to transfer ownership and delete admin
+      const response = await fetch('/api/delete-account', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: currentUser.id,
+          householdId: currentUser.householdId,
+          action: 'deactivate_admin',
+          newOwnerId: selectedNewOwnerId
+        })
+      });
+
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to transfer ownership');
+      }
+
+      // Delete the Clerk account
+      try {
+        await clerkUser.delete();
+      } catch (error) {
+        console.error('Error deleting Clerk account:', error);
+      }
+
+      // Sign out the user
+      setIsTransferOwnershipOpen(false);
+      setIsDeactivatingAdmin(false);
+      onLogout();
+    } catch (error) {
+      console.error('Error deactivating admin:', error);
+      alert(t['error.transfer_ownership'] || 'Failed to transfer ownership. Please try again.');
+      setIsDeactivatingAdmin(false);
+    }
+  };
+
+  // Handle admin delete entire household
+  const handleDeleteHousehold = async () => {
+    if (!currentUser?.householdId || !clerkUser) {
+      alert(t['error.delete_account_unable'] || 'Unable to delete account. Please try again.');
+      return;
+    }
+
+    setIsDeletingAccount(true);
+
+    try {
+      // Call the API to delete entire household
+      const response = await fetch('/api/delete-account', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: currentUser.id,
+          householdId: currentUser.householdId,
+          action: 'delete_household'
+        })
+      });
+
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to delete household');
+      }
+
+      // Delete the Clerk account
+      try {
+        await clerkUser.delete();
+      } catch (error) {
+        console.error('Error deleting Clerk account:', error);
+      }
+
+      // Sign out the user
+      setIsDeleteHouseholdConfirmOpen(false);
+      setIsDeletingAccount(false);
+      onLogout();
+    } catch (error) {
+      console.error('Error deleting household:', error);
+      alert(t['error.delete_household'] || 'Failed to delete household. Please try again or contact support.');
+      setIsDeletingAccount(false);
+      setIsDeleteHouseholdConfirmOpen(false);
+    }
+  };
+
+  // Get eligible users for ownership transfer (exclude current user and children)
+  const eligibleNewOwners = users.filter(user => 
+    user.id !== currentUser.id && 
+    user.role !== UserRole.CHILD &&
+    user.status !== 'pending'
+  );
+
+  // Legacy handler kept for backward compatibility
+  const handleDeleteAccount = handleDeleteHousehold;
 
   const getNextPaymentDate = (periodEnd?: string, period?: string) => {
     if (!periodEnd) return null;
@@ -2489,15 +2589,13 @@ const Profile: React.FC<ProfileProps> = ({
                 Save Changes
               </button>
 
-              {/* Delete Account Button - Only for Master Users */}
-              {currentUser.role === UserRole.MASTER && (
-                <button
-                  onClick={handleDeleteAccountClick}
-                  className="w-full bg-destructive/10 text-destructive py-4 rounded-xl font-semibold shadow-sm hover:bg-destructive/20 transition-colors border border-destructive/20"
-                >
-                  {t['profile.delete_account'] || 'Delete Account'}
-                </button>
-              )}
+              {/* Delete Account Button - Available for all users */}
+              <button
+                onClick={handleDeleteAccountClick}
+                className="w-full bg-destructive/10 text-destructive py-4 rounded-xl font-semibold shadow-sm hover:bg-destructive/20 transition-colors border border-destructive/20"
+              >
+                {t['profile.delete_account'] || 'Delete Account'}
+              </button>
             </div>
           </div>
 
@@ -2589,11 +2687,252 @@ const Profile: React.FC<ProfileProps> = ({
                   Cancel
                 </button>
                 <button
-                  onClick={handleDeleteAccount}
+                  onClick={handleDeleteSelfAccount}
                   disabled={isDeletingAccount}
                   className="flex-1 py-3.5 rounded-xl bg-destructive text-destructive-foreground text-body hover:bg-destructive/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isDeletingAccount ? (t['common.deleting'] || 'Deleting...') : (t['profile.delete_account'] || 'Delete Account')}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Admin Delete Options Modal */}
+        {isAdminDeleteOptionsOpen && (
+          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
+            {/* Safe area bottom cover */}
+            <div 
+              className="absolute bottom-0 left-0 right-0 bg-card"
+              style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
+            />
+            <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
+              {/* Header */}
+              <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
+                <h2 className="text-title text-foreground">{t['profile.delete_account'] || 'Delete Account'}</h2>
+              </div>
+
+              {/* Content */}
+              <div className="p-5 space-y-4">
+                <p className="text-body text-muted-foreground mb-4">
+                  {t['profile.admin_delete_options_desc'] || 'As the household admin, you have two options:'}
+                </p>
+                
+                {/* Deactivate Option */}
+                <button
+                  onClick={() => {
+                    setIsAdminDeleteOptionsOpen(false);
+                    if (eligibleNewOwners.length === 0) {
+                      alert(t['error.no_eligible_owners'] || 'No eligible family members to transfer ownership to. You can only delete the entire household.');
+                      return;
+                    }
+                    setIsTransferOwnershipOpen(true);
+                  }}
+                  className="w-full p-4 rounded-xl border border-border bg-card hover:bg-secondary transition-colors text-left"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center flex-shrink-0">
+                      <Share2 size={20} className="text-primary" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-foreground text-body">{t['profile.deactivate_account'] || 'Deactivate My Account'}</p>
+                      <p className="text-caption text-muted-foreground mt-1">
+                        {t['profile.deactivate_desc'] || 'Transfer ownership to another family member and remove your account. The household will continue with the new admin.'}
+                      </p>
+                    </div>
+                  </div>
+                </button>
+
+                {/* Delete Household Option */}
+                <button
+                  onClick={() => {
+                    setIsAdminDeleteOptionsOpen(false);
+                    setIsDeleteHouseholdConfirmOpen(true);
+                  }}
+                  className="w-full p-4 rounded-xl border border-destructive/30 bg-destructive/5 hover:bg-destructive/10 transition-colors text-left"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 bg-destructive/10 rounded-xl flex items-center justify-center flex-shrink-0">
+                      <Trash2 size={20} className="text-destructive" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-destructive text-body">{t['profile.delete_household'] || 'Delete Entire Household'}</p>
+                      <p className="text-caption text-muted-foreground mt-1">
+                        {t['profile.delete_household_desc'] || 'Permanently delete your account and ALL family members. This action cannot be undone.'}
+                      </p>
+                    </div>
+                  </div>
+                </button>
+              </div>
+
+              {/* Footer */}
+              <div className="p-5 pb-8 border-t border-border shrink-0">
+                <button
+                  onClick={() => setIsAdminDeleteOptionsOpen(false)}
+                  className="w-full py-3.5 rounded-xl bg-secondary text-foreground text-body hover:bg-secondary/80 transition-colors"
+                >
+                  {t['common.cancel'] || 'Cancel'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Transfer Ownership Modal */}
+        {isTransferOwnershipOpen && (
+          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
+            {/* Safe area bottom cover */}
+            <div 
+              className="absolute bottom-0 left-0 right-0 bg-card"
+              style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
+            />
+            <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col max-h-[80vh]" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
+              {/* Header */}
+              <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
+                <h2 className="text-title text-foreground">{t['profile.transfer_ownership'] || 'Transfer Ownership'}</h2>
+              </div>
+
+              {/* Content */}
+              <div className="p-5 flex-1 overflow-y-auto">
+                <p className="text-body text-muted-foreground mb-4">
+                  {t['profile.select_new_owner'] || 'Select a family member to become the new household admin:'}
+                </p>
+                
+                <div className="space-y-2">
+                  {eligibleNewOwners.map((user) => (
+                    <button
+                      key={user.id}
+                      onClick={() => setSelectedNewOwnerId(user.id)}
+                      className={`w-full p-4 rounded-xl border transition-colors text-left flex items-center gap-3 ${
+                        selectedNewOwnerId === user.id 
+                          ? 'border-primary bg-primary/10' 
+                          : 'border-border bg-card hover:bg-secondary'
+                      }`}
+                    >
+                      {/* Avatar */}
+                      <div 
+                        className={`w-12 h-12 rounded-full flex items-center justify-center text-white text-lg font-bold overflow-hidden ${
+                          user.avatar ? '' : 'bg-gradient-to-br from-primary to-primary/70'
+                        }`}
+                      >
+                        {user.avatar ? (
+                          <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
+                        ) : (
+                          user.name.charAt(0).toUpperCase()
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-semibold text-foreground text-body">{user.name}</p>
+                        <p className="text-caption text-muted-foreground">{user.role}</p>
+                      </div>
+                      {selectedNewOwnerId === user.id && (
+                        <CheckCircle size={20} className="text-primary" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+
+                {eligibleNewOwners.length === 0 && (
+                  <div className="p-4 bg-muted rounded-xl">
+                    <p className="text-body text-muted-foreground">
+                      {t['profile.no_eligible_members'] || 'No eligible family members found. Only active members with Spouse, Helper, or Other roles can become the new admin.'}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="p-5 pb-8 border-t border-border flex gap-3 shrink-0">
+                <button
+                  onClick={() => {
+                    setIsTransferOwnershipOpen(false);
+                    setSelectedNewOwnerId(null);
+                    setIsDeactivatingAdmin(false);
+                  }}
+                  disabled={isDeactivatingAdmin}
+                  className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body hover:bg-secondary/80 transition-colors disabled:opacity-50"
+                >
+                  {t['common.cancel'] || 'Cancel'}
+                </button>
+                <button
+                  onClick={handleAdminDeactivate}
+                  disabled={!selectedNewOwnerId || isDeactivatingAdmin}
+                  className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isDeactivatingAdmin ? (t['common.transferring'] || 'Transferring...') : (t['profile.transfer_and_leave'] || 'Transfer & Leave')}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Household Confirmation Modal */}
+        {isDeleteHouseholdConfirmOpen && (
+          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
+            {/* Safe area bottom cover */}
+            <div 
+              className="absolute bottom-0 left-0 right-0 bg-card"
+              style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
+            />
+            <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
+              {/* Header */}
+              <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
+                <div className="flex items-center gap-2">
+                  <AlertCircle size={20} className="text-destructive" />
+                  <h2 className="text-title text-destructive">{t['profile.warning'] || 'Warning'}</h2>
+                </div>
+              </div>
+
+              {/* Content */}
+              <div className="p-5">
+                <div className="mb-4 p-4 bg-destructive/10 border border-destructive/20 rounded-xl">
+                  <p className="text-body text-destructive font-semibold mb-2">
+                    {t['profile.permanent_delete_warning'] || 'This action is permanent and cannot be undone!'}
+                  </p>
+                  <p className="text-body text-foreground">
+                    {t['profile.delete_household_warning'] || 'You are about to delete:'}
+                  </p>
+                  <ul className="mt-2 space-y-1 text-body text-muted-foreground">
+                    <li className="flex items-center gap-2">
+                      <span className="text-destructive">•</span>
+                      {t['profile.your_account'] || 'Your account'}
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <span className="text-destructive">•</span>
+                      {users.length > 1 
+                        ? `${users.length - 1} ${t['profile.other_family_members'] || 'other family member(s)'}`
+                        : t['profile.all_household_data'] || 'All household data'}
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <span className="text-destructive">•</span>
+                      {t['profile.all_data_items'] || 'All meals, expenses, tasks, and household info'}
+                    </li>
+                  </ul>
+                </div>
+                
+                <p className="text-body text-muted-foreground">
+                  {t['profile.all_members_logged_out'] || 'All family members will be logged out and will no longer be able to access the household.'}
+                </p>
+              </div>
+
+              {/* Footer */}
+              <div className="p-5 pb-8 border-t border-border flex gap-3 shrink-0">
+                <button
+                  onClick={() => {
+                    setIsDeleteHouseholdConfirmOpen(false);
+                    setIsDeletingAccount(false);
+                  }}
+                  disabled={isDeletingAccount}
+                  className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body hover:bg-secondary/80 transition-colors disabled:opacity-50"
+                >
+                  {t['common.cancel'] || 'Cancel'}
+                </button>
+                <button
+                  onClick={handleDeleteHousehold}
+                  disabled={isDeletingAccount}
+                  className="flex-1 py-3.5 rounded-xl bg-destructive text-destructive-foreground text-body hover:bg-destructive/90 transition-colors disabled:opacity-50"
+                >
+                  {isDeletingAccount ? (t['common.deleting'] || 'Deleting...') : (t['profile.delete_all'] || 'Delete All')}
                 </button>
               </div>
             </div>

@@ -1,0 +1,130 @@
+// api/signup.ts
+// Handles user signup with household creation
+// Uses service role key to bypass RLS during initial user creation
+
+import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
+const PLAN_LIMITS = {
+  free: { maxFamily: 3, maxHelpers: 1 },
+  core: { maxFamily: 4, maxHelpers: 1 },
+  pro: { maxFamily: 8, maxHelpers: 4 },
+  test: { maxFamily: 4, maxHelpers: 1 },
+} as const;
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // CORS headers
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const { clerkId, email, name, role = 'admin' } = req.body;
+
+  if (!clerkId || !email || !name) {
+    return res.status(400).json({
+      error: 'Missing required fields: clerkId, email, name'
+    });
+  }
+
+  try {
+    console.log('[Signup API] Creating user and household for:', { clerkId, email, name });
+
+    // Check if user already exists
+    const { data: existingUser } = await supabase
+      .from('users')
+      .select('id, household_id')
+      .eq('clerk_id', clerkId)
+      .single();
+
+    if (existingUser) {
+      console.log('[Signup API] User already exists:', existingUser);
+      return res.status(200).json({
+        user: existingUser,
+        message: 'User already exists'
+      });
+    }
+
+    // Create household first
+    const { data: newHousehold, error: householdError } = await supabase
+      .from('households')
+      .insert([{
+        name: `${name}'s Family`,
+        subscription_plan: 'free',
+        max_family_members: PLAN_LIMITS.free.maxFamily,
+        max_helpers: PLAN_LIMITS.free.maxHelpers
+      }])
+      .select()
+      .single();
+
+    if (householdError) {
+      console.error('[Signup API] Household creation error:', householdError);
+      return res.status(500).json({
+        error: 'Failed to create household',
+        details: householdError
+      });
+    }
+
+    console.log('[Signup API] Household created:', newHousehold.id);
+
+    // Create user
+    const { data: newUser, error: userError } = await supabase
+      .from('users')
+      .insert([{
+        clerk_id: clerkId,
+        email: email,
+        name: name,
+        role: role,
+        household_id: newHousehold.id,
+        avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${name}`,
+        allergies: [],
+        preferences: [],
+        status: 'active',
+        notifications_enabled: true
+      }])
+      .select()
+      .single();
+
+    if (userError) {
+      console.error('[Signup API] User creation error:', userError);
+
+      // Clean up the household if user creation failed
+      await supabase
+        .from('households')
+        .delete()
+        .eq('id', newHousehold.id);
+
+      return res.status(500).json({
+        error: 'Failed to create user',
+        details: userError
+      });
+    }
+
+    console.log('[Signup API] User created successfully:', newUser.id);
+
+    return res.status(200).json({
+      user: newUser,
+      household: newHousehold,
+      message: 'User and household created successfully'
+    });
+
+  } catch (error) {
+    console.error('[Signup API] Unexpected error:', error);
+    return res.status(500).json({
+      error: 'Internal server error',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+}

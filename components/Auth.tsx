@@ -397,46 +397,34 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
       // ============================================================
       // STEP 4: Create new household and user (first-time signup)
       // ============================================================
-      console.log('👤 New user, creating household and user...');
+      console.log('👤 New user, creating household and user via API...');
 
-      // Create household with Free plan limits set explicitly
-      const { data: newHousehold, error: householdError } = await clientToUse
-        .from('households')
-        .insert([{ 
-          name: `${clerkUser.firstName || 'User'}'s Family`,
-          subscription_plan: 'free',
-          max_family_members: 3,
-          max_helpers: 1
-        }])
-        .select()
-        .single();
-
-      if (householdError) {
-        console.error('❌ Household error:', householdError);
-        throw householdError;
-      }
-
-      console.log('✅ Household created:', newHousehold);
-
-      const { data: createdUser, error: userError } = await clientToUse
-        .from('users')
-        .insert([{
-          household_id: newHousehold.id,
-          clerk_id: clerkUser.id,
+      // Use the signup API route with service role key (bypasses RLS)
+      const signupResponse = await fetch('/api/signup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          clerkId: clerkUser.id,
           email: clerkEmail || '',
           name: clerkUser.fullName || clerkUser.firstName || 'User',
-          role: 'Admin',
-          avatar: clerkUser.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${clerkUser.firstName || 'User'}`,
-          allergies: [],
-          preferences: [],
-          status: 'active',
-          notifications_enabled: true  // Explicitly enable notifications for new users
-        }])
-        .select()
-        .single();
+          role: 'Admin'
+        })
+      });
 
-      if (userError) {
-        console.error('❌ User error:', userError);
+      if (!signupResponse.ok) {
+        const errorData = await signupResponse.json();
+        console.error('❌ Signup API error:', errorData);
+        throw new Error(errorData.error || 'Failed to create user account');
+      }
+
+      const signupData = await signupResponse.json();
+      console.log('✅ User and household created via API:', signupData);
+
+      // Use the created user data from API
+      const createdUser = signupData.user;
+      const newHousehold = signupData.household;
         
         // Check if it's a duplicate email error (code 23505)
         if (userError.code === '23505' && userError.message?.includes('email')) {

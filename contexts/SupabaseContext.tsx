@@ -5,7 +5,12 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import { createAuthenticatedClient, SupabaseClient, supabase } from '../services/supabase';
 
-const SupabaseContext = createContext<SupabaseClient | null>(null);
+type SupabaseContextValue = {
+  client: SupabaseClient | null;
+  isAuthClient: boolean; // true only when client was created with JWT
+};
+
+const SupabaseContext = createContext<SupabaseContextValue | null>(null);
 
 // Global reference for services to access authenticated client (outside React)
 let globalAuthenticatedClient: SupabaseClient | null = null;
@@ -17,7 +22,7 @@ export const useSupabase = () => {
     // This allows components to work during migration period
     return supabase;
   }
-  return context;
+  return context.client;
 };
 
 /**
@@ -34,8 +39,8 @@ export const getAuthenticatedSupabaseClient = (): SupabaseClient | null => {
  */
 export const useSupabaseReady = (): boolean => {
   const context = useContext(SupabaseContext);
-  // If context exists, client is ready (even if it's the default fallback)
-  return context !== null;
+  // Ready means we have an authenticated client (with JWT)
+  return !!context?.isAuthClient;
 };
 
 interface SupabaseProviderProps {
@@ -55,13 +60,13 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
     authKeys: Object.keys(authResult)
   });
   const [client, setClient] = useState<SupabaseClient | null>(null);
-  const [isReady, setIsReady] = useState(false);
+  const [isAuthClient, setIsAuthClient] = useState(false);
 
   console.log('[SupabaseContext] 📊 Current state:', { 
     isSignedIn, 
     hasGetToken: !!getToken,
     hasClient: !!client,
-    isReady
+    isAuthClient
   });
 
   useEffect(() => {
@@ -72,7 +77,7 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
     });
     
     const initClient = async () => {
-      setIsReady(false); // Mark as not ready while initializing
+      setIsAuthClient(false); // reset while initializing
       console.log('[SupabaseContext] 🚀 initClient called', { isSignedIn });
       
       if (isSignedIn) {
@@ -164,7 +169,7 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
           setClient(authenticatedClient);
           globalAuthenticatedClient = authenticatedClient;
           console.log('[SupabaseContext] ✅ Authenticated Supabase client created');
-          setIsReady(true);
+          setIsAuthClient(true);
         } catch (error: any) {
           console.error('[SupabaseContext] Failed to create authenticated client:', error);
           
@@ -187,7 +192,7 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
           const { supabase } = await import('../services/supabase');
           setClient(supabase);
           globalAuthenticatedClient = supabase;
-          setIsReady(true);
+          setIsAuthClient(false);
         }
       } else {
         // User not signed in, use default client (will fail RLS checks, but that's expected)
@@ -195,7 +200,7 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
         const { supabase } = await import('../services/supabase');
         setClient(supabase);
         globalAuthenticatedClient = supabase;
-        setIsReady(true);
+        setIsAuthClient(false);
       }
     };
     
@@ -253,7 +258,7 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
   }, [isSignedIn, getToken]);
 
   return (
-    <SupabaseContext.Provider value={client}>
+    <SupabaseContext.Provider value={{ client, isAuthClient }}>
       {children}
     </SupabaseContext.Provider>
   );

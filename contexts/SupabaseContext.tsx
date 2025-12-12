@@ -106,6 +106,36 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
           
           console.log('[SupabaseContext] ✅ JWT token received:', token.substring(0, 50) + '...');
           console.log('[SupabaseContext] Token length:', token.length);
+          
+          // Decode and log JWT claims for debugging
+          try {
+            const parts = token.split('.');
+            if (parts.length === 3) {
+              const payload = parts[1];
+              const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+              const jsonPayload = decodeURIComponent(
+                atob(base64)
+                  .split('')
+                  .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+                  .join('')
+              );
+              const claims = JSON.parse(jsonPayload);
+              console.log('[SupabaseContext] JWT Claims:', claims);
+              
+              // Check for critical claims
+              if (claims.clerk_id) {
+                console.log('[SupabaseContext] ✅ clerk_id claim present:', claims.clerk_id);
+              } else {
+                console.warn('[SupabaseContext] ⚠️ clerk_id claim MISSING! RLS will fail.');
+                console.warn('[SupabaseContext] 💡 Add { "clerk_id": "{{user.id}}" } to your Clerk JWT template');
+                if (claims.sub) {
+                  console.log('[SupabaseContext] ℹ️ "sub" claim available:', claims.sub, '- migration 041 will use this as fallback');
+                }
+              }
+            }
+          } catch (decodeError) {
+            console.warn('[SupabaseContext] Could not decode JWT for debugging:', decodeError);
+          }
           const authenticatedClient = await createAuthenticatedClient(token);
           setClient(authenticatedClient);
           globalAuthenticatedClient = authenticatedClient;

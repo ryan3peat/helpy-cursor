@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useClerk, useUser } from '@clerk/clerk-react';
+import { useClerk, useUser, useAuth } from '@clerk/clerk-react';
 import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
 import ToDo from './components/ToDo';
@@ -30,6 +30,7 @@ import {
 import { useSupabase, useSupabaseReady } from './contexts/SupabaseContext';
 import { supabase as defaultSupabase } from './services/supabase';
 import { initializePushNotifications, autoSubscribeIfNeeded, debugPushNotifications } from './services/pushNotificationService';
+import { debugJwt } from './services/jwtDebugService';
 
 // Make debug function available globally in browser console
 if (typeof window !== 'undefined') {
@@ -136,9 +137,18 @@ const parseNotificationDeepLink = (): { view: string; navData: { section?: strin
 const AppContent: React.FC = () => {
   const { signOut } = useClerk();
   const { user: clerkUser, isSignedIn, isLoaded: clerkLoaded } = useUser();
+  const { getToken } = useAuth(); // For JWT debugging
   const { setStaticTranslating, isAnyTranslating } = useTranslationContext();
   const supabase = useSupabase(); // Use authenticated client with JWT for RLS
   const isSupabaseReady = useSupabaseReady(); // Check if JWT has been loaded
+  
+  // Set up JWT debug function with access to getToken
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      (window as any).helpyDebugJwt = () => debugJwt(getToken);
+      console.log('[App] 🔧 JWT debug available: run window.helpyDebugJwt() in console');
+    }
+  }, [getToken]);
   
   // Parse deep link on mount to determine initial view and whether to skip intro
   // This enables direct navigation when user taps on a push notification

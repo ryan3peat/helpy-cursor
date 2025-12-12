@@ -3,7 +3,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useAuth } from '@clerk/clerk-react';
-import { createAuthenticatedClient, SupabaseClient } from '../services/supabase';
+import { createAuthenticatedClient, SupabaseClient, supabase } from '../services/supabase';
 
 const SupabaseContext = createContext<SupabaseClient | null>(null);
 
@@ -15,7 +15,6 @@ export const useSupabase = () => {
   if (!context) {
     // Fallback to default client if context not available (for gradual migration)
     // This allows components to work during migration period
-    const { supabase } = require('../services/supabase');
     return supabase;
   }
   return context;

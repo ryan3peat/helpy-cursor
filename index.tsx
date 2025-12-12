@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { ClerkProvider } from '@clerk/clerk-react';
 import './index.css';
 import App from './App';
+import { SupabaseProvider } from './contexts/SupabaseContext';
 
 // Log URL immediately on script load (before React)
 console.log('[Index] App starting. URL:', window.location.href);
@@ -44,7 +45,9 @@ root.render(
       afterSignInUrl={typeof window !== 'undefined' ? window.location.origin : undefined}
       afterSignUpUrl={typeof window !== 'undefined' ? window.location.origin : undefined}
     >
-      <App />
+      <SupabaseProvider>
+        <App />
+      </SupabaseProvider>
     </ClerkProvider>
   </React.StrictMode>
 );

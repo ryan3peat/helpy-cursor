@@ -16,15 +16,38 @@ export const createAuthenticatedClient = async (clerkToken: string | null): Prom
   }
   
   console.log('[Supabase] Creating authenticated client with JWT token');
+  console.log('[Supabase] Token preview:', clerkToken.substring(0, 50) + '...');
+  
+  // Use custom fetch to ensure JWT is sent with EVERY request
+  // This is more reliable than global.headers which may not persist
+  const customFetch = (url: RequestInfo | URL, options: RequestInit = {}) => {
+    const headers = new Headers(options.headers);
+    
+    // Always add Authorization header
+    headers.set('Authorization', `Bearer ${clerkToken}`);
+    
+    // Log for debugging (only first few requests to avoid spam)
+    const requestUrl = typeof url === 'string' ? url : url.toString();
+    if (requestUrl.includes('supabase.co') && Math.random() < 0.1) { // Log ~10% of Supabase requests
+      console.log('[Supabase] Request with JWT:', {
+        url: requestUrl,
+        hasAuth: headers.has('Authorization'),
+        authPreview: headers.get('Authorization')?.substring(0, 30) + '...'
+      });
+    }
+    
+    return fetch(url, {
+      ...options,
+      headers,
+    });
+  };
+  
   const client = createClient(supabaseUrl, supabaseAnonKey, {
     global: {
-      headers: {
-        Authorization: `Bearer ${clerkToken}`,
-      },
+      fetch: customFetch,
     },
   });
   
-  // Verify headers are set (for debugging)
-  console.log('[Supabase] Authenticated client created, JWT will be sent in requests');
+  console.log('[Supabase] ✅ Authenticated client created, JWT will be sent in requests');
   return client;
 };

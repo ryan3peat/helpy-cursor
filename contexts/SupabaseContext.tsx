@@ -48,8 +48,14 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
+    console.log('[SupabaseContext] 🔄 useEffect triggered', { 
+      isSignedIn, 
+      hasGetToken: !!getToken 
+    });
+    
     const initClient = async () => {
       setIsReady(false); // Mark as not ready while initializing
+      console.log('[SupabaseContext] 🚀 initClient called', { isSignedIn });
       
       if (isSignedIn) {
         try {
@@ -167,6 +173,7 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
         }
       } else {
         // User not signed in, use default client (will fail RLS checks, but that's expected)
+        console.log('[SupabaseContext] ⚠️ User not signed in, using default client (no JWT)');
         const { supabase } = await import('../services/supabase');
         setClient(supabase);
         globalAuthenticatedClient = supabase;

@@ -58,16 +58,50 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
           // Template name can be configured via environment variable or defaults to 'supabase'
           const templateName = import.meta.env.VITE_CLERK_JWT_TEMPLATE_NAME || 'supabase';
           console.log('[SupabaseContext] Requesting JWT token with template:', templateName);
-          const token = await getToken({ template: templateName });
+
+          let token;
+          try {
+            token = await getToken({ template: templateName });
+            console.log('[SupabaseContext] Template token result:', token ? 'SUCCESS' : 'NULL');
+          } catch (templateError) {
+            console.error('[SupabaseContext] Template token failed:', templateError);
+            // Try basic token as fallback
+            console.log('[SupabaseContext] Trying basic token...');
+            try {
+              token = await getToken();
+              console.log('[SupabaseContext] Basic token result:', token ? 'SUCCESS' : 'NULL');
+            } catch (basicError) {
+              console.error('[SupabaseContext] Basic token also failed:', basicError);
+            }
+          }
           
           if (!token) {
             console.error('[SupabaseContext] ❌ No JWT token received from Clerk');
             console.error('[SupabaseContext] This means requests will NOT include JWT and RLS will fail');
-            const { supabase } = await import('../services/supabase');
-            setClient(supabase);
-            globalAuthenticatedClient = supabase;
-            setIsReady(true);
-            return;
+            console.error('[SupabaseContext] 🔄 Trying basic token as emergency fallback...');
+
+            // Emergency fallback: try basic token
+            try {
+              const basicToken = await getToken();
+              if (basicToken) {
+                console.log('[SupabaseContext] ✅ Basic token fallback successful');
+                token = basicToken;
+              } else {
+                console.error('[SupabaseContext] ❌ Basic token also failed');
+                const { supabase } = await import('../services/supabase');
+                setClient(supabase);
+                globalAuthenticatedClient = supabase;
+                setIsReady(true);
+                return;
+              }
+            } catch (basicError) {
+              console.error('[SupabaseContext] ❌ Basic token error:', basicError);
+              const { supabase } = await import('../services/supabase');
+              setClient(supabase);
+              globalAuthenticatedClient = supabase;
+              setIsReady(true);
+              return;
+            }
           }
           
           console.log('[SupabaseContext] ✅ JWT token received:', token.substring(0, 50) + '...');
@@ -87,6 +121,13 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
             console.error('2. Create a template named "supabase" (or set VITE_CLERK_JWT_TEMPLATE_NAME)');
             console.error('3. Add custom claim: { "clerk_id": "{{user.id}}" }');
           }
+
+          // Additional error logging
+          console.error('[SupabaseContext] Full error details:', {
+            message: error?.message,
+            name: error?.name,
+            stack: error?.stack
+          });
           
           // Fallback to default client on error
           const { supabase } = await import('../services/supabase');

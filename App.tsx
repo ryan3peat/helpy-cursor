@@ -28,6 +28,7 @@ import {
   getCachedSupabaseUuid,
 } from './services/supabaseService';
 import { useSupabase, useSupabaseReady } from './contexts/SupabaseContext';
+import { supabase as defaultSupabase } from './services/supabase';
 import { initializePushNotifications, autoSubscribeIfNeeded, debugPushNotifications } from './services/pushNotificationService';
 
 // Make debug function available globally in browser console
@@ -480,9 +481,25 @@ const AppContent: React.FC = () => {
       console.log('[App] Fetching household plan for:', householdId);
       console.log('[App] Supabase ready:', isSupabaseReady);
       console.log('[App] Using authenticated supabase client:', !!supabase);
+      console.log('[App] Client type check:', supabase === defaultSupabase ? 'DEFAULT CLIENT (no JWT)' : 'AUTHENTICATED CLIENT (has JWT)');
+      console.log('[App] Current user household ID:', currentUser?.householdId);
+      console.log('[App] Requested household ID matches user:', householdId === currentUser?.householdId);
 
       if (!isSupabaseReady) {
         console.warn('[App] Supabase client not ready yet, JWT may not be loaded');
+      }
+
+      // First try a simple query to test authentication
+      console.log('[App] Testing basic authentication...');
+      const { data: testData, error: testError } = await supabase
+        .from('households')
+        .select('count')
+        .limit(1);
+
+      if (testError) {
+        console.error('[App] Basic auth test failed:', testError);
+      } else {
+        console.log('[App] Basic auth test passed');
       }
 
       const { data, error } = await supabase
@@ -491,7 +508,34 @@ const AppContent: React.FC = () => {
         .eq('id', householdId)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('[App] Household fetch error:', error);
+        console.error('[App] Error details:', {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint
+        });
+
+        // If it's a permission error, let's check if the household exists at all
+        if (error.code === 'PGRST116') {
+          console.log('[App] Checking if household exists without RLS...');
+          // Temporarily disable RLS to check if data exists
+          const { data: existsCheck, error: existsError } = await supabase
+            .from('households')
+            .select('id, subscription_plan')
+            .eq('id', householdId)
+            .limit(1);
+
+          if (existsCheck && existsCheck.length > 0) {
+            console.log('[App] Household exists but RLS blocks access:', existsCheck[0]);
+          } else {
+            console.log('[App] Household does not exist or still blocked');
+          }
+        }
+
+        throw error;
+      }
 
       setHouseholdPlan({
         plan: (data?.subscription_plan || 'free') as HouseholdPlan['plan'],

@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>JWT Test</title>
+</head>
+<body>
+    <h1>JWT Test</h1>
+    <div id="status">Loading...</div>
+    <div id="token">Token: <span id="token-value">Not loaded</span></div>
+    <div id="decoded">Decoded: <span id="decoded-value">Not loaded</span></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"></script>
+    <script>
+        const clerkPubKey = 'pk_test_Y2xlcmsuaGVscHlmYW0uY29tJA'; // Replace with your actual key
+
+        window.Clerk.load({
+            publishableKey: clerkPubKey
+        }).then(async (clerk) => {
+            console.log('Clerk loaded');
+
+            const statusDiv = document.getElementById('status');
+            const tokenDiv = document.getElementById('token-value');
+            const decodedDiv = document.getElementById('decoded-value');
+
+            if (clerk.user) {
+                statusDiv.textContent = '✅ User signed in: ' + clerk.user.id;
+
+                try {
+                    // Test the supabase template
+                    const token = await clerk.session.getToken({ template: 'supabase' });
+                    tokenDiv.textContent = token ? token.substring(0, 50) + '...' : '❌ No token';
+
+                    if (token) {
+                        // Decode and check for clerk_id
+                        const payload = JSON.parse(atob(token.split('.')[1]));
+                        const hasClerkId = 'clerk_id' in payload;
+                        decodedDiv.textContent = `clerk_id: ${hasClerkId ? payload.clerk_id : 'MISSING'}`;
+                    }
+                } catch (error) {
+                    tokenDiv.textContent = '❌ Error: ' + error.message;
+                }
+            } else {
+                statusDiv.textContent = '❌ User not signed in';
+                tokenDiv.textContent = '❌ No session';
+            }
+        }).catch(error => {
+            document.getElementById('status').textContent = '❌ Clerk load error: ' + error.message;
+        });
+    </script>
+</body>
+</html>

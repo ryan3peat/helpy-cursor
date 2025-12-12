@@ -27,7 +27,7 @@ import {
   fetchCollection,
   getCachedSupabaseUuid,
 } from './services/supabaseService';
-import { useSupabase } from './contexts/SupabaseContext';
+import { useSupabase, useSupabaseReady } from './contexts/SupabaseContext';
 import { initializePushNotifications, autoSubscribeIfNeeded, debugPushNotifications } from './services/pushNotificationService';
 
 // Make debug function available globally in browser console
@@ -137,6 +137,7 @@ const AppContent: React.FC = () => {
   const { user: clerkUser, isSignedIn, isLoaded: clerkLoaded } = useUser();
   const { setStaticTranslating, isAnyTranslating } = useTranslationContext();
   const supabase = useSupabase(); // Use authenticated client with JWT for RLS
+  const isSupabaseReady = useSupabaseReady(); // Check if JWT has been loaded
   
   // Parse deep link on mount to determine initial view and whether to skip intro
   // This enables direct navigation when user taps on a push notification
@@ -459,6 +460,14 @@ const AppContent: React.FC = () => {
 
   const fetchHouseholdPlan = useCallback(async (householdId: string) => {
     try {
+      console.log('[App] Fetching household plan for:', householdId);
+      console.log('[App] Supabase ready:', isSupabaseReady);
+      console.log('[App] Using authenticated supabase client:', !!supabase);
+
+      if (!isSupabaseReady) {
+        console.warn('[App] Supabase client not ready yet, JWT may not be loaded');
+      }
+
       const { data, error } = await supabase
         .from('households')
         .select('subscription_plan, subscription_status, max_family_members, max_helpers')
@@ -528,12 +537,14 @@ const AppContent: React.FC = () => {
 
   // Keep household subscription + limits in sync
   useEffect(() => {
-    if (!currentUser?.householdId) {
+    if (!currentUser?.householdId || !isSupabaseReady) {
+      console.log('[App] Skipping household plan fetch - user:', !!currentUser?.householdId, 'supabase ready:', isSupabaseReady);
       setHouseholdPlan(null);
       return;
     }
 
     const hid = currentUser.householdId;
+    console.log('[App] Starting household plan fetch for user:', currentUser.id);
     fetchHouseholdPlan(hid);
 
     const channel = supabase
@@ -548,7 +559,7 @@ const AppContent: React.FC = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [currentUser?.householdId, fetchHouseholdPlan]);
+  }, [currentUser?.householdId, fetchHouseholdPlan, isSupabaseReady]);
 
   // Ensure currentUser is always in the users array (for assignee selection)
   useEffect(() => {

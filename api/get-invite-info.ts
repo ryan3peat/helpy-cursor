@@ -34,21 +34,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    // 1. Fetch pending user
-    const { data: pendingUser, error: userError } = await supabase
+    // 1. Fetch user (pending or active)
+    const { data: user, error: userError } = await supabase
       .from('users')
-      .select('id, name, role, household_id, status, invite_expires_at')
+      .select('id, name, role, household_id, status, invite_expires_at, clerk_id')
       .eq('id', uid)
       .eq('household_id', hid)
-      .eq('status', 'pending')
       .maybeSingle();
 
-    if (userError || !pendingUser) {
+    if (userError || !user) {
       return res.status(404).json({ 
-        error: 'Invitation not found or already accepted',
+        error: 'Invitation not found',
         isValid: false
       });
     }
+
+    // If user is already active, return that info so frontend can handle it
+    if (user.status === 'active') {
+      return res.status(200).json({
+        isValid: true,
+        alreadyActive: true,
+        pendingUserName: user.name,
+        pendingUserRole: user.role,
+        status: 'active'
+      });
+    }
+
+    // Use the user as pendingUser for the rest of the flow
+    const pendingUser = user;
 
     // 2. Check if invite has expired
     const expiresAt = pendingUser.invite_expires_at;

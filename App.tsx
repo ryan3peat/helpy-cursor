@@ -150,6 +150,83 @@ const AppContent: React.FC = () => {
     }
   }, [getToken]);
   
+  // Also set up RLS test function immediately (doesn't depend on getToken)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      (window as any).helpyTestRLS = async () => {
+        console.log('🧪 Testing RLS with authenticated client...');
+        try {
+          const { getAuthenticatedSupabaseClient } = await import('./contexts/SupabaseContext');
+          const client = getAuthenticatedSupabaseClient();
+          
+          if (!client) {
+            console.error('❌ No authenticated client available');
+            console.log('💡 Make sure you are signed in and SupabaseContext has initialized');
+            return;
+          }
+          
+          console.log('✅ Authenticated client found');
+          
+          // Test 1: Try to read households
+          console.log('\n📋 Test 1: Reading households...');
+          const { data: households, error: hError } = await client
+            .from('households')
+            .select('id, name, subscription_plan')
+            .limit(1);
+          
+          if (hError) {
+            console.error('❌ Household query failed:', hError);
+            console.error('Error code:', hError.code);
+            console.error('Error message:', hError.message);
+          } else {
+            console.log('✅ Household query succeeded:', households);
+          }
+          
+          // Test 2: Try to read users
+          console.log('\n👥 Test 2: Reading users...');
+          const { data: users, error: uError } = await client
+            .from('users')
+            .select('id, clerk_id, email, household_id')
+            .limit(5);
+          
+          if (uError) {
+            console.error('❌ Users query failed:', uError);
+            console.error('Error code:', uError.code);
+            console.error('Error message:', uError.message);
+          } else {
+            console.log('✅ Users query succeeded:', users);
+            console.log('Users found:', users?.length || 0);
+          }
+          
+          // Test 3: Check specific household
+          console.log('\n🏠 Test 3: Reading specific household...');
+          const { data: household, error: shError } = await client
+            .from('households')
+            .select('id, name, subscription_plan')
+            .eq('id', 'ecb34564-470c-41ea-a7ef-ed7446dd853d')
+            .single();
+          
+          if (shError) {
+            console.error('❌ Specific household query failed:', shError);
+            console.error('Error code:', shError.code);
+            console.error('Error message:', shError.message);
+            if (shError.code === 'PGRST116') {
+              console.log('💡 PGRST116 means RLS returned 0 rows - user may not have access');
+            }
+          } else {
+            console.log('✅ Specific household query succeeded:', household);
+          }
+          
+          console.log('\n✅ RLS test complete!');
+        } catch (error: any) {
+          console.error('❌ Error running RLS test:', error);
+        }
+      };
+      
+      console.log('[App] 🔧 RLS test function set up: window.helpyTestRLS()');
+    }
+  }, []); // Empty deps - set up once on mount
+  
   // Parse deep link on mount to determine initial view and whether to skip intro
   // This enables direct navigation when user taps on a push notification
   const initialDeepLinkRef = useRef(() => {

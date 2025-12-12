@@ -43,14 +43,32 @@ interface SupabaseProviderProps {
 }
 
 export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) => {
-  const { getToken, isSignedIn } = useAuth();
+  console.log('[SupabaseContext] 🎯 Component rendering/mounting');
+  console.log('[SupabaseContext] Clerk available:', typeof window !== 'undefined' ? !!window.Clerk : 'N/A (server)');
+  
+  const authResult = useAuth();
+  const { getToken, isSignedIn } = authResult;
+  
+  console.log('[SupabaseContext] useAuth result:', {
+    hasGetToken: !!getToken,
+    isSignedIn,
+    authKeys: Object.keys(authResult)
+  });
   const [client, setClient] = useState<SupabaseClient | null>(null);
   const [isReady, setIsReady] = useState(false);
+
+  console.log('[SupabaseContext] 📊 Current state:', { 
+    isSignedIn, 
+    hasGetToken: !!getToken,
+    hasClient: !!client,
+    isReady
+  });
 
   useEffect(() => {
     console.log('[SupabaseContext] 🔄 useEffect triggered', { 
       isSignedIn, 
-      hasGetToken: !!getToken 
+      hasGetToken: !!getToken,
+      getTokenType: typeof getToken
     });
     
     const initClient = async () => {
@@ -183,6 +201,56 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
     
     initClient();
   }, [getToken, isSignedIn]);
+
+  // Expose diagnostic function globally for console debugging
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      (window as any).helpyTestJWT = async () => {
+        console.log('🔍 Manual JWT Test Starting...');
+        console.log('Clerk available:', !!window.Clerk);
+        console.log('isSignedIn:', isSignedIn);
+        console.log('getToken available:', !!getToken);
+        
+        if (!isSignedIn) {
+          console.error('❌ User is not signed in!');
+          return;
+        }
+        
+        if (!getToken) {
+          console.error('❌ getToken function not available!');
+          return;
+        }
+        
+        try {
+          const templateName = import.meta.env.VITE_CLERK_JWT_TEMPLATE_NAME || 'supabase';
+          console.log('📝 Attempting to get token with template:', templateName);
+          
+          const token = await getToken({ template: templateName } as any);
+          if (token) {
+            console.log('✅ Token received! Length:', token.length);
+            console.log('Token preview:', token.substring(0, 50) + '...');
+            
+            // Decode token
+            try {
+              const parts = token.split('.');
+              const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+              console.log('📋 Token claims:', payload);
+              console.log('clerk_id claim:', payload.clerk_id || '❌ MISSING');
+            } catch (e) {
+              console.error('Failed to decode token:', e);
+            }
+          } else {
+            console.error('❌ Token is NULL!');
+          }
+        } catch (error: any) {
+          console.error('❌ Error getting token:', error);
+          console.error('Error message:', error?.message);
+        }
+      };
+      
+      console.log('[SupabaseContext] 💡 Run window.helpyTestJWT() in console to manually test JWT retrieval');
+    }
+  }, [isSignedIn, getToken]);
 
   return (
     <SupabaseContext.Provider value={client}>

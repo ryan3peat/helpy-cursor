@@ -568,13 +568,16 @@ const AppContent: React.FC = () => {
       console.log('[App] Fetching household plan for:', householdId);
       console.log('[App] Supabase ready:', isSupabaseReady);
       console.log('[App] Using authenticated supabase client:', !!supabase);
-      console.log('[App] Client type check:', supabase === defaultSupabase ? 'DEFAULT CLIENT (no JWT)' : 'AUTHENTICATED CLIENT (has JWT)');
       console.log('[App] Current user household ID:', currentUser?.householdId);
       console.log('[App] Requested household ID matches user:', householdId === currentUser?.householdId);
 
-      if (!isSupabaseReady) {
-        console.warn('[App] Supabase client not ready yet, JWT may not be loaded');
+      // Early return if supabase client is not ready or null
+      if (!isSupabaseReady || !supabase) {
+        console.warn('[App] Supabase client not ready yet, skipping household plan fetch');
+        return;
       }
+
+      console.log('[App] Client type check:', supabase === defaultSupabase ? 'DEFAULT CLIENT (no JWT)' : 'AUTHENTICATED CLIENT (has JWT)');
 
       // First try a simple query to test authentication
       console.log('[App] Testing basic authentication...');
@@ -634,7 +637,7 @@ const AppContent: React.FC = () => {
       console.error('[App] Failed to load household plan info:', error);
       setHouseholdPlan(prev => prev || null);
     }
-  }, []);
+  }, [supabase, isSupabaseReady, currentUser?.householdId]);
 
   // Sync function for periodic backup fetching
   const syncAllData = useCallback(async () => {

@@ -38,13 +38,14 @@ function isValidUuid(id: string): boolean {
  * Check if a string looks like a Clerk ID (starts with user_)
  */
 function isClerkId(id: string): boolean {
-  return id.startsWith('user_');
+  return id && typeof id === 'string' && id.startsWith('user_');
 }
 
 /**
  * Get ID type for logging
  */
 function getIdType(id: string): string {
+  if (!id || typeof id !== 'string') return 'Invalid/Undefined';
   if (isValidUuid(id)) return 'UUID';
   if (isClerkId(id)) return 'Clerk ID';
   return 'Unknown';
@@ -670,7 +671,13 @@ export async function autoSubscribeIfNeeded(
   notificationsEnabled: boolean
 ): Promise<boolean> {
   console.log('[Push] Checking auto-subscribe...', { userId, householdId, notificationsEnabled });
-  
+
+  // Check for valid userId
+  if (!userId) {
+    console.log('[Push] Auto-subscribe skipped: userId is undefined');
+    return false;
+  }
+
   // Only proceed if notifications are enabled
   if (!notificationsEnabled) {
     console.log('[Push] Auto-subscribe skipped: notifications not enabled');

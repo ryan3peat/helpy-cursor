@@ -47,12 +47,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Check if user already exists
     const { data: existingUser } = await supabase
       .from('users')
-      .select('id, household_id')
+      .select('*')  // Get all fields for complete user data
       .eq('clerk_id', clerkId)
       .single();
 
     if (existingUser) {
       console.log('[Signup API] User already exists:', existingUser);
+      console.log('[Signup API] Returning complete user data:', {
+        id: existingUser.id,
+        name: existingUser.name,
+        email: existingUser.email,
+        role: existingUser.role
+      });
       return res.status(200).json({
         user: existingUser,
         message: 'User already exists'

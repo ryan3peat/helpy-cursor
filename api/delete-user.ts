@@ -50,10 +50,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(403).json({ error: 'Not authorized to delete users from this household' });
       }
 
-      // Only master or parent roles can delete users
-      const allowedRoles = ['master', 'parent'];
+      // Only master, admin, or parent roles can delete users
+      const allowedRoles = ['master', 'admin', 'parent'];
       if (!allowedRoles.includes(requester.role?.toLowerCase() || '')) {
-        return res.status(403).json({ error: 'Only parents and household owners can delete members' });
+        return res.status(403).json({ error: 'Only admins, parents, and household owners can delete members' });
       }
     }
 

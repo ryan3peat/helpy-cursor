@@ -129,82 +129,66 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
       if (isInvite && hid && uid) {
         console.log('🔗 Invite URL detected (PRIORITY):', { hid, uid });
 
-        const { data: pendingUser, error: pendingError } = await clientToUse
-          .from('users')
-          .select('*')
-          .eq('id', uid)
-          .eq('household_id', hid)
-          .eq('status', 'pending')
-          .maybeSingle();
+        // Use API endpoint to accept invite (bypasses RLS issues with new users)
+        try {
+          const apiUrl = import.meta.env?.VITE_API_URL || '';
+          const response = await fetch(`${apiUrl}/api/accept-invite`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              pendingUserId: uid,
+              householdId: hid,
+              clerkId: clerkUser.id,
+              email: clerkUser.primaryEmailAddress?.emailAddress,
+              name: clerkUser.fullName || clerkUser.firstName,
+              avatar: clerkUser.imageUrl,
+            }),
+          });
 
-        if (pendingUser && !pendingError) {
-          // Check if invite hasn't expired
-          const expiresAt = pendingUser.invite_expires_at;
-          if (expiresAt && new Date(expiresAt) < new Date()) {
+          const result = await response.json();
+          console.log('🔗 [Auth] Accept invite API response:', result);
+
+          if (response.ok && result.success && result.user) {
+            const activatedUser = result.user;
+            console.log('✅ [Auth] Invited user activated via API:', activatedUser);
+            
+            // Clear the invite params from URL
+            window.history.replaceState({}, '', window.location.pathname);
+            
+            // Call onLogin and then reset state
+            onLogin({
+              id: activatedUser.clerk_id || activatedUser.id,
+              householdId: activatedUser.household_id,
+              email: activatedUser.email,
+              name: activatedUser.name,
+              role: activatedUser.role,
+              avatar: activatedUser.avatar,
+              allergies: activatedUser.allergies || [],
+              preferences: activatedUser.preferences || [],
+              status: 'active',
+              notificationsEnabled: activatedUser.notifications_enabled ?? true
+            });
+            
+            // Reset state after successful login
+            setIsCreatingUser(false);
+            console.log('✅ [Auth] onLogin() called successfully, resetting isCreatingUser');
+            return;
+          } else if (result.expired) {
             console.log('⏰ Invitation expired');
             alert('This invitation has expired. Please ask for a new invite link.');
-            // Clear URL params and continue to regular signup
             window.history.replaceState({}, '', window.location.pathname);
+          } else if (result.notFound) {
+            console.log('⚠️ [Auth] Invitation not found, may already be activated');
+            // Don't clear URL yet - continue to check if user exists by email
           } else {
-            // Activate the pending user and link to Clerk account
-            const { data: activatedUser, error: activateError } = await clientToUse
-              .from('users')
-              .update({ 
-                status: 'active',
-                clerk_id: clerkUser.id,
-                email: clerkUser.primaryEmailAddress?.emailAddress || pendingUser.email,
-                invite_expires_at: null,
-                name: clerkUser.fullName || clerkUser.firstName || pendingUser.name,
-                avatar: clerkUser.imageUrl || pendingUser.avatar
-              })
-              .eq('id', uid)
-              .eq('household_id', hid)
-              .select()
-              .single();
-
-            if (!activateError && activatedUser) {
-              console.log('✅ [Auth] Invited user activated via URL:', activatedUser);
-              console.log('✅ [Auth] Calling onLogin() with user:', {
-                id: activatedUser.clerk_id || activatedUser.id,
-                householdId: activatedUser.household_id,
-                email: activatedUser.email,
-                name: activatedUser.name
-              });
-              
-              // Clear the invite params from URL
-              window.history.replaceState({}, '', window.location.pathname);
-              
-              // Call onLogin and then reset state
-              onLogin({
-                id: activatedUser.clerk_id || activatedUser.id,
-                householdId: activatedUser.household_id,
-                email: activatedUser.email,
-                name: activatedUser.name,
-                role: activatedUser.role,
-                avatar: activatedUser.avatar,
-                allergies: activatedUser.allergies || [],
-                preferences: activatedUser.preferences || [],
-                status: 'active',
-                notificationsEnabled: activatedUser.notifications_enabled ?? true
-              });
-              
-              // Reset state after successful login
-              setIsCreatingUser(false);
-              console.log('✅ [Auth] onLogin() called successfully, resetting isCreatingUser');
-              return;
-            } else {
-              console.error('❌ [Auth] Failed to activate via URL:', activateError);
-              console.error('❌ [Auth] activateError details:', activateError);
-              console.error('❌ [Auth] activatedUser:', activatedUser);
-            }
+            console.error('❌ [Auth] Failed to activate via API:', result.error);
           }
-        } else {
-          console.log('⚠️ [Auth] No pending user found for invite params, may already be activated');
-          console.log('⚠️ [Auth] pendingError:', pendingError);
-          console.log('⚠️ [Auth] pendingUser:', pendingUser);
-          // Clear URL params and continue to regular flow
-          window.history.replaceState({}, '', window.location.pathname);
+        } catch (error) {
+          console.error('❌ [Auth] Accept invite API error:', error);
         }
+        
+        // Clear URL params if we didn't return above
+        window.history.replaceState({}, '', window.location.pathname);
       }
 
       // ============================================================

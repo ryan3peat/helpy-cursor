@@ -1061,9 +1061,16 @@ const AppContent: React.FC = () => {
   };
 
   const handleDeleteUser = async (id: string) => {
-    if (!hid) return;
+    if (!hid || !currentUser) return;
+    const previousUsers = users;  // Store for rollback
     setUsers(prev => prev.filter(u => u.id !== id));  // Optimistic
-    await deleteItem(hid, 'users', id);
+    try {
+      await deleteItem(hid, 'users', id, currentUser.id);
+    } catch (error) {
+      console.error('❌ Failed to delete user:', error);
+      setUsers(previousUsers);  // Rollback on error
+      throw error;  // Re-throw so Profile can show error
+    }
   };
 
   // Notes Handler

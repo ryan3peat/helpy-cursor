@@ -23,7 +23,7 @@ interface ProfileProps extends BaseViewProps {
   users: User[];
   onAdd: (user: Omit<User, 'id'>) => Promise<User | undefined>;
   onUpdate: (id: string, data: Partial<User>) => void;
-  onDelete: (id: string) => void;
+  onDelete: (id: string) => Promise<void>;
   onBack: () => void;
   currentUser: User;
   onLogout: () => void;
@@ -714,17 +714,27 @@ const Profile: React.FC<ProfileProps> = ({
     setDeleteConfirmOpen(true);
   };
 
-  const confirmDeleteUser = () => {
+  const confirmDeleteUser = async () => {
     if (!userToDelete) return;
     
     // Update selectedUserId before deletion if needed
     if (selectedUserId === userToDelete) {
       setSelectedUserId(currentUser.id);
     }
-    // Call onDelete which will update the parent's users array
-    onDelete(userToDelete);
+    
+    // Close dialog immediately for better UX
     setDeleteConfirmOpen(false);
+    const deletingUserId = userToDelete;
     setUserToDelete(null);
+    
+    try {
+      // Call onDelete which will update the parent's users array
+      await onDelete(deletingUserId);
+    } catch (error: any) {
+      console.error('Failed to delete user:', error);
+      // Show error message to user
+      alert(error?.message || t['error.delete_member'] || 'Failed to delete member. Please try again.');
+    }
   };
 
   const handleReinvite = async (userId: string) => {

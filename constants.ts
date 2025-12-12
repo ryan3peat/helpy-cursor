@@ -587,6 +587,7 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'error.cancel_subscription': 'Failed to cancel subscription. Please try again.',
   'error.delete_account_unable': 'Unable to delete account. Please try again.',
   'error.delete_account': 'Failed to delete account. Please try again or contact support.',
+  'error.delete_member': 'Failed to delete member. Please try again.',
 
   // Settings - Push Notifications
   'settings.push_not_supported': 'Not supported in this browser',

@@ -722,7 +722,8 @@ export async function updateItem(
 export async function deleteItem(
   householdId: string,
   collection: string,
-  id: string
+  id: string,
+  requesterId?: string
 ): Promise<void> {
   const tableName = COLLECTION_MAP[collection];
   
@@ -730,7 +731,7 @@ export async function deleteItem(
   
   let actualId = id;
   
-  // For users, resolve to Supabase UUID
+  // For users, use the API endpoint (RLS blocks direct deletes)
   if (collection === 'users') {
     const supabaseId = await getSupabaseUserId(id, householdId);
     if (!supabaseId) {
@@ -739,6 +740,29 @@ export async function deleteItem(
     }
     actualId = supabaseId;
     console.log(`🗑️ Resolved id ${id} to Supabase UUID ${actualId}`);
+    
+    // Use API endpoint for user deletion (bypasses RLS)
+    const apiUrl = import.meta.env.VITE_API_URL || '';
+    const response = await fetch(`${apiUrl}/api/delete-user`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: actualId,
+        householdId,
+        requesterId,
+      }),
+    });
+    
+    const result = await response.json();
+    
+    if (!response.ok) {
+      console.error('❌ Delete user API error:', result.error);
+      throw new Error(result.error || 'Failed to delete user');
+    }
+    
+    console.log('✅ Delete user successful via API');
+    delete userIdCache[id];
+    return;
   }
   
   const { error, count } = await supabase

@@ -1,7 +1,7 @@
 // components/Auth.tsx
 import React, { useState } from 'react';
 import { SignIn, useUser } from '@clerk/clerk-react';
-import { supabase } from '../services/supabase';
+import { useSupabase } from '../contexts/SupabaseContext';
 import { User } from '../types';
 import SignUp from './SignUp';
 import HouseholdSwitchModal from './HouseholdSwitchModal';
@@ -22,6 +22,7 @@ interface AuthProps {
 
 const Auth: React.FC<AuthProps> = ({ onLogin }) => {
   const { user, isLoaded } = useUser();
+  const supabase = useSupabase(); // Use authenticated client with JWT
   const [isCreatingUser, setIsCreatingUser] = React.useState(false);
   const [showSignUp, setShowSignUp] = useState(false);
   const [showHouseholdSwitch, setShowHouseholdSwitch] = useState(false);
@@ -56,6 +57,14 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
     
     // Get email once at the start to avoid duplicate declarations
     const clerkEmail = clerkUser.primaryEmailAddress?.emailAddress;
+    
+    // Ensure supabase client is available (might be null initially)
+    if (!supabase) {
+      console.warn('[Auth] Supabase client not ready yet, waiting...');
+      // Wait a bit for SupabaseProvider to initialize
+      await new Promise(resolve => setTimeout(resolve, 500));
+      // If still not ready, this will use the fallback client from useSupabase()
+    }
     
     try {
       console.log('🔍 [Auth] checkOrCreateUser started for Clerk user:', clerkUser.id);

@@ -441,15 +441,54 @@ async function saveSubscriptionToDatabase(
   const supabaseClient = getAuthenticatedSupabaseClient() || supabase;
   
   // Try upsert - if unique constraint exists, it will update; otherwise insert
-  const { data: savedData, error } = await supabaseClient
-    .from('push_subscriptions')
-    .upsert(data, {
-      onConflict: 'user_id,endpoint',  // Matches UNIQUE(user_id, endpoint) constraint
-      ignoreDuplicates: false
-    })
-    .select();
+  let savedData;
+  let error;
+  
+  try {
+    const result = await supabaseClient
+      .from('push_subscriptions')
+      .upsert(data, {
+        onConflict: 'user_id,endpoint',  // Matches UNIQUE(user_id, endpoint) constraint
+        ignoreDuplicates: false
+      })
+      .select();
+    
+    savedData = result.data;
+    error = result.error;
+  } catch (e: any) {
+    error = e;
+  }
 
-  if (error) {
+  // If JWT verification fails (PGRST301), fall back to API route
+  if (error && (error.code === 'PGRST301' || error.message?.includes('No suitable key'))) {
+    console.warn('[Push] JWT verification failed, using API route fallback');
+    
+    try {
+      const appUrl = import.meta.env.VITE_APP_URL || import.meta.env.NEXT_PUBLIC_APP_URL || 'https://helpyfam.com';
+      const apiUrl = `${appUrl}/api/save-push-subscription`;
+      
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(errorData.error || `API route failed: ${response.status}`);
+      }
+
+      const result = await response.json();
+      savedData = result.data ? [result.data] : null;
+      error = null;
+      console.log('[Push] ✅ Subscription saved via API route');
+    } catch (apiError: any) {
+      console.error('[Push] ❌ API route also failed:', apiError);
+      throw apiError;
+    }
+  } else if (error) {
     console.error('[Push] ❌ Failed to save subscription:', error);
     console.error('[Push] Error details:', {
       code: error.code,

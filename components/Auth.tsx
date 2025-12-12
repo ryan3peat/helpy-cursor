@@ -358,9 +358,15 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
       // ============================================================
       console.log('👤 New user, creating household and user...');
 
+      // Create household with Free plan limits set explicitly
       const { data: newHousehold, error: householdError } = await supabase
         .from('households')
-        .insert([{ name: `${clerkUser.firstName || 'User'}'s Family` }])
+        .insert([{ 
+          name: `${clerkUser.firstName || 'User'}'s Family`,
+          subscription_plan: 'free',
+          max_family_members: 3,
+          max_helpers: 1
+        }])
         .select()
         .single();
 

@@ -91,7 +91,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    // 1. Create pending user in Supabase (no email needed)
+    // 1. Create user in Supabase (no email needed)
+    // Children are added as 'active', others as 'pending' with invite link
+    const isChild = role?.toLowerCase() === 'child';
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
     const { data: newUser, error: userError } = await supabase
@@ -101,8 +103,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         name,
         email: null, // Email will be filled when they sign up
         role,
-        status: 'pending',
-        invite_expires_at: expiresAt.toISOString(),
+        status: isChild ? 'active' : 'pending',
+        invite_expires_at: isChild ? null : expiresAt.toISOString(),
         avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`,
         allergies: [],
         preferences: [],
@@ -118,9 +120,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    // 2. Generate simple invite link (no Clerk involved)
+    // 2. Generate simple invite link (no Clerk involved) - only for non-child users
     const appUrl = process.env.VITE_APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://helpyfam.com';
-    const inviteLink = `${appUrl}?invite=true&hid=${householdId}&uid=${newUser.id}`;
+    const inviteLink = isChild ? null : `${appUrl}?invite=true&hid=${householdId}&uid=${newUser.id}`;
 
     // 3. Return success
     return res.status(200).json({

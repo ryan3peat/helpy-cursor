@@ -13,7 +13,7 @@ export async function createInvite(params: {
   role: string;
   householdId: string;
   inviterId: string;
-}): Promise<{ user: User; inviteLink: string }> {
+}): Promise<{ user: User; inviteLink: string | null }> {
   // Always use relative URL since API is on the same domain
   // This avoids issues with hardcoded domains in environment variables
   const response = await fetch('/api/invite', {

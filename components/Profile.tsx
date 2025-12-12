@@ -676,36 +676,29 @@ const Profile: React.FC<ProfileProps> = ({
     setIsAddModalOpen(false);
     
     try {
-      // Children don't need invite links - they're added directly to the household
-      if (roleToAdd === UserRole.CHILD) {
-        const newUser: Omit<User, 'id'> = {
-          householdId: currentUser.householdId,
-          name: nameToAdd,
-          role: roleToAdd,
-          avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(nameToAdd)}`,
-          allergies: [],
-          preferences: [],
-          status: 'active' // Children are added as active family members, not pending
-        };
-        
-        // Create child user directly without invite link
-        await onAdd(newUser);
-        // User will appear via subscription update
-      } else {
-        // For Spouse, Helper, and Other, create user with invite link
-        const result = await createInvite({
-          name: nameToAdd,
-          role: roleToAdd,
-          householdId: currentUser.householdId,
-          inviterId: currentUser.id
-        });
-        
-        // Show invite link modal for non-children
+      // Use invite API for ALL roles to ensure server-side limit enforcement
+      // The API will create CHILD as 'active' and others as 'pending' with invite links
+      const result = await createInvite({
+        name: nameToAdd,
+        role: roleToAdd,
+        householdId: currentUser.householdId,
+        inviterId: currentUser.id
+      });
+      
+      // Only show invite link modal for non-children (children are added directly as active)
+      if (roleToAdd !== UserRole.CHILD && result.inviteLink) {
         setInviteLink(result.inviteLink);
       }
+      // For children, the user is already created as 'active' in the database
+      // The subscription update will sync it to the UI automatically
+      // No need to call onAdd since the API already created the user
     } catch (error) {
       console.error('Failed to add user:', error);
-      alert(t['error.add_user'] || 'Failed to add user. Please try again.');
+      // Extract error message from API response if available
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : (t['error.add_user'] || 'Failed to add user. Please try again.');
+      alert(errorMessage);
     } finally {
       setIsAddingUser(false);
     }

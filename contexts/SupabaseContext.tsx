@@ -29,6 +29,16 @@ export const getAuthenticatedSupabaseClient = (): SupabaseClient | null => {
   return globalAuthenticatedClient;
 };
 
+/**
+ * Hook to check if Supabase client is ready (JWT has been fetched)
+ * Useful for components that need to wait before making authenticated requests
+ */
+export const useSupabaseReady = (): boolean => {
+  const context = useContext(SupabaseContext);
+  // If context exists, client is ready (even if it's the default fallback)
+  return context !== null;
+};
+
 interface SupabaseProviderProps {
   children: React.ReactNode;
 }
@@ -36,28 +46,38 @@ interface SupabaseProviderProps {
 export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) => {
   const { getToken, isSignedIn } = useAuth();
   const [client, setClient] = useState<SupabaseClient | null>(null);
+  const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
     const initClient = async () => {
+      setIsReady(false); // Mark as not ready while initializing
+      
       if (isSignedIn) {
         try {
           // Get Clerk JWT token with 'supabase' template
           // Make sure you've created this template in Clerk Dashboard with clerk_id claim
           // Template name can be configured via environment variable or defaults to 'supabase'
           const templateName = import.meta.env.VITE_CLERK_JWT_TEMPLATE_NAME || 'supabase';
+          console.log('[SupabaseContext] Requesting JWT token with template:', templateName);
           const token = await getToken({ template: templateName });
           
           if (!token) {
-            console.warn('[SupabaseContext] No JWT token received, using default client');
+            console.error('[SupabaseContext] ❌ No JWT token received from Clerk');
+            console.error('[SupabaseContext] This means requests will NOT include JWT and RLS will fail');
             const { supabase } = await import('../services/supabase');
             setClient(supabase);
             globalAuthenticatedClient = supabase;
+            setIsReady(true);
             return;
           }
           
+          console.log('[SupabaseContext] ✅ JWT token received:', token.substring(0, 50) + '...');
+          console.log('[SupabaseContext] Token length:', token.length);
           const authenticatedClient = await createAuthenticatedClient(token);
           setClient(authenticatedClient);
           globalAuthenticatedClient = authenticatedClient;
+          console.log('[SupabaseContext] ✅ Authenticated Supabase client created');
+          setIsReady(true);
         } catch (error: any) {
           console.error('[SupabaseContext] Failed to create authenticated client:', error);
           
@@ -73,12 +93,14 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
           const { supabase } = await import('../services/supabase');
           setClient(supabase);
           globalAuthenticatedClient = supabase;
+          setIsReady(true);
         }
       } else {
         // User not signed in, use default client (will fail RLS checks, but that's expected)
         const { supabase } = await import('../services/supabase');
         setClient(supabase);
         globalAuthenticatedClient = supabase;
+        setIsReady(true);
       }
     };
     

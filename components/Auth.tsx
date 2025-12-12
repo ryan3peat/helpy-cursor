@@ -58,12 +58,27 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
     // Get email once at the start to avoid duplicate declarations
     const clerkEmail = clerkUser.primaryEmailAddress?.emailAddress;
     
-    // Ensure supabase client is available (might be null initially)
-    if (!supabase) {
-      console.warn('[Auth] Supabase client not ready yet, waiting...');
-      // Wait a bit for SupabaseProvider to initialize
-      await new Promise(resolve => setTimeout(resolve, 500));
-      // If still not ready, this will use the fallback client from useSupabase()
+    // CRITICAL: Wait for authenticated client to be ready
+    // The SupabaseProvider needs time to fetch JWT from Clerk
+    // Give it a moment to initialize (Clerk getToken is async)
+    console.log('[Auth] Waiting for authenticated Supabase client to initialize...');
+    await new Promise(resolve => setTimeout(resolve, 500)); // Wait 500ms for JWT to be fetched
+    
+    // Use the supabase client from context (will be authenticated if SupabaseProvider initialized)
+    // Note: useSupabase() has a fallback to default client, so it should never be null
+    const clientToUse = supabase;
+    
+    // Log client status for debugging
+    console.log('[Auth] Supabase client status:', {
+      hasClient: !!clientToUse,
+      clientType: clientToUse ? 'Available' : 'Missing'
+    });
+    
+    if (!clientToUse) {
+      console.error('[Auth] ❌ Supabase client is NULL - this should not happen!');
+      console.error('[Auth] SupabaseProvider might not be initialized');
+      setIsCreatingUser(false);
+      return;
     }
     
     try {
@@ -97,7 +112,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
       if (isInvite && hid && uid) {
         console.log('🔗 Invite URL detected (PRIORITY):', { hid, uid });
 
-        const { data: pendingUser, error: pendingError } = await supabase
+        const { data: pendingUser, error: pendingError } = await clientToUse
           .from('users')
           .select('*')
           .eq('id', uid)
@@ -115,7 +130,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
             window.history.replaceState({}, '', window.location.pathname);
           } else {
             // Activate the pending user and link to Clerk account
-            const { data: activatedUser, error: activateError } = await supabase
+            const { data: activatedUser, error: activateError } = await clientToUse
               .from('users')
               .update({ 
                 status: 'active',
@@ -188,7 +203,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
         console.log('📨 User came from Clerk invitation, activating pending user...');
         console.log('📨 Metadata:', metadata);
 
-        const { data: activatedUser, error: activateError } = await supabase
+        const { data: activatedUser, error: activateError } = await clientToUse
           .from('users')
           .update({ 
             status: 'active',
@@ -226,7 +241,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
       // ============================================================
       // STEP 2: Check if user already exists (regular login)
       // ============================================================
-      const { data: existingUser, error: checkError } = await supabase
+      const { data: existingUser, error: checkError } = await clientToUse
         .from('users')
         .select('*')
         .eq('clerk_id', clerkUser.id)
@@ -263,7 +278,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
       // This handles cases where clerk_id doesn't match or wasn't set
       // ============================================================
       if (clerkEmail) {
-        const { data: existingUserByEmail, error: emailCheckError } = await supabase
+        const { data: existingUserByEmail, error: emailCheckError } = await clientToUse
           .from('users')
           .select('*')
           .eq('email', clerkEmail)
@@ -275,7 +290,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
           
           // Update clerk_id if it's missing or different
           if (!existingUserByEmail.clerk_id || existingUserByEmail.clerk_id !== clerkUser.id) {
-            const { error: updateError } = await supabase
+            const { error: updateError } = await clientToUse
               .from('users')
               .update({ clerk_id: clerkUser.id })
               .eq('id', existingUserByEmail.id);
@@ -311,7 +326,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
       // This handles cases where invitation metadata wasn't passed through
       // ============================================================
       if (clerkEmail) {
-        const { data: pendingUser, error: pendingError } = await supabase
+        const { data: pendingUser, error: pendingError } = await clientToUse
           .from('users')
           .select('*')
           .eq('email', clerkEmail)
@@ -328,7 +343,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
             // Continue to create new user instead
           } else {
             // Activate the pending user
-            const { data: activatedUser, error: activateError } = await supabase
+            const { data: activatedUser, error: activateError } = await clientToUse
               .from('users')
               .update({ 
                 status: 'active',
@@ -368,7 +383,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
       console.log('👤 New user, creating household and user...');
 
       // Create household with Free plan limits set explicitly
-      const { data: newHousehold, error: householdError } = await supabase
+      const { data: newHousehold, error: householdError } = await clientToUse
         .from('households')
         .insert([{ 
           name: `${clerkUser.firstName || 'User'}'s Family`,
@@ -386,7 +401,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
 
       console.log('✅ Household created:', newHousehold);
 
-      const { data: createdUser, error: userError } = await supabase
+      const { data: createdUser, error: userError } = await clientToUse
         .from('users')
         .insert([{
           household_id: newHousehold.id,

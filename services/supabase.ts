@@ -10,9 +10,21 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 // Function to create authenticated client with Clerk JWT token
 // This client will include the JWT in headers, allowing RLS policies to work
 export const createAuthenticatedClient = async (clerkToken: string | null): Promise<SupabaseClient> => {
-  return createClient(supabaseUrl, supabaseAnonKey, {
+  if (!clerkToken) {
+    console.warn('[Supabase] No JWT token provided, creating client without authentication');
+    return createClient(supabaseUrl, supabaseAnonKey);
+  }
+  
+  console.log('[Supabase] Creating authenticated client with JWT token');
+  const client = createClient(supabaseUrl, supabaseAnonKey, {
     global: {
-      headers: clerkToken ? { Authorization: `Bearer ${clerkToken}` } : {},
+      headers: {
+        Authorization: `Bearer ${clerkToken}`,
+      },
     },
   });
+  
+  // Verify headers are set (for debugging)
+  console.log('[Supabase] Authenticated client created, JWT will be sent in requests');
+  return client;
 };

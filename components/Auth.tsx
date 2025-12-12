@@ -1,7 +1,8 @@
 // components/Auth.tsx
 import React, { useState } from 'react';
 import { SignIn, useUser } from '@clerk/clerk-react';
-import { useSupabase } from '../contexts/SupabaseContext';
+import { useSupabase, useSupabaseReady, getAuthenticatedSupabaseClient } from '../contexts/SupabaseContext';
+import { supabase as defaultSupabase } from '../services/supabase';
 import { User } from '../types';
 import SignUp from './SignUp';
 import HouseholdSwitchModal from './HouseholdSwitchModal';
@@ -22,7 +23,8 @@ interface AuthProps {
 
 const Auth: React.FC<AuthProps> = ({ onLogin }) => {
   const { user, isLoaded } = useUser();
-  const supabase = useSupabase(); // Use authenticated client with JWT
+  const supabaseFromContext = useSupabase(); // Authenticated client from context
+  const isSupabaseReady = useSupabaseReady(); // Check if JWT is ready
   const [isCreatingUser, setIsCreatingUser] = React.useState(false);
   const [showSignUp, setShowSignUp] = useState(false);
   const [showHouseholdSwitch, setShowHouseholdSwitch] = useState(false);
@@ -37,8 +39,15 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
   const hasCheckedUser = React.useRef(false);
 
   React.useEffect(() => {
-    console.log('🔵 [Auth] useEffect triggered:', { isLoaded, user: !!user, isCreatingUser, hasCheckedUser: hasCheckedUser.current });
-    if (isLoaded && user && !isCreatingUser && !hasCheckedUser.current) {
+    console.log('🔵 [Auth] useEffect triggered:', { 
+      isLoaded, 
+      user: !!user, 
+      isCreatingUser, 
+      hasCheckedUser: hasCheckedUser.current,
+      isSupabaseReady 
+    });
+    // Also wait for Supabase client to be ready (JWT fetched)
+    if (isLoaded && user && !isCreatingUser && !hasCheckedUser.current && isSupabaseReady) {
       console.log('✅ [Auth] Conditions met, calling checkOrCreateUser');
       hasCheckedUser.current = true;
       checkOrCreateUser(user);
@@ -47,10 +56,11 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
         isLoaded,
         hasUser: !!user,
         isCreatingUser,
-        hasCheckedUser: hasCheckedUser.current
+        hasCheckedUser: hasCheckedUser.current,
+        isSupabaseReady
       });
     }
-  }, [isLoaded, user, isCreatingUser]);
+  }, [isLoaded, user, isCreatingUser, isSupabaseReady]);
 
   const checkOrCreateUser = async (clerkUser: any) => {
     setIsCreatingUser(true);
@@ -58,20 +68,27 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
     // Get email once at the start to avoid duplicate declarations
     const clerkEmail = clerkUser.primaryEmailAddress?.emailAddress;
     
-    // CRITICAL: Wait for authenticated client to be ready
-    // The SupabaseProvider needs time to fetch JWT from Clerk
-    // Give it a moment to initialize (Clerk getToken is async)
-    console.log('[Auth] Waiting for authenticated Supabase client to initialize...');
-    await new Promise(resolve => setTimeout(resolve, 500)); // Wait 500ms for JWT to be fetched
+    // Get the authenticated client - prefer global reference which is always up-to-date
+    // The useEffect already waits for isSupabaseReady, but we double-check here
+    let clientToUse = getAuthenticatedSupabaseClient();
     
-    // Use the supabase client from context (will be authenticated if SupabaseProvider initialized)
-    // Note: useSupabase() has a fallback to default client, so it should never be null
-    const clientToUse = supabase;
+    // If no authenticated client yet, wait a bit and retry (shouldn't happen due to useEffect check)
+    if (!clientToUse) {
+      console.log('[Auth] Waiting for authenticated Supabase client...');
+      await new Promise(resolve => setTimeout(resolve, 500));
+      clientToUse = getAuthenticatedSupabaseClient();
+    }
+    
+    // Final fallback to context value or default (shouldn't be needed)
+    if (!clientToUse) {
+      console.warn('[Auth] ⚠️ Using context supabase client (JWT may not be ready)');
+      clientToUse = supabaseFromContext || defaultSupabase;
+    }
     
     // Log client status for debugging
     console.log('[Auth] Supabase client status:', {
       hasClient: !!clientToUse,
-      clientType: clientToUse ? 'Available' : 'Missing'
+      clientType: clientToUse === defaultSupabase ? 'Default (no JWT)' : 'Authenticated (with JWT)'
     });
     
     if (!clientToUse) {
@@ -434,7 +451,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
           
           if (isInvite && hid && uid && clerkEmail) {
             // Find existing user with this email
-            const { data: existingUser } = await supabase
+            const { data: existingUser } = await clientToUse
               .from('users')
               .select('id, household_id, email')
               .eq('email', clerkEmail)
@@ -442,20 +459,20 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
             
             if (existingUser && existingUser.household_id !== hid) {
               // User exists in different household - show switch modal
-              const { data: currentHousehold } = await supabase
+              const { data: currentHousehold } = await clientToUse
                 .from('households')
                 .select('name')
                 .eq('id', existingUser.household_id)
                 .maybeSingle();
               
-              const { data: newHouseholdData } = await supabase
+              const { data: newHouseholdData } = await clientToUse
                 .from('households')
                 .select('name')
                 .eq('id', hid)
                 .maybeSingle();
               
               // Get admin name for new household
-              const { data: adminUser } = await supabase
+              const { data: adminUser } = await clientToUse
                 .from('users')
                 .select('name')
                 .eq('household_id', hid)
@@ -481,7 +498,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
           // This handles cases where our earlier checks somehow missed the user
           if (clerkEmail) {
             console.log('🔍 [Auth] Checking for existing user by email as fallback...');
-            const { data: existingUserByEmail, error: emailCheckError } = await supabase
+            const { data: existingUserByEmail, error: emailCheckError } = await clientToUse
               .from('users')
               .select('*')
               .eq('email', clerkEmail)
@@ -493,7 +510,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
               
               // Update clerk_id if it's missing or different
               if (!existingUserByEmail.clerk_id || existingUserByEmail.clerk_id !== clerkUser.id) {
-                const { error: updateError } = await supabase
+                const { error: updateError } = await clientToUse
                   .from('users')
                   .update({ clerk_id: clerkUser.id })
                   .eq('id', existingUserByEmail.id);
@@ -507,7 +524,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
               
               // Clean up the household we just created since user already exists
               if (newHousehold) {
-                await supabase
+                await clientToUse
                   .from('households')
                   .delete()
                   .eq('id', newHousehold.id);
@@ -570,8 +587,11 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
     
     setShowHouseholdSwitch(false);
     
+    // Get authenticated client
+    const client = getAuthenticatedSupabaseClient() || defaultSupabase;
+    
     // Find existing user and log them in
-    const { data: existingUser } = await supabase
+    const { data: existingUser } = await client
       .from('users')
       .select('*')
       .eq('id', householdSwitchInfo.existingUserId)
@@ -580,7 +600,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
     if (existingUser) {
       // Update clerk_id if needed
       if (!existingUser.clerk_id) {
-        await supabase
+        await client
           .from('users')
           .update({ clerk_id: user.id })
           .eq('id', existingUser.id);
@@ -613,9 +633,12 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
     setShowHouseholdSwitch(false);
     setIsCreatingUser(true);
     
+    // Get authenticated client
+    const client = getAuthenticatedSupabaseClient() || defaultSupabase;
+    
     try {
       // Check if pending user exists for the invite
-      const { data: pendingUser } = await supabase
+      const { data: pendingUser } = await client
         .from('users')
         .select('*')
         .eq('id', householdSwitchInfo.newUserId)
@@ -625,7 +648,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
       
       if (pendingUser) {
         // Activate the pending user and link to Clerk account
-        const { data: activatedUser, error: activateError } = await supabase
+        const { data: activatedUser, error: activateError } = await client
           .from('users')
           .update({
             status: 'active',
@@ -642,7 +665,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
         
         if (!activateError && activatedUser) {
           // Delete the old user record (user can only be in one household)
-          await supabase
+          await client
             .from('users')
             .delete()
             .eq('id', householdSwitchInfo.existingUserId);
@@ -669,7 +692,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
       }
       
       // If no pending user, update existing user to new household
-      const { data: updatedUser, error: updateError } = await supabase
+      const { data: updatedUser, error: updateError } = await client
         .from('users')
         .update({
           household_id: householdSwitchInfo.newHouseholdId,

@@ -8,7 +8,7 @@ import { useUser } from '@clerk/clerk-react';
 import { User, UserRole, BaseViewProps, HouseholdPlan } from '../types';
 import { createInvite } from '../services/inviteService';
 import { createCheckoutSession, createPortalSession, downgradeToFree } from '../services/stripeService';
-import { supabase } from '../services/supabase';
+import { useSupabase } from '../contexts/SupabaseContext';
 import { deleteItem, uploadAvatarImage } from '../services/supabaseService';
 import { useScrollLock } from '@/hooks/useScrollLock';
 import {
@@ -72,6 +72,11 @@ const Profile: React.FC<ProfileProps> = ({
   users, onAdd, onUpdate, onDelete, onBack, currentUser, onLogout, t, currentLang, householdPlan,
   openAddMemberFromOnboarding, onAddMemberSheetOpened
 }) => {
+  // ─────────────────────────────────────────────────────────────────
+  // Authenticated Supabase client with JWT for RLS
+  // ─────────────────────────────────────────────────────────────────
+  const supabase = useSupabase();
+  
   // ─────────────────────────────────────────────────────────────────
   // Role-based permissions
   // ─────────────────────────────────────────────────────────────────

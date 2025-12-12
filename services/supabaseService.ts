@@ -1,5 +1,25 @@
-import { supabase } from './supabase';
+import { supabase as defaultSupabase } from './supabase';
+import { getAuthenticatedSupabaseClient } from '../contexts/SupabaseContext';
 import { User, ShoppingItem, Task, Meal, Expense, Section, ToDoItem } from '../types';
+
+/**
+ * Get the best available Supabase client.
+ * Prefers authenticated client with JWT (for RLS), falls back to default.
+ */
+function getSupabase() {
+  const authClient = getAuthenticatedSupabaseClient();
+  return authClient || defaultSupabase;
+}
+
+// Alias for backwards compatibility in this file
+const supabase = {
+  get client() { return getSupabase(); },
+  from: (table: string) => getSupabase().from(table),
+  storage: defaultSupabase.storage, // Storage doesn't need JWT for public buckets
+  auth: defaultSupabase.auth,
+  channel: (name: string) => getSupabase().channel(name),
+  removeChannel: (channel: any) => getSupabase().removeChannel(channel),
+};
 
 // Type for generic data items
 type DataItem = User | ShoppingItem | Task | Meal | Expense | Section | ToDoItem;

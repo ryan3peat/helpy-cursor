@@ -17,7 +17,6 @@ import { BASE_TRANSLATIONS } from './constants';
 import { detectDeviceLanguage } from './services/languageDetectionService';
 import { getStaticTranslations } from './services/translationService';
 import { TranslationProvider, useTranslationContext } from './contexts/TranslationContext';
-import { supabase } from './services/supabase';
 import {
   subscribeToCollection,
   addItem,
@@ -28,6 +27,7 @@ import {
   fetchCollection,
   getCachedSupabaseUuid,
 } from './services/supabaseService';
+import { useSupabase } from './contexts/SupabaseContext';
 import { initializePushNotifications, autoSubscribeIfNeeded, debugPushNotifications } from './services/pushNotificationService';
 
 // Make debug function available globally in browser console
@@ -136,6 +136,7 @@ const AppContent: React.FC = () => {
   const { signOut } = useClerk();
   const { user: clerkUser, isSignedIn, isLoaded: clerkLoaded } = useUser();
   const { setStaticTranslating, isAnyTranslating } = useTranslationContext();
+  const supabase = useSupabase(); // Use authenticated client with JWT for RLS
   
   // Parse deep link on mount to determine initial view and whether to skip intro
   // This enables direct navigation when user taps on a push notification

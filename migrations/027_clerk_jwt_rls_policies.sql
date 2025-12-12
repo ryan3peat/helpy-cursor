@@ -32,12 +32,27 @@ RETURNS UUID AS $$
 $$ LANGUAGE SQL STABLE;
 
 -- ============================================================================
+-- HELPER: Drop all policies on a table (safely handles missing policies)
+-- ============================================================================
+CREATE OR REPLACE FUNCTION drop_all_policies_on_table(table_name text)
+RETURNS void AS $$
+DECLARE
+  pol record;
+BEGIN
+  FOR pol IN 
+    SELECT policyname 
+    FROM pg_policies 
+    WHERE schemaname = 'public' AND tablename = table_name
+  LOOP
+    EXECUTE format('DROP POLICY IF EXISTS %I ON %I', pol.policyname, table_name);
+  END LOOP;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ============================================================================
 -- ESSENTIAL_INFO TABLE
 -- ============================================================================
-DROP POLICY IF EXISTS "Allow select on essential_info" ON essential_info;
-DROP POLICY IF EXISTS "Allow insert on essential_info" ON essential_info;
-DROP POLICY IF EXISTS "Allow update on essential_info" ON essential_info;
-DROP POLICY IF EXISTS "Allow delete on essential_info" ON essential_info;
+SELECT drop_all_policies_on_table('essential_info');
 
 CREATE POLICY "Users can view their household essential info"
 ON essential_info FOR SELECT
@@ -58,10 +73,7 @@ USING (household_id = get_user_household_id());
 -- ============================================================================
 -- TRAINING_MODULES TABLE
 -- ============================================================================
-DROP POLICY IF EXISTS "Allow select on training_modules" ON training_modules;
-DROP POLICY IF EXISTS "Allow insert on training_modules" ON training_modules;
-DROP POLICY IF EXISTS "Allow update on training_modules" ON training_modules;
-DROP POLICY IF EXISTS "Allow delete on training_modules" ON training_modules;
+SELECT drop_all_policies_on_table('training_modules');
 
 CREATE POLICY "Users can view their household training modules"
 ON training_modules FOR SELECT
@@ -80,56 +92,59 @@ ON training_modules FOR DELETE
 USING (household_id = get_user_household_id());
 
 -- ============================================================================
--- HELPER_POINTS TABLE
+-- HELPER_POINTS TABLE (may not exist - was dropped in migration 020)
 -- ============================================================================
-DROP POLICY IF EXISTS "Allow select on helper_points" ON helper_points;
-DROP POLICY IF EXISTS "Allow insert on helper_points" ON helper_points;
-DROP POLICY IF EXISTS "Allow update on helper_points" ON helper_points;
-DROP POLICY IF EXISTS "Allow delete on helper_points" ON helper_points;
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT FROM information_schema.tables 
+    WHERE table_schema = 'public' 
+    AND table_name = 'helper_points'
+  ) THEN
+    PERFORM drop_all_policies_on_table('helper_points');
 
-CREATE POLICY "Users can view helper points in their household"
-ON helper_points FOR SELECT
-USING (
-  user_id IN (
-    SELECT id FROM users 
-    WHERE household_id = get_user_household_id()
-  )
-);
+    CREATE POLICY "Users can view helper points in their household"
+    ON helper_points FOR SELECT
+    USING (
+      user_id IN (
+        SELECT id FROM users 
+        WHERE household_id = get_user_household_id()
+      )
+    );
 
-CREATE POLICY "Users can insert their own points"
-ON helper_points FOR INSERT
-WITH CHECK (
-  user_id IN (
-    SELECT id FROM users 
-    WHERE household_id = get_user_household_id()
-  )
-);
+    CREATE POLICY "Users can insert their own points"
+    ON helper_points FOR INSERT
+    WITH CHECK (
+      user_id IN (
+        SELECT id FROM users 
+        WHERE household_id = get_user_household_id()
+      )
+    );
 
-CREATE POLICY "Users can update their own points"
-ON helper_points FOR UPDATE
-USING (
-  user_id IN (
-    SELECT id FROM users 
-    WHERE household_id = get_user_household_id()
-  )
-);
+    CREATE POLICY "Users can update their own points"
+    ON helper_points FOR UPDATE
+    USING (
+      user_id IN (
+        SELECT id FROM users 
+        WHERE household_id = get_user_household_id()
+      )
+    );
 
-CREATE POLICY "Users can delete their own points"
-ON helper_points FOR DELETE
-USING (
-  user_id IN (
-    SELECT id FROM users 
-    WHERE household_id = get_user_household_id()
-  )
-);
+    CREATE POLICY "Users can delete their own points"
+    ON helper_points FOR DELETE
+    USING (
+      user_id IN (
+        SELECT id FROM users 
+        WHERE household_id = get_user_household_id()
+      )
+    );
+  END IF;
+END $$;
 
 -- ============================================================================
 -- TODO_ITEMS TABLE
 -- ============================================================================
-DROP POLICY IF EXISTS "Allow select on todo_items" ON todo_items;
-DROP POLICY IF EXISTS "Allow insert on todo_items" ON todo_items;
-DROP POLICY IF EXISTS "Allow update on todo_items" ON todo_items;
-DROP POLICY IF EXISTS "Allow delete on todo_items" ON todo_items;
+SELECT drop_all_policies_on_table('todo_items');
 
 CREATE POLICY "Users can view their household todo items"
 ON todo_items FOR SELECT
@@ -150,18 +165,13 @@ USING (household_id = get_user_household_id());
 -- ============================================================================
 -- USERS TABLE
 -- ============================================================================
-DROP POLICY IF EXISTS "Allow select on users" ON users;
-DROP POLICY IF EXISTS "Allow insert on users" ON users;
-DROP POLICY IF EXISTS "Allow update on users" ON users;
-DROP POLICY IF EXISTS "Allow delete on users" ON users;
+SELECT drop_all_policies_on_table('users');
 
--- Users can view other users in their household
 CREATE POLICY "Users can view their household members"
 ON users FOR SELECT
 USING (household_id = get_user_household_id());
 
 -- Only service role can insert users (via API routes)
--- Regular users cannot directly insert users
 CREATE POLICY "Service role can insert users"
 ON users FOR INSERT
 WITH CHECK (false); -- Disable direct inserts, use API routes
@@ -182,10 +192,7 @@ USING (false); -- Disable direct deletes, use API routes
 -- ============================================================================
 -- HOUSEHOLDS TABLE
 -- ============================================================================
-DROP POLICY IF EXISTS "Allow select on households" ON households;
-DROP POLICY IF EXISTS "Allow insert on households" ON households;
-DROP POLICY IF EXISTS "Allow update on households" ON households;
-DROP POLICY IF EXISTS "Allow delete on households" ON households;
+SELECT drop_all_policies_on_table('households');
 
 CREATE POLICY "Users can view their household"
 ON households FOR SELECT
@@ -208,10 +215,7 @@ USING (false); -- Disable direct deletes, use API routes
 -- ============================================================================
 -- MEALS TABLE
 -- ============================================================================
-DROP POLICY IF EXISTS "Allow select on meals" ON meals;
-DROP POLICY IF EXISTS "Allow insert on meals" ON meals;
-DROP POLICY IF EXISTS "Allow update on meals" ON meals;
-DROP POLICY IF EXISTS "Allow delete on meals" ON meals;
+SELECT drop_all_policies_on_table('meals');
 
 CREATE POLICY "Users can view their household meals"
 ON meals FOR SELECT
@@ -232,10 +236,7 @@ USING (household_id = get_user_household_id());
 -- ============================================================================
 -- EXPENSES TABLE
 -- ============================================================================
-DROP POLICY IF EXISTS "Allow select on expenses" ON expenses;
-DROP POLICY IF EXISTS "Allow insert on expenses" ON expenses;
-DROP POLICY IF EXISTS "Allow update on expenses" ON expenses;
-DROP POLICY IF EXISTS "Allow delete on expenses" ON expenses;
+SELECT drop_all_policies_on_table('expenses');
 
 CREATE POLICY "Users can view their household expenses"
 ON expenses FOR SELECT
@@ -256,10 +257,7 @@ USING (household_id = get_user_household_id());
 -- ============================================================================
 -- HOUSE_ROUTINE TABLE
 -- ============================================================================
-DROP POLICY IF EXISTS "Allow select on house_routine" ON house_routine;
-DROP POLICY IF EXISTS "Allow insert on house_routine" ON house_routine;
-DROP POLICY IF EXISTS "Allow update on house_routine" ON house_routine;
-DROP POLICY IF EXISTS "Allow delete on house_routine" ON house_routine;
+SELECT drop_all_policies_on_table('house_routine');
 
 CREATE POLICY "Users can view their household house routine"
 ON house_routine FOR SELECT
@@ -278,12 +276,73 @@ ON house_routine FOR DELETE
 USING (household_id = get_user_household_id());
 
 -- ============================================================================
+-- RECEIPTS TABLE
+-- ============================================================================
+SELECT drop_all_policies_on_table('receipts');
+
+CREATE POLICY "Users can view their household receipts"
+ON receipts FOR SELECT
+USING (household_id = get_user_household_id());
+
+CREATE POLICY "Users can insert their household receipts"
+ON receipts FOR INSERT
+WITH CHECK (household_id = get_user_household_id());
+
+CREATE POLICY "Users can update their household receipts"
+ON receipts FOR UPDATE
+USING (household_id = get_user_household_id());
+
+CREATE POLICY "Users can delete their household receipts"
+ON receipts FOR DELETE
+USING (household_id = get_user_household_id());
+
+-- ============================================================================
+-- SECTIONS TABLE
+-- ============================================================================
+SELECT drop_all_policies_on_table('sections');
+
+CREATE POLICY "Users can view their household sections"
+ON sections FOR SELECT
+USING (household_id = get_user_household_id());
+
+CREATE POLICY "Users can insert their household sections"
+ON sections FOR INSERT
+WITH CHECK (household_id = get_user_household_id());
+
+CREATE POLICY "Users can update their household sections"
+ON sections FOR UPDATE
+USING (household_id = get_user_household_id());
+
+CREATE POLICY "Users can delete their household sections"
+ON sections FOR DELETE
+USING (household_id = get_user_household_id());
+
+-- ============================================================================
+-- SUBSCRIPTION_EVENTS TABLE
+-- ============================================================================
+SELECT drop_all_policies_on_table('subscription_events');
+
+-- Only service role (API routes) can access subscription events
+CREATE POLICY "Service role can view subscription events"
+ON subscription_events FOR SELECT
+USING (false); -- API routes use service role key
+
+CREATE POLICY "Service role can insert subscription events"
+ON subscription_events FOR INSERT
+WITH CHECK (false); -- API routes use service role key
+
+CREATE POLICY "Service role can update subscription events"
+ON subscription_events FOR UPDATE
+USING (false); -- API routes use service role key
+
+CREATE POLICY "Service role can delete subscription events"
+ON subscription_events FOR DELETE
+USING (false); -- API routes use service role key
+
+-- ============================================================================
 -- PUSH_SUBSCRIPTIONS TABLE
 -- ============================================================================
-DROP POLICY IF EXISTS "Allow select on push_subscriptions" ON push_subscriptions;
-DROP POLICY IF EXISTS "Allow insert on push_subscriptions" ON push_subscriptions;
-DROP POLICY IF EXISTS "Allow update on push_subscriptions" ON push_subscriptions;
-DROP POLICY IF EXISTS "Allow delete on push_subscriptions" ON push_subscriptions;
+SELECT drop_all_policies_on_table('push_subscriptions');
 
 CREATE POLICY "Users can manage their own push subscriptions"
 ON push_subscriptions FOR SELECT
@@ -324,15 +383,12 @@ USING (
 -- ============================================================================
 -- NOTIFICATIONS TABLE
 -- ============================================================================
-DROP POLICY IF EXISTS "Allow select on notifications" ON notifications;
-DROP POLICY IF EXISTS "Allow insert on notifications" ON notifications;
-DROP POLICY IF EXISTS "Allow update on notifications" ON notifications;
-DROP POLICY IF EXISTS "Allow delete on notifications" ON notifications;
+SELECT drop_all_policies_on_table('notifications');
 
 CREATE POLICY "Users can view their own notifications"
 ON notifications FOR SELECT
 USING (
-  user_id IN (
+  recipient_user_id IN (
     SELECT id FROM users 
     WHERE clerk_id = get_clerk_id()
   )
@@ -347,7 +403,7 @@ WITH CHECK (false); -- Edge function uses service role key
 CREATE POLICY "Users can update their own notifications"
 ON notifications FOR UPDATE
 USING (
-  user_id IN (
+  recipient_user_id IN (
     SELECT id FROM users 
     WHERE clerk_id = get_clerk_id()
   )
@@ -356,7 +412,7 @@ USING (
 CREATE POLICY "Users can delete their own notifications"
 ON notifications FOR DELETE
 USING (
-  user_id IN (
+  recipient_user_id IN (
     SELECT id FROM users 
     WHERE clerk_id = get_clerk_id()
   )
@@ -365,7 +421,7 @@ USING (
 -- ============================================================================
 -- NOTIFICATION_QUEUE TABLE
 -- ============================================================================
-DROP POLICY IF EXISTS "Allow all on notification_queue" ON notification_queue;
+SELECT drop_all_policies_on_table('notification_queue');
 
 -- Only service role (edge function) can access notification queue
 CREATE POLICY "Service role can access notification queue"
@@ -377,6 +433,12 @@ USING (false); -- Edge function uses service role key
 -- ============================================================================
 -- Keep existing policies (public read, service role write)
 -- No changes needed - this table should remain publicly readable
+-- If policies don't exist, we'll leave it without RLS (public access)
+
+-- ============================================================================
+-- Cleanup: Drop the helper function (optional, can keep for future use)
+-- ============================================================================
+-- DROP FUNCTION IF EXISTS drop_all_policies_on_table(text);
 
 -- ============================================================================
 -- Done! RLS policies are now secured with Clerk JWT integration

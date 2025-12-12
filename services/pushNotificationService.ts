@@ -14,6 +14,14 @@
 
 import { supabase } from './supabase';
 import { getCachedSupabaseUuid, isUserCachePopulated, getUserCacheStats } from './supabaseService';
+import { getAuthenticatedSupabaseClient } from '../contexts/SupabaseContext';
+
+// ============================================================================
+// HELPER: Get authenticated Supabase client (for RLS) or fallback to default
+// ============================================================================
+function getSupabaseClient() {
+  return getAuthenticatedSupabaseClient() || supabase;
+}
 
 // ============================================================================
 // ID VALIDATION HELPERS
@@ -65,7 +73,7 @@ async function resolveSupabaseUserId(userId: string, householdId: string): Promi
     // OPTIMIZATION: If it's already a valid UUID, verify it exists before returning
     if (isValidUuid(userId)) {
       // Quick check if this UUID exists as a user
-      const { data: existingUser, error: existsError } = await supabase
+      const { data: existingUser, error: existsError } = await getSupabaseClient()
         .from('users')
         .select('id')
         .eq('id', userId)
@@ -88,7 +96,7 @@ async function resolveSupabaseUserId(userId: string, householdId: string): Promi
     }
     
     // Query users in the household
-    const { data, error } = await supabase
+    const { data, error } = await getSupabaseClient()
       .from('users')
       .select('id, clerk_id')
       .eq('household_id', householdId);
@@ -119,7 +127,7 @@ async function resolveSupabaseUserId(userId: string, householdId: string): Promi
     }
     
     // Direct lookup by clerk_id (in case household query failed or user not in results)
-    const { data: directUser, error: directError } = await supabase
+    const { data: directUser, error: directError } = await getSupabaseClient()
       .from('users')
       .select('id, clerk_id, household_id')
       .eq('clerk_id', userId)
@@ -429,8 +437,11 @@ async function saveSubscriptionToDatabase(
     has_auth: !!data.auth_key
   });
 
+  // Use authenticated client if available (for RLS), otherwise fall back to default
+  const supabaseClient = getAuthenticatedSupabaseClient() || supabase;
+  
   // Try upsert - if unique constraint exists, it will update; otherwise insert
-  const { data: savedData, error } = await supabase
+  const { data: savedData, error } = await supabaseClient
     .from('push_subscriptions')
     .upsert(data, {
       onConflict: 'user_id,endpoint',  // Matches UNIQUE(user_id, endpoint) constraint
@@ -514,7 +525,7 @@ export async function removeAllSubscriptions(userId: string, householdId?: strin
     }
 
     // Remove from database
-    const { error } = await supabase
+    const { error } = await getSupabaseClient()
       .from('push_subscriptions')
       .delete()
       .eq('user_id', supabaseUserId);
@@ -561,7 +572,7 @@ export async function hasActiveSubscription(userId: string, householdId?: string
           }
         }
         
-        const { data } = await supabase
+        const { data } = await getSupabaseClient()
           .from('push_subscriptions')
           .select('id')
           .eq('user_id', supabaseUserId)
@@ -774,7 +785,7 @@ export async function debugPushNotifications(userId?: string, householdId?: stri
     // 8. Check database subscriptions
     if (resolvedId) {
       console.log('║ 8. Database Subscriptions:');
-      const { data, error } = await supabase
+      const { data, error } = await getSupabaseClient()
         .from('push_subscriptions')
         .select('id, endpoint, created_at')
         .eq('user_id', resolvedId);

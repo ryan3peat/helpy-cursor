@@ -162,3 +162,4 @@ If you encounter issues:
 2. Check browser console for errors
 3. Verify Clerk JWT template configuration
 4. Test with a simple query to verify JWT is being sent
+

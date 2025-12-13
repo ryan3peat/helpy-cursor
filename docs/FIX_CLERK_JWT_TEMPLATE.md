@@ -93,3 +93,4 @@ If your template has a different name (e.g., `Supabase`, `supabase-integration`)
 - [ ] Signed out and back in (fresh token)
 - [ ] No errors in browser console
 - [ ] JWT token appears in Network tab headers
+

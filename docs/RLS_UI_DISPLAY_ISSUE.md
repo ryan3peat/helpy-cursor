@@ -99,3 +99,4 @@ With RLS enabled and policies in place:
 - ✅ API routes (using service role) still work
 
 If this matches your app's behavior, RLS is working correctly regardless of what the UI says!
+

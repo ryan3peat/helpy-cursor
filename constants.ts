@@ -463,6 +463,21 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'subscription.confirm_downgrade_free': 'Downgrading to Free will immediately remove paid features. Continue?',
   'subscription.downgraded_success': 'Your subscription has been downgraded to Free.',
 
+  // Subscription - Trial
+  'subscription.trial_active': 'Free Trial Active',
+  'subscription.trial_ends': 'Your trial ends on',
+  'subscription.days_remaining': 'days remaining',
+  'subscription.trial_banner': 'You are currently on a free trial',
+  'subscription.trial_convert_soon': 'Your trial will convert to a paid subscription on',
+
+  // Subscription - Referral Codes
+  'subscription.referral_code': 'Referral Code (for free trial)',
+  'subscription.referral_code_placeholder': 'e.g., BETTY30DAYS',
+  'subscription.referral_code_hint': 'Enter a referral code to get a 30-day free trial.',
+  'subscription.invalid_referral_code': 'Invalid or expired referral code',
+  'subscription.referral_valid': '✓ 30-day free trial will be applied!',
+  'subscription.referral_already_used': 'A referral code has already been applied to this account',
+
   // Confirmation Dialogs
   'confirm.delete_member': 'Are you sure you want to delete this family member? This action cannot be undone.',
   'confirm.delete_account': 'Are you sure you want to delete your account? This change will be permanent.',

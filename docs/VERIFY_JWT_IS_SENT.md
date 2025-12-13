@@ -66,3 +66,4 @@ After deploying updated `Auth.tsx`:
 2. **Test sign-in** - check Network tab for JWT header
 3. **If JWT is present** - RLS should work
 4. **If JWT is missing** - check SupabaseContext logs and Clerk JWT template
+

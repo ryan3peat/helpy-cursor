@@ -39,3 +39,4 @@ BEGIN
       ELSE 'Returns: ' || test_result::text
     END;
 END $$;
+

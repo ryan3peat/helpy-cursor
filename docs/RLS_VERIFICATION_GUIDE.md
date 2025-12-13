@@ -161,3 +161,4 @@ const supabase = useSupabase();
 - [ ] No errors in Supabase logs
 - [ ] No errors in browser console
 - [ ] All core features work (todo, meals, expenses, etc.)
+

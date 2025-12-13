@@ -69,7 +69,8 @@ export async function createCheckoutSession(
   plan: 'core' | 'pro' | 'test',
   period: 'monthly' | 'yearly',
   userEmail: string,
-  promoCode?: string
+  promoCode?: string,
+  referralCode?: string
 ): Promise<string> {
   try {
     const response = await fetch('/api/create-checkout-session', {
@@ -80,6 +81,7 @@ export async function createCheckoutSession(
         priceKey: `${plan}_${period}`,
         userEmail,
         promoCode: promoCode?.trim() || undefined,
+        referralCode: referralCode?.trim().toUpperCase() || undefined,
       }),
     });
 

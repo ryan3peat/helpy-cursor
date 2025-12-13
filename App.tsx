@@ -11,6 +11,7 @@ import IntroAnimation from './components/IntroAnimation';
 import Auth from './components/Auth';
 import OnboardingOverlay from './components/OnboardingOverlay';
 import InviteSetup from './components/InviteSetup';
+import TrialBanner from './components/TrialBanner';
 // InviteWelcome removed - using Option 2 flow (direct to SignUp via Auth.tsx)
 import { ToDoItem, Meal, Expense, User, TranslationDictionary, HouseholdPlan } from './types';
 import { BASE_TRANSLATIONS } from './constants';
@@ -504,6 +505,10 @@ const AppContent: React.FC = () => {
     return initialDeepLink.navData;
   });
 
+  // Trial state
+  const [isOnTrial, setIsOnTrial] = useState(false);
+  const [trialEndsAt, setTrialEndsAt] = useState<string | null>(null);
+
   // Navigation
   const handleNavigate = (view: string, data?: { section?: string }) => {
     setActiveView(view);
@@ -594,7 +599,7 @@ const AppContent: React.FC = () => {
 
       const { data, error } = await supabase
         .from('households')
-        .select('subscription_plan, subscription_status, max_family_members, max_helpers')
+        .select('subscription_plan, subscription_status, max_family_members, max_helpers, is_trial, trial_ends_at')
         .eq('id', householdId)
         .single();
 
@@ -633,6 +638,10 @@ const AppContent: React.FC = () => {
         maxFamilyMembers: data?.max_family_members ?? null,
         maxHelpers: data?.max_helpers ?? null,
       });
+
+      // Set trial state
+      setIsOnTrial(data?.is_trial || false);
+      setTrialEndsAt(data?.trial_ends_at || null);
     } catch (error) {
       console.error('[App] Failed to load household plan info:', error);
       setHouseholdPlan(prev => prev || null);
@@ -1205,7 +1214,19 @@ const AppContent: React.FC = () => {
     switch (activeView) {
       case 'dashboard':
         return (
-          <Dashboard
+          <>
+            {isOnTrial && trialEndsAt && (
+              <TrialBanner
+                trialEndsAt={trialEndsAt}
+                t={translations}
+                onUpgradeClick={() => {
+                  // Navigate to subscription page
+                  localStorage.setItem('helpy_profile_target_section', 'plan');
+                  setActiveView('profile');
+                }}
+              />
+            )}
+            <Dashboard
             todoItems={todoItems}
             meals={meals}
             users={users}
@@ -1225,6 +1246,7 @@ const AppContent: React.FC = () => {
             realtimeStatus={realtimeStatus}
             onRestartOnboarding={restartOnboarding}
           />
+          </>
         );
 
       case 'todo':

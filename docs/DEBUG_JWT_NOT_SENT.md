@@ -134,3 +134,4 @@ useEffect(() => {
 3. **Check JWT template exists and is active**
 4. **Sign out and back in** (forces fresh token)
 5. **Check browser console for errors**
+

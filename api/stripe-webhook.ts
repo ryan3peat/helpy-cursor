@@ -274,20 +274,25 @@ async function handleWebhookRequest(req: any, res: any) {
 
       console.log(`✅ checkout.session.completed for household: ${hid}, plan: ${plan}`);
 
+      // Handle referral code tracking
+      const referralCode = session.metadata?.referral_code;
+      const agencyId = session.metadata?.agency_id;
+      const referralCodeId = session.metadata?.referral_code_id;
+
       if (hid && plan && session.subscription && PLAN_LIMITS[plan]) {
         const limits = PLAN_LIMITS[plan];
-        
+
         // Retrieve subscription to get period end date
         try {
-          const subscriptionId = typeof session.subscription === 'string' 
-            ? session.subscription 
+          const subscriptionId = typeof session.subscription === 'string'
+            ? session.subscription
             : session.subscription.id;
-          
+
           const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-          
+
           // Safely convert period end to ISO string, validating it's a valid timestamp
           const periodEnd = timestampToISO(subscription.current_period_end);
-          
+
           await supabase.from('households').update({
             stripe_customer_id: session.customer as string,
             stripe_subscription_id: subscriptionId,
@@ -305,8 +310,8 @@ async function handleWebhookRequest(req: any, res: any) {
           // Fallback: update without period_end, it will be set by invoice.paid event
           await supabase.from('households').update({
             stripe_customer_id: session.customer as string,
-            stripe_subscription_id: typeof session.subscription === 'string' 
-              ? session.subscription 
+            stripe_subscription_id: typeof session.subscription === 'string'
+              ? session.subscription
               : session.subscription.id,
             subscription_status: 'active',
             subscription_plan: plan,
@@ -314,6 +319,38 @@ async function handleWebhookRequest(req: any, res: any) {
             max_family_members: limits.maxFamily,
             max_helpers: limits.maxHelpers,
           }).eq('id', hid);
+        }
+      }
+
+      // Handle referral code tracking
+      if (referralCode && hid) {
+        // Calculate trial end date
+        const trialEnd = session.subscription && typeof session.subscription === 'object' && session.subscription.trial_end
+          ? new Date((session.subscription.trial_end as number) * 1000).toISOString()
+          : null;
+
+        // Update household with referral info
+        await supabase.from('households').update({
+          is_trial: !!trialEnd,
+          trial_ends_at: trialEnd,
+          referral_code_used: referralCode,
+          referred_by_agency_id: agencyId || null,
+        }).eq('id', hid);
+
+        // Record referral usage
+        await supabase.from('referral_usage').insert({
+          referral_code_id: referralCodeId,
+          agency_id: agencyId,
+          household_id: hid,
+          code_used: referralCode,
+          trial_started_at: new Date().toISOString(),
+          trial_ends_at: trialEnd,
+          subscription_plan: plan,
+        });
+
+        // Increment usage count on referral code
+        if (referralCodeId) {
+          await supabase.rpc('increment_referral_usage', { code_id: referralCodeId });
         }
       }
       break;
@@ -352,6 +389,28 @@ async function handleWebhookRequest(req: any, res: any) {
       // Subscription updated - handles plan changes, status changes, renewals, cancellations
       const subscription = event.data.object as Stripe.Subscription;
       const hid = subscription.metadata?.household_id;
+
+      // Check if trial just ended (status changed from trialing to active)
+      if (subscription.status === 'active' && hid) {
+        const { data: household } = await supabase
+          .from('households')
+          .select('is_trial')
+          .eq('id', hid)
+          .single();
+
+        if (household?.is_trial) {
+          // Trial converted to paid - update tracking
+          await supabase.from('households').update({
+            is_trial: false,
+            subscription_status: 'active',
+          }).eq('id', hid);
+
+          // Update referral_usage with conversion date
+          await supabase.from('referral_usage').update({
+            converted_to_paid_at: new Date().toISOString(),
+          }).eq('household_id', hid);
+        }
+      }
 
       // Log cancellation details for debugging
       const isScheduledToCancel = subscription.cancel_at_period_end === true;

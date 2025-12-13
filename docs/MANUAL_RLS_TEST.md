@@ -134,3 +134,4 @@ After running the test:
 4. **If all tests fail with 401/403:**
    - JWT not being sent
    - Check Network tab for Authorization header
+

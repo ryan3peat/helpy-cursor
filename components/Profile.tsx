@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
   AlertCircle, Heart, Settings, Plus, Trash2, X, Save, Camera,
   Image as ImageIcon, LogOut, Copy, Check, ChevronLeft, ChevronRight,
-  CreditCard, Shield, Lock, Crown, Mail, Share2, Bell, BellOff, BellDot, Phone, CheckCircle, Loader2
+  CreditCard, Shield, Lock, Crown, Mail, Share2, Bell, BellOff, BellDot, Phone, CheckCircle, Loader2, Clock
 } from 'lucide-react';
 import { useUser } from '@clerk/clerk-react';
 import { User, UserRole, BaseViewProps, HouseholdPlan } from '../types';
@@ -113,12 +113,20 @@ const Profile: React.FC<ProfileProps> = ({
   // Settings State
   const [selectedPlan, setSelectedPlan] = useState<'free' | 'core' | 'pro'>('free');
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
+
+  // Trial State
+  const [isOnTrial, setIsOnTrial] = useState(false);
+  const [trialEndsAt, setTrialEndsAt] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingPlan, setLoadingPlan] = useState<'free' | 'core' | 'pro' | 'test' | null>(null);
   const [isPlanConfirmOpen, setIsPlanConfirmOpen] = useState(false);
   const [pendingPlan, setPendingPlan] = useState<{ plan: 'core' | 'pro' | 'test'; period: 'monthly' | 'yearly' } | null>(null);
   const [promoCodeInput, setPromoCodeInput] = useState('');
   const [promoCodeError, setPromoCodeError] = useState<string | null>(null);
+  const [referralCodeInput, setReferralCodeInput] = useState('');
+  const [referralCodeError, setReferralCodeError] = useState<string | null>(null);
+  const [referralCodeValid, setReferralCodeValid] = useState(false);
+  const [isValidatingReferral, setIsValidatingReferral] = useState(false);
   const [subscriptionInfo, setSubscriptionInfo] = useState<{
     plan: string;
     status: string;
@@ -220,7 +228,7 @@ const Profile: React.FC<ProfileProps> = ({
       }
       const { data, error } = await supabase
         .from('households')
-        .select('name, subscription_plan, subscription_status, subscription_current_period_end, subscription_period')
+        .select('name, subscription_plan, subscription_status, subscription_current_period_end, subscription_period, is_trial, trial_ends_at')
         .eq('id', currentUser.householdId)
         .single();
 
@@ -245,6 +253,10 @@ const Profile: React.FC<ProfileProps> = ({
         });
         setSelectedPlan((data.subscription_plan || 'free') as 'free' | 'core' | 'pro');
         setBillingPeriod((data.subscription_period || 'monthly') as 'monthly' | 'yearly');
+
+        // Set trial state
+        setIsOnTrial(data.is_trial || false);
+        setTrialEndsAt(data.trial_ends_at || null);
         
         // If we were retrying and subscription is now active, we're done
         if (retryCount > 0 && data.subscription_status === 'active') {
@@ -515,8 +527,40 @@ const Profile: React.FC<ProfileProps> = ({
     setNewRole(UserRole.CHILD);
   };
 
+  // Referral Code Validation
+  const validateReferralCode = async (code: string) => {
+    if (!code.trim()) {
+      setReferralCodeValid(false);
+      setReferralCodeError(null);
+      return;
+    }
+
+    setIsValidatingReferral(true);
+    try {
+      const { data, error } = await supabase
+        .from('referral_codes')
+        .select('id, trial_days, is_active')
+        .eq('code', code.trim().toUpperCase())
+        .eq('is_active', true)
+        .single();
+
+      if (error || !data) {
+        setReferralCodeError(t['subscription.invalid_referral_code'] || 'Invalid or expired referral code');
+        setReferralCodeValid(false);
+      } else {
+        setReferralCodeError(null);
+        setReferralCodeValid(true);
+      }
+    } catch (err) {
+      setReferralCodeError(t['subscription.invalid_referral_code'] || 'Invalid or expired referral code');
+      setReferralCodeValid(false);
+    } finally {
+      setIsValidatingReferral(false);
+    }
+  };
+
   // Stripe Checkout Handler
-  const handleSelectPlan = async (plan: 'core' | 'pro' | 'test', period: 'monthly' | 'yearly', promoCode?: string) => {
+  const handleSelectPlan = async (plan: 'core' | 'pro' | 'test', period: 'monthly' | 'yearly', promoCode?: string, referralCode?: string) => {
     try {
       setPromoCodeError(null);
       setLoadingPlan(plan);
@@ -525,7 +569,8 @@ const Profile: React.FC<ProfileProps> = ({
         plan,
         period,
         currentUser.email || '',
-        promoCode
+        promoCode,
+        referralCode
       );
       
       // Redirect to Stripe Checkout
@@ -546,7 +591,7 @@ const Profile: React.FC<ProfileProps> = ({
 
   const handleConfirmPlan = async () => {
     if (!pendingPlan) return;
-    await handleSelectPlan(pendingPlan.plan, pendingPlan.period, promoCodeInput);
+    await handleSelectPlan(pendingPlan.plan, pendingPlan.period, referralCodeValid ? undefined : promoCodeInput, referralCodeValid ? referralCodeInput : undefined);
   };
 
   // Stripe Portal Handler (for managing existing subscription)
@@ -1856,6 +1901,14 @@ const Profile: React.FC<ProfileProps> = ({
     }
   };
 
+  const getDaysRemaining = (endDate: string) => {
+    const end = new Date(endDate);
+    const now = new Date();
+    const diffTime = end.getTime() - now.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return Math.max(0, diffDays);
+  };
+
   const getPlanDisplayName = (plan: 'core' | 'pro' | 'test' | 'free') => {
     if (plan === 'core') return t['common.core'] || 'Core';
     if (plan === 'pro') return t['common.pro'] || 'Pro';
@@ -2017,6 +2070,23 @@ const Profile: React.FC<ProfileProps> = ({
                 ) : subscriptionInfo?.status !== 'active' && subscriptionInfo?.status !== 'canceling' && (
                   <div className="mt-4 pt-4 border-t border-primary-foreground/20">
                     <p className="text-body text-primary-foreground/80">{t['common.no_active_subscription'] || 'No active subscription'}</p>
+                  </div>
+                )}
+
+                {isOnTrial && trialEndsAt && (
+                  <div className="mt-4 p-3 bg-amber-500/20 rounded-xl border border-amber-500/30">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Clock size={16} className="text-amber-200" />
+                      <span className="text-caption font-semibold text-amber-100">
+                        {t['subscription.trial_active'] || 'Trial Active'}
+                      </span>
+                    </div>
+                    <p className="text-body text-amber-100">
+                      {t['subscription.trial_ends'] || 'Your trial ends on'} {formatDate(trialEndsAt)}
+                    </p>
+                    <p className="text-caption text-amber-200/80 mt-1">
+                      {getDaysRemaining(trialEndsAt)} {t['subscription.days_remaining'] || 'days remaining'}
+                    </p>
                   </div>
                 )}
 
@@ -2212,7 +2282,63 @@ const Profile: React.FC<ProfileProps> = ({
                   <p className="text-body text-foreground">
                     {`You are about to upgrade to the ${getPlanDisplayName(pendingPlan.plan)} plan.`}
                   </p>
+
+                  {/* Referral Code Section */}
                   <div className="space-y-2">
+                    <label className="text-caption font-bold text-muted-foreground ml-1">
+                      {t['subscription.referral_code'] || 'Referral Code (for free trial)'}
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={referralCodeInput}
+                        onChange={(e) => {
+                          const value = e.target.value.toUpperCase();
+                          setReferralCodeInput(value);
+                          setReferralCodeError(null);
+                          setReferralCodeValid(false);
+                        }}
+                        onBlur={() => validateReferralCode(referralCodeInput)}
+                        placeholder={t['subscription.referral_code_placeholder'] || 'e.g., BETTY30DAYS'}
+                        className={`w-full bg-muted border rounded-xl px-4 py-3 text-foreground font-medium focus:border-primary outline-none transition-colors text-body uppercase ${
+                          referralCodeError ? 'border-destructive' : referralCodeValid ? 'border-green-500' : 'border-border'
+                        }`}
+                      />
+                      {isValidatingReferral && (
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                          <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                        </div>
+                      )}
+                      {referralCodeValid && !isValidatingReferral && (
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                          <Check size={20} className="text-green-500" />
+                        </div>
+                      )}
+                    </div>
+                    {referralCodeError && (
+                      <p className="text-caption text-destructive">{referralCodeError}</p>
+                    )}
+                    {referralCodeValid && (
+                      <p className="text-caption text-green-600">
+                        {t['subscription.referral_valid'] || '✓ 30-day free trial will be applied!'}
+                      </p>
+                    )}
+                    <p className="text-caption text-muted-foreground">
+                      {t['subscription.referral_code_hint'] || 'Enter a referral code to get a 30-day free trial.'}
+                    </p>
+                  </div>
+
+                  {/* Divider between referral and promo code */}
+                  {referralCodeValid && (
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <div className="flex-1 h-px bg-border" />
+                      <span className="text-caption">{t['common.or'] || 'or'}</span>
+                      <div className="flex-1 h-px bg-border" />
+                    </div>
+                  )}
+
+                  {/* Promo Code Section */}
+                  <div className={`space-y-2 ${referralCodeValid ? 'opacity-50 pointer-events-none' : ''}`}>
                     <label className="text-caption font-bold text-muted-foreground ml-1">
                       {t['subscription.promo_code'] || 'Promo code (optional)'}
                     </label>
@@ -2244,6 +2370,9 @@ const Profile: React.FC<ProfileProps> = ({
                       setPendingPlan(null);
                       setPromoCodeInput('');
                       setPromoCodeError(null);
+                      setReferralCodeInput('');
+                      setReferralCodeError(null);
+                      setReferralCodeValid(false);
                     }}
                     disabled={loadingPlan !== null}
                     className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body hover:bg-secondary/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"

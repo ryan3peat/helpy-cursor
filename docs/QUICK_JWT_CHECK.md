@@ -90,3 +90,4 @@ checkJWT();
 3. **Sign out and back in** (forces fresh token)
 4. **Check Network tab** for Authorization header
 5. **Check Supabase logs** for 401 errors
+

@@ -151,3 +151,4 @@ If you encounter issues:
 2. Check Supabase logs for policy violations
 3. Verify JWT token is in request headers
 4. Test with a simple query in browser console
+

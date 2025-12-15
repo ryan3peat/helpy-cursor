@@ -67,6 +67,7 @@ const AppContent: React.FC = () => {
   const [activeView, setActiveView] = useState('dashboard');
   const [clerkLoadTimeout, setClerkLoadTimeout] = useState(false);
   const [clerkError, setClerkError] = useState<string | null>(null);
+  const [editHelperUserId, setEditHelperUserId] = useState<string | null>(null);
 
   // Add timeout fallback if Clerk takes too long to load (10 seconds)
   useEffect(() => {
@@ -274,6 +275,13 @@ const AppContent: React.FC = () => {
     if (onboardingStep === 1 && view === 'profile') {
       setOnboardingStep(2);
     }
+  };
+  
+  // Handle edit helper from Helper Management - navigates to Profile and opens edit modal
+  const handleEditHelper = (helperId: string) => {
+    setEditHelperUserId(helperId);
+    setActiveView('profile');
+    window.scrollTo(0, 0);
   };
 
   const advanceOnboarding = () => {
@@ -806,6 +814,7 @@ const AppContent: React.FC = () => {
             t={translations}
             currentLang={lang}
             onNavigateToProfile={() => handleNavigate('profile')}
+            onEditHelper={handleEditHelper}
           />
         );
 
@@ -816,11 +825,15 @@ const AppContent: React.FC = () => {
             onAdd={handleAddUser}
             onUpdate={handleUpdateUser}
             onDelete={handleDeleteUser}
-            onBack={() => setActiveView('dashboard')}
+            onBack={() => {
+              setActiveView('dashboard');
+              setEditHelperUserId(null); // Clear edit target when leaving profile
+            }}
             currentUser={currentUser!}
             onLogout={handleLogout}
             t={translations}
             currentLang={lang}
+            initialEditUserId={editHelperUserId || undefined}
           />
         );
 

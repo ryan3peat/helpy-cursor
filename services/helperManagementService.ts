@@ -16,12 +16,19 @@ import type {
  */
 function getSupabase() {
   const authClient = getAuthenticatedSupabaseClient();
+  if (!authClient) {
+    console.warn('[helperManagementService] ⚠️ No authenticated client available, using default (may fail RLS)');
+  }
   return authClient || defaultSupabase;
 }
 
 // Wrapper that uses authenticated client for all operations
 const supabase = {
-  from: (table: string) => getSupabase().from(table),
+  from: (table: string) => {
+    const client = getSupabase();
+    console.log('[helperManagementService] Using Supabase client for table:', table);
+    return client.from(table);
+  },
   channel: (name: string) => getSupabase().channel(name),
 };
 

@@ -27,6 +27,7 @@ interface ProfileProps extends BaseViewProps {
   onBack: () => void;
   currentUser: User;
   onLogout: () => void;
+  initialEditUserId?: string; // If set, opens edit modal for this user on mount
 }
 
 // Role priority for consistent sorting across all family members
@@ -43,7 +44,7 @@ const ROLE_PRIORITY: Record<string, number> = {
 const HOUSEHOLD_NAME_CACHE_KEY = 'helpy_household_name';
 
 const Profile: React.FC<ProfileProps> = ({
-  users, onAdd, onUpdate, onDelete, onBack, currentUser, onLogout, t, currentLang
+  users, onAdd, onUpdate, onDelete, onBack, currentUser, onLogout, t, currentLang, initialEditUserId
 }) => {
   // ─────────────────────────────────────────────────────────────────
   // Role-based permissions
@@ -150,6 +151,31 @@ const Profile: React.FC<ProfileProps> = ({
 
   // Lock scroll when any modal is open
   useScrollLock(isAddModalOpen || isEditModalOpen || deleteConfirmOpen || showPhotoOptions || subscriptionCanceled);
+
+  // Handle initial edit user ID (from external navigation like Helper Management)
+  useEffect(() => {
+    if (initialEditUserId) {
+      const userToEdit = users.find(u => u.id === initialEditUserId);
+      if (userToEdit) {
+        // Set selected user and open edit modal
+        setSelectedUserId(initialEditUserId);
+        setEditName(userToEdit.name);
+        setEditRole(userToEdit.role);
+        setEditAllergies([...(userToEdit.allergies || [])]);
+        setEditPreferences([...(userToEdit.preferences || [])]);
+        
+        // Load helper salary fields if Helper role
+        if (userToEdit.role === UserRole.HELPER) {
+          setEditHelperStartDate(userToEdit.helperStartDate || null);
+          setEditHelperBaseSalary(userToEdit.helperBaseSalary || 5100);
+          setEditHelperFoodAllowance(userToEdit.helperFoodAllowance || 1236);
+          setEditHelperOtherAllowances(userToEdit.helperOtherAllowances || []);
+        }
+        
+        setIsEditModalOpen(true);
+      }
+    }
+  }, [initialEditUserId, users]);
 
   // Pre-fetch subscription info on component mount (for admins)
   // This eliminates latency when navigating to the Plan page

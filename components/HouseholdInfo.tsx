@@ -83,6 +83,8 @@ interface HouseholdInfoProps extends BaseViewProps {
   onSectionChange?: (section: string) => void;
   // Navigation callback
   onNavigateToProfile?: () => void;
+  // Direct edit helper callback (opens edit modal directly)
+  onEditHelper?: (helperId: string) => void;
 }
 
 type ActiveSection = "essentialInfo" | "houseRoutine" | "helper";
@@ -479,6 +481,7 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
   initialSection,
   onSectionChange,
   onNavigateToProfile,
+  onEditHelper,
 }) => {
   // ─────────────────────────────────────────────────────────────────
   // Section Toggle State
@@ -1123,6 +1126,7 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
                   currentUser={currentUser}
                   t={t}
                   onNavigateToProfile={onNavigateToProfile || (() => {})}
+                  onEditHelper={onEditHelper}
                 />
               );
             })()}

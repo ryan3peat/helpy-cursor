@@ -26,6 +26,7 @@ interface Props {
   currentUser: User;
   t: TranslationDictionary;
   onNavigateToProfile: () => void;
+  onEditHelper?: (helperId: string) => void; // Direct edit modal callback
 }
 
 export const HelperManagementContent: React.FC<Props> = ({
@@ -35,6 +36,7 @@ export const HelperManagementContent: React.FC<Props> = ({
   currentUser,
   t,
   onNavigateToProfile,
+  onEditHelper,
 }) => {
   // State
   const [upcomingHolidays, setUpcomingHolidays] = useState<HKStatutoryHoliday[]>([]);
@@ -62,7 +64,11 @@ export const HelperManagementContent: React.FC<Props> = ({
   const baseSalary = helper.helperBaseSalary || 0;
   const foodAllowance = helper.helperFoodAllowance || 0;
   const otherAllowances = (helper.helperOtherAllowances || []).reduce((sum, a) => sum + a.amount, 0);
-  const totalSalary = baseSalary + foodAllowance + otherAllowances + overtimeTotal;
+  const calculatedTotal = baseSalary + foodAllowance + otherAllowances + overtimeTotal;
+  const totalSalary = calculatedTotal;
+  
+  // Check if admin has overridden the calculated amount
+  const isAmountOverridden = currentPayslip && currentPayslip.salaryAmount !== calculatedTotal;
 
   // Load data
   useEffect(() => {
@@ -389,7 +395,14 @@ export const HelperManagementContent: React.FC<Props> = ({
             </p>
             {!isHelper && (
               <button
-                onClick={onNavigateToProfile}
+                onClick={() => {
+                  // Use direct edit callback if available, otherwise fall back to profile navigation
+                  if (onEditHelper) {
+                    onEditHelper(helperId);
+                  } else {
+                    onNavigateToProfile();
+                  }
+                }}
                 className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
               >
                 {t['helper.input_salary'] || 'Input Salary Details'}
@@ -419,36 +432,56 @@ export const HelperManagementContent: React.FC<Props> = ({
                 )}
               </div>
               
-              {/* Salary Breakdown */}
+              {/* Salary Display */}
               <div className="bg-secondary/50 rounded-lg p-3 space-y-1">
-                <div className="flex justify-between text-caption">
-                  <span className="text-muted-foreground">{t['helper.base_salary'] || 'Base Salary'}</span>
-                  <span>${baseSalary.toLocaleString()}</span>
-                </div>
-                {foodAllowance > 0 && (
-                  <div className="flex justify-between text-caption">
-                    <span className="text-muted-foreground">{t['helper.food_allowance'] || 'Food Allowance'}</span>
-                    <span>${foodAllowance.toLocaleString()}</span>
-                  </div>
+                {/* Only show breakdown if amount hasn't been overridden */}
+                {!isAmountOverridden && (
+                  <>
+                    <div className="flex justify-between text-caption">
+                      <span className="text-muted-foreground">{t['helper.base_salary'] || 'Base Salary'}</span>
+                      <span>${baseSalary.toLocaleString()}</span>
+                    </div>
+                    {foodAllowance > 0 && (
+                      <div className="flex justify-between text-caption">
+                        <span className="text-muted-foreground">{t['helper.food_allowance'] || 'Food Allowance'}</span>
+                        <span>${foodAllowance.toLocaleString()}</span>
+                      </div>
+                    )}
+                    {otherAllowances > 0 && (
+                      <div className="flex justify-between text-caption">
+                        <span className="text-muted-foreground">{t['helper.other_allowances'] || 'Other Allowances'}</span>
+                        <span>${otherAllowances.toLocaleString()}</span>
+                      </div>
+                    )}
+                    {overtimeTotal > 0 && (
+                      <div className="flex justify-between text-caption">
+                        <span className="text-muted-foreground">{t['helper.overtime'] || 'Overtime'}</span>
+                        <span>${overtimeTotal.toLocaleString()}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between pt-2 border-t border-border">
+                      <span className="text-body font-semibold">{t['helper.total'] || 'Total'}</span>
+                      <span className="text-title font-bold text-primary">
+                        ${(currentPayslip?.salaryAmount || totalSalary).toLocaleString()}
+                      </span>
+                    </div>
+                  </>
                 )}
-                {otherAllowances > 0 && (
-                  <div className="flex justify-between text-caption">
-                    <span className="text-muted-foreground">{t['helper.other_allowances'] || 'Other Allowances'}</span>
-                    <span>${otherAllowances.toLocaleString()}</span>
-                  </div>
+                
+                {/* Show override notice when amount has been manually changed */}
+                {isAmountOverridden && (
+                  <>
+                    <div className="flex justify-between items-center">
+                      <span className="text-body font-semibold">{t['helper.manual_amount'] || 'Manual Amount'}</span>
+                      <span className="text-title font-bold text-primary">
+                        ${currentPayslip?.salaryAmount.toLocaleString()}
+                      </span>
+                    </div>
+                    <p className="text-caption text-muted-foreground mt-1">
+                      {t['helper.amount_overridden'] || 'Amount has been manually adjusted by Admin'}
+                    </p>
+                  </>
                 )}
-                {overtimeTotal > 0 && (
-                  <div className="flex justify-between text-caption">
-                    <span className="text-muted-foreground">{t['helper.overtime'] || 'Overtime'}</span>
-                    <span>${overtimeTotal.toLocaleString()}</span>
-                  </div>
-                )}
-                <div className="flex justify-between pt-2 border-t border-border">
-                  <span className="text-body font-semibold">{t['helper.total'] || 'Total'}</span>
-                  <span className="text-title font-bold text-primary">
-                    ${(currentPayslip?.salaryAmount || totalSalary).toLocaleString()}
-                  </span>
-                </div>
               </div>
             </div>
             

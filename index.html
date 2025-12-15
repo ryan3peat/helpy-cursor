@@ -17,6 +17,8 @@
           ? (isDark ? '#121212' : '#fafafa')  // Match theme: dark=#121212, light=#fafafa
           : '#3EAFD2';  // New users: brand blue (matches intro/auth)
         document.documentElement.style.setProperty('--initial-bg', bgColor);
+        // Also set html background directly for overscroll
+        document.documentElement.style.backgroundColor = bgColor;
       })();
     </script>
     <meta charset="UTF-8" />
@@ -131,9 +133,8 @@
     <style>
       /* CRITICAL: Prevent black flash during app load.
          This style loads before external CSS and React, ensuring there's always
-         a visible background color. The --initial-bg is set by the inline script above.
-         Note: html background is set in index.css to match theme for overscroll */
-      body, #root {
+         a visible background color. The --initial-bg is set by the inline script above. */
+      html, body, #root {
         background-color: var(--initial-bg, #3EAFD2);
       }
       /* Ensure root fills the viewport during React loading */

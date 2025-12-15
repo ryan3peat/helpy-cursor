@@ -13,7 +13,7 @@ import OnboardingOverlay from './components/OnboardingOverlay';
 import InviteSetup from './components/InviteSetup';
 import TrialBanner from './components/TrialBanner';
 // InviteWelcome removed - using Option 2 flow (direct to SignUp via Auth.tsx)
-import { ToDoItem, Meal, Expense, User, TranslationDictionary, HouseholdPlan } from './types';
+import { ToDoItem, Meal, Expense, User, TranslationDictionary, HouseholdPlan, OnboardingStatus } from './types';
 import { BASE_TRANSLATIONS } from './constants';
 import { detectDeviceLanguage } from './services/languageDetectionService';
 import { getStaticTranslations } from './services/translationService';
@@ -27,6 +27,7 @@ import {
   subscribeToNotes,
   fetchCollection,
   getCachedSupabaseUuid,
+  updateOnboardingStatus,
 } from './services/supabaseService';
 import { useSupabase, useSupabaseReady } from './contexts/SupabaseContext';
 import { supabase as defaultSupabase } from './services/supabase';
@@ -388,17 +389,25 @@ const AppContent: React.FC = () => {
   });
 
   // Onboarding State (index-based: 0, 1, 2... or -1 for complete)
-  const [onboardingStepIndex, setOnboardingStepIndex] = useState<number>(() => {
-    const saved = localStorage.getItem('helpy_onboarding_step_index');
-    return saved ? parseInt(saved, 10) : 0;
-  });
+  // Initialized to -1 (hidden) - will be set based on user's onboardingStatus when they log in
+  const [onboardingStepIndex, setOnboardingStepIndex] = useState<number>(-1);
   
   // State to trigger add member sheet from onboarding
   const [openAddMemberFromOnboarding, setOpenAddMemberFromOnboarding] = useState(false);
 
+  // Initialize onboarding based on user's database status when currentUser changes
   useEffect(() => {
-    localStorage.setItem('helpy_onboarding_step_index', String(onboardingStepIndex));
-  }, [onboardingStepIndex]);
+    if (currentUser) {
+      const status = currentUser.onboardingStatus || 'not_started';
+      if (status === 'not_started') {
+        // Show onboarding for new users
+        setOnboardingStepIndex(0);
+      } else {
+        // Hide onboarding for completed or skipped users
+        setOnboardingStepIndex(-1);
+      }
+    }
+  }, [currentUser?.id, currentUser?.onboardingStatus]);
 
   // Check for invite params and portal return on mount
   useEffect(() => {
@@ -521,7 +530,7 @@ const AppContent: React.FC = () => {
   const [onboardingSection, setOnboardingSection] = useState<string | undefined>(undefined);
 
   // Handle onboarding action and advance to next step
-  const handleOnboardingAction = (action: { type: string; target?: string; section?: string; sheet?: string }) => {
+  const handleOnboardingAction = async (action: { type: string; target?: string; section?: string; sheet?: string }) => {
     if (action.type === 'navigate' && action.target) {
       setActiveView(action.target);
       // Set section for the target page if specified
@@ -536,7 +545,12 @@ const AppContent: React.FC = () => {
     } else if (action.type === 'openSheet' && action.sheet === 'addMember') {
       setOpenAddMemberFromOnboarding(true);
     } else if (action.type === 'complete') {
-      // Onboarding complete - set to -1 to hide overlay
+      // Onboarding complete - update database status if not already completed
+      if (currentUser && currentUser.onboardingStatus !== 'completed') {
+        await updateOnboardingStatus(currentUser.id, 'completed', currentUser.onboardingStatus);
+        // Update local user state to reflect the change
+        setCurrentUser(prev => prev ? { ...prev, onboardingStatus: 'completed' } : prev);
+      }
       setOnboardingStepIndex(-1);
       setOnboardingSection(undefined);
       return; // Don't advance step index
@@ -545,11 +559,19 @@ const AppContent: React.FC = () => {
     setOnboardingStepIndex(prev => prev + 1);
   };
 
-  const skipOnboarding = () => {
+  const skipOnboarding = async () => {
+    // Update database status if not already completed
+    if (currentUser && currentUser.onboardingStatus !== 'completed') {
+      await updateOnboardingStatus(currentUser.id, 'skipped', currentUser.onboardingStatus);
+      // Update local user state to reflect the change
+      setCurrentUser(prev => prev ? { ...prev, onboardingStatus: 'skipped' } : prev);
+    }
     setOnboardingStepIndex(-1);
     setOnboardingSection(undefined);
   };
   
+  // Restart onboarding locally only - does NOT change database status
+  // This allows users to re-watch the tutorial without losing their "completed" status
   const restartOnboarding = () => {
     setOnboardingStepIndex(0);
     setOnboardingSection(undefined);
@@ -1244,7 +1266,6 @@ const AppContent: React.FC = () => {
             isTranslating={isAnyTranslating}
             onUpdateMeal={handleUpdateMeal}
             realtimeStatus={realtimeStatus}
-            onRestartOnboarding={restartOnboarding}
           />
           </>
         );
@@ -1334,6 +1355,7 @@ const AppContent: React.FC = () => {
             currentLang={lang}
             openAddMemberFromOnboarding={openAddMemberFromOnboarding}
             onAddMemberSheetOpened={() => setOpenAddMemberFromOnboarding(false)}
+            onRestartOnboarding={restartOnboarding}
           />
         );
 

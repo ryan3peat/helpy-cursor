@@ -45,7 +45,7 @@ export interface HouseRoutine {
 // For creating new entries (id is auto-generated)
 export type CreateHouseRoutine = Omit<HouseRoutine, 'id' | 'householdId' | 'createdAt'>;
 
-// Category colors - same as Training for consistency
+// Category colors
 export const HOUSE_ROUTINE_CATEGORY_CONFIG: Record<HouseRoutineCategory, { color: string; bgColor: string }> = {
   'House Rules': { color: '#7E57C2', bgColor: '#EDE7F6' },
   'Routine': { color: '#AB47BC', bgColor: '#F3E5F5' },

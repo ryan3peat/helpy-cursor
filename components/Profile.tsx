@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
   AlertCircle, Heart, Settings, Plus, Trash2, X, Save, Camera,
   Image as ImageIcon, LogOut, Copy, Check, ChevronLeft, ChevronRight,
-  CreditCard, Shield, Lock, Crown, Mail, Share2, Bell, BellOff, BellDot, Phone, CheckCircle, Loader2, Clock
+  CreditCard, Shield, Lock, Crown, Mail, Share2, Bell, BellOff, BellDot, Phone, CheckCircle, Loader2, Clock, Lightbulb
 } from 'lucide-react';
 import { useUser } from '@clerk/clerk-react';
 import { User, UserRole, BaseViewProps, HouseholdPlan } from '../types';
@@ -32,6 +32,8 @@ interface ProfileProps extends BaseViewProps {
   openAddMemberFromOnboarding?: boolean;
   /** Callback when add member sheet is opened */
   onAddMemberSheetOpened?: () => void;
+  /** Callback to restart onboarding tutorial */
+  onRestartOnboarding?: () => void;
 }
 
 // Role priority for consistent sorting across all family members
@@ -70,7 +72,7 @@ const HOUSEHOLD_NAME_CACHE_KEY = 'helpy_household_name';
 
 const Profile: React.FC<ProfileProps> = ({
   users, onAdd, onUpdate, onDelete, onBack, currentUser, onLogout, t, currentLang, householdPlan,
-  openAddMemberFromOnboarding, onAddMemberSheetOpened
+  openAddMemberFromOnboarding, onAddMemberSheetOpened, onRestartOnboarding
 }) => {
   // ─────────────────────────────────────────────────────────────────
   // Authenticated Supabase client with JWT for RLS
@@ -1309,20 +1311,41 @@ const Profile: React.FC<ProfileProps> = ({
               </div>
             )}
 
-            {/* Quick Settings Button */}
-            <button
-              onClick={() => setActiveSection('settings')}
-              className="w-full bg-card px-5 py-4 rounded-3xl shadow-sm flex items-center justify-between hover:bg-secondary transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <Settings size={18} className="text-primary" />
-                <div className="text-left">
-                  <p className="font-bold text-foreground text-title">{t['common.settings']}</p>
-                  <p className="text-caption text-muted-foreground">{t['profile.manage_account'] || 'Manage your account'}</p>
+            {/* Settings & Tutorial Card */}
+            <div className="bg-card rounded-3xl shadow-sm overflow-hidden">
+              {/* Settings Row */}
+              <button
+                onClick={() => setActiveSection('settings')}
+                className="w-full px-5 py-4 flex items-center justify-between hover:bg-secondary transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <Settings size={18} className="text-primary" />
+                  <div className="text-left">
+                    <p className="font-bold text-foreground text-title">{t['common.settings']}</p>
+                    <p className="text-caption text-muted-foreground">{t['profile.manage_account'] || 'Manage your account'}</p>
+                  </div>
                 </div>
-              </div>
-              <ChevronRight size={20} className="text-muted-foreground" />
-            </button>
+                <ChevronRight size={20} className="text-muted-foreground" />
+              </button>
+
+              {/* Separator */}
+              <div className="h-px bg-border mx-5" />
+
+              {/* Tutorial Row */}
+              <button
+                onClick={onRestartOnboarding}
+                className="w-full px-5 py-4 flex items-center justify-between hover:bg-secondary transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <Lightbulb size={18} className="text-primary" />
+                  <div className="text-left">
+                    <p className="font-bold text-foreground text-title">{t['profile.tutorial'] || 'Tutorial'}</p>
+                    <p className="text-caption text-muted-foreground">{t['profile.tutorial_desc'] || 'Learn how to use Helpy'}</p>
+                  </div>
+                </div>
+                {/* No arrow for Tutorial */}
+              </button>
+            </div>
           </div>
 
           {/* Footer */}

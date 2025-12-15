@@ -20,8 +20,7 @@ import {
   Trash2,
   Bell,
   BellOff,
-  BellDot,
-  Lightbulb
+  BellDot
 } from 'lucide-react';
 import { ToDoItem, Meal, User, MealType, TranslationDictionary, UserRole, Expense } from '../types';
 import { formatCurrency } from '../currencyConfig';
@@ -51,8 +50,6 @@ interface DashboardProps {
   onUpdateMeal?: (id: string, data: Partial<Meal>) => void;
   /** Real-time connection status */
   realtimeStatus?: ConnectionStatus;
-  /** Callback to restart onboarding flow */
-  onRestartOnboarding?: () => void;
 }
 
 // Component for displaying translated meal description
@@ -125,7 +122,6 @@ const Dashboard: React.FC<DashboardProps> = ({
   isTranslating,
   onUpdateMeal,
   realtimeStatus = 'connected',
-  onRestartOnboarding,
 }) => {
   // ─────────────────────────────────────────────────────────────────
   // Safety check for currentUser
@@ -328,16 +324,6 @@ const Dashboard: React.FC<DashboardProps> = ({
             </h1>
           </div>
           <div className="flex gap-2">
-            {/* Onboarding trigger button */}
-            {onRestartOnboarding && (
-              <button
-                onClick={onRestartOnboarding}
-                className="w-14 h-14 rounded-full bg-primary shadow-sm flex items-center justify-center text-white hover:bg-primary/90 transition-colors"
-                title="Restart Onboarding"
-              >
-                <Lightbulb size={20} />
-              </button>
-            )}
             <button
               onClick={() => setShowLangModal(true)}
               className="relative w-14 h-14 rounded-full bg-card border border-border shadow-sm flex flex-col items-center justify-center text-muted-foreground overflow-visible"

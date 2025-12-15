@@ -288,7 +288,6 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'common.yr': 'yr',
   'common.essential_info': 'Essential',
   'common.house_routine': 'House Routine',
-  'common.training': 'Training',
   'common.home': 'Home',
   'common.school': 'School',
   'common.doctor': 'Doctor',

@@ -1,8 +1,24 @@
 // services/receiptService.ts
 // Handles receipt storage and database operations
 
-import { supabase } from './supabase';
+import { supabase as defaultSupabase } from './supabase';
+import { getAuthenticatedSupabaseClient } from '../contexts/SupabaseContext';
 import { ParsedReceipt, processReceipt } from './visionService';
+
+/**
+ * Get the best available Supabase client.
+ * Prefers authenticated client with JWT (for RLS), falls back to default.
+ */
+function getSupabase() {
+  const authClient = getAuthenticatedSupabaseClient();
+  return authClient || defaultSupabase;
+}
+
+// Wrapper that uses authenticated client for all database operations
+const supabase = {
+  from: (table: string) => getSupabase().from(table),
+  storage: defaultSupabase.storage, // Storage doesn't need JWT for public buckets
+};
 /**
  * Fetch known merchant names for a household (user-corrected history).
  */

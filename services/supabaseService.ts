@@ -1,6 +1,6 @@
 import { supabase as defaultSupabase } from './supabase';
 import { getAuthenticatedSupabaseClient } from '../contexts/SupabaseContext';
-import { User, ShoppingItem, Task, Meal, Expense, Section, ToDoItem } from '../types';
+import { User, ShoppingItem, Task, Meal, Expense, Section, ToDoItem, OnboardingStatus } from '../types';
 
 /**
  * Get the best available Supabase client.
@@ -630,6 +630,20 @@ export async function updateItem(
     if (uuid) {
       console.log(`🔄 Converting assignee_id ${snakeCaseUpdates.assignee_id} to UUID ${uuid}`);
       snakeCaseUpdates.assignee_id = uuid;
+    }
+  }
+  
+  // For todo_items, meals, expenses: convert created_by from Clerk ID to Supabase UUID
+  // All these tables have created_by UUID column that references users(id)
+  if (['todo_items', 'meals', 'expenses'].includes(collection) && snakeCaseUpdates.created_by) {
+    const uuid = await getSupabaseUserId(snakeCaseUpdates.created_by, householdId);
+    if (uuid) {
+      console.log(`🔄 Converting created_by ${snakeCaseUpdates.created_by} to UUID ${uuid}`);
+      snakeCaseUpdates.created_by = uuid;
+    } else {
+      // If we can't find the UUID, remove created_by from update to avoid error
+      console.warn(`⚠️ Could not find UUID for created_by ${snakeCaseUpdates.created_by}, removing from update`);
+      delete snakeCaseUpdates.created_by;
     }
   }
   
@@ -1296,4 +1310,50 @@ export async function fetchCollection(
   
   console.log(`✅ [Sync] Fetched ${data?.length || 0} items from ${tableName}`);
   return convertSupabaseData(data || [], collection);
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Onboarding Status Management
+// ─────────────────────────────────────────────────────────────────
+
+/**
+ * Update a user's onboarding status in the database.
+ * 
+ * Rules:
+ * - If current status is 'completed', do NOT update (preserve it)
+ * - Otherwise, update to the new status
+ * 
+ * @param userId - The user's Supabase UUID
+ * @param newStatus - The new onboarding status
+ * @param currentStatus - The user's current status (to check if already completed)
+ * @returns true if updated, false if skipped or error
+ */
+export async function updateOnboardingStatus(
+  userId: string,
+  newStatus: OnboardingStatus,
+  currentStatus?: OnboardingStatus
+): Promise<boolean> {
+  // If user already completed onboarding, never change it
+  if (currentStatus === 'completed') {
+    console.log(`[Onboarding] User ${userId} already completed - preserving status`);
+    return false;
+  }
+
+  try {
+    const { error } = await supabase
+      .from('users')
+      .update({ onboarding_status: newStatus })
+      .eq('id', userId);
+
+    if (error) {
+      console.error(`[Onboarding] Failed to update status for ${userId}:`, error);
+      return false;
+    }
+
+    console.log(`[Onboarding] Updated status for ${userId}: ${currentStatus || 'unknown'} -> ${newStatus}`);
+    return true;
+  } catch (err) {
+    console.error(`[Onboarding] Exception updating status:`, err);
+    return false;
+  }
 }

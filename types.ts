@@ -8,6 +8,8 @@ export enum UserRole {
   OTHER = 'Other'
 }
 
+export type OnboardingStatus = 'not_started' | 'skipped' | 'completed';
+
 export interface User {
   id: string;
   householdId: string;
@@ -27,6 +29,7 @@ export interface User {
   pin?: string;
   notificationsEnabled?: boolean;
   hasPushSubscription?: boolean;
+  onboardingStatus?: OnboardingStatus;
 }
 
 export interface HouseholdPlan {

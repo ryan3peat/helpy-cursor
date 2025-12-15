@@ -1,9 +1,9 @@
-import React from 'react';
-import { ChevronRight } from 'lucide-react';
+import React, { useState } from 'react';
+import { ChevronRight, X } from 'lucide-react';
 import { TranslationDictionary, UserRole } from '../types';
 
 // Action types for onboarding steps
-type OnboardingAction = 
+export type OnboardingAction = 
   | { type: 'none' }
   | { type: 'navigate'; target: string; section?: string }
   | { type: 'openSheet'; sheet: 'addMember' }
@@ -30,313 +30,255 @@ interface OnboardingStep {
   tooltipPosition: TooltipPosition;
   buttonText: string;
   action: OnboardingAction;
-  allowSkip: boolean;
 }
 
-// Role-based step configurations
+// ═══════════════════════════════════════════════════════════════════════════
+// ROLE-BASED STEP CONFIGURATIONS
+// ═══════════════════════════════════════════════════════════════════════════
+
 const getStepsForRole = (role: UserRole, t: TranslationDictionary): OnboardingStep[] => {
-  // Admin steps - Full onboarding tour
+  
+  // ─────────────────────────────────────────────────────────────────────────
+  // ADMIN - 7 steps
+  // ─────────────────────────────────────────────────────────────────────────
   if (role === UserRole.MASTER) {
     return [
-      // Part 1: Add Family Members
+      // Step 1: Welcome
       {
-        id: '1.1',
+        id: 'admin-1',
         currentPage: 'dashboard',
-        title: t['onboarding.admin.1.1.title'] || 'Welcome',
-        description: t['onboarding.admin.1.1.desc'] || 'This is your home command center! First, let\'s add your family members.',
+        title: t['onboarding.admin.1.title'] || 'Welcome',
+        description: t['onboarding.admin.1.desc'] || 'This is your home command center! First, let\'s add your family members.',
         targetElement: null,
         tooltipPosition: 'center-middle',
         buttonText: t['onboarding.next'] || 'Next',
         action: { type: 'none' },
-        allowSkip: false,
       },
+      // Step 2: Tap profile icon
       {
-        id: '1.2',
+        id: 'admin-2',
         currentPage: 'dashboard',
-        title: t['onboarding.admin.1.2.title'] || 'Add Family Members',
-        description: t['onboarding.admin.1.2.desc'] || 'Tap your profile icon.',
+        title: t['onboarding.admin.2.title'] || 'Add family members',
+        description: t['onboarding.admin.2.desc'] || 'Tap your profile icon.',
         targetElement: 'onboarding-profile-btn',
         tooltipPosition: 'top-right',
         buttonText: t['onboarding.next'] || 'Next',
         action: { type: 'navigate', target: 'profile' },
-        allowSkip: false,
       },
+      // Step 3: Tap Add button
       {
-        id: '1.3',
+        id: 'admin-3',
         currentPage: 'profile',
-        title: t['onboarding.admin.1.3.title'] || 'Add Family Members',
-        description: t['onboarding.admin.1.3.desc'] || 'Tap Add (+).',
+        title: t['onboarding.admin.3.title'] || 'Add family members',
+        description: t['onboarding.admin.3.desc'] || 'Tap Add (+).\nInput their name and send them the invitation link to join the Family.',
         targetElement: 'onboarding-add-member-btn',
         tooltipPosition: 'below-add-button',
         buttonText: t['onboarding.next'] || 'Next',
         action: { type: 'navigate', target: 'dashboard' },
-        allowSkip: false,
       },
-      // Part 2: App Tour
+      // Step 4: Welcome back
       {
-        id: '2.1',
+        id: 'admin-4',
         currentPage: 'dashboard',
-        title: t['onboarding.admin.2.1.title'] || 'Welcome',
-        description: t['onboarding.admin.2.1.desc'] || 'We\'re glad you\'re here! This is your hub for everything about our home and family.',
+        title: t['onboarding.admin.4.title'] || 'Welcome',
+        description: t['onboarding.admin.4.desc'] || 'Love it when family members get together! Let\'s see what has been prepared for you.',
         targetElement: null,
         tooltipPosition: 'center-middle',
         buttonText: t['onboarding.next'] || 'Next',
         action: { type: 'navigate', target: 'info', section: 'essentialInfo' },
-        allowSkip: false,
       },
+      // Step 5: Household Info - Essentials
       {
-        id: '2.2',
+        id: 'admin-5',
         currentPage: 'info',
         currentSection: 'essentialInfo',
-        title: t['onboarding.admin.2.2.title'] || 'Get to Know the Family',
-        description: t['onboarding.admin.2.2.desc'] || 'Here you\'ll find essential details about our home and important places.',
+        title: t['onboarding.admin.5.title'] || 'All about your family',
+        description: t['onboarding.admin.5.desc'] || 'Add important information and places here.',
         targetElement: 'onboarding-info-tabnav',
-        tooltipPosition: 'center-near-tabnav',
-        buttonText: t['onboarding.next'] || 'Next',
-        action: { type: 'navigate', target: 'info', section: 'houseRoutine' },
-        allowSkip: false,
-      },
-      {
-        id: '2.3',
-        currentPage: 'info',
-        currentSection: 'houseRoutine',
-        title: t['onboarding.admin.2.3.title'] || 'Get to Know the Family',
-        description: t['onboarding.admin.2.3.desc'] || 'This covers our family\'s daily routines and shared practices.',
-        targetElement: 'onboarding-info-tabnav',
-        tooltipPosition: 'center-near-tabnav',
-        buttonText: t['onboarding.next'] || 'Next',
-        action: { type: 'navigate', target: 'todo', section: 'shopping' },
-        allowSkip: false,
-      },
-      {
-        id: '2.4',
-        currentPage: 'todo',
-        currentSection: 'shopping',
-        title: t['onboarding.admin.2.4.title'] || 'Things to Buy',
-        description: t['onboarding.admin.2.4.desc'] || 'This is your shopping list.',
-        targetElement: 'onboarding-todo-tabnav',
-        tooltipPosition: 'center-near-tabnav',
-        buttonText: t['onboarding.next'] || 'Next',
-        action: { type: 'navigate', target: 'todo', section: 'task' },
-        allowSkip: false,
-      },
-      {
-        id: '2.5',
-        currentPage: 'todo',
-        currentSection: 'task',
-        title: t['onboarding.admin.2.5.title'] || 'Things to Do',
-        description: t['onboarding.admin.2.5.desc'] || 'This is your task list.',
-        targetElement: 'onboarding-todo-tabnav',
         tooltipPosition: 'center-near-tabnav',
         buttonText: t['onboarding.next'] || 'Next',
         action: { type: 'navigate', target: 'meals' },
-        allowSkip: false,
       },
-      // Part 3: Meals
+      // Step 6: Meals
       {
-        id: '3.1',
+        id: 'admin-6',
         currentPage: 'meals',
-        title: t['onboarding.admin.3.1.title'] || 'What to Cook',
-        description: t['onboarding.admin.3.1.desc'] || 'This is the family meal plan. View the dishes, see who\'s eating.',
+        title: t['onboarding.admin.6.title'] || 'Home-cooked meals are the best',
+        description: t['onboarding.admin.6.desc'] || 'Set the meal plan and let them know you are eating at home.',
         targetElement: null,
         tooltipPosition: 'center-middle',
         buttonText: t['onboarding.next'] || 'Next',
-        action: { type: 'navigate', target: 'expenses' },
-        allowSkip: false,
-      },
-      // Part 4: Expenses
-      {
-        id: '4.1',
-        currentPage: 'expenses',
-        title: t['onboarding.admin.4.1.title'] || 'Add Receipt',
-        description: t['onboarding.admin.4.1.desc'] || 'Add your receipt here.',
-        targetElement: 'onboarding-expenses-fab',
-        tooltipPosition: 'bottom-center',
-        buttonText: t['onboarding.next'] || 'Next',
         action: { type: 'navigate', target: 'dashboard' },
-        allowSkip: false,
       },
-      // Part 5: Family Board
+      // Step 7: Family Board
       {
-        id: '5.1',
+        id: 'admin-7',
         currentPage: 'dashboard',
-        title: t['onboarding.admin.5.1.title'] || 'Important Note',
-        description: t['onboarding.admin.5.1.desc'] || 'We put special and important note here.',
+        title: t['onboarding.admin.7.title'] || 'Got anything important to share with the rest?',
+        description: t['onboarding.admin.7.desc'] || 'Write it down here for everyone to see.',
         targetElement: 'onboarding-family-board',
         tooltipPosition: 'center-near-family-board',
-        buttonText: t['onboarding.ok'] || 'OK',
+        buttonText: t['onboarding.finish'] || 'Finish',
         action: { type: 'complete' },
-        allowSkip: false,
       },
     ];
   }
 
-  // Spouse steps (same as Admin)
-  if (role === UserRole.SPOUSE) {
-    return [
-      {
-        id: '1.1',
-        currentPage: 'dashboard',
-        title: t['onboarding.spouse.1.1.title'] || 'Welcome',
-        description: t['onboarding.spouse.1.1.desc'] || 'This is your home command center! First, let\'s add your family members.',
-        targetElement: null,
-        tooltipPosition: 'center-middle',
-        buttonText: t['onboarding.next'] || 'Next',
-        action: { type: 'none' },
-        allowSkip: false,
-      },
-      {
-        id: '1.2',
-        currentPage: 'dashboard',
-        title: t['onboarding.spouse.1.2.title'] || 'Add Family Members',
-        description: t['onboarding.spouse.1.2.desc'] || 'Tap your profile icon.',
-        targetElement: 'onboarding-profile-btn',
-        tooltipPosition: 'top-right',
-        buttonText: t['onboarding.next'] || 'Next',
-        action: { type: 'navigate', target: 'profile' },
-        allowSkip: false,
-      },
-      {
-        id: '1.3',
-        currentPage: 'profile',
-        title: t['onboarding.spouse.1.3.title'] || 'Add Family Members',
-        description: t['onboarding.spouse.1.3.desc'] || 'Tap Add (+).',
-        targetElement: 'onboarding-add-member-btn',
-        tooltipPosition: 'below-add-button',
-        buttonText: t['onboarding.next'] || 'Next',
-        action: { type: 'navigate', target: 'dashboard' },
-        allowSkip: false,
-      },
-      {
-        id: '2.1',
-        currentPage: 'dashboard',
-        title: t['onboarding.spouse.2.1.title'] || 'Welcome',
-        description: t['onboarding.spouse.2.1.desc'] || 'We\'re glad you\'re here! This is your hub for everything about our home and family.',
-        targetElement: null,
-        tooltipPosition: 'center-middle',
-        buttonText: t['onboarding.next'] || 'Next',
-        action: { type: 'navigate', target: 'info', section: 'essentialInfo' },
-        allowSkip: false,
-      },
-      {
-        id: '2.2',
-        currentPage: 'info',
-        currentSection: 'essentialInfo',
-        title: t['onboarding.spouse.2.2.title'] || 'Get to Know the Family',
-        description: t['onboarding.spouse.2.2.desc'] || 'Here you\'ll find essential details about our home and important places.',
-        targetElement: 'onboarding-info-tabnav',
-        tooltipPosition: 'center-near-tabnav',
-        buttonText: t['onboarding.next'] || 'Next',
-        action: { type: 'navigate', target: 'info', section: 'houseRoutine' },
-        allowSkip: false,
-      },
-      {
-        id: '2.3',
-        currentPage: 'info',
-        currentSection: 'houseRoutine',
-        title: t['onboarding.spouse.2.3.title'] || 'Get to Know the Family',
-        description: t['onboarding.spouse.2.3.desc'] || 'This covers our family\'s daily routines and shared practices.',
-        targetElement: 'onboarding-info-tabnav',
-        tooltipPosition: 'center-near-tabnav',
-        buttonText: t['onboarding.next'] || 'Next',
-        action: { type: 'navigate', target: 'todo', section: 'shopping' },
-        allowSkip: false,
-      },
-      {
-        id: '2.4',
-        currentPage: 'todo',
-        currentSection: 'shopping',
-        title: t['onboarding.spouse.2.4.title'] || 'Things to Buy',
-        description: t['onboarding.spouse.2.4.desc'] || 'This is your shopping list.',
-        targetElement: 'onboarding-todo-tabnav',
-        tooltipPosition: 'center-near-tabnav',
-        buttonText: t['onboarding.next'] || 'Next',
-        action: { type: 'navigate', target: 'todo', section: 'task' },
-        allowSkip: false,
-      },
-      {
-        id: '2.5',
-        currentPage: 'todo',
-        currentSection: 'task',
-        title: t['onboarding.spouse.2.5.title'] || 'Things to Do',
-        description: t['onboarding.spouse.2.5.desc'] || 'This is your task list.',
-        targetElement: 'onboarding-todo-tabnav',
-        tooltipPosition: 'center-near-tabnav',
-        buttonText: t['onboarding.next'] || 'Next',
-        action: { type: 'navigate', target: 'meals' },
-        allowSkip: false,
-      },
-      // Part 3: Meals
-      {
-        id: '3.1',
-        currentPage: 'meals',
-        title: t['onboarding.spouse.3.1.title'] || 'What to Cook',
-        description: t['onboarding.spouse.3.1.desc'] || 'This is the family meal plan. View the dishes, see who\'s eating.',
-        targetElement: null,
-        tooltipPosition: 'center-middle',
-        buttonText: t['onboarding.next'] || 'Next',
-        action: { type: 'navigate', target: 'expenses' },
-        allowSkip: false,
-      },
-      // Part 4: Expenses
-      {
-        id: '4.1',
-        currentPage: 'expenses',
-        title: t['onboarding.spouse.4.1.title'] || 'Add Receipt',
-        description: t['onboarding.spouse.4.1.desc'] || 'Add your receipt here.',
-        targetElement: 'onboarding-expenses-fab',
-        tooltipPosition: 'bottom-center',
-        buttonText: t['onboarding.next'] || 'Next',
-        action: { type: 'navigate', target: 'dashboard' },
-        allowSkip: false,
-      },
-      // Part 5: Family Board
-      {
-        id: '5.1',
-        currentPage: 'dashboard',
-        title: t['onboarding.spouse.5.1.title'] || 'Important Note',
-        description: t['onboarding.spouse.5.1.desc'] || 'We put special and important note here.',
-        targetElement: 'onboarding-family-board',
-        tooltipPosition: 'center-near-family-board',
-        buttonText: t['onboarding.ok'] || 'OK',
-        action: { type: 'complete' },
-        allowSkip: false,
-      },
-    ];
-  }
-
-  // Helper steps (different flow - focus on tasks)
+  // ─────────────────────────────────────────────────────────────────────────
+  // HELPER - 8 steps
+  // ─────────────────────────────────────────────────────────────────────────
   if (role === UserRole.HELPER) {
     return [
+      // Step 1: Welcome
       {
-        id: '1.1',
+        id: 'helper-1',
         currentPage: 'dashboard',
-        title: t['onboarding.helper.1.1.title'] || 'Welcome',
-        description: t['onboarding.helper.1.1.desc'] || 'Welcome to your household! Here you can see your daily tasks and meals.',
+        title: t['onboarding.helper.1.title'] || 'Welcome',
+        description: t['onboarding.helper.1.desc'] || 'We\'re glad you\'re here! This is your hub for everything about our home and family.',
         targetElement: null,
         tooltipPosition: 'center-middle',
-        buttonText: t['onboarding.got_it'] || 'Got it',
+        buttonText: t['onboarding.next'] || 'Next',
+        action: { type: 'navigate', target: 'info', section: 'essentialInfo' },
+      },
+      // Step 2: Household Info - Essentials
+      {
+        id: 'helper-2',
+        currentPage: 'info',
+        currentSection: 'essentialInfo',
+        title: t['onboarding.helper.2.title'] || 'Get to know the family',
+        description: t['onboarding.helper.2.desc'] || 'Here you\'ll find essential details about our home and important places.',
+        targetElement: 'onboarding-info-tabnav',
+        tooltipPosition: 'center-near-tabnav',
+        buttonText: t['onboarding.next'] || 'Next',
+        action: { type: 'navigate', target: 'info', section: 'houseRoutine' },
+      },
+      // Step 3: Household Info - House Routine
+      {
+        id: 'helper-3',
+        currentPage: 'info',
+        currentSection: 'houseRoutine',
+        title: t['onboarding.helper.3.title'] || 'Get to know the family',
+        description: t['onboarding.helper.3.desc'] || 'This covers our family\'s daily routines and shared practices.',
+        targetElement: 'onboarding-info-tabnav',
+        tooltipPosition: 'center-near-tabnav',
+        buttonText: t['onboarding.next'] || 'Next',
+        action: { type: 'navigate', target: 'todo', section: 'shopping' },
+      },
+      // Step 4: ToDo - Shopping
+      {
+        id: 'helper-4',
+        currentPage: 'todo',
+        currentSection: 'shopping',
+        title: t['onboarding.helper.4.title'] || 'Things to buy',
+        description: t['onboarding.helper.4.desc'] || 'This is your shopping list.',
+        targetElement: 'onboarding-todo-tabnav',
+        tooltipPosition: 'center-near-tabnav',
+        buttonText: t['onboarding.next'] || 'Next',
+        action: { type: 'navigate', target: 'todo', section: 'task' },
+      },
+      // Step 5: ToDo - Tasks
+      {
+        id: 'helper-5',
+        currentPage: 'todo',
+        currentSection: 'task',
+        title: t['onboarding.helper.5.title'] || 'Things to do',
+        description: t['onboarding.helper.5.desc'] || 'This is your task list.',
+        targetElement: 'onboarding-todo-tabnav',
+        tooltipPosition: 'center-near-tabnav',
+        buttonText: t['onboarding.next'] || 'Next',
+        action: { type: 'navigate', target: 'meals' },
+      },
+      // Step 6: Meals
+      {
+        id: 'helper-6',
+        currentPage: 'meals',
+        title: t['onboarding.helper.6.title'] || 'What to cook',
+        description: t['onboarding.helper.6.desc'] || 'This is the family meal plan. View the dishes, see who\'s eating.',
+        targetElement: null,
+        tooltipPosition: 'center-middle',
+        buttonText: t['onboarding.next'] || 'Next',
+        action: { type: 'navigate', target: 'expenses' },
+      },
+      // Step 7: Expenses
+      {
+        id: 'helper-7',
+        currentPage: 'expenses',
+        title: t['onboarding.helper.7.title'] || 'Add receipt',
+        description: t['onboarding.helper.7.desc'] || 'Add your receipt here.',
+        targetElement: 'onboarding-expenses-fab',
+        tooltipPosition: 'bottom-center',
+        buttonText: t['onboarding.next'] || 'Next',
+        action: { type: 'navigate', target: 'dashboard' },
+      },
+      // Step 8: Family Board
+      {
+        id: 'helper-8',
+        currentPage: 'dashboard',
+        title: t['onboarding.helper.8.title'] || 'Important note',
+        description: t['onboarding.helper.8.desc'] || 'We put a special and important note here.',
+        targetElement: 'onboarding-family-board',
+        tooltipPosition: 'center-near-family-board',
+        buttonText: t['onboarding.finish'] || 'Finish',
         action: { type: 'complete' },
-        allowSkip: true,
       },
     ];
   }
 
-  // Child/Other - simple welcome
+  // ─────────────────────────────────────────────────────────────────────────
+  // SPOUSE & KIDS (Child/Other) - 4 steps
+  // ─────────────────────────────────────────────────────────────────────────
   return [
+    // Step 1: Welcome
     {
-      id: '1.1',
+      id: 'family-1',
       currentPage: 'dashboard',
-      title: t['onboarding.default.1.1.title'] || 'Welcome',
-      description: t['onboarding.default.1.1.desc'] || 'Welcome to your family app!',
+      title: t['onboarding.family.1.title'] || 'Welcome',
+      description: t['onboarding.family.1.desc'] || 'Love it when family members get together! Let\'s see what has been prepared for you.',
       targetElement: null,
       tooltipPosition: 'center-middle',
-      buttonText: t['onboarding.got_it'] || 'Got it',
+      buttonText: t['onboarding.next'] || 'Next',
+      action: { type: 'navigate', target: 'info', section: 'essentialInfo' },
+    },
+    // Step 2: Household Info - Essentials
+    {
+      id: 'family-2',
+      currentPage: 'info',
+      currentSection: 'essentialInfo',
+      title: t['onboarding.family.2.title'] || 'All about your family',
+      description: t['onboarding.family.2.desc'] || 'Add important information and places here.',
+      targetElement: 'onboarding-info-tabnav',
+      tooltipPosition: 'center-near-tabnav',
+      buttonText: t['onboarding.next'] || 'Next',
+      action: { type: 'navigate', target: 'meals' },
+    },
+    // Step 3: Meals
+    {
+      id: 'family-3',
+      currentPage: 'meals',
+      title: t['onboarding.family.3.title'] || 'Home-cooked meals are the best',
+      description: t['onboarding.family.3.desc'] || 'Set the meal plan and let them know you are eating at home.',
+      targetElement: null,
+      tooltipPosition: 'center-middle',
+      buttonText: t['onboarding.next'] || 'Next',
+      action: { type: 'navigate', target: 'dashboard' },
+    },
+    // Step 4: Family Board
+    {
+      id: 'family-4',
+      currentPage: 'dashboard',
+      title: t['onboarding.family.4.title'] || 'Got anything important to share with the rest?',
+      description: t['onboarding.family.4.desc'] || 'Write it down here for everyone to see.',
+      targetElement: 'onboarding-family-board',
+      tooltipPosition: 'center-near-family-board',
+      buttonText: t['onboarding.finish'] || 'Finish',
       action: { type: 'complete' },
-      allowSkip: true,
     },
   ];
 };
+
+// ═══════════════════════════════════════════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════════════════════════════════════════
 
 interface OnboardingOverlayProps {
   stepIndex: number;
@@ -357,6 +299,7 @@ const OnboardingOverlay: React.FC<OnboardingOverlayProps> = ({
   onSkip, 
   t 
 }) => {
+  const [showSkipConfirm, setShowSkipConfirm] = useState(false);
   const steps = getStepsForRole(userRole, t);
   const currentStep = steps[stepIndex];
   
@@ -379,15 +322,12 @@ const OnboardingOverlay: React.FC<OnboardingOverlayProps> = ({
       case 'top-left':
         return 'top-36 left-4 flex items-start justify-start';
       case 'below-add-button':
-        // Position just below the "Add" label text
         return 'top-[300px] left-4 flex items-start justify-start';
       case 'center-near-tabnav':
         return 'top-[200px] inset-x-0 flex items-start justify-center';
       case 'bottom-center':
-        // Positioned above the FAB (FAB is at bottom-28 right-6)
         return 'bottom-44 right-4 flex items-end justify-end';
       case 'center-near-family-board':
-        // Positioned right below the Family Board card
         return 'top-[220px] inset-x-0 flex items-start justify-center';
       default:
         return 'inset-0 flex items-center justify-center';
@@ -397,27 +337,70 @@ const OnboardingOverlay: React.FC<OnboardingOverlayProps> = ({
   // Arrow position based on tooltip position
   const getArrowClasses = (pos: TooltipPosition) => {
     switch (pos) {
-          case 'top-right': 
+      case 'top-right': 
         return 'absolute w-4 h-4 bg-card transform rotate-45 -top-2 right-8 border-l border-t border-border';
-          case 'top-left':
+      case 'top-left':
         return 'absolute w-4 h-4 bg-card transform rotate-45 -top-2 left-8 border-l border-t border-border';
       case 'below-add-button':
         return 'absolute w-4 h-4 bg-card transform rotate-45 -top-2 left-12 border-l border-t border-border';
       case 'center-near-tabnav':
         return 'absolute w-4 h-4 bg-card transform rotate-45 -top-2 left-1/2 -ml-2 border-l border-t border-border';
       case 'bottom-center':
-        // Arrow pointing DOWN-RIGHT at the FAB
         return 'absolute w-4 h-4 bg-card transform rotate-45 -bottom-2 right-8 border-r border-b border-border';
       case 'center-near-family-board':
-        // Arrow pointing UP at the Family Board
         return 'absolute w-4 h-4 bg-card transform rotate-45 -top-2 left-1/2 -ml-2 border-l border-t border-border';
-          default:
+      default:
         return 'hidden';
     }
   };
 
+  // Handle skip with confirmation
+  const handleSkipClick = () => {
+    setShowSkipConfirm(true);
+  };
+
+  const handleConfirmSkip = () => {
+    setShowSkipConfirm(false);
+    onSkip();
+  };
+
   // Only 2 card sizes: Large (centered, no pointer) or Small (with pointer)
   const isLarge = currentStep.tooltipPosition === 'center-middle';
+
+  // ═══════════════════════════════════════════════════════════════════
+  // SKIP CONFIRMATION POPUP
+  // ═══════════════════════════════════════════════════════════════════
+  if (showSkipConfirm) {
+    return (
+      <div className="fixed inset-0 z-[60] pointer-events-none">
+        <div className="absolute inset-0 bg-black/60 pointer-events-auto" />
+        <div className="absolute inset-0 flex items-center justify-center p-6 pointer-events-auto">
+          <div className="bg-card rounded-3xl shadow-2xl p-8 w-[320px] border border-border animate-slide-up relative">
+            <h3 className="text-xl font-bold text-foreground mb-3 text-center">
+              {t['onboarding.skip_confirm_title'] || 'Skip Tutorial?'}
+            </h3>
+            <p className="text-body text-muted-foreground leading-relaxed mb-8 text-center">
+              {t['onboarding.skip_confirm_desc'] || 'You can redo the tutorial anytime by tapping your profile photo and scrolling down to "Tutorial".'}
+            </p>
+            <div className="flex flex-col items-center gap-3">
+              <button 
+                onClick={() => setShowSkipConfirm(false)}
+                className="w-full bg-primary text-primary-foreground py-4 rounded-xl font-bold text-body shadow-lg shadow-primary/20 hover:bg-primary/90 transition-colors"
+              >
+                {t['onboarding.skip_confirm_no'] || 'Continue Tutorial'}
+              </button>
+              <button 
+                onClick={handleConfirmSkip}
+                className="text-body font-bold text-destructive hover:text-destructive/80 transition-colors py-2"
+              >
+                {t['onboarding.skip_confirm_yes'] || 'Skip for Now'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // ═══════════════════════════════════════════════════════════════════
   // LARGE CARD - Centered modal, no pointer
@@ -428,10 +411,18 @@ const OnboardingOverlay: React.FC<OnboardingOverlayProps> = ({
         <div className="absolute inset-0 bg-black/60 pointer-events-auto" />
         <div className="absolute inset-0 flex items-center justify-center p-6 pointer-events-auto">
           <div className="bg-card rounded-3xl shadow-2xl p-8 w-[320px] border border-border animate-slide-up relative">
-            <h3 className="text-xl font-bold text-foreground mb-3 text-center">
+            {/* Close/Skip button */}
+            <button
+              onClick={handleSkipClick}
+              className="absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+            >
+              <X size={18} />
+            </button>
+            
+            <h3 className="text-xl font-bold text-foreground mb-3 text-center pr-8">
               {currentStep.title}
             </h3>
-            <p className="text-body text-muted-foreground leading-relaxed mb-8 text-center">
+            <p className="text-body text-muted-foreground leading-relaxed mb-8 text-center whitespace-pre-line">
               {currentStep.description}
             </p>
             <div className="flex flex-col items-center gap-3">
@@ -440,16 +431,8 @@ const OnboardingOverlay: React.FC<OnboardingOverlayProps> = ({
                 className="w-full bg-primary text-primary-foreground py-4 rounded-xl font-bold text-body shadow-lg shadow-primary/20 hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
               >
                 {currentStep.buttonText}
-                <ChevronRight size={18} />
+                {currentStep.action.type !== 'complete' && <ChevronRight size={18} />}
               </button>
-              {currentStep.allowSkip && (
-                <button 
-                  onClick={onSkip}
-                  className="text-body font-bold text-muted-foreground hover:text-foreground transition-colors py-2"
-                >
-                  {t['onboarding.skip'] || 'Skip'}
-                </button>
-              )}
             </div>
             {steps.length > 1 && (
               <div className="flex justify-center gap-2 mt-6">
@@ -480,32 +463,30 @@ const OnboardingOverlay: React.FC<OnboardingOverlayProps> = ({
           {/* Arrow pointer */}
           <div className={getArrowClasses(currentStep.tooltipPosition)} />
 
-              <div className="relative z-10">
-            <h3 className="text-xl font-bold text-foreground mb-2">
+          {/* Close/Skip button */}
+          <button
+            onClick={handleSkipClick}
+            className="absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors z-20"
+          >
+            <X size={18} />
+          </button>
+
+          <div className="relative z-10">
+            <h3 className="text-xl font-bold text-foreground mb-2 pr-8">
               {currentStep.title}
-                  </h3>
-            <p className="text-body text-muted-foreground leading-relaxed mb-6">
+            </h3>
+            <p className="text-body text-muted-foreground leading-relaxed mb-6 whitespace-pre-line">
               {currentStep.description}
             </p>
-            <div className="flex items-center justify-between gap-4">
-              {currentStep.allowSkip ? (
-                <button 
-                  onClick={onSkip}
-                  className="text-body font-bold text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  {t['onboarding.skip'] || 'Skip'}
-                </button>
-              ) : (
-                <div />
-              )}
-                      <button 
+            <div className="flex items-center justify-end">
+              <button 
                 onClick={() => onNext(currentStep.action)}
                 className="bg-primary text-primary-foreground px-6 py-3 rounded-xl font-bold text-body shadow-lg shadow-primary/20 hover:bg-primary/90 transition-colors flex items-center gap-2"
-                      >
+              >
                 {currentStep.buttonText}
-                <ChevronRight size={18} />
-                      </button>
-                  </div>
+                {currentStep.action.type !== 'complete' && <ChevronRight size={18} />}
+              </button>
+            </div>
             {steps.length > 1 && (
               <div className="flex justify-center gap-2 mt-4">
                 {steps.map((_, idx) => (
@@ -518,8 +499,8 @@ const OnboardingOverlay: React.FC<OnboardingOverlayProps> = ({
                 ))}
               </div>
             )}
-              </div>
           </div>
+        </div>
       </div>
     </div>
   );

@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
   AlertCircle, Heart, Settings, Plus, Trash2, X, Save, Camera,
   Image as ImageIcon, LogOut, Copy, Check, ChevronLeft, ChevronRight,
-  CreditCard, Shield, Lock, Crown, Mail, Share2, Bell, BellOff, BellDot, Phone, CheckCircle, Loader2
+  Shield, Lock, Crown, Mail, Share2, Bell, BellOff, BellDot, Phone, CheckCircle, Loader2, GraduationCap
 } from 'lucide-react';
 import { useUser } from '@clerk/clerk-react';
 import { User, UserRole, BaseViewProps } from '../types';
@@ -18,6 +18,7 @@ import {
   unsubscribeFromPush,
   hasActiveSubscription
 } from '../services/pushNotificationService';
+import { compressImageForAvatar } from '../utils/imageCompression';
 
 interface ProfileProps extends BaseViewProps {
   users: User[];
@@ -28,6 +29,7 @@ interface ProfileProps extends BaseViewProps {
   currentUser: User;
   onLogout: () => void;
   initialEditUserId?: string; // If set, opens edit modal for this user on mount
+  onRestartTutorial?: () => void; // Restart the onboarding tutorial
 }
 
 // Role priority for consistent sorting across all family members
@@ -44,7 +46,7 @@ const ROLE_PRIORITY: Record<string, number> = {
 const HOUSEHOLD_NAME_CACHE_KEY = 'helpy_household_name';
 
 const Profile: React.FC<ProfileProps> = ({
-  users, onAdd, onUpdate, onDelete, onBack, currentUser, onLogout, t, currentLang, initialEditUserId
+  users, onAdd, onUpdate, onDelete, onBack, currentUser, onLogout, t, currentLang, initialEditUserId, onRestartTutorial
 }) => {
   // ─────────────────────────────────────────────────────────────────
   // Role-based permissions
@@ -417,13 +419,6 @@ const Profile: React.FC<ProfileProps> = ({
       notificationsEnabled: isTogglingRef.current ? prev.notificationsEnabled : (currentUser.notificationsEnabled ?? true)
     }));
   }, [currentUser]);
-  const [paymentData, setPaymentData] = useState({
-    cardNumber: '',
-    expiry: '',
-    cvc: '',
-    name: currentUser.name || '',
-    cardType: 'DEBIT' as 'DEBIT' | 'CREDIT' | 'PREPAID'
-  });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -698,19 +693,25 @@ const Profile: React.FC<ProfileProps> = ({
       return;
     }
 
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      alert(t['error.image_too_large'] || 'Image size must be less than 5MB');
+    // Validate file size (max 10MB before compression - we'll compress it down)
+    if (file.size > 10 * 1024 * 1024) {
+      alert(t['error.image_too_large'] || 'Image size must be less than 10MB');
       return;
     }
 
     setIsUploadingAvatar(true);
     try {
-      console.log('📷 Uploading avatar for user:', selectedUser.id);
+      console.log('📷 Compressing avatar for user:', selectedUser.id);
+      
+      // Compress image before upload (resizes to 400x400 max, ~80% quality)
+      // This typically reduces 3-5MB phone photos to ~20-50KB
+      const compressed = await compressImageForAvatar(file, 400, 0.85);
+      
+      console.log('📷 Uploading compressed avatar...');
       const avatarUrl = await uploadAvatarImage(
         currentUser.householdId,
         selectedUser.id,
-        file
+        compressed.file
       );
       
       // Update user with new avatar URL
@@ -1092,6 +1093,23 @@ const Profile: React.FC<ProfileProps> = ({
               </div>
               <ChevronRight size={20} className="text-muted-foreground" />
             </button>
+
+            {/* Tutorial Button */}
+            {onRestartTutorial && (
+              <button
+                onClick={onRestartTutorial}
+                className="w-full bg-card px-5 py-4 rounded-3xl shadow-sm flex items-center justify-between hover:bg-secondary transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <GraduationCap size={18} className="text-primary" />
+                  <div className="text-left">
+                    <p className="font-bold text-foreground text-title">{t['common.tutorial'] || 'Tutorial'}</p>
+                    <p className="text-caption text-muted-foreground">{t['profile.restart_tutorial'] || 'Restart the onboarding guide'}</p>
+                  </div>
+                </div>
+                <ChevronRight size={20} className="text-muted-foreground" />
+              </button>
+            )}
           </div>
 
           {/* Footer */}
@@ -2457,183 +2475,6 @@ const Profile: React.FC<ProfileProps> = ({
   }
 
   // =====================================================
-  // PAYMENT VIEW
-  // =====================================================
-  if (activeSection === 'payment') {
-    return (
-      <div className="min-h-screen bg-background pb-40 animate-fade-in">
-        <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
-          {renderSettingsHeader(t['common.payment'] || 'Payment', () => setActiveSection('settings'))}
-          <div className="pt-6 pb-24">
-
-            {/* Card Preview */}
-            <div className="mt-6 mb-6">
-              <div 
-                className="rounded-2xl p-5 relative overflow-hidden"
-                style={{
-                  aspectRatio: '1.586 / 1',
-                  background: paymentData.cardType === 'DEBIT' 
-                    ? 'linear-gradient(135deg, #F06292 0%, #C74B7A 50%, #9C3D62 100%)'
-                    : paymentData.cardType === 'PREPAID'
-                    ? 'linear-gradient(135deg, #FF9800 0%, #E68A00 50%, #CC7A00 100%)'
-                    : 'linear-gradient(135deg, #3EAFD2 0%, #2D8BAA 50%, #1E6B85 100%)',
-                  boxShadow: paymentData.cardType === 'DEBIT'
-                    ? '0 16px 32px -12px rgba(240, 98, 146, 0.35), 0 6px 12px -6px rgba(240, 98, 146, 0.2)'
-                    : paymentData.cardType === 'PREPAID'
-                    ? '0 16px 32px -12px rgba(255, 152, 0, 0.35), 0 6px 12px -6px rgba(255, 152, 0, 0.2)'
-                    : '0 16px 32px -12px rgba(62, 175, 210, 0.35), 0 6px 12px -6px rgba(62, 175, 210, 0.2)'
-                }}
-              >
-                {/* Oversized branded "h" watermark */}
-                <div 
-                  className="absolute -top-8 -right-4 text-white/10 select-none pointer-events-none"
-                  style={{ 
-                    fontFamily: "'Peanut Butter', cursive",
-                    fontSize: '270px',
-                    lineHeight: 1
-                  }}
-                >
-                  h
-                </div>
-                <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-black/10 pointer-events-none"></div>
-                
-                {/* Card content */}
-                <div className="relative h-full flex flex-col justify-between">
-                  <div className="flex justify-end">
-                    <span className="text-xs font-mono bg-white/20 backdrop-blur-sm px-2 py-1 rounded text-white/90">{paymentData.cardType}</span>
-                  </div>
-                  
-                  <div className="mt-auto">
-                    <div className="text-lg font-mono tracking-[0.2em] mb-3 text-white drop-shadow-sm">
-                      {paymentData.cardNumber || '•••• •••• •••• ••••'}
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <div>
-                        <div className="text-[10px] text-white/60 uppercase tracking-wider mb-0.5">{t['profile.card_holder'] || 'Card Holder'}</div>
-                        <div className="text-white font-medium drop-shadow-sm">{paymentData.name || 'YOUR NAME'}</div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-[10px] text-white/60 uppercase tracking-wider mb-0.5">{t['profile.card_expires'] || 'Expires'}</div>
-                        <div className="text-white font-medium drop-shadow-sm">{paymentData.expiry || 'MM/YY'}</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-4 bg-card p-6 rounded-2xl shadow-sm border border-border">
-              <div className="space-y-1">
-                <label className="text-caption font-bold text-muted-foreground ml-1">{t['profile.card_number'] || 'Card Number'}</label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  placeholder="1234 5678 9012 3456"
-                  maxLength={19}
-                  value={paymentData.cardNumber}
-                  onChange={e => {
-                    // Only allow digits and format with spaces every 4 digits
-                    const digitsOnly = e.target.value.replace(/\D/g, '');
-                    const formatted = digitsOnly.replace(/(\d{4})(?=\d)/g, '$1 ').slice(0, 19);
-                    setPaymentData({ ...paymentData, cardNumber: formatted });
-                  }}
-                  className="w-full bg-muted border border-border rounded-xl px-4 py-3 text-foreground font-mono text-body focus:border-primary outline-none transition-colors"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-caption font-bold text-muted-foreground ml-1">{t['profile.expiry'] || 'Expiry'}</label>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    placeholder={t['placeholder.mm_yy'] || 'MM/YY'}
-                    maxLength={5}
-                    value={paymentData.expiry}
-                    onChange={e => {
-                      // Only allow digits and auto-format as MM/YY
-                      const digitsOnly = e.target.value.replace(/\D/g, '');
-                      let formatted = digitsOnly;
-                      if (digitsOnly.length >= 2) {
-                        formatted = digitsOnly.slice(0, 2) + '/' + digitsOnly.slice(2, 4);
-                      }
-                      setPaymentData({ ...paymentData, expiry: formatted });
-                    }}
-                    className="w-full bg-muted border border-border rounded-xl px-4 py-3 text-foreground font-mono text-body focus:border-primary outline-none transition-colors"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-caption font-bold text-muted-foreground ml-1">CVC</label>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    placeholder="123"
-                    maxLength={4}
-                    value={paymentData.cvc}
-                    onChange={e => {
-                      // Only allow digits for CVC
-                      const value = e.target.value.replace(/\D/g, '');
-                      setPaymentData({ ...paymentData, cvc: value });
-                    }}
-                    className="w-full bg-muted border border-border rounded-xl px-4 py-3 text-foreground font-mono text-body focus:border-primary outline-none transition-colors"
-                  />
-                </div>
-              </div>
-              <div className="space-y-1">
-                <label className="text-caption font-bold text-muted-foreground ml-1">{t['profile.cardholder_name'] || 'Cardholder Name'}</label>
-                <input
-                  type="text"
-                  placeholder={t['placeholder.name_on_card'] || 'Name on card'}
-                  value={paymentData.name}
-                  onChange={e => setPaymentData({ ...paymentData, name: e.target.value })}
-                  className="w-full bg-muted border border-border rounded-xl px-4 py-3 text-foreground font-medium text-body focus:border-primary outline-none transition-colors"
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-caption font-bold text-muted-foreground ml-1">{t['profile.card_type'] || 'Card Type'}</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {(['DEBIT', 'CREDIT', 'PREPAID'] as const).map(type => {
-                    const isSelected = paymentData.cardType === type;
-                    const colorMap = {
-                      DEBIT: { bg: '#F06292', text: 'white' },
-                      CREDIT: { bg: '#3EAFD2', text: 'white' },
-                      PREPAID: { bg: '#FF9800', text: 'white' }
-                    };
-                    return (
-                      <button
-                        key={type}
-                        type="button"
-                        onClick={() => setPaymentData({ ...paymentData, cardType: type })}
-                        className={`px-3 py-2.5 rounded-xl text-body font-medium transition-all ${
-                          !isSelected ? 'bg-muted text-muted-foreground border border-border' : ''
-                        }`}
-                        style={isSelected ? { backgroundColor: colorMap[type].bg, color: colorMap[type].text } : {}}
-                      >
-                        {type}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-6 pt-4">
-              <button onClick={() => setActiveSection('settings')} className="w-full bg-primary text-primary-foreground py-4 rounded-xl font-semibold shadow-sm hover:bg-primary/90 transition-colors">
-                {t['profile.save_payment'] || 'Save Payment Method'}
-              </button>
-            </div>
-          </div>
-
-          {/* Footer */}
-          <div className="helpy-footer">
-            <span className="helpy-logo">helpy</span>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // =====================================================
   // SETTINGS MENU VIEW
   // =====================================================
   if (activeSection === 'settings') {
@@ -2647,7 +2488,6 @@ const Profile: React.FC<ProfileProps> = ({
               {[
                 { id: 'plan', label: t['common.plan'] || 'Subscription', icon: Crown, helperHidden: true },
                 { id: 'security', label: t['common.security'] || 'Account', icon: Shield, helperHidden: false },
-                { id: 'payment', label: t['common.payment'] || 'Payment', icon: CreditCard, helperHidden: true },
               ]
                 .filter(item => !isHelper || !item.helperHidden)
                 .map((item, index, filteredArray) => (

@@ -834,6 +834,10 @@ const AppContent: React.FC = () => {
             t={translations}
             currentLang={lang}
             initialEditUserId={editHelperUserId || undefined}
+            onRestartTutorial={() => {
+              setOnboardingStep(1);
+              setActiveView('dashboard');
+            }}
           />
         );
 

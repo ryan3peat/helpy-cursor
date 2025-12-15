@@ -15,8 +15,10 @@
         var hasSession = !!localStorage.getItem('helpy_current_session_user');
         var bgColor = hasSession 
           ? (isDark ? '#121212' : '#fafafa')  // Match theme: dark=#121212, light=#fafafa
-          : '#3EAFD2';  // New users: brand blue (matches intro/auth)
+          : '#fafafa';  // No session: grey (auth screens have their own blue backgrounds)
         document.documentElement.style.setProperty('--initial-bg', bgColor);
+        // Also set html background directly for overscroll
+        document.documentElement.style.backgroundColor = bgColor;
       })();
     </script>
     <meta charset="UTF-8" />
@@ -132,16 +134,8 @@
       /* CRITICAL: Prevent black flash during app load.
          This style loads before external CSS and React, ensuring there's always
          a visible background color. The --initial-bg is set by the inline script above. */
-      html, body {
+      html, body, #root {
         background-color: var(--initial-bg, #3EAFD2);
-      }
-      /* Root container - floats above easter egg background with shadow */
-      #root {
-        background-color: var(--initial-bg, #3EAFD2);
-        min-height: 100vh;
-        min-height: 100dvh;
-        /* Upward shadow visible on overscroll - page appears to float */
-        box-shadow: 0 -16px 48px rgba(0,0,0,0.25);
       }
       /* Ensure root fills the viewport during React loading */
       #root:empty {

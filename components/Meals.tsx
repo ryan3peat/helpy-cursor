@@ -662,11 +662,8 @@ const Meals: React.FC<MealsProps> = ({
     <div className="min-h-screen bg-background pb-40">
       {/* STICKY HEADER - Rubber bands with content on overscroll */}
       <header 
-        className="sticky top-0 z-20 bg-background flex items-end pb-3 px-4 sm:px-6 transition-shadow duration-200" 
-        style={{ 
-          height: '120px',
-          boxShadow: isScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none'
-        }}
+        className="sticky top-0 z-20 bg-background flex items-end pb-3 px-4 sm:px-6" 
+        style={{ height: '120px' }}
       >
         <div className="max-w-2xl mx-auto w-full flex items-center justify-between">
           <h1 className="text-display text-foreground">

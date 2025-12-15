@@ -176,9 +176,15 @@ const Profile: React.FC<ProfileProps> = ({
         .from('households')
         .select('name, subscription_plan, subscription_status, subscription_current_period_end, subscription_period')
         .eq('id', currentUser.householdId)
-        .single();
+        .maybeSingle();
 
+      // maybeSingle() returns null if no rows found (instead of throwing error)
       if (error) throw error;
+      
+      // If no household found, silently return (user may not have access or household doesn't exist)
+      if (!data) {
+        return false;
+      }
 
       if (data) {
         // Set household name
@@ -242,7 +248,7 @@ const Profile: React.FC<ProfileProps> = ({
           .from('households')
           .select('subscription_status')
           .eq('id', currentUser.householdId)
-          .single();
+          .maybeSingle();
         
         if (data && data.subscription_status !== 'active') {
           // Subscription was canceled or is no longer active
@@ -1414,6 +1420,7 @@ const Profile: React.FC<ProfileProps> = ({
                     </div>
                   </div>
                 )}
+                </div>
 
                 {/* Footer */}
                 <div className="p-5 pb-8 border-t border-border flex gap-3 shrink-0">

@@ -2,6 +2,7 @@
 
 import { supabase as defaultSupabase } from './supabase';
 import { getAuthenticatedSupabaseClient } from '../contexts/SupabaseContext';
+import { getCachedSupabaseUuid } from './supabaseService';
 import type { 
   HKStatutoryHoliday, 
   HelperHolidayRecord, 
@@ -23,6 +24,14 @@ const supabase = {
   from: (table: string) => getSupabase().from(table),
   channel: (name: string) => getSupabase().channel(name),
 };
+
+/**
+ * Convert a user ID (Clerk ID or UUID) to Supabase UUID
+ * The helper_id columns in helper tables require UUIDs
+ */
+function toSupabaseUuid(userId: string): string {
+  return getCachedSupabaseUuid(userId);
+}
 
 // ============================================================================
 // HK Statutory Holidays
@@ -52,11 +61,12 @@ export async function getUpcomingHolidays(limit: number = 3): Promise<HKStatutor
 
 export async function getPastHolidays(helperId: string, householdId: string): Promise<HelperHolidayRecord[]> {
   const today = new Date().toISOString().split('T')[0];
+  const helperUuid = toSupabaseUuid(helperId);
   
   const { data, error } = await supabase
     .from('helper_holiday_records')
     .select('*')
-    .eq('helper_id', helperId)
+    .eq('helper_id', helperUuid)
     .eq('household_id', householdId)
     .lt('holiday_date', today)
     .order('holiday_date', { ascending: false });
@@ -87,10 +97,12 @@ export async function getHelperHolidayRecord(
   householdId: string, 
   holidayDate: string
 ): Promise<HelperHolidayRecord | null> {
+  const helperUuid = toSupabaseUuid(helperId);
+  
   const { data, error } = await supabase
     .from('helper_holiday_records')
     .select('*')
-    .eq('helper_id', helperId)
+    .eq('helper_id', helperUuid)
     .eq('household_id', householdId)
     .eq('holiday_date', holidayDate)
     .single();
@@ -123,11 +135,13 @@ export async function upsertHelperHolidayRecord(
   overtimeAmount?: number,
   addOvertimeToPayslip?: boolean
 ): Promise<HelperHolidayRecord> {
+  const helperUuid = toSupabaseUuid(helperId);
+  
   const { data, error } = await supabase
     .from('helper_holiday_records')
     .upsert({
       household_id: householdId,
-      helper_id: helperId,
+      helper_id: helperUuid,
       holiday_date: holidayDate,
       holiday_name: holidayName,
       is_working: isWorking,
@@ -169,11 +183,12 @@ export async function getCurrentPayslip(
   const now = new Date();
   const month = now.getMonth() + 1;
   const year = now.getFullYear();
+  const helperUuid = toSupabaseUuid(helperId);
   
   const { data, error } = await supabase
     .from('helper_payslip_confirmations')
     .select('*')
-    .eq('helper_id', helperId)
+    .eq('helper_id', helperUuid)
     .eq('household_id', householdId)
     .eq('month', month)
     .eq('year', year)
@@ -205,6 +220,7 @@ export async function createOrGetCurrentPayslip(
   const now = new Date();
   const month = now.getMonth() + 1;
   const year = now.getFullYear();
+  const helperUuid = toSupabaseUuid(helperId);
   
   // Try to get existing
   const existing = await getCurrentPayslip(helperId, householdId);
@@ -215,7 +231,7 @@ export async function createOrGetCurrentPayslip(
     .from('helper_payslip_confirmations')
     .insert({
       household_id: householdId,
-      helper_id: helperId,
+      helper_id: helperUuid,
       month,
       year,
       salary_amount: salaryAmount,
@@ -285,11 +301,13 @@ export async function addOvertimeToPayslip(
   year: number,
   overtimeAmount: number
 ): Promise<void> {
+  const helperUuid = toSupabaseUuid(helperId);
+  
   // Get or create payslip for that month
   const { data: existing } = await supabase
     .from('helper_payslip_confirmations')
     .select('*')
-    .eq('helper_id', helperId)
+    .eq('helper_id', helperUuid)
     .eq('household_id', householdId)
     .eq('month', month)
     .eq('year', year)
@@ -308,7 +326,7 @@ export async function addOvertimeToPayslip(
       .from('helper_payslip_confirmations')
       .insert({
         household_id: householdId,
-        helper_id: helperId,
+        helper_id: helperUuid,
         month,
         year,
         salary_amount: 0, // Will be set when payslip is viewed
@@ -323,6 +341,8 @@ export async function getOvertimeTotalForMonth(
   month: number,
   year: number
 ): Promise<number> {
+  const helperUuid = toSupabaseUuid(helperId);
+  
   // Get all holiday records for this month that have overtime added to payslip
   const startDate = new Date(year, month - 1, 1).toISOString().split('T')[0];
   const endDate = new Date(year, month, 0).toISOString().split('T')[0];
@@ -330,7 +350,7 @@ export async function getOvertimeTotalForMonth(
   const { data } = await supabase
     .from('helper_holiday_records')
     .select('overtime_amount')
-    .eq('helper_id', helperId)
+    .eq('helper_id', helperUuid)
     .eq('household_id', householdId)
     .eq('add_overtime_to_payslip', true)
     .gte('holiday_date', startDate)
@@ -369,11 +389,12 @@ export async function getPastPayslips(
   const now = new Date();
   const currentMonth = now.getMonth() + 1;
   const currentYear = now.getFullYear();
+  const helperUuid = toSupabaseUuid(helperId);
   
   const { data, error } = await supabase
     .from('helper_payslip_confirmations')
     .select('*')
-    .eq('helper_id', helperId)
+    .eq('helper_id', helperUuid)
     .eq('household_id', householdId)
     .or(`year.lt.${currentYear},and(year.eq.${currentYear},month.lt.${currentMonth})`)
     .order('year', { ascending: false })

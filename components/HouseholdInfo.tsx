@@ -31,7 +31,7 @@ import {
   Info,
   Lamp,
   BookOpen,
-  User,
+  User as UserIcon,
 } from "lucide-react";
 import Avatar from "./ui/Avatar";
 import { BaseViewProps, User, UserRole, TranslationDictionary } from "@/types";
@@ -885,7 +885,7 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
               }`}
             >
               <div className="flex items-center gap-2">
-                <User size={16} />
+                <UserIcon size={16} />
                 <span className="text-title">{t['common.helper'] || 'Helper'}</span>
               </div>
               <div className={`text-caption mt-1 ml-6 ${activeSection === "helper" ? "text-primary-foreground/70" : "text-muted-foreground"}`}>

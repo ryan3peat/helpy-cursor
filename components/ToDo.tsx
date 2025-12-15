@@ -19,6 +19,7 @@ import {
   SlidersHorizontal,
   ArrowUpDown,
 } from 'lucide-react';
+import Avatar from './ui/Avatar';
 import { useScrollHeader } from '@/hooks/useScrollHeader';
 import { useTranslatedContent } from '@/hooks/useTranslatedContent';
 import { useScrollLock } from '@/hooks/useScrollLock';
@@ -1553,13 +1554,10 @@ const ToDo: React.FC<ToDoProps> = ({
                           : 'bg-card text-foreground ring-1 ring-border hover:ring-input'
                       }`}
                     >
-                      {user.avatar ? (
-                        <img src={user.avatar} alt="" className="w-6 h-6 rounded-full object-cover" />
-                      ) : (
-                        <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center">
-                          <UserIcon size={14} className="text-muted-foreground" />
-                        </div>
-                      )}
+                      <Avatar
+                        user={user}
+                        size="xs"
+                      />
                       <span>{user.id === currentUser.id ? (t['todo.you'] || 'You') : user.name.split(' ')[0]}</span>
                     </button>
                   ))}

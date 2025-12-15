@@ -32,6 +32,7 @@ import {
   Lamp,
   BookOpen,
 } from "lucide-react";
+import Avatar from "./ui/Avatar";
 import { BaseViewProps, User, UserRole, TranslationDictionary } from "@/types";
 import { useTranslatedContent } from "@/hooks/useTranslatedContent";
 import { detectInputLanguage } from "@/services/languageDetectionService";
@@ -229,25 +230,10 @@ const FamilyProfileCarousel: React.FC<FamilyProfileCarouselProps> = ({ users, t 
                 {/* Profile Header */}
                 <div className="flex items-start gap-3 mb-4">
                   {/* Avatar */}
-                  <div 
-                    className="relative w-10 h-10 rounded-full flex items-center justify-center text-lg flex-shrink-0 overflow-hidden"
-                    style={{ 
-                      background: roleStyle.gradient,
-                      color: 'white',
-                    }}
-                  >
-                    {user.avatar ? (
-                      <img 
-                        src={user.avatar} 
-                        alt={user.name} 
-                        className="w-full h-full rounded-full object-cover" 
-                      />
-                    ) : (
-                      <span className="drop-shadow-sm">
-                        {user.name.charAt(0).toUpperCase()}
-                      </span>
-                    )}
-                  </div>
+                  <Avatar
+                    user={user}
+                    size="sm"
+                  />
                   
                   {/* Name & Role */}
                   <div className="flex-1 min-w-0">

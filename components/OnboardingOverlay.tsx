@@ -39,7 +39,7 @@ interface OnboardingStep {
 const getStepsForRole = (role: UserRole, t: TranslationDictionary): OnboardingStep[] => {
   
   // ─────────────────────────────────────────────────────────────────────────
-  // ADMIN - 7 steps
+  // ADMIN - 6 steps
   // ─────────────────────────────────────────────────────────────────────────
   if (role === UserRole.MASTER) {
     return [
@@ -65,7 +65,7 @@ const getStepsForRole = (role: UserRole, t: TranslationDictionary): OnboardingSt
         buttonText: t['onboarding.next'] || 'Next',
         action: { type: 'navigate', target: 'profile' },
       },
-      // Step 3: Tap Add button
+      // Step 3: Tap Add button -> Navigate directly to Household Info
       {
         id: 'admin-3',
         currentPage: 'profile',
@@ -74,48 +74,37 @@ const getStepsForRole = (role: UserRole, t: TranslationDictionary): OnboardingSt
         targetElement: 'onboarding-add-member-btn',
         tooltipPosition: 'below-add-button',
         buttonText: t['onboarding.next'] || 'Next',
-        action: { type: 'navigate', target: 'dashboard' },
-      },
-      // Step 4: Welcome back
-      {
-        id: 'admin-4',
-        currentPage: 'dashboard',
-        title: t['onboarding.admin.4.title'] || 'Welcome',
-        description: t['onboarding.admin.4.desc'] || 'Love it when family members get together! Let\'s see what has been prepared for you.',
-        targetElement: null,
-        tooltipPosition: 'center-middle',
-        buttonText: t['onboarding.next'] || 'Next',
         action: { type: 'navigate', target: 'info', section: 'essentialInfo' },
       },
-      // Step 5: Household Info - Essentials
+      // Step 4: Household Info - Essentials
       {
-        id: 'admin-5',
+        id: 'admin-4',
         currentPage: 'info',
         currentSection: 'essentialInfo',
-        title: t['onboarding.admin.5.title'] || 'All about your family',
-        description: t['onboarding.admin.5.desc'] || 'Add important information and places here.',
+        title: t['onboarding.admin.4.title'] || 'All about your family',
+        description: t['onboarding.admin.4.desc'] || 'Add important information and places here.',
         targetElement: 'onboarding-info-tabnav',
         tooltipPosition: 'center-near-tabnav',
         buttonText: t['onboarding.next'] || 'Next',
         action: { type: 'navigate', target: 'meals' },
       },
-      // Step 6: Meals
+      // Step 5: Meals
       {
-        id: 'admin-6',
+        id: 'admin-5',
         currentPage: 'meals',
-        title: t['onboarding.admin.6.title'] || 'Home-cooked meals are the best',
-        description: t['onboarding.admin.6.desc'] || 'Set the meal plan and let them know you are eating at home.',
+        title: t['onboarding.admin.5.title'] || 'Home-cooked meals are the best',
+        description: t['onboarding.admin.5.desc'] || 'Set the meal plan and let them know you are eating at home.',
         targetElement: null,
         tooltipPosition: 'center-middle',
         buttonText: t['onboarding.next'] || 'Next',
         action: { type: 'navigate', target: 'dashboard' },
       },
-      // Step 7: Family Board
+      // Step 6: Family Board
       {
-        id: 'admin-7',
+        id: 'admin-6',
         currentPage: 'dashboard',
-        title: t['onboarding.admin.7.title'] || 'Got anything important to share with the rest?',
-        description: t['onboarding.admin.7.desc'] || 'Write it down here for everyone to see.',
+        title: t['onboarding.admin.6.title'] || 'Got anything important to share with the rest?',
+        description: t['onboarding.admin.6.desc'] || 'Write it down here for everyone to see.',
         targetElement: 'onboarding-family-board',
         tooltipPosition: 'center-near-family-board',
         buttonText: t['onboarding.finish'] || 'Finish',

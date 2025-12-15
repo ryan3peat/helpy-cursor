@@ -22,6 +22,7 @@ import {
   BellOff,
   BellDot
 } from 'lucide-react';
+import Avatar from './ui/Avatar';
 import { ToDoItem, Meal, User, MealType, TranslationDictionary, UserRole, Expense } from '../types';
 import { formatCurrency } from '../currencyConfig';
 import { useScrollHeader } from '../hooks/useScrollHeader';
@@ -367,10 +368,10 @@ const Dashboard: React.FC<DashboardProps> = ({
               onClick={() => onNavigate('profile')}
               className="relative"
             >
-              <img
-                src={currentUser.avatar}
-                alt="Profile"
-                className="w-14 h-14 rounded-full border-4 border-card shadow-sm bg-muted object-cover"
+              <Avatar
+                user={currentUser}
+                size="2xl"
+                className="shadow-sm"
               />
               {/* Notification indicator - synced with Profile page */}
               <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-white shadow-sm flex items-center justify-center">

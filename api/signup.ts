@@ -44,24 +44,55 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     console.log('[Signup API] Creating user and household for:', { clerkId, email, name });
 
-    // Check if user already exists
-    const { data: existingUser } = await supabase
+    // Check if user already exists by clerk_id
+    const { data: existingUserByClerkId } = await supabase
       .from('users')
-      .select('*')  // Get all fields for complete user data
+      .select('*')
       .eq('clerk_id', clerkId)
       .single();
 
-    if (existingUser) {
-      console.log('[Signup API] User already exists:', existingUser);
-      console.log('[Signup API] Returning complete user data:', {
-        id: existingUser.id,
-        name: existingUser.name,
-        email: existingUser.email,
-        role: existingUser.role
-      });
+    if (existingUserByClerkId) {
+      console.log('[Signup API] User already exists (by clerk_id):', existingUserByClerkId);
       return res.status(200).json({
-        user: existingUser,
+        user: existingUserByClerkId,
         message: 'User already exists'
+      });
+    }
+
+    // Also check by email (user might exist from production with same email)
+    const { data: existingUserByEmail } = await supabase
+      .from('users')
+      .select('*')
+      .eq('email', email)
+      .single();
+
+    if (existingUserByEmail) {
+      console.log('[Signup API] User found by email, updating clerk_id:', { 
+        oldClerkId: existingUserByEmail.clerk_id, 
+        newClerkId: clerkId 
+      });
+      
+      // Update the clerk_id to the current one (in case it changed)
+      const { data: updatedUser, error: updateError } = await supabase
+        .from('users')
+        .update({ clerk_id: clerkId })
+        .eq('id', existingUserByEmail.id)
+        .select()
+        .single();
+
+      if (updateError) {
+        console.error('[Signup API] Failed to update clerk_id:', updateError);
+        // Still return the existing user even if update failed
+        return res.status(200).json({
+          user: existingUserByEmail,
+          message: 'User already exists (clerk_id update failed)'
+        });
+      }
+
+      console.log('[Signup API] User clerk_id updated successfully');
+      return res.status(200).json({
+        user: updatedUser || existingUserByEmail,
+        message: 'User already exists, clerk_id updated'
       });
     }
 

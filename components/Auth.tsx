@@ -166,7 +166,8 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
               allergies: activatedUser.allergies || [],
               preferences: activatedUser.preferences || [],
               status: 'active',
-              notificationsEnabled: activatedUser.notifications_enabled ?? true
+              notificationsEnabled: activatedUser.notifications_enabled ?? true,
+              onboardingStatus: activatedUser.onboarding_status || 'not_started'
             });
             
             // Reset state after successful login
@@ -231,7 +232,8 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
             allergies: activatedUser.allergies || [],
             preferences: activatedUser.preferences || [],
             status: 'active',
-            notificationsEnabled: activatedUser.notifications_enabled ?? true
+            notificationsEnabled: activatedUser.notifications_enabled ?? true,
+            onboardingStatus: activatedUser.onboarding_status || 'not_started'
           });
           setIsCreatingUser(false);
           console.log('✅ [Auth] onLogin() called successfully, resetting isCreatingUser');
@@ -267,7 +269,8 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
           allergies: existingUser.allergies || [],
           preferences: existingUser.preferences || [],
           status: existingUser.status || 'active',
-          notificationsEnabled: existingUser.notifications_enabled ?? true
+          notificationsEnabled: existingUser.notifications_enabled ?? true,
+          onboardingStatus: existingUser.onboarding_status || 'completed'
         });
         setIsCreatingUser(false);
         console.log('✅ [Auth] onLogin() called successfully, resetting isCreatingUser');
@@ -314,7 +317,8 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
             allergies: existingUserByEmail.allergies || [],
             preferences: existingUserByEmail.preferences || [],
             status: existingUserByEmail.status || 'active',
-            notificationsEnabled: existingUserByEmail.notifications_enabled ?? true
+            notificationsEnabled: existingUserByEmail.notifications_enabled ?? true,
+            onboardingStatus: existingUserByEmail.onboarding_status || 'completed'
           });
           setIsCreatingUser(false);
           console.log('✅ [Auth] onLogin() called successfully, resetting isCreatingUser');
@@ -368,7 +372,8 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                 allergies: activatedUser.allergies || [],
                 preferences: activatedUser.preferences || [],
                 status: 'active',
-                notificationsEnabled: activatedUser.notifications_enabled ?? true
+                notificationsEnabled: activatedUser.notifications_enabled ?? true,
+                onboardingStatus: activatedUser.onboarding_status || 'not_started'
               });
               setIsCreatingUser(false);
               console.log('✅ [Auth] onLogin() called successfully, resetting isCreatingUser');
@@ -428,7 +433,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
         role: createdUser.role
       });
 
-      // Login - new users default to notifications enabled
+      // Login - new users default to notifications enabled and not_started onboarding
       const userData = {
         id: createdUser.clerk_id,
         householdId: createdUser.household_id,
@@ -439,7 +444,8 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
         allergies: createdUser.allergies || [],
         preferences: createdUser.preferences || [],
         status: 'active',
-        notificationsEnabled: createdUser.notifications_enabled ?? true
+        notificationsEnabled: createdUser.notifications_enabled ?? true,
+        onboardingStatus: createdUser.onboarding_status || 'not_started'
       };
 
       console.log('✅ [Auth] Final user data for onLogin:', userData);
@@ -492,7 +498,8 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
         allergies: existingUser.allergies || [],
         preferences: existingUser.preferences || [],
         status: existingUser.status || 'active',
-        notificationsEnabled: existingUser.notifications_enabled ?? true
+        notificationsEnabled: existingUser.notifications_enabled ?? true,
+        onboardingStatus: existingUser.onboarding_status || 'completed'
       });
       setIsCreatingUser(false);
     } else {
@@ -559,7 +566,8 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
             allergies: activatedUser.allergies || [],
             preferences: activatedUser.preferences || [],
             status: 'active',
-            notificationsEnabled: activatedUser.notifications_enabled ?? true
+            notificationsEnabled: activatedUser.notifications_enabled ?? true,
+            onboardingStatus: activatedUser.onboarding_status || 'not_started'
           });
           setIsCreatingUser(false);
           return;
@@ -592,7 +600,8 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
           allergies: updatedUser.allergies || [],
           preferences: updatedUser.preferences || [],
           status: updatedUser.status || 'active',
-          notificationsEnabled: updatedUser.notifications_enabled ?? true
+          notificationsEnabled: updatedUser.notifications_enabled ?? true,
+          onboardingStatus: updatedUser.onboarding_status || 'completed'
         });
         setIsCreatingUser(false);
       } else {

@@ -4,6 +4,7 @@ import {
   Image as ImageIcon, LogOut, Copy, Check, ChevronLeft, ChevronRight,
   CreditCard, Shield, Lock, Crown, Mail, Share2, Bell, BellOff, BellDot, Phone, CheckCircle, Loader2, Clock, Lightbulb
 } from 'lucide-react';
+import Avatar from './ui/Avatar';
 import { useUser } from '@clerk/clerk-react';
 import { User, UserRole, BaseViewProps, HouseholdPlan } from '../types';
 import { createInvite } from '../services/inviteService';
@@ -622,26 +623,6 @@ const Profile: React.FC<ProfileProps> = ({
     }
   };
 
-  // Get dicebear fallback URL (colored circle with initials)
-  const getDicebearFallback = (user: User) => {
-    const seed = encodeURIComponent(user.name);
-    // Grey (#9CA3AF) for pending, Helpy blue (#3EAFD2) for accepted
-    const bgColor = user.status === 'pending' ? '9CA3AF' : '3EAFD2';
-    return `https://api.dicebear.com/7.x/initials/svg?seed=${seed}&backgroundColor=${bgColor}&fontSize=40`;
-  };
-
-  // Get avatar URL with appropriate background color based on status
-  const getAvatarUrl = (user: User) => {
-    // Check if using dicebear avatar (no custom photo uploaded)
-    const isDicebearAvatar = user.avatar?.includes('dicebear');
-    
-    if (isDicebearAvatar) {
-      return getDicebearFallback(user);
-    }
-    
-    return user.avatar;
-  };
-
   const resolvePlanLimits = React.useCallback(() => {
     const planKey = (householdPlan?.plan || (subscriptionInfo?.plan as PlanKey) || 'free') as PlanKey;
     const defaults = DEFAULT_PLAN_LIMITS[planKey] || DEFAULT_PLAN_LIMITS.free;
@@ -677,16 +658,6 @@ const Profile: React.FC<ProfileProps> = ({
     setTimeout(() => setActiveSection('plan'), 80);
   };
 
-  // Handle avatar image load error - fallback to dicebear
-  const handleAvatarError = (e: React.SyntheticEvent<HTMLImageElement>, user: User) => {
-    const target = e.currentTarget;
-    const fallbackUrl = getDicebearFallback(user);
-    // Only set fallback if not already using it (prevent infinite loop)
-    if (target.src !== fallbackUrl) {
-      console.warn(`⚠️ Avatar failed to load for ${user.name}, falling back to dicebear`);
-      target.src = fallbackUrl;
-    }
-  };
   const handleAddUser = async () => {
     if (!newName.trim() || isAddingUser) return;
     
@@ -1087,7 +1058,6 @@ const Profile: React.FC<ProfileProps> = ({
                 {validUsers.map((user) => {
                   const isCurrent = user.id === currentUser.id;
                   const isSelected = user.id === selectedUserId;
-                  const hasNotifications = user.notificationsEnabled === true;
                   return (
                     <div
                       key={user.id}
@@ -1095,15 +1065,12 @@ const Profile: React.FC<ProfileProps> = ({
                       className="flex flex-col items-center gap-2 cursor-pointer"
                     >
                       <div className="relative">
-                        <div className={`w-16 h-16 rounded-full overflow-hidden border-4 ${isSelected ? 'border-primary shadow-md' : 'border-transparent'
-                          }`}>
-                          <img 
-                            src={getAvatarUrl(user)} 
-                            alt={user.name} 
-                            className="w-full h-full object-cover" 
-                            onError={(e) => handleAvatarError(e, user)}
-                          />
-                        </div>
+                        <Avatar
+                          user={user}
+                          size="lg"
+                          isSelected={isSelected}
+                          showSelectionBorder={true}
+                        />
                         {/* Notification indicator */}
                         <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-white shadow-sm flex items-center justify-center">
                           {(() => {
@@ -1143,17 +1110,16 @@ const Profile: React.FC<ProfileProps> = ({
                 <div className="flex items-center gap-4">
                   <div className="relative group">
                     <div
-                      className="w-20 h-20 rounded-full overflow-hidden shadow-sm bg-secondary cursor-pointer relative"
+                      className="relative cursor-pointer"
                       onClick={() => !isUploadingAvatar && setShowPhotoOptions(true)}
                     >
-                      <img 
-                        src={getAvatarUrl(selectedUser)} 
-                        alt={selectedUser.name} 
-                        className="w-full h-full object-cover" 
-                        onError={(e) => handleAvatarError(e, selectedUser)}
+                      <Avatar
+                        user={selectedUser}
+                        size="xl"
+                        className="shadow-sm"
                       />
                       {isUploadingAvatar && (
-                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center rounded-full">
                           <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin" />
                         </div>
                       )}
@@ -2958,17 +2924,10 @@ const Profile: React.FC<ProfileProps> = ({
                       }`}
                     >
                       {/* Avatar */}
-                      <div 
-                        className={`w-12 h-12 rounded-full flex items-center justify-center text-white text-lg font-bold overflow-hidden ${
-                          user.avatar ? '' : 'bg-gradient-to-br from-primary to-primary/70'
-                        }`}
-                      >
-                        {user.avatar ? (
-                          <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
-                        ) : (
-                          user.name.charAt(0).toUpperCase()
-                        )}
-                      </div>
+                      <Avatar
+                        user={user}
+                        size="md"
+                      />
                       <div className="flex-1">
                         <p className="font-semibold text-foreground text-body">{user.name}</p>
                         <p className="text-caption text-muted-foreground">{user.role}</p>

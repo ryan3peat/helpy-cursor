@@ -21,6 +21,7 @@ import {
   LayoutGrid,
   Check
 } from 'lucide-react';
+import Avatar from './ui/Avatar';
 import { useScrollHeader } from '@/hooks/useScrollHeader';
 import { useTranslatedContent } from '@/hooks/useTranslatedContent';
 import { useScrollLock } from '@/hooks/useScrollLock';
@@ -316,18 +317,16 @@ const Meals: React.FC<MealsProps> = ({
     return (
       <div className="flex items-center -space-x-2">
         {visible.map(u => (
-          <img
+          <Avatar
             key={u.id}
-            src={u.avatar}
-            alt={u.name}
-            title={u.name}
-            className={`w-6 h-6 rounded-full border-2 border-white bg-gray-200 object-cover ${
-              u.id === currentUser.id ? 'ring-2 ring-brand-primary ring-offset-1' : ''
-            }`}
+            user={u}
+            size="xs"
+            isCurrentUser={u.id === currentUser.id}
+            className="border-2 border-white"
           />
         ))}
         {remaining > 0 && (
-          <span className="text-micro text-gray-600 bg-gray-100 rounded-full w-6 h-6 flex items-center justify-center border-2 border-white">
+          <span className="text-micro text-muted-foreground bg-muted rounded-full w-6 h-6 flex items-center justify-center border-2 border-white">
             +{remaining}
           </span>
         )}
@@ -549,13 +548,11 @@ const Meals: React.FC<MealsProps> = ({
               <div className="flex flex-wrap gap-1.5 mb-2 flex-1">
                 {eaters.slice(0, 6).map(u => (
                   <div key={u.id} className="flex flex-col items-center">
-                    <img
-                      src={u.avatar}
-                      alt={u.name}
-                      title={u.name}
-                      className={`w-7 h-7 rounded-full bg-muted object-cover border-2 ${
-                        u.id === currentUser.id ? 'border-primary' : 'border-card'
-                      }`}
+                    <Avatar
+                      user={u}
+                      size="xs+"
+                      isCurrentUser={u.id === currentUser.id}
+                      className={`border-2 ${u.id === currentUser.id ? 'border-primary' : 'border-card'}`}
                     />
                     {!compact && (
                       <span className={`text-micro mt-0.5 ${
@@ -575,7 +572,7 @@ const Meals: React.FC<MealsProps> = ({
                 )}
               </div>
             ) : (
-              <p className="text-caption text-muted-foreground italic mb-2 flex-1">
+              <p className="text-caption text-muted-foreground mb-2 flex-1">
                 {t['meals.no_one_yet'] ?? 'No one yet'}
               </p>
             )}
@@ -1296,10 +1293,9 @@ const Meals: React.FC<MealsProps> = ({
                               : 'bg-card text-foreground ring-1 ring-border hover:ring-input'
                           }`}
                         >
-                          <img
-                            src={user.avatar}
-                            alt={user.name}
-                            className="w-6 h-6 rounded-full object-cover bg-muted"
+                          <Avatar
+                            user={user}
+                            size="xs"
                           />
                           <span>{user.id === currentUser.id ? (t['common.you'] ?? 'You') : user.name.split(' ')[0]}</span>
                         </button>

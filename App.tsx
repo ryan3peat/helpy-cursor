@@ -915,7 +915,8 @@ const AppContent: React.FC = () => {
           JSON.stringify(updatedCurrentUser.allergies) !== JSON.stringify(currentUser.allergies) ||
           JSON.stringify(updatedCurrentUser.preferences) !== JSON.stringify(currentUser.preferences) ||
           updatedCurrentUser.notificationsEnabled !== currentUser.notificationsEnabled ||
-          updatedCurrentUser.hasPushSubscription !== currentUser.hasPushSubscription;
+          updatedCurrentUser.hasPushSubscription !== currentUser.hasPushSubscription ||
+          updatedCurrentUser.onboardingStatus !== currentUser.onboardingStatus;
         
         if (hasChanges) {
           setCurrentUser(updatedCurrentUser);

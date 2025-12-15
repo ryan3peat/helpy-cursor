@@ -905,7 +905,7 @@ const Profile: React.FC<ProfileProps> = ({
   // =====================================================
   if (activeSection === 'main') {
     return (
-      <div className="min-h-screen bg-background pb-40 animate-fade-in">
+      <div className="min-h-screen bg-background pb-40">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
           {/* Header with Logout */}
           <header 
@@ -1988,7 +1988,7 @@ const Profile: React.FC<ProfileProps> = ({
       : 0;
 
     return (
-      <div className="min-h-screen bg-background pb-40 animate-fade-in">
+      <div className="min-h-screen bg-background pb-40">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
           {renderSettingsHeader(t['common.plan'] || 'Subscription', () => setActiveSection('settings'))}
           <div className="pt-6 pb-24">
@@ -2390,7 +2390,7 @@ const Profile: React.FC<ProfileProps> = ({
   // =====================================================
   if (activeSection === 'security') {
     return (
-      <div className="min-h-screen bg-background pb-40 animate-fade-in">
+      <div className="min-h-screen bg-background pb-40">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
           {renderSettingsHeader(t['common.security'] || 'Account', () => setActiveSection('settings'))}
           <div className="pt-6 pb-24">
@@ -3114,7 +3114,7 @@ const Profile: React.FC<ProfileProps> = ({
   // =====================================================
   if (activeSection === 'payment') {
     return (
-      <div className="min-h-screen bg-background pb-40 animate-fade-in">
+      <div className="min-h-screen bg-background pb-40">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
           {renderSettingsHeader(t['common.payment'] || 'Payment', () => setActiveSection('settings'))}
           <div className="pt-6 pb-24">
@@ -3291,7 +3291,7 @@ const Profile: React.FC<ProfileProps> = ({
   // =====================================================
   if (activeSection === 'settings') {
     return (
-      <div className="min-h-screen bg-background pb-40 animate-fade-in">
+      <div className="min-h-screen bg-background pb-40">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
           {renderSettingsHeader(t['common.settings'] || 'Settings', () => setActiveSection('main'))}
           <div className="pt-6 pb-24">

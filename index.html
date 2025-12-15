@@ -129,8 +129,16 @@
     </script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-      body {
+      /* CRITICAL: Prevent black flash during app load.
+         This style loads before external CSS and React, ensuring there's always
+         a visible background color. The --initial-bg is set by the inline script above. */
+      html, body, #root {
         background-color: var(--initial-bg, #3EAFD2);
+      }
+      /* Ensure root fills the viewport during React loading */
+      #root:empty {
+        min-height: 100vh;
+        min-height: 100dvh;
       }
       /* Legacy styles - kept for backward compatibility with other pages */
       .app-background {

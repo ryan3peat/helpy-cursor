@@ -804,7 +804,7 @@ const ToDo: React.FC<ToDoProps> = ({
   // ─────────────────────────────────────────────────────────────────
   
   return (
-    <div className="min-h-screen bg-background pb-40 animate-fade-in">
+    <div className="min-h-screen bg-background pb-40">
       <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
         {/* ─────────────────────────────────────────────────────────────── */}
         {/* STICKY HEADER - Push Up (No Shrink) */}

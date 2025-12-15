@@ -547,7 +547,9 @@ const AppContent: React.FC = () => {
     } else if (action.type === 'complete') {
       // Onboarding complete - update database status if not already completed
       if (currentUser && currentUser.onboardingStatus !== 'completed') {
-        await updateOnboardingStatus(currentUser.id, 'completed', currentUser.onboardingStatus);
+        // Convert Clerk ID to Supabase UUID for database update
+        const supabaseUserId = getCachedSupabaseUuid(currentUser.id);
+        await updateOnboardingStatus(supabaseUserId, 'completed', currentUser.onboardingStatus);
         // Update local user state to reflect the change
         setCurrentUser(prev => prev ? { ...prev, onboardingStatus: 'completed' } : prev);
       }
@@ -562,7 +564,9 @@ const AppContent: React.FC = () => {
   const skipOnboarding = async () => {
     // Update database status if not already completed
     if (currentUser && currentUser.onboardingStatus !== 'completed') {
-      await updateOnboardingStatus(currentUser.id, 'skipped', currentUser.onboardingStatus);
+      // Convert Clerk ID to Supabase UUID for database update
+      const supabaseUserId = getCachedSupabaseUuid(currentUser.id);
+      await updateOnboardingStatus(supabaseUserId, 'skipped', currentUser.onboardingStatus);
       // Update local user state to reflect the change
       setCurrentUser(prev => prev ? { ...prev, onboardingStatus: 'skipped' } : prev);
     }

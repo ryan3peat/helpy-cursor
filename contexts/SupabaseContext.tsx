@@ -120,7 +120,7 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
                 const { supabase } = await import('../services/supabase');
                 setClient(supabase);
                 globalAuthenticatedClient = supabase;
-                setIsReady(true);
+                setIsAuthClient(false);
                 return;
               }
             } catch (basicError) {
@@ -128,7 +128,7 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
               const { supabase } = await import('../services/supabase');
               setClient(supabase);
               globalAuthenticatedClient = supabase;
-              setIsReady(true);
+              setIsAuthClient(false);
               return;
             }
           }

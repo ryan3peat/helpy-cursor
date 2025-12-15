@@ -104,41 +104,41 @@
    DARK MODE
    ───────────────────────────────────────────────────────────────── */
 .dark {
-  /* Elevation Overlays */
-  --button-outline: rgba(255,255,255, .10);
-  --badge-outline: rgba(255,255,255, .05);
-  --elevate-1: rgba(255,255,255, .05);
-  --elevate-2: rgba(255,255,255, .10);
+  /* Elevation Overlays - stronger for visibility */
+  --button-outline: rgba(255,255,255, .12);
+  --badge-outline: rgba(255,255,255, .07);
+  --elevate-1: rgba(255,255,255, .07);
+  --elevate-2: rgba(255,255,255, .12);
 
-  /* Core Colors */
+  /* Core Colors - increased separation */
   --background: 0 0% 7%;
   --foreground: 0 0% 95%;
-  --border: 0 0% 20%;
+  --border: 0 0% 25%;
 
-  /* Card */
-  --card: 0 0% 10%;
+  /* Card - more lift from background */
+  --card: 0 0% 13%;
   --card-foreground: 0 0% 95%;
-  --card-border: 0 0% 18%;
+  --card-border: 0 0% 22%;
 
   /* Popover */
-  --popover: 0 0% 12%;
+  --popover: 0 0% 15%;
   --popover-foreground: 0 0% 95%;
-  --popover-border: 0 0% 20%;
+  --popover-border: 0 0% 25%;
 
   /* Primary (consistent) - #3EAFD2 */
   --primary: 194 62% 53%;
   --primary-foreground: 0 0% 100%;
 
-  /* Secondary */
-  --secondary: 0 0% 15%;
+  /* Secondary - more contrast */
+  --secondary: 0 0% 18%;
   --secondary-foreground: 0 0% 95%;
 
-  /* Muted */
-  --muted: 0 0% 15%;
-  --muted-foreground: 0 0% 60%;
+  /* Muted - more visible */
+  --muted: 0 0% 18%;
+  --muted-foreground: 0 0% 65%;
 
   /* Accent */
-  --accent: 0 0% 15%;
+  --accent: 0 0% 18%;
   --accent-foreground: 0 0% 95%;
 
   /* Destructive - Brand pink #F06292 */
@@ -146,7 +146,7 @@
   --destructive-foreground: 0 0% 100%;
 
   /* Input & Ring */
-  --input: 0 0% 35%;
+  --input: 0 0% 38%;
   --ring: 194 62% 53%;
 
   /* Shadows (stronger for dark) */
@@ -172,10 +172,22 @@
   border: none !important;
 }
 
+/* ─────────────────────────────────────────────────────────────────
+   iOS PWA FIXED ELEMENT PROTECTION
+   Contains rubber-band effect to prevent fixed elements (like 
+   bottom nav) from shifting. Preserves the bouncy scroll feel.
+   ───────────────────────────────────────────────────────────────── */
+html {
+  overscroll-behavior-y: contain;
+}
+
 body {
   font-family: var(--font-sans);
-  background-color: hsl(var(--background));
-  color: hsl(var(--foreground));
+  /* Use the initial-bg set by index.html inline script, which is based on session state.
+     This prevents black flash during CSS/JS loading race condition.
+     Fallback chain: --initial-bg (session-aware) -> hsl(--background) -> #fafafa (light) */
+  background-color: var(--initial-bg, hsl(var(--background, 0 0% 98%)));
+  color: hsl(var(--foreground, 0 0% 28%));
   -webkit-tap-highlight-color: transparent;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

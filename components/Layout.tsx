@@ -30,7 +30,8 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, onNavigate, t }) 
           border-t border-black/5 dark:border-white/5"
         style={{ 
           paddingBottom: 'env(safe-area-inset-bottom)',
-          boxShadow: '0 -4px 16px rgba(0, 0, 0, 0.04)'
+          boxShadow: '0 -4px 16px rgba(0, 0, 0, 0.04)',
+          transform: 'translateZ(0)',  // GPU layer for stable positioning on iOS
         }}
       >
         <div className="flex justify-around items-center h-16">

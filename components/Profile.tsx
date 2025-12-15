@@ -2299,7 +2299,6 @@ const Profile: React.FC<ProfileProps> = ({
                           setReferralCodeValid(false);
                         }}
                         onBlur={() => validateReferralCode(referralCodeInput)}
-                        placeholder={t['subscription.referral_code_placeholder'] || 'e.g., BETTY30DAYS'}
                         className={`w-full bg-muted border rounded-xl px-4 py-3 text-foreground font-medium focus:border-primary outline-none transition-colors text-body uppercase ${
                           referralCodeError ? 'border-destructive' : referralCodeValid ? 'border-green-500' : 'border-border'
                         }`}

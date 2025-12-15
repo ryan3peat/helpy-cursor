@@ -218,7 +218,7 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'todo.completed': 'Completed',
   'todo.no_shopping': 'No shopping items yet',
   'todo.no_tasks': 'No tasks yet',
-  'todo.add_hint': 'Press Enter to add | tap + to set details',
+  'todo.add_hint': 'Press Enter to add / tap (+) to set details',
   'todo.category.home_care': 'Home Care',
   'todo.category.family_care': 'Family Care',
   'todo.category.others': 'Others',
@@ -278,6 +278,7 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'common.settings': 'Settings',
   'common.plan': 'Subscription',
   'common.security': 'Account',
+  'common.payment': 'Payment',
   'common.free': 'Free',
   'common.core': 'Core',
   'common.pro': 'Pro',
@@ -287,9 +288,7 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'common.yr': 'yr',
   'common.essential_info': 'Essential',
   'common.house_routine': 'House Routine',
-  'common.helper': 'Helper',
-  'common.helpers': 'helpers',
-  'common.past': 'Past',
+  'common.training': 'Training',
   'common.home': 'Home',
   'common.school': 'School',
   'common.doctor': 'Doctor',
@@ -384,33 +383,13 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'profile.access_until_end': 'You\'ll continue to have access to premium features until the end of your current billing period.',
   'profile.revert_to_free': 'After that, your account will automatically revert to the free plan.',
   'profile.resubscribe_anytime': 'You can resubscribe at any time from your profile settings.',
-  'profile.helper_salary_info': 'Salary Information',
-  'profile.helper_start_date': 'Start Date',
-  'profile.helper_base_salary': 'Base Salary (HK$/month)',
-  'profile.helper_food_allowance': 'Food Allowance (HK$/month)',
-  'profile.helper_other_allowances': 'Other Allowances',
-  'profile.add_allowance': 'Add Allowance',
-  'profile.total_salary': 'Total Monthly Salary',
-
-  // Helper Management
-  'helper.statutory_holidays': 'Statutory Holidays',
-  'helper.working': 'Working?',
-  'helper.payslip_confirmation': 'Payslip Confirmation',
-  'helper.employer': 'Employer',
-  'helper.helper': 'Helper',
-  'helper.sign': 'Sign',
-  'helper.signed': 'Signed',
-  'helper.salary_not_configured': 'Salary details not configured',
-  'helper.input_salary': 'Input Salary Details',
-  'helper.select_compensation': 'Select Compensation Type',
-  'helper.time_in_lieu': 'Time-in-lieu (1 day off)',
-  'helper.overtime_pay': 'Overtime Pay',
-  'helper.past_holidays': 'Past Holidays',
-  'helper.past_payslips': 'Past Payslips',
-  'helper.no_helpers': 'No helpers in this household',
-  'helper.no_upcoming_holidays': 'No upcoming holidays',
-  'helper.no_past_records': 'No past records',
-  'helper.no_past_payslips': 'No past payslips',
+  'profile.card_holder': 'Card Holder',
+  'profile.card_expires': 'Expires',
+  'profile.card_number': 'Card Number',
+  'profile.expiry': 'Expiry',
+  'profile.cardholder_name': 'Cardholder Name',
+  'profile.card_type': 'Card Type',
+  'profile.save_payment': 'Save Payment Method',
 
   // Dashboard
   'dashboard.no_meals_today': 'No meals remaining for today',
@@ -477,27 +456,6 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'subscription.active_until': 'Your subscription is active until',
   'subscription.canceled_success': 'Your subscription has been successfully canceled.',
   'subscription.confirm_cancel': 'Are you sure you want to cancel your subscription? You will lose access to premium features at the end of your billing period.',
-  'subscription.canceling': 'Subscription Canceling',
-  'subscription.access_until': 'Access until',
-  'subscription.will_revert_free': 'Your plan will revert to Free after this date.',
-  'subscription.downgrade_to_free': 'Downgrade to Free',
-  'subscription.confirm_downgrade_free': 'Downgrading to Free will immediately remove paid features. Continue?',
-  'subscription.downgraded_success': 'Your subscription has been downgraded to Free.',
-
-  // Subscription - Trial
-  'subscription.trial_active': 'Free Trial Active',
-  'subscription.trial_ends': 'Your trial ends on',
-  'subscription.days_remaining': 'days remaining',
-  'subscription.trial_banner': 'You are currently on a free trial',
-  'subscription.trial_convert_soon': 'Your trial will convert to a paid subscription on',
-
-  // Subscription - Referral Codes
-  'subscription.referral_code': 'Referral Code (for free trial)',
-  'subscription.referral_code_placeholder': 'e.g., BETTY30DAYS',
-  'subscription.referral_code_hint': 'Enter a referral code to get a 30-day free trial.',
-  'subscription.invalid_referral_code': 'Invalid or expired referral code',
-  'subscription.referral_valid': '✓ 30-day free trial will be applied!',
-  'subscription.referral_already_used': 'A referral code has already been applied to this account',
 
   // Confirmation Dialogs
   'confirm.delete_member': 'Are you sure you want to delete this family member? This action cannot be undone.',
@@ -607,8 +565,6 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   // Expenses - Additional
   'expenses.all_expenses': 'All Expenses',
   'expenses.error_invalid_amount': 'Please enter a valid amount',
-  'expenses.free_limit_title': 'Upgrade your plan to enable Receipt Scanner!',
-  'expenses.free_limit_body': 'Scan with your phone\'s camera or upload from the photo gallery.',
 
   // Common - Additional
   'common.na': 'N/A',
@@ -623,7 +579,6 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'error.cancel_subscription': 'Failed to cancel subscription. Please try again.',
   'error.delete_account_unable': 'Unable to delete account. Please try again.',
   'error.delete_account': 'Failed to delete account. Please try again or contact support.',
-  'error.delete_member': 'Failed to delete member. Please try again.',
 
   // Settings - Push Notifications
   'settings.push_not_supported': 'Not supported in this browser',

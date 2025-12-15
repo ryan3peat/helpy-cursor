@@ -2,14 +2,13 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
   AlertCircle, Heart, Settings, Plus, Trash2, X, Save, Camera,
   Image as ImageIcon, LogOut, Copy, Check, ChevronLeft, ChevronRight,
-  Shield, Lock, Crown, Mail, Share2, Bell, BellOff, BellDot, Phone, CheckCircle, Loader2, Clock, Lightbulb
+  CreditCard, Shield, Lock, Crown, Mail, Share2, Bell, BellOff, BellDot, Phone, CheckCircle, Loader2
 } from 'lucide-react';
-import Avatar from './ui/Avatar';
 import { useUser } from '@clerk/clerk-react';
-import { User, UserRole, BaseViewProps, HouseholdPlan } from '../types';
+import { User, UserRole, BaseViewProps } from '../types';
 import { createInvite } from '../services/inviteService';
-import { createCheckoutSession, createPortalSession, downgradeToFree } from '../services/stripeService';
-import { useSupabase } from '../contexts/SupabaseContext';
+import { createCheckoutSession, createPortalSession } from '../services/stripeService';
+import { supabase } from '../services/supabase';
 import { deleteItem, uploadAvatarImage } from '../services/supabaseService';
 import { useScrollLock } from '@/hooks/useScrollLock';
 import {
@@ -24,17 +23,10 @@ interface ProfileProps extends BaseViewProps {
   users: User[];
   onAdd: (user: Omit<User, 'id'>) => Promise<User | undefined>;
   onUpdate: (id: string, data: Partial<User>) => void;
-  onDelete: (id: string) => Promise<void>;
+  onDelete: (id: string) => void;
   onBack: () => void;
   currentUser: User;
   onLogout: () => void;
-  householdPlan?: HouseholdPlan | null;
-  /** Trigger to open add member sheet from onboarding */
-  openAddMemberFromOnboarding?: boolean;
-  /** Callback when add member sheet is opened */
-  onAddMemberSheetOpened?: () => void;
-  /** Callback to restart onboarding tutorial */
-  onRestartOnboarding?: () => void;
 }
 
 // Role priority for consistent sorting across all family members
@@ -47,46 +39,19 @@ const ROLE_PRIORITY: Record<string, number> = {
   'Other': 5,
 };
 
-type PlanKey = HouseholdPlan['plan'];
-
-const DEFAULT_PLAN_LIMITS: Record<PlanKey, { maxFamily: number; maxHelpers: number }> = {
-  free: { maxFamily: 3, maxHelpers: 1 },
-  core: { maxFamily: 4, maxHelpers: 1 },
-  pro: { maxFamily: 8, maxHelpers: 4 },
-  test: { maxFamily: 4, maxHelpers: 1 },
-};
-
-type PlanLimitReason = 'family' | 'helper';
-
-interface PlanLimitState {
-  plan: PlanKey;
-  reason: PlanLimitReason;
-  allowed: number;
-  current: number;
-}
-
-const isHelperRole = (role: string | UserRole | undefined | null) =>
-  (role || '').toString().toLowerCase() === 'helper';
-
 // localStorage key for caching household name
 const HOUSEHOLD_NAME_CACHE_KEY = 'helpy_household_name';
 
 const Profile: React.FC<ProfileProps> = ({
-  users, onAdd, onUpdate, onDelete, onBack, currentUser, onLogout, t, currentLang, householdPlan,
-  openAddMemberFromOnboarding, onAddMemberSheetOpened, onRestartOnboarding
+  users, onAdd, onUpdate, onDelete, onBack, currentUser, onLogout, t, currentLang
 }) => {
-  // ─────────────────────────────────────────────────────────────────
-  // Authenticated Supabase client with JWT for RLS
-  // ─────────────────────────────────────────────────────────────────
-  const supabase = useSupabase();
-  
   // ─────────────────────────────────────────────────────────────────
   // Role-based permissions
   // ─────────────────────────────────────────────────────────────────
   const isHelper = currentUser.role === UserRole.HELPER;
 
   // Navigation State
-  const [activeSection, setActiveSection] = useState<'main' | 'settings' | 'plan' | 'security'>('main');
+  const [activeSection, setActiveSection] = useState<'main' | 'settings' | 'plan' | 'security' | 'payment'>('main');
 
   // Main Profile State
   const [selectedUserId, setSelectedUserId] = useState<string>(currentUser.id);
@@ -96,7 +61,6 @@ const Profile: React.FC<ProfileProps> = ({
   const [isCopied, setIsCopied] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAddingUser, setIsAddingUser] = useState(false);
-  const [planLimitModal, setPlanLimitModal] = useState<PlanLimitState | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<string | null>(null);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
@@ -108,12 +72,6 @@ const Profile: React.FC<ProfileProps> = ({
   const [editPreferences, setEditPreferences] = useState<string[]>([]);
   const [newAllergyInput, setNewAllergyInput] = useState('');
   const [newPreferenceInput, setNewPreferenceInput] = useState('');
-  
-  // Helper salary edit state
-  const [editHelperStartDate, setEditHelperStartDate] = useState<string | null>(null);
-  const [editHelperBaseSalary, setEditHelperBaseSalary] = useState(5100);
-  const [editHelperFoodAllowance, setEditHelperFoodAllowance] = useState(1236);
-  const [editHelperOtherAllowances, setEditHelperOtherAllowances] = useState<Array<{name: string; amount: number}>>([]);
 
   // Add User Form State
   const [newName, setNewName] = useState('');
@@ -122,20 +80,8 @@ const Profile: React.FC<ProfileProps> = ({
   // Settings State
   const [selectedPlan, setSelectedPlan] = useState<'free' | 'core' | 'pro'>('free');
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
-
-  // Trial State
-  const [isOnTrial, setIsOnTrial] = useState(false);
-  const [trialEndsAt, setTrialEndsAt] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [loadingPlan, setLoadingPlan] = useState<'free' | 'core' | 'pro' | 'test' | null>(null);
-  const [isPlanConfirmOpen, setIsPlanConfirmOpen] = useState(false);
-  const [pendingPlan, setPendingPlan] = useState<{ plan: 'core' | 'pro' | 'test'; period: 'monthly' | 'yearly' } | null>(null);
-  const [promoCodeInput, setPromoCodeInput] = useState('');
-  const [promoCodeError, setPromoCodeError] = useState<string | null>(null);
-  const [referralCodeInput, setReferralCodeInput] = useState('');
-  const [referralCodeError, setReferralCodeError] = useState<string | null>(null);
-  const [referralCodeValid, setReferralCodeValid] = useState(false);
-  const [isValidatingReferral, setIsValidatingReferral] = useState(false);
+  const [loadingPlan, setLoadingPlan] = useState<'core' | 'pro' | 'test' | null>(null);
   const [subscriptionInfo, setSubscriptionInfo] = useState<{
     plan: string;
     status: string;
@@ -148,13 +94,6 @@ const Profile: React.FC<ProfileProps> = ({
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [subscriptionSuccess, setSubscriptionSuccess] = useState(false);
   const [subscriptionCanceled, setSubscriptionCanceled] = useState(false);
-  
-  // Admin Deactivate/Delete Account State
-  const [isAdminDeleteOptionsOpen, setIsAdminDeleteOptionsOpen] = useState(false);
-  const [isTransferOwnershipOpen, setIsTransferOwnershipOpen] = useState(false);
-  const [selectedNewOwnerId, setSelectedNewOwnerId] = useState<string | null>(null);
-  const [isDeactivatingAdmin, setIsDeactivatingAdmin] = useState(false);
-  const [isDeleteHouseholdConfirmOpen, setIsDeleteHouseholdConfirmOpen] = useState(false);
 
   // Push Notification State
   const [isTogglingNotifications, setIsTogglingNotifications] = useState(false);
@@ -204,15 +143,7 @@ const Profile: React.FC<ProfileProps> = ({
   }, []);
 
   // Lock scroll when any modal is open
-  useScrollLock(isAddModalOpen || isEditModalOpen || deleteConfirmOpen || showPhotoOptions || subscriptionCanceled || isPlanConfirmOpen || !!planLimitModal || isAdminDeleteOptionsOpen || isTransferOwnershipOpen || isDeleteHouseholdConfirmOpen);
-
-  // Handle opening add member sheet from onboarding
-  React.useEffect(() => {
-    if (openAddMemberFromOnboarding) {
-      setIsAddModalOpen(true);
-      onAddMemberSheetOpened?.();
-    }
-  }, [openAddMemberFromOnboarding, onAddMemberSheetOpened]);
+  useScrollLock(isAddModalOpen || isEditModalOpen || deleteConfirmOpen || showPhotoOptions || subscriptionCanceled);
 
   // Pre-fetch subscription info on component mount (for admins)
   // This eliminates latency when navigating to the Plan page
@@ -237,7 +168,7 @@ const Profile: React.FC<ProfileProps> = ({
       }
       const { data, error } = await supabase
         .from('households')
-        .select('name, subscription_plan, subscription_status, subscription_current_period_end, subscription_period, is_trial, trial_ends_at')
+        .select('name, subscription_plan, subscription_status, subscription_current_period_end, subscription_period')
         .eq('id', currentUser.householdId)
         .single();
 
@@ -262,10 +193,6 @@ const Profile: React.FC<ProfileProps> = ({
         });
         setSelectedPlan((data.subscription_plan || 'free') as 'free' | 'core' | 'pro');
         setBillingPeriod((data.subscription_period || 'monthly') as 'monthly' | 'yearly');
-
-        // Set trial state
-        setIsOnTrial(data.is_trial || false);
-        setTrialEndsAt(data.trial_ends_at || null);
         
         // If we were retrying and subscription is now active, we're done
         if (retryCount > 0 && data.subscription_status === 'active') {
@@ -298,46 +225,31 @@ const Profile: React.FC<ProfileProps> = ({
       setActiveSection('settings');
       setTimeout(() => setActiveSection('plan'), 100);
 
-      // Clear URL parameters (both query and hash)
-      const cleanPath = window.location.pathname;
-      const cleanHash = window.location.hash.split('?')[0].replace('#portal_return=true', '') || '';
-      window.history.replaceState({}, document.title, cleanPath + cleanHash);
+      // Clear URL parameters
+      const newUrl = window.location.pathname + (window.location.hash.split('?')[0] || '');
+      window.history.replaceState({}, document.title, newUrl);
 
-      // Immediately refresh subscription info and check status
-      // Use multiple retries as webhook might take a few seconds to process
-      const checkSubscriptionStatus = async (attempt: number = 0) => {
-        const maxAttempts = 5;
-        
+      // Check subscription status after a short delay (webhook might need time)
+      setTimeout(async () => {
+        // Fetch subscription info and check if it's no longer active
         const { data } = await supabase
           .from('households')
-          .select('subscription_status, subscription_plan')
+          .select('subscription_status')
           .eq('id', currentUser.householdId)
           .single();
         
-        if (data) {
-          // Refresh the subscription info display
-          fetchSubscriptionInfo(0, false);
-          
-          // If subscription was canceled or changed, show appropriate message
-          if (data.subscription_status === 'canceling' || data.subscription_status === 'canceled' || data.subscription_plan === 'free') {
-            setSubscriptionCanceled(true);
-          } else if (attempt < maxAttempts) {
-            // Keep checking in case webhook is still processing
-            setTimeout(() => checkSubscriptionStatus(attempt + 1), 2000);
-          }
+        if (data && data.subscription_status !== 'active') {
+          // Subscription was canceled or is no longer active
+          setSubscriptionCanceled(true);
         }
-      };
-      
-      // Start checking after a brief delay for webhook processing
-      setTimeout(() => checkSubscriptionStatus(0), 1500);
+        
+        // Also refresh the full subscription info
+        fetchSubscriptionInfo();
+      }, 2000);
     }
 
     // If we just returned from Stripe checkout
     if (sessionId || success === 'true') {
-      // Hide stale plan data to avoid flashing old plan while we sync
-      setSubscriptionInfo(null);
-      setIsLoadingSubscription(true);
-
       // Navigate to subscription page
       setActiveSection('settings');
       // Small delay to allow settings to render, then navigate to plan
@@ -350,19 +262,6 @@ const Profile: React.FC<ProfileProps> = ({
       // Show success message
       setSubscriptionSuccess(true);
       setTimeout(() => setSubscriptionSuccess(false), 10000);
-
-      // Attempt immediate sync from Stripe session to avoid waiting on webhook
-      const syncSubscription = async () => {
-        try {
-          await fetch('/api/sync-subscription', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ householdId: currentUser.householdId, sessionId }),
-          });
-        } catch (err) {
-          console.warn('Sync subscription failed, will rely on webhook + retries', err);
-        }
-      };
 
       // Refetch with retry logic (webhook might take a few seconds)
       const retryFetch = async (attempt: number = 0) => {
@@ -393,13 +292,11 @@ const Profile: React.FC<ProfileProps> = ({
 
       // Initial fetch immediately, then retry if needed
       setTimeout(() => {
-        syncSubscription().finally(() => {
-          fetchSubscriptionInfo(0).then((isActive) => {
-            if (!isActive) {
-              // Wait 2 seconds before first retry (give webhook time to process)
-              setTimeout(() => retryFetch(1), 2000);
-            }
-          });
+        fetchSubscriptionInfo(0).then((isActive) => {
+          if (!isActive) {
+            // Wait 2 seconds before first retry (give webhook time to process)
+            setTimeout(() => retryFetch(1), 2000);
+          }
         });
       }, 500);
     }
@@ -477,6 +374,13 @@ const Profile: React.FC<ProfileProps> = ({
       notificationsEnabled: isTogglingRef.current ? prev.notificationsEnabled : (currentUser.notificationsEnabled ?? true)
     }));
   }, [currentUser]);
+  const [paymentData, setPaymentData] = useState({
+    cardNumber: '',
+    expiry: '',
+    cvc: '',
+    name: currentUser.name || '',
+    cardType: 'DEBIT' as 'DEBIT' | 'CREDIT' | 'PREPAID'
+  });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -515,85 +419,29 @@ const Profile: React.FC<ProfileProps> = ({
     window.scrollTo(0, 0);
   }, [activeSection]);
 
-  // Open target section when requested via global flag (e.g., from other views)
-  useEffect(() => {
-    const targetSection = localStorage.getItem('helpy_profile_target_section') as typeof activeSection | null;
-    if (targetSection) {
-      setActiveSection(targetSection);
-      localStorage.removeItem('helpy_profile_target_section');
-    }
-  }, []);
-
   const resetForm = () => {
     setNewName('');
     setNewRole(UserRole.CHILD);
   };
 
-  // Referral Code Validation
-  const validateReferralCode = async (code: string) => {
-    if (!code.trim()) {
-      setReferralCodeValid(false);
-      setReferralCodeError(null);
-      return;
-    }
-
-    setIsValidatingReferral(true);
-    try {
-      const { data, error } = await supabase
-        .from('referral_codes')
-        .select('id, trial_days, is_active')
-        .eq('code', code.trim().toUpperCase())
-        .eq('is_active', true)
-        .single();
-
-      if (error || !data) {
-        setReferralCodeError(t['subscription.invalid_referral_code'] || 'Invalid or expired referral code');
-        setReferralCodeValid(false);
-      } else {
-        setReferralCodeError(null);
-        setReferralCodeValid(true);
-      }
-    } catch (err) {
-      setReferralCodeError(t['subscription.invalid_referral_code'] || 'Invalid or expired referral code');
-      setReferralCodeValid(false);
-    } finally {
-      setIsValidatingReferral(false);
-    }
-  };
-
   // Stripe Checkout Handler
-  const handleSelectPlan = async (plan: 'core' | 'pro' | 'test', period: 'monthly' | 'yearly', promoCode?: string, referralCode?: string) => {
+  const handleSelectPlan = async (plan: 'core' | 'pro' | 'test', period: 'monthly' | 'yearly') => {
     try {
-      setPromoCodeError(null);
       setLoadingPlan(plan);
       const checkoutUrl = await createCheckoutSession(
         currentUser.householdId,
         plan,
         period,
-        currentUser.email || '',
-        promoCode,
-        referralCode
+        currentUser.email || ''
       );
       
       // Redirect to Stripe Checkout
       window.location.href = checkoutUrl;
     } catch (error) {
       console.error('Checkout error:', error);
-      setPromoCodeError(error instanceof Error ? error.message : 'Failed to start checkout. Please try again.');
+      alert(error instanceof Error ? error.message : 'Failed to start checkout. Please try again.');
       setLoadingPlan(null);
     }
-  };
-
-  const handleOpenPlanConfirm = (plan: 'core' | 'pro' | 'test', period: 'monthly' | 'yearly') => {
-    setPendingPlan({ plan, period });
-    setPromoCodeInput('');
-    setPromoCodeError(null);
-    setIsPlanConfirmOpen(true);
-  };
-
-  const handleConfirmPlan = async () => {
-    if (!pendingPlan) return;
-    await handleSelectPlan(pendingPlan.plan, pendingPlan.period, referralCodeValid ? undefined : promoCodeInput, referralCodeValid ? referralCodeInput : undefined);
   };
 
   // Stripe Portal Handler (for managing existing subscription)
@@ -622,81 +470,26 @@ const Profile: React.FC<ProfileProps> = ({
     }
   };
 
-  const resolvePlanLimits = React.useCallback(() => {
-    const planKey = (householdPlan?.plan || (subscriptionInfo?.plan as PlanKey) || 'free') as PlanKey;
-    const defaults = DEFAULT_PLAN_LIMITS[planKey] || DEFAULT_PLAN_LIMITS.free;
-
-    return {
-      plan: planKey,
-      maxFamily: householdPlan?.maxFamilyMembers ?? defaults.maxFamily,
-      maxHelpers: householdPlan?.maxHelpers ?? defaults.maxHelpers,
-    };
-  }, [householdPlan, subscriptionInfo?.plan]);
-
-  const openPlanLimitModal = (reason: PlanLimitReason, planKey: PlanKey, allowed: number, current: number) => {
-    setPlanLimitModal({ plan: planKey, reason, allowed, current });
-    setIsAddModalOpen(false);
-  };
-
-  const formatPlanLabel = (plan: PlanKey) => {
-    switch (plan) {
-      case 'core':
-        return 'Core';
-      case 'pro':
-        return 'Pro';
-      case 'test':
-        return 'Test';
-      default:
-        return 'Free';
+  // Get avatar URL with appropriate background color based on status
+  const getAvatarUrl = (user: User) => {
+    // Check if using dicebear avatar (no custom photo uploaded)
+    const isDicebearAvatar = user.avatar?.includes('dicebear');
+    
+    if (isDicebearAvatar) {
+      const seed = encodeURIComponent(user.name);
+      // Grey (#9CA3AF) for pending, Helpy blue (#3EAFD2) for accepted
+      const bgColor = user.status === 'pending' ? '9CA3AF' : '3EAFD2';
+      // Reduce font size by 20% (from default 50 to 40)
+      return `https://api.dicebear.com/7.x/initials/svg?seed=${seed}&backgroundColor=${bgColor}&fontSize=40`;
     }
-  };
-
-  const handleUpgradeClick = () => {
-    setPlanLimitModal(null);
-    setActiveSection('settings');
-    setTimeout(() => setActiveSection('plan'), 80);
+    
+    return user.avatar;
   };
 
   const handleAddUser = async () => {
     if (!newName.trim() || isAddingUser) return;
     
     setIsAddingUser(true);
-
-    const { plan, maxFamily, maxHelpers } = resolvePlanLimits();
-
-    // Fetch latest counts from Supabase to avoid stale client state
-    let helperCount = 0;
-    let familyCount = 0;
-    try {
-      const { data, error } = await supabase
-        .from('users')
-        .select('role, status')
-        .eq('household_id', currentUser.householdId);
-
-      if (error) throw error;
-
-      const activeUsers = (data || []).filter(u => u?.status !== 'inactive');
-      helperCount = activeUsers.filter(u => isHelperRole(u.role)).length;
-      familyCount = activeUsers.filter(u => !isHelperRole(u.role)).length;
-    } catch (err) {
-      console.warn('[Profile] Failed to load latest user counts, falling back to state', err);
-      const activeUsers = users.filter(u => u.status !== 'inactive');
-      helperCount = activeUsers.filter(u => isHelperRole(u.role)).length;
-      familyCount = activeUsers.filter(u => !isHelperRole(u.role)).length;
-    }
-
-    if (isHelperRole(newRole) && helperCount >= maxHelpers) {
-      openPlanLimitModal('helper', plan, maxHelpers, helperCount);
-      setIsAddingUser(false);
-      return;
-    }
-
-    if (!isHelperRole(newRole) && familyCount >= maxFamily) {
-      openPlanLimitModal('family', plan, maxFamily, familyCount);
-      setIsAddingUser(false);
-      return;
-    }
-
     const nameToAdd = newName.trim();
     const roleToAdd = newRole;
     
@@ -705,29 +498,36 @@ const Profile: React.FC<ProfileProps> = ({
     setIsAddModalOpen(false);
     
     try {
-      // Use invite API for ALL roles to ensure server-side limit enforcement
-      // The API will create CHILD as 'active' and others as 'pending' with invite links
-      const result = await createInvite({
-        name: nameToAdd,
-        role: roleToAdd,
-        householdId: currentUser.householdId,
-        inviterId: currentUser.id
-      });
-      
-      // Only show invite link modal for non-children (children are added directly as active)
-      if (roleToAdd !== UserRole.CHILD && result.inviteLink) {
+      // Children don't need invite links - they're added directly to the household
+      if (roleToAdd === UserRole.CHILD) {
+        const newUser: Omit<User, 'id'> = {
+          householdId: currentUser.householdId,
+          name: nameToAdd,
+          role: roleToAdd,
+          avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(nameToAdd)}`,
+          allergies: [],
+          preferences: [],
+          status: 'active' // Children are added as active family members, not pending
+        };
+        
+        // Create child user directly without invite link
+        await onAdd(newUser);
+        // User will appear via subscription update
+      } else {
+        // For Spouse, Helper, and Other, create user with invite link
+        const result = await createInvite({
+          name: nameToAdd,
+          role: roleToAdd,
+          householdId: currentUser.householdId,
+          inviterId: currentUser.id
+        });
+        
+        // Show invite link modal for non-children
         setInviteLink(result.inviteLink);
       }
-      // For children, the user is already created as 'active' in the database
-      // The subscription update will sync it to the UI automatically
-      // No need to call onAdd since the API already created the user
     } catch (error) {
       console.error('Failed to add user:', error);
-      // Extract error message from API response if available
-      const errorMessage = error instanceof Error 
-        ? error.message 
-        : (t['error.add_user'] || 'Failed to add user. Please try again.');
-      alert(errorMessage);
+      alert(t['error.add_user'] || 'Failed to add user. Please try again.');
     } finally {
       setIsAddingUser(false);
     }
@@ -738,27 +538,17 @@ const Profile: React.FC<ProfileProps> = ({
     setDeleteConfirmOpen(true);
   };
 
-  const confirmDeleteUser = async () => {
+  const confirmDeleteUser = () => {
     if (!userToDelete) return;
     
     // Update selectedUserId before deletion if needed
     if (selectedUserId === userToDelete) {
       setSelectedUserId(currentUser.id);
     }
-    
-    // Close dialog immediately for better UX
+    // Call onDelete which will update the parent's users array
+    onDelete(userToDelete);
     setDeleteConfirmOpen(false);
-    const deletingUserId = userToDelete;
     setUserToDelete(null);
-    
-    try {
-      // Call onDelete which will update the parent's users array
-      await onDelete(deletingUserId);
-    } catch (error: any) {
-      console.error('Failed to delete user:', error);
-      // Show error message to user
-      alert(error?.message || t['error.delete_member'] || 'Failed to delete member. Please try again.');
-    }
   };
 
   const handleReinvite = async (userId: string) => {
@@ -808,51 +598,17 @@ const Profile: React.FC<ProfileProps> = ({
     setEditRole(selectedUser.role);
     setEditAllergies([...(selectedUser.allergies || [])]);
     setEditPreferences([...(selectedUser.preferences || [])]);
-    
-    // Load helper salary fields if Helper role
-    if (selectedUser.role === UserRole.HELPER) {
-      setEditHelperStartDate(selectedUser.helperStartDate || null);
-      setEditHelperBaseSalary(selectedUser.helperBaseSalary || 5100);
-      setEditHelperFoodAllowance(selectedUser.helperFoodAllowance || 1236);
-      setEditHelperOtherAllowances(selectedUser.helperOtherAllowances || []);
-    }
-    
     setIsEditModalOpen(true);
   };
 
   const handleSaveEdit = () => {
-    const updates: Partial<User> = {
+    onUpdate(selectedUser.id, {
       name: editName,
       role: editRole,
       allergies: editAllergies,
-      preferences: editPreferences,
-    };
-    
-    // Include helper salary fields if Helper role
-    if (editRole === UserRole.HELPER) {
-      updates.helperStartDate = editHelperStartDate;
-      updates.helperBaseSalary = editHelperBaseSalary;
-      updates.helperFoodAllowance = editHelperFoodAllowance;
-      updates.helperOtherAllowances = editHelperOtherAllowances;
-    }
-    
-    onUpdate(selectedUser.id, updates);
+      preferences: editPreferences
+    });
     setIsEditModalOpen(false);
-  };
-
-  // Helper functions for other allowances
-  const addOtherAllowance = () => {
-    setEditHelperOtherAllowances(prev => [...prev, { name: '', amount: 0 }]);
-  };
-
-  const removeOtherAllowance = (index: number) => {
-    setEditHelperOtherAllowances(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const updateOtherAllowance = (index: number, field: 'name' | 'amount', value: string | number) => {
-    setEditHelperOtherAllowances(prev => prev.map((a, i) => 
-      i === index ? { ...a, [field]: value } : a
-    ));
   };
 
   const handleAvatarChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -917,11 +673,8 @@ const Profile: React.FC<ProfileProps> = ({
   };
 
   const renderSettingsHeader = (title: string, onBackOverride?: () => void) => (
-    <header 
-      className="sticky top-0 z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 pb-3 flex items-end"
-      style={{ height: '120px' }}
-    >
-      <div className="flex items-center gap-2 w-full">
+    <header className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm -mx-4 px-4 sm:-mx-6 sm:px-6 pt-12 pb-3">
+      <div className="flex items-center gap-2">
         <button
           onClick={onBackOverride || (() => setActiveSection('main'))}
           className="p-2 hover:bg-secondary rounded-full transition-colors"
@@ -938,14 +691,11 @@ const Profile: React.FC<ProfileProps> = ({
   // =====================================================
   if (activeSection === 'main') {
     return (
-      <div className="min-h-screen bg-background pb-40">
+      <div className="min-h-screen bg-background pb-40 animate-fade-in">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
           {/* Header with Logout */}
-          <header 
-            className="sticky top-0 z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 pb-3 flex items-end"
-            style={{ height: '120px' }}
-          >
-            <div className="flex items-center justify-between w-full">
+          <header className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm -mx-4 px-4 sm:-mx-6 sm:px-6 pt-12 pb-3">
+            <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <button onClick={onBack} className="p-2 hover:bg-secondary rounded-full transition-colors">
                   <ChevronLeft size={24} className="text-foreground" />
@@ -1015,60 +765,6 @@ const Profile: React.FC<ProfileProps> = ({
               </div>
             )}
 
-            {planLimitModal && (
-              <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center px-4">
-                <div className="bg-card rounded-2xl shadow-lg max-w-lg w-full p-6 space-y-4">
-                  <div className="flex items-start gap-3">
-                    <div className="p-2 rounded-full bg-amber-100 text-amber-700">
-                      <AlertCircle size={20} />
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-title font-semibold text-foreground">
-                        {planLimitModal.reason === 'helper'
-                          ? (t['profile.limit_helper_title'] || 'Helper limit reached')
-                          : (t['profile.limit_family_title'] || 'Member limit reached')}
-                      </p>
-                      <p className="text-body text-muted-foreground mt-1">
-                        {(() => {
-                          const planName = formatPlanLabel(planLimitModal.plan);
-                          const limitLabel = planLimitModal.reason === 'helper'
-                            ? `${planLimitModal.allowed} helper${planLimitModal.allowed === 1 ? '' : 's'}`
-                            : `${planLimitModal.allowed} family member${planLimitModal.allowed === 1 ? '' : 's'}`;
-                          return planLimitModal.reason === 'helper'
-                            ? `Your ${planName} plan includes up to ${limitLabel}. Upgrade to add another helper.`
-                            : `Your ${planName} plan includes up to ${limitLabel} (including the admin). Upgrade to add another member.`;
-                        })()}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="bg-secondary/40 border border-border rounded-xl p-3">
-                    <p className="text-caption text-muted-foreground">{t['common.current'] || 'Current usage'}</p>
-                    <p className="text-body font-semibold text-foreground">
-                      {planLimitModal.reason === 'helper'
-                        ? `${planLimitModal.current} / ${planLimitModal.allowed} helper${planLimitModal.allowed === 1 ? '' : 's'}`
-                        : `${planLimitModal.current} / ${planLimitModal.allowed} family member${planLimitModal.allowed === 1 ? '' : 's'}`}
-                    </p>
-                  </div>
-
-                  <div className="flex gap-3 pt-1">
-                    <button
-                      onClick={handleUpgradeClick}
-                      className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body font-semibold hover:bg-primary/90 transition-colors shadow-sm"
-                    >
-                      Upgrade
-                    </button>
-                    <button
-                      onClick={() => setPlanLimitModal(null)}
-                      className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body font-semibold hover:bg-secondary/80 transition-colors"
-                    >
-                      Return
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
             {/* User Carousel */}
             <div className="bg-card rounded-3xl px-5 py-5 shadow-sm">
               {householdName && (
@@ -1091,6 +787,7 @@ const Profile: React.FC<ProfileProps> = ({
                 {validUsers.map((user) => {
                   const isCurrent = user.id === currentUser.id;
                   const isSelected = user.id === selectedUserId;
+                  const hasNotifications = user.notificationsEnabled === true;
                   return (
                     <div
                       key={user.id}
@@ -1098,12 +795,10 @@ const Profile: React.FC<ProfileProps> = ({
                       className="flex flex-col items-center gap-2 cursor-pointer"
                     >
                       <div className="relative">
-                        <Avatar
-                          user={user}
-                          size="lg"
-                          isSelected={isSelected}
-                          showSelectionBorder={true}
-                        />
+                        <div className={`w-16 h-16 rounded-full overflow-hidden border-4 ${isSelected ? 'border-primary shadow-md' : 'border-transparent'
+                          }`}>
+                          <img src={getAvatarUrl(user)} alt={user.name} className="w-full h-full object-cover" />
+                        </div>
                         {/* Notification indicator */}
                         <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-white shadow-sm flex items-center justify-center">
                           {(() => {
@@ -1143,16 +838,12 @@ const Profile: React.FC<ProfileProps> = ({
                 <div className="flex items-center gap-4">
                   <div className="relative group">
                     <div
-                      className="relative cursor-pointer"
+                      className="w-20 h-20 rounded-full overflow-hidden shadow-sm bg-secondary cursor-pointer relative"
                       onClick={() => !isUploadingAvatar && setShowPhotoOptions(true)}
                     >
-                      <Avatar
-                        user={selectedUser}
-                        size="xl"
-                        className="shadow-sm"
-                      />
+                      <img src={getAvatarUrl(selectedUser)} alt={selectedUser.name} className="w-full h-full object-cover" />
                       {isUploadingAvatar && (
-                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center rounded-full">
+                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
                           <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin" />
                         </div>
                       )}
@@ -1310,41 +1001,20 @@ const Profile: React.FC<ProfileProps> = ({
               </div>
             )}
 
-            {/* Settings & Tutorial Card */}
-            <div className="bg-card rounded-3xl shadow-sm overflow-hidden">
-              {/* Settings Row */}
-              <button
-                onClick={() => setActiveSection('settings')}
-                className="w-full px-5 py-4 flex items-center justify-between hover:bg-secondary transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  <Settings size={18} className="text-primary" />
-                  <div className="text-left">
-                    <p className="font-bold text-foreground text-title">{t['common.settings']}</p>
-                    <p className="text-caption text-muted-foreground">{t['profile.manage_account'] || 'Manage your account'}</p>
-                  </div>
+            {/* Quick Settings Button */}
+            <button
+              onClick={() => setActiveSection('settings')}
+              className="w-full bg-card px-5 py-4 rounded-3xl shadow-sm flex items-center justify-between hover:bg-secondary transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <Settings size={18} className="text-primary" />
+                <div className="text-left">
+                  <p className="font-bold text-foreground text-title">{t['common.settings']}</p>
+                  <p className="text-caption text-muted-foreground">{t['profile.manage_account'] || 'Manage your account'}</p>
                 </div>
-                <ChevronRight size={20} className="text-muted-foreground" />
-              </button>
-
-              {/* Separator */}
-              <div className="h-px bg-border mx-5" />
-
-              {/* Tutorial Row */}
-              <button
-                onClick={onRestartOnboarding}
-                className="w-full px-5 py-4 flex items-center justify-between hover:bg-secondary transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  <Lightbulb size={18} className="text-primary" />
-                  <div className="text-left">
-                    <p className="font-bold text-foreground text-title">{t['profile.tutorial'] || 'Tutorial'}</p>
-                    <p className="text-caption text-muted-foreground">{t['profile.tutorial_desc'] || 'Learn how to use Helpy'}</p>
-                  </div>
-                </div>
-                {/* No arrow for Tutorial */}
-              </button>
-            </div>
+              </div>
+              <ChevronRight size={20} className="text-muted-foreground" />
+            </button>
           </div>
 
           {/* Footer */}
@@ -1362,9 +1032,6 @@ const Profile: React.FC<ProfileProps> = ({
                 style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
               />
               <div className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ maxHeight: '80vh', marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
-                {/* Drag Handle */}
-                <div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto mt-3 mb-2" />
-                
                 {/* Close Button */}
                 <button 
                   onClick={() => setIsAddModalOpen(false)} 
@@ -1375,14 +1042,14 @@ const Profile: React.FC<ProfileProps> = ({
                 </button>
 
                 {/* Header */}
-                <div className="pt-2 pb-4 px-5 shrink-0">
-                  <h2 className="text-title font-bold text-foreground">{t['profile.addFamilyMember'] || 'Add Family Member'}</h2>
+                <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
+                  <h2 className="text-title text-foreground">{t['profile.addMember']}</h2>
                 </div>
 
                 {/* Form */}
-                <div className="p-5 pt-0 space-y-4 flex-1 overflow-y-auto">
+                <div className="p-5 space-y-4 flex-1 overflow-y-auto">
                   <div>
-                    <label className="block text-caption text-muted-foreground mb-2">{t['common.name']}</label>
+                    <label className="block text-caption text-muted-foreground mb-2 tracking-wide">{t['common.name']}</label>
                     <input
                       type="text"
                       value={newName}
@@ -1392,51 +1059,51 @@ const Profile: React.FC<ProfileProps> = ({
                     />
                   </div>
                   <div>
-                    <label className="block text-caption text-muted-foreground mb-2">{t['profile.role']}</label>
+                    <label className="block text-caption text-muted-foreground mb-2 tracking-wide">{t['profile.role']}</label>
                     <div className="grid grid-cols-2 gap-2">
                       <button
                         type="button"
                         onClick={() => setNewRole(UserRole.SPOUSE)}
-                        className={`px-4 py-3 rounded-lg text-body font-semibold transition-colors ${
+                        className={`px-4 py-3 rounded-lg font-semibold transition-colors ${
                           newRole === UserRole.SPOUSE
                             ? 'bg-[#F3E5F5] text-[#AB47BC] border-2 border-[#AB47BC]'
                             : 'bg-secondary text-muted-foreground border-2 border-transparent hover:bg-secondary/80'
                         }`}
                       >
-                        {t['profile.role.spouse'] || 'Spouse'}
+                        Spouse
                       </button>
                       <button
                         type="button"
                         onClick={() => setNewRole(UserRole.HELPER)}
-                        className={`px-4 py-3 rounded-lg text-body font-semibold transition-colors ${
+                        className={`px-4 py-3 rounded-lg font-semibold transition-colors ${
                           newRole === UserRole.HELPER
                             ? 'bg-[#FFF3E0] text-[#FF9800] border-2 border-[#FF9800]'
                             : 'bg-secondary text-muted-foreground border-2 border-transparent hover:bg-secondary/80'
                         }`}
                       >
-                        {t['profile.role.helper'] || 'Helper'}
+                        Helper
                       </button>
                       <button
                         type="button"
                         onClick={() => setNewRole(UserRole.CHILD)}
-                        className={`px-4 py-3 rounded-lg text-body font-semibold transition-colors ${
+                        className={`px-4 py-3 rounded-lg font-semibold transition-colors ${
                           newRole === UserRole.CHILD
                             ? 'bg-[#E8F5E9] text-[#4CAF50] border-2 border-[#4CAF50]'
                             : 'bg-secondary text-muted-foreground border-2 border-transparent hover:bg-secondary/80'
                         }`}
                       >
-                        {t['profile.role.child'] || 'Child'}
+                        Child
                       </button>
                       <button
                         type="button"
                         onClick={() => setNewRole(UserRole.OTHER)}
-                        className={`px-4 py-3 rounded-lg text-body font-semibold transition-colors ${
+                        className={`px-4 py-3 rounded-lg font-semibold transition-colors ${
                           newRole === UserRole.OTHER
                             ? 'bg-[#FCE4EC] text-[#F06292] border-2 border-[#F06292]'
                             : 'bg-secondary text-muted-foreground border-2 border-transparent hover:bg-secondary/80'
                         }`}
                       >
-                        {t['profile.role.other'] || 'Other'}
+                        Other
                       </button>
                     </div>
                   </div>
@@ -1610,104 +1277,6 @@ const Profile: React.FC<ProfileProps> = ({
                   </div>
                 </div>
 
-                {/* Helper Salary Fields - Only show when editing a Helper */}
-                {selectedUser?.role === UserRole.HELPER && (
-                  <div className="space-y-4 pt-4 border-t border-border">
-                    <h4 className="text-body font-semibold text-foreground">
-                      {t['profile.helper_salary_info'] || 'Salary Information'}
-                    </h4>
-                    
-                    {/* Start Date */}
-                    <div>
-                      <label className="block text-caption text-muted-foreground mb-2">
-                        {t['profile.helper_start_date'] || 'Start Date'}
-                      </label>
-                      <input
-                        type="date"
-                        value={editHelperStartDate || ''}
-                        onChange={(e) => setEditHelperStartDate(e.target.value || null)}
-                        className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
-                      />
-                    </div>
-                    
-                    {/* Base Salary */}
-                    <div>
-                      <label className="block text-caption text-muted-foreground mb-2">
-                        {t['profile.helper_base_salary'] || 'Base Salary (HK$/month)'}
-                      </label>
-                      <input
-                        type="number"
-                        value={editHelperBaseSalary}
-                        onChange={(e) => setEditHelperBaseSalary(Number(e.target.value))}
-                        className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
-                        placeholder="5100"
-                      />
-                    </div>
-                    
-                    {/* Food Allowance */}
-                    <div>
-                      <label className="block text-caption text-muted-foreground mb-2">
-                        {t['profile.helper_food_allowance'] || 'Food Allowance (HK$/month)'}
-                      </label>
-                      <input
-                        type="number"
-                        value={editHelperFoodAllowance}
-                        onChange={(e) => setEditHelperFoodAllowance(Number(e.target.value))}
-                        className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
-                        placeholder="1236"
-                      />
-                    </div>
-                    
-                    {/* Other Allowances */}
-                    <div>
-                      <label className="block text-caption text-muted-foreground mb-2">
-                        {t['profile.helper_other_allowances'] || 'Other Allowances'}
-                      </label>
-                      {editHelperOtherAllowances.map((allowance, index) => (
-                        <div key={index} className="flex gap-2 mb-2">
-                          <input
-                            type="text"
-                            value={allowance.name}
-                            onChange={(e) => updateOtherAllowance(index, 'name', e.target.value)}
-                            placeholder="Allowance name"
-                            className="flex-1 px-3 py-2 rounded-lg bg-secondary border border-border"
-                          />
-                          <input
-                            type="number"
-                            value={allowance.amount}
-                            onChange={(e) => updateOtherAllowance(index, 'amount', Number(e.target.value))}
-                            placeholder="0"
-                            className="w-24 px-3 py-2 rounded-lg bg-secondary border border-border"
-                          />
-                          <button
-                            onClick={() => removeOtherAllowance(index)}
-                            className="p-2 text-red-500 hover:bg-red-50 rounded-lg"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      ))}
-                      <button
-                        onClick={addOtherAllowance}
-                        className="text-primary text-caption hover:underline"
-                      >
-                        + {t['profile.add_allowance'] || 'Add Allowance'}
-                      </button>
-                    </div>
-                    
-                    {/* Total Display */}
-                    <div className="p-3 bg-primary/10 rounded-lg">
-                      <div className="flex justify-between items-center">
-                        <span className="text-body">{t['profile.total_salary'] || 'Total Monthly Salary'}</span>
-                        <span className="text-title font-bold text-primary">
-                          HK${(editHelperBaseSalary + editHelperFoodAllowance + 
-                               editHelperOtherAllowances.reduce((sum, a) => sum + a.amount, 0)).toLocaleString()}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
                 {/* Footer */}
                 <div className="p-5 pb-8 border-t border-border flex gap-3 shrink-0">
                   <button
@@ -1807,30 +1376,6 @@ const Profile: React.FC<ProfileProps> = ({
     }
   };
 
-  const handleDowngradeToFree = async () => {
-    if (!window.confirm(t['subscription.confirm_downgrade_free'] || 'Are you sure you want to downgrade to Free immediately? You will lose access to paid features right away.')) {
-      return;
-    }
-
-    try {
-      setLoadingPlan('free');
-      setSubscriptionInfo(null);
-      setIsLoadingSubscription(true);
-      await downgradeToFree(currentUser.householdId);
-      // Refresh subscription info
-      await fetchSubscriptionInfo();
-      // Show brief confirmation without trapping user in a modal
-      setSubscriptionCanceled(true);
-      setActiveSection('plan');
-      setTimeout(() => setSubscriptionCanceled(false), 2500);
-    } catch (error) {
-      console.error('Downgrade error:', error);
-      alert(t['error.downgrade_free'] || 'Failed to downgrade. Please try again.');
-    } finally {
-      setLoadingPlan(null);
-    }
-  };
-
   const formatDate = (dateString?: string) => {
     if (!dateString) return t['common.na'] || 'N/A';
     try {
@@ -1846,14 +1391,7 @@ const Profile: React.FC<ProfileProps> = ({
 
   // Handle Delete Account
   const handleDeleteAccountClick = () => {
-    const isAdmin = currentUser.role === UserRole.MASTER;
-    if (isAdmin) {
-      // Admin gets options: Deactivate (transfer) or Delete (whole household)
-      setIsAdminDeleteOptionsOpen(true);
-    } else {
-      // Non-admin gets simple delete confirmation
-      setIsDeleteAccountModalOpen(true);
-    }
+    setIsDeleteAccountModalOpen(true);
   };
 
   const handleFirstDeleteConfirm = () => {
@@ -1861,8 +1399,7 @@ const Profile: React.FC<ProfileProps> = ({
     setIsFinalDeleteConfirmOpen(true);
   };
 
-  // Handle non-admin account deletion (self-delete)
-  const handleDeleteSelfAccount = async () => {
+  const handleDeleteAccount = async () => {
     if (!currentUser?.householdId || !clerkUser) {
       alert(t['error.delete_account_unable'] || 'Unable to delete account. Please try again.');
       return;
@@ -1871,21 +1408,36 @@ const Profile: React.FC<ProfileProps> = ({
     setIsDeletingAccount(true);
 
     try {
-      // Call the API to delete the user's own account
-      const response = await fetch('/api/delete-account', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: currentUser.id,
-          householdId: currentUser.householdId,
-          action: 'delete_self'
-        })
-      });
+      // Get all users in the household except the master user
+      const familyMembers = users.filter(user => user.id !== currentUser.id);
 
-      const result = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to delete account');
+      // Delete each family member
+      for (const member of familyMembers) {
+        try {
+          await deleteItem(currentUser.householdId, 'users', member.id);
+        } catch (error) {
+          console.error(`Error deleting family member ${member.id}:`, error);
+          // Continue with deletion even if one fails
+        }
+      }
+
+      // Delete the master user from Supabase
+      try {
+        await deleteItem(currentUser.householdId, 'users', currentUser.id);
+      } catch (error) {
+        console.error('Error deleting master user:', error);
+        throw error;
+      }
+
+      // Delete the household record
+      const { error: householdError } = await supabase
+        .from('households')
+        .delete()
+        .eq('id', currentUser.householdId);
+
+      if (householdError) {
+        console.error('Error deleting household:', householdError);
+        throw householdError;
       }
 
       // Delete the Clerk account
@@ -1893,6 +1445,8 @@ const Profile: React.FC<ProfileProps> = ({
         await clerkUser.delete();
       } catch (error) {
         console.error('Error deleting Clerk account:', error);
+        // Even if Clerk deletion fails, we've deleted everything else
+        // So we should still sign out
       }
 
       // Sign out the user
@@ -1906,108 +1460,6 @@ const Profile: React.FC<ProfileProps> = ({
     }
   };
 
-  // Handle admin deactivation (transfer ownership)
-  const handleAdminDeactivate = async () => {
-    if (!currentUser?.householdId || !clerkUser || !selectedNewOwnerId) {
-      alert(t['error.select_new_owner'] || 'Please select a new owner for the household.');
-      return;
-    }
-
-    setIsDeactivatingAdmin(true);
-
-    try {
-      // Call the API to transfer ownership and delete admin
-      const response = await fetch('/api/delete-account', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: currentUser.id,
-          householdId: currentUser.householdId,
-          action: 'deactivate_admin',
-          newOwnerId: selectedNewOwnerId
-        })
-      });
-
-      const result = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to transfer ownership');
-      }
-
-      // Delete the Clerk account
-      try {
-        await clerkUser.delete();
-      } catch (error) {
-        console.error('Error deleting Clerk account:', error);
-      }
-
-      // Sign out the user
-      setIsTransferOwnershipOpen(false);
-      setIsDeactivatingAdmin(false);
-      onLogout();
-    } catch (error) {
-      console.error('Error deactivating admin:', error);
-      alert(t['error.transfer_ownership'] || 'Failed to transfer ownership. Please try again.');
-      setIsDeactivatingAdmin(false);
-    }
-  };
-
-  // Handle admin delete entire household
-  const handleDeleteHousehold = async () => {
-    if (!currentUser?.householdId || !clerkUser) {
-      alert(t['error.delete_account_unable'] || 'Unable to delete account. Please try again.');
-      return;
-    }
-
-    setIsDeletingAccount(true);
-
-    try {
-      // Call the API to delete entire household
-      const response = await fetch('/api/delete-account', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: currentUser.id,
-          householdId: currentUser.householdId,
-          action: 'delete_household'
-        })
-      });
-
-      const result = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to delete household');
-      }
-
-      // Delete the Clerk account
-      try {
-        await clerkUser.delete();
-      } catch (error) {
-        console.error('Error deleting Clerk account:', error);
-      }
-
-      // Sign out the user
-      setIsDeleteHouseholdConfirmOpen(false);
-      setIsDeletingAccount(false);
-      onLogout();
-    } catch (error) {
-      console.error('Error deleting household:', error);
-      alert(t['error.delete_household'] || 'Failed to delete household. Please try again or contact support.');
-      setIsDeletingAccount(false);
-      setIsDeleteHouseholdConfirmOpen(false);
-    }
-  };
-
-  // Get eligible users for ownership transfer (exclude current user and children)
-  const eligibleNewOwners = users.filter(user => 
-    user.id !== currentUser.id && 
-    user.role !== UserRole.CHILD &&
-    user.status !== 'pending'
-  );
-
-  // Legacy handler kept for backward compatibility
-  const handleDeleteAccount = handleDeleteHousehold;
-
   const getNextPaymentDate = (periodEnd?: string, period?: string) => {
     if (!periodEnd) return null;
     try {
@@ -2019,21 +1471,6 @@ const Profile: React.FC<ProfileProps> = ({
     } catch {
       return null;
     }
-  };
-
-  const getDaysRemaining = (endDate: string) => {
-    const end = new Date(endDate);
-    const now = new Date();
-    const diffTime = end.getTime() - now.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return Math.max(0, diffDays);
-  };
-
-  const getPlanDisplayName = (plan: 'core' | 'pro' | 'test' | 'free') => {
-    if (plan === 'core') return t['common.core'] || 'Core';
-    if (plan === 'pro') return t['common.pro'] || 'Pro';
-    if (plan === 'test') return t['common.test'] || '🧪 Test';
-    return t['common.free'] || 'Free';
   };
 
   if (activeSection === 'plan') {
@@ -2052,8 +1489,7 @@ const Profile: React.FC<ProfileProps> = ({
           t['plan.feature.free_no_scan'] || 'No receipt scanning or summary',
         ],
         highlight: false,
-        isFree: true,
-        isDowngrade: true
+        isFree: true
       },
       {
         id: 'core',
@@ -2101,15 +1537,13 @@ const Profile: React.FC<ProfileProps> = ({
     ];
 
     const isAdmin = currentUser.role === UserRole.MASTER;
-    const isCanceling = subscriptionInfo?.status === 'canceling';
-    const basePlanName = subscriptionInfo?.plan === 'core' 
+    const currentPlanName = subscriptionInfo?.plan === 'core' 
       ? (t['common.core'] || 'Core') 
       : subscriptionInfo?.plan === 'pro' 
       ? (t['common.pro'] || 'Pro') 
       : subscriptionInfo?.plan === 'test'
       ? (t['common.test'] || '🧪 Test')
       : (t['common.free'] || 'Free');
-    const currentPlanName = isCanceling ? `${basePlanName} (${t['subscription.canceling'] || 'Canceling'})` : basePlanName;
     const planPrice = subscriptionInfo?.plan === 'core' 
       ? (subscriptionInfo?.period === 'yearly' ? 845 : 88)
       : subscriptionInfo?.plan === 'pro'
@@ -2119,7 +1553,7 @@ const Profile: React.FC<ProfileProps> = ({
       : 0;
 
     return (
-      <div className="min-h-screen bg-background pb-40">
+      <div className="min-h-screen bg-background pb-40 animate-fade-in">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
           {renderSettingsHeader(t['common.plan'] || 'Subscription', () => setActiveSection('settings'))}
           <div className="pt-6 pb-24">
@@ -2163,20 +1597,7 @@ const Profile: React.FC<ProfileProps> = ({
                   </div>
                 </div>
                 
-                {subscriptionInfo?.status === 'canceling' && subscriptionInfo?.periodEnd ? (
-                  <div className="mt-4 pt-4 border-t border-primary-foreground/20">
-                    <div className="flex items-center gap-2 mb-2">
-                      <AlertCircle size={16} className="text-primary-foreground/80" />
-                      <p className="text-body font-semibold text-primary-foreground">{t['subscription.canceling'] || 'Subscription Canceling'}</p>
-                    </div>
-                    <p className="text-caption text-primary-foreground/70">
-                      {t['subscription.access_until'] || 'Access until'}: {formatDate(subscriptionInfo.periodEnd)}
-                    </p>
-                    <p className="text-caption text-primary-foreground/60 mt-1">
-                      {t['subscription.will_revert_free'] || 'Your plan will revert to Free after this date.'}
-                    </p>
-                  </div>
-                ) : subscriptionInfo?.status === 'active' && subscriptionInfo?.periodEnd ? (
+                {subscriptionInfo?.status === 'active' && subscriptionInfo?.periodEnd ? (
                   <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-primary-foreground/20">
                     <div>
                       <p className="text-caption text-primary-foreground/70 mb-1">{t['common.expires_on'] || 'Expires On'}</p>
@@ -2187,26 +1608,9 @@ const Profile: React.FC<ProfileProps> = ({
                       <p className="text-body font-semibold">{getNextPaymentDate(subscriptionInfo.periodEnd, subscriptionInfo.period) || (t['common.na'] || 'N/A')}</p>
                     </div>
                   </div>
-                ) : subscriptionInfo?.status !== 'active' && subscriptionInfo?.status !== 'canceling' && (
+                ) : subscriptionInfo?.status !== 'active' && (
                   <div className="mt-4 pt-4 border-t border-primary-foreground/20">
                     <p className="text-body text-primary-foreground/80">{t['common.no_active_subscription'] || 'No active subscription'}</p>
-                  </div>
-                )}
-
-                {isOnTrial && trialEndsAt && (
-                  <div className="mt-4 p-3 bg-amber-500/20 rounded-xl border border-amber-500/30">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Clock size={16} className="text-amber-200" />
-                      <span className="text-caption font-semibold text-amber-100">
-                        {t['subscription.trial_active'] || 'Trial Active'}
-                      </span>
-                    </div>
-                    <p className="text-body text-amber-100">
-                      {t['subscription.trial_ends'] || 'Your trial ends on'} {formatDate(trialEndsAt)}
-                    </p>
-                    <p className="text-caption text-amber-200/80 mt-1">
-                      {getDaysRemaining(trialEndsAt)} {t['subscription.days_remaining'] || 'days remaining'}
-                    </p>
                   </div>
                 )}
 
@@ -2225,7 +1629,7 @@ const Profile: React.FC<ProfileProps> = ({
             {/* Upgrade/Change Plan Section */}
             <div className="mb-6">
               <h3 className="text-title font-bold text-foreground mb-4">
-                {subscriptionInfo && (subscriptionInfo.status === 'active' || subscriptionInfo.status === 'canceling') ? (t['subscription.change_plan'] || 'Change Plan') : (t['subscription.choose_plan'] || 'Choose Your Plan')}
+                {subscriptionInfo && subscriptionInfo.status === 'active' ? (t['subscription.change_plan'] || 'Change Plan') : (t['subscription.choose_plan'] || 'Choose Your Plan')}
               </h3>
 
               {!isAdmin && (
@@ -2278,7 +1682,7 @@ const Profile: React.FC<ProfileProps> = ({
                   // For free plan, check if user has no active paid subscription
                   const isCurrentPlan = p.isFree 
                     ? (!subscriptionInfo?.plan || subscriptionInfo?.plan === 'free' || subscriptionInfo?.status !== 'active')
-                    : (subscriptionInfo?.plan === p.id && (subscriptionInfo?.status === 'active' || subscriptionInfo?.status === 'canceling'));
+                    : (subscriptionInfo?.plan === p.id && subscriptionInfo?.status === 'active');
 
                   return (
                     <div
@@ -2346,10 +1750,10 @@ const Profile: React.FC<ProfileProps> = ({
                         </ul>
                       )}
 
-                      {/* Plan action buttons */}
-                      {!p.isFree ? (
+                      {/* Only show button for paid plans */}
+                      {!p.isFree && (
                         <button
-                          onClick={() => handleOpenPlanConfirm(p.id as 'core' | 'pro' | 'test', billingPeriod)}
+                          onClick={() => handleSelectPlan(p.id as 'core' | 'pro' | 'test', billingPeriod)}
                           disabled={loadingPlan !== null || isCurrentPlan || !isAdmin}
                           className={`w-full py-3 rounded-xl font-semibold transition-colors ${
                             isCurrentPlan
@@ -2361,20 +1765,13 @@ const Profile: React.FC<ProfileProps> = ({
                         >
                           {loadingPlan === p.id ? (t['common.processing'] || 'Processing...') : isCurrentPlan ? (t['common.current_plan'] || 'Current Plan') : !isAdmin ? (t['common.only_admin_can_change'] || 'Only Admin Can Change') : (t['common.change_plan'] || 'Select Plan')}
                         </button>
-                      ) : (
-                        <button
-                          onClick={handleDowngradeToFree}
-                          disabled={loadingPlan !== null || isCurrentPlan || !isAdmin}
-                          className={`w-full py-3 rounded-xl font-semibold transition-colors ${
-                            isCurrentPlan
-                              ? 'bg-secondary text-muted-foreground cursor-not-allowed'
-                              : !isAdmin
-                              ? 'bg-muted text-muted-foreground cursor-not-allowed'
-                              : 'bg-primary text-primary-foreground hover:bg-primary/90'
-                          }`}
-                        >
-                          {loadingPlan === 'free' ? (t['common.processing'] || 'Processing...') : isCurrentPlan ? (t['common.current_plan'] || 'Current Plan') : !isAdmin ? (t['common.only_admin_can_change'] || 'Only Admin Can Change') : (t['subscription.downgrade_to_free'] || 'Downgrade to Free')}
-                        </button>
+                      )}
+
+                      {/* Free plan indicator */}
+                      {p.isFree && isCurrentPlan && (
+                        <div className="w-full py-3 rounded-xl font-semibold text-center bg-secondary text-muted-foreground">
+                          {t['common.current_plan'] || 'Current Plan'}
+                        </div>
                       )}
                     </div>
                   );
@@ -2382,130 +1779,6 @@ const Profile: React.FC<ProfileProps> = ({
               </div>
             </div>
           </div>
-
-          {/* Plan confirmation + promo code modal */}
-          {isPlanConfirmOpen && pendingPlan && (
-            <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end md:items-center justify-center bottom-sheet-backdrop">
-              {/* Safe area bottom cover */}
-              <div 
-                className="absolute bottom-0 left-0 right-0 bg-card"
-                style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
-              />
-              <div className="bg-card w-full max-w-md rounded-t-2xl md:rounded-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
-                {/* Header */}
-                <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
-                  <h2 className="text-title text-foreground">{t['subscription.change_plan'] || 'Change Plan'}</h2>
-                </div>
-
-                {/* Content */}
-                <div className="p-5 space-y-4">
-                  <p className="text-body text-foreground">
-                    {`You are about to upgrade to the ${getPlanDisplayName(pendingPlan.plan)} plan.`}
-                  </p>
-
-                  {/* Referral Code Section */}
-                  <div className="space-y-2">
-                    <label className="text-caption font-bold text-muted-foreground ml-1">
-                      {t['subscription.referral_code'] || 'Referral Code (for free trial)'}
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        value={referralCodeInput}
-                        onChange={(e) => {
-                          const value = e.target.value.toUpperCase();
-                          setReferralCodeInput(value);
-                          setReferralCodeError(null);
-                          setReferralCodeValid(false);
-                        }}
-                        onBlur={() => validateReferralCode(referralCodeInput)}
-                        className={`w-full bg-muted border rounded-xl px-4 py-3 text-foreground font-medium focus:border-primary outline-none transition-colors text-body uppercase ${
-                          referralCodeError ? 'border-destructive' : referralCodeValid ? 'border-green-500' : 'border-border'
-                        }`}
-                      />
-                      {isValidatingReferral && (
-                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                          <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                        </div>
-                      )}
-                      {referralCodeValid && !isValidatingReferral && (
-                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                          <Check size={20} className="text-green-500" />
-                        </div>
-                      )}
-                    </div>
-                    {referralCodeError && (
-                      <p className="text-caption text-destructive">{referralCodeError}</p>
-                    )}
-                    {referralCodeValid && (
-                      <p className="text-caption text-green-600">
-                        {t['subscription.referral_valid'] || '✓ 30-day free trial will be applied!'}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Divider between referral and promo code */}
-                  {referralCodeValid && (
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <div className="flex-1 h-px bg-border" />
-                      <span className="text-caption">{t['common.or'] || 'or'}</span>
-                      <div className="flex-1 h-px bg-border" />
-                    </div>
-                  )}
-
-                  {/* Promo Code Section */}
-                  <div className={`space-y-2 ${referralCodeValid ? 'opacity-50 pointer-events-none' : ''}`}>
-                    <label className="text-caption font-bold text-muted-foreground ml-1">
-                      {t['subscription.promo_code'] || 'Promo code (optional)'}
-                    </label>
-                    <input
-                      type="text"
-                      value={promoCodeInput}
-                      onChange={(e) => {
-                        setPromoCodeInput(e.target.value);
-                        setPromoCodeError(null);
-                      }}
-                      placeholder={t['subscription.promo_code_placeholder'] || 'Enter promo code'}
-                      className="w-full bg-muted border border-border rounded-xl px-4 py-3 text-foreground font-medium focus:border-primary outline-none transition-colors text-body"
-                    />
-                    {promoCodeError && (
-                      <p className="text-caption text-destructive">{promoCodeError}</p>
-                    )}
-                    <p className="text-caption text-muted-foreground">
-                      {t['subscription.promo_code_hint'] || 'We will apply this code on the Stripe checkout page.'}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Footer */}
-                <div className="p-5 pb-8 border-t border-border flex gap-3 shrink-0">
-                  <button
-                    onClick={() => {
-                      if (loadingPlan !== null) return;
-                      setIsPlanConfirmOpen(false);
-                      setPendingPlan(null);
-                      setPromoCodeInput('');
-                      setPromoCodeError(null);
-                      setReferralCodeInput('');
-                      setReferralCodeError(null);
-                      setReferralCodeValid(false);
-                    }}
-                    disabled={loadingPlan !== null}
-                    className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body hover:bg-secondary/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {t['common.cancel'] || 'Cancel'}
-                  </button>
-                  <button
-                    onClick={handleConfirmPlan}
-                    disabled={loadingPlan !== null}
-                    className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {loadingPlan !== null ? (t['common.processing'] || 'Processing...') : (t['common.confirm'] || 'Confirm')}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Footer */}
           <div className="helpy-footer">
@@ -2521,7 +1794,7 @@ const Profile: React.FC<ProfileProps> = ({
   // =====================================================
   if (activeSection === 'security') {
     return (
-      <div className="min-h-screen bg-background pb-40">
+      <div className="min-h-screen bg-background pb-40 animate-fade-in">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
           {renderSettingsHeader(t['common.security'] || 'Account', () => setActiveSection('settings'))}
           <div className="pt-6 pb-24">
@@ -2834,13 +2107,15 @@ const Profile: React.FC<ProfileProps> = ({
                 Save Changes
               </button>
 
-              {/* Delete Account Button - Available for all users */}
-              <button
-                onClick={handleDeleteAccountClick}
-                className="w-full bg-destructive/10 text-destructive py-4 rounded-xl font-semibold shadow-sm hover:bg-destructive/20 transition-colors border border-destructive/20"
-              >
-                {t['profile.delete_account'] || 'Delete Account'}
-              </button>
+              {/* Delete Account Button - Only for Master Users */}
+              {currentUser.role === UserRole.MASTER && (
+                <button
+                  onClick={handleDeleteAccountClick}
+                  className="w-full bg-destructive/10 text-destructive py-4 rounded-xl font-semibold shadow-sm hover:bg-destructive/20 transition-colors border border-destructive/20"
+                >
+                  {t['profile.delete_account'] || 'Delete Account'}
+                </button>
+              )}
             </div>
           </div>
 
@@ -2932,245 +2207,11 @@ const Profile: React.FC<ProfileProps> = ({
                   Cancel
                 </button>
                 <button
-                  onClick={handleDeleteSelfAccount}
+                  onClick={handleDeleteAccount}
                   disabled={isDeletingAccount}
                   className="flex-1 py-3.5 rounded-xl bg-destructive text-destructive-foreground text-body hover:bg-destructive/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isDeletingAccount ? (t['common.deleting'] || 'Deleting...') : (t['profile.delete_account'] || 'Delete Account')}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Admin Delete Options Modal */}
-        {isAdminDeleteOptionsOpen && (
-          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
-            {/* Safe area bottom cover */}
-            <div 
-              className="absolute bottom-0 left-0 right-0 bg-card"
-              style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
-            />
-            <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
-              {/* Header */}
-              <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
-                <h2 className="text-title text-foreground">{t['profile.delete_account'] || 'Delete Account'}</h2>
-              </div>
-
-              {/* Content */}
-              <div className="p-5 space-y-4">
-                <p className="text-body text-muted-foreground mb-4">
-                  {t['profile.admin_delete_options_desc'] || 'As the household admin, you have two options:'}
-                </p>
-                
-                {/* Deactivate Option */}
-                <button
-                  onClick={() => {
-                    setIsAdminDeleteOptionsOpen(false);
-                    if (eligibleNewOwners.length === 0) {
-                      alert(t['error.no_eligible_owners'] || 'No eligible family members to transfer ownership to. You can only delete the entire household.');
-                      return;
-                    }
-                    setIsTransferOwnershipOpen(true);
-                  }}
-                  className="w-full p-4 rounded-xl border border-border bg-card hover:bg-secondary transition-colors text-left"
-                >
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center flex-shrink-0">
-                      <Share2 size={20} className="text-primary" />
-                    </div>
-                    <div>
-                      <p className="font-semibold text-foreground text-body">{t['profile.deactivate_account'] || 'Deactivate My Account'}</p>
-                      <p className="text-caption text-muted-foreground mt-1">
-                        {t['profile.deactivate_desc'] || 'Transfer ownership to another family member and remove your account. The household will continue with the new admin.'}
-                      </p>
-                    </div>
-                  </div>
-                </button>
-
-                {/* Delete Household Option */}
-                <button
-                  onClick={() => {
-                    setIsAdminDeleteOptionsOpen(false);
-                    setIsDeleteHouseholdConfirmOpen(true);
-                  }}
-                  className="w-full p-4 rounded-xl border border-destructive/30 bg-destructive/5 hover:bg-destructive/10 transition-colors text-left"
-                >
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 bg-destructive/10 rounded-xl flex items-center justify-center flex-shrink-0">
-                      <Trash2 size={20} className="text-destructive" />
-                    </div>
-                    <div>
-                      <p className="font-semibold text-destructive text-body">{t['profile.delete_household'] || 'Delete Entire Household'}</p>
-                      <p className="text-caption text-muted-foreground mt-1">
-                        {t['profile.delete_household_desc'] || 'Permanently delete your account and ALL family members. This action cannot be undone.'}
-                      </p>
-                    </div>
-                  </div>
-                </button>
-              </div>
-
-              {/* Footer */}
-              <div className="p-5 pb-8 border-t border-border shrink-0">
-                <button
-                  onClick={() => setIsAdminDeleteOptionsOpen(false)}
-                  className="w-full py-3.5 rounded-xl bg-secondary text-foreground text-body hover:bg-secondary/80 transition-colors"
-                >
-                  {t['common.cancel'] || 'Cancel'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Transfer Ownership Modal */}
-        {isTransferOwnershipOpen && (
-          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
-            {/* Safe area bottom cover */}
-            <div 
-              className="absolute bottom-0 left-0 right-0 bg-card"
-              style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
-            />
-            <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col max-h-[80vh]" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
-              {/* Header */}
-              <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
-                <h2 className="text-title text-foreground">{t['profile.transfer_ownership'] || 'Transfer Ownership'}</h2>
-              </div>
-
-              {/* Content */}
-              <div className="p-5 flex-1 overflow-y-auto">
-                <p className="text-body text-muted-foreground mb-4">
-                  {t['profile.select_new_owner'] || 'Select a family member to become the new household admin:'}
-                </p>
-                
-                <div className="space-y-2">
-                  {eligibleNewOwners.map((user) => (
-                    <button
-                      key={user.id}
-                      onClick={() => setSelectedNewOwnerId(user.id)}
-                      className={`w-full p-4 rounded-xl border transition-colors text-left flex items-center gap-3 ${
-                        selectedNewOwnerId === user.id 
-                          ? 'border-primary bg-primary/10' 
-                          : 'border-border bg-card hover:bg-secondary'
-                      }`}
-                    >
-                      {/* Avatar */}
-                      <Avatar
-                        user={user}
-                        size="md"
-                      />
-                      <div className="flex-1">
-                        <p className="font-semibold text-foreground text-body">{user.name}</p>
-                        <p className="text-caption text-muted-foreground">{user.role}</p>
-                      </div>
-                      {selectedNewOwnerId === user.id && (
-                        <CheckCircle size={20} className="text-primary" />
-                      )}
-                    </button>
-                  ))}
-                </div>
-
-                {eligibleNewOwners.length === 0 && (
-                  <div className="p-4 bg-muted rounded-xl">
-                    <p className="text-body text-muted-foreground">
-                      {t['profile.no_eligible_members'] || 'No eligible family members found. Only active members with Spouse, Helper, or Other roles can become the new admin.'}
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {/* Footer */}
-              <div className="p-5 pb-8 border-t border-border flex gap-3 shrink-0">
-                <button
-                  onClick={() => {
-                    setIsTransferOwnershipOpen(false);
-                    setSelectedNewOwnerId(null);
-                    setIsDeactivatingAdmin(false);
-                  }}
-                  disabled={isDeactivatingAdmin}
-                  className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body hover:bg-secondary/80 transition-colors disabled:opacity-50"
-                >
-                  {t['common.cancel'] || 'Cancel'}
-                </button>
-                <button
-                  onClick={handleAdminDeactivate}
-                  disabled={!selectedNewOwnerId || isDeactivatingAdmin}
-                  className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isDeactivatingAdmin ? (t['common.transferring'] || 'Transferring...') : (t['profile.transfer_and_leave'] || 'Transfer & Leave')}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Delete Household Confirmation Modal */}
-        {isDeleteHouseholdConfirmOpen && (
-          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
-            {/* Safe area bottom cover */}
-            <div 
-              className="absolute bottom-0 left-0 right-0 bg-card"
-              style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
-            />
-            <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
-              {/* Header */}
-              <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
-                <div className="flex items-center gap-2">
-                  <AlertCircle size={20} className="text-destructive" />
-                  <h2 className="text-title text-destructive">{t['profile.warning'] || 'Warning'}</h2>
-                </div>
-              </div>
-
-              {/* Content */}
-              <div className="p-5">
-                <div className="mb-4 p-4 bg-destructive/10 border border-destructive/20 rounded-xl">
-                  <p className="text-body text-destructive font-semibold mb-2">
-                    {t['profile.permanent_delete_warning'] || 'This action is permanent and cannot be undone!'}
-                  </p>
-                  <p className="text-body text-foreground">
-                    {t['profile.delete_household_warning'] || 'You are about to delete:'}
-                  </p>
-                  <ul className="mt-2 space-y-1 text-body text-muted-foreground">
-                    <li className="flex items-center gap-2">
-                      <span className="text-destructive">•</span>
-                      {t['profile.your_account'] || 'Your account'}
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <span className="text-destructive">•</span>
-                      {users.length > 1 
-                        ? `${users.length - 1} ${t['profile.other_family_members'] || 'other family member(s)'}`
-                        : t['profile.all_household_data'] || 'All household data'}
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <span className="text-destructive">•</span>
-                      {t['profile.all_data_items'] || 'All meals, expenses, tasks, and household info'}
-                    </li>
-                  </ul>
-                </div>
-                
-                <p className="text-body text-muted-foreground">
-                  {t['profile.all_members_logged_out'] || 'All family members will be logged out and will no longer be able to access the household.'}
-                </p>
-              </div>
-
-              {/* Footer */}
-              <div className="p-5 pb-8 border-t border-border flex gap-3 shrink-0">
-                <button
-                  onClick={() => {
-                    setIsDeleteHouseholdConfirmOpen(false);
-                    setIsDeletingAccount(false);
-                  }}
-                  disabled={isDeletingAccount}
-                  className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body hover:bg-secondary/80 transition-colors disabled:opacity-50"
-                >
-                  {t['common.cancel'] || 'Cancel'}
-                </button>
-                <button
-                  onClick={handleDeleteHousehold}
-                  disabled={isDeletingAccount}
-                  className="flex-1 py-3.5 rounded-xl bg-destructive text-destructive-foreground text-body hover:bg-destructive/90 transition-colors disabled:opacity-50"
-                >
-                  {isDeletingAccount ? (t['common.deleting'] || 'Deleting...') : (t['profile.delete_all'] || 'Delete All')}
                 </button>
               </div>
             </div>
@@ -3241,11 +2282,188 @@ const Profile: React.FC<ProfileProps> = ({
   }
 
   // =====================================================
+  // PAYMENT VIEW
+  // =====================================================
+  if (activeSection === 'payment') {
+    return (
+      <div className="min-h-screen bg-background pb-40 animate-fade-in">
+        <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
+          {renderSettingsHeader(t['common.payment'] || 'Payment', () => setActiveSection('settings'))}
+          <div className="pt-6 pb-24">
+
+            {/* Card Preview */}
+            <div className="mt-6 mb-6">
+              <div 
+                className="rounded-2xl p-5 relative overflow-hidden"
+                style={{
+                  aspectRatio: '1.586 / 1',
+                  background: paymentData.cardType === 'DEBIT' 
+                    ? 'linear-gradient(135deg, #F06292 0%, #C74B7A 50%, #9C3D62 100%)'
+                    : paymentData.cardType === 'PREPAID'
+                    ? 'linear-gradient(135deg, #FF9800 0%, #E68A00 50%, #CC7A00 100%)'
+                    : 'linear-gradient(135deg, #3EAFD2 0%, #2D8BAA 50%, #1E6B85 100%)',
+                  boxShadow: paymentData.cardType === 'DEBIT'
+                    ? '0 16px 32px -12px rgba(240, 98, 146, 0.35), 0 6px 12px -6px rgba(240, 98, 146, 0.2)'
+                    : paymentData.cardType === 'PREPAID'
+                    ? '0 16px 32px -12px rgba(255, 152, 0, 0.35), 0 6px 12px -6px rgba(255, 152, 0, 0.2)'
+                    : '0 16px 32px -12px rgba(62, 175, 210, 0.35), 0 6px 12px -6px rgba(62, 175, 210, 0.2)'
+                }}
+              >
+                {/* Oversized branded "h" watermark */}
+                <div 
+                  className="absolute -top-8 -right-4 text-white/10 select-none pointer-events-none"
+                  style={{ 
+                    fontFamily: "'Peanut Butter', cursive",
+                    fontSize: '270px',
+                    lineHeight: 1
+                  }}
+                >
+                  h
+                </div>
+                <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-black/10 pointer-events-none"></div>
+                
+                {/* Card content */}
+                <div className="relative h-full flex flex-col justify-between">
+                  <div className="flex justify-end">
+                    <span className="text-xs font-mono bg-white/20 backdrop-blur-sm px-2 py-1 rounded text-white/90">{paymentData.cardType}</span>
+                  </div>
+                  
+                  <div className="mt-auto">
+                    <div className="text-lg font-mono tracking-[0.2em] mb-3 text-white drop-shadow-sm">
+                      {paymentData.cardNumber || '•••• •••• •••• ••••'}
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <div>
+                        <div className="text-[10px] text-white/60 uppercase tracking-wider mb-0.5">{t['profile.card_holder'] || 'Card Holder'}</div>
+                        <div className="text-white font-medium drop-shadow-sm">{paymentData.name || 'YOUR NAME'}</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-[10px] text-white/60 uppercase tracking-wider mb-0.5">{t['profile.card_expires'] || 'Expires'}</div>
+                        <div className="text-white font-medium drop-shadow-sm">{paymentData.expiry || 'MM/YY'}</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4 bg-card p-6 rounded-2xl shadow-sm border border-border">
+              <div className="space-y-1">
+                <label className="text-caption font-bold text-muted-foreground ml-1">{t['profile.card_number'] || 'Card Number'}</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="1234 5678 9012 3456"
+                  maxLength={19}
+                  value={paymentData.cardNumber}
+                  onChange={e => {
+                    // Only allow digits and format with spaces every 4 digits
+                    const digitsOnly = e.target.value.replace(/\D/g, '');
+                    const formatted = digitsOnly.replace(/(\d{4})(?=\d)/g, '$1 ').slice(0, 19);
+                    setPaymentData({ ...paymentData, cardNumber: formatted });
+                  }}
+                  className="w-full bg-muted border border-border rounded-xl px-4 py-3 text-foreground font-mono text-body focus:border-primary outline-none transition-colors"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-caption font-bold text-muted-foreground ml-1">{t['profile.expiry'] || 'Expiry'}</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder={t['placeholder.mm_yy'] || 'MM/YY'}
+                    maxLength={5}
+                    value={paymentData.expiry}
+                    onChange={e => {
+                      // Only allow digits and auto-format as MM/YY
+                      const digitsOnly = e.target.value.replace(/\D/g, '');
+                      let formatted = digitsOnly;
+                      if (digitsOnly.length >= 2) {
+                        formatted = digitsOnly.slice(0, 2) + '/' + digitsOnly.slice(2, 4);
+                      }
+                      setPaymentData({ ...paymentData, expiry: formatted });
+                    }}
+                    className="w-full bg-muted border border-border rounded-xl px-4 py-3 text-foreground font-mono text-body focus:border-primary outline-none transition-colors"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-caption font-bold text-muted-foreground ml-1">CVC</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    placeholder="123"
+                    maxLength={4}
+                    value={paymentData.cvc}
+                    onChange={e => {
+                      // Only allow digits for CVC
+                      const value = e.target.value.replace(/\D/g, '');
+                      setPaymentData({ ...paymentData, cvc: value });
+                    }}
+                    className="w-full bg-muted border border-border rounded-xl px-4 py-3 text-foreground font-mono text-body focus:border-primary outline-none transition-colors"
+                  />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <label className="text-caption font-bold text-muted-foreground ml-1">{t['profile.cardholder_name'] || 'Cardholder Name'}</label>
+                <input
+                  type="text"
+                  placeholder={t['placeholder.name_on_card'] || 'Name on card'}
+                  value={paymentData.name}
+                  onChange={e => setPaymentData({ ...paymentData, name: e.target.value })}
+                  className="w-full bg-muted border border-border rounded-xl px-4 py-3 text-foreground font-medium text-body focus:border-primary outline-none transition-colors"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-caption font-bold text-muted-foreground ml-1">{t['profile.card_type'] || 'Card Type'}</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {(['DEBIT', 'CREDIT', 'PREPAID'] as const).map(type => {
+                    const isSelected = paymentData.cardType === type;
+                    const colorMap = {
+                      DEBIT: { bg: '#F06292', text: 'white' },
+                      CREDIT: { bg: '#3EAFD2', text: 'white' },
+                      PREPAID: { bg: '#FF9800', text: 'white' }
+                    };
+                    return (
+                      <button
+                        key={type}
+                        type="button"
+                        onClick={() => setPaymentData({ ...paymentData, cardType: type })}
+                        className={`px-3 py-2.5 rounded-xl text-body font-medium transition-all ${
+                          !isSelected ? 'bg-muted text-muted-foreground border border-border' : ''
+                        }`}
+                        style={isSelected ? { backgroundColor: colorMap[type].bg, color: colorMap[type].text } : {}}
+                      >
+                        {type}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 pt-4">
+              <button onClick={() => setActiveSection('settings')} className="w-full bg-primary text-primary-foreground py-4 rounded-xl font-semibold shadow-sm hover:bg-primary/90 transition-colors">
+                {t['profile.save_payment'] || 'Save Payment Method'}
+              </button>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="helpy-footer">
+            <span className="helpy-logo">helpy</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // =====================================================
   // SETTINGS MENU VIEW
   // =====================================================
   if (activeSection === 'settings') {
     return (
-      <div className="min-h-screen bg-background pb-40">
+      <div className="min-h-screen bg-background pb-40 animate-fade-in">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
           {renderSettingsHeader(t['common.settings'] || 'Settings', () => setActiveSection('main'))}
           <div className="pt-6 pb-24">
@@ -3254,6 +2472,7 @@ const Profile: React.FC<ProfileProps> = ({
               {[
                 { id: 'plan', label: t['common.plan'] || 'Subscription', icon: Crown, helperHidden: true },
                 { id: 'security', label: t['common.security'] || 'Account', icon: Shield, helperHidden: false },
+                { id: 'payment', label: t['common.payment'] || 'Payment', icon: CreditCard, helperHidden: true },
               ]
                 .filter(item => !isHelper || !item.helperHidden)
                 .map((item, index, filteredArray) => (

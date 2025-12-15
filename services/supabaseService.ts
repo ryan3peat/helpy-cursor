@@ -1,25 +1,5 @@
-import { supabase as defaultSupabase } from './supabase';
-import { getAuthenticatedSupabaseClient } from '../contexts/SupabaseContext';
-import { User, ShoppingItem, Task, Meal, Expense, Section, ToDoItem, OnboardingStatus } from '../types';
-
-/**
- * Get the best available Supabase client.
- * Prefers authenticated client with JWT (for RLS), falls back to default.
- */
-function getSupabase() {
-  const authClient = getAuthenticatedSupabaseClient();
-  return authClient || defaultSupabase;
-}
-
-// Alias for backwards compatibility in this file
-const supabase = {
-  get client() { return getSupabase(); },
-  from: (table: string) => getSupabase().from(table),
-  storage: defaultSupabase.storage, // Storage doesn't need JWT for public buckets
-  auth: defaultSupabase.auth,
-  channel: (name: string) => getSupabase().channel(name),
-  removeChannel: (channel: any) => getSupabase().removeChannel(channel),
-};
+import { supabase } from './supabase';
+import { User, ShoppingItem, Task, Meal, Expense, Section, ToDoItem } from '../types';
 
 // Type for generic data items
 type DataItem = User | ShoppingItem | Task | Meal | Expense | Section | ToDoItem;
@@ -633,20 +613,6 @@ export async function updateItem(
     }
   }
   
-  // For todo_items, meals, expenses: convert created_by from Clerk ID to Supabase UUID
-  // All these tables have created_by UUID column that references users(id)
-  if (['todo_items', 'meals', 'expenses'].includes(collection) && snakeCaseUpdates.created_by) {
-    const uuid = await getSupabaseUserId(snakeCaseUpdates.created_by, householdId);
-    if (uuid) {
-      console.log(`🔄 Converting created_by ${snakeCaseUpdates.created_by} to UUID ${uuid}`);
-      snakeCaseUpdates.created_by = uuid;
-    } else {
-      // If we can't find the UUID, remove created_by from update to avoid error
-      console.warn(`⚠️ Could not find UUID for created_by ${snakeCaseUpdates.created_by}, removing from update`);
-      delete snakeCaseUpdates.created_by;
-    }
-  }
-  
   // For users: filter out fields that don't exist in the database
   // The users table doesn't have country_code column, so remove it
   if (collection === 'users') {
@@ -673,8 +639,7 @@ export async function updateItem(
     // Note: phone_number column does NOT exist in the database - remove if present
     const validUserFields = [
       'name', 'email', 'role', 'avatar', 'allergies', 'preferences', 
-      'status', 'expires_at', 'notifications_enabled',
-      'helper_start_date', 'helper_base_salary', 'helper_food_allowance', 'helper_other_allowances'
+      'status', 'expires_at', 'notifications_enabled'
     ];
     const filteredUpdates: Record<string, any> = {};
     for (const key of Object.keys(snakeCaseUpdates)) {
@@ -737,8 +702,7 @@ export async function updateItem(
 export async function deleteItem(
   householdId: string,
   collection: string,
-  id: string,
-  requesterId?: string
+  id: string
 ): Promise<void> {
   const tableName = COLLECTION_MAP[collection];
   
@@ -746,7 +710,7 @@ export async function deleteItem(
   
   let actualId = id;
   
-  // For users, use the API endpoint (RLS blocks direct deletes)
+  // For users, resolve to Supabase UUID
   if (collection === 'users') {
     const supabaseId = await getSupabaseUserId(id, householdId);
     if (!supabaseId) {
@@ -755,41 +719,6 @@ export async function deleteItem(
     }
     actualId = supabaseId;
     console.log(`🗑️ Resolved id ${id} to Supabase UUID ${actualId}`);
-    
-    // Also convert requesterId (Clerk ID) to Supabase UUID
-    let requesterUuid = requesterId;
-    if (requesterId) {
-      const resolvedRequesterId = await getSupabaseUserId(requesterId, householdId);
-      if (resolvedRequesterId) {
-        requesterUuid = resolvedRequesterId;
-        console.log(`🗑️ Resolved requesterId ${requesterId} to Supabase UUID ${requesterUuid}`);
-      } else {
-        console.warn(`⚠️ Could not resolve requesterId ${requesterId} to UUID`);
-      }
-    }
-    
-    // Use API endpoint for user deletion (bypasses RLS)
-    const apiUrl = import.meta.env.VITE_API_URL || '';
-    const response = await fetch(`${apiUrl}/api/delete-user`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        userId: actualId,
-        householdId,
-        requesterId: requesterUuid,
-      }),
-    });
-    
-    const result = await response.json();
-    
-    if (!response.ok) {
-      console.error('❌ Delete user API error:', result.error);
-      throw new Error(result.error || 'Failed to delete user');
-    }
-    
-    console.log('✅ Delete user successful via API');
-    delete userIdCache[id];
-    return;
   }
   
   const { error, count } = await supabase
@@ -1311,50 +1240,4 @@ export async function fetchCollection(
   
   console.log(`✅ [Sync] Fetched ${data?.length || 0} items from ${tableName}`);
   return convertSupabaseData(data || [], collection);
-}
-
-// ─────────────────────────────────────────────────────────────────
-// Onboarding Status Management
-// ─────────────────────────────────────────────────────────────────
-
-/**
- * Update a user's onboarding status in the database.
- * 
- * Rules:
- * - If current status is 'completed', do NOT update (preserve it)
- * - Otherwise, update to the new status
- * 
- * @param userId - The user's Supabase UUID
- * @param newStatus - The new onboarding status
- * @param currentStatus - The user's current status (to check if already completed)
- * @returns true if updated, false if skipped or error
- */
-export async function updateOnboardingStatus(
-  userId: string,
-  newStatus: OnboardingStatus,
-  currentStatus?: OnboardingStatus
-): Promise<boolean> {
-  // If user already completed onboarding, never change it
-  if (currentStatus === 'completed') {
-    console.log(`[Onboarding] User ${userId} already completed - preserving status`);
-    return false;
-  }
-
-  try {
-    const { error } = await supabase
-      .from('users')
-      .update({ onboarding_status: newStatus })
-      .eq('id', userId);
-
-    if (error) {
-      console.error(`[Onboarding] Failed to update status for ${userId}:`, error);
-      return false;
-    }
-
-    console.log(`[Onboarding] Updated status for ${userId}: ${currentStatus || 'unknown'} -> ${newStatus}`);
-    return true;
-  } catch (err) {
-    console.error(`[Onboarding] Exception updating status:`, err);
-    return false;
-  }
 }

@@ -8,8 +8,6 @@ export enum UserRole {
   OTHER = 'Other'
 }
 
-export type OnboardingStatus = 'not_started' | 'skipped' | 'completed';
-
 export interface User {
   id: string;
   householdId: string;
@@ -29,19 +27,6 @@ export interface User {
   pin?: string;
   notificationsEnabled?: boolean;
   hasPushSubscription?: boolean;
-  onboardingStatus?: OnboardingStatus;
-  // Helper-specific salary fields (only populated for Helper role)
-  helperStartDate?: string | null;
-  helperBaseSalary?: number;
-  helperFoodAllowance?: number;
-  helperOtherAllowances?: Array<{ name: string; amount: number }>;
-}
-
-export interface HouseholdPlan {
-  plan: 'free' | 'core' | 'pro' | 'test';
-  status?: string;
-  maxFamilyMembers?: number | null;
-  maxHelpers?: number | null;
 }
 
 export interface Section {
@@ -134,7 +119,6 @@ export interface Meal {
   description: string;
   forUserIds: string[];
   audience: MealAudience;
-  createdBy?: string; // User ID who created this meal for notifications
   // Translation fields
   descriptionLang?: string | null; // Language code of the description field (null if undetectable)
   descriptionTranslations?: Record<string, string>; // Translations: { "en": "original", "zh-CN": "translated", ... }

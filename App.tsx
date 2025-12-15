@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useClerk, useUser, useAuth } from '@clerk/clerk-react';
+import { useClerk, useUser } from '@clerk/clerk-react';
 import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
 import ToDo from './components/ToDo';
@@ -11,13 +11,13 @@ import IntroAnimation from './components/IntroAnimation';
 import Auth from './components/Auth';
 import OnboardingOverlay from './components/OnboardingOverlay';
 import InviteSetup from './components/InviteSetup';
-import TrialBanner from './components/TrialBanner';
 // InviteWelcome removed - using Option 2 flow (direct to SignUp via Auth.tsx)
-import { ToDoItem, Meal, Expense, User, TranslationDictionary, HouseholdPlan, OnboardingStatus } from './types';
+import { ToDoItem, Meal, Expense, User, TranslationDictionary } from './types';
 import { BASE_TRANSLATIONS } from './constants';
 import { detectDeviceLanguage } from './services/languageDetectionService';
 import { getStaticTranslations } from './services/translationService';
 import { TranslationProvider, useTranslationContext } from './contexts/TranslationContext';
+import { supabase } from './services/supabase';
 import {
   subscribeToCollection,
   addItem,
@@ -26,18 +26,8 @@ import {
   saveFamilyNotes,
   subscribeToNotes,
   fetchCollection,
-  getCachedSupabaseUuid,
-  updateOnboardingStatus,
 } from './services/supabaseService';
-import { useSupabase, useSupabaseReady } from './contexts/SupabaseContext';
-import { supabase as defaultSupabase } from './services/supabase';
-import { initializePushNotifications, autoSubscribeIfNeeded, debugPushNotifications } from './services/pushNotificationService';
-import { debugJwt } from './services/jwtDebugService';
-
-// Make debug function available globally in browser console
-if (typeof window !== 'undefined') {
-  (window as any).helpyDebugPush = debugPushNotifications;
-}
+import { initializePushNotifications, autoSubscribeIfNeeded } from './services/pushNotificationService';
 import type { EssentialInfo } from '@src/types/essentialInfo';
 import type { HouseRoutine } from '@src/types/houseRoutine';
 import { 
@@ -66,245 +56,39 @@ const BroomIcon = ({ className }: { className?: string }) => (
   />
 );
 
-// Loading screen shown while Clerk initializes
-// Shows a helpful hint after 8 seconds if loading takes too long
-const ClerkLoadingScreen = () => {
-  const [showHint, setShowHint] = useState(false);
-  
-  useEffect(() => {
-    const timer = setTimeout(() => setShowHint(true), 8000);
-    return () => clearTimeout(timer);
-  }, []);
-  
-  return (
-    <div className="min-h-screen flex flex-col justify-end pb-24" style={{ backgroundColor: '#3EAFD2' }}>
-      <div className="text-white text-center">
-        <div className="broom-loader-wrapper">
-          <div className="broom-loader mb-4">
-            <BroomIcon className="broom-icon-svg" />
-            <div className="broom-track"></div>
-            <div className="broom-trail"></div>
-          </div>
-          <p className="text-sm font-bold whitespace-nowrap">Tidying things up...</p>
-        </div>
-        <p className="text-xs text-white/60 mt-2">
-          {showHint ? (<>Sorry, too much dust here!<br />Close the app and open it again.</>) : "Please wait a moment"}
-        </p>
-      </div>
-    </div>
-  );
-};
-
-// Helper function to parse notification deep links from URL hash
-// Used when user taps on a push notification to go directly to the relevant page
-const parseNotificationDeepLink = (): { view: string; navData: { section?: string } | null; isDeepLink: boolean } => {
-  const hash = window.location.hash;
-  const fullUrl = window.location.href;
-  
-  console.log('[DeepLink] Parsing deep link:', { hash, fullUrl });
-  
-  // Check for deep link patterns: #todo, #meals, #expenses, #profile, #info
-  if (hash.startsWith('#todo')) {
-    const params = new URLSearchParams(hash.split('?')[1] || '');
-    const section = params.get('section');
-    console.log('[DeepLink] Matched #todo, section:', section);
-    return { 
-      view: 'todo', 
-      navData: section ? { section } : null,
-      isDeepLink: true 
-    };
-  }
-  if (hash.startsWith('#meals')) {
-    console.log('[DeepLink] Matched #meals');
-    return { view: 'meals', navData: null, isDeepLink: true };
-  }
-  if (hash.startsWith('#expenses')) {
-    console.log('[DeepLink] Matched #expenses');
-    return { view: 'expenses', navData: null, isDeepLink: true };
-  }
-  if (hash.startsWith('#profile')) {
-    console.log('[DeepLink] Matched #profile');
-    return { view: 'profile', navData: null, isDeepLink: true };
-  }
-  if (hash.startsWith('#info')) {
-    console.log('[DeepLink] Matched #info');
-    return { view: 'info', navData: null, isDeepLink: true };
-  }
-  
-  console.log('[DeepLink] No deep link detected, defaulting to dashboard');
-  return { view: 'dashboard', navData: null, isDeepLink: false };
-};
-
 // Inner App component that uses the translation context
 const AppContent: React.FC = () => {
   const { signOut } = useClerk();
   const { user: clerkUser, isSignedIn, isLoaded: clerkLoaded } = useUser();
-  const { getToken } = useAuth(); // For JWT debugging
   const { setStaticTranslating, isAnyTranslating } = useTranslationContext();
-  const supabase = useSupabase(); // Use authenticated client with JWT for RLS
-  const isSupabaseReady = useSupabaseReady(); // Check if JWT has been loaded
-  
-  // Set up JWT debug function with access to getToken
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      (window as any).helpyDebugJwt = () => debugJwt(getToken);
-      console.log('[App] 🔧 JWT debug available: run window.helpyDebugJwt() in console');
-    }
-  }, [getToken]);
-  
-  // Also set up RLS test function immediately (doesn't depend on getToken)
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      (window as any).helpyTestRLS = async () => {
-        console.log('🧪 Testing RLS with authenticated client...');
-        try {
-          const { getAuthenticatedSupabaseClient } = await import('./contexts/SupabaseContext');
-          const client = getAuthenticatedSupabaseClient();
-          
-          if (!client) {
-            console.error('❌ No authenticated client available');
-            console.log('💡 Make sure you are signed in and SupabaseContext has initialized');
-            return;
-          }
-          
-          console.log('✅ Authenticated client found');
-          
-          // Test 1: Try to read households
-          console.log('\n📋 Test 1: Reading households...');
-          const { data: households, error: hError } = await client
-            .from('households')
-            .select('id, name, subscription_plan')
-            .limit(1);
-          
-          if (hError) {
-            console.error('❌ Household query failed:', hError);
-            console.error('Error code:', hError.code);
-            console.error('Error message:', hError.message);
-          } else {
-            console.log('✅ Household query succeeded:', households);
-          }
-          
-          // Test 2: Try to read users
-          console.log('\n👥 Test 2: Reading users...');
-          const { data: users, error: uError } = await client
-            .from('users')
-            .select('id, clerk_id, email, household_id')
-            .limit(5);
-          
-          if (uError) {
-            console.error('❌ Users query failed:', uError);
-            console.error('Error code:', uError.code);
-            console.error('Error message:', uError.message);
-          } else {
-            console.log('✅ Users query succeeded:', users);
-            console.log('Users found:', users?.length || 0);
-          }
-          
-          // Test 3: Check specific household
-          console.log('\n🏠 Test 3: Reading specific household...');
-          const { data: household, error: shError } = await client
-            .from('households')
-            .select('id, name, subscription_plan')
-            .eq('id', 'ecb34564-470c-41ea-a7ef-ed7446dd853d')
-            .single();
-          
-          if (shError) {
-            console.error('❌ Specific household query failed:', shError);
-            console.error('Error code:', shError.code);
-            console.error('Error message:', shError.message);
-            if (shError.code === 'PGRST116') {
-              console.log('💡 PGRST116 means RLS returned 0 rows - user may not have access');
-            }
-          } else {
-            console.log('✅ Specific household query succeeded:', household);
-          }
-          
-          console.log('\n✅ RLS test complete!');
-        } catch (error: any) {
-          console.error('❌ Error running RLS test:', error);
-        }
-      };
-      
-      console.log('[App] 🔧 RLS test function set up: window.helpyTestRLS()');
-    }
-  }, []); // Empty deps - set up once on mount
-  
-  // Parse deep link on mount to determine initial view and whether to skip intro
-  // This enables direct navigation when user taps on a push notification
-  const initialDeepLinkRef = useRef(() => {
-    const result = parseNotificationDeepLink();
-    console.log('[App] Initial deep link parsed:', result);
-    return result;
-  });
-  
-  // Lazy initialize to ensure parseNotificationDeepLink runs only once
-  const getInitialDeepLink = () => {
-    if (typeof initialDeepLinkRef.current === 'function') {
-      initialDeepLinkRef.current = initialDeepLinkRef.current();
-    }
-    return initialDeepLinkRef.current;
-  };
-  
-  const initialDeepLink = getInitialDeepLink();
-  
-  // Skip intro animation if coming from a notification deep link OR returning user with cached session
-  const [showIntro, setShowIntro] = useState(() => {
-    const shouldSkipDeepLink = initialDeepLink.isDeepLink;
-    const hasCachedSession = !!localStorage.getItem('helpy_current_session_user');
-    const shouldSkip = shouldSkipDeepLink || hasCachedSession;
-    console.log('[App] showIntro initial:', !shouldSkip, '(isDeepLink:', shouldSkipDeepLink, ', hasCachedSession:', hasCachedSession, ')');
-    return !shouldSkip;
-  });
-  
-  // Initialize activeView from URL hash (for notification deep links)
-  const [activeView, setActiveView] = useState(() => {
-    console.log('[App] activeView initial:', initialDeepLink.view);
-    return initialDeepLink.view;
-  });
-  
-  // Removed clerkLoadTimeout - was causing bad UX with frozen buttons on mobile
-  
-  // Debug: Log when component mounts/renders
-  useEffect(() => {
-    console.log('[App] Component mounted. Current state:', {
-      showIntro,
-      activeView,
-      hash: window.location.hash,
-      href: window.location.href,
-      clerkLoaded,
-      isSignedIn,
-      hasCurrentUser: !!localStorage.getItem('helpy_current_session_user')
-    });
-    
-    // Check for deep link again after mount (for PWA cold start scenarios)
-    // The hash might not be available at initial parse but becomes available shortly after
-    const checkDeepLinkAfterMount = () => {
-      const hash = window.location.hash;
-      console.log('[App] Post-mount deep link check. Hash:', hash);
-      
-      if (hash && (hash.startsWith('#todo') || hash.startsWith('#meals') || hash.startsWith('#expenses'))) {
-        const deepLink = parseNotificationDeepLink();
-        console.log('[App] Post-mount deep link detected:', deepLink);
-        
-        if (deepLink.isDeepLink) {
-          setShowIntro(false);
-          setActiveView(deepLink.view);
-          setNavData(deepLink.navData);
-          // Clear the hash after processing
-          window.history.replaceState({}, '', window.location.pathname);
-        }
-      }
-    };
-    
-    // Check immediately and after a short delay (for PWA timing issues)
-    checkDeepLinkAfterMount();
-    const timer = setTimeout(checkDeepLinkAfterMount, 100);
-    
-    return () => clearTimeout(timer);
-  }, []);
+  const [showIntro, setShowIntro] = useState(true);
+  const [activeView, setActiveView] = useState('dashboard');
+  const [clerkLoadTimeout, setClerkLoadTimeout] = useState(false);
+  const [clerkError, setClerkError] = useState<string | null>(null);
 
-  // Removed Clerk timeout - was causing bad UX (frozen buttons, confusing developer messages)
-  // If Clerk is slow, we just keep showing the loading animation - users can naturally close/reopen
+  // Add timeout fallback if Clerk takes too long to load (10 seconds)
+  useEffect(() => {
+    if (!clerkLoaded) {
+      const timeout = setTimeout(() => {
+        console.error('⚠️ [App] Clerk loading timeout - taking longer than 10 seconds');
+        console.error('⚠️ [App] Checking for network errors...');
+        
+        // Check if we can reach Clerk's API
+        fetch('https://api.clerk.dev/v1/health', { method: 'HEAD' })
+          .then(() => console.log('✅ [App] Can reach Clerk API'))
+          .catch((err) => {
+            console.error('❌ [App] Cannot reach Clerk API:', err);
+            setClerkError('Network error: Cannot connect to Clerk servers. Check your internet connection.');
+          });
+        
+        setClerkLoadTimeout(true);
+      }, 10000);
+      return () => clearTimeout(timeout);
+    } else {
+      setClerkLoadTimeout(false);
+      setClerkError(null);
+    }
+  }, [clerkLoaded]);
 
   // Localization State
   // Initialize language: use saved preference, or detect device language, or default to 'en'
@@ -368,46 +152,18 @@ const AppContent: React.FC = () => {
   // Authentication State
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
     const saved = localStorage.getItem('helpy_current_session_user');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        // Validate that the user object has required fields
-        if (parsed && typeof parsed === 'object' && parsed.id && parsed.householdId && parsed.name) {
-          return parsed;
-        } else {
-          console.warn('🔄 [App] Invalid user data in localStorage, clearing...');
-          localStorage.removeItem('helpy_current_session_user');
-          return null;
-        }
-      } catch (e) {
-        console.warn('🔄 [App] Failed to parse user data from localStorage, clearing...');
-        localStorage.removeItem('helpy_current_session_user');
-        return null;
-      }
-    }
-    return null;
+    return saved ? JSON.parse(saved) : null;
   });
 
-  // Onboarding State (index-based: 0, 1, 2... or -1 for complete)
-  // Initialized to -1 (hidden) - will be set based on user's onboardingStatus when they log in
-  const [onboardingStepIndex, setOnboardingStepIndex] = useState<number>(-1);
-  
-  // State to trigger add member sheet from onboarding
-  const [openAddMemberFromOnboarding, setOpenAddMemberFromOnboarding] = useState(false);
+  // Onboarding State
+  const [onboardingStep, setOnboardingStep] = useState<number>(() => {
+    const saved = localStorage.getItem('helpy_onboarding_step');
+    return saved ? parseInt(saved, 10) : 1;
+  });
 
-  // Initialize onboarding based on user's database status when currentUser changes
   useEffect(() => {
-    if (currentUser) {
-      const status = currentUser.onboardingStatus || 'not_started';
-      if (status === 'not_started') {
-        // Show onboarding for new users
-        setOnboardingStepIndex(0);
-      } else {
-        // Hide onboarding for completed or skipped users
-        setOnboardingStepIndex(-1);
-      }
-    }
-  }, [currentUser?.id, currentUser?.onboardingStatus]);
+    localStorage.setItem('helpy_onboarding_step', String(onboardingStep));
+  }, [onboardingStep]);
 
   // Check for invite params and portal return on mount
   useEffect(() => {
@@ -445,11 +201,6 @@ const AppContent: React.FC = () => {
       return;
     }
     loginProcessedRef.current = true;
-    
-    // Check for pending deep link BEFORE clearing URL
-    // This preserves the notification destination through the auth flow
-    const pendingDeepLink = parseNotificationDeepLink();
-    
     const newUrl = window.location.pathname + window.location.hash.split('?')[0];
     window.history.replaceState({}, document.title, newUrl);
     setInviteParams(null);
@@ -465,22 +216,24 @@ const AppContent: React.FC = () => {
     setCurrentUser(user);
     localStorage.setItem('helpy_current_session_user', JSON.stringify(user));
     setShowIntro(false);
-    
-    // Navigate to deep link destination or default to dashboard
-    if (pendingDeepLink.isDeepLink) {
-      console.log('🔵 [App] Navigating to deep link:', pendingDeepLink.view, pendingDeepLink.navData);
-      setActiveView(pendingDeepLink.view);
-      setNavData(pendingDeepLink.navData);
-    } else {
-      setActiveView('dashboard');
-    }
+    setActiveView('dashboard');
     console.log('✅ [App] handleLogin completed, currentUser should be set');
     
-    // NOTE: Auto-subscribe is now handled by the useEffect that watches users.length
-    // This ensures the clerk_id -> UUID cache is populated before subscribing.
-    // The useEffect will trigger when users are loaded after login.
-    console.log('[App] Push subscription will be triggered once users are loaded');
-    
+    // Trigger auto-subscribe immediately after login
+    console.log('[App] Triggering auto-subscribe after login...');
+    autoSubscribeIfNeeded(
+      user.id,
+      user.householdId,
+      user.notificationsEnabled ?? true
+    ).then(success => {
+      if (success) {
+        console.log('[App] Push notifications auto-subscribed successfully (from handleLogin)');
+      } else {
+        console.log('[App] Auto-subscribe returned false (check push service logs)');
+      }
+    }).catch(err => {
+      console.warn('[App] Failed to auto-subscribe to push notifications (from handleLogin):', err);
+    });
     setTimeout(() => {
       loginProcessedRef.current = false;
       console.log('✅ [App] loginProcessedRef reset');
@@ -508,15 +261,7 @@ const AppContent: React.FC = () => {
   }, [signOut]);
 
   // Navigation data (e.g., initialSection for ToDo)
-  // Initialize from deep link if present (for notification deep links)
-  const [navData, setNavData] = useState<{ section?: string } | null>(() => {
-    console.log('[App] navData initial:', initialDeepLink.navData);
-    return initialDeepLink.navData;
-  });
-
-  // Trial state
-  const [isOnTrial, setIsOnTrial] = useState(false);
-  const [trialEndsAt, setTrialEndsAt] = useState<string | null>(null);
+  const [navData, setNavData] = useState<{ section?: string } | null>(null);
 
   // Navigation
   const handleNavigate = (view: string, data?: { section?: string }) => {
@@ -524,63 +269,21 @@ const AppContent: React.FC = () => {
     setNavData(data ?? null);
     // Scroll to top when navigating to a new view
     window.scrollTo(0, 0);
-  };
-
-  // Track current section for onboarding (info: essentialInfo/houseRoutine, todo: shopping/task)
-  const [onboardingSection, setOnboardingSection] = useState<string | undefined>(undefined);
-
-  // Handle onboarding action and advance to next step
-  const handleOnboardingAction = async (action: { type: string; target?: string; section?: string; sheet?: string }) => {
-    if (action.type === 'navigate' && action.target) {
-      setActiveView(action.target);
-      // Set section for the target page if specified
-      if (action.section) {
-        setOnboardingSection(action.section);
-        setNavData({ section: action.section });
-      } else {
-        setOnboardingSection(undefined);
-        setNavData(null);
-      }
-      window.scrollTo(0, 0);
-    } else if (action.type === 'openSheet' && action.sheet === 'addMember') {
-      setOpenAddMemberFromOnboarding(true);
-    } else if (action.type === 'complete') {
-      // Onboarding complete - update database status if not already completed
-      if (currentUser && currentUser.onboardingStatus !== 'completed') {
-        // Convert Clerk ID to Supabase UUID for database update
-        const supabaseUserId = getCachedSupabaseUuid(currentUser.id);
-        await updateOnboardingStatus(supabaseUserId, 'completed', currentUser.onboardingStatus);
-        // Update local user state to reflect the change
-        setCurrentUser(prev => prev ? { ...prev, onboardingStatus: 'completed' } : prev);
-      }
-      setOnboardingStepIndex(-1);
-      setOnboardingSection(undefined);
-      return; // Don't advance step index
+    if (onboardingStep === 1 && view === 'profile') {
+      setOnboardingStep(2);
     }
-    // Advance to next step
-    setOnboardingStepIndex(prev => prev + 1);
   };
 
-  const skipOnboarding = async () => {
-    // Update database status if not already completed
-    if (currentUser && currentUser.onboardingStatus !== 'completed') {
-      // Convert Clerk ID to Supabase UUID for database update
-      const supabaseUserId = getCachedSupabaseUuid(currentUser.id);
-      await updateOnboardingStatus(supabaseUserId, 'skipped', currentUser.onboardingStatus);
-      // Update local user state to reflect the change
-      setCurrentUser(prev => prev ? { ...prev, onboardingStatus: 'skipped' } : prev);
+  const advanceOnboarding = () => {
+    if (onboardingStep === 1) {
+      setActiveView('profile');
+      setOnboardingStep(2);
+      return;
     }
-    setOnboardingStepIndex(-1);
-    setOnboardingSection(undefined);
+    setOnboardingStep(0);
   };
-  
-  // Restart onboarding locally only - does NOT change database status
-  // This allows users to re-watch the tutorial without losing their "completed" status
-  const restartOnboarding = () => {
-    setOnboardingStepIndex(0);
-    setOnboardingSection(undefined);
-    setActiveView('dashboard');
-  };
+
+  const skipOnboarding = () => setOnboardingStep(0);
 
   // Global Data State
   const [users, setUsers] = useState<User[]>([]);
@@ -592,87 +295,6 @@ const AppContent: React.FC = () => {
   const [familyNotesTranslations, setFamilyNotesTranslations] = useState<Record<string, string>>({});
   const [essentialItems, setEssentialItems] = useState<EssentialInfo[]>([]);
   const [houseRoutineItems, setHouseRoutineItems] = useState<HouseRoutine[]>([]);
-  const [householdPlan, setHouseholdPlan] = useState<HouseholdPlan | null>(null);
-
-  const fetchHouseholdPlan = useCallback(async (householdId: string) => {
-    try {
-      console.log('[App] Fetching household plan for:', householdId);
-      console.log('[App] Supabase ready:', isSupabaseReady);
-      console.log('[App] Using authenticated supabase client:', !!supabase);
-      console.log('[App] Current user household ID:', currentUser?.householdId);
-      console.log('[App] Requested household ID matches user:', householdId === currentUser?.householdId);
-
-      // Early return if supabase client is not ready or null
-      if (!isSupabaseReady || !supabase) {
-        console.warn('[App] Supabase client not ready yet, skipping household plan fetch');
-        return;
-      }
-
-      console.log('[App] Client type check:', supabase === defaultSupabase ? 'DEFAULT CLIENT (no JWT)' : 'AUTHENTICATED CLIENT (has JWT)');
-
-      // First try a simple query to test authentication
-      console.log('[App] Testing basic authentication...');
-      const { data: testData, error: testError } = await supabase
-        .from('households')
-        .select('count')
-        .limit(1);
-
-      if (testError) {
-        console.error('[App] Basic auth test failed:', testError);
-      } else {
-        console.log('[App] Basic auth test passed');
-      }
-
-      const { data, error } = await supabase
-        .from('households')
-        .select('subscription_plan, subscription_status, max_family_members, max_helpers, is_trial, trial_ends_at')
-        .eq('id', householdId)
-        .single();
-
-      if (error) {
-        console.error('[App] Household fetch error:', error);
-        console.error('[App] Error details:', {
-          code: error.code,
-          message: error.message,
-          details: error.details,
-          hint: error.hint
-        });
-
-        // If it's a permission error, let's check if the household exists at all
-        if (error.code === 'PGRST116') {
-          console.log('[App] Checking if household exists without RLS...');
-          // Temporarily disable RLS to check if data exists
-          const { data: existsCheck, error: existsError } = await supabase
-            .from('households')
-            .select('id, subscription_plan')
-            .eq('id', householdId)
-            .limit(1);
-
-          if (existsCheck && existsCheck.length > 0) {
-            console.log('[App] Household exists but RLS blocks access:', existsCheck[0]);
-          } else {
-            console.log('[App] Household does not exist or still blocked');
-          }
-        }
-
-        throw error;
-      }
-
-      setHouseholdPlan({
-        plan: (data?.subscription_plan || 'free') as HouseholdPlan['plan'],
-        status: data?.subscription_status || 'inactive',
-        maxFamilyMembers: data?.max_family_members ?? null,
-        maxHelpers: data?.max_helpers ?? null,
-      });
-
-      // Set trial state
-      setIsOnTrial(data?.is_trial || false);
-      setTrialEndsAt(data?.trial_ends_at || null);
-    } catch (error) {
-      console.error('[App] Failed to load household plan info:', error);
-      setHouseholdPlan(prev => prev || null);
-    }
-  }, [supabase, isSupabaseReady, currentUser?.householdId]);
 
   // Sync function for periodic backup fetching
   const syncAllData = useCallback(async () => {
@@ -690,19 +312,10 @@ const AppContent: React.FC = () => {
         fetchCollection(hid, 'expenses'),
       ]);
       
-      // Update state with fresh data, preserving hasPushSubscription from current state
+      // Update state with fresh data
       if (usersData.length > 0) {
         const uniqueUsers = Array.from(new Map(usersData.map(u => [u.id, u])).values());
-        setUsers(prev => {
-          // Merge new data with existing hasPushSubscription values
-          return uniqueUsers.map(newUser => {
-            const existingUser = prev.find(u => u.id === newUser.id);
-            return {
-              ...newUser,
-              hasPushSubscription: existingUser?.hasPushSubscription ?? (newUser as any).hasPushSubscription
-            };
-          }) as User[];
-        });
+        setUsers(uniqueUsers as User[]);
       }
       if (todoData) setTodoItems(todoData as ToDoItem[]);
       if (mealsData) setMeals(mealsData as Meal[]);
@@ -721,32 +334,6 @@ const AppContent: React.FC = () => {
     onSyncRequest: syncAllData,
   });
 
-  // Keep household subscription + limits in sync
-  useEffect(() => {
-    if (!currentUser?.householdId || !isSupabaseReady) {
-      console.log('[App] Skipping household plan fetch - user:', !!currentUser?.householdId, 'supabase ready:', isSupabaseReady);
-      setHouseholdPlan(null);
-      return;
-    }
-
-    const hid = currentUser.householdId;
-    console.log('[App] Starting household plan fetch for user:', currentUser.id);
-    fetchHouseholdPlan(hid);
-
-    const channel = supabase
-      .channel(`household-plan-${hid}`)
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'households', filter: `id=eq.${hid}` },
-        () => fetchHouseholdPlan(hid)
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [currentUser?.householdId, fetchHouseholdPlan, isSupabaseReady]);
-
   // Ensure currentUser is always in the users array (for assignee selection)
   useEffect(() => {
     if (currentUser && !users.find(u => u.id === currentUser.id)) {
@@ -761,31 +348,15 @@ const AppContent: React.FC = () => {
     });
   }, []);
 
-  // Background session validation: If Clerk is loaded and says user is NOT signed in,
-  // but we have a cached session, clear it and redirect to auth.
-  // This handles expired sessions after optimistic rendering for notification deep links.
-  useEffect(() => {
-    if (clerkLoaded && !isSignedIn && currentUser) {
-      console.log('⚠️ [App] Clerk loaded but user not signed in. Cached session expired, clearing...');
-      setCurrentUser(null);
-      localStorage.removeItem('helpy_current_session_user');
-      setShowIntro(true);
-    }
-  }, [clerkLoaded, isSignedIn, currentUser]);
-
   // Auto-subscribe to push notifications if user has them enabled
   // This ensures users with notificationsEnabled=true get subscribed automatically
-  // 
-  // IMPORTANT: We wait for `users` to be loaded (length > 0) before subscribing.
-  // This ensures the clerk_id -> UUID cache is populated in supabaseService.ts,
-  // which is needed for proper ID resolution when saving the push subscription.
   useEffect(() => {
     console.log('[App] Auto-subscribe useEffect triggered', {
       hasCurrentUser: !!currentUser,
       userId: currentUser?.id,
       householdId: currentUser?.householdId,
       notificationsEnabled: currentUser?.notificationsEnabled,
-      usersLoaded: users.length,
+      fullCurrentUser: currentUser
     });
     
     if (!currentUser || !currentUser.householdId) {
@@ -793,28 +364,13 @@ const AppContent: React.FC = () => {
       return;
     }
     
-    // CRITICAL: Wait for users to be loaded before subscribing
-    // This ensures the clerk_id -> UUID cache is populated
-    if (users.length === 0) {
-      console.log('[App] Auto-subscribe skipped: waiting for users to load (ID cache not ready)');
-      return;
-    }
+    console.log('[App] Calling autoSubscribeIfNeeded...');
     
-    // Only auto-subscribe when notifications are explicitly enabled
-    // Don't trigger when notificationsEnabled is false or undefined
-    const notificationsEnabled = currentUser.notificationsEnabled ?? false;
-    if (!notificationsEnabled) {
-      console.log('[App] Auto-subscribe skipped: notifications not enabled');
-      return;
-    }
-    
-    console.log('[App] Calling autoSubscribeIfNeeded (users loaded, cache should be ready)...');
-    
-    // Auto-subscribe only when notifications are enabled AND users are loaded
+    // Check if user has notifications enabled and auto-subscribe
     autoSubscribeIfNeeded(
       currentUser.id,
       currentUser.householdId,
-      true  // We already checked it's enabled above
+      currentUser.notificationsEnabled ?? true  // Default to true if not set
     ).then(success => {
       if (success) {
         console.log('[App] Push notifications auto-subscribed successfully');
@@ -824,14 +380,14 @@ const AppContent: React.FC = () => {
     }).catch(err => {
       console.warn('[App] Failed to auto-subscribe to push notifications:', err);
     });
-  }, [currentUser?.id, currentUser?.householdId, users.length]); // Added users.length dependency
+  }, [currentUser]); // Changed to depend on entire currentUser object instead of individual properties
 
   // Supabase Subscriptions
   useEffect(() => {
     if (!currentUser || !currentUser.householdId) return;
     const hid = currentUser.householdId;
     
-    const unsubUsers = subscribeToCollection(hid, 'users', async (data) => {
+    const unsubUsers = subscribeToCollection(hid, 'users', (data) => {
       // Deduplicate users by id to prevent duplicates
       const uniqueUsers = Array.from(new Map(data.map(u => [u.id, u])).values());
       
@@ -856,32 +412,7 @@ const AppContent: React.FC = () => {
         return acc;
       }, []);
       
-      // Fetch push subscription status for each user to determine "Incomplete" vs "Ready" state
-      const usersWithStatus = await Promise.all(finalUsers.map(async (user) => {
-        // Skip check for children or temp users
-        if (user.role === 'Child' || user.id.startsWith('temp-')) {
-          return { ...user, hasPushSubscription: false };
-        }
-        
-        try {
-          // Resolve to Supabase UUID (user.id may be a Clerk ID)
-          const supabaseUserId = getCachedSupabaseUuid(user.id);
-          const { count } = await supabase
-            .from('push_subscriptions')
-            .select('*', { count: 'exact', head: true })
-            .eq('user_id', supabaseUserId);
-            
-          return {
-            ...user,
-            hasPushSubscription: (count || 0) > 0
-          };
-        } catch (e) {
-          console.warn('Failed to check push subscription for user', user.id, e);
-          return { ...user, hasPushSubscription: false };
-        }
-      }));
-      
-      setUsers(usersWithStatus as User[]);
+      setUsers(finalUsers as User[]);
     });
     const unsubTodoItems = subscribeToCollection(hid, 'todo_items', (data) => setTodoItems(data as ToDoItem[]));
     const unsubMeals = subscribeToCollection(hid, 'meals', (data) => setMeals(data as Meal[]));
@@ -918,9 +449,7 @@ const AppContent: React.FC = () => {
           updatedCurrentUser.avatar !== currentUser.avatar ||
           JSON.stringify(updatedCurrentUser.allergies) !== JSON.stringify(currentUser.allergies) ||
           JSON.stringify(updatedCurrentUser.preferences) !== JSON.stringify(currentUser.preferences) ||
-          updatedCurrentUser.notificationsEnabled !== currentUser.notificationsEnabled ||
-          updatedCurrentUser.hasPushSubscription !== currentUser.hasPushSubscription ||
-          updatedCurrentUser.onboardingStatus !== currentUser.onboardingStatus;
+          updatedCurrentUser.notificationsEnabled !== currentUser.notificationsEnabled;
         
         if (hasChanges) {
           setCurrentUser(updatedCurrentUser);
@@ -929,52 +458,6 @@ const AppContent: React.FC = () => {
       }
     }
   }, [users]);
-
-  // Handle URL hash changes (for when app is already open and notification is tapped)
-  // This navigates to the correct page when service worker calls client.navigate()
-  useEffect(() => {
-    const handleDeepLink = () => {
-      const deepLink = parseNotificationDeepLink();
-      if (deepLink.isDeepLink) {
-        console.log('[App] Deep link detected, navigating to:', deepLink.view, deepLink.navData);
-        setShowIntro(false); // Always skip intro for deep links
-        setActiveView(deepLink.view);
-        setNavData(deepLink.navData);
-        // Clear the hash parameters after navigation to keep URL clean
-        window.history.replaceState({}, '', window.location.pathname);
-      }
-    };
-    
-    // Handle hash changes (for when app is open and SW navigates)
-    const handleHashChange = () => {
-      console.log('[App] Hash change event detected. Hash:', window.location.hash);
-      handleDeepLink();
-    };
-    
-    // Handle visibility changes (for when PWA becomes visible after notification tap)
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        console.log('[App] App became visible. Hash:', window.location.hash);
-        handleDeepLink();
-      }
-    };
-    
-    // Handle focus (another way to detect app becoming active)
-    const handleFocus = () => {
-      console.log('[App] Window focused. Hash:', window.location.hash);
-      handleDeepLink();
-    };
-    
-    window.addEventListener('hashchange', handleHashChange);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('focus', handleFocus);
-    
-    return () => {
-      window.removeEventListener('hashchange', handleHashChange);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('focus', handleFocus);
-    };
-  }, []);
 
   const hid = currentUser?.householdId ?? '';
 
@@ -1034,10 +517,11 @@ const AppContent: React.FC = () => {
     // Create expense without ID so Supabase generates UUID
     const expenseWithoutId = { ...expense };
     delete expenseWithoutId.id; // Remove ID so Supabase generates UUID
-    // Add createdBy so notifications show who added the expense
-    expenseWithoutId.createdBy = currentUser?.id;
+    // Strip createdBy; expenses table doesn’t have this column
+    delete (expenseWithoutId as any).createdBy;
     
     console.log('[App] Adding expense without ID, will get UUID from DB');
+    // Don't include createdBy - expenses table doesn't have this column
     const savedExpense = await addItem(hid, 'expenses', expenseWithoutId);
     console.log('[App] Expense saved with UUID:', savedExpense.id);
     
@@ -1097,16 +581,9 @@ const AppContent: React.FC = () => {
   };
 
   const handleDeleteUser = async (id: string) => {
-    if (!hid || !currentUser) return;
-    const previousUsers = users;  // Store for rollback
+    if (!hid) return;
     setUsers(prev => prev.filter(u => u.id !== id));  // Optimistic
-    try {
-      await deleteItem(hid, 'users', id, currentUser.id);
-    } catch (error) {
-      console.error('❌ Failed to delete user:', error);
-      setUsers(previousUsers);  // Rollback on error
-      throw error;  // Re-throw so Profile can show error
-    }
+    await deleteItem(hid, 'users', id);
   };
 
   // Notes Handler
@@ -1241,19 +718,7 @@ const AppContent: React.FC = () => {
     switch (activeView) {
       case 'dashboard':
         return (
-          <>
-            {isOnTrial && trialEndsAt && (
-              <TrialBanner
-                trialEndsAt={trialEndsAt}
-                t={translations}
-                onUpgradeClick={() => {
-                  // Navigate to subscription page
-                  localStorage.setItem('helpy_profile_target_section', 'plan');
-                  setActiveView('profile');
-                }}
-              />
-            )}
-            <Dashboard
+          <Dashboard
             todoItems={todoItems}
             meals={meals}
             users={users}
@@ -1272,7 +737,6 @@ const AppContent: React.FC = () => {
             onUpdateMeal={handleUpdateMeal}
             realtimeStatus={realtimeStatus}
           />
-          </>
         );
 
       case 'todo':
@@ -1287,7 +751,6 @@ const AppContent: React.FC = () => {
             t={translations}
             currentLang={lang}
             initialSection={navData?.section as 'shopping' | 'task' | undefined}
-            onSectionChange={setOnboardingSection}
           />
         );
 
@@ -1311,11 +774,6 @@ const AppContent: React.FC = () => {
             expenses={expenses}
             householdId={hid}
             currentUser={currentUser}
-            householdPlan={householdPlan}
-            onNavigateToPlan={() => {
-              localStorage.setItem('helpy_profile_target_section', 'plan');
-              handleNavigate('profile');
-            }}
             onAdd={handleAddExpense}
             onUpdate={handleUpdateExpense}
             onDelete={handleDeleteExpense}
@@ -1340,9 +798,6 @@ const AppContent: React.FC = () => {
             onDeleteHouseRoutine={handleDeleteHouseRoutine}
             t={translations}
             currentLang={lang}
-            initialSection={navData?.section as 'essentialInfo' | 'houseRoutine' | undefined}
-            onSectionChange={setOnboardingSection}
-            onNavigateToProfile={() => handleNavigate('profile')}
           />
         );
 
@@ -1356,12 +811,8 @@ const AppContent: React.FC = () => {
             onBack={() => setActiveView('dashboard')}
             currentUser={currentUser!}
             onLogout={handleLogout}
-            householdPlan={householdPlan}
             t={translations}
             currentLang={lang}
-            openAddMemberFromOnboarding={openAddMemberFromOnboarding}
-            onAddMemberSheetOpened={() => setOpenAddMemberFromOnboarding(false)}
-            onRestartOnboarding={restartOnboarding}
           />
         );
 
@@ -1388,20 +839,74 @@ const AppContent: React.FC = () => {
     );
   }
 
-  // Show loading while Clerk is initializing (after OAuth redirect)
-  // OPTIMIZATION: For notification deep links with cached session, skip the loading screen
-  // and render the content immediately. This provides instant navigation when tapping notifications.
-  // We'll validate the session in the background and only redirect to auth if it's invalid.
-  const shouldSkipClerkLoading = !clerkLoaded && !!currentUser && !!currentUser.householdId && initialDeepLink.isDeepLink;
-  
-  if (!clerkLoaded && !shouldSkipClerkLoading) {
-    // For regular app launches (not from notifications), wait for Clerk
+  // CRITICAL: Show loading while Clerk is initializing (after OAuth redirect)
+  // Don't make routing decisions until Clerk has finished loading
+  if (!clerkLoaded) {
     console.log('🟣 [App] Clerk not loaded yet, showing loading state');
-    return <ClerkLoadingScreen />;
-  }
-  
-  if (shouldSkipClerkLoading) {
-    console.log('🟢 [App] Clerk not loaded, but cached session exists + deep link detected. Rendering content optimistically.');
+    console.log('🟣 [App] Clerk state details:', { 
+      clerkLoaded, 
+      isSignedIn, 
+      hasClerkUser: !!clerkUser,
+      clerkUserId: clerkUser?.id 
+    });
+    
+    // If timeout occurred, show error message
+    if (clerkLoadTimeout) {
+      return (
+        <div className="min-h-screen flex flex-col justify-center items-center p-4" style={{ backgroundColor: '#3EAFD2' }}>
+          <div className="text-white text-center max-w-md">
+            <p className="text-lg font-bold mb-2">Clerk Loading Timeout</p>
+            {clerkError && (
+              <p className="text-sm mb-4 text-red-200">{clerkError}</p>
+            )}
+            <p className="text-sm mb-4">Clerk is taking longer than expected to initialize.</p>
+            <p className="text-xs text-white/80 mb-4">Please check:</p>
+            <ul className="text-xs text-white/80 text-left list-disc list-inside mb-4 space-y-1">
+              <li>Browser console for errors (F12 → Console tab)</li>
+              <li>Network tab (F12 → Network) - look for failed requests to clerk.accounts.dev</li>
+              <li>That your Clerk publishable key is correct in .env.local</li>
+              <li>That you're using test keys (pk_test_...) for local development</li>
+              <li>Firewall/antivirus blocking Clerk API requests</li>
+            </ul>
+            <div className="flex gap-2 justify-center">
+              <button 
+                onClick={() => window.location.reload()} 
+                className="px-4 py-2 bg-white text-[#3EAFD2] rounded font-semibold hover:bg-gray-100"
+              >
+                Reload Page
+              </button>
+              <button 
+                onClick={() => {
+                  console.log('🔍 [Debug] Clerk Key:', import.meta.env.VITE_CLERK_PUBLISHABLE_KEY ? 'Present' : 'MISSING');
+                  console.log('🔍 [Debug] Key preview:', import.meta.env.VITE_CLERK_PUBLISHABLE_KEY?.substring(0, 20));
+                  console.log('🔍 [Debug] Hostname:', window.location.hostname);
+                  console.log('🔍 [Debug] Full URL:', window.location.href);
+                }} 
+                className="px-4 py-2 bg-white/20 text-white rounded font-semibold hover:bg-white/30"
+              >
+                Debug Info
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    
+    return (
+      <div className="min-h-screen flex flex-col justify-end pb-24" style={{ backgroundColor: '#3EAFD2' }}>
+        <div className="text-white text-center">
+          <div className="broom-loader-wrapper">
+            <div className="broom-loader mb-4">
+              <BroomIcon className="broom-icon-svg" />
+              <div className="broom-track"></div>
+              <div className="broom-trail"></div>
+            </div>
+            <p className="text-sm font-bold whitespace-nowrap">Tidying things up...</p>
+          </div>
+          <p className="text-xs text-white/60 mt-2">Please wait a moment</p>
+        </div>
+      </div>
+    );
   }
 
   // OPTION 2: Skip InviteWelcome - go directly to Auth/SignUp for faster flow
@@ -1430,13 +935,11 @@ const AppContent: React.FC = () => {
   return (
     <>
       {showIntro && <IntroAnimation onComplete={() => setShowIntro(false)} />}
-      {onboardingStepIndex >= 0 && (
+      {onboardingStep > 0 && (
         <OnboardingOverlay
-          stepIndex={onboardingStepIndex}
-          userRole={currentUser.role}
-          currentPage={activeView}
-          currentSection={onboardingSection}
-          onNext={handleOnboardingAction}
+          step={onboardingStep}
+          userName={currentUser.name?.split(' ')[0] ?? 'User'}
+          onNext={advanceOnboarding}
           onSkip={skipOnboarding}
           t={translations}
         />

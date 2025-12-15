@@ -1,5 +1,19 @@
 import { supabase } from './supabase';
+import { getAuthenticatedSupabaseClient } from '../contexts/SupabaseContext';
 import { User, ShoppingItem, Task, Meal, Expense, Section, ToDoItem } from '../types';
+
+/**
+ * Get the best available Supabase client.
+ * Prefers authenticated client (with JWT for RLS), falls back to default.
+ */
+function getSupabaseClient() {
+  const authClient = getAuthenticatedSupabaseClient();
+  if (authClient) {
+    return authClient;
+  }
+  console.warn('[supabaseService] No authenticated client available, using default (may fail RLS)');
+  return supabase;
+}
 
 // Type for generic data items
 type DataItem = User | ShoppingItem | Task | Meal | Expense | Section | ToDoItem;
@@ -221,9 +235,10 @@ export function subscribeToCollection(
     ? '*, receipts!receipts_expense_id_fkey(image_url, image_path)'  // LEFT JOIN receipts with image path for URL recovery
     : '*';
   
-  // Helper function to fetch data
+  // Helper function to fetch data - always get fresh client to pick up auth
   const fetchData = () => {
-    return supabase
+    const client = getSupabaseClient();
+    return client
       .from(tableName)
       .select(selectQuery)
       .eq('household_id', householdId);
@@ -237,7 +252,7 @@ export function subscribeToCollection(
         // Fallback to simple select if JOIN fails (e.g., no receipts table or FK not set)
         if (collection === 'expenses') {
           console.log('📥 Falling back to simple expenses fetch without receipts JOIN');
-          supabase
+          getSupabaseClient()
             .from(tableName)
             .select('*')
             .eq('household_id', householdId)
@@ -252,7 +267,7 @@ export function subscribeToCollection(
     });
 
     // Set up real-time subscription
-  const subscription = supabase
+  const subscription = getSupabaseClient()
   .channel(`${tableName}-${householdId}`)
   .on(
     'postgres_changes',
@@ -270,7 +285,7 @@ export function subscribeToCollection(
         .then(({ data, error }) => {
           if (error && collection === 'expenses') {
             // Fallback for expenses
-            supabase
+            getSupabaseClient()
               .from(tableName)
               .select('*')
               .eq('household_id', householdId)
@@ -794,7 +809,7 @@ export function subscribeToNotes(
   }) => void
 ): () => void {
   // Initial fetch
-  supabase
+  getSupabaseClient()
     .from('households')
     .select('family_notes, family_notes_lang, family_notes_translations')
     .eq('id', householdId)
@@ -810,7 +825,7 @@ export function subscribeToNotes(
     });
 
   // Subscribe to changes
-  const subscription = supabase
+  const subscription = getSupabaseClient()
     .channel(`households-${householdId}`)
     .on(
       'postgres_changes',

@@ -18,6 +18,7 @@ import { detectDeviceLanguage } from './services/languageDetectionService';
 import { getStaticTranslations } from './services/translationService';
 import { TranslationProvider, useTranslationContext } from './contexts/TranslationContext';
 import { supabase } from './services/supabase';
+import { useSupabaseReady } from './contexts/SupabaseContext';
 import {
   subscribeToCollection,
   addItem,
@@ -61,6 +62,7 @@ const AppContent: React.FC = () => {
   const { signOut } = useClerk();
   const { user: clerkUser, isSignedIn, isLoaded: clerkLoaded } = useUser();
   const { setStaticTranslating, isAnyTranslating } = useTranslationContext();
+  const isSupabaseReady = useSupabaseReady(); // Wait for authenticated Supabase client
   const [showIntro, setShowIntro] = useState(true);
   const [activeView, setActiveView] = useState('dashboard');
   const [clerkLoadTimeout, setClerkLoadTimeout] = useState(false);
@@ -382,9 +384,14 @@ const AppContent: React.FC = () => {
     });
   }, [currentUser]); // Changed to depend on entire currentUser object instead of individual properties
 
-  // Supabase Subscriptions
+  // Supabase Subscriptions - wait for authenticated client
   useEffect(() => {
     if (!currentUser || !currentUser.householdId) return;
+    if (!isSupabaseReady) {
+      console.log('[App] ⏳ Waiting for authenticated Supabase client...');
+      return;
+    }
+    console.log('[App] ✅ Supabase ready, setting up subscriptions');
     const hid = currentUser.householdId;
     
     const unsubUsers = subscribeToCollection(hid, 'users', (data) => {
@@ -434,7 +441,7 @@ const AppContent: React.FC = () => {
       unsubEssential();
       unsubHouseRoutine();
     };
-  }, [currentUser]);
+  }, [currentUser, isSupabaseReady]);
 
   // Sync currentUser with users array when user data changes (e.g., role updates)
   // This ensures role changes take effect immediately without requiring logout/login

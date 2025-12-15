@@ -1,8 +1,24 @@
 // services/houseRoutineService.ts
-import { supabase } from './supabase';
+import { supabase as defaultSupabase } from './supabase';
+import { getAuthenticatedSupabaseClient } from '../contexts/SupabaseContext';
 import type { HouseRoutine, CreateHouseRoutine, HouseRoutineCategory } from '@src/types/houseRoutine';
 
 const TABLE_NAME = 'house_routine';
+
+/**
+ * Get the best available Supabase client.
+ * Prefers authenticated client with JWT (for RLS), falls back to default.
+ */
+function getSupabase() {
+  const authClient = getAuthenticatedSupabaseClient();
+  return authClient || defaultSupabase;
+}
+
+// Wrapper that uses authenticated client for all operations
+const supabase = {
+  from: (table: string) => getSupabase().from(table),
+  channel: (name: string) => getSupabase().channel(name),
+};
 
 /**
  * Convert snake_case from Supabase to camelCase for app

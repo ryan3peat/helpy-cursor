@@ -1,7 +1,7 @@
 // components/HelperManagementContent.tsx
 
 import React, { useState, useEffect } from 'react';
-import { Calendar, FileText, Check, X } from 'lucide-react';
+import { Calendar, FileText, Check, X, AlertTriangle } from 'lucide-react';
 import type { User, TranslationDictionary } from '@/types';
 import { UserRole } from '@/types';
 import type { HKStatutoryHoliday, HelperHolidayRecord, HelperPayslipConfirmation, CompensationType } from '@src/types/helperManagement';
@@ -12,10 +12,11 @@ import {
   getCurrentPayslip,
   createOrGetCurrentPayslip,
   signPayslip,
-  calculateTotalSalary,
   isHelperSalaryConfigured,
   getPastHolidays,
   getPastPayslips,
+  getOvertimeTotalForMonth,
+  updatePayslipAmount,
 } from '../services/helperManagementService';
 
 interface Props {
@@ -40,18 +41,28 @@ export const HelperManagementContent: React.FC<Props> = ({
   const [holidayRecords, setHolidayRecords] = useState<Map<string, HelperHolidayRecord>>(new Map());
   const [currentPayslip, setCurrentPayslip] = useState<HelperPayslipConfirmation | null>(null);
   const [showCompensationModal, setShowCompensationModal] = useState<{ holiday: HKStatutoryHoliday } | null>(null);
+  const [showOvertimeModal, setShowOvertimeModal] = useState<{ holiday: HKStatutoryHoliday } | null>(null);
+  const [overtimeAmount, setOvertimeAmount] = useState('');
+  const [addToPayslip, setAddToPayslip] = useState(true);
+  const [showSignConfirmModal, setShowSignConfirmModal] = useState<'employer' | 'helper' | null>(null);
   const [showPastHolidays, setShowPastHolidays] = useState(false);
   const [showPastPayslips, setShowPastPayslips] = useState(false);
   const [pastHolidays, setPastHolidays] = useState<HelperHolidayRecord[]>([]);
   const [pastPayslips, setPastPayslips] = useState<HelperPayslipConfirmation[]>([]);
+  const [overtimeTotal, setOvertimeTotal] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+  const [showChangeAmountModal, setShowChangeAmountModal] = useState(false);
+  const [customAmount, setCustomAmount] = useState('');
   
   const isHelper = currentUser.role === UserRole.HELPER;
+  const isAdmin = currentUser.role === UserRole.MASTER;
   const salaryConfigured = isHelperSalaryConfigured(helper);
-  const totalSalary = calculateTotalSalary(
-    helper.helperBaseSalary || 5100,
-    helper.helperFoodAllowance || 1236,
-    helper.helperOtherAllowances || []
-  );
+  
+  // Calculate total salary: Base + Food (if set) + Other Allowances + Overtime
+  const baseSalary = helper.helperBaseSalary || 0;
+  const foodAllowance = helper.helperFoodAllowance || 0;
+  const otherAllowances = (helper.helperOtherAllowances || []).reduce((sum, a) => sum + a.amount, 0);
+  const totalSalary = baseSalary + foodAllowance + otherAllowances + overtimeTotal;
 
   // Load data
   useEffect(() => {
@@ -83,10 +94,16 @@ export const HelperManagementContent: React.FC<Props> = ({
 
   const loadPayslip = async () => {
     try {
+      // Get overtime total for current month
+      const now = new Date();
+      const overtime = await getOvertimeTotalForMonth(helperId, householdId, now.getMonth() + 1, now.getFullYear());
+      setOvertimeTotal(overtime);
+      
       const payslip = await getCurrentPayslip(helperId, householdId);
       if (!payslip) {
-        // Create one
-        const newPayslip = await createOrGetCurrentPayslip(helperId, householdId, totalSalary);
+        // Create one with calculated salary
+        const calculatedSalary = baseSalary + foodAllowance + otherAllowances + overtime;
+        const newPayslip = await createOrGetCurrentPayslip(helperId, householdId, calculatedSalary);
         setCurrentPayslip(newPayslip);
       } else {
         setCurrentPayslip(payslip);
@@ -112,9 +129,12 @@ export const HelperManagementContent: React.FC<Props> = ({
           holiday.holidayDate,
           holiday.holidayName,
           false,
-          null
+          null,
+          0,
+          false
         );
         loadHolidays();
+        loadPayslip(); // Refresh overtime totals
       } catch (error) {
         console.error('Failed to update holiday record:', error);
       }
@@ -123,8 +143,41 @@ export const HelperManagementContent: React.FC<Props> = ({
 
   const handleCompensationSelect = async (type: CompensationType) => {
     if (!showCompensationModal) return;
-    const { holiday } = showCompensationModal;
     
+    if (type === 'lieu') {
+      // Time in Lieu - save immediately
+      const { holiday } = showCompensationModal;
+      try {
+        await upsertHelperHolidayRecord(
+          householdId,
+          helperId,
+          holiday.holidayDate,
+          holiday.holidayName,
+          true,
+          'lieu',
+          0,
+          false
+        );
+        setShowCompensationModal(null);
+        loadHolidays();
+      } catch (error) {
+        console.error('Failed to save compensation:', error);
+      }
+    } else {
+      // Overtime - show amount input modal
+      setShowOvertimeModal(showCompensationModal);
+      setShowCompensationModal(null);
+      setOvertimeAmount('');
+      setAddToPayslip(true);
+    }
+  };
+
+  const handleOvertimeSave = async () => {
+    if (!showOvertimeModal) return;
+    const { holiday } = showOvertimeModal;
+    const amount = parseInt(overtimeAmount) || 0;
+    
+    setIsLoading(true);
     try {
       await upsertHelperHolidayRecord(
         householdId,
@@ -132,23 +185,71 @@ export const HelperManagementContent: React.FC<Props> = ({
         holiday.holidayDate,
         holiday.holidayName,
         true,
-        type
+        'overtime',
+        amount,
+        addToPayslip
       );
       
-      setShowCompensationModal(null);
+      setShowOvertimeModal(null);
       loadHolidays();
+      loadPayslip(); // Refresh to update overtime totals
     } catch (error) {
-      console.error('Failed to save compensation:', error);
+      console.error('Failed to save overtime:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleSign = async (type: 'employer' | 'helper') => {
+  const handleSignClick = (type: 'employer' | 'helper') => {
+    // Validate role-based permissions
+    if (type === 'employer' && !isAdmin) {
+      alert('Only Admin users can sign the employer side');
+      return;
+    }
+    if (type === 'helper' && !isHelper) {
+      alert('Only the Helper can sign their side');
+      return;
+    }
+    // Show confirmation modal
+    setShowSignConfirmModal(type);
+  };
+
+  const handleChangeAmount = () => {
     if (!currentPayslip) return;
+    setCustomAmount(currentPayslip.salaryAmount.toString());
+    setShowChangeAmountModal(true);
+  };
+
+  const handleSaveCustomAmount = async () => {
+    if (!currentPayslip) return;
+    const newAmount = parseInt(customAmount) || 0;
+    
+    setIsLoading(true);
     try {
-      await signPayslip(currentPayslip.id, type, currentUser.id);
+      await updatePayslipAmount(currentPayslip.id, newAmount);
+      setShowChangeAmountModal(false);
+      loadPayslip();
+    } catch (error: any) {
+      console.error('Failed to update amount:', error);
+      alert(error.message || 'Failed to update amount');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSignConfirm = async () => {
+    if (!showSignConfirmModal || !currentPayslip) return;
+    
+    setIsLoading(true);
+    try {
+      await signPayslip(currentPayslip.id, showSignConfirmModal, currentUser.id);
+      setShowSignConfirmModal(null);
       loadPayslip();
     } catch (error) {
       console.error('Failed to sign payslip:', error);
+      alert('Failed to sign payslip. It may have already been signed.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -202,6 +303,7 @@ export const HelperManagementContent: React.FC<Props> = ({
           {upcomingHolidays.map(holiday => {
             const record = holidayRecords.get(holiday.holidayDate);
             const isWorking = record?.isWorking || false;
+            const compensationType = record?.compensationType;
             
             return (
               <div 
@@ -209,7 +311,21 @@ export const HelperManagementContent: React.FC<Props> = ({
                 className="flex items-center justify-between py-2 border-b border-border last:border-0"
               >
                 <div className="flex-1">
-                  <p className="text-body font-medium">{holiday.holidayName}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-body font-medium">{holiday.holidayName}</p>
+                    {/* TIL Tag */}
+                    {isWorking && compensationType === 'lieu' && (
+                      <span className="px-1.5 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 rounded">
+                        TIL
+                      </span>
+                    )}
+                    {/* OT Tag with amount */}
+                    {isWorking && compensationType === 'overtime' && (
+                      <span className="px-1.5 py-0.5 text-xs font-medium bg-orange-100 text-orange-700 rounded">
+                        OT {record?.overtimeAmount ? `$${record.overtimeAmount}` : ''}
+                      </span>
+                    )}
+                  </div>
                   <p className="text-caption text-muted-foreground">
                     {new Date(holiday.holidayDate).toLocaleDateString('en-US', {
                       weekday: 'short',
@@ -283,28 +399,68 @@ export const HelperManagementContent: React.FC<Props> = ({
         ) : (
           /* Salary configured - show payslip */
           <div>
-            {/* Header row */}
-            <div className="grid grid-cols-3 gap-2 mb-4 text-center">
-              <div className="text-caption text-muted-foreground">{currentMonth}</div>
-              <div className="text-caption text-muted-foreground">
-                {t['helper.employer'] || 'Employer'}
+            {/* Month header */}
+            <div className="text-caption text-muted-foreground mb-3">{currentMonth}</div>
+            
+            {/* Calculated Amount Section */}
+            <div className="mb-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-caption font-medium text-muted-foreground">
+                  {t['helper.calculated_amount'] || 'Calculated Amount'}
+                </span>
+                {/* Change Amount button - only for Admin and only if no signatures */}
+                {isAdmin && !currentPayslip?.employerSignedAt && !currentPayslip?.helperSignedAt && (
+                  <button
+                    onClick={handleChangeAmount}
+                    className="text-caption text-primary hover:underline"
+                  >
+                    {t['helper.change_amount'] || 'Change Amount'}
+                  </button>
+                )}
               </div>
-              <div className="text-caption text-muted-foreground">
-                {t['helper.helper'] || 'Helper'}
+              
+              {/* Salary Breakdown */}
+              <div className="bg-secondary/50 rounded-lg p-3 space-y-1">
+                <div className="flex justify-between text-caption">
+                  <span className="text-muted-foreground">{t['helper.base_salary'] || 'Base Salary'}</span>
+                  <span>${baseSalary.toLocaleString()}</span>
+                </div>
+                {foodAllowance > 0 && (
+                  <div className="flex justify-between text-caption">
+                    <span className="text-muted-foreground">{t['helper.food_allowance'] || 'Food Allowance'}</span>
+                    <span>${foodAllowance.toLocaleString()}</span>
+                  </div>
+                )}
+                {otherAllowances > 0 && (
+                  <div className="flex justify-between text-caption">
+                    <span className="text-muted-foreground">{t['helper.other_allowances'] || 'Other Allowances'}</span>
+                    <span>${otherAllowances.toLocaleString()}</span>
+                  </div>
+                )}
+                {overtimeTotal > 0 && (
+                  <div className="flex justify-between text-caption">
+                    <span className="text-muted-foreground">{t['helper.overtime'] || 'Overtime'}</span>
+                    <span>${overtimeTotal.toLocaleString()}</span>
+                  </div>
+                )}
+                <div className="flex justify-between pt-2 border-t border-border">
+                  <span className="text-body font-semibold">{t['helper.total'] || 'Total'}</span>
+                  <span className="text-title font-bold text-primary">
+                    ${(currentPayslip?.salaryAmount || totalSalary).toLocaleString()}
+                  </span>
+                </div>
               </div>
             </div>
             
-            {/* Content row */}
-            <div className="grid grid-cols-3 gap-2 items-center text-center">
-              {/* Salary amount */}
-              <div className="text-title font-bold text-primary">
-                ${totalSalary.toLocaleString()}
-              </div>
-              
-              {/* Employer sign button */}
-              <div>
+            {/* Sign Buttons Row */}
+            <div className="grid grid-cols-2 gap-4">
+              {/* Employer sign */}
+              <div className="text-center">
+                <div className="text-caption text-muted-foreground mb-2">
+                  {t['helper.employer'] || 'Employer'}
+                </div>
                 {currentPayslip?.employerSignedAt ? (
-                  <div className="flex flex-col items-center">
+                  <div className="flex flex-col items-center py-2">
                     <Check size={24} className="text-green-500" />
                     <span className="text-caption text-green-600">
                       {t['helper.signed'] || 'Signed'}
@@ -312,12 +468,12 @@ export const HelperManagementContent: React.FC<Props> = ({
                   </div>
                 ) : (
                   <button
-                    onClick={() => handleSign('employer')}
-                    disabled={isHelper}
-                    className={`px-4 py-2 rounded-lg transition-colors ${
-                      isHelper 
-                        ? 'bg-muted text-muted-foreground cursor-not-allowed'
-                        : 'bg-primary text-primary-foreground hover:bg-primary/90'
+                    onClick={() => handleSignClick('employer')}
+                    disabled={!isAdmin}
+                    className={`w-full px-4 py-2 rounded-lg transition-colors ${
+                      !isAdmin 
+                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        : 'bg-gray-400 text-white hover:bg-primary'
                     }`}
                   >
                     {t['helper.sign'] || 'Sign'}
@@ -325,10 +481,13 @@ export const HelperManagementContent: React.FC<Props> = ({
                 )}
               </div>
               
-              {/* Helper sign button */}
-              <div>
+              {/* Helper sign */}
+              <div className="text-center">
+                <div className="text-caption text-muted-foreground mb-2">
+                  {t['helper.helper'] || 'Helper'}
+                </div>
                 {currentPayslip?.helperSignedAt ? (
-                  <div className="flex flex-col items-center">
+                  <div className="flex flex-col items-center py-2">
                     <Check size={24} className="text-green-500" />
                     <span className="text-caption text-green-600">
                       {t['helper.signed'] || 'Signed'}
@@ -336,12 +495,12 @@ export const HelperManagementContent: React.FC<Props> = ({
                   </div>
                 ) : (
                   <button
-                    onClick={() => handleSign('helper')}
+                    onClick={() => handleSignClick('helper')}
                     disabled={!isHelper}
-                    className={`px-4 py-2 rounded-lg transition-colors ${
+                    className={`w-full px-4 py-2 rounded-lg transition-colors ${
                       !isHelper 
-                        ? 'bg-muted text-muted-foreground cursor-not-allowed'
-                        : 'bg-primary text-primary-foreground hover:bg-primary/90'
+                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        : 'bg-gray-400 text-white hover:bg-primary'
                     }`}
                   >
                     {t['helper.sign'] || 'Sign'}
@@ -349,6 +508,14 @@ export const HelperManagementContent: React.FC<Props> = ({
                 )}
               </div>
             </div>
+            
+            {/* Locked indicator when both signed */}
+            {currentPayslip?.employerSignedAt && currentPayslip?.helperSignedAt && (
+              <div className="mt-3 text-center text-caption text-green-600 flex items-center justify-center gap-1">
+                <Check size={14} />
+                <span>{t['helper.payslip_confirmed'] || 'Payslip confirmed and locked'}</span>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -391,6 +558,198 @@ export const HelperManagementContent: React.FC<Props> = ({
             >
               {t['common.cancel'] || 'Cancel'}
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Overtime Amount Modal */}
+      {showOvertimeModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-card rounded-xl p-6 m-4 max-w-sm w-full">
+            <h3 className="text-title font-semibold mb-4">
+              {t['helper.overtime_amount'] || 'Overtime Pay Amount'}
+            </h3>
+            <p className="text-body text-muted-foreground mb-4">
+              {showOvertimeModal.holiday.holidayName}
+            </p>
+            
+            {/* Amount input */}
+            <div className="mb-4">
+              <label className="block text-caption text-muted-foreground mb-2">
+                {t['helper.amount'] || 'Amount (HK$)'}
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                <input
+                  type="number"
+                  value={overtimeAmount}
+                  onChange={(e) => setOvertimeAmount(e.target.value)}
+                  placeholder="0"
+                  className="w-full pl-8 pr-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
+                />
+              </div>
+            </div>
+            
+            {/* Add to payslip question */}
+            <div className="mb-6 p-3 bg-secondary rounded-lg">
+              <p className="text-body mb-3">
+                {t['helper.add_to_payslip_question'] || "Add this amount to their monthly payslip?"}
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setAddToPayslip(true)}
+                  className={`flex-1 py-2 rounded-lg transition-colors ${
+                    addToPayslip 
+                      ? 'bg-primary text-primary-foreground' 
+                      : 'bg-muted text-muted-foreground'
+                  }`}
+                >
+                  {t['common.yes'] || 'Yes'}
+                </button>
+                <button
+                  onClick={() => setAddToPayslip(false)}
+                  className={`flex-1 py-2 rounded-lg transition-colors ${
+                    !addToPayslip 
+                      ? 'bg-primary text-primary-foreground' 
+                      : 'bg-muted text-muted-foreground'
+                  }`}
+                >
+                  {t['common.no'] || 'No'}
+                </button>
+              </div>
+            </div>
+            
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowOvertimeModal(null)}
+                className="flex-1 py-3 bg-secondary text-foreground rounded-lg hover:bg-secondary/80 transition-colors"
+              >
+                {t['common.cancel'] || 'Cancel'}
+              </button>
+              <button
+                onClick={handleOvertimeSave}
+                disabled={isLoading}
+                className="flex-1 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
+              >
+                {isLoading ? '...' : (t['common.save'] || 'Save')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Change Amount Modal */}
+      {showChangeAmountModal && currentPayslip && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-card rounded-xl p-6 m-4 max-w-sm w-full">
+            <h3 className="text-title font-semibold mb-4">
+              {t['helper.change_amount'] || 'Change Amount'}
+            </h3>
+            
+            {/* Current breakdown (read-only) */}
+            <div className="bg-secondary/50 rounded-lg p-3 mb-4 space-y-1 text-caption">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Base Salary</span>
+                <span>${baseSalary.toLocaleString()}</span>
+              </div>
+              {foodAllowance > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Food Allowance</span>
+                  <span>${foodAllowance.toLocaleString()}</span>
+                </div>
+              )}
+              {otherAllowances > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Other Allowances</span>
+                  <span>${otherAllowances.toLocaleString()}</span>
+                </div>
+              )}
+              {overtimeTotal > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Overtime</span>
+                  <span>${overtimeTotal.toLocaleString()}</span>
+                </div>
+              )}
+              <div className="flex justify-between pt-2 border-t border-border text-body">
+                <span className="text-muted-foreground">Calculated Total</span>
+                <span className="font-medium">${totalSalary.toLocaleString()}</span>
+              </div>
+            </div>
+            
+            {/* New amount input */}
+            <div className="mb-4">
+              <label className="block text-caption text-muted-foreground mb-2">
+                {t['helper.new_amount'] || 'New Total Amount (HK$)'}
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                <input
+                  type="number"
+                  value={customAmount}
+                  onChange={(e) => setCustomAmount(e.target.value)}
+                  className="w-full pl-8 pr-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
+                />
+              </div>
+            </div>
+            
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowChangeAmountModal(false)}
+                className="flex-1 py-3 bg-secondary text-foreground rounded-lg hover:bg-secondary/80 transition-colors"
+              >
+                {t['common.cancel'] || 'Cancel'}
+              </button>
+              <button
+                onClick={handleSaveCustomAmount}
+                disabled={isLoading}
+                className="flex-1 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
+              >
+                {isLoading ? '...' : (t['common.save'] || 'Save')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sign Confirmation Modal */}
+      {showSignConfirmModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-card rounded-xl p-6 m-4 max-w-sm w-full">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
+                <AlertTriangle size={20} className="text-amber-600" />
+              </div>
+              <h3 className="text-title font-semibold">
+                {t['helper.confirm_signature'] || 'Confirm Signature'}
+              </h3>
+            </div>
+            
+            <p className="text-body text-muted-foreground mb-6">
+              {t['helper.sign_warning'] || "Press to confirm this month's salary. This action CANNOT be reversed."}
+            </p>
+            
+            <div className="p-3 bg-secondary rounded-lg mb-6">
+              <div className="flex justify-between items-center">
+                <span className="text-caption text-muted-foreground">{currentMonth}</span>
+                <span className="text-title font-bold text-primary">${totalSalary.toLocaleString()}</span>
+              </div>
+            </div>
+            
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowSignConfirmModal(null)}
+                className="flex-1 py-3 bg-secondary text-foreground rounded-lg hover:bg-secondary/80 transition-colors"
+              >
+                {t['common.cancel'] || 'Cancel'}
+              </button>
+              <button
+                onClick={handleSignConfirm}
+                disabled={isLoading}
+                className="flex-1 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
+              >
+                {isLoading ? '...' : (t['helper.confirm_sign'] || 'Confirm & Sign')}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -438,7 +797,17 @@ const PastHolidaysModal: React.FC<{
             {records.map(record => (
               <div key={record.id} className="flex items-center justify-between py-2 border-b border-border">
                 <div>
-                  <p className="text-body font-medium">{record.holidayName}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-body font-medium">{record.holidayName}</p>
+                    {record.isWorking && record.compensationType === 'lieu' && (
+                      <span className="px-1.5 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 rounded">TIL</span>
+                    )}
+                    {record.isWorking && record.compensationType === 'overtime' && (
+                      <span className="px-1.5 py-0.5 text-xs font-medium bg-orange-100 text-orange-700 rounded">
+                        OT {record.overtimeAmount ? `$${record.overtimeAmount}` : ''}
+                      </span>
+                    )}
+                  </div>
                   <p className="text-caption text-muted-foreground">
                     {new Date(record.holidayDate).toLocaleDateString()}
                   </p>
@@ -447,11 +816,6 @@ const PastHolidaysModal: React.FC<{
                   <p className={`text-body ${record.isWorking ? 'text-orange-500' : 'text-green-500'}`}>
                     {record.isWorking ? 'Worked' : 'Off'}
                   </p>
-                  {record.compensationType && (
-                    <p className="text-caption text-muted-foreground">
-                      {record.compensationType === 'lieu' ? 'Time-in-lieu' : 'Overtime'}
-                    </p>
-                  )}
                 </div>
               </div>
             ))}
@@ -486,7 +850,14 @@ const PastPayslipsModal: React.FC<{
                   <span className="text-body font-medium">
                     {new Date(slip.year, slip.month - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
                   </span>
-                  <span className="text-title font-bold">${slip.salaryAmount.toLocaleString()}</span>
+                  <div className="text-right">
+                    <span className="text-title font-bold">${slip.salaryAmount.toLocaleString()}</span>
+                    {(slip.overtimeTotal || 0) > 0 && (
+                      <div className="text-xs text-muted-foreground">
+                        (incl. OT ${slip.overtimeTotal})
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div className="flex gap-4 mt-2 text-caption">
                   <span className={slip.employerSignedAt ? 'text-green-600' : 'text-muted-foreground'}>
@@ -506,4 +877,3 @@ const PastPayslipsModal: React.FC<{
 );
 
 export default HelperManagementContent;
-

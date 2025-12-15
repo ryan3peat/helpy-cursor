@@ -28,6 +28,8 @@ export interface HelperHolidayRecord {
   holidayName: string;
   isWorking: boolean;
   compensationType: 'lieu' | 'overtime' | null;
+  overtimeAmount?: number;           // Amount in HKD for overtime pay
+  addOvertimeToPayslip?: boolean;    // Whether to add overtime to that month's payslip
   createdAt?: string;
   updatedAt?: string;
 }
@@ -39,6 +41,7 @@ export interface HelperPayslipConfirmation {
   month: number;        // 1-12
   year: number;
   salaryAmount: number;
+  overtimeTotal?: number;  // Total overtime added to this payslip
   employerSignedAt?: string | null;
   employerUserId?: string | null;
   helperSignedAt?: string | null;

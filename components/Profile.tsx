@@ -1321,7 +1321,6 @@ const Profile: React.FC<ProfileProps> = ({
                       ))}
                     </div>
                   </div>
-                </div>
 
                 {/* Helper Salary Fields - Only show when editing a Helper */}
                 {selectedUser?.role === UserRole.HELPER && (

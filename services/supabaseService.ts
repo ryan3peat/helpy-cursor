@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { getAuthenticatedSupabaseClient } from '../contexts/SupabaseContext';
 import { User, ShoppingItem, Task, Meal, Expense, Section, ToDoItem } from '../types';
 
 // Type for generic data items
@@ -216,6 +217,12 @@ export function subscribeToCollection(
   
   console.log(`🔔 Subscribing to ${tableName} for household ${householdId}`);
   
+  // Get authenticated Supabase client (with JWT for RLS)
+  const getSupabaseClient = () => {
+    const authClient = getAuthenticatedSupabaseClient();
+    return authClient || supabase; // Fallback to default if no auth client
+  };
+  
   // Build the select query - for expenses, LEFT JOIN receipts to get image_url
   const selectQuery = collection === 'expenses' 
     ? '*, receipts!receipts_expense_id_fkey(image_url, image_path)'  // LEFT JOIN receipts with image path for URL recovery
@@ -223,7 +230,7 @@ export function subscribeToCollection(
   
   // Helper function to fetch data
   const fetchData = () => {
-    return supabase
+    return getSupabaseClient()
       .from(tableName)
       .select(selectQuery)
       .eq('household_id', householdId);
@@ -237,7 +244,7 @@ export function subscribeToCollection(
         // Fallback to simple select if JOIN fails (e.g., no receipts table or FK not set)
         if (collection === 'expenses') {
           console.log('📥 Falling back to simple expenses fetch without receipts JOIN');
-          supabase
+          getSupabaseClient()
             .from(tableName)
             .select('*')
             .eq('household_id', householdId)
@@ -252,7 +259,7 @@ export function subscribeToCollection(
     });
 
     // Set up real-time subscription
-  const subscription = supabase
+  const subscription = getSupabaseClient()
   .channel(`${tableName}-${householdId}`)
   .on(
     'postgres_changes',
@@ -270,7 +277,7 @@ export function subscribeToCollection(
         .then(({ data, error }) => {
           if (error && collection === 'expenses') {
             // Fallback for expenses
-            supabase
+            getSupabaseClient()
               .from(tableName)
               .select('*')
               .eq('household_id', householdId)

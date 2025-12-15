@@ -798,6 +798,7 @@ const AppContent: React.FC = () => {
             onDeleteHouseRoutine={handleDeleteHouseRoutine}
             t={translations}
             currentLang={lang}
+            onNavigateToProfile={() => handleNavigate('profile')}
           />
         );
 

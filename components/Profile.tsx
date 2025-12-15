@@ -72,6 +72,12 @@ const Profile: React.FC<ProfileProps> = ({
   const [editPreferences, setEditPreferences] = useState<string[]>([]);
   const [newAllergyInput, setNewAllergyInput] = useState('');
   const [newPreferenceInput, setNewPreferenceInput] = useState('');
+  
+  // Helper salary edit state
+  const [editHelperStartDate, setEditHelperStartDate] = useState<string | null>(null);
+  const [editHelperBaseSalary, setEditHelperBaseSalary] = useState(5100);
+  const [editHelperFoodAllowance, setEditHelperFoodAllowance] = useState(1236);
+  const [editHelperOtherAllowances, setEditHelperOtherAllowances] = useState<Array<{name: string; amount: number}>>([]);
 
   // Add User Form State
   const [newName, setNewName] = useState('');
@@ -598,17 +604,51 @@ const Profile: React.FC<ProfileProps> = ({
     setEditRole(selectedUser.role);
     setEditAllergies([...(selectedUser.allergies || [])]);
     setEditPreferences([...(selectedUser.preferences || [])]);
+    
+    // Load helper salary fields if Helper role
+    if (selectedUser.role === UserRole.HELPER) {
+      setEditHelperStartDate(selectedUser.helperStartDate || null);
+      setEditHelperBaseSalary(selectedUser.helperBaseSalary || 5100);
+      setEditHelperFoodAllowance(selectedUser.helperFoodAllowance || 1236);
+      setEditHelperOtherAllowances(selectedUser.helperOtherAllowances || []);
+    }
+    
     setIsEditModalOpen(true);
   };
 
   const handleSaveEdit = () => {
-    onUpdate(selectedUser.id, {
+    const updates: Partial<User> = {
       name: editName,
       role: editRole,
       allergies: editAllergies,
-      preferences: editPreferences
-    });
+      preferences: editPreferences,
+    };
+    
+    // Include helper salary fields if Helper role
+    if (editRole === UserRole.HELPER) {
+      updates.helperStartDate = editHelperStartDate;
+      updates.helperBaseSalary = editHelperBaseSalary;
+      updates.helperFoodAllowance = editHelperFoodAllowance;
+      updates.helperOtherAllowances = editHelperOtherAllowances;
+    }
+    
+    onUpdate(selectedUser.id, updates);
     setIsEditModalOpen(false);
+  };
+
+  // Helper functions for other allowances
+  const addOtherAllowance = () => {
+    setEditHelperOtherAllowances(prev => [...prev, { name: '', amount: 0 }]);
+  };
+
+  const removeOtherAllowance = (index: number) => {
+    setEditHelperOtherAllowances(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const updateOtherAllowance = (index: number, field: 'name' | 'amount', value: string | number) => {
+    setEditHelperOtherAllowances(prev => prev.map((a, i) => 
+      i === index ? { ...a, [field]: value } : a
+    ));
   };
 
   const handleAvatarChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -1276,6 +1316,104 @@ const Profile: React.FC<ProfileProps> = ({
                     </div>
                   </div>
                 </div>
+
+                {/* Helper Salary Fields - Only show when editing a Helper */}
+                {selectedUser?.role === UserRole.HELPER && (
+                  <div className="space-y-4 pt-4 border-t border-border">
+                    <h4 className="text-body font-semibold text-foreground">
+                      {t['profile.helper_salary_info'] || 'Salary Information'}
+                    </h4>
+                    
+                    {/* Start Date */}
+                    <div>
+                      <label className="block text-caption text-muted-foreground mb-2">
+                        {t['profile.helper_start_date'] || 'Start Date'}
+                      </label>
+                      <input
+                        type="date"
+                        value={editHelperStartDate || ''}
+                        onChange={(e) => setEditHelperStartDate(e.target.value || null)}
+                        className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
+                      />
+                    </div>
+                    
+                    {/* Base Salary */}
+                    <div>
+                      <label className="block text-caption text-muted-foreground mb-2">
+                        {t['profile.helper_base_salary'] || 'Base Salary (HK$/month)'}
+                      </label>
+                      <input
+                        type="number"
+                        value={editHelperBaseSalary}
+                        onChange={(e) => setEditHelperBaseSalary(Number(e.target.value))}
+                        className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
+                        placeholder="5100"
+                      />
+                    </div>
+                    
+                    {/* Food Allowance */}
+                    <div>
+                      <label className="block text-caption text-muted-foreground mb-2">
+                        {t['profile.helper_food_allowance'] || 'Food Allowance (HK$/month)'}
+                      </label>
+                      <input
+                        type="number"
+                        value={editHelperFoodAllowance}
+                        onChange={(e) => setEditHelperFoodAllowance(Number(e.target.value))}
+                        className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
+                        placeholder="1236"
+                      />
+                    </div>
+                    
+                    {/* Other Allowances */}
+                    <div>
+                      <label className="block text-caption text-muted-foreground mb-2">
+                        {t['profile.helper_other_allowances'] || 'Other Allowances'}
+                      </label>
+                      {editHelperOtherAllowances.map((allowance, index) => (
+                        <div key={index} className="flex gap-2 mb-2">
+                          <input
+                            type="text"
+                            value={allowance.name}
+                            onChange={(e) => updateOtherAllowance(index, 'name', e.target.value)}
+                            placeholder="Allowance name"
+                            className="flex-1 px-3 py-2 rounded-lg bg-secondary border border-border"
+                          />
+                          <input
+                            type="number"
+                            value={allowance.amount}
+                            onChange={(e) => updateOtherAllowance(index, 'amount', Number(e.target.value))}
+                            placeholder="0"
+                            className="w-24 px-3 py-2 rounded-lg bg-secondary border border-border"
+                          />
+                          <button
+                            onClick={() => removeOtherAllowance(index)}
+                            className="p-2 text-red-500 hover:bg-red-50 rounded-lg"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      ))}
+                      <button
+                        onClick={addOtherAllowance}
+                        className="text-primary text-caption hover:underline"
+                      >
+                        + {t['profile.add_allowance'] || 'Add Allowance'}
+                      </button>
+                    </div>
+                    
+                    {/* Total Display */}
+                    <div className="p-3 bg-primary/10 rounded-lg">
+                      <div className="flex justify-between items-center">
+                        <span className="text-body">{t['profile.total_salary'] || 'Total Monthly Salary'}</span>
+                        <span className="text-title font-bold text-primary">
+                          HK${(editHelperBaseSalary + editHelperFoodAllowance + 
+                               editHelperOtherAllowances.reduce((sum, a) => sum + a.amount, 0)).toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Footer */}
                 <div className="p-5 pb-8 border-t border-border flex gap-3 shrink-0">

@@ -26,7 +26,7 @@ export default function HomeContent() {
             />
             <span className="block mt-2 sm:mt-3">
               <span className="text-2xl sm:text-3xl lg:text-4xl font-semibold">
-                The <span className="text-red-500">home management app</span> that brings families and helpers closer.
+                The home management app that brings families and helpers closer.
               </span>
             </span>
           </h1>
@@ -40,8 +40,8 @@ export default function HomeContent() {
                 <h3 className="text-xl font-semibold text-foreground">For families</h3>
               </div>
               <p className="text-base text-muted-foreground leading-relaxed">
-                Your all-in-one <span className="text-red-500">family task manager</span> to
-                keep meals, <span className="text-red-500">shared family tasks</span>, and expenses in one calm, shared space.
+                Your all-in-one family task manager to
+                keep meals, shared family tasks, and expenses in one calm, shared space.
               </p>
             </div>
             <div className="rounded-2xl bg-card p-6 sm:p-8 shadow-soft hover:shadow-md transition-shadow">
@@ -53,7 +53,7 @@ export default function HomeContent() {
               </div>
               <p className="text-base text-muted-foreground leading-relaxed">
                 Clear routines, written in simple steps and in your language.
-                This <span className="text-red-500">home helper app</span> makes work feel poised and assured.
+                This home helper app makes work feel poised and assured.
               </p>
             </div>
           </div>

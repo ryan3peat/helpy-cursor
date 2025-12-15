@@ -17,56 +17,32 @@ export default function FeaturesContent() {
     {
       icon: Home,
       title: "Home Dashboard",
-      body: (
-        <>
-          Experience a calm <span className="text-red-500">home organization tool</span> that brings all your plans and reminders into one clear overview.
-        </>
-      )
+      body: "Experience a calm home organization tool that brings all your plans and reminders into one clear overview."
     },
     {
       icon: ClipboardList,
       title: "To-Do & Shopping",
-      body: (
-        <>
-          Keep everyone in sync with a <span className="text-red-500">shared shopping list app</span> that doubles as a <span className="text-red-500">household chore app</span> for stress-free coordination.
-        </>
-      )
+      body: "Keep everyone in sync with a shared shopping list app that doubles as a household chore app for stress-free coordination."
     },
     {
       icon: Utensils,
       title: "Meal Planning",
-      body: (
-        <>
-          Finally, a <span className="text-red-500">meal planning app for families</span> that works. Use our <span className="text-red-500">family meal scheduler</span> to organize the week and guide your helper.
-        </>
-      )
+      body: "Finally, a meal planning app for families that works. Use our family meal scheduler to organize the week and guide your helper."
     },
     {
       icon: DollarSign,
       title: "Expense Tracking",
-      body: (
-        <>
-          Stay on budget with a simple <span className="text-red-500">family expense tracker</span>. It works as a <span className="text-red-500">household expense manager</span> that lets you snap and track receipts in seconds.
-        </>
-      )
+      body: "Stay on budget with a simple family expense tracker. It works as a household expense manager that lets you snap and track receipts in seconds."
     },
     {
       icon: Info,
       title: "Family Info",
-      body: (
-        <>
-          Store important details in one <span className="text-red-500">family notes app</span>. It serves as a <span className="text-red-500">family profile manager</span> for all your contacts, routines, and house rules.
-        </>
-      )
+      body: "Store important details in one family notes app. It serves as a family profile manager for all your contacts, routines, and house rules."
     },
     {
       icon: BookOpen,
       title: "Training Guides",
-      body: (
-        <>
-          Use our <span className="text-red-500">daily routine planner for families</span> to build bespoke training modules. Helpers can reference instructions anytime, ensuring clarity and confidence for everyone.
-        </>
-      )
+      body: "Use our daily routine planner for families to build bespoke training modules. Helpers can reference instructions anytime, ensuring clarity and confidence for everyone."
     }
   ];
 
@@ -83,14 +59,14 @@ export default function FeaturesContent() {
             className="space-y-6"
           >
             <h1 className="text-3xl font-semibold tracking-tight text-primary sm:text-4xl lg:text-5xl">
-              A <span className="text-red-500">household planner app</span>
+              A household planner app
               <br />
               made for real homes
             </h1>
             <p className="text-base text-muted-foreground sm:text-lg leading-relaxed max-w-lg">
-              Helpy is the <span className="text-red-500">home management app</span> that simplifies daily life.
+              Helpy is the home management app that simplifies daily life.
               It gathers meals, tasks, and spending in one spot.
-              The ideal <span className="text-red-500">family collaboration app</span> for families and helpers to work as a team.
+              The ideal family collaboration app for families and helpers to work as a team.
             </p>
             <a
               href="https://www.helpyfam.com"

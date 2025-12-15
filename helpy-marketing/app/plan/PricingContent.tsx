@@ -15,10 +15,10 @@ export default function PricingContent() {
       yearlyPrice: 0,
       description: "For families just getting started with Helpy.",
       features: [
-        "Up to 3 family members",
-        "1 helper",
-        "Basic meal planning",
-        "Shopping lists"
+        "Up to 3 family members (incl. admin)",
+        "1 Helper",
+        "Manual expense entry only (no scan)",
+        "No Helper Management"
       ],
       highlight: false
     },
@@ -29,10 +29,10 @@ export default function PricingContent() {
       yearlyPrice: 845,
       description: "For growing families who need more organization.",
       features: [
-        "Up to 4 family members",
-        "1 helper",
-        "Receipt scanning",
-        "Priority support"
+        "Up to 4 family members (incl. admin)",
+        "1 Helper",
+        "All Expense Functions",
+        "Helper Management (Coming Soon)"
       ],
       highlight: false
     },
@@ -43,11 +43,10 @@ export default function PricingContent() {
       yearlyPrice: 1133,
       description: "For busy families with multiple helpers or complex schedules.",
       features: [
-        "Up to 8 family members",
-        "Up to 4 helpers",
-        "Advanced AI",
-        "Data export",
-        "Premium support"
+        "Up to 8 family members (incl. admin)",
+        "Up to 4 Helpers",
+        "All Expense Functions",
+        "Helper Management (Coming Soon)"
       ],
       highlight: true
     }
@@ -110,17 +109,17 @@ export default function PricingContent() {
             return (
               <div
                 key={plan.id}
-                className="relative flex flex-col rounded-2xl bg-card p-5 shadow-soft"
+                className="relative flex flex-col rounded-2xl bg-card p-6 shadow-soft hover:shadow-md transition-shadow"
               >
                 {plan.highlight && (
-                  <span className="absolute -top-3 right-4 px-3 py-1 bg-primary text-white text-xs font-semibold rounded-full">
+                  <span className="absolute -top-3 right-4 px-3 py-1 bg-primary text-primary-foreground text-xs font-semibold rounded-full">
                     Popular
                   </span>
                 )}
-                <p className="text-xs font-semibold tracking-wide text-primary">
+                <p className="text-sm font-semibold tracking-wide text-primary">
                   {plan.name}
                 </p>
-                <p className="mt-2 text-2xl font-semibold text-foreground">
+                <p className="mt-3 text-3xl font-semibold text-foreground">
                   {price === 0 ? 'Free' : `HK$${price}`}
                   {price > 0 && (
                     <span className="text-sm font-normal text-muted-foreground">
@@ -128,14 +127,14 @@ export default function PricingContent() {
                     </span>
                   )}
                 </p>
-                <p className="mt-2 text-xs text-muted-foreground">
+                <p className="mt-3 text-sm text-muted-foreground leading-relaxed">
                   {plan.description}
                 </p>
-                <ul className="mt-4 space-y-2 text-xs text-foreground">
+                <ul className="mt-5 space-y-3 text-sm text-foreground">
                   {plan.features.map((feature, i) => (
-                    <li key={i} className="flex items-start gap-2">
-                      <Check className="mt-0.5 h-4 w-4 text-primary" />
-                      <span>{feature}</span>
+                    <li key={i} className="flex items-start gap-2.5">
+                      <Check className="mt-0.5 h-5 w-5 text-primary flex-shrink-0" />
+                      <span className="leading-relaxed">{feature}</span>
                     </li>
                   ))}
                 </ul>

@@ -543,7 +543,10 @@ export async function addItem(
 
   console.log('🟡 Sending to Supabase:', finalData);
   
-  const { data, error } = await supabase
+  // Use authenticated client for RLS
+  const client = getSupabaseClient();
+  
+  const { data, error } = await client
     .from(tableName)
     .insert([finalData])
     .select()
@@ -690,7 +693,10 @@ export async function updateItem(
     console.log(`🔄 Resolved id ${id} to Supabase UUID ${actualId}`);
   }
   
-  const { error, data } = await supabase
+  // Use authenticated client for RLS
+  const client = getSupabaseClient();
+  
+  const { error, data } = await client
     .from(tableName)
     .update(snakeCaseUpdates)
     .eq('id', actualId)
@@ -737,7 +743,10 @@ export async function deleteItem(
     console.log(`🗑️ Resolved id ${id} to Supabase UUID ${actualId}`);
   }
   
-  const { error, count } = await supabase
+  // Use authenticated client for RLS
+  const client = getSupabaseClient();
+  
+  const { error, count } = await client
     .from(tableName)
     .delete({ count: 'exact' })
     .eq('id', actualId)
@@ -787,7 +796,10 @@ export async function saveFamilyNotes(
     updateData.family_notes_translations = {};
   }
   
-  const { error } = await supabase
+  // Use authenticated client for RLS
+  const client = getSupabaseClient();
+  
+  const { error } = await client
     .from('households')
     .update(updateData)
     .eq('id', householdId);

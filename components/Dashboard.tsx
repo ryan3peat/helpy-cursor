@@ -320,8 +320,8 @@ const Dashboard: React.FC<DashboardProps> = ({
         <div className="flex justify-between items-center w-full">
           <div>
             <h1>
-              <span className="text-foreground font-bold" style={{ fontSize: '20px' }}>{timeOfDay},</span><br />
-              <span className="text-display text-primary">{currentUser.name?.split(' ')[0] || 'User'}</span>
+              <span className="text-primary font-bold" style={{ fontSize: '20px' }}>{timeOfDay},</span><br />
+              <span className="text-display text-foreground">{currentUser.name?.split(' ')[0] || 'User'}</span>
             </h1>
           </div>
           <div className="flex gap-2">
@@ -388,7 +388,7 @@ const Dashboard: React.FC<DashboardProps> = ({
       </header>
 
       {/* Content */}
-      <div className="px-5 space-y-5">
+      <div className="px-5 pt-12 space-y-5">
 
       {/* Family Notes */}
       <div id="onboarding-family-board" className="relative group">

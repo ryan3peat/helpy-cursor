@@ -815,7 +815,7 @@ const ToDo: React.FC<ToDoProps> = ({
         >
           <div className="flex items-center justify-between w-full">
             <h1>
-              <span className="text-foreground font-bold" style={{ fontSize: '20px' }}>{t['todo.title'] || 'To Do'}</span><br />
+              <span className="text-primary font-bold" style={{ fontSize: '20px' }}>{t['todo.title'] || 'To Do'}</span><br />
               <span className="text-display text-foreground">{activeSection === 'shopping' ? (t['todo.shopping'] || 'Shopping') : (t['todo.tasks'] || 'Tasks')}</span>
             </h1>
             

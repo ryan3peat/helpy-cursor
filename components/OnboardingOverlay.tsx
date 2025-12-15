@@ -317,7 +317,7 @@ const OnboardingOverlay: React.FC<OnboardingOverlayProps> = ({
       case 'bottom-center':
         return 'bottom-44 right-4 flex items-end justify-end';
       case 'center-near-family-board':
-        return 'top-[220px] inset-x-0 flex items-start justify-center';
+        return 'top-[270px] inset-x-0 flex items-start justify-center';
       default:
         return 'inset-0 flex items-center justify-center';
     }

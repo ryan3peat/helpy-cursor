@@ -278,7 +278,6 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'common.settings': 'Settings',
   'common.plan': 'Subscription',
   'common.security': 'Account',
-  'common.payment': 'Payment',
   'common.free': 'Free',
   'common.core': 'Core',
   'common.pro': 'Pro',
@@ -382,13 +381,6 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'profile.access_until_end': 'You\'ll continue to have access to premium features until the end of your current billing period.',
   'profile.revert_to_free': 'After that, your account will automatically revert to the free plan.',
   'profile.resubscribe_anytime': 'You can resubscribe at any time from your profile settings.',
-  'profile.card_holder': 'Card Holder',
-  'profile.card_expires': 'Expires',
-  'profile.card_number': 'Card Number',
-  'profile.expiry': 'Expiry',
-  'profile.cardholder_name': 'Cardholder Name',
-  'profile.card_type': 'Card Type',
-  'profile.save_payment': 'Save Payment Method',
 
   // Dashboard
   'dashboard.no_meals_today': 'No meals remaining for today',

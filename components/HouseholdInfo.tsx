@@ -809,7 +809,7 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
           style={{ height: '120px' }}
         >
           <h1 className="w-full">
-            <span className="text-foreground font-bold" style={{ fontSize: '20px' }}>{t['info.title'] || 'Family Info'}</span><br />
+            <span className="text-primary font-bold" style={{ fontSize: '20px' }}>{t['info.title'] || 'Family Info'}</span><br />
             <span className="text-display text-foreground">{activeSection === 'essentialInfo' ? (t['common.essential_info'] || 'Essential') : (t['common.house_routine'] || 'House Routine')}</span>
           </h1>
         </header>

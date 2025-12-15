@@ -659,16 +659,13 @@ const Meals: React.FC<MealsProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-background pb-40" style={{ paddingTop: '120px' }}>
-      {/* FIXED HEADER - Always at top from first paint */}
+    <div className="min-h-screen bg-background pb-40">
+      {/* STICKY HEADER - Rubber bands with content on overscroll */}
       <header 
-        className="fixed top-0 left-0 right-0 z-20 bg-background flex items-end pb-3 px-4 sm:px-6" 
+        className="sticky top-0 z-20 bg-background flex items-end pb-3 px-4 sm:px-6 transition-shadow duration-200" 
         style={{ 
           height: '120px',
-          transform: 'translateZ(0)',
-          WebkitTransform: 'translateZ(0)',
-          backfaceVisibility: 'hidden',
-          WebkitBackfaceVisibility: 'hidden'
+          boxShadow: isScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none'
         }}
       >
         <div className="max-w-2xl mx-auto w-full flex items-center justify-between">

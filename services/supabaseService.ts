@@ -1230,12 +1230,15 @@ export async function fetchCollection(
   
   console.log(`🔄 [Sync] Fetching ${tableName} for household ${householdId}`);
   
+  // Use authenticated client for RLS
+  const client = getSupabaseClient();
+  
   // Build the select query - for expenses, LEFT JOIN receipts to get image_url
   const selectQuery = collection === 'expenses' 
     ? '*, receipts!receipts_expense_id_fkey(image_url, image_path)'
     : '*';
   
-  const { data, error } = await supabase
+  const { data, error } = await client
     .from(tableName)
     .select(selectQuery)
     .eq('household_id', householdId);
@@ -1245,7 +1248,7 @@ export async function fetchCollection(
     
     // Fallback for expenses if JOIN fails
     if (collection === 'expenses') {
-      const { data: fallbackData } = await supabase
+      const { data: fallbackData } = await client
         .from(tableName)
         .select('*')
         .eq('household_id', householdId);

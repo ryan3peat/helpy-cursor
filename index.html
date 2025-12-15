@@ -15,7 +15,7 @@
         var hasSession = !!localStorage.getItem('helpy_current_session_user');
         var bgColor = hasSession 
           ? (isDark ? '#121212' : '#fafafa')  // Match theme: dark=#121212, light=#fafafa
-          : '#3EAFD2';  // New users: brand blue (matches intro/auth)
+          : '#fafafa';  // No session: grey (auth screens have their own blue backgrounds)
         document.documentElement.style.setProperty('--initial-bg', bgColor);
         // Also set html background directly for overscroll
         document.documentElement.style.backgroundColor = bgColor;

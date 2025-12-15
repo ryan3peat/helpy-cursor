@@ -1342,6 +1342,7 @@ const AppContent: React.FC = () => {
             currentLang={lang}
             initialSection={navData?.section as 'essentialInfo' | 'houseRoutine' | undefined}
             onSectionChange={setOnboardingSection}
+            onNavigateToProfile={() => handleNavigate('profile')}
           />
         );
 

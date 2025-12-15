@@ -30,6 +30,11 @@ export interface User {
   notificationsEnabled?: boolean;
   hasPushSubscription?: boolean;
   onboardingStatus?: OnboardingStatus;
+  // Helper-specific salary fields (only populated for Helper role)
+  helperStartDate?: string | null;
+  helperBaseSalary?: number;
+  helperFoodAllowance?: number;
+  helperOtherAllowances?: Array<{ name: string; amount: number }>;
 }
 
 export interface HouseholdPlan {

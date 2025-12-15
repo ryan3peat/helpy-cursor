@@ -31,6 +31,7 @@ import {
   Info,
   Lamp,
   BookOpen,
+  User,
 } from "lucide-react";
 import Avatar from "./ui/Avatar";
 import { BaseViewProps, User, UserRole, TranslationDictionary } from "@/types";
@@ -60,6 +61,9 @@ import {
 // Keep updateHouseRoutine for translation updates in card components
 import { updateHouseRoutine } from "@/services/houseRoutineService";
 
+// Helper Management
+import HelperManagementContent from "./HelperManagementContent";
+
 interface HouseholdInfoProps extends BaseViewProps {
   householdId: string;
   currentUser: User;
@@ -77,9 +81,11 @@ interface HouseholdInfoProps extends BaseViewProps {
   // Section control for onboarding
   initialSection?: 'essentialInfo' | 'houseRoutine';
   onSectionChange?: (section: string) => void;
+  // Navigation callback
+  onNavigateToProfile?: () => void;
 }
 
-type ActiveSection = "essentialInfo" | "houseRoutine";
+type ActiveSection = "essentialInfo" | "houseRoutine" | "helper";
 
 const ESSENTIAL_CATEGORIES: EssentialInfoCategory[] = [
   "Home",
@@ -472,11 +478,23 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
   currentLang,
   initialSection,
   onSectionChange,
+  onNavigateToProfile,
 }) => {
   // ─────────────────────────────────────────────────────────────────
   // Section Toggle State
   // ─────────────────────────────────────────────────────────────────
   const [activeSection, setActiveSection] = useState<ActiveSection>(initialSection || "essentialInfo");
+  const [selectedHelperId, setSelectedHelperId] = useState<string | null>(null);
+  
+  // Filter helpers from users
+  const helpers = users.filter(u => u.role === UserRole.HELPER && u.status === 'active');
+  
+  // Auto-select first helper when switching to helper tab
+  useEffect(() => {
+    if (activeSection === 'helper' && helpers.length > 0 && !selectedHelperId) {
+      setSelectedHelperId(helpers[0].id);
+    }
+  }, [activeSection, helpers, selectedHelperId]);
   
   // Notify parent of section changes (for onboarding)
   useEffect(() => {
@@ -810,13 +828,17 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
         >
           <h1 className="w-full">
             <span className="text-primary font-bold" style={{ fontSize: '20px' }}>{t['info.title'] || 'Family Info'}</span><br />
-            <span className="text-display text-foreground">{activeSection === 'essentialInfo' ? (t['common.essential_info'] || 'Essential') : (t['common.house_routine'] || 'House Routine')}</span>
+            <span className="text-display text-foreground">
+              {activeSection === 'essentialInfo' ? (t['common.essential_info'] || 'Essential') : 
+               activeSection === 'houseRoutine' ? (t['common.house_routine'] || 'House Routine') :
+               (t['common.helper'] || 'Helper')}
+            </span>
           </h1>
         </header>
 
         {/* Section Toggle Cards */}
         <div className="mt-4 mb-6">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             {/* Essential Info Card */}
             <button
               onClick={() => setActiveSection("essentialInfo")}
@@ -850,6 +872,24 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
               </div>
               <div className={`text-caption mt-1 ml-6 ${activeSection === "houseRoutine" ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
                 {houseRoutineStats.total} {t['common.items'] || 'items'}
+              </div>
+            </button>
+
+            {/* Helper Card */}
+            <button
+              onClick={() => setActiveSection("helper")}
+              className={`px-3 py-2.5 rounded-xl text-left transition-all ${
+                activeSection === "helper"
+                  ? "bg-primary text-primary-foreground shadow-md"
+                  : "bg-card text-foreground shadow-sm"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <User size={16} />
+                <span className="text-title">{t['common.helper'] || 'Helper'}</span>
+              </div>
+              <div className={`text-caption mt-1 ml-6 ${activeSection === "helper" ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
+                {helpers.length} {t['common.helpers'] || 'helpers'}
               </div>
             </button>
           </div>
@@ -1042,6 +1082,54 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
                 ))
               )}
             </div>
+          </>
+        )}
+
+        {/* ─────────────────────────────────────────────────────────────── */}
+        {/* HELPER SECTION */}
+        {/* ─────────────────────────────────────────────────────────────── */}
+        {activeSection === "helper" && (
+          <>
+            {/* Helper Selector */}
+            {helpers.length > 0 && (
+              <div className="mb-4">
+                <div className="flex gap-2 overflow-x-auto scrollbar-hide">
+                  {helpers.map(helper => (
+                    <button
+                      key={helper.id}
+                      onClick={() => setSelectedHelperId(helper.id)}
+                      className={`px-4 py-2 rounded-full whitespace-nowrap transition-all ${
+                        selectedHelperId === helper.id
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-card text-foreground"
+                      }`}
+                    >
+                      {helper.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {/* Helper Content */}
+            {selectedHelperId && (
+              <HelperManagementContent
+                householdId={householdId}
+                helperId={selectedHelperId}
+                helper={helpers.find(h => h.id === selectedHelperId)!}
+                currentUser={currentUser}
+                t={t}
+                onNavigateToProfile={onNavigateToProfile || (() => {})}
+              />
+            )}
+            
+            {helpers.length === 0 && (
+              <div className="text-center py-12">
+                <p className="text-body text-muted-foreground">
+                  {t['helper.no_helpers'] || 'No helpers in this household'}
+                </p>
+              </div>
+            )}
           </>
         )}
 

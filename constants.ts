@@ -437,6 +437,7 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'helper.payslip_confirmed': 'Payslip confirmed and locked',
   'helper.manual_amount': 'Manual Amount',
   'helper.amount_overridden': 'Amount has been manually adjusted by Admin',
+  'helper.revert_to_calculated': 'Revert to Calculated Amount',
   'common.yes': 'Yes',
   'common.no': 'No',
 

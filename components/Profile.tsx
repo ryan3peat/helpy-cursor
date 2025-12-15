@@ -152,9 +152,13 @@ const Profile: React.FC<ProfileProps> = ({
   // Lock scroll when any modal is open
   useScrollLock(isAddModalOpen || isEditModalOpen || deleteConfirmOpen || showPhotoOptions || subscriptionCanceled);
 
+  // Track if we've handled the initial edit (to prevent re-opening on data refresh)
+  const [initialEditHandled, setInitialEditHandled] = useState(false);
+  
   // Handle initial edit user ID (from external navigation like Helper Management)
   useEffect(() => {
-    if (initialEditUserId) {
+    // Only process once, and only if not already handled
+    if (initialEditUserId && !initialEditHandled) {
       const userToEdit = users.find(u => u.id === initialEditUserId);
       if (userToEdit) {
         // Set selected user and open edit modal
@@ -173,9 +177,10 @@ const Profile: React.FC<ProfileProps> = ({
         }
         
         setIsEditModalOpen(true);
+        setInitialEditHandled(true); // Mark as handled to prevent re-opening
       }
     }
-  }, [initialEditUserId, users]);
+  }, [initialEditUserId, users, initialEditHandled]);
 
   // Pre-fetch subscription info on component mount (for admins)
   // This eliminates latency when navigating to the Plan page

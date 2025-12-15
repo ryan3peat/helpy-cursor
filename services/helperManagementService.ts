@@ -288,7 +288,10 @@ export async function signPayslip(
   
   if (signerType === 'employer') {
     updates.employer_signed_at = new Date().toISOString();
-    updates.employer_user_id = signerId;
+    // Convert signerId from Clerk ID to Supabase UUID if provided
+    if (signerId) {
+      updates.employer_user_id = toSupabaseUuid(signerId);
+    }
   } else {
     updates.helper_signed_at = new Date().toISOString();
   }

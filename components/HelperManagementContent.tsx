@@ -725,6 +725,16 @@ export const HelperManagementContent: React.FC<Props> = ({
               </div>
             </div>
             
+            {/* Revert button - show only if amount differs from calculated */}
+            {parseInt(customAmount) !== calculatedTotal && (
+              <button
+                onClick={() => setCustomAmount(calculatedTotal.toString())}
+                className="w-full mb-4 py-2 text-caption text-primary hover:underline"
+              >
+                {t['helper.revert_to_calculated'] || 'Revert to Calculated Amount'} (${calculatedTotal.toLocaleString()})
+              </button>
+            )}
+            
             <div className="flex gap-3">
               <button
                 onClick={() => setShowChangeAmountModal(false)}

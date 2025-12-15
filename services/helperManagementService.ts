@@ -7,7 +7,7 @@ import type {
   HelperHolidayRecord, 
   HelperPayslipConfirmation,
   CompensationType 
-} from '@/types/helperManagement';
+} from '@src/types/helperManagement';
 
 /**
  * Get the best available Supabase client.

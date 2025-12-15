@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Calendar, FileText, Check, X } from 'lucide-react';
 import type { User, TranslationDictionary } from '@/types';
 import { UserRole } from '@/types';
-import type { HKStatutoryHoliday, HelperHolidayRecord, HelperPayslipConfirmation, CompensationType } from '@/types/helperManagement';
+import type { HKStatutoryHoliday, HelperHolidayRecord, HelperPayslipConfirmation, CompensationType } from '@src/types/helperManagement';
 import {
   getUpcomingHolidays,
   getHelperHolidayRecord,
@@ -16,7 +16,7 @@ import {
   isHelperSalaryConfigured,
   getPastHolidays,
   getPastPayslips,
-} from '@/services/helperManagementService';
+} from '../services/helperManagementService';
 
 interface Props {
   householdId: string;
@@ -59,6 +59,7 @@ export const HelperManagementContent: React.FC<Props> = ({
     if (salaryConfigured) {
       loadPayslip();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [helperId, householdId, salaryConfigured]);
 
   const loadHolidays = async () => {

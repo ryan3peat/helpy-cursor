@@ -1112,16 +1112,20 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
             )}
             
             {/* Helper Content */}
-            {selectedHelperId && (
-              <HelperManagementContent
-                householdId={householdId}
-                helperId={selectedHelperId}
-                helper={helpers.find(h => h.id === selectedHelperId)!}
-                currentUser={currentUser}
-                t={t}
-                onNavigateToProfile={onNavigateToProfile || (() => {})}
-              />
-            )}
+            {selectedHelperId && (() => {
+              const selectedHelper = helpers.find(h => h.id === selectedHelperId);
+              if (!selectedHelper) return null;
+              return (
+                <HelperManagementContent
+                  householdId={householdId}
+                  helperId={selectedHelperId}
+                  helper={selectedHelper}
+                  currentUser={currentUser}
+                  t={t}
+                  onNavigateToProfile={onNavigateToProfile || (() => {})}
+                />
+              );
+            })()}
             
             {helpers.length === 0 && (
               <div className="text-center py-12">

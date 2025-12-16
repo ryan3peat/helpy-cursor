@@ -53,15 +53,6 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     maxFamily: 8,
     maxHelpers: 4,
   },
-  {
-    id: 'test',
-    name: 'Test',
-    monthlyPrice: 5,
-    yearlyPrice: 5,
-    features: ['Test plan for Stripe payment testing'],
-    maxFamily: 4,
-    maxHelpers: 1,
-  },
 ];
 
 export async function createCheckoutSession(
@@ -164,5 +155,42 @@ export async function downgradeToFree(householdId: string): Promise<void> {
   } catch (error) {
     console.error('Downgrade to free error:', error);
     throw error instanceof Error ? error : new Error('Unknown error downgrading subscription');
+  }
+}
+
+/**
+ * Sync subscription status from Stripe to database
+ * This is a backup mechanism when webhooks don't fire properly
+ */
+export async function syncSubscription(
+  householdId: string, 
+  sessionId?: string
+): Promise<{ success: boolean; plan?: string; status?: string; error?: string }> {
+  try {
+    const response = await fetch('/api/sync-subscription', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ householdId, sessionId }),
+    });
+
+    if (!response.ok) {
+      let errorMessage = 'Failed to sync subscription';
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.error || errorMessage;
+      } catch {
+        errorMessage = `Server error: ${response.status} ${response.statusText}`;
+      }
+      return { success: false, error: errorMessage };
+    }
+
+    const data = await response.json();
+    return { success: true, plan: data.plan, status: data.status };
+  } catch (error) {
+    console.error('Sync subscription error:', error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Unknown error syncing subscription' 
+    };
   }
 }

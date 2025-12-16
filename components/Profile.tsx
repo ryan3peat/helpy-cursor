@@ -7,7 +7,7 @@ import {
 import { useUser } from '@clerk/clerk-react';
 import { User, UserRole, BaseViewProps } from '../types';
 import { createInvite } from '../services/inviteService';
-import { createCheckoutSession, createPortalSession } from '../services/stripeService';
+import { createCheckoutSession, createPortalSession, syncSubscription } from '../services/stripeService';
 import { supabase } from '../services/supabase';
 import { deleteItem, uploadAvatarImage } from '../services/supabaseService';
 import { useScrollLock } from '@/hooks/useScrollLock';
@@ -306,44 +306,55 @@ const Profile: React.FC<ProfileProps> = ({
 
       // Show success message
       setSubscriptionSuccess(true);
-      setTimeout(() => setSubscriptionSuccess(false), 10000);
 
-      // Refetch with retry logic (webhook might take a few seconds)
-      const retryFetch = async (attempt: number = 0) => {
-        const maxRetries = 10;
-        const retryDelay = 2000; // 2 seconds between retries
-
-        if (attempt >= maxRetries) {
-          console.warn('Subscription update not detected after max retries');
-          setSubscriptionSuccess(false);
-          return;
-        }
-
-        const isActive = await fetchSubscriptionInfo(attempt);
+      // Actively sync subscription from Stripe (don't rely solely on webhook)
+      const syncAndFetch = async () => {
+        console.log('[Profile] Syncing subscription after checkout...');
         
-        if (isActive) {
-          // Subscription is now active, we're done - keep success message a bit longer
+        // First, try to sync from Stripe API (this bypasses webhook)
+        const syncResult = await syncSubscription(currentUser.householdId, sessionId || undefined);
+        
+        if (syncResult.success) {
+          console.log('[Profile] Sync successful:', syncResult);
+          // Refresh the subscription info from database
+          await fetchSubscriptionInfo(0, false);
           setTimeout(() => setSubscriptionSuccess(false), 3000);
           return;
         }
         
-        if (attempt < maxRetries) {
-          // Subscription not active yet, retry after delay
-          setTimeout(() => retryFetch(attempt + 1), retryDelay);
-        } else {
-          setSubscriptionSuccess(false);
-        }
+        console.warn('[Profile] Sync failed, falling back to polling:', syncResult.error);
+        
+        // Fallback: poll for webhook to update (legacy behavior)
+        const retryFetch = async (attempt: number = 0) => {
+          const maxRetries = 5;
+          const retryDelay = 2000;
+
+          if (attempt >= maxRetries) {
+            console.warn('Subscription update not detected after max retries');
+            setSubscriptionSuccess(false);
+            return;
+          }
+
+          const isActive = await fetchSubscriptionInfo(attempt);
+          
+          if (isActive) {
+            setTimeout(() => setSubscriptionSuccess(false), 3000);
+            return;
+          }
+          
+          if (attempt < maxRetries) {
+            setTimeout(() => retryFetch(attempt + 1), retryDelay);
+          } else {
+            setSubscriptionSuccess(false);
+          }
+        };
+
+        // Start polling as fallback
+        setTimeout(() => retryFetch(0), 1000);
       };
 
-      // Initial fetch immediately, then retry if needed
-      setTimeout(() => {
-        fetchSubscriptionInfo(0).then((isActive) => {
-          if (!isActive) {
-            // Wait 2 seconds before first retry (give webhook time to process)
-            setTimeout(() => retryFetch(1), 2000);
-          }
-        });
-      }, 500);
+      // Run sync after a short delay (give checkout redirect time to complete)
+      setTimeout(syncAndFetch, 500);
     }
   }, [currentUser?.householdId, fetchSubscriptionInfo]);
 

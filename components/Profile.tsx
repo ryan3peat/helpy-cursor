@@ -8,7 +8,7 @@ import { useUser } from '@clerk/clerk-react';
 import { User, UserRole, BaseViewProps } from '../types';
 import { createInvite } from '../services/inviteService';
 import { createCheckoutSession, createPortalSession, syncSubscription } from '../services/stripeService';
-import { supabase } from '../services/supabase';
+import { useSupabase } from '../contexts/SupabaseContext';
 import { deleteItem, uploadAvatarImage } from '../services/supabaseService';
 import { useScrollLock } from '@/hooks/useScrollLock';
 import {
@@ -52,6 +52,9 @@ const Profile: React.FC<ProfileProps> = ({
   // Role-based permissions
   // ─────────────────────────────────────────────────────────────────
   const isHelper = currentUser.role === UserRole.HELPER;
+  
+  // Get authenticated Supabase client (with JWT for RLS)
+  const supabase = useSupabase();
 
   // Navigation State
   const [activeSection, setActiveSection] = useState<'main' | 'settings' | 'plan' | 'security' | 'payment'>('main');
@@ -201,6 +204,12 @@ const Profile: React.FC<ProfileProps> = ({
   const fetchSubscriptionInfo = React.useCallback(async (retryCount = 0, showLoading = true) => {
     if (!currentUser?.householdId) return;
     
+    // Ensure we have an authenticated client
+    if (!supabase) {
+      console.warn('[Profile] No Supabase client available for fetching subscription info');
+      return false;
+    }
+    
     try {
       // Only show loading spinner on initial fetch (when we have no data yet)
       if (showLoading && !hasLoadedSubscriptionRef.current) {
@@ -263,7 +272,7 @@ const Profile: React.FC<ProfileProps> = ({
     } finally {
       setIsLoadingSubscription(false);
     }
-  }, [currentUser?.householdId]); // Removed subscriptionInfo from dependencies to avoid stale closures
+  }, [currentUser?.householdId, supabase]); // Include supabase in dependencies
 
   // Check for Stripe checkout redirect and refetch subscription info
   React.useEffect(() => {
@@ -287,6 +296,10 @@ const Profile: React.FC<ProfileProps> = ({
 
       // Check subscription status after a short delay (webhook might need time)
       setTimeout(async () => {
+        if (!supabase) {
+          console.warn('[Profile] No Supabase client available for portal return check');
+          return;
+        }
         // Fetch subscription info and check if it's no longer active
         const { data } = await supabase
           .from('households')
@@ -1659,6 +1672,9 @@ const Profile: React.FC<ProfileProps> = ({
       }
 
       // Delete the household record
+      if (!supabase) {
+        throw new Error('Supabase client not available');
+      }
       const { error: householdError } = await supabase
         .from('households')
         .delete()

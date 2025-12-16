@@ -230,6 +230,12 @@ async function handleWebhookRequest(req: any, res: any) {
   const dataObject = event.data.object as any;
   const householdId = dataObject.metadata?.household_id;
   
+  console.log(`📋 Event object metadata:`, {
+    has_metadata: !!dataObject.metadata,
+    household_id: householdId,
+    metadata_keys: dataObject.metadata ? Object.keys(dataObject.metadata) : [],
+  });
+  
   if (householdId) {
     try {
       // Sanitize data object to prevent Date serialization issues
@@ -238,7 +244,7 @@ async function handleWebhookRequest(req: any, res: any) {
       try {
         sanitizedData = sanitizeStripeObject(dataObject);
       } catch (sanitizeError) {
-        console.error('Error sanitizing event data:', sanitizeError);
+        console.error('❌ Error sanitizing event data:', sanitizeError);
         // Fallback: use a minimal safe object
         sanitizedData = {
           id: dataObject.id,
@@ -247,19 +253,40 @@ async function handleWebhookRequest(req: any, res: any) {
         };
       }
       
-      await supabase.from('subscription_events').insert({
+      const { error: logError } = await supabase.from('subscription_events').insert({
         household_id: householdId,
         stripe_event_id: event.id,
         event_type: event.type,
         data: sanitizedData,
       });
+      
+      if (logError) {
+        console.error('❌ Error logging event to subscription_events:', logError);
+        console.error('❌ Log error details:', {
+          code: logError.code,
+          message: logError.message,
+          details: logError.details,
+          hint: logError.hint,
+        });
+      } else {
+        console.log(`✅ Event logged to subscription_events table`);
+      }
     } catch (error) {
-      console.error('Error logging event:', error);
+      console.error('❌ Exception logging event:', error);
       // Don't throw - continue processing the webhook
     }
+  } else {
+    console.warn(`⚠️ Event ${event.type} has no household_id in metadata - skipping event logging`);
   }
 
   console.log(`📥 Received webhook event: ${event.type}`);
+  console.log(`📋 Event details:`, {
+    id: event.id,
+    type: event.type,
+    livemode: event.livemode,
+    created: event.created,
+    api_version: event.api_version,
+  });
 
   // Wrap entire event handling in try-catch to ensure we always return 200
   try {
@@ -272,12 +299,53 @@ async function handleWebhookRequest(req: any, res: any) {
       const period = session.metadata?.period;
       const hid = session.metadata?.household_id;
 
-      console.log(`✅ checkout.session.completed for household: ${hid}, plan: ${plan}`);
+      console.log(`✅ checkout.session.completed event received`);
+      console.log(`📋 Session details:`, {
+        session_id: session.id,
+        customer: session.customer,
+        subscription: session.subscription,
+        metadata: session.metadata,
+        household_id: hid,
+        plan: plan,
+        period: period,
+      });
 
       // Handle referral code tracking
       const referralCode = session.metadata?.referral_code;
       const agencyId = session.metadata?.agency_id;
       const referralCodeId = session.metadata?.referral_code_id;
+
+      // Validate required fields before proceeding
+      if (!hid) {
+        console.error(`❌ checkout.session.completed: Missing household_id in metadata`, {
+          metadata: session.metadata,
+        });
+        break;
+      }
+
+      if (!plan) {
+        console.error(`❌ checkout.session.completed: Missing plan in metadata`, {
+          metadata: session.metadata,
+        });
+        break;
+      }
+
+      if (!session.subscription) {
+        console.error(`❌ checkout.session.completed: Missing subscription in session`, {
+          session_id: session.id,
+        });
+        break;
+      }
+
+      if (!PLAN_LIMITS[plan]) {
+        console.error(`❌ checkout.session.completed: Invalid plan "${plan}" - not in PLAN_LIMITS`, {
+          plan: plan,
+          available_plans: Object.keys(PLAN_LIMITS),
+        });
+        break;
+      }
+
+      console.log(`✅ checkout.session.completed: All validations passed, updating household ${hid} to ${plan}`);
 
       if (hid && plan && session.subscription && PLAN_LIMITS[plan]) {
         const limits = PLAN_LIMITS[plan];
@@ -293,7 +361,7 @@ async function handleWebhookRequest(req: any, res: any) {
           // Safely convert period end to ISO string, validating it's a valid timestamp
           const periodEnd = timestampToISO(subscription.current_period_end);
 
-          await supabase.from('households').update({
+          const { data: updateData, error: updateError } = await supabase.from('households').update({
             stripe_customer_id: session.customer as string,
             stripe_subscription_id: subscriptionId,
             subscription_status: 'active',
@@ -302,23 +370,56 @@ async function handleWebhookRequest(req: any, res: any) {
             ...(periodEnd && { subscription_current_period_end: periodEnd }),
             max_family_members: limits.maxFamily,
             max_helpers: limits.maxHelpers,
-          }).eq('id', hid);
+          }).eq('id', hid).select();
 
-          console.log(`✅ Updated household ${hid} subscription to ${plan}`);
+          if (updateError) {
+            console.error(`❌ Error updating household ${hid} subscription:`, updateError);
+            console.error(`❌ Update error details:`, {
+              code: updateError.code,
+              message: updateError.message,
+              details: updateError.details,
+              hint: updateError.hint,
+            });
+          } else {
+            console.log(`✅ Successfully updated household ${hid} subscription to ${plan}`);
+            console.log(`📊 Updated data:`, updateData);
+          }
         } catch (error) {
-          console.error('Error retrieving subscription in checkout.session.completed:', error);
+          console.error('❌ Error retrieving subscription in checkout.session.completed:', error);
+          console.error('❌ Error details:', {
+            error: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined,
+          });
+          
           // Fallback: update without period_end, it will be set by invoice.paid event
-          await supabase.from('households').update({
+          const subscriptionId = typeof session.subscription === 'string'
+            ? session.subscription
+            : session.subscription.id;
+          
+          console.log(`🔄 Attempting fallback update for household ${hid} with subscription ${subscriptionId}`);
+          
+          const { data: fallbackData, error: fallbackError } = await supabase.from('households').update({
             stripe_customer_id: session.customer as string,
-            stripe_subscription_id: typeof session.subscription === 'string'
-              ? session.subscription
-              : session.subscription.id,
+            stripe_subscription_id: subscriptionId,
             subscription_status: 'active',
             subscription_plan: plan,
             subscription_period: period,
             max_family_members: limits.maxFamily,
             max_helpers: limits.maxHelpers,
-          }).eq('id', hid);
+          }).eq('id', hid).select();
+
+          if (fallbackError) {
+            console.error(`❌ Fallback update also failed for household ${hid}:`, fallbackError);
+            console.error(`❌ Fallback error details:`, {
+              code: fallbackError.code,
+              message: fallbackError.message,
+              details: fallbackError.details,
+              hint: fallbackError.hint,
+            });
+          } else {
+            console.log(`✅ Fallback update succeeded for household ${hid}`);
+            console.log(`📊 Fallback updated data:`, fallbackData);
+          }
         }
       }
 
@@ -651,6 +752,11 @@ async function handleWebhookRequest(req: any, res: any) {
 
     default:
       console.log(`ℹ️ Unhandled event type: ${event.type}`);
+      console.log(`📋 Unhandled event details:`, {
+        id: event.id,
+        type: event.type,
+        object_type: (event.data.object as any)?.object,
+      });
     }
   } catch (error: any) {
     // Log unexpected errors but still return 200 to Stripe

@@ -164,10 +164,23 @@ function sanitizeStripeObject(obj: any): any {
 }
 
 export default async function handler(req: any, res: any) {
+  // Log at the absolute top level to catch ALL requests
+  console.log('🚀 ===== STRIPE WEBHOOK HANDLER CALLED =====');
+  console.log('🚀 Handler invoked at:', new Date().toISOString());
+  console.log('🚀 Request method:', req.method);
+  console.log('🚀 Request URL:', req.url);
+  
   // Top-level error handler to catch any Date serialization errors
   try {
-    return await handleWebhookRequest(req, res);
+    const result = await handleWebhookRequest(req, res);
+    console.log('✅ Handler completed successfully');
+    return result;
   } catch (error: any) {
+    console.error('❌ ===== TOP LEVEL ERROR IN WEBHOOK HANDLER =====');
+    console.error('❌ Error type:', error?.constructor?.name);
+    console.error('❌ Error message:', error?.message);
+    console.error('❌ Error stack:', error?.stack);
+    
     // Specifically catch RangeError from Date.toISOString
     if (error instanceof RangeError && error.message.includes('Invalid time value')) {
       console.error('❌ RangeError caught in webhook handler (Date serialization issue):', error);
@@ -181,19 +194,36 @@ export default async function handler(req: any, res: any) {
 }
 
 async function handleWebhookRequest(req: any, res: any) {
-  // Log request details for debugging
-  console.log('📥 Webhook request received:', {
+  // Log ALL requests immediately (even before method check)
+  console.log('🔔 ===== WEBHOOK ENDPOINT HIT =====');
+  console.log('📥 Raw request received:', {
     method: req.method,
     url: req.url,
+    path: req.url?.split('?')[0],
+    timestamp: new Date().toISOString(),
     headers: {
       host: req.headers?.host,
+      'user-agent': req.headers?.['user-agent'],
       'stripe-signature': req.headers?.['stripe-signature'] ? 'present' : 'missing',
       'content-type': req.headers?.['content-type'],
+      'content-length': req.headers?.['content-length'],
     },
   });
 
+  // Allow GET requests for testing/health checks
+  if (req.method === 'GET') {
+    console.log('✅ GET request received - webhook endpoint is accessible');
+    return res.status(200).json({ 
+      status: 'ok', 
+      message: 'Stripe webhook endpoint is accessible',
+      endpoint: '/api/stripe-webhook',
+      timestamp: new Date().toISOString(),
+    });
+  }
+
   if (req.method !== 'POST') {
-    return res.status(405).end();
+    console.log(`⚠️ Unsupported method: ${req.method}`);
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
   // Get raw body for Stripe signature verification using micro's buffer helper
@@ -210,20 +240,38 @@ async function handleWebhookRequest(req: any, res: any) {
 
   if (!sig) {
     console.log('⚠️ Missing stripe-signature header');
-    return res.status(400).send('Missing stripe-signature header');
+    console.log('⚠️ This might be a test request or webhook not configured correctly');
+    return res.status(400).json({ error: 'Missing stripe-signature header' });
   }
+
+  // Check if webhook secret is configured
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  if (!webhookSecret) {
+    console.error('❌ STRIPE_WEBHOOK_SECRET environment variable is not set!');
+    console.error('❌ Webhook signature verification cannot proceed');
+    return res.status(500).json({ error: 'Webhook secret not configured' });
+  }
+
+  console.log('🔐 Webhook secret is configured (length:', webhookSecret.length, 'chars)');
 
   let event: Stripe.Event;
 
   try {
+    console.log('🔍 Attempting to verify webhook signature...');
     event = stripe.webhooks.constructEvent(
       buf,
       sig,
-      process.env.STRIPE_WEBHOOK_SECRET!
+      webhookSecret
     );
+    console.log('✅ Webhook signature verified successfully');
   } catch (err: any) {
-    console.log(`⚠️ Webhook signature verification failed: ${err.message}`);
-    return res.status(400).send(`Webhook Error: ${err.message}`);
+    console.error(`❌ Webhook signature verification failed: ${err.message}`);
+    console.error('❌ Signature verification error details:', {
+      message: err.message,
+      type: err.type,
+      code: err.code,
+    });
+    return res.status(400).json({ error: `Webhook Error: ${err.message}` });
   }
 
   // Log all events for audit
@@ -615,30 +663,72 @@ async function handleWebhookRequest(req: any, res: any) {
 
     case 'invoice.paid': {
       // Continue provisioning as payments continue
-      const invoice = event.data.object as any;
-      const subscriptionId = invoice.subscription;
+      const invoice = event.data.object as Stripe.Invoice;
+      
+      console.log(`💰 invoice.paid event received`);
+      console.log(`📋 Invoice details:`, {
+        invoice_id: invoice.id,
+        subscription: invoice.subscription,
+        subscription_type: typeof invoice.subscription,
+        customer: invoice.customer,
+        amount_paid: invoice.amount_paid,
+        currency: invoice.currency,
+      });
 
-      console.log(`💰 invoice.paid for subscription: ${subscriptionId}`);
-
-      if (subscriptionId && typeof subscriptionId === 'string') {
-        try {
-          const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-          const hid = subscription.metadata?.household_id;
-          
-          if (hid) {
-            // Safely convert period end to ISO string, validating it's a valid timestamp
-            const periodEnd = timestampToISO(subscription.current_period_end);
-            
-            await supabase.from('households').update({
-              subscription_status: 'active',
-              ...(periodEnd && { subscription_current_period_end: periodEnd }),
-            }).eq('id', hid);
-
-            console.log(`✅ Updated household ${hid} after invoice.paid`);
-          }
-        } catch (error) {
-          console.error('Error handling invoice.paid:', error);
+      // Handle subscription ID - can be string, object (expanded), or null
+      let subscriptionId: string | null = null;
+      
+      if (invoice.subscription) {
+        if (typeof invoice.subscription === 'string') {
+          subscriptionId = invoice.subscription;
+        } else if (typeof invoice.subscription === 'object' && invoice.subscription.id) {
+          // Expanded subscription object
+          subscriptionId = invoice.subscription.id;
         }
+      }
+
+      if (!subscriptionId) {
+        console.log(`ℹ️ invoice.paid: Invoice ${invoice.id} is not associated with a subscription (likely one-time payment)`);
+        break;
+      }
+
+      console.log(`🔍 invoice.paid: Processing subscription ${subscriptionId}`);
+
+      try {
+        const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+        const hid = subscription.metadata?.household_id;
+        
+        if (!hid) {
+          console.warn(`⚠️ invoice.paid: Subscription ${subscriptionId} has no household_id in metadata`);
+          break;
+        }
+        
+        // Safely convert period end to ISO string, validating it's a valid timestamp
+        const periodEnd = timestampToISO(subscription.current_period_end);
+        
+        const { data: updateData, error: updateError } = await supabase.from('households').update({
+          subscription_status: 'active',
+          ...(periodEnd && { subscription_current_period_end: periodEnd }),
+        }).eq('id', hid).select();
+
+        if (updateError) {
+          console.error(`❌ Error updating household ${hid} after invoice.paid:`, updateError);
+          console.error(`❌ Update error details:`, {
+            code: updateError.code,
+            message: updateError.message,
+            details: updateError.details,
+            hint: updateError.hint,
+          });
+        } else {
+          console.log(`✅ Updated household ${hid} after invoice.paid`);
+          console.log(`📊 Updated data:`, updateData);
+        }
+      } catch (error) {
+        console.error('❌ Error handling invoice.paid:', error);
+        console.error('❌ Error details:', {
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+        });
       }
       break;
     }

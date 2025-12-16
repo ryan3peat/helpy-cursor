@@ -230,9 +230,13 @@ export function subscribeToCollection(
   
   console.log(`🔔 Subscribing to ${tableName} for household ${householdId}`);
   
-  // Build the select query - for expenses, LEFT JOIN receipts to get image_url
+  // Build the select query - include JOINs for specific collections
+  // - expenses: LEFT JOIN receipts to get image_url
+  // - users: LEFT JOIN push_subscriptions to get hasPushSubscription status
   const selectQuery = collection === 'expenses' 
     ? '*, receipts!receipts_expense_id_fkey(image_url, image_path)'  // LEFT JOIN receipts with image path for URL recovery
+    : collection === 'users'
+    ? '*, push_subscriptions(id)'  // LEFT JOIN push_subscriptions to check if user has any
     : '*';
   
   // Helper function to fetch data - always get fresh client to pick up auth
@@ -259,6 +263,8 @@ export function subscribeToCollection(
           const refreshedClient = getSupabaseClient();
           const retryQuery = collection === 'expenses' 
             ? '*, receipts!receipts_expense_id_fkey(image_url, image_path)'
+            : collection === 'users'
+            ? '*, push_subscriptions(id)'
             : '*';
           
           const { data: retryData, error: retryError } = await refreshedClient
@@ -289,9 +295,9 @@ export function subscribeToCollection(
       }
       
       console.error(`❌ Initial fetch error for ${tableName}:`, error);
-      // Fallback to simple select if JOIN fails (e.g., no receipts table or FK not set)
-      if (collection === 'expenses') {
-        console.log('📥 Falling back to simple expenses fetch without receipts JOIN');
+      // Fallback to simple select if JOIN fails (e.g., no receipts/push_subscriptions table or FK not set)
+      if (collection === 'expenses' || collection === 'users') {
+        console.log(`📥 Falling back to simple ${tableName} fetch without JOIN`);
         getSupabaseClient()
           .from(tableName)
           .select('*')
@@ -326,8 +332,8 @@ export function subscribeToCollection(
       // CRITICAL FIX: Refetch all data on ANY change
       fetchData()
         .then(({ data, error }) => {
-          if (error && collection === 'expenses') {
-            // Fallback for expenses
+          if (error && (collection === 'expenses' || collection === 'users')) {
+            // Fallback for expenses/users if JOIN fails
             getSupabaseClient()
               .from(tableName)
               .select('*')
@@ -388,6 +394,50 @@ export function subscribeToCollection(
     updateSubscriptionStatus(`receipts-for-expenses-${householdId}`, 'SUBSCRIBING');
   }
 
+  // For users, also subscribe to push_subscriptions table changes
+  // This ensures hasPushSubscription updates when notifications are toggled
+  let pushSubscriptionsSubscription: ReturnType<typeof supabase.channel> | null = null;
+  if (collection === 'users') {
+    pushSubscriptionsSubscription = supabase
+      .channel(`push-subs-for-users-${householdId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'push_subscriptions',
+          filter: `household_id=eq.${householdId}`
+        },
+        (payload: any) => {
+          console.log(`🔄 Real-time ${payload.eventType} on push_subscriptions (for users)`);
+          // Refetch users when push_subscriptions change
+          fetchData()
+            .then(({ data, error }) => {
+              if (error) {
+                console.error('❌ Failed to refetch users after push_subscriptions change:', error);
+                // Fallback to simple fetch
+                getSupabaseClient()
+                  .from(tableName)
+                  .select('*')
+                  .eq('household_id', householdId)
+                  .then(({ data: fallbackData }) => {
+                    callback(convertSupabaseData(fallbackData || [], collection));
+                  });
+                return;
+              }
+              console.log(`📥 Refetched ${data?.length || 0} users after push_subscriptions ${payload.eventType}`);
+              callback(convertSupabaseData(data || [], collection));
+            });
+        }
+      )
+      .subscribe((status) => {
+        console.log(`📡 Push subscriptions subscription status (for users):`, status);
+        updateSubscriptionStatus(`push-subs-for-users-${householdId}`, status as SubscriptionStatus);
+      });
+    
+    updateSubscriptionStatus(`push-subs-for-users-${householdId}`, 'SUBSCRIBING');
+  }
+
   // Return unsubscribe function
   return () => {
     console.log(`🔕 Unsubscribing from ${tableName}`);
@@ -397,6 +447,11 @@ export function subscribeToCollection(
       console.log('🔕 Unsubscribing from receipts (for expenses)');
       receiptsSubscription.unsubscribe();
       removeSubscriptionStatus(`receipts-for-expenses-${householdId}`);
+    }
+    if (pushSubscriptionsSubscription) {
+      console.log('🔕 Unsubscribing from push_subscriptions (for users)');
+      pushSubscriptionsSubscription.unsubscribe();
+      removeSubscriptionStatus(`push-subs-for-users-${householdId}`);
     }
   };
 }
@@ -1137,6 +1192,21 @@ function convertSupabaseData(data: any[], collection?: string): DataItem[] {
         uuidToAppIdCache[item.id] = item.id; // Maps to itself
         console.log(`📝 Pending user: keeping UUID ${item.id} as id`);
       }
+      
+      // Check if user has any push subscriptions (from LEFT JOIN)
+      // push_subscriptions will be an array if JOIN succeeded, null/undefined otherwise
+      if (item.push_subscriptions) {
+        const subscriptions = Array.isArray(item.push_subscriptions) 
+          ? item.push_subscriptions 
+          : [item.push_subscriptions];
+        // Filter out null entries (LEFT JOIN returns nulls for no matches)
+        const validSubscriptions = subscriptions.filter((s: any) => s && s.id);
+        converted.hasPushSubscription = validSubscriptions.length > 0;
+      } else {
+        converted.hasPushSubscription = false;
+      }
+      // Remove the joined push_subscriptions data from output
+      delete converted.pushSubscriptions;
     }
     
     // For meals: convert for_user_ids from Supabase UUIDs back to app user IDs
@@ -1288,9 +1358,11 @@ export async function fetchCollection(
   // Use authenticated client for RLS
   const client = getSupabaseClient();
   
-  // Build the select query - for expenses, LEFT JOIN receipts to get image_url
+  // Build the select query - include JOINs for specific collections
   const selectQuery = collection === 'expenses' 
     ? '*, receipts!receipts_expense_id_fkey(image_url, image_path)'
+    : collection === 'users'
+    ? '*, push_subscriptions(id)'
     : '*';
   
   const { data, error } = await client
@@ -1317,8 +1389,8 @@ export async function fetchCollection(
         
         if (retryError) {
           console.error(`❌ [Sync] Retry failed for ${tableName}:`, retryError);
-          // Fallback for expenses if JOIN fails
-          if (collection === 'expenses') {
+          // Fallback for expenses/users if JOIN fails
+          if (collection === 'expenses' || collection === 'users') {
             const { data: fallbackData } = await refreshedClient
               .from(tableName)
               .select('*')
@@ -1332,8 +1404,8 @@ export async function fetchCollection(
         return convertSupabaseData(retryData || [], collection);
       } catch (refreshError) {
         console.error(`❌ [Sync] Token refresh failed for ${tableName}:`, refreshError);
-        // Fallback for expenses if JOIN fails
-        if (collection === 'expenses') {
+        // Fallback for expenses/users if JOIN fails
+        if (collection === 'expenses' || collection === 'users') {
           const { data: fallbackData } = await client
             .from(tableName)
             .select('*')
@@ -1344,8 +1416,8 @@ export async function fetchCollection(
       }
     }
     
-    // Fallback for expenses if JOIN fails
-    if (collection === 'expenses') {
+    // Fallback for expenses/users if JOIN fails
+    if (collection === 'expenses' || collection === 'users') {
       const { data: fallbackData } = await client
         .from(tableName)
         .select('*')

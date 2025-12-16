@@ -5,6 +5,21 @@ import './index.css';
 import App from './App';
 import { SupabaseProvider } from './contexts/SupabaseContext';
 
+// IMPORTANT: Redirect helpyfam.com (without app. subdomain) to marketing homepage
+// This runs before React renders to ensure fast redirect
+const hostname = window.location.hostname;
+const pathname = window.location.pathname;
+const isMainDomain = hostname === 'helpyfam.com' || hostname === 'www.helpyfam.com';
+const isAppSubdomain = hostname === 'app.helpyfam.com';
+const isRootPath = pathname === '/' || pathname === '';
+
+// If on main domain (not app subdomain) at root, redirect to marketing homepage
+if (isMainDomain && !isAppSubdomain && isRootPath && !window.location.search.includes('invite=')) {
+  window.location.href = 'https://helpy-cursor-website.vercel.app/home';
+  // Prevent further execution
+  throw new Error('Redirecting to marketing homepage');
+}
+
 // Log URL immediately on script load (before React)
 console.log('[Index] App starting. URL:', window.location.href);
 console.log('[Index] Hash:', window.location.hash);

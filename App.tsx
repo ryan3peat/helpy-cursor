@@ -9,10 +9,10 @@ import Profile from './components/Profile';
 import HouseholdInfo from './components/HouseholdInfo';
 import IntroAnimation from './components/IntroAnimation';
 import Auth from './components/Auth';
-import OnboardingOverlay from './components/OnboardingOverlay';
+import OnboardingOverlay, { OnboardingAction } from './components/OnboardingOverlay';
 import InviteSetup from './components/InviteSetup';
 // InviteWelcome removed - using Option 2 flow (direct to SignUp via Auth.tsx)
-import { ToDoItem, Meal, Expense, User, TranslationDictionary } from './types';
+import { ToDoItem, Meal, Expense, User, TranslationDictionary, UserRole } from './types';
 import { BASE_TRANSLATIONS } from './constants';
 import { detectDeviceLanguage } from './services/languageDetectionService';
 import { getStaticTranslations } from './services/translationService';
@@ -272,9 +272,6 @@ const AppContent: React.FC = () => {
     setNavData(data ?? null);
     // Scroll to top when navigating to a new view
     window.scrollTo(0, 0);
-    if (onboardingStep === 1 && view === 'profile') {
-      setOnboardingStep(2);
-    }
   };
   
   // Handle edit helper from Helper Management - navigates to Profile and opens edit modal
@@ -284,13 +281,28 @@ const AppContent: React.FC = () => {
     window.scrollTo(0, 0);
   };
 
-  const advanceOnboarding = () => {
-    if (onboardingStep === 1) {
-      setActiveView('profile');
-      setOnboardingStep(2);
+  const advanceOnboarding = (action: OnboardingAction) => {
+    if (action.type === 'complete') {
+      setOnboardingStep(0);
       return;
     }
-    setOnboardingStep(0);
+    
+    if (action.type === 'navigate') {
+      handleNavigate(action.target, action.section ? { section: action.section } : undefined);
+      // Advance to next step (onboardingStep is 1-based, so increment it)
+      setOnboardingStep(prev => prev + 1);
+      return;
+    }
+    
+    if (action.type === 'openSheet') {
+      // Handle sheet opening if needed
+      // For now, just advance the step
+      setOnboardingStep(prev => prev + 1);
+      return;
+    }
+    
+    // For 'none' action, just advance the step
+    setOnboardingStep(prev => prev + 1);
   };
 
   const skipOnboarding = () => setOnboardingStep(0);
@@ -837,6 +849,8 @@ const AppContent: React.FC = () => {
             onRestartTutorial={() => {
               setOnboardingStep(1);
               setActiveView('dashboard');
+              // Clear any navigation data to ensure clean restart
+              setNavData(null);
             }}
           />
         );
@@ -962,8 +976,10 @@ const AppContent: React.FC = () => {
       {showIntro && <IntroAnimation onComplete={() => setShowIntro(false)} />}
       {onboardingStep > 0 && (
         <OnboardingOverlay
-          step={onboardingStep}
-          userName={currentUser.name?.split(' ')[0] ?? 'User'}
+          stepIndex={onboardingStep - 1}
+          userRole={currentUser.role as UserRole}
+          currentPage={activeView}
+          currentSection={navData?.section}
           onNext={advanceOnboarding}
           onSkip={skipOnboarding}
           t={translations}

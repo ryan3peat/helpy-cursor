@@ -32,11 +32,13 @@ import {
   Lamp,
   BookOpen,
   User as UserIcon,
+  Lock,
 } from "lucide-react";
 import Avatar from "./ui/Avatar";
 import { BaseViewProps, User, UserRole, TranslationDictionary } from "@/types";
 import { useTranslatedContent } from "@/hooks/useTranslatedContent";
 import { detectInputLanguage } from "@/services/languageDetectionService";
+import { supabase } from "@/services/supabase";
 
 // Essential Info Types & Services
 import type {
@@ -513,6 +515,42 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
   const isHelper = currentUser.role === UserRole.HELPER;
 
   // ─────────────────────────────────────────────────────────────────
+  // Subscription Plan State (for Helper Management access control)
+  // ─────────────────────────────────────────────────────────────────
+  const [subscriptionPlan, setSubscriptionPlan] = useState<string>('free');
+  
+  // Fetch subscription plan on mount
+  useEffect(() => {
+    const fetchSubscriptionPlan = async () => {
+      if (!householdId) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('households')
+          .select('subscription_plan, subscription_status')
+          .eq('id', householdId)
+          .single();
+        
+        if (!error && data) {
+          // Only set as paid plan if subscription is active
+          if (data.subscription_status === 'active' && data.subscription_plan) {
+            setSubscriptionPlan(data.subscription_plan);
+          } else {
+            setSubscriptionPlan('free');
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching subscription plan:', err);
+      }
+    };
+    
+    fetchSubscriptionPlan();
+  }, [householdId]);
+  
+  // Helper Management is only available to Core and Pro users (not Free)
+  const hasHelperManagementAccess = subscriptionPlan === 'core' || subscriptionPlan === 'pro';
+
+  // ─────────────────────────────────────────────────────────────────
   // Essential Info State (data comes from props, only UI state here)
   // ─────────────────────────────────────────────────────────────────
   const [selectedEssentialCategory, setSelectedEssentialCategory] = useState<EssentialInfoCategory | "All">("All");
@@ -878,21 +916,37 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
               </div>
             </button>
 
-            {/* Helper Card */}
+            {/* Helper Card - Only available to Core and Pro users */}
             <button
-              onClick={() => setActiveSection("helper")}
-              className={`px-3 py-2.5 rounded-xl text-left transition-all ${
-                activeSection === "helper"
+              onClick={() => hasHelperManagementAccess && setActiveSection("helper")}
+              className={`px-3 py-2.5 rounded-xl text-left transition-all relative ${
+                !hasHelperManagementAccess
+                  ? "bg-card/50 text-muted-foreground shadow-sm cursor-not-allowed opacity-60"
+                  : activeSection === "helper"
                   ? "bg-primary text-primary-foreground shadow-md"
                   : "bg-card text-foreground shadow-sm"
               }`}
+              disabled={!hasHelperManagementAccess}
             >
               <div className="flex items-center gap-2">
-                <UserIcon size={16} />
+                {hasHelperManagementAccess ? (
+                  <UserIcon size={16} />
+                ) : (
+                  <Lock size={16} className="text-muted-foreground" />
+                )}
                 <span className="text-title">{t['common.helper'] || 'Helper'}</span>
               </div>
-              <div className={`text-caption mt-1 ml-6 ${activeSection === "helper" ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
-                {helpers.length} {t['common.helpers'] || 'helpers'}
+              <div className={`text-caption mt-1 ml-6 ${
+                !hasHelperManagementAccess 
+                  ? "text-muted-foreground/60" 
+                  : activeSection === "helper" 
+                  ? "text-primary-foreground/70" 
+                  : "text-muted-foreground"
+              }`}>
+                {hasHelperManagementAccess 
+                  ? `${helpers.length} ${t['common.helpers'] || 'helpers'}`
+                  : (t['common.upgrade_required'] || 'Upgrade required')
+                }
               </div>
             </button>
           </div>
@@ -1093,50 +1147,73 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
         {/* ─────────────────────────────────────────────────────────────── */}
         {activeSection === "helper" && (
           <>
-            {/* Helper Selector */}
-            {helpers.length > 0 && (
-              <div className="mb-4">
-                <div className="flex gap-2 overflow-x-auto scrollbar-hide">
-                  {helpers.map(helper => (
-                    <button
-                      key={helper.id}
-                      onClick={() => setSelectedHelperId(helper.id)}
-                      className={`px-4 py-2 rounded-full whitespace-nowrap transition-all ${
-                        selectedHelperId === helper.id
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-card text-foreground"
-                      }`}
-                    >
-                      {helper.name}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-            
-            {/* Helper Content */}
-            {selectedHelperId && (() => {
-              const selectedHelper = helpers.find(h => h.id === selectedHelperId);
-              if (!selectedHelper) return null;
-              return (
-                <HelperManagementContent
-                  householdId={householdId}
-                  helperId={selectedHelperId}
-                  helper={selectedHelper}
-                  currentUser={currentUser}
-                  t={t}
-                  onNavigateToProfile={onNavigateToProfile || (() => {})}
-                  onEditHelper={onEditHelper}
-                />
-              );
-            })()}
-            
-            {helpers.length === 0 && (
+            {/* Show upgrade message for Free users */}
+            {!hasHelperManagementAccess ? (
               <div className="text-center py-12">
-                <p className="text-body text-muted-foreground">
-                  {t['helper.no_helpers'] || 'No helpers in this household'}
+                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-secondary flex items-center justify-center">
+                  <Lock size={28} className="text-muted-foreground" />
+                </div>
+                <p className="text-body text-foreground mb-2">
+                  {t['helper.upgrade_required_title'] || 'Helper Management'}
                 </p>
+                <p className="text-caption text-muted-foreground mb-4">
+                  {t['helper.upgrade_required_desc'] || 'Upgrade to Core or Pro to access Helper Management features'}
+                </p>
+                <button
+                  onClick={onNavigateToProfile}
+                  className="px-6 py-2.5 bg-primary text-primary-foreground rounded-full text-body font-semibold hover:bg-primary/90 transition-colors"
+                >
+                  {t['common.view_plans'] || 'View Plans'}
+                </button>
               </div>
+            ) : (
+              <>
+                {/* Helper Selector */}
+                {helpers.length > 0 && (
+                  <div className="mb-4">
+                    <div className="flex gap-2 overflow-x-auto scrollbar-hide">
+                      {helpers.map(helper => (
+                        <button
+                          key={helper.id}
+                          onClick={() => setSelectedHelperId(helper.id)}
+                          className={`px-4 py-2 rounded-full whitespace-nowrap transition-all ${
+                            selectedHelperId === helper.id
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-card text-foreground"
+                          }`}
+                        >
+                          {helper.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                {/* Helper Content */}
+                {selectedHelperId && (() => {
+                  const selectedHelper = helpers.find(h => h.id === selectedHelperId);
+                  if (!selectedHelper) return null;
+                  return (
+                    <HelperManagementContent
+                      householdId={householdId}
+                      helperId={selectedHelperId}
+                      helper={selectedHelper}
+                      currentUser={currentUser}
+                      t={t}
+                      onNavigateToProfile={onNavigateToProfile || (() => {})}
+                      onEditHelper={onEditHelper}
+                    />
+                  );
+                })()}
+                
+                {helpers.length === 0 && (
+                  <div className="text-center py-12">
+                    <p className="text-body text-muted-foreground">
+                      {t['helper.no_helpers'] || 'No helpers in this household'}
+                    </p>
+                  </div>
+                )}
+              </>
             )}
           </>
         )}

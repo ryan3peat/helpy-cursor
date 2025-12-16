@@ -35,7 +35,7 @@ export default async function handler(req: any, res: any) {
     // Get or create Stripe customer
     const { data: household } = await supabase
       .from('households')
-      .select('stripe_customer_id, stripe_subscription_id, subscription_status, name, referral_code_used')
+      .select('stripe_customer_id, stripe_subscription_id, subscription_status, subscription_plan, name, referral_code_used')
       .eq('id', householdId)
       .single();
 
@@ -95,8 +95,11 @@ export default async function handler(req: any, res: any) {
       }
     }
 
-    // Prevent duplicate subscriptions - check if there's already an active subscription
-    if (household?.stripe_subscription_id && household?.subscription_status === 'active') {
+    // Prevent duplicate subscriptions - check if there's already an active PAID subscription
+    // Free users should always be able to upgrade, even if subscription_status shows 'active' from stale data
+    const isPaidPlan = household?.subscription_plan && household.subscription_plan !== 'free';
+    
+    if (household?.stripe_subscription_id && household?.subscription_status === 'active' && isPaidPlan) {
       // Check if the subscription still exists in Stripe
       try {
         const existingSubscription = await stripe.subscriptions.retrieve(

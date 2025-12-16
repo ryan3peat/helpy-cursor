@@ -1693,7 +1693,7 @@ const Profile: React.FC<ProfileProps> = ({
           t['plan.feature.core_family'] || 'Up to 4 family members (incl. admin)',
           t['plan.feature.core_helper'] || '1 Helper',
           t['plan.feature.core_expenses'] || 'All Expense Functions',
-          t['plan.feature.core_helper_mgmt'] || 'Helper Management (Coming Soon)',
+          t['plan.feature.core_helper_mgmt'] || 'Helper Management',
         ],
         limitations: [],
         highlight: false,
@@ -1708,24 +1708,11 @@ const Profile: React.FC<ProfileProps> = ({
           t['plan.feature.pro_family'] || 'Up to 8 family members (incl. admin)',
           t['plan.feature.pro_helpers'] || 'Up to 4 Helpers',
           t['plan.feature.pro_expenses'] || 'All Expense Functions',
-          t['plan.feature.pro_helper_mgmt'] || 'Helper Management (Coming Soon)',
+          t['plan.feature.pro_helper_mgmt'] || 'Helper Management',
         ],
         limitations: [],
         highlight: true,
         isFree: false
-      },
-      {
-        id: 'test',
-        name: t['common.test'] || '🧪 Test',
-        monthlyPrice: 5,
-        yearlyPrice: 5,
-        features: [
-          t['plan.feature.test_desc'] || 'Test plan for Stripe payment testing',
-        ],
-        limitations: [],
-        highlight: false,
-        isFree: false,
-        isTest: true
       }
     ];
 
@@ -1734,15 +1721,11 @@ const Profile: React.FC<ProfileProps> = ({
       ? (t['common.core'] || 'Core') 
       : subscriptionInfo?.plan === 'pro' 
       ? (t['common.pro'] || 'Pro') 
-      : subscriptionInfo?.plan === 'test'
-      ? (t['common.test'] || '🧪 Test')
       : (t['common.free'] || 'Free');
     const planPrice = subscriptionInfo?.plan === 'core' 
       ? (subscriptionInfo?.period === 'yearly' ? 845 : 88)
       : subscriptionInfo?.plan === 'pro'
       ? (subscriptionInfo?.period === 'yearly' ? 1133 : 118)
-      : subscriptionInfo?.plan === 'test'
-      ? 5
       : 0;
 
     return (

@@ -98,6 +98,7 @@ const Profile: React.FC<ProfileProps> = ({
     period?: string;
   } | null>(null);
   const [isLoadingSubscription, setIsLoadingSubscription] = useState(true);
+  const hasLoadedSubscriptionRef = useRef(false); // Track if we've loaded subscription info at least once
   const [isDeleteAccountModalOpen, setIsDeleteAccountModalOpen] = useState(false);
   const [isFinalDeleteConfirmOpen, setIsFinalDeleteConfirmOpen] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
@@ -202,7 +203,7 @@ const Profile: React.FC<ProfileProps> = ({
     
     try {
       // Only show loading spinner on initial fetch (when we have no data yet)
-      if (showLoading && !subscriptionInfo) {
+      if (showLoading && !hasLoadedSubscriptionRef.current) {
         setIsLoadingSubscription(true);
       }
       const { data, error } = await supabase
@@ -230,14 +231,24 @@ const Profile: React.FC<ProfileProps> = ({
           }));
         }
         
-        setSubscriptionInfo({
+        const newSubscriptionInfo = {
           plan: data.subscription_plan || 'free',
           status: data.subscription_status || 'inactive',
           periodEnd: data.subscription_current_period_end,
           period: data.subscription_period || 'monthly'
-        });
+        };
+        
+        console.log('[Profile] Updating subscriptionInfo state:', newSubscriptionInfo);
+        
+        // Mark as loaded
+        hasLoadedSubscriptionRef.current = true;
+        
+        // Update all subscription-related state
+        setSubscriptionInfo(newSubscriptionInfo);
         setSelectedPlan((data.subscription_plan || 'free') as 'free' | 'core' | 'pro');
         setBillingPeriod((data.subscription_period || 'monthly') as 'monthly' | 'yearly');
+        
+        console.log('[Profile] State updated - subscriptionInfo should now be:', newSubscriptionInfo);
         
         // If we were retrying and subscription is now active, we're done
         if (retryCount > 0 && data.subscription_status === 'active') {
@@ -252,7 +263,7 @@ const Profile: React.FC<ProfileProps> = ({
     } finally {
       setIsLoadingSubscription(false);
     }
-  }, [currentUser?.householdId, subscriptionInfo]);
+  }, [currentUser?.householdId]); // Removed subscriptionInfo from dependencies to avoid stale closures
 
   // Check for Stripe checkout redirect and refetch subscription info
   React.useEffect(() => {
@@ -316,7 +327,16 @@ const Profile: React.FC<ProfileProps> = ({
         
         if (syncResult.success) {
           console.log('[Profile] Sync successful:', syncResult);
-          // Refresh the subscription info from database
+          // Small delay to ensure database update is committed
+          await new Promise(resolve => setTimeout(resolve, 500));
+          // Force refresh subscription info from database
+          console.log('[Profile] Fetching subscription info after sync...');
+          const refreshed = await fetchSubscriptionInfo(0, false);
+          console.log('[Profile] Subscription info refreshed, active:', refreshed);
+          // Give React time to process the state update
+          await new Promise(resolve => setTimeout(resolve, 100));
+          // Verify the state was updated by fetching once more
+          console.log('[Profile] Verifying subscription info state...');
           await fetchSubscriptionInfo(0, false);
           setTimeout(() => setSubscriptionSuccess(false), 3000);
           return;
@@ -364,6 +384,11 @@ const Profile: React.FC<ProfileProps> = ({
       fetchSubscriptionInfo();
     }
   }, [currentUser?.householdId, activeSection, subscriptionInfo, fetchSubscriptionInfo]);
+
+  // Debug: Log subscriptionInfo changes to verify state updates
+  React.useEffect(() => {
+    console.log('[Profile] subscriptionInfo state changed:', subscriptionInfo);
+  }, [subscriptionInfo]);
   
   // Get Clerk user to detect authentication method
   const { user: clerkUser } = useUser();

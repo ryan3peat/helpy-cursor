@@ -2,12 +2,33 @@
   "redirects": [
     { 
       "source": "/qr", 
-      "destination": "https://www.helpyfam.com",
+      "destination": "https://app.helpyfam.com",
       "permanent": false
+    },
+    {
+      "source": "/home",
+      "has": [{ "type": "host", "value": "helpyfam.com" }],
+      "destination": "https://helpyfam.com/",
+      "permanent": true
+    },
+    {
+      "source": "/home",
+      "has": [{ "type": "host", "value": "www.helpyfam.com" }],
+      "destination": "https://helpyfam.com/",
+      "permanent": true
     }
   ],
   "rewrites": [
-    { "source": "/home", "destination": "https://helpy-cursor-website.vercel.app/home" },
+    {
+      "source": "/",
+      "has": [{ "type": "host", "value": "helpyfam.com" }],
+      "destination": "https://helpy-cursor-website.vercel.app/home"
+    },
+    {
+      "source": "/",
+      "has": [{ "type": "host", "value": "www.helpyfam.com" }],
+      "destination": "https://helpy-cursor-website.vercel.app/home"
+    },
     { "source": "/features", "destination": "https://helpy-cursor-website.vercel.app/features" },
     { "source": "/faq", "destination": "https://helpy-cursor-website.vercel.app/faq" },
     { "source": "/plan", "destination": "https://helpy-cursor-website.vercel.app/plan" },

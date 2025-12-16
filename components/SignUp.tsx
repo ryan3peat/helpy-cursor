@@ -590,6 +590,16 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
           </div>
         </div>
         </div>
+
+        {/* Features Link */}
+        <div className="mt-6 text-center">
+          <a
+            href="https://helpyfam.com"
+            className="text-white/90 hover:text-white text-body underline transition-colors"
+          >
+            See Helpyfam Features
+          </a>
+        </div>
       </div>
 
     </div>

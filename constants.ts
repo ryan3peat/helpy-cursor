@@ -645,13 +645,13 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'plan.feature.core_family': 'Up to 4 family members (incl. admin)',
   'plan.feature.core_helper': '1 Helper',
   'plan.feature.core_expenses': 'All Expense Functions',
-  'plan.feature.core_helper_mgmt': 'Helper Management (Coming Soon)',
+  'plan.feature.core_helper_mgmt': 'Helper Management',
   
   // Plan Features - Pro
   'plan.feature.pro_family': 'Up to 8 family members (incl. admin)',
   'plan.feature.pro_helpers': 'Up to 4 Helpers',
   'plan.feature.pro_expenses': 'All Expense Functions',
-  'plan.feature.pro_helper_mgmt': 'Helper Management (Coming Soon)',
+  'plan.feature.pro_helper_mgmt': 'Helper Management',
   
   // Plan Features - Test (for Stripe testing)
   'plan.feature.test_desc': 'Test plan for payment testing',

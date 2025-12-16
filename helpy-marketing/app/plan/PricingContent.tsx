@@ -32,7 +32,7 @@ export default function PricingContent() {
         "Up to 4 family members (incl. admin)",
         "1 Helper",
         "All Expense Functions",
-        "Helper Management (Coming Soon)"
+        "Helper Management"
       ],
       highlight: false
     },
@@ -46,7 +46,7 @@ export default function PricingContent() {
         "Up to 8 family members (incl. admin)",
         "Up to 4 Helpers",
         "All Expense Functions",
-        "Helper Management (Coming Soon)"
+        "Helper Management"
       ],
       highlight: true
     }

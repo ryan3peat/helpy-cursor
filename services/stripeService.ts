@@ -159,6 +159,44 @@ export async function downgradeToFree(householdId: string): Promise<void> {
 }
 
 /**
+ * Change subscription between paid plans (Core <-> Pro)
+ * This updates the existing subscription rather than creating a new one
+ */
+export async function changeSubscription(
+  householdId: string,
+  newPlan: 'core' | 'pro',
+  newPeriod: 'monthly' | 'yearly'
+): Promise<{ success: boolean; plan?: string; status?: string; message?: string; error?: string }> {
+  try {
+    const response = await fetch('/api/change-subscription', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ householdId, newPlan, newPeriod }),
+    });
+
+    if (!response.ok) {
+      let errorMessage = 'Failed to change subscription';
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.error || errorMessage;
+      } catch {
+        errorMessage = `Server error: ${response.status} ${response.statusText}`;
+      }
+      return { success: false, error: errorMessage };
+    }
+
+    const data = await response.json();
+    return { success: true, plan: data.plan, status: data.status, message: data.message };
+  } catch (error) {
+    console.error('Change subscription error:', error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Unknown error changing subscription' 
+    };
+  }
+}
+
+/**
  * Sync subscription status from Stripe to database
  * This is a backup mechanism when webhooks don't fire properly
  */

@@ -7,7 +7,7 @@ import {
 import { useUser } from '@clerk/clerk-react';
 import { User, UserRole, BaseViewProps } from '../types';
 import { createInvite } from '../services/inviteService';
-import { createCheckoutSession, createPortalSession, syncSubscription } from '../services/stripeService';
+import { createCheckoutSession, createPortalSession, syncSubscription, changeSubscription, downgradeToFree } from '../services/stripeService';
 import { useSupabase } from '../contexts/SupabaseContext';
 import { deleteItem, uploadAvatarImage } from '../services/supabaseService';
 import { useScrollLock } from '@/hooks/useScrollLock';
@@ -511,22 +511,63 @@ const Profile: React.FC<ProfileProps> = ({
     setNewRole(UserRole.CHILD);
   };
 
-  // Stripe Checkout Handler
+  // Stripe Checkout Handler - handles both new subscriptions and plan changes
   const handleSelectPlan = async (plan: 'core' | 'pro' | 'test', period: 'monthly' | 'yearly') => {
     try {
       setLoadingPlan(plan);
-      const checkoutUrl = await createCheckoutSession(
-        currentUser.householdId,
-        plan,
-        period,
-        currentUser.email || ''
-      );
       
-      // Redirect to Stripe Checkout
-      window.location.href = checkoutUrl;
+      // Check if user has an active paid subscription
+      const hasActivePaidSubscription = subscriptionInfo?.status === 'active' && 
+        subscriptionInfo?.plan && 
+        subscriptionInfo.plan !== 'free';
+      
+      if (hasActivePaidSubscription && plan !== 'test') {
+        // Change existing subscription instead of creating new checkout
+        const result = await changeSubscription(currentUser.householdId, plan as 'core' | 'pro', period);
+        
+        if (result.success) {
+          // Refresh subscription info
+          await fetchSubscriptionInfo(0, false);
+          alert(result.message || `Successfully changed to ${plan.toUpperCase()} plan!`);
+        } else {
+          throw new Error(result.error || 'Failed to change subscription');
+        }
+        setLoadingPlan(null);
+      } else {
+        // New subscription - redirect to Stripe Checkout
+        const checkoutUrl = await createCheckoutSession(
+          currentUser.householdId,
+          plan,
+          period,
+          currentUser.email || ''
+        );
+        
+        // Redirect to Stripe Checkout
+        window.location.href = checkoutUrl;
+      }
     } catch (error) {
       console.error('Checkout error:', error);
       alert(error instanceof Error ? error.message : 'Failed to start checkout. Please try again.');
+      setLoadingPlan(null);
+    }
+  };
+
+  // Handle downgrade to Free plan
+  const handleDowngradeToFree = async () => {
+    if (!confirm(t['subscription.confirm_downgrade_free'] || 'Are you sure you want to downgrade to the Free plan? Your subscription will be canceled immediately and you will lose access to premium features.')) {
+      return;
+    }
+    
+    try {
+      setLoadingPlan('core'); // Use 'core' as a loading indicator for downgrade
+      await downgradeToFree(currentUser.householdId);
+      // Refresh subscription info
+      await fetchSubscriptionInfo(0, false);
+      alert(t['subscription.downgrade_success'] || 'Your subscription has been canceled. You are now on the Free plan.');
+      setLoadingPlan(null);
+    } catch (error) {
+      console.error('Downgrade error:', error);
+      alert(error instanceof Error ? error.message : 'Failed to downgrade. Please try again.');
       setLoadingPlan(null);
     }
   };
@@ -1912,6 +1953,39 @@ const Profile: React.FC<ProfileProps> = ({
                     ? (!subscriptionInfo?.plan || subscriptionInfo?.plan === 'free' || subscriptionInfo?.status !== 'active')
                     : (subscriptionInfo?.plan === p.id && subscriptionInfo?.status === 'active');
 
+                  // Determine if this is an upgrade or downgrade
+                  // Plan hierarchy: free (0) < core (1) < pro (2)
+                  const planRank = { free: 0, core: 1, pro: 2 };
+                  const currentPlanRank = planRank[subscriptionInfo?.plan as keyof typeof planRank] ?? 0;
+                  const targetPlanRank = planRank[p.id as keyof typeof planRank] ?? 0;
+                  const isUpgrade = targetPlanRank > currentPlanRank;
+                  const isDowngrade = targetPlanRank < currentPlanRank;
+                  
+                  // Check if user has an active paid subscription (for showing downgrade to Free)
+                  const hasActivePaidSubscription = subscriptionInfo?.status === 'active' && 
+                    subscriptionInfo?.plan && 
+                    subscriptionInfo.plan !== 'free';
+
+                  // Get button label
+                  const getButtonLabel = () => {
+                    if (loadingPlan === p.id || (p.isFree && loadingPlan !== null)) {
+                      return t['common.processing'] || 'Processing...';
+                    }
+                    if (isCurrentPlan) {
+                      return t['common.current_plan'] || 'Current Plan';
+                    }
+                    if (!isAdmin) {
+                      return t['common.only_admin_can_change'] || 'Only Admin Can Change';
+                    }
+                    if (isUpgrade) {
+                      return t['common.upgrade'] || 'Upgrade';
+                    }
+                    if (isDowngrade) {
+                      return t['common.downgrade'] || 'Downgrade';
+                    }
+                    return t['common.select_plan'] || 'Select Plan';
+                  };
+
                   return (
                     <div
                       key={p.id}
@@ -1978,7 +2052,7 @@ const Profile: React.FC<ProfileProps> = ({
                         </ul>
                       )}
 
-                      {/* Only show button for paid plans */}
+                      {/* Button for paid plans */}
                       {!p.isFree && (
                         <button
                           onClick={() => handleSelectPlan(p.id as 'core' | 'pro' | 'test', billingPeriod)}
@@ -1988,18 +2062,35 @@ const Profile: React.FC<ProfileProps> = ({
                               ? 'bg-secondary text-muted-foreground cursor-not-allowed'
                               : !isAdmin
                               ? 'bg-muted text-muted-foreground cursor-not-allowed'
+                              : isDowngrade
+                              ? 'bg-muted-foreground/20 text-foreground hover:bg-muted-foreground/30 border border-border'
                               : 'bg-primary text-primary-foreground hover:bg-primary/90'
                           }`}
                         >
-                          {loadingPlan === p.id ? (t['common.processing'] || 'Processing...') : isCurrentPlan ? (t['common.current_plan'] || 'Current Plan') : !isAdmin ? (t['common.only_admin_can_change'] || 'Only Admin Can Change') : (t['common.change_plan'] || 'Select Plan')}
+                          {getButtonLabel()}
                         </button>
                       )}
 
-                      {/* Free plan indicator */}
+                      {/* Free plan - show current plan indicator OR downgrade button */}
                       {p.isFree && isCurrentPlan && (
                         <div className="w-full py-3 rounded-xl font-semibold text-center bg-secondary text-muted-foreground">
                           {t['common.current_plan'] || 'Current Plan'}
                         </div>
+                      )}
+                      
+                      {/* Downgrade to Free button - only show when user has active paid subscription */}
+                      {p.isFree && !isCurrentPlan && hasActivePaidSubscription && (
+                        <button
+                          onClick={handleDowngradeToFree}
+                          disabled={loadingPlan !== null || !isAdmin}
+                          className={`w-full py-3 rounded-xl font-semibold transition-colors ${
+                            !isAdmin
+                              ? 'bg-muted text-muted-foreground cursor-not-allowed'
+                              : 'bg-muted-foreground/20 text-foreground hover:bg-muted-foreground/30 border border-border'
+                          }`}
+                        >
+                          {loadingPlan !== null ? (t['common.processing'] || 'Processing...') : !isAdmin ? (t['common.only_admin_can_change'] || 'Only Admin Can Change') : (t['common.downgrade'] || 'Downgrade')}
+                        </button>
                       )}
                     </div>
                   );

@@ -18,26 +18,29 @@
       "permanent": true
     }
   ],
-  "rewrites": [
-    {
-      "source": "/",
-      "has": [{ "type": "host", "value": "helpyfam.com" }],
-      "destination": "https://helpy-cursor-website.vercel.app/home"
-    },
-    {
-      "source": "/",
-      "has": [{ "type": "host", "value": "www.helpyfam.com" }],
-      "destination": "https://helpy-cursor-website.vercel.app/home"
-    },
-    { "source": "/features", "destination": "https://helpy-cursor-website.vercel.app/features" },
-    { "source": "/faq", "destination": "https://helpy-cursor-website.vercel.app/faq" },
-    { "source": "/plan", "destination": "https://helpy-cursor-website.vercel.app/plan" },
-    { "source": "/_next/image", "destination": "https://helpy-cursor-website.vercel.app/_next/image" },
-    { "source": "/home-hero.jpg", "destination": "https://helpy-cursor-website.vercel.app/home-hero.jpg" },
-    { "source": "/features-hero.jpg", "destination": "https://helpy-cursor-website.vercel.app/features-hero.jpg" },
-    { "source": "/helpy-logo-text.png", "destination": "https://helpy-cursor-website.vercel.app/helpy-logo-text.png" },
-    { "source": "/helpy-logo-text.png", "destination": "https://helpy-cursor-website.vercel.app/helpy-logo-text.png" }
-  ],
+  "rewrites": {
+    "beforeFiles": [
+      {
+        "source": "/",
+        "has": [{ "type": "host", "value": "helpyfam.com" }],
+        "destination": "https://helpy-cursor-website.vercel.app/home"
+      },
+      {
+        "source": "/",
+        "has": [{ "type": "host", "value": "www.helpyfam.com" }],
+        "destination": "https://helpy-cursor-website.vercel.app/home"
+      }
+    ],
+    "afterFiles": [
+      { "source": "/features", "destination": "https://helpy-cursor-website.vercel.app/features" },
+      { "source": "/faq", "destination": "https://helpy-cursor-website.vercel.app/faq" },
+      { "source": "/plan", "destination": "https://helpy-cursor-website.vercel.app/plan" },
+      { "source": "/_next/image", "destination": "https://helpy-cursor-website.vercel.app/_next/image" },
+      { "source": "/home-hero.jpg", "destination": "https://helpy-cursor-website.vercel.app/home-hero.jpg" },
+      { "source": "/features-hero.jpg", "destination": "https://helpy-cursor-website.vercel.app/features-hero.jpg" },
+      { "source": "/helpy-logo-text.png", "destination": "https://helpy-cursor-website.vercel.app/helpy-logo-text.png" }
+    ]
+  },
   "headers": [
     {
       "source": "/(.*)",

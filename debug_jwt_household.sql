@@ -68,3 +68,5 @@ SELECT
     ) THEN '❌ BLOCKED: User not in household or user missing'
     ELSE '✅ ALLOWED: Should work'
   END as access_result;
+
+

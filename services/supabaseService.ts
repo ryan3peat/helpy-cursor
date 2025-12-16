@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import { getAuthenticatedSupabaseClient } from '../contexts/SupabaseContext';
+import { getAuthenticatedSupabaseClient, refreshSupabaseToken } from '../contexts/SupabaseContext';
 import { User, ShoppingItem, Task, Meal, Expense, Section, ToDoItem } from '../types';
 
 /**
@@ -244,27 +244,70 @@ export function subscribeToCollection(
       .eq('household_id', householdId);
   };
   
-  // Initial fetch
-  fetchData()
-    .then(({ data, error }) => {
-      if (error) {
-        console.error(`❌ Initial fetch error for ${tableName}:`, error);
-        // Fallback to simple select if JOIN fails (e.g., no receipts table or FK not set)
-        if (collection === 'expenses') {
-          console.log('📥 Falling back to simple expenses fetch without receipts JOIN');
-          getSupabaseClient()
+  // Initial fetch with JWT expiration handling
+  const performInitialFetch = async () => {
+    const { data, error } = await fetchData();
+    
+    if (error) {
+      // Check if error is JWT expired
+      if (error.code === 'PGRST303' || error.message?.includes('JWT expired')) {
+        console.warn(`⚠️ Initial fetch JWT expired for ${tableName}, refreshing token...`);
+        try {
+          await refreshSupabaseToken();
+          
+          // Retry with fresh client
+          const refreshedClient = getSupabaseClient();
+          const retryQuery = collection === 'expenses' 
+            ? '*, receipts!receipts_expense_id_fkey(image_url, image_path)'
+            : '*';
+          
+          const { data: retryData, error: retryError } = await refreshedClient
             .from(tableName)
-            .select('*')
-            .eq('household_id', householdId)
-            .then(({ data: fallbackData }) => {
+            .select(retryQuery)
+            .eq('household_id', householdId);
+          
+          if (retryError) {
+            console.error(`❌ Retry failed for ${tableName}:`, retryError);
+            // Fallback to simple select if JOIN fails
+            if (collection === 'expenses') {
+              console.log('📥 Falling back to simple expenses fetch without receipts JOIN');
+              const { data: fallbackData } = await refreshedClient
+                .from(tableName)
+                .select('*')
+                .eq('household_id', householdId);
               callback(convertSupabaseData(fallbackData || [], collection));
-            });
+            }
+            return;
+          }
+          
+          console.log(`📥 Initial ${tableName} data (after refresh):`, retryData?.length, 'items');
+          callback(convertSupabaseData(retryData || [], collection));
+          return;
+        } catch (refreshError) {
+          console.error(`❌ Token refresh failed for ${tableName}:`, refreshError);
         }
-        return;
       }
-      console.log(`📥 Initial ${tableName} data:`, data?.length, 'items');
-      callback(convertSupabaseData(data || [], collection));
-    });
+      
+      console.error(`❌ Initial fetch error for ${tableName}:`, error);
+      // Fallback to simple select if JOIN fails (e.g., no receipts table or FK not set)
+      if (collection === 'expenses') {
+        console.log('📥 Falling back to simple expenses fetch without receipts JOIN');
+        getSupabaseClient()
+          .from(tableName)
+          .select('*')
+          .eq('household_id', householdId)
+          .then(({ data: fallbackData }) => {
+            callback(convertSupabaseData(fallbackData || [], collection));
+          });
+      }
+      return;
+    }
+    
+    console.log(`📥 Initial ${tableName} data:`, data?.length, 'items');
+    callback(convertSupabaseData(data || [], collection));
+  };
+  
+  performInitialFetch();
 
     // Set up real-time subscription
   const subscription = getSupabaseClient()
@@ -1257,6 +1300,49 @@ export async function fetchCollection(
 
   if (error) {
     console.error(`❌ [Sync] Fetch error for ${tableName}:`, error);
+    
+    // Check if error is JWT expired
+    if (error.code === 'PGRST303' || error.message?.includes('JWT expired')) {
+      console.warn(`⚠️ [Sync] JWT expired for ${tableName}, refreshing token and retrying...`);
+      try {
+        // Refresh token
+        await refreshSupabaseToken();
+        
+        // Get fresh client and retry
+        const refreshedClient = getSupabaseClient();
+        const { data: retryData, error: retryError } = await refreshedClient
+          .from(tableName)
+          .select(selectQuery)
+          .eq('household_id', householdId);
+        
+        if (retryError) {
+          console.error(`❌ [Sync] Retry failed for ${tableName}:`, retryError);
+          // Fallback for expenses if JOIN fails
+          if (collection === 'expenses') {
+            const { data: fallbackData } = await refreshedClient
+              .from(tableName)
+              .select('*')
+              .eq('household_id', householdId);
+            return convertSupabaseData(fallbackData || [], collection);
+          }
+          return [];
+        }
+        
+        console.log(`✅ [Sync] Retry successful for ${tableName}, fetched ${retryData?.length || 0} items`);
+        return convertSupabaseData(retryData || [], collection);
+      } catch (refreshError) {
+        console.error(`❌ [Sync] Token refresh failed for ${tableName}:`, refreshError);
+        // Fallback for expenses if JOIN fails
+        if (collection === 'expenses') {
+          const { data: fallbackData } = await client
+            .from(tableName)
+            .select('*')
+            .eq('household_id', householdId);
+          return convertSupabaseData(fallbackData || [], collection);
+        }
+        return [];
+      }
+    }
     
     // Fallback for expenses if JOIN fails
     if (collection === 'expenses') {

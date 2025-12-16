@@ -98,3 +98,5 @@ session.getToken({ template: 'supabase' })
       stack: error.stack
     });
   });
+
+

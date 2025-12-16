@@ -1,19 +1,23 @@
 // contexts/SupabaseContext.tsx
 // Provides authenticated Supabase client with Clerk JWT token for RLS policies
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { useAuth } from '@clerk/clerk-react';
-import { createAuthenticatedClient, SupabaseClient, supabase } from '../services/supabase';
+import { createAuthenticatedClient, SupabaseClient, supabase, updateCurrentToken } from '../services/supabase';
 
 type SupabaseContextValue = {
   client: SupabaseClient | null;
   isAuthClient: boolean; // true only when client was created with JWT
+  refreshToken: () => Promise<void>; // Function to manually refresh token
 };
 
 const SupabaseContext = createContext<SupabaseContextValue | null>(null);
 
 // Global reference for services to access authenticated client (outside React)
 let globalAuthenticatedClient: SupabaseClient | null = null;
+
+// Global token refresh callback for error handling
+let globalTokenRefreshCallback: (() => Promise<void>) | null = null;
 
 export const useSupabase = () => {
   const context = useContext(SupabaseContext);
@@ -31,6 +35,16 @@ export const useSupabase = () => {
  */
 export const getAuthenticatedSupabaseClient = (): SupabaseClient | null => {
   return globalAuthenticatedClient;
+};
+
+/**
+ * Trigger token refresh from outside React components
+ * Used by error handlers when JWT expires
+ */
+export const refreshSupabaseToken = async (): Promise<void> => {
+  if (globalTokenRefreshCallback) {
+    await globalTokenRefreshCallback();
+  }
 };
 
 /**
@@ -61,6 +75,7 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
   });
   const [client, setClient] = useState<SupabaseClient | null>(null);
   const [isAuthClient, setIsAuthClient] = useState(false);
+  const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   console.log('[SupabaseContext] 📊 Current state:', { 
     isSignedIn, 
@@ -68,6 +83,57 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
     hasClient: !!client,
     isAuthClient
   });
+
+  // Token refresh function
+  const refreshToken = useCallback(async () => {
+    if (!isSignedIn || !getToken) {
+      console.log('[SupabaseContext] ⚠️ Cannot refresh token: not signed in or getToken unavailable');
+      return;
+    }
+
+    console.log('[SupabaseContext] 🔄 Refreshing JWT token...');
+    setIsAuthClient(false); // Reset while refreshing
+
+    try {
+      const templateName = import.meta.env.VITE_CLERK_JWT_TEMPLATE_NAME || 'supabase';
+      let token: string | null = null;
+
+      try {
+        token = await getToken({ template: templateName });
+      } catch (templateError) {
+        console.error('[SupabaseContext] Template token refresh failed:', templateError);
+        try {
+          token = await getToken();
+        } catch (basicError) {
+          console.error('[SupabaseContext] Basic token refresh also failed:', basicError);
+        }
+      }
+
+      if (!token) {
+        console.error('[SupabaseContext] ❌ Token refresh failed - no token received');
+        return;
+      }
+
+      console.log('[SupabaseContext] ✅ Token refreshed successfully');
+      // Update the stored token
+      updateCurrentToken(token);
+      const authenticatedClient = await createAuthenticatedClient(token, refreshToken);
+      setClient(authenticatedClient);
+      globalAuthenticatedClient = authenticatedClient;
+      setIsAuthClient(true);
+    } catch (error: any) {
+      console.error('[SupabaseContext] ❌ Token refresh error:', error);
+      setIsAuthClient(false);
+    }
+  }, [getToken, isSignedIn]);
+
+  // Store refresh callback globally for error handlers
+  useEffect(() => {
+    globalTokenRefreshCallback = refreshToken;
+    return () => {
+      globalTokenRefreshCallback = null;
+    };
+  }, [refreshToken]);
 
   useEffect(() => {
     console.log('[SupabaseContext] 🔄 useEffect triggered', { 
@@ -165,7 +231,9 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
           } catch (decodeError) {
             console.warn('[SupabaseContext] Could not decode JWT for debugging:', decodeError);
           }
-          const authenticatedClient = await createAuthenticatedClient(token);
+          // Update the stored token
+          updateCurrentToken(token);
+          const authenticatedClient = await createAuthenticatedClient(token, refreshToken);
           setClient(authenticatedClient);
           globalAuthenticatedClient = authenticatedClient;
           console.log('[SupabaseContext] ✅ Authenticated Supabase client created');
@@ -206,6 +274,37 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
     
     initClient();
   }, [getToken, isSignedIn]);
+
+  // Set up periodic token refresh (refresh 5 minutes before expiration)
+  // Most Clerk tokens expire after 1 hour, so refresh every 50 minutes
+  useEffect(() => {
+    if (!isSignedIn || !isAuthClient) {
+      // Clear interval if user signs out
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+        refreshIntervalRef.current = null;
+      }
+      return;
+    }
+
+    // Refresh token every 50 minutes (3000 seconds)
+    // This ensures tokens are refreshed before they expire (typically 1 hour = 3600 seconds)
+    const REFRESH_INTERVAL = 50 * 60 * 1000; // 50 minutes in milliseconds
+    
+    console.log('[SupabaseContext] ⏰ Setting up periodic token refresh (every 50 minutes)');
+    
+    refreshIntervalRef.current = setInterval(() => {
+      console.log('[SupabaseContext] ⏰ Periodic token refresh triggered');
+      refreshToken();
+    }, REFRESH_INTERVAL);
+
+    return () => {
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+        refreshIntervalRef.current = null;
+      }
+    };
+  }, [isSignedIn, isAuthClient, refreshToken]);
 
   // Expose diagnostic function globally for console debugging
   useEffect(() => {
@@ -258,9 +357,12 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
   }, [isSignedIn, getToken]);
 
   return (
-    <SupabaseContext.Provider value={{ client, isAuthClient }}>
+    <SupabaseContext.Provider value={{ client, isAuthClient, refreshToken }}>
       {children}
     </SupabaseContext.Provider>
   );
 };
+
+
+
 

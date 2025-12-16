@@ -1,0 +1,56 @@
+❌ [Sync] Fetch error for users: {code: 'PGRST303', details: null, hint: null, message: 'JWT expired'}
+pm @ supabaseService.ts:1259
+await in pm
+(anonymous) @ App.tsx:319
+(anonymous) @ useRealtimeStatus.ts:57Understand this error
+supabase.ts:39  GET https://rnnqusevbnxnxmhlajlr.supabase.co/rest/v1/expenses?select=*&household_id=eq.ecb34564-470c-41ea-a7ef-ed7446dd853d 401 (Unauthorized)
+fetch @ supabase.ts:39
+(anonymous) @ fetch.js:3
+(anonymous) @ fetch.js:23
+await in (anonymous)
+then @ PostgrestBuilder.js:72Understand this error
+supabase.ts:39  GET https://rnnqusevbnxnxmhlajlr.supabase.co/rest/v1/expenses?select=*%2Creceipts%21receipts_expense_id_fkey%28image_url%2Cimage_path%29&household_id=eq.ecb34564-470c-41ea-a7ef-ed7446dd853d 401 (Unauthorized)
+fetch @ supabase.ts:39
+(anonymous) @ fetch.js:3
+(anonymous) @ fetch.js:23
+await in (anonymous)
+then @ PostgrestBuilder.js:72Understand this error
+supabaseService.ts:1259 ❌ [Sync] Fetch error for expenses: {code: 'PGRST303', details: null, hint: null, message: 'JWT expired'}
+pm @ supabaseService.ts:1259
+await in pm
+(anonymous) @ App.tsx:322
+(anonymous) @ useRealtimeStatus.ts:57Understand this error
+supabase.ts:39  GET https://rnnqusevbnxnxmhlajlr.supabase.co/rest/v1/todo_items?select=*&household_id=eq.ecb34564-470c-41ea-a7ef-ed7446dd853d 401 (Unauthorized)
+fetch @ supabase.ts:39
+(anonymous) @ fetch.js:3
+(anonymous) @ fetch.js:23
+await in (anonymous)
+then @ PostgrestBuilder.js:72Understand this error
+supabase.ts:39  GET https://rnnqusevbnxnxmhlajlr.supabase.co/rest/v1/meals?select=*&household_id=eq.ecb34564-470c-41ea-a7ef-ed7446dd853d 401 (Unauthorized)
+fetch @ supabase.ts:39
+(anonymous) @ fetch.js:3
+(anonymous) @ fetch.js:23
+await in (anonymous)
+then @ PostgrestBuilder.js:72Understand this error
+supabase.ts:39  GET https://rnnqusevbnxnxmhlajlr.supabase.co/rest/v1/users?select=*&household_id=eq.ecb34564-470c-41ea-a7ef-ed7446dd853d 401 (Unauthorized)
+fetch @ supabase.ts:39
+(anonymous) @ fetch.js:3
+(anonymous) @ fetch.js:23
+await in (anonymous)
+then @ PostgrestBuilder.js:72Understand this error
+supabaseService.ts:1259 ❌ [Sync] Fetch error for todo_items: {code: 'PGRST303', details: null, hint: null, message: 'JWT expired'}
+pm @ supabaseService.ts:1259
+await in pm
+(anonymous) @ App.tsx:320
+(anonymous) @ useRealtimeStatus.ts:57Understand this error
+supabaseService.ts:1259 ❌ [Sync] Fetch error for meals: {code: 'PGRST303', details: null, hint: null, message: 'JWT expired'}
+pm @ supabaseService.ts:1259
+await in pm
+(anonymous) @ App.tsx:321
+(anonymous) @ useRealtimeStatus.ts:57Understand this error
+supabaseService.ts:1259 ❌ [Sync] Fetch error for users: {code: 'PGRST303', details: null, hint: null, message: 'JWT expired'}
+pm @ supabaseService.ts:1259
+await in pm
+(anonymous) @ App.tsx:319
+(anonymous) @ useRealtimeStatus.ts:57Understand this error
+supabase.ts:39  GET https://rnnqusevbnxnxmhlajlr.supabase.co/rest/v1/expenses?select=*&household_id=eq.ecb34564-470c-41ea-a7ef-ed7446dd853d 401 (Unauthorized)

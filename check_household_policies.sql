@@ -10,3 +10,5 @@ FROM pg_policies
 WHERE schemaname = 'public'
   AND tablename = 'households'
 ORDER BY cmd, policyname;
+
+

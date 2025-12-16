@@ -10,3 +10,5 @@ USING (get_clerk_id() IS NOT NULL);
 
 -- This will allow the household fetch to work for testing
 -- But it's not secure - remove after identifying the issue
+
+

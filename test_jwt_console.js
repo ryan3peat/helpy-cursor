@@ -55,3 +55,5 @@ session.getToken({ template: 'supabase' }).then(token => {
 }).catch(error => {
   console.error('❌ Failed to get JWT token:', error);
 });
+
+

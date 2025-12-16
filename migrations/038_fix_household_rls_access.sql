@@ -133,3 +133,5 @@ WHERE proname = 'get_user_household_id';
 -- 3. Check Network tab for Authorization header
 -- 4. Run the debug function again to see if issues are resolved
 -- 5. If still failing, check Clerk JWT template configuration
+
+

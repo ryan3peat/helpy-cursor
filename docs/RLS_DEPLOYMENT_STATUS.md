@@ -152,3 +152,5 @@ If you encounter issues:
 3. Verify JWT token is in request headers
 4. Test with a simple query in browser console
 
+
+

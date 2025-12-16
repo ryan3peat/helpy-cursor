@@ -52,3 +52,5 @@ SELECT
     ) THEN '❌ BLOCKED: User not in household'
     ELSE '✅ ALLOWED'
   END as access_status;
+
+

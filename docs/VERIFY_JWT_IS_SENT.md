@@ -67,3 +67,5 @@ After deploying updated `Auth.tsx`:
 3. **If JWT is present** - RLS should work
 4. **If JWT is missing** - check SupabaseContext logs and Clerk JWT template
 
+
+

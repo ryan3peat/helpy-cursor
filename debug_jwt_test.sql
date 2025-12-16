@@ -20,3 +20,5 @@ SELECT
   'Function Analysis' as test,
   'get_clerk_id() extracts clerk_id from JWT claims' as description,
   'If NULL, either no JWT sent or missing clerk_id claim' as diagnosis;
+
+

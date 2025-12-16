@@ -241,3 +241,5 @@ console.log('Clerk user:', window.Clerk?.user?.id);
 console.log('Is signed in:', !!window.Clerk?.user);
 ```
 
+
+

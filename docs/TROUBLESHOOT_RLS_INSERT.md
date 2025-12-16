@@ -107,3 +107,5 @@ SELECT get_clerk_id() as clerk_id_from_jwt;
 - ✅ No RLS policy violations in console
 - ✅ No 401 Unauthorized errors
 
+
+

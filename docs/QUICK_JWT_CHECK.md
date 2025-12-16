@@ -91,3 +91,5 @@ checkJWT();
 4. **Check Network tab** for Authorization header
 5. **Check Supabase logs** for 401 errors
 
+
+

@@ -114,3 +114,5 @@ SELECT
 -- - JWT not being sent from frontend
 -- - Clerk JWT template misconfigured
 -- - User not properly created in database
+
+

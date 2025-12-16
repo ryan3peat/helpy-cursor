@@ -288,3 +288,5 @@ VITE_CLERK_JWT_TEMPLATE_NAME=supabase
 - [ ] User exists in Supabase `users` table with matching `clerk_id`
 - [ ] User has valid `household_id` in the database
 
+
+

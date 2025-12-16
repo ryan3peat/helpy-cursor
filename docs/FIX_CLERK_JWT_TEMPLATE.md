@@ -94,3 +94,5 @@ If your template has a different name (e.g., `Supabase`, `supabase-integration`)
 - [ ] No errors in browser console
 - [ ] JWT token appears in Network tab headers
 
+
+

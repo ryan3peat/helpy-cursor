@@ -38,7 +38,7 @@ import Avatar from "./ui/Avatar";
 import { BaseViewProps, User, UserRole, TranslationDictionary } from "@/types";
 import { useTranslatedContent } from "@/hooks/useTranslatedContent";
 import { detectInputLanguage } from "@/services/languageDetectionService";
-import { supabase } from "@/services/supabase";
+import { useSupabase } from "@/contexts/SupabaseContext";
 
 // Essential Info Types & Services
 import type {
@@ -485,6 +485,9 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
   onNavigateToProfile,
   onEditHelper,
 }) => {
+  // Get authenticated Supabase client (with JWT for RLS)
+  const supabase = useSupabase();
+  
   // ─────────────────────────────────────────────────────────────────
   // Section Toggle State
   // ─────────────────────────────────────────────────────────────────
@@ -522,7 +525,7 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
   // Fetch subscription plan on mount
   useEffect(() => {
     const fetchSubscriptionPlan = async () => {
-      if (!householdId) return;
+      if (!householdId || !supabase) return;
       
       try {
         const { data, error } = await supabase
@@ -545,7 +548,7 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
     };
     
     fetchSubscriptionPlan();
-  }, [householdId]);
+  }, [householdId, supabase]);
   
   // Helper Management is only available to Core and Pro users (not Free)
   const hasHelperManagementAccess = subscriptionPlan === 'core' || subscriptionPlan === 'pro';

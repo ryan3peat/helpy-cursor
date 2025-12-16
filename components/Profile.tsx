@@ -1487,9 +1487,13 @@ const Profile: React.FC<ProfileProps> = ({
                         {t['profile.helper_base_salary'] || 'Base Salary (HK$/month)'}
                       </label>
                       <input
-                        type="number"
-                        value={editHelperBaseSalary}
-                        onChange={(e) => setEditHelperBaseSalary(Number(e.target.value))}
+                        type="text"
+                        inputMode="numeric"
+                        value={editHelperBaseSalary || ''}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/[^0-9]/g, '');
+                          setEditHelperBaseSalary(val === '' ? 0 : parseInt(val, 10));
+                        }}
                         className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
                         placeholder="5100"
                       />
@@ -1501,9 +1505,13 @@ const Profile: React.FC<ProfileProps> = ({
                         {t['profile.helper_food_allowance'] || 'Food Allowance (HK$/month)'}
                       </label>
                       <input
-                        type="number"
-                        value={editHelperFoodAllowance}
-                        onChange={(e) => setEditHelperFoodAllowance(Number(e.target.value))}
+                        type="text"
+                        inputMode="numeric"
+                        value={editHelperFoodAllowance || ''}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/[^0-9]/g, '');
+                          setEditHelperFoodAllowance(val === '' ? 0 : parseInt(val, 10));
+                        }}
                         className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
                         placeholder="1236"
                       />
@@ -1524,9 +1532,13 @@ const Profile: React.FC<ProfileProps> = ({
                             className="flex-1 px-3 py-2 rounded-lg bg-secondary border border-border"
                           />
                           <input
-                            type="number"
-                            value={allowance.amount}
-                            onChange={(e) => updateOtherAllowance(index, 'amount', Number(e.target.value))}
+                            type="text"
+                            inputMode="numeric"
+                            value={allowance.amount || ''}
+                            onChange={(e) => {
+                              const val = e.target.value.replace(/[^0-9]/g, '');
+                              updateOtherAllowance(index, 'amount', val === '' ? 0 : parseInt(val, 10));
+                            }}
                             placeholder="0"
                             className="w-24 px-3 py-2 rounded-lg bg-secondary border border-border"
                           />

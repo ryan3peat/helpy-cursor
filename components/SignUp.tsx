@@ -25,7 +25,7 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
   const [isOAuthProcessing, setIsOAuthProcessing] = useState(false);
   const [hasCheckedOAuthRedirect, setHasCheckedOAuthRedirect] = useState(false);
 
-  // Check for invite params and preserve them
+  // Check for invite params and preserve them (in URL AND sessionStorage for OAuth)
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const hashParams = new URLSearchParams(window.location.hash.split('?')[1] || '');
@@ -37,6 +37,25 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
       // Preserve invite params in URL
       const inviteUrl = `/?invite=true&hid=${hid}&uid=${uid}`;
       window.history.replaceState({}, '', inviteUrl);
+      // Also store in sessionStorage to survive OAuth redirect
+      sessionStorage.setItem('pendingInvite', JSON.stringify({ hid, uid }));
+      console.log('[SignUp] Stored invite params in sessionStorage:', { hid, uid });
+    } else {
+      // Check if we have stored invite params from before OAuth redirect
+      const storedInvite = sessionStorage.getItem('pendingInvite');
+      if (storedInvite) {
+        try {
+          const { hid: storedHid, uid: storedUid } = JSON.parse(storedInvite);
+          if (storedHid && storedUid) {
+            console.log('[SignUp] Restored invite params from sessionStorage:', { storedHid, storedUid });
+            // Restore the URL params
+            const inviteUrl = `/?invite=true&hid=${storedHid}&uid=${storedUid}`;
+            window.history.replaceState({}, '', inviteUrl);
+          }
+        } catch (e) {
+          console.error('[SignUp] Failed to parse stored invite params:', e);
+        }
+      }
     }
   }, []);
 

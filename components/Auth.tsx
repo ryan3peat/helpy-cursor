@@ -123,9 +123,27 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
       const uidMatch = fullUrl.match(/[?&]uid=([^&]+)/);
       
       // Check both query params and hash params (Clerk uses hash routing)
-      const isInvite = urlParams.get('invite') === 'true' || hashParams.get('invite') === 'true' || urlMatch !== null;
-      const hid = urlParams.get('hid') || hashParams.get('hid') || (hidMatch ? decodeURIComponent(hidMatch[1]) : null);
-      const uid = urlParams.get('uid') || hashParams.get('uid') || (uidMatch ? decodeURIComponent(uidMatch[1]) : null);
+      let isInvite = urlParams.get('invite') === 'true' || hashParams.get('invite') === 'true' || urlMatch !== null;
+      let hid = urlParams.get('hid') || hashParams.get('hid') || (hidMatch ? decodeURIComponent(hidMatch[1]) : null);
+      let uid = urlParams.get('uid') || hashParams.get('uid') || (uidMatch ? decodeURIComponent(uidMatch[1]) : null);
+      
+      // CRITICAL: Also check sessionStorage for invite params (OAuth redirects may lose URL params)
+      if (!hid || !uid) {
+        const storedInvite = sessionStorage.getItem('pendingInvite');
+        if (storedInvite) {
+          try {
+            const parsed = JSON.parse(storedInvite);
+            if (parsed.hid && parsed.uid) {
+              console.log('🔍 [Auth] Restored invite params from sessionStorage:', parsed);
+              hid = parsed.hid;
+              uid = parsed.uid;
+              isInvite = true;
+            }
+          } catch (e) {
+            console.error('[Auth] Failed to parse stored invite:', e);
+          }
+        }
+      }
       
       console.log('🔍 [Auth] Invite params check:', { isInvite, hid, uid });
       console.log('🔍 [Auth] URL params:', { urlParams: Object.fromEntries(urlParams), hashParams: Object.fromEntries(hashParams) });
@@ -156,8 +174,9 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
             const activatedUser = result.user;
             console.log('✅ [Auth] Invited user activated via API:', activatedUser);
             
-            // Clear the invite params from URL
+            // Clear the invite params from URL and sessionStorage
             window.history.replaceState({}, '', window.location.pathname);
+            sessionStorage.removeItem('pendingInvite');
             
             // Call onLogin and then reset state
             onLogin({
@@ -182,6 +201,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
             console.log('⏰ Invitation expired');
             alert('This invitation has expired. Please ask for a new invite link.');
             window.history.replaceState({}, '', window.location.pathname);
+            sessionStorage.removeItem('pendingInvite');
           } else if (result.notFound) {
             console.log('⚠️ [Auth] Invitation not found, may already be activated');
             // Don't clear URL yet - continue to check if user exists by email
@@ -192,8 +212,9 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
           console.error('❌ [Auth] Accept invite API error:', error);
         }
         
-        // Clear URL params if we didn't return above
+        // Clear URL params and sessionStorage if we didn't return above
         window.history.replaceState({}, '', window.location.pathname);
+        sessionStorage.removeItem('pendingInvite');
       }
 
       // ============================================================

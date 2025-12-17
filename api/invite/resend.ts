@@ -57,7 +57,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .eq('id', userId);
 
     // 3. Generate new invite link
-    const appUrl = process.env.VITE_APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://app.helpyfam.com';
+    // Always use app subdomain for invite links
+    const appUrl = 'https://app.helpyfam.com';
     const inviteLink = `${appUrl}?invite=true&hid=${householdId}&uid=${userId}`;
 
     return res.status(200).json({

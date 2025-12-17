@@ -1,6 +1,6 @@
 // components/Auth.tsx
 import React, { useState } from 'react';
-import { SignIn, useUser } from '@clerk/clerk-react';
+import { SignIn, useUser, useClerk } from '@clerk/clerk-react';
 import { useSupabase, useSupabaseReady, getAuthenticatedSupabaseClient } from '../contexts/SupabaseContext';
 import { supabase as defaultSupabase } from '../services/supabase';
 import { User, TranslationDictionary } from '../types';
@@ -25,6 +25,7 @@ interface AuthProps {
 
 const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
   const { user, isLoaded } = useUser();
+  const { signOut } = useClerk();
   const supabaseFromContext = useSupabase(); // Authenticated client from context
   const isSupabaseReady = useSupabaseReady(); // Check if JWT is ready
   const [isCreatingUser, setIsCreatingUser] = React.useState(false);
@@ -613,12 +614,14 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
 
       console.log('✅ User deleted from Supabase');
 
-      // Delete the Clerk account
+      // Sign out from Clerk and redirect to homepage
+      // Note: We sign out instead of deleting the Clerk account because 
+      // client-side deletion may not have proper permissions
       try {
-        await user.delete();
-        console.log('✅ Clerk account deleted');
+        await signOut();
+        console.log('✅ User signed out from Clerk');
       } catch (clerkError) {
-        console.error('❌ Failed to delete Clerk account:', clerkError);
+        console.error('⚠️ Failed to sign out from Clerk:', clerkError);
         // Continue anyway - Supabase data is already deleted
       }
 

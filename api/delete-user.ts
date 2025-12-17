@@ -36,13 +36,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     // Verify the requester is part of the same household and has permission
     if (requesterId) {
-      const { data: requester, error: requesterError } = await supabase
+      // Note: requesterId from frontend could be clerk_id OR database id
+      // First try clerk_id, then fall back to id
+      let requester = null;
+      
+      const { data: requesterByClerkId } = await supabase
         .from('users')
-        .select('id, household_id, role')
-        .eq('id', requesterId)
-        .single();
+        .select('id, household_id, role, clerk_id')
+        .eq('clerk_id', requesterId)
+        .eq('household_id', householdId)
+        .maybeSingle();
+      
+      if (requesterByClerkId) {
+        requester = requesterByClerkId;
+      } else {
+        // Fall back to lookup by database id
+        const { data: requesterById } = await supabase
+          .from('users')
+          .select('id, household_id, role, clerk_id')
+          .eq('id', requesterId)
+          .eq('household_id', householdId)
+          .maybeSingle();
+        
+        requester = requesterById;
+      }
 
-      if (requesterError || !requester) {
+      if (!requester) {
+        console.error('Requester lookup failed:', { requesterId, householdId });
         return res.status(403).json({ error: 'Requester not found' });
       }
 
@@ -58,25 +78,46 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Get user to delete (verify they exist and are in the correct household)
-    const { data: userToDelete, error: fetchError } = await supabase
+    // Note: userId from frontend could be clerk_id OR database id
+    let userToDelete = null;
+    
+    const { data: userByClerkId } = await supabase
       .from('users')
-      .select('id, household_id, role, name')
-      .eq('id', userId)
+      .select('id, household_id, role, name, clerk_id')
+      .eq('clerk_id', userId)
       .eq('household_id', householdId)
-      .single();
+      .maybeSingle();
+    
+    if (userByClerkId) {
+      userToDelete = userByClerkId;
+    } else {
+      // Fall back to lookup by database id
+      const { data: userById } = await supabase
+        .from('users')
+        .select('id, household_id, role, name, clerk_id')
+        .eq('id', userId)
+        .eq('household_id', householdId)
+        .maybeSingle();
+      
+      userToDelete = userById;
+    }
 
-    if (fetchError || !userToDelete) {
+    if (!userToDelete) {
+      console.error('User to delete lookup failed:', { userId, householdId });
       return res.status(404).json({ error: 'User not found in this household' });
     }
 
-    // Prevent deleting the master user
-    if (userToDelete.role?.toLowerCase() === 'master') {
+    // Use the actual database ID for operations
+    const dbUserId = userToDelete.id;
+
+    // Prevent deleting the master user (Admin role)
+    if (userToDelete.role === 'Admin') {
       return res.status(403).json({ error: 'Cannot delete the household owner' });
     }
 
-    const userRole = userToDelete.role?.toLowerCase();
-    const isChild = userRole === 'child';
-    const isSpouseOrHelper = ['spouse', 'helper'].includes(userRole || '');
+    const userRole = userToDelete.role;
+    const isChild = userRole === 'Child';
+    const isSpouseOrHelper = ['Spouse', 'Helper'].includes(userRole || '');
 
     let operationResult;
     let operationMessage;
@@ -86,7 +127,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const { error: deleteError } = await supabase
         .from('users')
         .delete()
-        .eq('id', userId)
+        .eq('id', dbUserId)
         .eq('household_id', householdId);
 
       if (deleteError) {
@@ -98,14 +139,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       operationResult = 'deleted';
       operationMessage = `User ${userToDelete.name} has been completely removed from the system`;
-      console.log(`✅ Successfully deleted child user ${userToDelete.name} (${userId}) entirely from database`);
+      console.log(`✅ Successfully deleted child user ${userToDelete.name} (${dbUserId}) entirely from database`);
 
     } else if (isSpouseOrHelper) {
       // Remove spouse/helper from household but keep their account
       const { error: updateError } = await supabase
         .from('users')
         .update({ household_id: null })
-        .eq('id', userId)
+        .eq('id', dbUserId)
         .eq('household_id', householdId);
 
       if (updateError) {
@@ -117,14 +158,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       operationResult = 'removed';
       operationMessage = `User ${userToDelete.name} has been removed from the household but their account is preserved`;
-      console.log(`✅ Successfully removed spouse/helper user ${userToDelete.name} (${userId}) from household ${householdId}, account preserved`);
+      console.log(`✅ Successfully removed spouse/helper user ${userToDelete.name} (${dbUserId}) from household ${householdId}, account preserved`);
 
     } else {
-      // For other roles, default to removing from household (keep account)
+      // For other roles (e.g., 'Other'), default to removing from household (keep account)
       const { error: updateError } = await supabase
         .from('users')
         .update({ household_id: null })
-        .eq('id', userId)
+        .eq('id', dbUserId)
         .eq('household_id', householdId);
 
       if (updateError) {
@@ -136,7 +177,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       operationResult = 'removed';
       operationMessage = `User ${userToDelete.name} has been removed from the household`;
-      console.log(`✅ Successfully removed user ${userToDelete.name} (${userId}) from household ${householdId}`);
+      console.log(`✅ Successfully removed user ${userToDelete.name} (${dbUserId}) from household ${householdId}`);
     }
 
     return res.status(200).json({

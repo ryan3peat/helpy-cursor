@@ -199,15 +199,35 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
     setError('');
 
     try {
-      // Preserve invite params before signup
+      // Preserve invite params before signup - check URL and sessionStorage
       const urlParams = new URLSearchParams(window.location.search);
       const hashParams = new URLSearchParams(window.location.hash.split('?')[1] || '');
-      const isInvite = urlParams.get('invite') === 'true' || hashParams.get('invite') === 'true';
-      const hid = urlParams.get('hid') || hashParams.get('hid');
-      const uid = urlParams.get('uid') || hashParams.get('uid');
+      let isInvite = urlParams.get('invite') === 'true' || hashParams.get('invite') === 'true';
+      let hid = urlParams.get('hid') || hashParams.get('hid');
+      let uid = urlParams.get('uid') || hashParams.get('uid');
+      
+      // Also check sessionStorage as fallback
+      if (!hid || !uid) {
+        const storedInvite = sessionStorage.getItem('pendingInvite');
+        if (storedInvite) {
+          try {
+            const parsed = JSON.parse(storedInvite);
+            if (parsed.hid && parsed.uid) {
+              hid = parsed.hid;
+              uid = parsed.uid;
+              isInvite = true;
+            }
+          } catch (e) {
+            console.error('[SignUp] Failed to parse stored invite:', e);
+          }
+        }
+      }
       
       if (isInvite && hid && uid) {
+        // Store in sessionStorage to survive verification step
+        sessionStorage.setItem('pendingInvite', JSON.stringify({ hid, uid }));
         window.history.replaceState({}, '', `/?invite=true&hid=${hid}&uid=${uid}`);
+        console.log('[SignUp] Stored invite params before signup:', { hid, uid });
       }
 
       await signUp.create({
@@ -223,11 +243,13 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
       
       if (hasUnverifiedEmail && formData.email) {
         // Send email verification code
+        // Invite params are already stored in sessionStorage
         await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
         setVerificationStep('email');
       } else if (signUp.status === 'complete') {
         // Preserve invite params before setActive
         if (isInvite && hid && uid) {
+          sessionStorage.setItem('pendingInvite', JSON.stringify({ hid, uid }));
           window.history.replaceState({}, '', `/?invite=true&hid=${hid}&uid=${uid}`);
         }
         // No verification needed, sign up is complete
@@ -263,15 +285,36 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
       });
 
       if (result.status === 'complete') {
-        // Preserve invite params before setActive
+        // Preserve invite params before setActive - check URL and sessionStorage
         const urlParams = new URLSearchParams(window.location.search);
         const hashParams = new URLSearchParams(window.location.hash.split('?')[1] || '');
-        const isInvite = urlParams.get('invite') === 'true' || hashParams.get('invite') === 'true';
-        const hid = urlParams.get('hid') || hashParams.get('hid');
-        const uid = urlParams.get('uid') || hashParams.get('uid');
+        let isInvite = urlParams.get('invite') === 'true' || hashParams.get('invite') === 'true';
+        let hid = urlParams.get('hid') || hashParams.get('hid');
+        let uid = urlParams.get('uid') || hashParams.get('uid');
+        
+        // Also check sessionStorage (params may have been stored there)
+        if (!hid || !uid) {
+          const storedInvite = sessionStorage.getItem('pendingInvite');
+          if (storedInvite) {
+            try {
+              const parsed = JSON.parse(storedInvite);
+              if (parsed.hid && parsed.uid) {
+                console.log('[SignUp] Restored invite from sessionStorage in handleVerify:', parsed);
+                hid = parsed.hid;
+                uid = parsed.uid;
+                isInvite = true;
+              }
+            } catch (e) {
+              console.error('[SignUp] Failed to parse stored invite:', e);
+            }
+          }
+        }
         
         if (isInvite && hid && uid) {
+          // Store in sessionStorage in case setActive triggers a refresh
+          sessionStorage.setItem('pendingInvite', JSON.stringify({ hid, uid }));
           window.history.replaceState({}, '', `/?invite=true&hid=${hid}&uid=${uid}`);
+          console.log('[SignUp] Preserved invite params before setActive:', { hid, uid });
         }
         
         await setActive({ session: result.createdSessionId });

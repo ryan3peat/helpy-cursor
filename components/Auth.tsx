@@ -204,17 +204,158 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
             sessionStorage.removeItem('pendingInvite');
           } else if (result.notFound) {
             console.log('⚠️ [Auth] Invitation not found, may already be activated');
-            // Don't clear URL yet - continue to check if user exists by email
+            // Don't clear sessionStorage - continue to check if user was already activated
+            // The pending user might have been activated already, so STEP 2 will find them
+          } else if (result.alreadyActivated && result.user) {
+            // User was already activated by a previous attempt
+            console.log('✅ [Auth] User already activated:', result.user);
+            const activatedUser = result.user;
+            window.history.replaceState({}, '', window.location.pathname);
+            sessionStorage.removeItem('pendingInvite');
+            
+            onLogin({
+              id: activatedUser.clerk_id || activatedUser.id,
+              householdId: activatedUser.household_id,
+              email: activatedUser.email,
+              name: activatedUser.name,
+              role: activatedUser.role,
+              avatar: activatedUser.avatar,
+              allergies: activatedUser.allergies || [],
+              preferences: activatedUser.preferences || [],
+              status: 'active',
+              notificationsEnabled: activatedUser.notifications_enabled ?? true,
+              onboardingStatus: activatedUser.onboarding_status || 'not_started'
+            });
+            setIsCreatingUser(false);
+            return;
           } else {
             console.error('❌ [Auth] Failed to activate via API:', result.error);
           }
         } catch (error) {
           console.error('❌ [Auth] Accept invite API error:', error);
+          
+          // FALLBACK: Try to find and activate the pending user directly via Supabase
+          // This handles cases where the API fails but the pending user exists
+          console.log('🔄 [Auth] Trying direct Supabase fallback for invite...');
+          try {
+            // First check if user was already activated with this clerk_id
+            const { data: existingByClerkId } = await clientToUse
+              .from('users')
+              .select('*')
+              .eq('clerk_id', clerkUser.id)
+              .eq('household_id', hid)
+              .maybeSingle();
+            
+            if (existingByClerkId) {
+              console.log('✅ [Auth] Found already-activated user by clerk_id:', existingByClerkId);
+              window.history.replaceState({}, '', window.location.pathname);
+              sessionStorage.removeItem('pendingInvite');
+              
+              onLogin({
+                id: existingByClerkId.clerk_id || existingByClerkId.id,
+                householdId: existingByClerkId.household_id,
+                email: existingByClerkId.email,
+                name: existingByClerkId.name,
+                role: existingByClerkId.role,
+                avatar: existingByClerkId.avatar,
+                allergies: existingByClerkId.allergies || [],
+                preferences: existingByClerkId.preferences || [],
+                status: 'active',
+                notificationsEnabled: existingByClerkId.notifications_enabled ?? true,
+                onboardingStatus: existingByClerkId.onboarding_status || 'not_started'
+              });
+              setIsCreatingUser(false);
+              return;
+            }
+            
+            // Try to find the pending user by ID (regardless of status, in case it changed)
+            const { data: pendingByUid } = await clientToUse
+              .from('users')
+              .select('*')
+              .eq('id', uid)
+              .eq('household_id', hid)
+              .maybeSingle();
+            
+            if (pendingByUid) {
+              console.log('✅ [Auth] Found user by uid:', pendingByUid);
+              
+              // Activate them if still pending
+              if (pendingByUid.status === 'pending') {
+                const { data: activated, error: activateErr } = await clientToUse
+                  .from('users')
+                  .update({
+                    status: 'active',
+                    clerk_id: clerkUser.id,
+                    email: clerkEmail,
+                    invite_expires_at: null,
+                  })
+                  .eq('id', uid)
+                  .eq('household_id', hid)
+                  .select()
+                  .single();
+                
+                if (!activateErr && activated) {
+                  console.log('✅ [Auth] Activated pending user via fallback:', activated);
+                  window.history.replaceState({}, '', window.location.pathname);
+                  sessionStorage.removeItem('pendingInvite');
+                  
+                  onLogin({
+                    id: activated.clerk_id || activated.id,
+                    householdId: activated.household_id,
+                    email: activated.email,
+                    name: activated.name,
+                    role: activated.role,
+                    avatar: activated.avatar,
+                    allergies: activated.allergies || [],
+                    preferences: activated.preferences || [],
+                    status: 'active',
+                    notificationsEnabled: activated.notifications_enabled ?? true,
+                    onboardingStatus: activated.onboarding_status || 'not_started'
+                  });
+                  setIsCreatingUser(false);
+                  return;
+                }
+              } else if (pendingByUid.status === 'active') {
+                // Already active, just update clerk_id if needed
+                if (pendingByUid.clerk_id !== clerkUser.id) {
+                  await clientToUse
+                    .from('users')
+                    .update({ clerk_id: clerkUser.id })
+                    .eq('id', uid);
+                }
+                
+                console.log('✅ [Auth] User already active, logging in:', pendingByUid);
+                window.history.replaceState({}, '', window.location.pathname);
+                sessionStorage.removeItem('pendingInvite');
+                
+                onLogin({
+                  id: clerkUser.id,
+                  householdId: pendingByUid.household_id,
+                  email: pendingByUid.email,
+                  name: pendingByUid.name,
+                  role: pendingByUid.role,
+                  avatar: pendingByUid.avatar,
+                  allergies: pendingByUid.allergies || [],
+                  preferences: pendingByUid.preferences || [],
+                  status: 'active',
+                  notificationsEnabled: pendingByUid.notifications_enabled ?? true,
+                  onboardingStatus: pendingByUid.onboarding_status || 'not_started'
+                });
+                setIsCreatingUser(false);
+                return;
+              }
+            }
+          } catch (fallbackError) {
+            console.error('❌ [Auth] Fallback activation failed:', fallbackError);
+          }
+          
+          // Clear sessionStorage since all attempts failed
+          sessionStorage.removeItem('pendingInvite');
         }
         
-        // Clear URL params and sessionStorage if we didn't return above
+        // Clear URL params but NOT sessionStorage yet - we might need it for fallback
+        // (sessionStorage is only cleared on success, expiry, or API error above)
         window.history.replaceState({}, '', window.location.pathname);
-        sessionStorage.removeItem('pendingInvite');
       }
 
       // ============================================================

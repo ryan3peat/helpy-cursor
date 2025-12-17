@@ -185,6 +185,15 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
           } else if (result.notFound) {
             console.log('⚠️ [Auth] Invitation not found, may already be activated');
             // Don't clear URL yet - continue to check if user exists by email
+          } else if (result.requiresSwitch) {
+            // User already belongs to another household - need to handle switch
+            console.log('🔄 [Auth] User belongs to different household, requires switch');
+            console.log('🔄 [Auth] Existing household:', result.existingHouseholdId);
+            console.log('🔄 [Auth] Invited household:', result.invitedHouseholdId);
+            
+            // Don't clear URL - let App.tsx/InviteSetup handle the household switch
+            // The user needs to see the household switch modal
+            // For now, continue to check existing user - they'll see the switch modal
           } else {
             console.error('❌ [Auth] Failed to activate via API:', result.error);
           }
@@ -192,8 +201,10 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
           console.error('❌ [Auth] Accept invite API error:', error);
         }
         
-        // Clear URL params if we didn't return above
-        window.history.replaceState({}, '', window.location.pathname);
+        // DON'T clear URL params yet - let the flow continue
+        // The invite might still be processable by later steps
+        // Only clear after STEP 4 (new user creation) would run
+        console.log('⚠️ [Auth] Invite processing incomplete, keeping URL params for debugging');
       }
 
       // ============================================================
@@ -407,6 +418,24 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
       // ============================================================
       // STEP 4: Create new household and user (first-time signup)
       // ============================================================
+      
+      // CRITICAL: If invite params were detected but not processed, don't create a new household
+      // Re-check URL params to see if this was an invite attempt
+      const finalUrlParams = new URLSearchParams(window.location.search);
+      const finalHashParams = new URLSearchParams(window.location.hash.split('?')[1] || '');
+      const wasInviteAttempt = finalUrlParams.get('invite') === 'true' || finalHashParams.get('invite') === 'true';
+      const finalHid = finalUrlParams.get('hid') || finalHashParams.get('hid');
+      const finalUid = finalUrlParams.get('uid') || finalHashParams.get('uid');
+      
+      if (wasInviteAttempt && finalHid && finalUid) {
+        console.error('❌ [Auth] Invite params detected but not processed - NOT creating new household');
+        console.error('❌ [Auth] Invite details:', { hid: finalHid, uid: finalUid });
+        alert('There was a problem processing your invitation. Please try clicking the invite link again or contact the household admin for a new link.');
+        window.history.replaceState({}, '', window.location.pathname);
+        setIsCreatingUser(false);
+        return;
+      }
+      
       console.log('👤 New user, creating household and user via API...');
 
       // Use the signup API route with service role key (bypasses RLS)

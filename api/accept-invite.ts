@@ -37,7 +37,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    // 1. Check if user already exists with this clerk_id (already activated)
+    // 1. Check if user already exists with this clerk_id
     const { data: existingUser, error: existingError } = await supabase
       .from('users')
       .select('*')
@@ -46,11 +46,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (existingUser) {
       console.log('[Accept Invite API] User already exists with clerk_id:', existingUser.id);
-      return res.status(200).json({
-        success: true,
-        user: existingUser,
-        message: 'User already activated',
-        alreadyActivated: true
+      
+      // Check if they're already in the INVITED household (same invite was processed)
+      if (existingUser.household_id === householdId && existingUser.id === pendingUserId) {
+        console.log('[Accept Invite API] User already activated for THIS invite');
+        return res.status(200).json({
+          success: true,
+          user: existingUser,
+          message: 'User already activated',
+          alreadyActivated: true
+        });
+      }
+      
+      // User exists but in a DIFFERENT household - this is a household switch scenario
+      // Return a special response so the frontend can handle it
+      console.log('[Accept Invite API] User exists in different household:', existingUser.household_id);
+      return res.status(409).json({
+        error: 'User already belongs to another household',
+        existingHouseholdId: existingUser.household_id,
+        invitedHouseholdId: householdId,
+        requiresSwitch: true
       });
     }
 

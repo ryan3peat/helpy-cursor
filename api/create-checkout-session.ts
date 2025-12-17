@@ -136,7 +136,7 @@ export default async function handler(req: any, res: any) {
     }
 
     // Use environment variable with fallback
-    const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://helpyfam.com';
+    const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://app.helpyfam.com';
 
     let promotionCodeId: string | undefined;
 

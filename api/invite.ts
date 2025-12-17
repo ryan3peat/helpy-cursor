@@ -121,7 +121,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // 2. Generate simple invite link (no Clerk involved) - only for non-child users
-    const appUrl = process.env.VITE_APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://helpyfam.com';
+    const appUrl = process.env.VITE_APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://app.helpyfam.com';
     const inviteLink = isChild ? null : `${appUrl}?invite=true&hid=${householdId}&uid=${newUser.id}`;
 
     // 3. Return success

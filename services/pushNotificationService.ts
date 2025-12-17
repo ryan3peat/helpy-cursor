@@ -465,7 +465,7 @@ async function saveSubscriptionToDatabase(
     console.warn('[Push] JWT verification failed, using API route fallback');
     
     try {
-      const appUrl = import.meta.env.VITE_APP_URL || import.meta.env.NEXT_PUBLIC_APP_URL || 'https://helpyfam.com';
+      const appUrl = import.meta.env.VITE_APP_URL || import.meta.env.NEXT_PUBLIC_APP_URL || 'https://app.helpyfam.com';
       const apiUrl = `${appUrl}/api/save-push-subscription`;
       
       const response = await fetch(apiUrl, {

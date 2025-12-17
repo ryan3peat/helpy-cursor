@@ -29,7 +29,7 @@ export default async function handler(req: any, res: any) {
       return res.status(400).json({ error: 'No subscription found' });
     }
 
-    const APP_URL = process.env.NEXT_PUBLIC_APP_URL || process.env.VITE_APP_URL || 'https://helpyfam.com';
+    const APP_URL = process.env.NEXT_PUBLIC_APP_URL || process.env.VITE_APP_URL || 'https://app.helpyfam.com';
     // For client-side routing, return to base URL with query parameter
     // The app will handle portal_return and navigate to profile/subscription view
     // Using both query param and hash param for SPA compatibility

@@ -33,14 +33,14 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
   const getProductionUrl = () => {
     // In production, use the production domain explicitly
     if (typeof window !== 'undefined') {
-      const prodUrl = import.meta.env.VITE_APP_URL || import.meta.env.NEXT_PUBLIC_APP_URL || 'https://helpyfam.com';
+      const prodUrl = import.meta.env.VITE_APP_URL || import.meta.env.NEXT_PUBLIC_APP_URL || 'https://app.helpyfam.com';
       // If we're already on production domain, use it; otherwise use env var
-      if (window.location.hostname === 'helpyfam.com' || window.location.hostname.includes('helpyfam.com')) {
-        return `https://helpyfam.com`;
+      if (window.location.hostname === 'app.helpyfam.com' || window.location.hostname.includes('helpyfam.com')) {
+        return `https://app.helpyfam.com`;
       }
       return prodUrl;
     }
-    return 'https://helpyfam.com';
+    return 'https://app.helpyfam.com';
   };
 
   // Get Clerk domain for OAuth URLs

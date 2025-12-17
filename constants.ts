@@ -604,6 +604,18 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   // Profile - Additional
   'profile.delete_member': 'Delete member',
 
+  // Removed from Household Screen
+  'removed.title': 'Removed from Household',
+  'removed.subtitle': 'You have been removed from your household',
+  'removed.explanation_title': 'What happened?',
+  'removed.explanation': 'The household administrator has removed you from the household. Your Helpy account is still active, but you are no longer part of any household.',
+  'removed.options_title': 'What would you like to do?',
+  'removed.create_new': 'Create a new household',
+  'removed.create_new_desc': 'Start fresh with your own household',
+  'removed.sign_out': 'Sign out',
+  'removed.sign_out_desc': 'Sign out and sign back in later',
+  'removed.contact_admin': 'If you believe this was done in error, please contact your household administrator.',
+
   // Meals - Additional
   'meals.meal_type': 'Meal Type',
 

@@ -74,26 +74,76 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(403).json({ error: 'Cannot delete the household owner' });
     }
 
-    // Delete the user
-    const { error: deleteError } = await supabase
-      .from('users')
-      .delete()
-      .eq('id', userId)
-      .eq('household_id', householdId);
+    const userRole = userToDelete.role?.toLowerCase();
+    const isChild = userRole === 'child';
+    const isSpouseOrHelper = ['spouse', 'helper'].includes(userRole || '');
 
-    if (deleteError) {
-      console.error('Supabase delete error:', deleteError);
-      return res.status(500).json({ 
-        error: `Failed to delete user: ${deleteError.message}` 
-      });
+    let operationResult;
+    let operationMessage;
+
+    if (isChild) {
+      // Delete child entirely from the database
+      const { error: deleteError } = await supabase
+        .from('users')
+        .delete()
+        .eq('id', userId)
+        .eq('household_id', householdId);
+
+      if (deleteError) {
+        console.error('Supabase delete error:', deleteError);
+        return res.status(500).json({
+          error: `Failed to delete user: ${deleteError.message}`
+        });
+      }
+
+      operationResult = 'deleted';
+      operationMessage = `User ${userToDelete.name} has been completely removed from the system`;
+      console.log(`✅ Successfully deleted child user ${userToDelete.name} (${userId}) entirely from database`);
+
+    } else if (isSpouseOrHelper) {
+      // Remove spouse/helper from household but keep their account
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({ household_id: null })
+        .eq('id', userId)
+        .eq('household_id', householdId);
+
+      if (updateError) {
+        console.error('Supabase update error:', updateError);
+        return res.status(500).json({
+          error: `Failed to remove user from household: ${updateError.message}`
+        });
+      }
+
+      operationResult = 'removed';
+      operationMessage = `User ${userToDelete.name} has been removed from the household but their account is preserved`;
+      console.log(`✅ Successfully removed spouse/helper user ${userToDelete.name} (${userId}) from household ${householdId}, account preserved`);
+
+    } else {
+      // For other roles, default to removing from household (keep account)
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({ household_id: null })
+        .eq('id', userId)
+        .eq('household_id', householdId);
+
+      if (updateError) {
+        console.error('Supabase update error:', updateError);
+        return res.status(500).json({
+          error: `Failed to remove user from household: ${updateError.message}`
+        });
+      }
+
+      operationResult = 'removed';
+      operationMessage = `User ${userToDelete.name} has been removed from the household`;
+      console.log(`✅ Successfully removed user ${userToDelete.name} (${userId}) from household ${householdId}`);
     }
-
-    console.log(`✅ Successfully deleted user ${userToDelete.name} (${userId}) from household ${householdId}`);
 
     return res.status(200).json({
       success: true,
-      message: `User ${userToDelete.name} has been removed from the household`,
-      deletedUser: {
+      message: operationMessage,
+      operation: operationResult, // 'deleted' or 'removed'
+      removedUser: {
         id: userToDelete.id,
         name: userToDelete.name,
         role: userToDelete.role,

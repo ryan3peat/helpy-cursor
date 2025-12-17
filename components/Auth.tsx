@@ -3,9 +3,10 @@ import React, { useState } from 'react';
 import { SignIn, useUser } from '@clerk/clerk-react';
 import { useSupabase, useSupabaseReady, getAuthenticatedSupabaseClient } from '../contexts/SupabaseContext';
 import { supabase as defaultSupabase } from '../services/supabase';
-import { User } from '../types';
+import { User, TranslationDictionary } from '../types';
 import SignUp from './SignUp';
 import HouseholdSwitchModal from './HouseholdSwitchModal';
+import RemovedFromHousehold from './RemovedFromHousehold';
 
 // Broom icon component for loading animation (matching flaticon clean_9755169)
 const BroomIcon = ({ className }: { className?: string }) => (
@@ -19,15 +20,17 @@ const BroomIcon = ({ className }: { className?: string }) => (
 
 interface AuthProps {
   onLogin: (user: User) => void;
+  t: TranslationDictionary;
 }
 
-const Auth: React.FC<AuthProps> = ({ onLogin }) => {
+const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
   const { user, isLoaded } = useUser();
   const supabaseFromContext = useSupabase(); // Authenticated client from context
   const isSupabaseReady = useSupabaseReady(); // Check if JWT is ready
   const [isCreatingUser, setIsCreatingUser] = React.useState(false);
   const [showSignUp, setShowSignUp] = useState(false);
   const [showHouseholdSwitch, setShowHouseholdSwitch] = useState(false);
+  const [showRemovedFromHousehold, setShowRemovedFromHousehold] = useState(false);
   const [householdSwitchInfo, setHouseholdSwitchInfo] = useState<{
     currentHouseholdName: string;
     newHouseholdName: string;
@@ -257,7 +260,16 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
       }
 
       if (existingUser) {
-        console.log('✅ [Auth] User exists, logging in:', existingUser);
+        console.log('✅ [Auth] User exists:', existingUser);
+
+        // Check if user has been removed from household (household_id is null)
+        if (!existingUser.household_id) {
+          console.log('⚠️ [Auth] User has no household, showing removed screen');
+          setShowRemovedFromHousehold(true);
+          setIsCreatingUser(false);
+          return;
+        }
+
         console.log('✅ [Auth] Calling onLogin() with existing user');
         onLogin({
           id: existingUser.clerk_id,
@@ -290,22 +302,30 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
           .maybeSingle();
 
         if (existingUserByEmail && !emailCheckError) {
-          console.log('✅ [Auth] Found existing user by email, updating clerk_id and logging in:', existingUserByEmail);
-          
+          console.log('✅ [Auth] Found existing user by email:', existingUserByEmail);
+
           // Update clerk_id if it's missing or different
           if (!existingUserByEmail.clerk_id || existingUserByEmail.clerk_id !== clerkUser.id) {
             const { error: updateError } = await clientToUse
               .from('users')
               .update({ clerk_id: clerkUser.id })
               .eq('id', existingUserByEmail.id);
-            
+
             if (updateError) {
               console.error('❌ Failed to update clerk_id:', updateError);
             } else {
               console.log('✅ Updated clerk_id for existing user');
             }
           }
-          
+
+          // Check if user has been removed from household (household_id is null)
+          if (!existingUserByEmail.household_id) {
+            console.log('⚠️ [Auth] User has no household, showing removed screen');
+            setShowRemovedFromHousehold(true);
+            setIsCreatingUser(false);
+            return;
+          }
+
           console.log('✅ [Auth] Calling onLogin() with existing user (found by email)');
           onLogin({
             id: clerkUser.id, // Use the current clerk_id
@@ -508,6 +528,24 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
     }
   };
 
+  // Handle creating new household from removed screen
+  const handleCreateNewHousehold = async () => {
+    console.log('🏠 [Auth] Creating new household for removed user');
+    setShowRemovedFromHousehold(false);
+    setShowSignUp(true);
+  };
+
+  // Handle logout from removed screen
+  const handleLogoutFromRemoved = async () => {
+    console.log('🚪 [Auth] Logging out from removed screen');
+    // Reset state
+    setShowRemovedFromHousehold(false);
+    hasCheckedUser.current = false;
+    setIsCreatingUser(false);
+    // Trigger Clerk logout by redirecting to home (Clerk will handle the logout)
+    window.location.href = '/';
+  };
+
   // Handle household switch - switch to new household
   const handleSwitchToNewHousehold = async () => {
     if (!householdSwitchInfo || !user) return;
@@ -623,6 +661,17 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
         adminName={householdSwitchInfo.adminName}
         onStay={handleStayInCurrentHousehold}
         onSwitch={handleSwitchToNewHousehold}
+      />
+    );
+  }
+
+  // Show removed from household screen
+  if (showRemovedFromHousehold) {
+    return (
+      <RemovedFromHousehold
+        t={t}
+        onLogout={handleLogoutFromRemoved}
+        onCreateNewHousehold={handleCreateNewHousehold}
       />
     );
   }

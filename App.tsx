@@ -609,8 +609,40 @@ const AppContent: React.FC = () => {
 
   const handleDeleteUser = async (id: string) => {
     if (!hid) return;
-    setUsers(prev => prev.filter(u => u.id !== id));  // Optimistic
-    await deleteItem(hid, 'users', id);
+
+    try {
+      // Use the new API endpoint that handles different user roles properly
+      const apiUrl = import.meta.env?.VITE_API_URL || '';
+      const currentUser = users.find(u => u.id === id);
+      if (!currentUser) return;
+
+      const response = await fetch(`${apiUrl}/api/delete-user`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: id,
+          householdId: hid,
+          requesterId: currentUser.id // Pass the current user's ID as requester
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to delete user');
+      }
+
+      // Update UI optimistically
+      setUsers(prev => prev.filter(u => u.id !== id));
+
+      console.log(`✅ Successfully ${result.operation} user: ${result.removedUser?.name}`);
+
+    } catch (error: any) {
+      console.error('Failed to delete user:', error);
+      // Revert optimistic update on error
+      // Note: In a real app, you'd want to refetch the users list here
+      alert(`Failed to remove user: ${error.message}`);
+    }
   };
 
   // Notes Handler
@@ -966,7 +998,7 @@ const AppContent: React.FC = () => {
     return (
       <>
         {showIntro && <IntroAnimation onComplete={() => setShowIntro(false)} />}
-        <Auth onLogin={handleLogin} />
+        <Auth onLogin={handleLogin} t={translations} />
       </>
     );
   }

@@ -608,13 +608,13 @@ const AppContent: React.FC = () => {
   };
 
   const handleDeleteUser = async (id: string) => {
-    if (!hid) return;
+    if (!hid || !currentUser) return;
 
     try {
       // Use the new API endpoint that handles different user roles properly
       const apiUrl = import.meta.env?.VITE_API_URL || '';
-      const currentUser = users.find(u => u.id === id);
-      if (!currentUser) return;
+      const userToDelete = users.find(u => u.id === id);
+      if (!userToDelete) return;
 
       const response = await fetch(`${apiUrl}/api/delete-user`, {
         method: 'POST',
@@ -622,7 +622,7 @@ const AppContent: React.FC = () => {
         body: JSON.stringify({
           userId: id,
           householdId: hid,
-          requesterId: currentUser.id // Pass the current user's ID as requester
+          requesterId: currentUser.id // Pass the logged-in user's ID as requester
         }),
       });
 

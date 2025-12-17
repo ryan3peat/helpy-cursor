@@ -612,8 +612,12 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'removed.options_title': 'What would you like to do?',
   'removed.create_new': 'Create a new household',
   'removed.create_new_desc': 'Start fresh with your own household',
-  'removed.sign_out': 'Sign out',
-  'removed.sign_out_desc': 'Sign out and sign back in later',
+  'removed.creating': 'Creating household...',
+  'removed.delete_account': 'Delete my account permanently',
+  'removed.delete_account_desc': 'Remove all your data from Helpy',
+  'removed.delete_confirm_title': 'Delete Account?',
+  'removed.delete_confirm_message': 'This action cannot be undone. Your account and all associated data will be permanently deleted.',
+  'removed.delete_permanently': 'Delete Permanently',
   'removed.contact_admin': 'If you believe this was done in error, please contact your household administrator.',
 
   // Meals - Additional

@@ -530,20 +530,105 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
 
   // Handle creating new household from removed screen
   const handleCreateNewHousehold = async () => {
+    if (!user) return;
+    
     console.log('🏠 [Auth] Creating new household for removed user');
-    setShowRemovedFromHousehold(false);
-    setShowSignUp(true);
+    setIsCreatingUser(true);
+    
+    try {
+      const apiUrl = import.meta.env?.VITE_API_URL || '';
+      
+      // Call the signup API to create a new household for this existing user
+      const signupResponse = await fetch(`${apiUrl}/api/signup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clerkId: user.id,
+          email: user.primaryEmailAddress?.emailAddress,
+          name: user.fullName || user.firstName || 'User',
+          role: 'Admin'
+        })
+      });
+
+      if (!signupResponse.ok) {
+        const errorData = await signupResponse.json();
+        console.error('❌ Signup API error:', errorData);
+        throw new Error(errorData.error || 'Failed to create household');
+      }
+
+      const signupData = await signupResponse.json();
+      console.log('✅ New household created:', signupData);
+
+      const createdUser = signupData.user;
+      
+      // Login with the new household
+      setShowRemovedFromHousehold(false);
+      onLogin({
+        id: createdUser.clerk_id,
+        householdId: createdUser.household_id,
+        email: createdUser.email,
+        name: createdUser.name || user.fullName || user.firstName || 'User',
+        role: createdUser.role,
+        avatar: createdUser.avatar,
+        allergies: createdUser.allergies || [],
+        preferences: createdUser.preferences || [],
+        status: 'active',
+        notificationsEnabled: createdUser.notifications_enabled ?? true,
+        onboardingStatus: 'not_started' // Start fresh with onboarding
+      });
+      
+      setIsCreatingUser(false);
+      console.log('✅ [Auth] User logged in with new household');
+      
+    } catch (error: any) {
+      console.error('❌ Failed to create new household:', error);
+      alert(`Failed to create household: ${error.message || 'Unknown error'}`);
+      setIsCreatingUser(false);
+    }
   };
 
-  // Handle logout from removed screen
-  const handleLogoutFromRemoved = async () => {
-    console.log('🚪 [Auth] Logging out from removed screen');
-    // Reset state
-    setShowRemovedFromHousehold(false);
-    hasCheckedUser.current = false;
-    setIsCreatingUser(false);
-    // Trigger Clerk logout by redirecting to home (Clerk will handle the logout)
-    window.location.href = '/';
+  // Handle permanent account deletion from removed screen
+  const handleDeleteAccountFromRemoved = async () => {
+    if (!user) return;
+    
+    console.log('🗑️ [Auth] Deleting account permanently');
+    
+    try {
+      const apiUrl = import.meta.env?.VITE_API_URL || '';
+      
+      // Delete the user from Supabase (user with null household_id)
+      const deleteResponse = await fetch(`${apiUrl}/api/delete-removed-user`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clerkId: user.id
+        })
+      });
+
+      if (!deleteResponse.ok) {
+        const errorData = await deleteResponse.json();
+        console.error('❌ Delete API error:', errorData);
+        throw new Error(errorData.error || 'Failed to delete account');
+      }
+
+      console.log('✅ User deleted from Supabase');
+
+      // Delete the Clerk account
+      try {
+        await user.delete();
+        console.log('✅ Clerk account deleted');
+      } catch (clerkError) {
+        console.error('❌ Failed to delete Clerk account:', clerkError);
+        // Continue anyway - Supabase data is already deleted
+      }
+
+      // Redirect to homepage
+      window.location.href = 'https://helpyfam.com';
+      
+    } catch (error: any) {
+      console.error('❌ Failed to delete account:', error);
+      throw error; // Re-throw so the component can handle it
+    }
   };
 
   // Handle household switch - switch to new household
@@ -670,8 +755,9 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
     return (
       <RemovedFromHousehold
         t={t}
-        onLogout={handleLogoutFromRemoved}
+        onDeleteAccount={handleDeleteAccountFromRemoved}
         onCreateNewHousehold={handleCreateNewHousehold}
+        isLoading={isCreatingUser}
       />
     );
   }

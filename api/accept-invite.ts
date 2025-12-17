@@ -69,6 +69,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
+    // 1b. Check if another user already has this email (duplicate email constraint)
+    if (email) {
+      const { data: userWithEmail } = await supabase
+        .from('users')
+        .select('*')
+        .eq('email', email)
+        .neq('id', pendingUserId) // Exclude the pending user we're about to update
+        .maybeSingle();
+
+      if (userWithEmail) {
+        console.log('[Accept Invite API] Another user already has this email:', email);
+        console.log('[Accept Invite API] Existing user with email:', userWithEmail.id, 'household:', userWithEmail.household_id);
+        
+        // This email is already used by another account
+        return res.status(409).json({
+          error: 'This email is already associated with another account. Please sign in with that account or use a different email.',
+          emailConflict: true,
+          existingHouseholdId: userWithEmail.household_id
+        });
+      }
+    }
+
     // 2. Fetch the pending user
     const { data: pendingUser, error: pendingError } = await supabase
       .from('users')

@@ -60,7 +60,7 @@ export default function HomeContent() {
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center pt-2">
             <a
-              href="https://www.helpyfam.com"
+              href="https://app.helpyfam.com"
               className="inline-flex items-center justify-center rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-soft transition-colors"
             >
               Get Started

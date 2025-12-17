@@ -194,6 +194,13 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
             // Don't clear URL - let App.tsx/InviteSetup handle the household switch
             // The user needs to see the household switch modal
             // For now, continue to check existing user - they'll see the switch modal
+          } else if (result.emailConflict) {
+            // Email already used by another account
+            console.log('📧 [Auth] Email conflict - another account has this email');
+            alert('This email is already associated with another Helpy account. If you already have an account, please sign in instead of signing up. Or use a different email address.');
+            window.history.replaceState({}, '', window.location.pathname);
+            setIsCreatingUser(false);
+            return;
           } else {
             console.error('❌ [Auth] Failed to activate via API:', result.error);
           }

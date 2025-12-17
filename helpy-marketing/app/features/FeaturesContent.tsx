@@ -69,7 +69,7 @@ export default function FeaturesContent() {
               The ideal family collaboration app for families and helpers to work as a team.
             </p>
             <a
-              href="https://www.helpyfam.com"
+              href="https://app.helpyfam.com"
               className="inline-flex items-center justify-center rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-soft transition-colors"
             >
               Get Started

@@ -12,3 +12,4 @@ USING (get_clerk_id() IS NOT NULL);
 -- But it's not secure - remove after identifying the issue
 
 
+

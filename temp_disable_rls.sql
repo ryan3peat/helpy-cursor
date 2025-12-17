@@ -25,3 +25,4 @@ WHERE u.clerk_id = 'user_36Ld8EjKmnxbbRGarGSspohmQhw';
 -- ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 
 
+

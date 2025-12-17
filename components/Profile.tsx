@@ -93,7 +93,18 @@ const Profile: React.FC<ProfileProps> = ({
   const [selectedPlan, setSelectedPlan] = useState<'free' | 'core' | 'pro'>('free');
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
   const [isLoading, setIsLoading] = useState(false);
-  const [loadingPlan, setLoadingPlan] = useState<'core' | 'pro' | 'test' | null>(null);
+  const [loadingPlan, setLoadingPlan] = useState<'free' | 'core' | 'pro' | 'test' | null>(null);
+  
+  // Plan confirmation modal state (for promo/referral codes)
+  const [isPlanConfirmOpen, setIsPlanConfirmOpen] = useState(false);
+  const [pendingPlan, setPendingPlan] = useState<{ plan: 'core' | 'pro' | 'test'; period: 'monthly' | 'yearly' } | null>(null);
+  const [promoCodeInput, setPromoCodeInput] = useState('');
+  const [promoCodeError, setPromoCodeError] = useState<string | null>(null);
+  const [referralCodeInput, setReferralCodeInput] = useState('');
+  const [referralCodeError, setReferralCodeError] = useState<string | null>(null);
+  const [referralCodeValid, setReferralCodeValid] = useState(false);
+  const [isValidatingReferral, setIsValidatingReferral] = useState(false);
+  
   const [subscriptionInfo, setSubscriptionInfo] = useState<{
     plan: string;
     status: string;
@@ -156,7 +167,7 @@ const Profile: React.FC<ProfileProps> = ({
   }, []);
 
   // Lock scroll when any modal is open
-  useScrollLock(isAddModalOpen || isEditModalOpen || deleteConfirmOpen || showPhotoOptions || subscriptionCanceled);
+  useScrollLock(isAddModalOpen || isEditModalOpen || deleteConfirmOpen || showPhotoOptions || subscriptionCanceled || isPlanConfirmOpen);
 
   // Track if we've handled the initial edit (to prevent re-opening on data refresh)
   const [initialEditHandled, setInitialEditHandled] = useState(false);
@@ -511,9 +522,64 @@ const Profile: React.FC<ProfileProps> = ({
     setNewRole(UserRole.CHILD);
   };
 
-  // Stripe Checkout Handler - handles both new subscriptions and plan changes
-  const handleSelectPlan = async (plan: 'core' | 'pro' | 'test', period: 'monthly' | 'yearly') => {
+  // Referral Code Validation
+  const validateReferralCode = async (code: string) => {
+    if (!code.trim()) {
+      setReferralCodeValid(false);
+      setReferralCodeError(null);
+      return;
+    }
+
+    setIsValidatingReferral(true);
     try {
+      const { data, error } = await supabase
+        .from('referral_codes')
+        .select('id, trial_days, is_active')
+        .eq('code', code.trim().toUpperCase())
+        .eq('is_active', true)
+        .single();
+
+      if (error || !data) {
+        setReferralCodeError(t['subscription.invalid_referral_code'] || 'Invalid or expired referral code');
+        setReferralCodeValid(false);
+      } else {
+        setReferralCodeError(null);
+        setReferralCodeValid(true);
+      }
+    } catch (err) {
+      setReferralCodeError(t['subscription.invalid_referral_code'] || 'Invalid or expired referral code');
+      setReferralCodeValid(false);
+    } finally {
+      setIsValidatingReferral(false);
+    }
+  };
+
+  // Open plan confirmation modal (for new subscriptions with promo/referral codes)
+  const handleOpenPlanConfirm = (plan: 'core' | 'pro' | 'test', period: 'monthly' | 'yearly') => {
+    setPendingPlan({ plan, period });
+    setPromoCodeInput('');
+    setPromoCodeError(null);
+    setReferralCodeInput('');
+    setReferralCodeError(null);
+    setReferralCodeValid(false);
+    setIsPlanConfirmOpen(true);
+  };
+
+  // Confirm plan selection from modal
+  const handleConfirmPlan = async () => {
+    if (!pendingPlan) return;
+    await handleSelectPlan(
+      pendingPlan.plan, 
+      pendingPlan.period, 
+      referralCodeValid ? undefined : promoCodeInput, 
+      referralCodeValid ? referralCodeInput : undefined
+    );
+  };
+
+  // Stripe Checkout Handler - handles both new subscriptions and plan changes
+  const handleSelectPlan = async (plan: 'core' | 'pro' | 'test', period: 'monthly' | 'yearly', promoCode?: string, referralCode?: string) => {
+    try {
+      setPromoCodeError(null);
       setLoadingPlan(plan);
       
       // Check if user has an active paid subscription
@@ -533,13 +599,17 @@ const Profile: React.FC<ProfileProps> = ({
           throw new Error(result.error || 'Failed to change subscription');
         }
         setLoadingPlan(null);
+        setIsPlanConfirmOpen(false);
+        setPendingPlan(null);
       } else {
         // New subscription - redirect to Stripe Checkout
         const checkoutUrl = await createCheckoutSession(
           currentUser.householdId,
           plan,
           period,
-          currentUser.email || ''
+          currentUser.email || '',
+          promoCode,
+          referralCode
         );
         
         // Redirect to Stripe Checkout
@@ -547,7 +617,7 @@ const Profile: React.FC<ProfileProps> = ({
       }
     } catch (error) {
       console.error('Checkout error:', error);
-      alert(error instanceof Error ? error.message : 'Failed to start checkout. Please try again.');
+      setPromoCodeError(error instanceof Error ? error.message : 'Failed to start checkout. Please try again.');
       setLoadingPlan(null);
     }
   };
@@ -2067,7 +2137,15 @@ const Profile: React.FC<ProfileProps> = ({
                       {/* Button for paid plans */}
                       {!p.isFree && (
                         <button
-                          onClick={() => handleSelectPlan(p.id as 'core' | 'pro' | 'test', billingPeriod)}
+                          onClick={() => {
+                            // For new subscriptions, open the modal to allow promo/referral codes
+                            // For existing paid subscriptions, directly change plan
+                            if (hasActivePaidSubscription && p.id !== 'test') {
+                              handleSelectPlan(p.id as 'core' | 'pro' | 'test', billingPeriod);
+                            } else {
+                              handleOpenPlanConfirm(p.id as 'core' | 'pro' | 'test', billingPeriod);
+                            }
+                          }}
                           disabled={loadingPlan !== null || isCurrentPlan || !isAdmin}
                           className={`w-full py-3 rounded-xl font-semibold transition-colors ${
                             isCurrentPlan
@@ -2110,6 +2188,133 @@ const Profile: React.FC<ProfileProps> = ({
               </div>
             </div>
           </div>
+
+          {/* Plan confirmation + promo code modal */}
+          {isPlanConfirmOpen && pendingPlan && (
+            <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end md:items-center justify-center bottom-sheet-backdrop">
+              {/* Safe area bottom cover */}
+              <div 
+                className="absolute bottom-0 left-0 right-0 bg-card"
+                style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
+              />
+              <div className="bg-card w-full max-w-md rounded-t-2xl md:rounded-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
+                {/* Header */}
+                <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
+                  <h2 className="text-title text-foreground">{t['subscription.change_plan'] || 'Change Plan'}</h2>
+                </div>
+
+                {/* Scrollable Content */}
+                <div className="flex-1 overflow-y-auto max-h-[60vh]">
+                <div className="p-5 space-y-4">
+                  <p className="text-body text-foreground">
+                    {`You are about to upgrade to the ${pendingPlan.plan === 'core' ? 'Core' : pendingPlan.plan === 'pro' ? 'Pro' : 'Test'} plan.`}
+                  </p>
+
+                  {/* Referral Code Section */}
+                  <div className="space-y-2">
+                    <label className="text-caption font-bold text-muted-foreground ml-1">
+                      {t['subscription.referral_code'] || 'Referral Code (for free trial)'}
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={referralCodeInput}
+                        onChange={(e) => {
+                          const value = e.target.value.toUpperCase();
+                          setReferralCodeInput(value);
+                          setReferralCodeError(null);
+                          setReferralCodeValid(false);
+                        }}
+                        onBlur={() => validateReferralCode(referralCodeInput)}
+                        placeholder={t['subscription.referral_code_placeholder'] || 'e.g., BETTY30DAYS'}
+                        className={`w-full bg-muted border rounded-xl px-4 py-3 text-foreground font-medium focus:border-primary outline-none transition-colors text-body uppercase ${
+                          referralCodeError ? 'border-destructive' : referralCodeValid ? 'border-green-500' : 'border-border'
+                        }`}
+                      />
+                      {isValidatingReferral && (
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                          <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                        </div>
+                      )}
+                      {referralCodeValid && !isValidatingReferral && (
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                          <Check size={20} className="text-green-500" />
+                        </div>
+                      )}
+                    </div>
+                    {referralCodeError && (
+                      <p className="text-caption text-destructive">{referralCodeError}</p>
+                    )}
+                    {referralCodeValid && (
+                      <p className="text-caption text-green-600">
+                        {t['subscription.referral_valid'] || '✓ 30-day free trial will be applied!'}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Divider between referral and promo code */}
+                  {!referralCodeValid && (
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <div className="flex-1 h-px bg-border" />
+                      <span className="text-caption">{t['common.or'] || 'or'}</span>
+                      <div className="flex-1 h-px bg-border" />
+                    </div>
+                  )}
+
+                  {/* Promo Code Section */}
+                  <div className={`space-y-2 ${referralCodeValid ? 'opacity-50 pointer-events-none' : ''}`}>
+                    <label className="text-caption font-bold text-muted-foreground ml-1">
+                      {t['subscription.promo_code'] || 'Promo code (optional)'}
+                    </label>
+                    <input
+                      type="text"
+                      value={promoCodeInput}
+                      onChange={(e) => {
+                        setPromoCodeInput(e.target.value);
+                        setPromoCodeError(null);
+                      }}
+                      placeholder={t['subscription.promo_code_placeholder'] || 'Enter promo code'}
+                      className="w-full bg-muted border border-border rounded-xl px-4 py-3 text-foreground font-medium focus:border-primary outline-none transition-colors text-body"
+                    />
+                    {promoCodeError && (
+                      <p className="text-caption text-destructive">{promoCodeError}</p>
+                    )}
+                    <p className="text-caption text-muted-foreground">
+                      {t['subscription.promo_code_hint'] || 'We will apply this code on the Stripe checkout page.'}
+                    </p>
+                  </div>
+                </div>
+                </div>
+
+                {/* Footer Buttons */}
+                <div className="p-5 border-t border-border flex gap-3 shrink-0">
+                  <button
+                    onClick={() => {
+                      if (loadingPlan !== null) return;
+                      setIsPlanConfirmOpen(false);
+                      setPendingPlan(null);
+                      setPromoCodeInput('');
+                      setPromoCodeError(null);
+                      setReferralCodeInput('');
+                      setReferralCodeError(null);
+                      setReferralCodeValid(false);
+                    }}
+                    disabled={loadingPlan !== null}
+                    className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body hover:bg-secondary/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {t['common.cancel'] || 'Cancel'}
+                  </button>
+                  <button
+                    onClick={handleConfirmPlan}
+                    disabled={loadingPlan !== null || isValidatingReferral}
+                    className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {loadingPlan !== null ? (t['common.processing'] || 'Processing...') : (t['common.continue'] || 'Continue')}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Footer */}
           <div className="helpy-footer">

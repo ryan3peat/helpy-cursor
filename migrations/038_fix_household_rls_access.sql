@@ -135,3 +135,4 @@ WHERE proname = 'get_user_household_id';
 -- 5. If still failing, check Clerk JWT template configuration
 
 
+

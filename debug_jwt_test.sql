@@ -22,3 +22,4 @@ SELECT
   'If NULL, either no JWT sent or missing clerk_id claim' as diagnosis;
 
 
+

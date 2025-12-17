@@ -58,3 +58,4 @@ const TrialBanner: React.FC<TrialBannerProps> = ({ trialEndsAt, t, onUpgradeClic
 
 export default TrialBanner;
 
+

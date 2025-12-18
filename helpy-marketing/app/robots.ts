@@ -4,10 +4,10 @@ export default function robots(): MetadataRoute.Robots {
   return {
     rules: {
       userAgent: '*',
-      // Allow marketing pages
-      allow: ['/home', '/features', '/plan', '/faq'],
-      // Block the app (root path and other app routes)
-      disallow: '/',
+      // Allow marketing pages (root now serves home content directly)
+      allow: ['/', '/home', '/features', '/plan', '/faq'],
+      // Block app-specific routes (if any exist)
+      disallow: ['/qr', '/api'],
     },
     sitemap: 'https://www.helpyfam.com/sitemap.xml',
   }

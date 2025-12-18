@@ -4,6 +4,9 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Helpy - Home Management App & Household Planner",
   description: "Helpy is the home management app that brings families and helpers closer. A household planner app for meals, tasks, and spending.",
+  alternates: {
+    canonical: '/home',
+  },
 };
 
 // Organization JSON-LD schema for the home page

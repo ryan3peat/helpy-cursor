@@ -201,14 +201,59 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'profile.copied': 'Copied!',
   'profile.restart_tutorial': 'Restart Tutorial',
 
-  // Onboarding
+  // Onboarding - Common
   'onboarding.welcome': 'Welcome, {name}!',
-  'onboarding.step1.desc': 'Let\'s get your home set up. Click \'Got it\' to go to your profile and add your family members.',
-  'onboarding.step2.title': 'Grow your Family',
-  'onboarding.step2.desc': 'Tap the + button to add your family members.',
+  'onboarding.next': 'Next',
+  'onboarding.finish': 'Finish',
   'onboarding.skip': 'Skip',
   'onboarding.got_it': 'Got it',
   'onboarding.add_member': 'Add Family Member',
+  'onboarding.skip_confirm_title': 'Skip Tutorial?',
+  'onboarding.skip_confirm_desc': 'You can redo the tutorial anytime by tapping your profile photo and scrolling down to "Tutorial".',
+  'onboarding.skip_confirm_no': 'Continue Tutorial',
+  'onboarding.skip_confirm_yes': 'Skip for Now',
+
+  // Onboarding - Admin Steps (6 steps)
+  'onboarding.admin.1.title': 'Welcome',
+  'onboarding.admin.1.desc': 'This is your home command center! First, let\'s add your family members.',
+  'onboarding.admin.2.title': 'Add family members',
+  'onboarding.admin.2.desc': 'Tap your profile icon.',
+  'onboarding.admin.3.title': 'Add family members',
+  'onboarding.admin.3.desc': 'Tap Add (+).\nInput their name and send them the invitation link to join the Family.',
+  'onboarding.admin.4.title': 'All about your family',
+  'onboarding.admin.4.desc': 'Add important information and places here.',
+  'onboarding.admin.5.title': 'Home-cooked meals are the best',
+  'onboarding.admin.5.desc': 'Set the meal plan and let them know you are eating at home.',
+  'onboarding.admin.6.title': 'Got anything important to share with the rest?',
+  'onboarding.admin.6.desc': 'Write it down here for everyone to see.',
+
+  // Onboarding - Helper Steps (8 steps)
+  'onboarding.helper.1.title': 'Welcome',
+  'onboarding.helper.1.desc': 'We\'re glad you\'re here! This is your hub for everything about our home and family.',
+  'onboarding.helper.2.title': 'Get to know the family',
+  'onboarding.helper.2.desc': 'Here you\'ll find essential details about our home and important places.',
+  'onboarding.helper.3.title': 'Get to know the family',
+  'onboarding.helper.3.desc': 'This covers our family\'s daily routines and shared practices.',
+  'onboarding.helper.4.title': 'Things to buy',
+  'onboarding.helper.4.desc': 'This is your shopping list.',
+  'onboarding.helper.5.title': 'Things to do',
+  'onboarding.helper.5.desc': 'This is your task list.',
+  'onboarding.helper.6.title': 'What to cook',
+  'onboarding.helper.6.desc': 'This is the family meal plan. View the dishes, see who\'s eating.',
+  'onboarding.helper.7.title': 'Add receipt',
+  'onboarding.helper.7.desc': 'Add your receipt here.',
+  'onboarding.helper.8.title': 'Important note',
+  'onboarding.helper.8.desc': 'We put a special and important note here.',
+
+  // Onboarding - Family (Spouse/Kids) Steps (4 steps)
+  'onboarding.family.1.title': 'Welcome',
+  'onboarding.family.1.desc': 'Love it when family members get together! Let\'s see what has been prepared for you.',
+  'onboarding.family.2.title': 'All about your family',
+  'onboarding.family.2.desc': 'Add important information and places here.',
+  'onboarding.family.3.title': 'Home-cooked meals are the best',
+  'onboarding.family.3.desc': 'Set the meal plan and let them know you are eating at home.',
+  'onboarding.family.4.title': 'Got anything important to share with the rest?',
+  'onboarding.family.4.desc': 'Write it down here for everyone to see.',
 
   // ToDo (unified Shopping + Tasks)
   'todo.title': 'To Do',

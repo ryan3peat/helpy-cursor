@@ -868,11 +868,17 @@ export async function deleteItem(
  * Save family notes (special case - stored in households table)
  * Why: Notes are household-level, not a separate collection
  * Now supports translation: detects language and saves translation fields
+ * 
+ * @param householdId - The household ID
+ * @param notes - The notes content
+ * @param currentLang - Optional current language for detection
+ * @param updatedByUserId - Optional user ID who made the update (for notifications)
  */
 export async function saveFamilyNotes(
   householdId: string,
   notes: string,
-  currentLang?: string
+  currentLang?: string,
+  updatedByUserId?: string
 ): Promise<void> {
   // Import language detection
   const { detectInputLanguage } = await import('./languageDetectionService');
@@ -892,6 +898,15 @@ export async function saveFamilyNotes(
     // If notes are empty, clear language fields
     updateData.family_notes_lang = null;
     updateData.family_notes_translations = {};
+  }
+  
+  // Track who updated the notes for notifications
+  if (updatedByUserId) {
+    // Convert user ID to Supabase UUID if needed (could be Clerk ID)
+    const supabaseUuid = await getSupabaseUserId(updatedByUserId, householdId);
+    if (supabaseUuid) {
+      updateData.family_notes_updated_by = supabaseUuid;
+    }
   }
   
   // Use authenticated client for RLS

@@ -1006,7 +1006,7 @@ const ToDo: React.FC<ToDoProps> = ({
                     }`}
                   >
                     {categoryIcons[cat]}
-                    {getCategoryLabel(cat)}
+                    {getCategoryLabel(cat)} ({getItemCount(cat)})
                   </button>
                 );
               })}

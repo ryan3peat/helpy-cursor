@@ -544,11 +544,8 @@ const AppContent: React.FC = () => {
     // Create expense without ID so Supabase generates UUID
     const expenseWithoutId = { ...expense };
     delete expenseWithoutId.id; // Remove ID so Supabase generates UUID
-    // Strip createdBy; expenses table doesn’t have this column
-    delete (expenseWithoutId as any).createdBy;
-    
+    // Keep createdBy for notifications - expenses table has created_by column (migration 018)
     console.log('[App] Adding expense without ID, will get UUID from DB');
-    // Don't include createdBy - expenses table doesn't have this column
     const savedExpense = await addItem(hid, 'expenses', expenseWithoutId);
     console.log('[App] Expense saved with UUID:', savedExpense.id);
     
@@ -655,7 +652,8 @@ const AppContent: React.FC = () => {
     setFamilyNotesTranslations({});
     
     try {
-      await saveFamilyNotes(hid, notes, lang);
+      // Pass currentUser.id to track who updated for notifications
+      await saveFamilyNotes(hid, notes, lang, currentUser?.id);
     } catch (error) {
       console.error('Failed to save notes:', error);
       setFamilyNotes(previousNotes); // Rollback on error

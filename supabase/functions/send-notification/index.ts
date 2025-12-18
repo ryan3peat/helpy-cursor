@@ -157,6 +157,39 @@ function buildNotificationMessage(
           type: 'meal'
         };
       } else if (event === 'UPDATE') {
+        // Check for RSVP changes (for_user_ids changed)
+        const oldUserIds = (oldRecord?.for_user_ids as string[]) || [];
+        const newUserIds = (record.for_user_ids as string[]) || [];
+        
+        // Detect joins and leaves
+        const joinedUsers = newUserIds.filter(id => !oldUserIds.includes(id));
+        const leftUsers = oldUserIds.filter(id => !newUserIds.includes(id));
+        
+        // Check if ONLY for_user_ids changed (pure RSVP action)
+        const descriptionChanged = oldRecord?.description !== record.description;
+        const typeChanged = oldRecord?.type !== record.type;
+        const audienceChanged = oldRecord?.audience !== record.audience;
+        const onlyRsvpChanged = !descriptionChanged && !typeChanged && !audienceChanged;
+        
+        // If someone joined (and it's a pure RSVP action)
+        if (joinedUsers.length > 0 && leftUsers.length === 0 && onlyRsvpChanged) {
+          return {
+            title: '🍽️ Meals',
+            body: `${mealLabel}\n${creatorName} is joining`,
+            type: 'meal'
+          };
+        }
+        
+        // If someone left (and it's a pure RSVP action)
+        if (leftUsers.length > 0 && joinedUsers.length === 0 && onlyRsvpChanged) {
+          return {
+            title: '🍽️ Meals',
+            body: `${mealLabel}\n${creatorName} left`,
+            type: 'meal'
+          };
+        }
+        
+        // Default: generic "changed" for other updates
         return {
           title: '🍽️ Meals',
           body: `${mealLabel}\nchanged by ${creatorName}`,
@@ -839,7 +872,8 @@ serve(async (req: Request) => {
     if (creatorId) {
       const creator = users.find(u => u.id === creatorId || u.clerk_id === creatorId);
       if (creator) {
-        creatorName = creator.name || 'Someone';
+        // Use first name only for cleaner notifications (consistent with Profile page display)
+        creatorName = creator.name?.split(' ')[0] || 'Someone';
         console.log(`[Push] Creator found in eligible users: ${creatorName} (${creator.id})`);
       } else {
         console.log(`[Push] Creator not in eligible users list, fetching separately...`);
@@ -852,7 +886,8 @@ serve(async (req: Request) => {
           .single();
         
         if (creatorData) {
-          creatorName = creatorData.name || 'Someone';
+          // Use first name only for cleaner notifications (consistent with Profile page display)
+          creatorName = creatorData.name?.split(' ')[0] || 'Someone';
           creatorId = creatorData.id; // Use the actual Supabase ID
           console.log(`[Push] Creator resolved: ${creatorName} (${creatorId})`);
         } else {

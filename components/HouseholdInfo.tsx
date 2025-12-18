@@ -602,6 +602,17 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
     total: houseRoutineItems.length,
   };
 
+  // Helper functions for getting item counts per category
+  const getEssentialItemCount = (category: EssentialInfoCategory | "All"): number => {
+    if (category === "All") return essentialItems.length;
+    return essentialItems.filter(item => item.category === category).length;
+  };
+
+  const getHouseRoutineItemCount = (category: HouseRoutineCategory | "All"): number => {
+    if (category === "All") return houseRoutineItems.length;
+    return houseRoutineItems.filter(item => item.category === category).length;
+  };
+
   // Category translation helpers
   const getEssentialCategoryLabel = (category: EssentialInfoCategory): string => {
     const categoryMap: Record<EssentialInfoCategory, string> = {
@@ -981,7 +992,7 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  {t['common.all'] || 'All'}
+                  {t['common.all'] || 'All'} ({getEssentialItemCount("All")})
                 </button>
                 {ESSENTIAL_CATEGORIES.map((cat) => {
                   const getCategoryLabel = (category: EssentialInfoCategory) => {
@@ -1006,7 +1017,7 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
                       }`}
                     >
                       {ESSENTIAL_CATEGORY_ICONS[cat]}
-                      {getCategoryLabel(cat)}
+                      {getCategoryLabel(cat)} ({getEssentialItemCount(cat)})
                     </button>
                   );
                 })}
@@ -1035,7 +1046,7 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  {t['common.all'] || 'All'}
+                  {t['common.all'] || 'All'} ({getHouseRoutineItemCount("All")})
                 </button>
                 {HOUSE_ROUTINE_CATEGORIES.map((cat) => (
                     <button
@@ -1048,7 +1059,7 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
                       }`}
                     >
                       {HOUSE_ROUTINE_CATEGORY_ICONS[cat]}
-                      {getRoutineCategoryLabel(cat)}
+                      {getRoutineCategoryLabel(cat)} ({getHouseRoutineItemCount(cat)})
                     </button>
                 ))}
               </div>

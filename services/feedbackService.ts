@@ -79,8 +79,10 @@ function convertTicket(data: any): SupportTicket {
 
 /**
  * Subscribe to support tickets (real-time updates)
- * - Regular users see only their own tickets
- * - Admins see all tickets in their household
+ * - Regular users see only their own tickets (enforced by RLS)
+ * - Admins see all tickets in their household (enforced by RLS)
+ * 
+ * NOTE: We don't filter client-side - RLS policies handle access control
  */
 export function subscribeToTickets(
   householdId: string,
@@ -90,25 +92,32 @@ export function subscribeToTickets(
 ): () => void {
   const client = getSupabaseClient();
   
-  // Build query based on role
+  // Build query - RLS will filter based on user role
+  // Don't add client-side filtering - let RLS policies handle it
   const fetchTickets = async () => {
-    let query = client
+    const { data, error } = await client
       .from('support_tickets')
       .select('*, users!support_tickets_user_id_fkey(name, avatar)')
       .eq('household_id', householdId)
       .order('updated_at', { ascending: false });
     
-    // Non-admins only see their own tickets
-    if (!isAdmin) {
-      query = query.eq('user_id', userId);
-    }
-    
-    const { data, error } = await query;
-    
     if (error) {
       console.error('[feedbackService] Error fetching tickets:', error);
+      console.error('[feedbackService] Error details:', {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+      });
       return;
     }
+    
+    console.log('[feedbackService] Fetched tickets:', {
+      count: data?.length || 0,
+      isAdmin,
+      userId,
+      householdId,
+    });
     
     callback((data || []).map(convertTicket));
   };

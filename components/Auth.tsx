@@ -25,7 +25,7 @@ interface AuthProps {
 
 const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
   const { user, isLoaded } = useUser();
-  const { signOut } = useClerk();
+  const { signOut, redirectToSignIn } = useClerk();
   const supabaseFromContext = useSupabase(); // Authenticated client from context
   const isSupabaseReady = useSupabaseReady(); // Check if JWT is ready
   const [isCreatingUser, setIsCreatingUser] = React.useState(false);
@@ -876,11 +876,28 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
     const urlParams = new URLSearchParams(window.location.search);
     const hashParams = new URLSearchParams(window.location.hash.split('?')[1] || '');
     const isInvite = urlParams.get('invite') === 'true' || hashParams.get('invite') === 'true';
+    const hid = urlParams.get('hid') || hashParams.get('hid');
+    const uid = urlParams.get('uid') || hashParams.get('uid');
     
     // If invite params present, show SignUp component instead
     if (isInvite) {
       console.log('🔴 [Auth] Rendering SignUp component - invite params detected');
-      return <SignUp onBackToSignIn={() => setShowSignUp(false)} />;
+      
+      // Create handler that preserves invite params when redirecting to sign-in
+      const handleBackToSignIn = () => {
+        if (isInvite && hid && uid) {
+          // Preserve invite params in redirect URL
+          const redirectUrl = `${window.location.origin}${window.location.pathname}?invite=true&hid=${hid}&uid=${uid}`;
+          redirectToSignIn({
+            redirectUrl: redirectUrl,
+          });
+        } else {
+          // No invite params, just toggle to sign-in view
+          setShowSignUp(false);
+        }
+      };
+      
+      return <SignUp onBackToSignIn={handleBackToSignIn} />;
     }
     
     console.log('🔴 [Auth] Rendering SignIn component - Clerk loaded but no authenticated user');

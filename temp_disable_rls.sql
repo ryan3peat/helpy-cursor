@@ -26,3 +26,4 @@ WHERE u.clerk_id = 'user_36Ld8EjKmnxbbRGarGSspohmQhw';
 
 
 
+

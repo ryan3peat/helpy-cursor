@@ -4,9 +4,6 @@ import FAQContent from "./FAQContent";
 export const metadata: Metadata = {
   title: "Helpy FAQ - Home Management App & Domestic Helper App Questions",
   description: "Common questions about Helpy, the home management app for families and domestic helpers. Learn about meal planning, expense tracking, task management, and more.",
-  alternates: {
-    canonical: '/faq',
-  },
 };
 
 // FAQ data for JSON-LD schema

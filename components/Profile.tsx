@@ -514,7 +514,33 @@ const Profile: React.FC<ProfileProps> = ({
 
   // Scroll to top when changing sections
   useEffect(() => {
-    window.scrollTo(0, 0);
+    // Use requestAnimationFrame to ensure DOM is ready, especially important for iOS Safari
+    requestAnimationFrame(() => {
+      // Scroll both window and document elements for better cross-browser compatibility
+      // Direct assignment works better on iOS Safari than scrollTo with behavior
+      if (window.scrollTo) {
+        window.scrollTo(0, 0);
+      }
+      if (document.documentElement) {
+        document.documentElement.scrollTop = 0;
+      }
+      if (document.body) {
+        document.body.scrollTop = 0;
+      }
+      
+      // Additional scroll for iOS Safari - sometimes needs a small delay after render
+      setTimeout(() => {
+        if (window.scrollTo) {
+          window.scrollTo(0, 0);
+        }
+        if (document.documentElement) {
+          document.documentElement.scrollTop = 0;
+        }
+        if (document.body) {
+          document.body.scrollTop = 0;
+        }
+      }, 10);
+    });
   }, [activeSection]);
 
   const resetForm = () => {

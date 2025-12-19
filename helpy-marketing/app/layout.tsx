@@ -8,10 +8,6 @@ export const metadata: Metadata = {
   title: 'Helpy - Home Management App & Household Planner',
   description: 'Helpy is the home management app that simplifies daily life. A household planner app for meals, tasks, and spending. The ideal family collaboration app.',
   keywords: ['home management app', 'household planner app', 'family task manager', 'family collaboration app', 'home helper app', 'domestic helper app', 'meal planning app for families'],
-  metadataBase: new URL('https://helpyfam.com'),
-  alternates: {
-    canonical: '/',
-  },
 };
 
 // SoftwareApplication JSON-LD schema

@@ -22,8 +22,6 @@ import {
   deleteTicket,
 } from '../services/feedbackService';
 import { getCachedSupabaseUuid } from '../services/supabaseService';
-import { useUser } from '@clerk/clerk-react';
-import { getAuthenticatedSupabaseClient } from '../contexts/SupabaseContext';
 
 interface FeedbackSectionProps {
   currentUser: User;
@@ -48,14 +46,12 @@ const FeedbackSection: React.FC<FeedbackSectionProps> = ({
 }) => {
   const isAdmin = currentUser.role === UserRole.MASTER;
   const isSuperAdmin = currentUser.role === UserRole.SUPERADMIN;
-  const { user: clerkUser } = useUser();
   
   // State
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
-  const [debugInfo, setDebugInfo] = useState<any>(null);
   
   // Form state
   const [newSubject, setNewSubject] = useState('');
@@ -69,79 +65,6 @@ const FeedbackSection: React.FC<FeedbackSectionProps> = ({
   // Get user's Supabase UUID (needed for creating tickets)
   const userSupabaseId = getCachedSupabaseUuid(currentUser.id);
   
-  // Debug function to check JWT and role
-  const checkJWTAndRole = async () => {
-    console.log('=== JWT Debug Check ===');
-    console.log('Current User (from props):', currentUser);
-    console.log('Is Admin (from role check):', isAdmin);
-    console.log('User Role:', currentUser.role);
-    console.log('UserRole.MASTER:', UserRole.MASTER);
-    
-    if (clerkUser) {
-      console.log('Clerk User:', clerkUser);
-      console.log('Clerk ID:', clerkUser.id);
-      console.log('Clerk Email:', clerkUser.emailAddresses[0]?.emailAddress);
-    } else {
-      console.warn('⚠️ No Clerk user found');
-    }
-    
-    const client = getAuthenticatedSupabaseClient();
-    if (client) {
-      // Check what the database says about this user
-      try {
-        const { data: userData, error: userError } = await client
-          .from('users')
-          .select('id, name, email, role, clerk_id')
-          .eq('email', clerkUser?.emailAddresses[0]?.emailAddress || '')
-          .single();
-        
-        if (userError) {
-          console.error('❌ Error fetching user from DB:', userError);
-        } else {
-          console.log('✅ User from database:', userData);
-          console.log('   Role in DB:', userData?.role);
-          console.log('   Clerk ID in DB:', userData?.clerk_id);
-          console.log('   Clerk ID matches?', userData?.clerk_id === clerkUser?.id);
-          console.log('   Is Admin?', userData?.role === 'Admin');
-          console.log('   Is SuperAdmin?', userData?.role === 'SuperAdmin');
-          
-          setDebugInfo({
-            clerkId: clerkUser?.id,
-            dbClerkId: userData?.clerk_id,
-            role: userData?.role,
-            isAdmin: userData?.role === 'Admin',
-            isSuperAdmin: userData?.role === 'SuperAdmin',
-            matches: userData?.clerk_id === clerkUser?.id,
-          });
-        }
-      } catch (error) {
-        console.error('❌ Error in debug check:', error);
-      }
-      
-      // Test the support_tickets query
-      try {
-        const { data: ticketsData, error: ticketsError } = await client
-          .from('support_tickets')
-          .select('*, users!support_tickets_user_id_fkey(name, email, role)')
-          .eq('household_id', householdId);
-        
-        if (ticketsError) {
-          console.error('❌ Error fetching tickets:', ticketsError);
-          console.error('   Error code:', ticketsError.code);
-          console.error('   Error message:', ticketsError.message);
-          console.error('   Error details:', ticketsError.details);
-        } else {
-          console.log('✅ Tickets query result:', ticketsData);
-          console.log('   Found tickets:', ticketsData?.length || 0);
-        }
-      } catch (error) {
-        console.error('❌ Error testing tickets query:', error);
-      }
-    } else {
-      console.error('❌ No authenticated Supabase client available');
-    }
-  };
-  
   // Subscribe to tickets - REMOVED client-side filtering, let RLS handle it
   useEffect(() => {
     if (!householdId || !userSupabaseId) return;
@@ -153,7 +76,6 @@ const FeedbackSection: React.FC<FeedbackSectionProps> = ({
       isAdmin,
       isSuperAdmin,
       currentUserRole: currentUser.role,
-      clerkUserId: clerkUser?.id,
     });
     
     setIsLoading(true);
@@ -174,7 +96,7 @@ const FeedbackSection: React.FC<FeedbackSectionProps> = ({
     );
     
     return unsubscribe;
-  }, [householdId, userSupabaseId, isAdmin, currentUser.role, clerkUser?.id]);
+  }, [householdId, userSupabaseId, isAdmin, isSuperAdmin, currentUser.role]);
   
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -423,28 +345,6 @@ const FeedbackSection: React.FC<FeedbackSectionProps> = ({
           <p className="text-sm text-muted-foreground mb-4">
             {t['feedback.description'] || 'Send us your feedback, questions, or report issues'}
           </p>
-          
-          {/* Debug button for admin/superadmin */}
-          {(isAdmin || isSuperAdmin) && (
-            <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-xl">
-              <button
-                onClick={checkJWTAndRole}
-                className="text-sm text-yellow-800 underline"
-              >
-                🔍 Debug: Check JWT & Role ({isSuperAdmin ? 'SuperAdmin' : 'Admin'} Only)
-              </button>
-              {debugInfo && (
-                <div className="mt-2 text-xs text-yellow-700 space-y-1">
-                  <div>Clerk ID: {debugInfo.clerkId}</div>
-                  <div>DB Clerk ID: {debugInfo.dbClerkId}</div>
-                  <div>Role: {debugInfo.role}</div>
-                  <div>Is Admin: {debugInfo.isAdmin ? '✅ Yes' : '❌ No'}</div>
-                  <div>Is SuperAdmin: {debugInfo.isSuperAdmin ? '✅ Yes' : '❌ No'}</div>
-                  <div>IDs Match: {debugInfo.matches ? '✅ Yes' : '❌ No'}</div>
-                </div>
-              )}
-            </div>
-          )}
           
           {/* New message form */}
           <div className="bg-card border border-border rounded-2xl p-4 mb-6 space-y-3">

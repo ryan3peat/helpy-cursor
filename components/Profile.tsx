@@ -2,8 +2,10 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
   AlertCircle, Heart, Settings, Plus, Trash2, X, Save, Camera,
   Image as ImageIcon, LogOut, Copy, Check, ChevronLeft, ChevronRight,
-  Shield, Lock, Crown, Mail, Share2, Bell, BellOff, BellDot, Phone, CheckCircle, Loader2, GraduationCap
+  Shield, Lock, Crown, Mail, Share2, Bell, BellOff, BellDot, Phone, CheckCircle, Loader2, GraduationCap,
+  MessageCircle
 } from 'lucide-react';
+import FeedbackSection from './FeedbackSection';
 import { useUser } from '@clerk/clerk-react';
 import { User, UserRole, BaseViewProps } from '../types';
 import { createInvite } from '../services/inviteService';
@@ -57,7 +59,7 @@ const Profile: React.FC<ProfileProps> = ({
   const supabase = useSupabase();
 
   // Navigation State
-  const [activeSection, setActiveSection] = useState<'main' | 'settings' | 'plan' | 'security' | 'payment'>('main');
+  const [activeSection, setActiveSection] = useState<'main' | 'settings' | 'plan' | 'security' | 'payment' | 'feedback'>('main');
 
   // Main Profile State
   const [selectedUserId, setSelectedUserId] = useState<string>(currentUser.id);
@@ -2844,6 +2846,20 @@ const Profile: React.FC<ProfileProps> = ({
   }
 
   // =====================================================
+  // FEEDBACK VIEW
+  // =====================================================
+  if (activeSection === 'feedback') {
+    return (
+      <FeedbackSection
+        currentUser={currentUser}
+        householdId={currentUser.householdId}
+        t={t}
+        onBack={() => setActiveSection('settings')}
+      />
+    );
+  }
+
+  // =====================================================
   // SETTINGS MENU VIEW
   // =====================================================
   if (activeSection === 'settings') {
@@ -2857,6 +2873,7 @@ const Profile: React.FC<ProfileProps> = ({
               {[
                 { id: 'plan', label: t['common.plan'] || 'Subscription', icon: Crown, helperHidden: true },
                 { id: 'security', label: t['common.security'] || 'Account', icon: Shield, helperHidden: false },
+                { id: 'feedback', label: t['feedback.title'] || 'Feedback', icon: MessageCircle, helperHidden: false },
               ]
                 .filter(item => !isHelper || !item.helperHidden)
                 .map((item, index, filteredArray) => (

@@ -26,7 +26,8 @@ const COLLECTION_MAP: Record<string, string> = {
   'meals': 'meals',
   'expenses': 'expenses',
   'sections': 'sections',
-  'essential_info': 'essential_info'
+  'places': 'places',
+  'practices': 'practices',
 };
 
 // Cache to store clerk_id -> supabase uuid mapping

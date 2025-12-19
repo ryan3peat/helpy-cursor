@@ -29,9 +29,8 @@ import {
   AlertTriangle,
   Utensils,
   Info,
-  Lamp,
-  BookOpen,
-  User as UserIcon,
+  ListChecks,
+  HeartHandshake,
   Lock,
 } from "lucide-react";
 import Avatar from "./ui/Avatar";
@@ -884,56 +883,52 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
           <h1 className="w-full">
             <span className="text-primary font-bold" style={{ fontSize: '20px' }}>{t['info.title'] || 'Family Info'}</span><br />
             <span className="text-display text-foreground">
-              {activeSection === 'essentialInfo' ? (t['common.essential_info'] || 'Essential') : 
-               activeSection === 'houseRoutine' ? (t['common.house_routine'] || 'House Routine') :
+              {activeSection === 'essentialInfo' ? (t['common.places'] || 'Places') : 
+               activeSection === 'houseRoutine' ? (t['common.practice'] || 'Practice') :
                (t['common.helper'] || 'Helper')}
             </span>
           </h1>
         </header>
 
-        {/* Section Toggle Cards */}
-        <div className="mt-4 mb-6">
-          <div className="grid grid-cols-3 gap-3">
-            {/* Essential Info Card */}
+        {/* Section Toggle Cards - Scrollable Horizontal Layout */}
+        <div className="mt-4 mb-6 -mx-4 px-4 overflow-x-auto scrollbar-hide">
+          <div className="flex gap-3" style={{ minWidth: 'min-content' }}>
+            {/* Places Card */}
             <button
               onClick={() => setActiveSection("essentialInfo")}
-              className={`px-3 py-2.5 rounded-xl text-left transition-all ${
+              className={`flex-shrink-0 min-w-[130px] px-4 py-3 rounded-xl text-center transition-all ${
                 activeSection === "essentialInfo"
                   ? "bg-primary text-primary-foreground shadow-md"
                   : "bg-card text-foreground shadow-sm"
               }`}
             >
-              <div className="flex items-center gap-2">
-                <BookOpen size={16} className={activeSection === "essentialInfo" ? "" : undefined} />
-                <span className="text-title">{t['common.essential_info'] || 'Essential'}</span>
-              </div>
-              <div className={`text-caption mt-1 ml-6 ${activeSection === "essentialInfo" ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
+              <MapPin size={20} className="mx-auto mb-1" />
+              <span className="text-sm font-semibold block">{t['common.places'] || 'Places'}</span>
+              <span className={`text-xs ${activeSection === "essentialInfo" ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
                 {essentialStats.total} {t['common.items'] || 'items'}
-              </div>
+              </span>
             </button>
 
-            {/* House Routine Card */}
+            {/* Practice Card */}
             <button
               onClick={() => setActiveSection("houseRoutine")}
-              className={`px-3 py-2.5 rounded-xl text-left transition-all ${
+              className={`flex-shrink-0 min-w-[130px] px-4 py-3 rounded-xl text-center transition-all ${
                 activeSection === "houseRoutine"
                   ? "bg-primary text-primary-foreground shadow-md"
                   : "bg-card text-foreground shadow-sm"
               }`}
             >
-              <div className="flex items-center gap-2">
-                <Lamp size={16} className={activeSection === "houseRoutine" ? "" : undefined} />
-                <span className="text-title">{t['common.house_routine'] || 'House Routine'}</span>
-              </div>
-              <div className={`text-caption mt-1 ml-6 ${activeSection === "houseRoutine" ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
+              <ListChecks size={20} className="mx-auto mb-1" />
+              <span className="text-sm font-semibold block">{t['common.practice'] || 'Practice'}</span>
+              <span className={`text-xs ${activeSection === "houseRoutine" ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
                 {houseRoutineStats.total} {t['common.items'] || 'items'}
-              </div>
+              </span>
             </button>
 
             {/* Helper Card - Only available to Core and Pro users */}
             <button
               onClick={() => hasHelperManagementAccess && setActiveSection("helper")}
-              className={`px-3 py-2.5 rounded-xl text-left transition-all relative ${
+              className={`flex-shrink-0 min-w-[130px] px-4 py-3 rounded-xl text-center transition-all ${
                 !hasHelperManagementAccess
                   ? "bg-card/50 text-muted-foreground shadow-sm cursor-not-allowed opacity-60"
                   : activeSection === "helper"
@@ -942,15 +937,13 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
               }`}
               disabled={!hasHelperManagementAccess}
             >
-              <div className="flex items-center gap-2">
-                {hasHelperManagementAccess ? (
-                  <UserIcon size={16} />
-                ) : (
-                  <Lock size={16} className="text-muted-foreground" />
-                )}
-                <span className="text-title">{t['common.helper'] || 'Helper'}</span>
-              </div>
-              <div className={`text-caption mt-1 ml-6 ${
+              {hasHelperManagementAccess ? (
+                <HeartHandshake size={20} className="mx-auto mb-1" />
+              ) : (
+                <Lock size={20} className="mx-auto mb-1" />
+              )}
+              <span className="text-sm font-semibold block">{t['common.helper'] || 'Helper'}</span>
+              <span className={`text-xs ${
                 !hasHelperManagementAccess 
                   ? "text-muted-foreground/60" 
                   : activeSection === "helper" 
@@ -959,9 +952,9 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
               }`}>
                 {hasHelperManagementAccess 
                   ? `${helpers.length} ${t['common.helpers'] || 'helpers'}`
-                  : (t['common.upgrade_required'] || 'Upgrade required')
+                  : (t['common.upgrade_required'] || 'Upgrade')
                 }
-              </div>
+              </span>
             </button>
           </div>
         </div>
@@ -1095,11 +1088,11 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
               {filteredEssentialItems.length === 0 ? (
                 <div className="text-center py-12">
                   <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-secondary flex items-center justify-center">
-                    <BookOpen size={28} className="text-muted-foreground" />
+                    <MapPin size={28} className="text-muted-foreground" />
                   </div>
-                  <p className="text-body text-foreground">{t['info.no_entries_yet'] || 'No entries yet'}</p>
+                  <p className="text-body text-foreground">{t['info.no_places_yet'] || 'No places yet'}</p>
                   <p className="text-caption text-muted-foreground mt-1">
-                    {t['info.add_contacts_hint'] || 'Add important contacts and places for your household'}
+                    {t['info.add_places_hint'] || 'Add important places and contacts for your household'}
                   </p>
                 </div>
               ) : (
@@ -1131,11 +1124,11 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
               {filteredHouseRoutineItems.length === 0 ? (
                 <div className="text-center py-12">
                   <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-secondary flex items-center justify-center">
-                    <Lamp size={28} className="text-muted-foreground" />
+                    <ListChecks size={28} className="text-muted-foreground" />
                   </div>
-                  <p className="text-body text-foreground">{t['info.no_routines'] || 'No routines yet'}</p>
+                  <p className="text-body text-foreground">{t['info.no_practice_yet'] || 'No practices yet'}</p>
                   <p className="text-caption text-muted-foreground mt-1">
-                    {t['info.add_routines_hint'] || 'Add house routines and instructions for your household'}
+                    {t['info.add_practice_hint'] || 'Add household practices and instructions'}
                   </p>
                 </div>
               ) : (

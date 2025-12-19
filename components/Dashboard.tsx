@@ -593,10 +593,14 @@ const Dashboard: React.FC<DashboardProps> = ({
                 html.classList.remove('dark');
                 html.classList.add('light');
                 localStorage.setItem('helpy_theme', 'light');
+                // Update overscroll background color to match light theme
+                html.style.backgroundColor = '#fafafa';
               } else {
                 html.classList.remove('light');
                 html.classList.add('dark');
                 localStorage.setItem('helpy_theme', 'dark');
+                // Update overscroll background color to match dark theme
+                html.style.backgroundColor = '#121212';
               }
             }}
             className="mt-4 px-4 py-2 rounded-full bg-muted text-muted-foreground text-caption flex items-center gap-2 mx-auto hover:bg-muted/80 transition-colors"

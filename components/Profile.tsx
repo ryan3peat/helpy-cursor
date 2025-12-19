@@ -1286,7 +1286,7 @@ const Profile: React.FC<ProfileProps> = ({
             {onRestartTutorial && (
               <button
                 onClick={onRestartTutorial}
-                className="w-full bg-card px-5 py-4 rounded-3xl shadow-sm flex items-center justify-between hover:bg-secondary transition-colors"
+                className="w-full bg-card px-5 py-4 rounded-3xl shadow-sm flex items-center hover:bg-secondary transition-colors"
               >
                 <div className="flex items-center gap-3">
                   <GraduationCap size={18} className="text-primary" />
@@ -1295,7 +1295,6 @@ const Profile: React.FC<ProfileProps> = ({
                     <p className="text-caption text-muted-foreground">{t['profile.restart_tutorial'] || 'Restart the onboarding guide'}</p>
                   </div>
                 </div>
-                <ChevronRight size={20} className="text-muted-foreground" />
               </button>
             )}
           </div>

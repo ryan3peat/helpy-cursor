@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef, useMemo } from 'react';
 import {
   Sparkles,
   Plus,
@@ -442,23 +442,23 @@ const Meals: React.FC<MealsProps> = ({
   };
 
   // Auto-scroll Day view (only when explicitly requested)
-  useEffect(() => {
+  // Using useLayoutEffect (not useEffect) ensures scroll happens BEFORE browser paint.
+  // This prevents the iOS Safari flicker where content briefly shows at wrong scroll position.
+  useLayoutEffect(() => {
     if (view !== 'day') return;
     if (!shouldAutoScroll.current) return;
 
-    // Use requestAnimationFrame for immediate scroll (before first paint)
-    requestAnimationFrame(() => {
-      const targetDateStr = formatDateStr(new Date(currentViewDate));
-      const targetEl = document.getElementById(`day-${targetDateStr}`);
-      
-      if (targetEl) {
-        // Calculate scroll position with offset for sticky header + breathing room
-        const headerOffset = 200;
-        const elementPosition = targetEl.getBoundingClientRect().top + window.scrollY;
-        window.scrollTo({ top: elementPosition - headerOffset, behavior: 'auto' });
-      }
-      shouldAutoScroll.current = false;
-    });
+    // Synchronous scroll - no RAF wrapper so it runs before first paint
+    const targetDateStr = formatDateStr(new Date(currentViewDate));
+    const targetEl = document.getElementById(`day-${targetDateStr}`);
+    
+    if (targetEl) {
+      // Calculate scroll position with offset for sticky header + breathing room
+      const headerOffset = 200;
+      const elementPosition = targetEl.getBoundingClientRect().top + window.scrollY;
+      window.scrollTo({ top: elementPosition - headerOffset, behavior: 'auto' });
+    }
+    shouldAutoScroll.current = false;
   }, [view, currentViewDate]);
 
   // Close quick join popover when clicking outside

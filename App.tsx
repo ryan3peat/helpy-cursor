@@ -63,7 +63,19 @@ const AppContent: React.FC = () => {
   const { user: clerkUser, isSignedIn, isLoaded: clerkLoaded } = useUser();
   const { setStaticTranslating, isAnyTranslating } = useTranslationContext();
   const isSupabaseReady = useSupabaseReady(); // Wait for authenticated Supabase client
-  const [showIntro, setShowIntro] = useState(true);
+  // Skip intro animation for returning users or notification deep links
+  const [showIntro, setShowIntro] = useState(() => {
+    // Skip intro if user has existing session (returning user)
+    const hasSession = localStorage.getItem('helpy_current_session_user');
+    if (hasSession) return false;
+    
+    // Skip intro if this is a deep link (e.g., from notification click)
+    // Notification URLs have hashes like #meals, #todo?section=shopping, etc.
+    const hash = window.location.hash;
+    if (hash && hash !== '#' && hash !== '#/') return false;
+    
+    return true;
+  });
   const [activeView, setActiveView] = useState('dashboard');
   const [clerkLoadTimeout, setClerkLoadTimeout] = useState(false);
   const [clerkError, setClerkError] = useState<string | null>(null);

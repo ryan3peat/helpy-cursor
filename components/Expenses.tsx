@@ -383,67 +383,78 @@ const Expenses: React.FC<ExpensesProps> = ({
       baseExpenses = localExpenses.filter(e => e.createdBy === currentUser.id);
     }
     
-    // When no month/year is selected, show all (filtered) expenses
+    // Filter by month/year if selected
+    let filtered: Expense[];
     if (selectedMonth === null || selectedYear === null) {
-      return baseExpenses;
-    }
-    return baseExpenses.filter((expense) => {
-      if (!expense.date || typeof expense.date !== 'string') {
-        console.warn('[Expenses] Invalid date for expense:', expense.id, expense.date);
-        return false;
-      }
+      // When no month/year is selected, show all (filtered) expenses
+      filtered = baseExpenses;
+    } else {
+      filtered = baseExpenses.filter((expense) => {
+        if (!expense.date || typeof expense.date !== 'string') {
+          console.warn('[Expenses] Invalid date for expense:', expense.id, expense.date);
+          return false;
+        }
 
-      let year: number | null = null;
-      let month: number | null = null;
+        let year: number | null = null;
+        let month: number | null = null;
 
-      // Try YYYY-MM-DD format first (standard ISO format)
-      const isoMatch = expense.date.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
-      if (isoMatch) {
-        year = parseInt(isoMatch[1], 10);
-        month = parseInt(isoMatch[2], 10);
-      } else {
-        // Try DD-MM-YYYY format
-        const ddmmyyyyMatch = expense.date.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
-        if (ddmmyyyyMatch) {
-          year = parseInt(ddmmyyyyMatch[3], 10);
-          month = parseInt(ddmmyyyyMatch[2], 10);
+        // Try YYYY-MM-DD format first (standard ISO format)
+        const isoMatch = expense.date.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+        if (isoMatch) {
+          year = parseInt(isoMatch[1], 10);
+          month = parseInt(isoMatch[2], 10);
         } else {
-          // Try MM/DD/YYYY format
-          const mmddyyyyMatch = expense.date.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-          if (mmddyyyyMatch) {
-            year = parseInt(mmddyyyyMatch[3], 10);
-            month = parseInt(mmddyyyyMatch[1], 10);
+          // Try DD-MM-YYYY format
+          const ddmmyyyyMatch = expense.date.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+          if (ddmmyyyyMatch) {
+            year = parseInt(ddmmyyyyMatch[3], 10);
+            month = parseInt(ddmmyyyyMatch[2], 10);
           } else {
-            // Try DD/MM/YYYY format
-            const ddmmyyyySlashMatch = expense.date.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-            if (ddmmyyyySlashMatch) {
-              year = parseInt(ddmmyyyySlashMatch[3], 10);
-              month = parseInt(ddmmyyyySlashMatch[2], 10);
+            // Try MM/DD/YYYY format
+            const mmddyyyyMatch = expense.date.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+            if (mmddyyyyMatch) {
+              year = parseInt(mmddyyyyMatch[3], 10);
+              month = parseInt(mmddyyyyMatch[1], 10);
             } else {
-              // Try parsing as Date object (fallback)
-              try {
-                const parsedDate = new Date(expense.date);
-                if (!isNaN(parsedDate.getTime())) {
-                  year = parsedDate.getFullYear();
-                  month = parsedDate.getMonth() + 1; // getMonth() returns 0-11
+              // Try DD/MM/YYYY format
+              const ddmmyyyySlashMatch = expense.date.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+              if (ddmmyyyySlashMatch) {
+                year = parseInt(ddmmyyyySlashMatch[3], 10);
+                month = parseInt(ddmmyyyySlashMatch[2], 10);
+              } else {
+                // Try parsing as Date object (fallback)
+                try {
+                  const parsedDate = new Date(expense.date);
+                  if (!isNaN(parsedDate.getTime())) {
+                    year = parsedDate.getFullYear();
+                    month = parsedDate.getMonth() + 1; // getMonth() returns 0-11
+                  }
+                } catch (e) {
+                  console.warn('[Expenses] Could not parse date:', expense.date, 'for expense:', expense.id);
+                  return false;
                 }
-              } catch (e) {
-                console.warn('[Expenses] Could not parse date:', expense.date, 'for expense:', expense.id);
-                return false;
               }
             }
           }
         }
-      }
 
-      // Validate parsed values
-      if (year === null || month === null || isNaN(year) || isNaN(month) || month < 1 || month > 12) {
-        console.warn('[Expenses] Invalid parsed date values:', { year, month, date: expense.date, expenseId: expense.id });
-        return false;
-      }
+        // Validate parsed values
+        if (year === null || month === null || isNaN(year) || isNaN(month) || month < 1 || month > 12) {
+          console.warn('[Expenses] Invalid parsed date values:', { year, month, date: expense.date, expenseId: expense.id });
+          return false;
+        }
 
-      // Compare with selected month/year (month is 0-indexed in selectedMonth)
-      return (month - 1) === selectedMonth && year === selectedYear;
+        // Compare with selected month/year (month is 0-indexed in selectedMonth)
+        return (month - 1) === selectedMonth && year === selectedYear;
+      });
+    }
+    
+    // Sort by date (newest first)
+    return filtered.sort((a, b) => {
+      // YYYY-MM-DD format is naturally sortable as strings
+      const dateA = a.date || '';
+      const dateB = b.date || '';
+      return dateB.localeCompare(dateA); // Descending order (newest first)
     });
   }, [localExpenses, selectedMonth, selectedYear, isHelper, currentUser.id]);
 

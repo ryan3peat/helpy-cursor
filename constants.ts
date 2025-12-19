@@ -747,6 +747,7 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'feedback.mark_resolved': 'Mark as Resolved',
   'feedback.reopen': 'Reopen',
   'feedback.admin_view': 'All Household Messages',
+  'feedback.superadmin_view': 'All Messages (All Households)',
   'feedback.your_messages': 'Your Messages',
   'feedback.from': 'From',
   'feedback.admin_badge': 'Admin',

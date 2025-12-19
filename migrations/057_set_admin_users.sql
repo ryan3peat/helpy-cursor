@@ -2,29 +2,19 @@
 -- Migration: 057_set_admin_users
 -- Description: Set specific users as Admin based on email addresses
 -- 
--- This migration sets the following users as Admin:
--- - cryptohkrc@gmail.com
--- - julianoliko@gmail.com
+-- NOTE: This migration is DEPRECATED. Use migration 059_add_superadmin_role.sql instead.
+-- The users cryptohkrc@gmail.com and julianoliko@gmail.com should be SuperAdmin, not Admin.
 -- 
--- Run this in Supabase Dashboard > SQL Editor
+-- This migration is kept for reference but should not be run.
 -- ============================================================================
 
--- Update users to Admin role based on email addresses
-UPDATE users
-SET role = 'Admin'
-WHERE email IN ('cryptohkrc@gmail.com', 'julianoliko@gmail.com')
-  AND role != 'Admin'; -- Only update if not already Admin
-
--- Verify the update
-SELECT 
-  id,
-  name,
-  email,
-  role,
-  household_id
-FROM users
-WHERE email IN ('cryptohkrc@gmail.com', 'julianoliko@gmail.com');
+-- DEPRECATED: Do not run this migration
+-- Use migration 059_add_superadmin_role.sql instead
 
 -- ============================================================================
--- Done! Users have been set as Admin
+-- If you need to set regular household admins, use:
+-- ============================================================================
+-- UPDATE users
+-- SET role = 'Admin'
+-- WHERE email = 'user@example.com';
 -- ============================================================================

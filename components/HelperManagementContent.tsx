@@ -60,11 +60,10 @@ export const HelperManagementContent: React.FC<Props> = ({
   const isAdmin = currentUser.role === UserRole.MASTER;
   const salaryConfigured = isHelperSalaryConfigured(helper);
   
-  // Calculate total salary: Base + Food (if set) + Other Allowances + Overtime
+  // Calculate total salary: Base + Other Allowances + Overtime
   const baseSalary = helper.helperBaseSalary || 0;
-  const foodAllowance = helper.helperFoodAllowance || 0;
   const otherAllowances = (helper.helperOtherAllowances || []).reduce((sum, a) => sum + a.amount, 0);
-  const calculatedTotal = baseSalary + foodAllowance + otherAllowances + overtimeTotal;
+  const calculatedTotal = baseSalary + otherAllowances + overtimeTotal;
   const totalSalary = calculatedTotal;
   
   // Check if admin has overridden the calculated amount
@@ -108,7 +107,7 @@ export const HelperManagementContent: React.FC<Props> = ({
       const payslip = await getCurrentPayslip(helperId, householdId);
       if (!payslip) {
         // Create one with calculated salary
-        const calculatedSalary = baseSalary + foodAllowance + otherAllowances + overtime;
+        const calculatedSalary = baseSalary + otherAllowances + overtime;
         const newPayslip = await createOrGetCurrentPayslip(helperId, householdId, calculatedSalary);
         setCurrentPayslip(newPayslip);
       } else {
@@ -441,12 +440,6 @@ export const HelperManagementContent: React.FC<Props> = ({
                       <span className="text-muted-foreground">{t['helper.base_salary'] || 'Base Salary'}</span>
                       <span>${baseSalary.toLocaleString()}</span>
                     </div>
-                    {foodAllowance > 0 && (
-                      <div className="flex justify-between text-caption">
-                        <span className="text-muted-foreground">{t['helper.food_allowance'] || 'Food Allowance'}</span>
-                        <span>${foodAllowance.toLocaleString()}</span>
-                      </div>
-                    )}
                     {otherAllowances > 0 && (
                       <div className="flex justify-between text-caption">
                         <span className="text-muted-foreground">{t['helper.other_allowances'] || 'Other Allowances'}</span>
@@ -685,12 +678,6 @@ export const HelperManagementContent: React.FC<Props> = ({
                 <span className="text-muted-foreground">Base Salary</span>
                 <span>${baseSalary.toLocaleString()}</span>
               </div>
-              {foodAllowance > 0 && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Food Allowance</span>
-                  <span>${foodAllowance.toLocaleString()}</span>
-                </div>
-              )}
               {otherAllowances > 0 && (
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Other Allowances</span>

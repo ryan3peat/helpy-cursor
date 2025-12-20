@@ -84,7 +84,6 @@ const Profile: React.FC<ProfileProps> = ({
   // Helper salary edit state
   const [editHelperStartDate, setEditHelperStartDate] = useState<string | null>(null);
   const [editHelperBaseSalary, setEditHelperBaseSalary] = useState(5100);
-  const [editHelperFoodAllowance, setEditHelperFoodAllowance] = useState(1236);
   const [editHelperOtherAllowances, setEditHelperOtherAllowances] = useState<Array<{name: string; amount: number}>>([]);
 
   // Add User Form State
@@ -191,7 +190,6 @@ const Profile: React.FC<ProfileProps> = ({
         if (userToEdit.role === UserRole.HELPER) {
           setEditHelperStartDate(userToEdit.helperStartDate || null);
           setEditHelperBaseSalary(userToEdit.helperBaseSalary || 5100);
-          setEditHelperFoodAllowance(userToEdit.helperFoodAllowance || 1236);
           setEditHelperOtherAllowances(userToEdit.helperOtherAllowances || []);
         }
         
@@ -829,7 +827,6 @@ const Profile: React.FC<ProfileProps> = ({
     if (selectedUser.role === UserRole.HELPER) {
       setEditHelperStartDate(selectedUser.helperStartDate || null);
       setEditHelperBaseSalary(selectedUser.helperBaseSalary || 5100);
-      setEditHelperFoodAllowance(selectedUser.helperFoodAllowance || 1236);
       setEditHelperOtherAllowances(selectedUser.helperOtherAllowances || []);
     }
     
@@ -848,7 +845,6 @@ const Profile: React.FC<ProfileProps> = ({
     if (editRole === UserRole.HELPER) {
       updates.helperStartDate = editHelperStartDate;
       updates.helperBaseSalary = editHelperBaseSalary;
-      updates.helperFoodAllowance = editHelperFoodAllowance;
       updates.helperOtherAllowances = editHelperOtherAllowances;
     }
     
@@ -1596,24 +1592,6 @@ const Profile: React.FC<ProfileProps> = ({
                       />
                     </div>
                     
-                    {/* Food Allowance */}
-                    <div>
-                      <label className="block text-caption text-muted-foreground mb-2">
-                        {t['profile.helper_food_allowance'] || 'Food Allowance (HK$/month)'}
-                      </label>
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        value={editHelperFoodAllowance || ''}
-                        onChange={(e) => {
-                          const val = e.target.value.replace(/[^0-9]/g, '');
-                          setEditHelperFoodAllowance(val === '' ? 0 : parseInt(val, 10));
-                        }}
-                        className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
-                        placeholder="1236"
-                      />
-                    </div>
-                    
                     {/* Other Allowances */}
                     <div>
                       <label className="block text-caption text-muted-foreground mb-2">
@@ -1660,7 +1638,7 @@ const Profile: React.FC<ProfileProps> = ({
                       <div className="flex justify-between items-center">
                         <span className="text-body">{t['profile.total_salary'] || 'Total Monthly Salary'}</span>
                         <span className="text-title font-bold text-primary">
-                          HK${(editHelperBaseSalary + editHelperFoodAllowance + 
+                          HK${(editHelperBaseSalary +
                                editHelperOtherAllowances.reduce((sum, a) => sum + a.amount, 0)).toLocaleString()}
                         </span>
                       </div>

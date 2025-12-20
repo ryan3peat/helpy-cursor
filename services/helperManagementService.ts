@@ -433,11 +433,10 @@ export async function getPastPayslips(
 
 export function calculateTotalSalary(
   baseSalary: number,
-  foodAllowance: number,
   otherAllowances: Array<{ name: string; amount: number }>
 ): number {
   const othersTotal = otherAllowances.reduce((sum, a) => sum + a.amount, 0);
-  return baseSalary + foodAllowance + othersTotal;
+  return baseSalary + othersTotal;
 }
 
 export function isHelperSalaryConfigured(user: {

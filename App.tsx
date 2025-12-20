@@ -362,11 +362,41 @@ const AppContent: React.FC = () => {
   }, [currentUser?.householdId]);
 
   // Real-time connection status with auto-reconnect and periodic sync
-  const { status: realtimeStatus } = useRealtimeStatus({
+  const { status: realtimeStatus, syncNow } = useRealtimeStatus({
     enablePeriodicSync: true,
     syncInterval: 1 * 60 * 1000, // 1 minute - backup sync if real-time fails
     onSyncRequest: syncAllData,
   });
+
+  // Handle app visibility changes - refetch data when app comes back to foreground
+  // This ensures users see fresh data even if subscriptions disconnected while backgrounded
+  useEffect(() => {
+    if (!currentUser?.householdId) return;
+
+    const handleVisibilityChange = () => {
+      // When app becomes visible, check if we need to refresh data
+      if (document.visibilityState === 'visible') {
+        console.log('[App] 📱 App became visible, checking connection status...');
+        
+        // If disconnected or connecting, immediately sync data
+        if (realtimeStatus === 'disconnected' || realtimeStatus === 'connecting') {
+          console.log(`[App] ⚠️ Connection status: ${realtimeStatus} - triggering immediate sync`);
+          syncNow();
+        } else {
+          // Even if connected, do a quick sync to ensure we have latest data
+          // This handles cases where subscriptions missed updates while backgrounded
+          console.log('[App] ✅ Connection appears active, doing background refresh to catch any missed updates');
+          syncAllData();
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [currentUser?.householdId, realtimeStatus, syncNow, syncAllData]);
 
   // Ensure currentUser is always in the users array (for assignee selection)
   useEffect(() => {

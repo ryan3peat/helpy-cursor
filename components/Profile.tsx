@@ -202,7 +202,7 @@ const Profile: React.FC<ProfileProps> = ({
   // Pre-fetch subscription info on component mount (for admins)
   // This eliminates latency when navigating to the Plan page
   React.useEffect(() => {
-    if (currentUser?.householdId && currentUser?.role === UserRole.MASTER) {
+    if (currentUser?.householdId && (currentUser?.role === UserRole.MASTER || currentUser?.role === UserRole.SUPERADMIN)) {
       fetchSubscriptionInfo();
     } else {
       // Non-admins don't need subscription info, stop loading
@@ -615,7 +615,7 @@ const Profile: React.FC<ProfileProps> = ({
       
       if (hasActivePaidSubscription && plan !== 'test') {
         // Change existing subscription instead of creating new checkout
-        const result = await changeSubscription(currentUser.householdId, plan as 'core' | 'pro', period);
+        const result = await changeSubscription(currentUser.householdId, plan as 'core' | 'pro', period, currentUser.id);
         
         if (result.success) {
           // Refresh subscription info
@@ -635,7 +635,8 @@ const Profile: React.FC<ProfileProps> = ({
           period,
           currentUser.email || '',
           promoCode,
-          referralCode
+          referralCode,
+          currentUser.id
         );
         
         // Redirect to Stripe Checkout
@@ -656,7 +657,7 @@ const Profile: React.FC<ProfileProps> = ({
     
     try {
       setLoadingPlan('core'); // Use 'core' as a loading indicator for downgrade
-      await downgradeToFree(currentUser.householdId);
+      await downgradeToFree(currentUser.householdId, currentUser.id);
       // Refresh subscription info
       await fetchSubscriptionInfo(0, false);
       alert(t['subscription.downgrade_success'] || 'Your subscription has been canceled. You are now on the Free plan.');
@@ -1896,7 +1897,7 @@ const Profile: React.FC<ProfileProps> = ({
       }
     ];
 
-    const isAdmin = currentUser.role === UserRole.MASTER;
+    const isAdmin = currentUser.role === UserRole.MASTER || currentUser.role === UserRole.SUPERADMIN;
     const currentPlanName = subscriptionInfo?.plan === 'core' 
       ? (t['common.core'] || 'Core') 
       : subscriptionInfo?.plan === 'pro' 

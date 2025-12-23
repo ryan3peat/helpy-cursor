@@ -38,12 +38,30 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
-    const { householdId, newPlan, newPeriod } = req.body;
+    const { householdId, newPlan, newPeriod, requesterId } = req.body;
     // newPlan: 'core' | 'pro'
     // newPeriod: 'monthly' | 'yearly'
 
     if (!householdId || !newPlan || !newPeriod) {
       return res.status(400).json({ error: 'Missing required parameters' });
+    }
+
+    // Verify requester is Admin or SuperAdmin
+    if (requesterId) {
+      const { data: requester } = await supabase
+        .from('users')
+        .select('id, household_id, role, clerk_id')
+        .or(`clerk_id.eq.${requesterId},id.eq.${requesterId}`)
+        .eq('household_id', householdId)
+        .maybeSingle();
+
+      if (!requester) {
+        return res.status(403).json({ error: 'Requester not found' });
+      }
+
+      if (requester.role !== 'Admin' && requester.role !== 'SuperAdmin') {
+        return res.status(403).json({ error: 'Only admins can change subscription plans' });
+      }
     }
 
     const priceKey = `${newPlan}_${newPeriod}`;

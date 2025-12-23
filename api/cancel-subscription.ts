@@ -16,13 +16,30 @@ export default async function handler(req: any, res: any) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { householdId } = req.body;
+  const { householdId, requesterId } = req.body;
 
   if (!householdId) {
     return res.status(400).json({ error: 'Missing householdId' });
   }
 
   try {
+    // Verify requester is Admin or SuperAdmin
+    if (requesterId) {
+      const { data: requester } = await supabase
+        .from('users')
+        .select('id, household_id, role, clerk_id')
+        .or(`clerk_id.eq.${requesterId},id.eq.${requesterId}`)
+        .eq('household_id', householdId)
+        .maybeSingle();
+
+      if (!requester) {
+        return res.status(403).json({ error: 'Requester not found' });
+      }
+
+      if (requester.role !== 'Admin' && requester.role !== 'SuperAdmin') {
+        return res.status(403).json({ error: 'Only admins can cancel subscriptions' });
+      }
+    }
     const { data: household, error: householdError } = await supabase
       .from('households')
       .select('stripe_subscription_id')

@@ -44,6 +44,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
+    // Verify inviter is Admin or SuperAdmin
+    if (inviterId) {
+      const { data: inviter } = await supabase
+        .from('users')
+        .select('id, household_id, role, clerk_id')
+        .or(`clerk_id.eq.${inviterId},id.eq.${inviterId}`)
+        .eq('household_id', householdId)
+        .maybeSingle();
+
+      if (!inviter) {
+        return res.status(403).json({ error: 'Inviter not found' });
+      }
+
+      if (inviter.role !== 'Admin' && inviter.role !== 'SuperAdmin') {
+        return res.status(403).json({ error: 'Only admins can invite family members' });
+      }
+    }
     // ─────────────────────────────────────────────────────────────
     // Enforce household limits before creating the pending user
     // ─────────────────────────────────────────────────────────────

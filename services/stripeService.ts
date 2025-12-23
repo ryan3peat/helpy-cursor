@@ -61,7 +61,8 @@ export async function createCheckoutSession(
   period: 'monthly' | 'yearly',
   userEmail: string,
   promoCode?: string,
-  referralCode?: string
+  referralCode?: string,
+  requesterId?: string
 ): Promise<string> {
   try {
     const response = await fetch('/api/create-checkout-session', {
@@ -73,6 +74,7 @@ export async function createCheckoutSession(
         userEmail,
         promoCode: promoCode?.trim() || undefined,
         referralCode: referralCode?.trim().toUpperCase() || undefined,
+        requesterId,
       }),
     });
 
@@ -134,12 +136,12 @@ export async function createPortalSession(householdId: string): Promise<string> 
   }
 }
 
-export async function downgradeToFree(householdId: string): Promise<void> {
+export async function downgradeToFree(householdId: string, requesterId?: string): Promise<void> {
   try {
     const response = await fetch('/api/cancel-subscription', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ householdId }),
+      body: JSON.stringify({ householdId, requesterId }),
     });
 
     if (!response.ok) {
@@ -165,13 +167,14 @@ export async function downgradeToFree(householdId: string): Promise<void> {
 export async function changeSubscription(
   householdId: string,
   newPlan: 'core' | 'pro',
-  newPeriod: 'monthly' | 'yearly'
+  newPeriod: 'monthly' | 'yearly',
+  requesterId?: string
 ): Promise<{ success: boolean; plan?: string; status?: string; message?: string; error?: string }> {
   try {
     const response = await fetch('/api/change-subscription', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ householdId, newPlan, newPeriod }),
+      body: JSON.stringify({ householdId, newPlan, newPeriod, requesterId }),
     });
 
     if (!response.ok) {

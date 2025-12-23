@@ -70,8 +70,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(403).json({ error: 'Not authorized to delete users from this household' });
       }
 
-      // Only Admin (master), Spouse, or Helper roles can delete users
-      const allowedRoles = ['Admin', 'Spouse', 'Helper'];
+      // Only Admin, SuperAdmin, Spouse, or Helper roles can delete users
+      const allowedRoles = ['Admin', 'SuperAdmin', 'Spouse', 'Helper'];
       if (!allowedRoles.includes(requester.role || '')) {
         return res.status(403).json({ error: 'Only admins, spouses, and helpers can delete members' });
       }
@@ -110,8 +110,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Use the actual database ID for operations
     const dbUserId = userToDelete.id;
 
-    // Prevent deleting the master user (Admin role)
-    if (userToDelete.role === 'Admin') {
+    // Prevent deleting the master user (Admin or SuperAdmin role)
+    if (userToDelete.role === 'Admin' || userToDelete.role === 'SuperAdmin') {
       return res.status(403).json({ error: 'Cannot delete the household owner' });
     }
 

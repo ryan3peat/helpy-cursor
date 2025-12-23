@@ -25,11 +25,29 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
-    const { householdId, priceKey, userEmail, promoCode, referralCode } = req.body;
+    const { householdId, priceKey, userEmail, promoCode, referralCode, requesterId } = req.body;
     // priceKey: 'core_monthly' | 'core_yearly' | 'pro_monthly' | 'pro_yearly' | 'test_monthly'
 
     if (!householdId || !priceKey || !PRICE_IDS[priceKey]) {
       return res.status(400).json({ error: 'Invalid parameters' });
+    }
+
+    // Verify requester is Admin or SuperAdmin
+    if (requesterId) {
+      const { data: requester } = await supabase
+        .from('users')
+        .select('id, household_id, role, clerk_id')
+        .or(`clerk_id.eq.${requesterId},id.eq.${requesterId}`)
+        .eq('household_id', householdId)
+        .maybeSingle();
+
+      if (!requester) {
+        return res.status(403).json({ error: 'Requester not found' });
+      }
+
+      if (requester.role !== 'Admin' && requester.role !== 'SuperAdmin') {
+        return res.status(403).json({ error: 'Only admins can create subscriptions' });
+      }
     }
 
     // Get or create Stripe customer

@@ -299,7 +299,6 @@ const ToDo: React.FC<ToDoProps> = ({
   const [showUnitSuggestions, setShowUnitSuggestions] = useState(false);
   const unitInputRef = useRef<HTMLInputElement>(null);
   const sheetContentRef = useRef<HTMLDivElement>(null);
-  const [sheetMaxHeightPx, setSheetMaxHeightPx] = useState<number | null>(null);
   const [showCompleted, setShowCompleted] = useState(false);
   const [showSuggested, setShowSuggested] = useState(true);
   const [optimisticItems, setOptimisticItems] = useState<ToDoItem[]>([]);
@@ -383,30 +382,11 @@ const ToDo: React.FC<ToDoProps> = ({
     }
   }, [isSheetOpen]);
 
-  // Keep sheet height within the *visible* viewport (fixes iOS keyboard pushing header off-screen)
+  // Reset sheet scroll position when it opens
   useEffect(() => {
-    if (!isSheetOpen) {
-      setSheetMaxHeightPx(null);
-      return;
+    if (isSheetOpen && sheetContentRef.current) {
+      sheetContentRef.current.scrollTop = 0;
     }
-
-    const compute = () => {
-      const vvHeight = window.visualViewport?.height;
-      const h = typeof vvHeight === 'number' && vvHeight > 0 ? vvHeight : window.innerHeight;
-      // leave top breathing room (matches existing -60px behavior)
-      setSheetMaxHeightPx(Math.max(240, Math.floor(h - 60)));
-    };
-
-    compute();
-    window.visualViewport?.addEventListener('resize', compute);
-    window.visualViewport?.addEventListener('scroll', compute);
-    window.addEventListener('resize', compute);
-
-    return () => {
-      window.visualViewport?.removeEventListener('resize', compute);
-      window.visualViewport?.removeEventListener('scroll', compute);
-      window.removeEventListener('resize', compute);
-    };
   }, [isSheetOpen]);
   
   useEffect(() => {
@@ -712,10 +692,6 @@ const ToDo: React.FC<ToDoProps> = ({
     // Clear inline input after carrying over to sheet
     setInlineInputValue('');
     setIsAddingInline(false);
-
-    // Blur any currently focused input (especially the inline add input) before opening the sheet
-    inlineInputRef.current?.blur();
-    (document.activeElement as HTMLElement | null)?.blur?.();
     
     setIsSheetOpen(true);
   };
@@ -1414,10 +1390,7 @@ const ToDo: React.FC<ToDoProps> = ({
           />
           <div 
             className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col"
-            style={{
-              maxHeight: sheetMaxHeightPx ? `${sheetMaxHeightPx}px` : 'calc(100dvh - 60px)',
-              marginBottom: 'env(safe-area-inset-bottom, 34px)',
-            }}
+            style={{ maxHeight: 'calc(100dvh - 60px)', marginBottom: 'env(safe-area-inset-bottom, 34px)' }}
           >
             {/* Close Button */}
             <button
@@ -1457,12 +1430,6 @@ const ToDo: React.FC<ToDoProps> = ({
                     type="text"
                     value={sheetForm.name || ''}
                     onChange={e => setSheetForm(prev => ({ ...prev, name: e.target.value }))}
-                    onFocus={() => {
-                      // Scroll to keep input visible when keyboard opens
-                      setTimeout(() => {
-                        sheetContentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
-                      }, 100);
-                    }}
                     placeholder={activeSection === 'shopping' ? t['common.eg_milk'] : t['common.eg_clean_bathroom']}
                     className="w-full px-4 py-3 bg-muted rounded-xl text-body text-foreground placeholder-muted-foreground outline-none border border-transparent focus:border-primary transition-colors"
                     autoFocus={!editingItemId}

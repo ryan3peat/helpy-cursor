@@ -18,6 +18,28 @@ const BroomIcon = ({ className }: { className?: string }) => (
   />
 );
 
+/**
+ * Check if a user has push subscriptions in the database.
+ * Used for immediate bell icon display on login.
+ * 
+ * @param supabaseUserId - The Supabase UUID (not Clerk ID)
+ * @param client - The Supabase client to use
+ * @returns true if user has at least one push subscription
+ */
+async function checkHasPushSubscription(supabaseUserId: string, client: any): Promise<boolean> {
+  try {
+    const { count } = await client
+      .from('push_subscriptions')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', supabaseUserId);
+    return (count ?? 0) > 0;
+  } catch (e) {
+    // Silent fail - users subscription will correct it later
+    console.log('[Auth] Failed to check push subscription, will be corrected on users load');
+    return false;
+  }
+}
+
 interface AuthProps {
   onLogin: (user: User) => void;
   t: TranslationDictionary;
@@ -159,6 +181,9 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
             // Clear the invite params from URL
             window.history.replaceState({}, '', window.location.pathname);
             
+            // Check push subscription for immediate bell icon display
+            const hasPushSubscription = await checkHasPushSubscription(activatedUser.id, clientToUse);
+            
             // Call onLogin and then reset state
             onLogin({
               id: activatedUser.clerk_id || activatedUser.id,
@@ -171,6 +196,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
               preferences: activatedUser.preferences || [],
               status: 'active',
               notificationsEnabled: activatedUser.notifications_enabled ?? true,
+              hasPushSubscription,
               onboardingStatus: activatedUser.onboarding_status || 'not_started'
             });
             
@@ -244,6 +270,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
         } else if (activatedUser) {
           console.log('✅ [Auth] Invited user activated via metadata:', activatedUser);
           console.log('✅ [Auth] Calling onLogin() with user');
+          const hasPushSubscription = await checkHasPushSubscription(activatedUser.id, clientToUse);
           onLogin({
             id: activatedUser.clerk_id || activatedUser.id,
             householdId: activatedUser.household_id,
@@ -255,6 +282,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
             preferences: activatedUser.preferences || [],
             status: 'active',
             notificationsEnabled: activatedUser.notifications_enabled ?? true,
+            hasPushSubscription,
             onboardingStatus: activatedUser.onboarding_status || 'not_started'
           });
           setIsCreatingUser(false);
@@ -290,6 +318,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
         }
 
         console.log('✅ [Auth] Calling onLogin() with existing user');
+        const hasPushSubscription = await checkHasPushSubscription(existingUser.id, clientToUse);
         onLogin({
           id: existingUser.clerk_id,
           householdId: existingUser.household_id,
@@ -301,6 +330,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
           preferences: existingUser.preferences || [],
           status: existingUser.status || 'active',
           notificationsEnabled: existingUser.notifications_enabled ?? true,
+          hasPushSubscription,
           onboardingStatus: existingUser.onboarding_status || 'completed'
         });
         setIsCreatingUser(false);
@@ -346,6 +376,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
           }
 
           console.log('✅ [Auth] Calling onLogin() with existing user (found by email)');
+          const hasPushSubscription = await checkHasPushSubscription(existingUserByEmail.id, clientToUse);
           onLogin({
             id: clerkUser.id, // Use the current clerk_id
             householdId: existingUserByEmail.household_id,
@@ -357,6 +388,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
             preferences: existingUserByEmail.preferences || [],
             status: existingUserByEmail.status || 'active',
             notificationsEnabled: existingUserByEmail.notifications_enabled ?? true,
+            hasPushSubscription,
             onboardingStatus: existingUserByEmail.onboarding_status || 'completed'
           });
           setIsCreatingUser(false);
@@ -401,6 +433,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
             if (!activateError && activatedUser) {
               console.log('✅ [Auth] Pending user activated by email:', activatedUser);
               console.log('✅ [Auth] Calling onLogin() with activated user');
+              const hasPushSubscription = await checkHasPushSubscription(activatedUser.id, clientToUse);
               onLogin({
                 id: activatedUser.clerk_id,
                 householdId: activatedUser.household_id,
@@ -412,6 +445,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
                 preferences: activatedUser.preferences || [],
                 status: 'active',
                 notificationsEnabled: activatedUser.notifications_enabled ?? true,
+                hasPushSubscription,
                 onboardingStatus: activatedUser.onboarding_status || 'not_started'
               });
               setIsCreatingUser(false);
@@ -545,6 +579,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
       }
       
       console.log('✅ [Auth] Calling onLogin() from handleStayInCurrentHousehold');
+      const hasPushSubscription = await checkHasPushSubscription(existingUser.id, client);
       onLogin({
         id: existingUser.clerk_id || existingUser.id,
         householdId: existingUser.household_id,
@@ -556,6 +591,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
         preferences: existingUser.preferences || [],
         status: existingUser.status || 'active',
         notificationsEnabled: existingUser.notifications_enabled ?? true,
+        hasPushSubscription,
         onboardingStatus: existingUser.onboarding_status || 'completed'
       });
       setIsCreatingUser(false);
@@ -599,6 +635,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
       const createdUser = signupData.user;
       
       // Login with the new household
+      // Note: New user won't have push subscriptions yet, so hasPushSubscription is false
       setShowRemovedFromHousehold(false);
       onLogin({
         id: createdUser.clerk_id,
@@ -611,6 +648,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
         preferences: createdUser.preferences || [],
         status: 'active',
         notificationsEnabled: createdUser.notifications_enabled ?? true,
+        hasPushSubscription: false,
         onboardingStatus: 'not_started' // Start fresh with onboarding
       });
       
@@ -718,6 +756,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
           window.history.replaceState({}, '', window.location.pathname);
           
           console.log('✅ [Auth] Calling onLogin() from handleSwitchToNewHousehold (activated user)');
+          const hasPushSubscription = await checkHasPushSubscription(activatedUser.id, client);
           onLogin({
             id: activatedUser.clerk_id || activatedUser.id,
             householdId: activatedUser.household_id,
@@ -729,6 +768,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
             preferences: activatedUser.preferences || [],
             status: 'active',
             notificationsEnabled: activatedUser.notifications_enabled ?? true,
+            hasPushSubscription,
             onboardingStatus: activatedUser.onboarding_status || 'not_started'
           });
           setIsCreatingUser(false);
@@ -752,6 +792,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
         window.history.replaceState({}, '', window.location.pathname);
         
         console.log('✅ [Auth] Calling onLogin() from handleSwitchToNewHousehold (updated user)');
+        const hasPushSubscription = await checkHasPushSubscription(updatedUser.id, client);
         onLogin({
           id: updatedUser.clerk_id || updatedUser.id,
           householdId: updatedUser.household_id,
@@ -763,6 +804,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
           preferences: updatedUser.preferences || [],
           status: updatedUser.status || 'active',
           notificationsEnabled: updatedUser.notifications_enabled ?? true,
+          hasPushSubscription,
           onboardingStatus: updatedUser.onboarding_status || 'completed'
         });
         setIsCreatingUser(false);
@@ -945,15 +987,15 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
                 card: "bg-white rounded-2xl border-0 shadow-none p-6",
                 headerTitle: "text-xl font-bold text-[#474747]",
                 headerSubtitle: "text-sm text-gray-500",
-                socialButtonsBlockButton: "border border-gray-200 hover:border-gray-300 transition-all rounded-xl font-medium py-3",
+                socialButtonsBlockButton: "border border-gray-200 rounded-xl font-medium py-3",
                 socialButtonsBlockButtonText: "font-medium text-sm",
-                formButtonPrimary: "!bg-[#3EAFD2] !bg-none !shadow-none rounded-xl font-semibold py-3 transition-all hover:opacity-90",
+                formButtonPrimary: "!bg-[#3EAFD2] !bg-none !shadow-none rounded-xl font-semibold py-3",
                 formFieldInput: "bg-white border border-gray-200 rounded-xl px-4 py-3 text-[#474747] placeholder-gray-400 focus:border-[#3EAFD2] focus:ring-1 focus:ring-[#3EAFD2]",
                 formFieldLabel: "font-medium text-sm text-[#474747] mb-1.5",
                 dividerLine: "bg-gray-200",
                 dividerText: "text-gray-400 text-sm",
                 identityPreviewEditButtonIcon: "text-[#3EAFD2]",
-                formFieldInputShowPasswordButton: "text-gray-400 hover:text-gray-600",
+                formFieldInputShowPasswordButton: "text-gray-400",
                 footer: "hidden"
               }
             }}
@@ -967,7 +1009,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
               Don't have an account?{' '}
               <button
                 onClick={() => setShowSignUp(true)}
-                className="font-bold text-white hover:underline"
+                className="font-bold text-white"
               >
                 Sign up
               </button>
@@ -980,7 +1022,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
         <div className="mt-6 text-center">
           <a
             href="https://helpyfam.com"
-            className="text-white/90 hover:text-white text-body underline transition-colors"
+            className="text-white/90 text-body underline"
           >
             See Helpyfam Features
           </a>

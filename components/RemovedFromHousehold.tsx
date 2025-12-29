@@ -84,9 +84,9 @@ const RemovedFromHousehold: React.FC<RemovedFromHouseholdProps> = ({
               <button
                 onClick={handleCreateNewHousehold}
                 disabled={isLoading || isCreating || isDeleting}
-                className="w-full flex items-center gap-3 p-4 rounded-xl bg-primary/5 hover:bg-primary/10 border border-primary/20 hover:border-primary/30 transition-colors group disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full flex items-center gap-3 p-4 rounded-xl bg-primary/5 border border-primary/20 group disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
                   {isCreating ? (
                     <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
                   ) : (
@@ -110,9 +110,9 @@ const RemovedFromHousehold: React.FC<RemovedFromHouseholdProps> = ({
               <button
                 onClick={() => setShowDeleteConfirm(true)}
                 disabled={isLoading || isCreating || isDeleting}
-                className="w-full flex items-center gap-3 p-4 rounded-xl bg-destructive/5 hover:bg-destructive/10 border border-destructive/20 hover:border-destructive/30 transition-colors group disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full flex items-center gap-3 p-4 rounded-xl bg-destructive/5 border border-destructive/20 group disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <div className="w-10 h-10 rounded-full bg-destructive/10 flex items-center justify-center group-hover:bg-destructive/20 transition-colors">
+                <div className="w-10 h-10 rounded-full bg-destructive/10 flex items-center justify-center">
                   <Trash2 size={20} className="text-destructive" />
                 </div>
                 <div className="text-left flex-1">
@@ -164,14 +164,14 @@ const RemovedFromHousehold: React.FC<RemovedFromHouseholdProps> = ({
               <button
                 onClick={() => setShowDeleteConfirm(false)}
                 disabled={isDeleting}
-                className="flex-1 py-3 px-4 rounded-xl bg-muted text-foreground hover:bg-muted/80 transition-colors disabled:opacity-50"
+                className="flex-1 py-3 px-4 rounded-xl bg-muted text-foreground disabled:opacity-50"
               >
                 {t['common.cancel'] || 'Cancel'}
               </button>
               <button
                 onClick={handleDeleteAccount}
                 disabled={isDeleting}
-                className="flex-1 py-3 px-4 rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                className="flex-1 py-3 px-4 rounded-xl bg-destructive text-destructive-foreground disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {isDeleting ? (
                   <>

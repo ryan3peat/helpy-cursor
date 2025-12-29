@@ -24,6 +24,7 @@ import {
   ChevronRight,
   ChevronDown,
   Calendar,
+  Lock,
 } from 'lucide-react';
 import { useScrollHeader } from '@/hooks/useScrollHeader';
 import { useTranslatedContent } from '@/hooks/useTranslatedContent';
@@ -149,7 +150,7 @@ const ZoomableImage: React.FC<{ imageSrc: string; onClose: () => void; t: Record
       <div className="relative max-w-full max-h-full">
         <button
           onClick={onClose}
-          className="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors z-10"
+          className="absolute -top-12 right-0 text-white z-10"
           aria-label={t['common.close'] || 'Close'}
         >
           <X size={24} />
@@ -833,7 +834,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                 setPickerYear(selectedYear ?? now.getFullYear());
                 setIsMonthPickerOpen(true);
               }}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-full bg-secondary text-foreground text-body hover:bg-secondary/80 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-full bg-secondary text-foreground text-body"
             >
               <Calendar size={16} />
               <span>{isAllTime ? t['common.all_expenses'] : `${MONTH_NAMES[selectedMonth]} ${selectedYear}`}</span>
@@ -875,7 +876,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                 className={`flex-1 px-4 py-2 rounded-full text-body whitespace-nowrap transition-all flex items-center justify-center gap-2 ${
                   view === 'list'
                     ? 'bg-card text-primary shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
+                    : 'text-muted-foreground'
                 }`}
               >
                 <List size={18} />
@@ -886,7 +887,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                 className={`flex-1 px-4 py-2 rounded-full text-body whitespace-nowrap transition-all flex items-center justify-center gap-2 ${
                   view === 'chart'
                     ? 'bg-card text-primary shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
+                    : 'text-muted-foreground'
                 }`}
               >
                 <PieIcon size={18} />
@@ -913,7 +914,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                 <p className="text-title text-destructive">{t['expenses.error'] || 'Error'}</p>
                 <p className="text-body text-destructive/80">{error}</p>
           </div>
-              <button onClick={() => setError(null)} className="text-destructive/60 hover:text-destructive">
+              <button onClick={() => setError(null)} className="text-destructive/60">
             <X size={16} />
           </button>
         </div>
@@ -1039,7 +1040,7 @@ const Expenses: React.FC<ExpensesProps> = ({
               key={expense.id}
               type="button"
               onClick={() => openExistingModal(expense)}
-              className={`w-full p-4 flex items-start gap-4 text-left hover:bg-secondary/50 transition-colors ${
+              className={`w-full p-4 flex items-start gap-4 text-left ${
                 index !== filteredExpenses.length - 1 ? 'list-item-separator' : ''
               }`}
             >
@@ -1093,7 +1094,7 @@ const Expenses: React.FC<ExpensesProps> = ({
               <button
         onClick={openAddExpenseSheet}
         disabled={isScanning}
-        className={`fixed bottom-28 right-6 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-colors flex items-center justify-center z-30 disabled:opacity-50 ${
+        className={`fixed bottom-28 right-6 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center z-30 disabled:opacity-50 ${
           isModalOpen ? 'fab-hiding' : ''
         }`}
         aria-label={t['expenses.add_expense'] || 'Add Expense'}
@@ -1135,7 +1136,7 @@ const Expenses: React.FC<ExpensesProps> = ({
             {/* Close Button */}
             <button
               onClick={closeAddExpenseSheet}
-              className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center hover:bg-secondary transition-colors right-4 top-4 text-muted-foreground"
+              className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center right-4 top-4 text-muted-foreground"
               aria-label={t['common.close'] || 'Close'}
             >
               <X size={20} />
@@ -1162,14 +1163,14 @@ const Expenses: React.FC<ExpensesProps> = ({
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     onClick={() => fileInputRef.current?.click()}
-                    className="py-6 rounded-xl bg-secondary border border-border flex flex-col items-center justify-center gap-2 text-foreground hover:bg-secondary/80 transition-colors"
+                    className="py-6 rounded-xl bg-secondary border border-border flex flex-col items-center justify-center gap-2 text-foreground "
                   >
                     <ImageIcon size={28} />
                     <span className="text-body font-medium">{t['expenses.upload_photo'] || 'Upload Photo'}</span>
                   </button>
                   <button
                     onClick={() => cameraInputRef.current?.click()}
-                    className="py-6 rounded-xl bg-primary/10 border border-primary/20 flex flex-col items-center justify-center gap-2 text-primary hover:bg-primary/20 transition-colors"
+                    className="py-6 rounded-xl bg-primary/10 border border-primary/20 flex flex-col items-center justify-center gap-2 text-primary "
                   >
                     <Camera size={28} />
                     <span className="text-body font-medium">{t['expenses.scan_receipt'] || 'Scan Receipt'}</span>
@@ -1186,7 +1187,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                 {/* Manual Entry Button - Full width at bottom for thumb reach */}
                 <button
                   onClick={enterManualMode}
-                  className="w-full py-4 rounded-xl bg-secondary border border-border flex items-center justify-center gap-3 text-title text-foreground hover:bg-secondary/80 transition-colors"
+                  className="w-full py-4 rounded-xl bg-secondary border border-border flex items-center justify-center gap-3 text-title text-foreground "
                 >
                   <Pencil size={20} />
                   {t['expenses.enter_manually'] || 'Enter Manually'}
@@ -1202,7 +1203,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                 {/* Back Button */}
                 <button
                   onClick={() => setAddExpenseStage(isFreePlan ? 'manual' : 'options')}
-                  className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center hover:bg-secondary transition-colors left-4 top-4 text-muted-foreground"
+                  className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center left-4 top-4 text-muted-foreground"
                   aria-label={t['common.back'] || 'Back'}
                 >
                   <ArrowLeft size={20} />
@@ -1210,33 +1211,28 @@ const Expenses: React.FC<ExpensesProps> = ({
 
                 <div className="p-5 space-y-4 max-h-[50vh] overflow-y-auto overflow-x-hidden">
                   {showFreeUpgradeBanner && (
-                    <div className="border border-amber-200 bg-amber-50 text-amber-900 rounded-xl p-4 space-y-2">
-                      <div className="flex items-start gap-2">
-                        <AlertCircle size={18} className="mt-0.5" />
-                        <div>
-                          <p className="text-body font-semibold">
-                            {t['expenses.free_limit_title'] || 'Upgrade your plan to enable Receipt Scanner!'}
-                          </p>
-                          <p className="text-caption text-amber-800 mt-1">
-                            {t['expenses.free_limit_body'] || 'Scan with your phone\'s camera or upload from the photo gallery.'}
-                          </p>
-                        </div>
+                    <button
+                      onClick={handleExpenseUpgrade}
+                      className="w-full p-4 rounded-xl bg-secondary border border-border flex items-center gap-4 text-left"
+                    >
+                      {/* Lock icon in circle */}
+                      <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                        <Lock size={20} className="text-muted-foreground" />
                       </div>
-                      <div className="flex gap-2 pt-1">
-                        <button
-                          onClick={handleExpenseUpgrade}
-                          className="flex-1 py-3 rounded-lg bg-primary text-primary-foreground text-body font-semibold hover:bg-primary/90 transition-colors"
-                        >
-                          {t['common.upgrade'] || 'Upgrade'}
-                        </button>
-                        <button
-                          onClick={handleExpenseReturn}
-                          className="flex-1 py-3 rounded-lg bg-white text-amber-900 border border-amber-200 text-body font-semibold hover:bg-amber-100 transition-colors"
-                        >
-                          {t['common.return'] || 'Return'}
-                        </button>
+                      
+                      {/* Text */}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-title text-foreground">
+                          {t['expenses.receipt_scanner'] || 'Receipt Scanner'}
+                        </p>
+                        <p className="text-body text-muted-foreground mt-0.5">
+                          {t['expenses.scanner_locked_desc'] || 'Upgrade to scan or upload receipts'}
+                        </p>
                       </div>
-                    </div>
+                      
+                      {/* Chevron */}
+                      <ChevronRight size={18} className="text-muted-foreground flex-shrink-0" />
+                    </button>
                   )}
 
                   {/* Amount - Auto-focused */}
@@ -1331,7 +1327,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                   <button
                     onClick={handleSaveExpense}
                     disabled={isSaving || !editAmount}
-                    className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground text-body hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50 flex items-center justify-center gap-2"
+                    className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground text-body  shadow-sm disabled:opacity-50 flex items-center justify-center gap-2"
                   >
                     {isSaving ? (
                       <span className="animate-pulse">{t['common.saving'] || 'Saving...'}</span>
@@ -1356,7 +1352,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                     setPendingReceipt(null);
                     setAddExpenseStage('options');
                   }}
-                  className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center hover:bg-secondary transition-colors left-4 top-4 text-muted-foreground"
+                  className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center left-4 top-4 text-muted-foreground"
                   aria-label={t['common.back'] || 'Back'}
                 >
                   <ArrowLeft size={20} />
@@ -1371,10 +1367,10 @@ const Expenses: React.FC<ExpensesProps> = ({
                     <img 
                       src={pendingReceipt.thumbnailBase64} 
                       alt="Receipt" 
-                      className="w-full h-32 object-contain bg-secondary transition-transform group-hover:scale-105" 
+                      className="w-full h-32 object-contain bg-secondary" 
                     />
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-                      <span className="text-caption text-white opacity-0 group-hover:opacity-100 bg-black/50 px-2 py-1 rounded">
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <span className="text-caption text-white opacity-0 bg-black/50 px-2 py-1 rounded">
                         {t['expenses.tap_to_zoom'] || 'Tap to zoom'}
                       </span>
                     </div>
@@ -1458,7 +1454,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                   <button
                     onClick={handleSaveExpense}
                     disabled={isSaving || !editAmount}
-                    className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground text-body hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50 flex items-center justify-center gap-2"
+                    className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground text-body  shadow-sm disabled:opacity-50 flex items-center justify-center gap-2"
                   >
                     {isSaving ? (
                       <span className="animate-pulse">{t['common.saving'] || 'Saving...'}</span>
@@ -1492,7 +1488,7 @@ const Expenses: React.FC<ExpensesProps> = ({
             {/* Close Button */}
             <button
               onClick={closeExistingModal}
-              className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center hover:bg-secondary transition-colors right-4 top-4 text-muted-foreground"
+              className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center right-4 top-4 text-muted-foreground"
               aria-label={t['common.close'] || 'Close'}
             >
               <X size={20} />
@@ -1540,8 +1536,8 @@ const Expenses: React.FC<ExpensesProps> = ({
                       }
                     }}
                   />
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center pointer-events-none">
-                    <span className="text-caption text-white opacity-0 group-hover:opacity-100 bg-black/60 px-2 py-1 rounded">
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <span className="text-caption text-white opacity-0 bg-black/60 px-2 py-1 rounded">
                       {t['expenses.tap_to_zoom'] || 'Tap to view'}
                     </span>
                   </div>
@@ -1656,7 +1652,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                   {/* Delete button - Hidden for Helper */}
                   {!isHelper && (
                   <button
-                    className="p-3 rounded-xl bg-destructive/10 text-destructive hover:bg-destructive/20 disabled:opacity-60 transition-colors"
+                    className="p-3 rounded-xl bg-destructive/10 text-destructive disabled:opacity-60"
                     onClick={() => {
                       setConfirmDeleteExisting(true);
                       setIsEditingExisting(false);
@@ -1667,7 +1663,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                   </button>
                   )}
                   <button
-                    className="flex-1 rounded-xl bg-primary px-4 py-3 text-primary-foreground hover:bg-primary/90 disabled:opacity-60 inline-flex items-center justify-center gap-2 text-body transition-colors shadow-sm"
+                    className="flex-1 rounded-xl bg-primary px-4 py-3 text-primary-foreground disabled:opacity-60 inline-flex items-center justify-center gap-2 text-body shadow-sm"
                     onClick={() => {
                       setIsEditingExisting(true);
                       setConfirmDeleteExisting(false);
@@ -1682,7 +1678,7 @@ const Expenses: React.FC<ExpensesProps> = ({
               {/* Edit Actions */}
               {isEditingExisting && (
                 <button
-                  className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground text-body hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50"
+                  className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground text-body  shadow-sm disabled:opacity-50"
                   onClick={saveExistingEdit}
                   disabled={savingExisting}
                 >
@@ -1694,14 +1690,14 @@ const Expenses: React.FC<ExpensesProps> = ({
               {confirmDeleteExisting && (
                 <div className="flex items-center gap-3">
                   <button
-                    className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body hover:bg-secondary/80 transition-colors"
+                    className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body "
                     onClick={() => setConfirmDeleteExisting(false)}
                     disabled={savingExisting}
                   >
                     {t['common.cancel'] || 'Cancel'}
                   </button>
                   <button
-                    className="flex-1 py-3.5 rounded-xl bg-destructive text-primary-foreground text-body hover:bg-destructive/90 transition-colors disabled:opacity-50"
+                    className="flex-1 py-3.5 rounded-xl bg-destructive text-primary-foreground text-body disabled:opacity-50"
                     onClick={confirmExistingDelete}
                     disabled={savingExisting}
                   >
@@ -1742,7 +1738,7 @@ const Expenses: React.FC<ExpensesProps> = ({
             {/* Close Button */}
             <button
               onClick={() => setIsMonthPickerOpen(false)}
-              className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center hover:bg-secondary transition-colors right-4 top-4 text-muted-foreground"
+              className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center right-4 top-4 text-muted-foreground"
               aria-label={t['common.close'] || 'Close'}
             >
               <X size={20} />
@@ -1757,7 +1753,7 @@ const Expenses: React.FC<ExpensesProps> = ({
             <div className="flex items-center justify-center gap-4 py-4 border-b border-border">
               <button
                 onClick={() => setPickerYear(pickerYear - 1)}
-                className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-secondary transition-colors text-muted-foreground"
+                className="w-10 h-10 rounded-full flex items-center justify-center text-muted-foreground"
               >
                 <ChevronLeft size={24} />
               </button>
@@ -1765,7 +1761,7 @@ const Expenses: React.FC<ExpensesProps> = ({
               <button
                 onClick={() => setPickerYear(pickerYear + 1)}
                 disabled={pickerYear >= now.getFullYear()}
-                className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-secondary transition-colors text-muted-foreground disabled:opacity-30 disabled:cursor-not-allowed"
+                className="w-10 h-10 rounded-full flex items-center justify-center text-muted-foreground disabled:opacity-30 disabled:cursor-not-allowed"
               >
                 <ChevronRight size={24} />
               </button>
@@ -1793,7 +1789,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                           ? 'bg-primary text-primary-foreground shadow-sm'
                           : isFuture
                           ? 'bg-secondary/50 text-muted-foreground/50 cursor-not-allowed'
-                          : 'bg-secondary text-foreground hover:bg-secondary/80'
+                          : 'bg-secondary text-foreground'
                       }`}
                     >
                       {month}
@@ -1811,7 +1807,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                   setSelectedYear(now.getFullYear());
                   setIsMonthPickerOpen(false);
                 }}
-                className="w-full py-3.5 rounded-xl bg-secondary text-foreground text-body hover:bg-secondary/80 transition-colors"
+                className="w-full py-3.5 rounded-xl bg-secondary text-foreground text-body "
               >
                 {t['expenses.go_current_month'] || 'Go to Current Month'}
               </button>
@@ -1821,7 +1817,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                   setSelectedYear(null);
                   setIsMonthPickerOpen(false);
                 }}
-                className="w-full mt-3 py-3.5 rounded-xl bg-card text-foreground text-body border border-border hover:bg-secondary/60 transition-colors"
+                className="w-full mt-3 py-3.5 rounded-xl bg-card text-foreground text-body border border-border"
               >
                 {t['expenses.show_all_expenses'] || 'Show All Expenses'}
               </button>

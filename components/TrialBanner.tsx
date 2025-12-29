@@ -45,8 +45,8 @@ const TrialBanner: React.FC<TrialBannerProps> = ({ trialEndsAt, t, onUpgradeClic
         onClick={onUpgradeClick}
         className={`flex items-center gap-1 px-4 py-2 rounded-lg text-body font-medium transition-colors ${
           isUrgent
-            ? 'bg-amber-500 text-white hover:bg-amber-600'
-            : 'bg-primary text-primary-foreground hover:bg-primary/90'
+            ? 'bg-amber-500 text-white'
+            : 'bg-primary text-primary-foreground'
         }`}
       >
         {t['common.view_plan'] || 'View Plan'}

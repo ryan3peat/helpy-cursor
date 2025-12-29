@@ -374,13 +374,13 @@ const OnboardingOverlay: React.FC<OnboardingOverlayProps> = ({
             <div className="flex flex-col items-center gap-3">
               <button 
                 onClick={() => setShowSkipConfirm(false)}
-                className="w-full bg-primary text-primary-foreground py-4 rounded-xl font-bold text-body shadow-lg shadow-primary/20 hover:bg-primary/90 transition-colors"
+                className="w-full bg-primary text-primary-foreground py-4 rounded-xl font-bold text-body shadow-lg shadow-primary/20"
               >
                 {t['onboarding.skip_confirm_no'] || 'Continue Tutorial'}
               </button>
               <button 
                 onClick={handleConfirmSkip}
-                className="text-body font-bold text-destructive hover:text-destructive/80 transition-colors py-2"
+                className="text-body font-bold text-destructive py-2"
               >
                 {t['onboarding.skip_confirm_yes'] || 'Skip for Now'}
               </button>
@@ -403,7 +403,7 @@ const OnboardingOverlay: React.FC<OnboardingOverlayProps> = ({
             {/* Close/Skip button */}
             <button
               onClick={handleSkipClick}
-              className="absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+              className="absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground"
             >
               <X size={18} />
             </button>
@@ -417,7 +417,7 @@ const OnboardingOverlay: React.FC<OnboardingOverlayProps> = ({
             <div className="flex flex-col items-center gap-3">
               <button 
                 onClick={() => onNext(currentStep.action)}
-                className="w-full bg-primary text-primary-foreground py-4 rounded-xl font-bold text-body shadow-lg shadow-primary/20 hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
+                className="w-full bg-primary text-primary-foreground py-4 rounded-xl font-bold text-body shadow-lg shadow-primary/20 flex items-center justify-center gap-2"
               >
                 {currentStep.buttonText}
                 {currentStep.action.type !== 'complete' && <ChevronRight size={18} />}
@@ -455,7 +455,7 @@ const OnboardingOverlay: React.FC<OnboardingOverlayProps> = ({
           {/* Close/Skip button */}
           <button
             onClick={handleSkipClick}
-            className="absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors z-20"
+            className="absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground z-20"
           >
             <X size={18} />
           </button>
@@ -470,7 +470,7 @@ const OnboardingOverlay: React.FC<OnboardingOverlayProps> = ({
             <div className="flex items-center justify-end">
               <button 
                 onClick={() => onNext(currentStep.action)}
-                className="bg-primary text-primary-foreground px-6 py-3 rounded-xl font-bold text-body shadow-lg shadow-primary/20 hover:bg-primary/90 transition-colors flex items-center gap-2"
+                className="bg-primary text-primary-foreground px-6 py-3 rounded-xl font-bold text-body shadow-lg shadow-primary/20 flex items-center gap-2"
               >
                 {currentStep.buttonText}
                 {currentStep.action.type !== 'complete' && <ChevronRight size={18} />}

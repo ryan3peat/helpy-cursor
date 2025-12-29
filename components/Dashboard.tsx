@@ -20,7 +20,9 @@ import {
   Trash2,
   Bell,
   BellOff,
-  BellDot
+  BellDot,
+  GraduationCap,
+  BookOpen
 } from 'lucide-react';
 import Avatar from './ui/Avatar';
 import { ToDoItem, Meal, User, MealType, TranslationDictionary, UserRole, Expense } from '../types';
@@ -51,6 +53,10 @@ interface DashboardProps {
   onUpdateMeal?: (id: string, data: Partial<Meal>) => void;
   /** Real-time connection status */
   realtimeStatus?: ConnectionStatus;
+  /** Restart the onboarding tutorial */
+  onRestartTutorial?: () => void;
+  /** Open the user guide page */
+  onOpenUserGuide?: () => void;
 }
 
 // Component for displaying translated meal description
@@ -123,6 +129,8 @@ const Dashboard: React.FC<DashboardProps> = ({
   isTranslating,
   onUpdateMeal,
   realtimeStatus = 'connected',
+  onRestartTutorial,
+  onOpenUserGuide,
 }) => {
   // ─────────────────────────────────────────────────────────────────
   // Safety check for currentUser
@@ -290,9 +298,9 @@ const Dashboard: React.FC<DashboardProps> = ({
   const StatCard = ({ title, count, icon: Icon, colorClass, onClick, label }: any) => (
     <button
       onClick={onClick}
-      className="relative w-full p-4 rounded-2xl transition-all duration-200 active:scale-95 flex flex-col h-32 text-left bg-card shadow-sm border border-border hover:border-foreground/20 hover:shadow-md group"
+      className="relative w-full p-4 rounded-2xl flex flex-col h-32 text-left bg-card shadow-sm border border-border"
     >
-      <div className="absolute top-4 right-4 opacity-80 group-hover:opacity-100 transition-opacity">
+      <div className="absolute top-4 right-4 opacity-80">
         <Icon size={18} className={colorClass} />
       </div>
       <div className="mt-auto">
@@ -392,7 +400,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 
       {/* Family Notes */}
       <div id="onboarding-family-board" className="relative group">
-        <div className="relative bg-primary p-5 rounded-2xl shadow-sm transition-all hover:shadow-md">
+        <div className="relative bg-primary p-5 rounded-2xl shadow-sm">
           <div className="flex justify-between items-start mb-3">
             <div className="flex items-center gap-2">
               <div className="text-white">
@@ -404,7 +412,7 @@ const Dashboard: React.FC<DashboardProps> = ({
             {!isEditingNotes && !isHelper && (
               <button
                 onClick={() => setIsEditingNotes(true)}
-                className="p-1.5 text-white/70 hover:text-white hover:bg-white/20 rounded-full transition-colors"
+                className="p-1.5 text-white/70 rounded-full"
               >
                 <Pencil size={14} />
               </button>
@@ -424,7 +432,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                 <button 
                   onClick={handleDeleteNotes}
                   disabled={isSavingNotes || isDeletingNotes}
-                  className="p-2.5 bg-[#F06292] rounded-full text-white shadow-sm hover:bg-[#EC407A] transition-colors disabled:opacity-50"
+                  className="p-2.5 bg-[#F06292] rounded-full text-white shadow-sm disabled:opacity-50"
                 >
                   {isDeletingNotes ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18} />}
                 </button>
@@ -432,7 +440,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                   <button 
                     onClick={handleCancelNotes}
                     disabled={isSavingNotes || isDeletingNotes}
-                    className="flex items-center gap-2 px-4 py-2 bg-white/20 rounded-full text-white text-body font-medium shadow-sm hover:bg-white/30 transition-colors disabled:opacity-50"
+                    className="flex items-center gap-2 px-4 py-2 bg-white/20 rounded-full text-white text-body font-medium shadow-sm disabled:opacity-50"
                   >
                     <X size={16} />
                     <span>{t['common.cancel'] || 'Cancel'}</span>
@@ -440,7 +448,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                   <button 
                     onClick={handleSaveNotes}
                     disabled={isSavingNotes || isDeletingNotes}
-                    className="flex items-center gap-2 px-4 py-2 bg-white rounded-full text-primary text-body font-medium shadow-sm hover:bg-white/90 transition-colors disabled:opacity-50"
+                    className="flex items-center gap-2 px-4 py-2 bg-white rounded-full text-primary text-body font-medium shadow-sm disabled:opacity-50"
                   >
                     <span>{t['common.save'] || 'Save'}</span>
                     {isSavingNotes ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
@@ -473,7 +481,7 @@ const Dashboard: React.FC<DashboardProps> = ({
       {/* Today's Menu */}
       <div
         onClick={() => onNavigate('meals')}
-        className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden cursor-pointer active:scale-[0.99] transition-transform hover:shadow-md"
+        className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden cursor-pointer"
       >
         <div className="bg-primary px-4 py-2.5 flex justify-between items-center">
           <h2 className="text-title text-white">{t['dashboard.todays_menu']}</h2>
@@ -528,7 +536,7 @@ const Dashboard: React.FC<DashboardProps> = ({
           ) : (
             <div className="py-2 flex flex-col items-start gap-2">
               <p className="text-body text-muted-foreground">{t['dashboard.no_meals_today'] || 'No meals remaining for today'}</p>
-              <button className="text-body text-primary flex items-center gap-1 hover:underline">
+              <button className="text-body text-primary flex items-center gap-1">
                 <Plus size={12} /> {t['meals.plan_dish'] || 'Plan Meal'}
               </button>
             </div>
@@ -574,6 +582,27 @@ const Dashboard: React.FC<DashboardProps> = ({
       />
       )}
 
+      {/* How to use Helpy */}
+      <div className="bg-card rounded-3xl p-6 shadow-sm">
+        <p className="text-title font-bold text-foreground mb-6">{t['dashboard.need_help'] || 'Need Help Getting Started?'}</p>
+        <div className="flex items-center">
+          {onRestartTutorial && (
+            <button onClick={onRestartTutorial} className="flex-1 flex flex-col items-center gap-1.5">
+              <GraduationCap size={24} className="text-primary" />
+              <span className="text-body font-medium text-foreground">{t['common.tutorial'] || 'Tutorial'}</span>
+            </button>
+          )}
+          {/* Vertical Divider */}
+          <div className="h-12 w-px bg-border mx-4"></div>
+          {onOpenUserGuide && (
+            <button onClick={onOpenUserGuide} className="flex-1 flex flex-col items-center gap-1.5">
+              <BookOpen size={24} className="text-primary" />
+              <span className="text-body font-medium text-foreground">{t['guide.title'] || 'User Guide'}</span>
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Footer */}
         <div className="helpy-footer">
           <span className="helpy-logo">helpy</span>
@@ -584,32 +613,6 @@ const Dashboard: React.FC<DashboardProps> = ({
             Aibileen Clark, The Help
           </p>
           
-          {/* Dark Mode Test Toggle */}
-          <button
-            onClick={() => {
-              const html = document.documentElement;
-              const isDark = html.classList.contains('dark');
-              if (isDark) {
-                html.classList.remove('dark');
-                html.classList.add('light');
-                localStorage.setItem('helpy_theme', 'light');
-                // Update overscroll background color to match light theme
-                html.style.backgroundColor = '#fafafa';
-              } else {
-                html.classList.remove('light');
-                html.classList.add('dark');
-                localStorage.setItem('helpy_theme', 'dark');
-                // Update overscroll background color to match dark theme
-                html.style.backgroundColor = '#121212';
-              }
-            }}
-            className="mt-4 px-4 py-2 rounded-full bg-muted text-muted-foreground text-caption flex items-center gap-2 mx-auto hover:bg-muted/80 transition-colors"
-          >
-            <Sun size={14} className="dark:hidden" />
-            <Moon size={14} className="hidden dark:block" />
-            <span className="dark:hidden">{t['dashboard.dark_mode'] || 'Dark Mode (BETA)'}</span>
-            <span className="hidden dark:block">{t['dashboard.light_mode'] || 'Light Mode'}</span>
-          </button>
           
           {/* Connection Status Indicator */}
           <div 
@@ -646,7 +649,7 @@ const Dashboard: React.FC<DashboardProps> = ({
             {/* Close Button */}
             <button
               onClick={() => setShowLangModal(false)}
-              className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center hover:bg-secondary transition-colors right-4 top-4 text-muted-foreground"
+              className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center right-4 top-4 text-muted-foreground"
               aria-label={t['common.close'] || 'Close'}
             >
               <X size={20} />
@@ -684,10 +687,10 @@ const Dashboard: React.FC<DashboardProps> = ({
                       onLanguageChange(lang.code);
                       setShowLangModal(false);
                     }}
-                    className={`w-full p-4 rounded-xl flex items-center justify-between transition-all ${
+                    className={`w-full p-4 rounded-xl flex items-center justify-between ${
                       currentLang === lang.code
                         ? 'bg-primary text-primary-foreground font-bold shadow-sm'
-                        : 'bg-secondary text-foreground font-medium hover:bg-secondary/80'
+                        : 'bg-secondary text-foreground font-medium'
                     }`}
                   >
                     <span className="text-body">{getDisplayName(lang.code)}</span>
@@ -704,4 +707,3 @@ const Dashboard: React.FC<DashboardProps> = ({
   };
 
   export default Dashboard;
-

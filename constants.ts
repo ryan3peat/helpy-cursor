@@ -49,6 +49,7 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'dashboard.everyone': 'Everyone',
   'dashboard.eating': 'eating',
   'dashboard.language': 'Language',
+  'dashboard.need_help': 'Need Help Getting Started?',
 
   // Filters & Common Tabs
   'filter.all': 'All',
@@ -483,6 +484,8 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'helper.manual_amount': 'Manual Amount',
   'helper.amount_overridden': 'Amount has been manually adjusted by Admin',
   'helper.revert_to_calculated': 'Revert to Calculated Amount',
+  'helper.management_title': 'Helper Management',
+  'helper.upgrade_modal_desc': "Manage your domestic helper's employment records. Track when they work on statutory holidays, record overtime or time-in-lieu, and confirm monthly payslips with digital signatures from both employer and helper.",
   'common.yes': 'Yes',
   'common.no': 'No',
 
@@ -753,4 +756,207 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'feedback.admin_badge': 'Admin',
   'feedback.you_badge': 'You',
   'feedback.delete_confirm': 'Are you sure you want to delete this conversation?',
+
+  // User Guide
+  'guide.title': 'User Guide',
+  'guide.welcome_title': 'Welcome to Helpy',
+  'guide.welcome_desc': 'Your household command center for managing tasks, meals, expenses, and household info - all in one place.',
+  'guide.your_role': 'Your Role',
+  'guide.getting_started': 'Getting Started',
+  'guide.features': 'Features',
+  'guide.your_plan': 'Your Plan',
+  'guide.tips': 'Tips & Best Practices',
+  'guide.faq': 'FAQ',
+  'guide.need_help': 'Need Help?',
+  
+  // User Guide - Dashboard
+  'guide.dashboard_title': 'Dashboard',
+  'guide.dashboard_desc': 'Your home screen shows a quick overview of everything: shopping items needed, pending tasks, upcoming meals, and monthly expenses.',
+  'guide.family_board_title': 'Family Board',
+  'guide.family_board_desc': 'Pin notes for your whole family to see. Tap to edit and share reminders, announcements, or instructions.',
+  
+  // User Guide - To-Do
+  'guide.todo_title': 'To-Do',
+  'guide.todo_desc': 'Manage shopping lists and household tasks in one place.',
+  'guide.shopping_title': 'Shopping Lists',
+  'guide.shopping_desc': 'Add items with quantity, assign to family members or your helper, and organize by location.',
+  'guide.tasks_title': 'Tasks',
+  'guide.tasks_desc': 'Create tasks with due dates, set recurrence for repeating chores, and assign to specific people.',
+  
+  // User Guide - Meals
+  'guide.meals_title': 'Meals',
+  'guide.meals_desc': 'Plan breakfast, lunch, dinner, and snacks for your family.',
+  'guide.meals_rsvp': 'Family members can RSVP to meals so you know who will be eating.',
+  'guide.meals_audience': 'Set meals for everyone, adults only, or kids only.',
+  'guide.meals_ai': 'Tap the sparkle icon to get AI-powered meal suggestions.',
+  
+  // User Guide - Expenses
+  'guide.expenses_title': 'Expenses',
+  'guide.expenses_desc': 'Track household spending with categories and visual breakdowns.',
+  'guide.expenses_manual': 'Add expenses manually with amount, category, merchant, and date.',
+  'guide.expenses_scan': 'Scan receipts with AI to automatically extract total, merchant, and date.',
+  'guide.expenses_chart': 'View spending breakdown by category in a visual pie chart.',
+  
+  // User Guide - Household Info
+  'guide.info_title': 'Household Info',
+  'guide.info_desc': 'Store important places, house routines, and manage helpers.',
+  'guide.places_title': 'Places',
+  'guide.places_desc': 'Save important addresses like home, school, doctor, hospital, and shops.',
+  'guide.routines_title': 'House Routines',
+  'guide.routines_desc': 'Document house rules, schedules, cleaning instructions, and emergency procedures.',
+  'guide.helper_mgmt_title': 'Helper Management',
+  'guide.helper_mgmt_desc': 'Track helper salary, holiday records, and generate payslips with digital signatures.',
+  
+  // User Guide - Languages
+  'guide.languages_title': 'Multi-Language Support',
+  'guide.languages_desc': 'Helpy automatically translates content. You can change your language anytime from the dashboard.',
+  
+  // User Guide - Notifications
+  'guide.notifications_title': 'Push Notifications',
+  'guide.notifications_desc': 'Get notified when new tasks, meals, or expenses are added. Enable in Profile > Settings > Account.',
+  
+  // User Guide - Role Descriptions
+  'guide.role_admin_title': 'Admin',
+  'guide.role_admin_desc': 'Full control of the household. Manage members, billing, and all features.',
+  'guide.role_spouse_title': 'Spouse',
+  'guide.role_spouse_desc': 'Full access to household features, similar to Admin.',
+  'guide.role_helper_title': 'Helper',
+  'guide.role_helper_desc': 'Focused access for household management. Some features are view-only.',
+  'guide.role_child_title': 'Child',
+  'guide.role_child_desc': 'View tasks and meals, RSVP to meals, manage own profile.',
+  'guide.role_other_title': 'Other',
+  'guide.role_other_desc': 'Extended family or guest with basic access.',
+
+  // User Guide - Roles Section
+  'guide.roles_title': 'Roles',
+  'guide.roles_desc': 'Helpy has different roles with different permissions. Learn what each role can do.',
+  'guide.you': 'You',
+  
+  // User Guide - Admin Abilities
+  'guide.admin_can': 'As Admin, you can:',
+  'guide.admin_ability_1': 'Add and manage family members',
+  'guide.admin_ability_2': 'Invite helpers with secure links',
+  'guide.admin_ability_3': 'Manage subscription and billing',
+  'guide.admin_ability_4': 'Edit the Family Board',
+  'guide.admin_ability_5': 'Delete any items',
+  'guide.admin_ability_6': 'View all expenses and monthly summaries',
+  
+  // User Guide - Spouse Abilities
+  'guide.spouse_can': 'As Spouse, you can:',
+  'guide.spouse_ability_1': 'Add and edit family members',
+  'guide.spouse_ability_2': 'Manage tasks, meals, and expenses',
+  'guide.spouse_ability_3': 'Edit the Family Board',
+  'guide.spouse_ability_4': 'Access all household information',
+  'guide.spouse_ability_5': 'View all expenses and monthly summaries',
+  'guide.spouse_restriction_1': 'Cannot manage subscription or billing',
+  
+  // User Guide - Helper Abilities
+  'guide.helper_can': 'As Helper, you can:',
+  'guide.helper_ability_1': 'View and complete shopping lists',
+  'guide.helper_ability_2': 'Mark tasks as done',
+  'guide.helper_ability_3': 'View meal plans and RSVP',
+  'guide.helper_ability_4': 'Access places and routines',
+  'guide.helper_ability_5': 'Sign payslips digitally',
+  'guide.helper_ability_6': 'Enter and view their own expenses',
+  'guide.helper_note': 'Some features are view-only to protect family privacy.',
+  'guide.helper_restriction_1': 'Cannot see expenses from others',
+  'guide.helper_restriction_2': 'Cannot edit Family Board',
+  'guide.helper_restriction_3': 'Cannot add family members',
+  
+  // User Guide - Child Abilities
+  'guide.child_can': 'As Child, you can:',
+  'guide.child_ability_1': 'See your tasks and chores',
+  'guide.child_ability_2': 'Check meal plans',
+  'guide.child_ability_3': 'RSVP for meals',
+  'guide.child_ability_4': 'View your own profile',
+  'guide.child_restriction_1': 'Cannot view expenses',
+  'guide.child_restriction_2': 'Cannot edit household info',
+  
+  // User Guide - Other Role Abilities
+  'guide.other_ability_1': 'View shared content',
+  'guide.other_ability_2': 'RSVP for meals',
+  'guide.other_ability_3': 'See basic household info',
+  'guide.other_restriction_1': 'Limited editing capabilities',
+  
+  // User Guide - Plan Comparison
+  'guide.plan_comparison': 'Plan Features',
+  'guide.plan_feature': 'Feature',
+  'guide.plan_family_members': 'Family Members',
+  'guide.plan_helpers': 'Helpers',
+  'guide.plan_receipt_scan': 'AI Receipt Scanning',
+  'guide.plan_helper_mgmt': 'Helper Management',
+  'guide.plan_view_plans': 'View Plans',
+  'guide.plan_included': 'Included',
+  'guide.plan_not_included': 'Not included',
+  
+  // User Guide - Tips
+  'guide.tip_1_title': 'Assign to Helper by Default',
+  'guide.tip_1_desc': 'When you add a task, it auto-assigns to your helper if you have one.',
+  'guide.tip_2_title': 'Use Recurrence',
+  'guide.tip_2_desc': 'Set daily, weekly, or monthly tasks to never forget routine chores.',
+  'guide.tip_3_title': 'Pin Important Notes',
+  'guide.tip_3_desc': 'The Family Board is visible to everyone - perfect for reminders.',
+  'guide.tip_4_title': 'Plan Meals Ahead',
+  'guide.tip_4_desc': 'Use Week View to batch-plan all meals for the week.',
+  'guide.tip_5_title': 'Keep Places Updated',
+  'guide.tip_5_desc': 'Helpers need quick access to school, doctor, and emergency info.',
+  
+  // User Guide - FAQ
+  'guide.faq_1_q': 'How do I invite a helper?',
+  'guide.faq_1_a': 'Go to Profile, tap Add Family Member, select Helper role, and share the invite link.',
+  'guide.faq_2_q': 'How do I change my subscription?',
+  'guide.faq_2_a': 'Go to Profile > Settings > Subscription to view and change your plan.',
+  'guide.faq_3_q': 'Why can\'t my helper edit certain things?',
+  'guide.faq_3_a': 'Helpers have view-only access to some features to protect family privacy.',
+  'guide.faq_4_q': 'How do I enable notifications?',
+  'guide.faq_4_a': 'Go to Profile > Settings > Account and toggle on Push Notifications.',
+  'guide.faq_5_q': 'Can I use Helpy in my language?',
+  'guide.faq_5_a': 'Yes! Tap the language button on the dashboard to switch between supported languages.',
+  
+  // User Guide - Footer
+  'guide.feedback_cta': 'Have a question? Tap Feedback in Settings.',
+  
+  // User Guide - Helper Access Overview (for Admin/Spouse)
+  'guide.helper_access_title': 'Helper Access Overview',
+  'guide.helper_access_desc': 'Understand exactly what your helper can and cannot access in Helpy.',
+  'guide.helper_can_see': 'What Helper CAN See',
+  'guide.helper_can_do': 'What Helper CAN Do',
+  'guide.helper_cannot_see': 'What Helper CANNOT See',
+  'guide.helper_cannot_do': 'What Helper CANNOT Do',
+  
+  // What Helper CAN See
+  'guide.helper_see_1': 'Shopping lists and items',
+  'guide.helper_see_2': 'Task lists and assignments',
+  'guide.helper_see_3': 'Meal plans and schedules',
+  'guide.helper_see_4': 'Places (home, school, doctor, etc.)',
+  'guide.helper_see_5': 'House routines and instructions',
+  'guide.helper_see_6': 'Family member names and avatars',
+  'guide.helper_see_7': 'Their own salary and payslip details',
+  'guide.helper_see_8': 'Expenses they entered themselves',
+  
+  // What Helper CAN Do
+  'guide.helper_do_1': 'Complete shopping items (mark as bought)',
+  'guide.helper_do_2': 'Complete tasks (mark as done)',
+  'guide.helper_do_3': 'RSVP to meals',
+  'guide.helper_do_4': 'Sign their own payslips digitally',
+  'guide.helper_do_5': 'Edit their own profile information',
+  
+  // What Helper CANNOT See
+  'guide.helper_no_see_1': 'Expenses created by other family members',
+  'guide.helper_no_see_2': 'Receipt images and scans',
+  'guide.helper_no_see_3': 'Monthly totals and spending summaries',
+  'guide.helper_no_see_4': 'Subscription and billing information',
+  'guide.helper_no_see_5': 'Other family members\' allergies and preferences',
+  
+  // What Helper CANNOT Do
+  'guide.helper_no_do_1': 'Edit or delete the Family Board',
+  'guide.helper_no_do_2': 'Delete shopping items or tasks',
+  'guide.helper_no_do_3': 'Add, edit, or delete expenses',
+  'guide.helper_no_do_4': 'Add or remove family members',
+  'guide.helper_no_do_5': 'Edit other people\'s profiles',
+  'guide.helper_no_do_6': 'Access subscription or billing settings',
+  'guide.helper_no_do_7': 'Clear completed items',
+  
+  // Helper Privacy Note
+  'guide.helper_privacy_note': 'Your financial information and family details remain private. Helpers only see what they need to help manage your household.',
 };

@@ -355,7 +355,7 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
           </p>
           <button
             onClick={() => window.location.href = '/'}
-            className="px-6 py-3 bg-[#3EAFD2] text-white rounded-xl font-semibold hover:opacity-90 transition-opacity"
+            className="px-6 py-3 bg-[#3EAFD2] text-white rounded-xl font-semibold"
           >
             Go to Home
           </button>
@@ -406,7 +406,7 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
                 type="submit"
                 disabled={isSubmitting}
                 style={{ backgroundColor: '#3EAFD2' }}
-                className="w-full hover:opacity-90 rounded-xl font-semibold py-3 transition-all text-white disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full rounded-xl font-semibold py-3 text-white disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {isSubmitting ? (
                   <>
@@ -465,7 +465,7 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
                 <div className="mb-4">
                   <button
                     onClick={() => setShowGoogleOAuth(false)}
-                    className="flex items-center gap-2 text-gray-500 hover:text-[#3EAFD2] mb-4 transition-colors text-body"
+                    className="flex items-center gap-2 text-gray-500 mb-4 text-body"
                   >
                     <ArrowRight size={16} className="rotate-180" />
                     <span>Back</span>
@@ -481,8 +481,8 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
                         rootBox: "w-full",
                         cardBox: "w-full shadow-none rounded-2xl overflow-hidden",
                         card: "bg-white rounded-2xl border-0 shadow-none p-0",
-                        socialButtonsBlockButton: "border border-gray-200 hover:border-gray-300 transition-all rounded-xl font-medium py-3",
-                        formButtonPrimary: "!bg-[#3EAFD2] !bg-none !shadow-none rounded-xl font-semibold py-3 transition-all hover:opacity-90",
+                        socialButtonsBlockButton: "border border-gray-200 rounded-xl font-medium py-3",
+                        formButtonPrimary: "!bg-[#3EAFD2] !bg-none !shadow-none rounded-xl font-semibold py-3",
                         formField: "hidden", // Hide email/password form fields
                         formFieldInput: "hidden",
                         formFieldLabel: "hidden",
@@ -500,7 +500,7 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
                   <button
                     onClick={() => setShowSignUp(true)}
                     style={{ backgroundColor: '#3EAFD2' }}
-                    className="w-full hover:opacity-90 rounded-xl font-semibold py-3 transition-all text-white flex items-center justify-center gap-2"
+                    className="w-full rounded-xl font-semibold py-3 text-white flex items-center justify-center gap-2"
                   >
                     <Mail size={18} />
                     Sign Up with Email
@@ -512,7 +512,7 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
                   <div className="space-y-3">
                     <button
                       onClick={handleGoogleSignIn}
-                      className="w-full border-2 border-gray-200 hover:border-gray-300 rounded-xl font-semibold py-3 transition-all text-gray-700 flex items-center justify-center gap-2"
+                      className="w-full border-2 border-gray-200 rounded-xl font-semibold py-3 text-gray-700 flex items-center justify-center gap-2"
                     >
                       <svg className="w-5 h-5" viewBox="0 0 24 24">
                         <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -527,7 +527,7 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
                         Already have an account?{' '}
                         <button
                           onClick={handleEmailSignIn}
-                          className="text-[#3EAFD2] font-semibold hover:underline"
+                          className="text-[#3EAFD2] font-semibold"
                         >
                           Sign In
                         </button>
@@ -541,7 +541,7 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
                 {/* Sign Up Form */}
                 <button
                   onClick={() => setShowSignUp(false)}
-                  className="flex items-center gap-2 text-gray-500 hover:text-[#3EAFD2] mb-4 transition-colors text-body"
+                  className="flex items-center gap-2 text-gray-500 mb-4 text-body"
                 >
                   <ArrowRight size={16} className="rotate-180" />
                   <span>Back</span>
@@ -620,7 +620,7 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
                     type="submit"
                     disabled={isSubmitting}
                     style={{ backgroundColor: '#3EAFD2' }}
-                    className="w-full hover:opacity-90 rounded-xl font-semibold py-3 transition-all text-white disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    className="w-full rounded-xl font-semibold py-3 text-white disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
                     {isSubmitting ? (
                       <>

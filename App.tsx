@@ -518,7 +518,8 @@ const AppContent: React.FC = () => {
           updatedCurrentUser.avatar !== currentUser.avatar ||
           JSON.stringify(updatedCurrentUser.allergies) !== JSON.stringify(currentUser.allergies) ||
           JSON.stringify(updatedCurrentUser.preferences) !== JSON.stringify(currentUser.preferences) ||
-          updatedCurrentUser.notificationsEnabled !== currentUser.notificationsEnabled;
+          updatedCurrentUser.notificationsEnabled !== currentUser.notificationsEnabled ||
+          updatedCurrentUser.hasPushSubscription !== currentUser.hasPushSubscription;
         
         if (hasChanges) {
           setCurrentUser(updatedCurrentUser);
@@ -835,6 +836,14 @@ const AppContent: React.FC = () => {
             isTranslating={isAnyTranslating}
             onUpdateMeal={handleUpdateMeal}
             realtimeStatus={realtimeStatus}
+            onRestartTutorial={() => {
+              setOnboardingStep(1);
+              setNavData(null);
+            }}
+            onOpenUserGuide={() => {
+              localStorage.setItem('helpy_profile_target_section', 'guide');
+              setActiveView('profile');
+            }}
           />
         );
 
@@ -873,6 +882,7 @@ const AppContent: React.FC = () => {
             expenses={expenses}
             householdId={hid}
             currentUser={currentUser}
+            onNavigateToPlan={() => handleNavigate('profile')}
             onAdd={handleAddExpense}
             onUpdate={handleUpdateExpense}
             onDelete={handleDeleteExpense}
@@ -982,7 +992,7 @@ const AppContent: React.FC = () => {
             <div className="flex gap-2 justify-center">
               <button 
                 onClick={() => window.location.reload()} 
-                className="px-4 py-2 bg-white text-[#3EAFD2] rounded font-semibold hover:bg-gray-100"
+                className="px-4 py-2 bg-white text-[#3EAFD2] rounded font-semibold"
               >
                 Reload Page
               </button>
@@ -993,7 +1003,7 @@ const AppContent: React.FC = () => {
                   console.log('🔍 [Debug] Hostname:', window.location.hostname);
                   console.log('🔍 [Debug] Full URL:', window.location.href);
                 }} 
-                className="px-4 py-2 bg-white/20 text-white rounded font-semibold hover:bg-white/30"
+                className="px-4 py-2 bg-white/20 text-white rounded font-semibold"
               >
                 Debug Info
               </button>

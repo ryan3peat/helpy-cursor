@@ -403,7 +403,7 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
                 type="submit"
                 disabled={isSubmitting}
                 style={{ backgroundColor: '#3EAFD2' }}
-                className="w-full hover:opacity-90 rounded-xl font-semibold py-3 transition-all text-white disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full rounded-xl font-semibold py-3 text-white disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {isSubmitting ? (
                   <>
@@ -447,7 +447,7 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
           <div className="bg-white shadow-lg rounded-2xl p-6">
           <button
             onClick={onBackToSignIn}
-            className="flex items-center gap-2 text-gray-500 hover:text-[#3EAFD2] mb-4 transition-colors"
+            className="flex items-center gap-2 text-gray-500 mb-4"
           >
             <ArrowLeft size={18} />
             <span className="text-body">Back to Sign In</span>
@@ -467,7 +467,7 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
               type="button"
               onClick={handleGoogleSignUp}
               disabled={!isLoaded || isOAuthProcessing}
-              className="w-full border-2 border-gray-200 hover:border-gray-300 rounded-xl font-semibold py-3 transition-all text-gray-700 flex items-center justify-center gap-2 mb-4 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full border-2 border-gray-200 rounded-xl font-semibold py-3 text-gray-700 flex items-center justify-center gap-2 mb-4 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isOAuthProcessing ? (
                 <>
@@ -564,7 +564,7 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
               type="submit"
               disabled={isSubmitting}
               style={{ backgroundColor: '#3EAFD2' }}
-              className="w-full hover:opacity-90 rounded-xl font-semibold py-3 transition-all text-white disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full rounded-xl font-semibold py-3 text-white disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {isSubmitting ? (
                 <>
@@ -582,7 +582,7 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
               Already have an account?{' '}
               <button
                 onClick={onBackToSignIn}
-                className="text-[#3EAFD2] font-semibold hover:underline"
+                className="text-[#3EAFD2] font-semibold"
               >
                 Sign In
               </button>
@@ -595,7 +595,7 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
         <div className="mt-6 text-center">
           <a
             href="https://helpyfam.com"
-            className="text-white/90 hover:text-white text-body underline transition-colors"
+            className="text-white/90 text-body underline"
           >
             See Helpyfam Features
           </a>

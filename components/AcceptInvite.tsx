@@ -217,7 +217,7 @@ const AcceptInvite: React.FC<AcceptInviteProps> = ({ onComplete }) => {
           <p className="text-gray-500 mt-2">{errorMessage || 'This invitation is invalid or has expired.'}</p>
           <button
             onClick={() => window.location.href = '/'}
-            className="mt-6 px-6 py-3 bg-brand-primary text-white rounded-xl font-bold hover:bg-brand-secondary transition-colors"
+            className="mt-6 px-6 py-3 bg-brand-primary text-white rounded-xl font-bold"
           >
             Go to Home
           </button>
@@ -280,7 +280,7 @@ const AcceptInvite: React.FC<AcceptInviteProps> = ({ onComplete }) => {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full bg-brand-primary text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-brand-secondary transition-colors disabled:opacity-50"
+              className="w-full bg-brand-primary text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 disabled:opacity-50"
             >
               {isSubmitting ? (
                 <>
@@ -394,7 +394,7 @@ const AcceptInvite: React.FC<AcceptInviteProps> = ({ onComplete }) => {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full bg-brand-primary text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-brand-secondary transition-colors disabled:opacity-50"
+            className="w-full bg-brand-primary text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 disabled:opacity-50"
           >
             {isSubmitting ? (
               <>

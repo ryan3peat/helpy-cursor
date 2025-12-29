@@ -3,7 +3,7 @@ import {
   ChevronLeft,
   Plus,
   Send,
-  MessageCircle,
+  MessageCircleQuestionMark,
   Trash2,
   CheckCircle,
   RefreshCw,
@@ -285,7 +285,7 @@ const FeedbackSection: React.FC<FeedbackSectionProps> = ({
       <div className="flex items-center gap-3 px-4 py-4">
         <button
           onClick={onBack}
-          className="p-2 -ml-2 hover:bg-secondary rounded-full transition-colors"
+          className="p-2 -ml-2 rounded-full"
         >
           <ChevronLeft size={24} className="text-foreground" />
         </button>
@@ -399,7 +399,7 @@ const FeedbackSection: React.FC<FeedbackSectionProps> = ({
           ) : tickets.length === 0 ? (
             /* Empty state */
             <div className="text-center py-12">
-              <MessageCircle size={48} className="mx-auto text-muted-foreground/50 mb-4" />
+              <MessageCircleQuestionMark size={48} className="mx-auto text-muted-foreground/50 mb-4" />
               <p className="text-muted-foreground">
                 {t['feedback.no_tickets'] || 'No messages yet'}
               </p>
@@ -450,7 +450,7 @@ const FeedbackSection: React.FC<FeedbackSectionProps> = ({
                           {canReply && (
                             <button
                               onClick={() => handleToggleStatus(ticket)}
-                              className="p-1.5 hover:bg-secondary rounded-full transition-colors"
+                              className="p-1.5 rounded-full"
                               title={ticket.status === 'resolved' 
                                 ? (t['feedback.reopen'] || 'Reopen')
                                 : (t['feedback.mark_resolved'] || 'Mark as Resolved')
@@ -541,7 +541,7 @@ const FeedbackSection: React.FC<FeedbackSectionProps> = ({
                         ) : (
                           <button
                             onClick={() => setDeleteConfirmId(ticket.id)}
-                            className="w-full py-2 px-4 text-sm text-red-500 hover:bg-red-50 transition-colors flex items-center justify-center gap-2"
+                            className="w-full py-2 px-4 text-sm text-red-500 flex items-center justify-center gap-2"
                           >
                             <Trash2 size={14} />
                             {t['common.delete'] || 'Delete'}

@@ -17,8 +17,8 @@ import {
   UserPlus,
   User as UserIcon,
   Baby,
-  LayoutList,
-  LayoutGrid,
+  Rows3,
+  Sheet,
   Check
 } from 'lucide-react';
 import Avatar from './ui/Avatar';
@@ -497,14 +497,14 @@ const Meals: React.FC<MealsProps> = ({
   return (
       <div
         key={meal.id}
-        className="rounded-xl border border-border bg-card overflow-hidden transition-shadow hover:shadow-sm"
+        className="rounded-xl border border-border bg-card overflow-hidden "
       >
         {/* Split Content: LEFT (Dish) | RIGHT (Who's Eating) */}
         <div className="flex divide-x divide-border min-h-[100px]">
           {/* LEFT: Dish Section */}
           <div 
             onClick={() => openEditModal(meal)}
-            className="flex-1 p-3 cursor-pointer hover:bg-muted/50 transition-colors flex flex-col"
+            className="flex-1 p-3 cursor-pointer  flex flex-col"
           >
             {/* Audience Badge */}
             <span className={`text-caption font-semibold px-2 py-0.5 rounded-full self-start mb-2 ${getAudienceColor(meal.audience || 'ALL')}`}>
@@ -516,14 +516,14 @@ const Meals: React.FC<MealsProps> = ({
                 <p className={`font-semibold text-foreground leading-tight flex-1 ${compact ? 'text-caption' : 'text-body'}`}>
                   <TranslatedMealDescription meal={meal} currentLang={currentLang} onUpdate={onUpdate} />
                 </p>
-                <button className="flex items-center gap-1 text-caption font-medium text-muted-foreground hover:text-primary transition-colors mt-2">
+                <button className="flex items-center gap-1 text-caption font-medium text-muted-foreground  mt-2">
                   <Edit2 size={10} />
                   {t['meals.edit_dish'] ?? 'Edit dish'}
                 </button>
               </div>
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center">
-                <button className="flex items-center gap-1.5 px-3 py-2 bg-muted hover:bg-muted/80 rounded-lg text-caption font-semibold text-muted-foreground transition-colors">
+                <button className="flex items-center gap-1.5 px-3 py-2 bg-muted rounded-lg text-caption font-semibold text-muted-foreground transition-colors">
                   <Plus size={14} />
                   {t['meals.add_meal_plan'] ?? 'Add Meal Plan'}
                 </button>
@@ -586,8 +586,8 @@ const Meals: React.FC<MealsProps> = ({
                 }}
                 className={`text-caption font-semibold px-4 py-1.5 rounded-full transition-colors flex items-center justify-center gap-1.5 ${
                   isIn
-                    ? 'bg-destructive/15 text-destructive hover:bg-destructive/25'
-                    : 'bg-primary/15 text-primary hover:bg-primary/25'
+                    ? 'bg-destructive/15 text-destructive'
+                    : 'bg-primary/15 text-primary'
                 }`}
               >
                 {isIn ? (
@@ -614,15 +614,15 @@ const Meals: React.FC<MealsProps> = ({
   // --- Render Empty Slot Card (same split design) ---
   const renderEmptySlotCard = (date: Date, type: MealType) => {
     return (
-      <div className="rounded-xl border border-dashed border-border bg-card overflow-hidden hover:border-foreground/20 transition-colors">
+      <div className="rounded-xl border border-dashed border-border bg-card overflow-hidden">
         {/* Split Content: LEFT (Dish) | RIGHT (Who's Eating) */}
         <div className="flex divide-x divide-border min-h-[100px]">
           {/* LEFT: Plan Dish Section */}
           <div 
             onClick={() => openAddModal(date, type)}
-            className="flex-1 p-3 cursor-pointer hover:bg-muted/50 transition-colors flex flex-col items-center justify-center"
+            className="flex-1 p-3 cursor-pointer  flex flex-col items-center justify-center"
           >
-            <button className="flex items-center gap-1.5 px-4 py-2.5 bg-muted hover:bg-muted/80 rounded-xl text-caption font-semibold text-muted-foreground transition-colors">
+            <button className="flex items-center gap-1.5 px-4 py-2.5 bg-muted rounded-xl text-caption font-semibold text-muted-foreground transition-colors">
               <Plus size={16} />
               {t['meals.add_meal_plan'] ?? 'Add Meal Plan'}
             </button>
@@ -647,7 +647,7 @@ const Meals: React.FC<MealsProps> = ({
             {/* Quick RSVP Button */}
             <button
               onClick={() => handleQuickRsvpEmpty(date, type)}
-              className="w-full py-2 rounded-lg text-caption font-semibold transition-colors flex items-center justify-center gap-1.5 bg-muted text-muted-foreground hover:bg-muted/80 border border-dashed border-border"
+              className="w-full py-2 rounded-lg text-caption font-semibold transition-colors flex items-center justify-center gap-1.5 bg-muted text-muted-foreground border border-dashed border-border"
             >
               <UserPlus size={14} />
               {t['meals.ill_be_eating'] ?? "I'll be eating"}
@@ -670,8 +670,8 @@ const Meals: React.FC<MealsProps> = ({
             {t['meals.title']}
           </h1>
           
-          {/* Day/Week Toggle - Compact pill in header */}
-          <div className="relative rounded-full overflow-hidden shrink-0 bg-muted">
+          {/* Day/Week Toggle - Matches Expenses month selector style */}
+          <div className="relative rounded-full overflow-hidden shrink-0 bg-secondary">
             <div className="flex p-0.5">
               {['day', 'week'].map(v => {
                 const isActive = view === v;
@@ -679,16 +679,16 @@ const Meals: React.FC<MealsProps> = ({
                   <button
                     key={v}
                     onClick={() => setView(v as 'day' | 'week')}
-                    className={`py-1.5 px-3 rounded-full text-caption font-medium flex items-center gap-1.5 transition-colors ${
+                    className={`py-2 px-3 rounded-full text-body font-medium flex items-center gap-1.5 transition-colors ${
                       isActive
                         ? 'bg-background text-primary shadow-sm'
-                        : 'text-muted-foreground hover:text-foreground'
+                        : 'text-muted-foreground'
                     }`}
                   >
                     {v === 'day' ? (
-                      <><LayoutList size={14} /> {t['meals.view_day'] ?? 'Day'}</>
+                      <><Rows3 size={16} /> {t['meals.view_day'] ?? 'Day'}</>
                     ) : (
-                      <><LayoutGrid size={14} /> {t['meals.view_week'] ?? 'Week'}</>
+                      <><Sheet size={16} /> {t['meals.view_week'] ?? 'Week'}</>
                     )}
                   </button>
                 );
@@ -717,14 +717,14 @@ const Meals: React.FC<MealsProps> = ({
             <div className="relative flex-1 flex items-center justify-between px-2 rounded-xl h-12 overflow-hidden bg-muted">
               <button
                 onClick={prevWeek}
-                className="p-2 hover:bg-muted rounded-lg text-muted-foreground transition-colors z-10"
+                className="p-2 rounded-lg text-muted-foreground z-10"
               >
                 <ChevronLeft size={20} />
               </button>
               <span className={`text-body font-semibold tabular-nums z-10 ${isCurrentWeek ? 'text-primary' : 'text-foreground'}`}>{dateRangeStr}</span>
               <button
                 onClick={nextWeek}
-                className="p-2 hover:bg-muted rounded-lg text-muted-foreground transition-colors z-10"
+                className="p-2 rounded-lg text-muted-foreground z-10"
               >
                 <ChevronRight size={20} />
               </button>
@@ -739,7 +739,7 @@ const Meals: React.FC<MealsProps> = ({
               className={`px-4 rounded-xl font-semibold text-body transition-colors h-12 ${
                 isCurrentWeek
                   ? 'bg-muted text-primary cursor-default'
-                  : 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm'
+                  : 'bg-primary text-primary-foreground shadow-sm'
               }`}
             >
               {t['meals.today'] ?? 'Today'}
@@ -782,7 +782,7 @@ const Meals: React.FC<MealsProps> = ({
                 <div 
                   key={dateStr} 
                   id={`day-${dateStr}`} 
-                  className="bg-card rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+                  className="bg-card rounded-xl overflow-hidden shadow-sm "
                 >
                   {/* Prominent Date Header Bar */}
                   <div className={`px-4 py-3 ${isToday ? 'bg-primary' : 'bg-card'}`}>
@@ -806,7 +806,7 @@ const Meals: React.FC<MealsProps> = ({
                             {/* Left Column: Meal Info */}
                             <div 
                               onClick={() => openEditModal(meal)}
-                              className="h-full p-3 cursor-pointer hover:bg-muted/50 transition-colors flex flex-col justify-center min-w-0"
+                              className="h-full p-3 cursor-pointer  flex flex-col justify-center min-w-0"
                             >
                               <span className="text-caption font-medium text-muted-foreground flex items-center gap-1 mb-0.5">
                                 {getMealIcon(meal.type)}
@@ -833,7 +833,7 @@ const Meals: React.FC<MealsProps> = ({
                             {/* Middle Column: Participant Counts */}
                             <div 
                               onClick={() => openEditModal(meal)}
-                              className="h-full p-2 cursor-pointer hover:bg-muted/50 transition-colors flex flex-col items-center justify-center gap-0.5"
+                              className="h-full p-2 cursor-pointer  flex flex-col items-center justify-center gap-0.5"
                             >
                               {(adultCount > 0 || kidCount > 0) ? (
                                 <>
@@ -874,8 +874,8 @@ const Meals: React.FC<MealsProps> = ({
                                   }}
                                   className={`w-[100px] px-3 text-caption font-semibold py-2 rounded-full transition-colors text-center whitespace-nowrap ${
                                     isIn
-                                      ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                                      : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                                      ? 'bg-primary text-primary-foreground'
+                                      : 'bg-muted text-muted-foreground'
                                   }`}
                                 >
                                   {isIn ? (t['meals.joined'] ?? 'Joined') : (t['meals.tap_to_join'] ?? 'Tap to Join')}
@@ -909,10 +909,10 @@ const Meals: React.FC<MealsProps> = ({
                                 {/* Left area: Meal type icons */}
                                 <div className="flex-1 flex items-center justify-evenly min-w-0">
                                   {[
-                                    { type: MealType.BREAKFAST, label: t['meal.type.breakfast'] || 'Breakfast', icon: <Coffee size={18} />, color: 'text-[#FF9800] border-[#FF9800]/30 hover:bg-[#FF9800]/10 hover:border-[#FF9800]/50' },
-                                    { type: MealType.LUNCH, label: t['meal.type.lunch'] || 'Lunch', icon: <Sun size={18} />, color: 'text-[#4CAF50] border-[#4CAF50]/30 hover:bg-[#4CAF50]/10 hover:border-[#4CAF50]/50' },
-                                    { type: MealType.DINNER, label: t['meal.type.dinner'] || 'Dinner', icon: <Moon size={18} />, color: 'text-[#7E57C2] border-[#7E57C2]/30 hover:bg-[#7E57C2]/10 hover:border-[#7E57C2]/50' },
-                                    { type: MealType.SNACKS, label: t['meal.type.snacks'] || 'Snack', icon: <Cookie size={18} />, color: 'text-[#F06292] border-[#F06292]/30 hover:bg-[#F06292]/10 hover:border-[#F06292]/50' },
+                                    { type: MealType.BREAKFAST, label: t['meal.type.breakfast'] || 'Breakfast', icon: <Coffee size={18} />, color: 'text-[#FF9800] border-[#FF9800]/30' },
+                                    { type: MealType.LUNCH, label: t['meal.type.lunch'] || 'Lunch', icon: <Sun size={18} />, color: 'text-[#4CAF50] border-[#4CAF50]/30' },
+                                    { type: MealType.DINNER, label: t['meal.type.dinner'] || 'Dinner', icon: <Moon size={18} />, color: 'text-[#7E57C2] border-[#7E57C2]/30' },
+                                    { type: MealType.SNACKS, label: t['meal.type.snacks'] || 'Snack', icon: <Cookie size={18} />, color: 'text-[#F06292] border-[#F06292]/30' },
                                   ].map(({ type, label, icon, color }) => {
                                     const alreadyExists = existingMealTypes.includes(type);
                                     return (
@@ -948,7 +948,7 @@ const Meals: React.FC<MealsProps> = ({
                                 <div className="flex-shrink-0 pl-3">
                                   <button
                                     onClick={() => setQuickJoinPopoverDate(null)}
-                                    className="w-9 h-9 flex items-center justify-center rounded-full bg-destructive/15 text-destructive hover:bg-destructive/25 transition-colors"
+                                    className="w-9 h-9 flex items-center justify-center rounded-full bg-destructive/15 text-destructive"
                                   >
                                     <X size={18} />
                                   </button>
@@ -961,9 +961,9 @@ const Meals: React.FC<MealsProps> = ({
                               {/* Left Column: Add Meal Plan button */}
                               <div 
                                 onClick={() => openAddModal(dayDate, MealType.DINNER)}
-                                className="h-full p-3 cursor-pointer hover:bg-muted/50 transition-colors flex flex-col justify-center min-w-0"
+                                className="h-full p-3 cursor-pointer  flex flex-col justify-center min-w-0"
                               >
-                                <button className="text-body font-semibold text-muted-foreground hover:text-primary flex items-center gap-1.5 transition-colors">
+                                <button className="text-body font-semibold text-muted-foreground flex items-center gap-1.5">
                                   <Plus size={16} />
                                   {t['meals.add_meal_plan'] ?? 'Add Meal Plan'}
                                 </button>
@@ -978,7 +978,7 @@ const Meals: React.FC<MealsProps> = ({
                               {/* Middle Column: Empty counts placeholder */}
                               <div 
                                 onClick={() => openAddModal(dayDate, MealType.DINNER)}
-                                className="h-full p-2 cursor-pointer hover:bg-muted/50 transition-colors flex flex-col items-center justify-center gap-0.5"
+                                className="h-full p-2 cursor-pointer  flex flex-col items-center justify-center gap-0.5"
                               >
                                 <div className="flex items-center gap-1">
                                   <UserIcon size={14} className="text-muted-foreground/40" />
@@ -996,7 +996,7 @@ const Meals: React.FC<MealsProps> = ({
                               <div className="h-full p-2 flex items-center justify-center">
                                 <button
                                   onClick={() => setQuickJoinPopoverDate(dateStr)}
-                                  className="w-[100px] px-3 text-caption font-semibold py-2 rounded-full transition-colors text-center whitespace-nowrap bg-muted text-muted-foreground hover:bg-muted/80"
+                                  className="w-[100px] px-3 text-caption font-semibold py-2 rounded-full transition-colors text-center whitespace-nowrap bg-muted text-muted-foreground"
                                 >
                                   {t['meals.tap_to_join'] ?? 'Tap to Join'}
                                 </button>
@@ -1012,77 +1012,71 @@ const Meals: React.FC<MealsProps> = ({
             })}
         </div>
       ) : (
-          /* Week View - Compact Chips */
-          <div 
-            className="overflow-auto rounded-xl bg-card shadow-sm hover:shadow-md transition-shadow isolate"
-            style={{ maxHeight: 'calc(100dvh - 240px)' }}
-          >
-            <table className="min-w-[700px] w-full" style={{ borderCollapse: 'separate', borderSpacing: 0 }}>
-            <thead>
-              <tr>
-                  <th 
-                  className="sticky top-0 left-0 z-40 bg-muted w-16 p-2 border-b border-border text-body font-semibold text-muted-foreground text-center relative overflow-visible"
-                >
-                  {/* Shadow overlay on right edge */}
-                  <div 
-                    className="absolute top-0 -right-3 bottom-0 w-3 pointer-events-none"
-                    style={{ 
-                      background: 'linear-gradient(to right, rgba(0,0,0,0.06), transparent)',
-                    }}
-                  />
-                </th>
-                {mealTypes.map(type => (
-                    <th key={type} className="sticky top-0 z-30 bg-muted p-2 border-b border-border text-center min-w-[140px]">
-                      <div className="flex items-center justify-center gap-1.5 text-muted-foreground">
-                        {getMealIcon(type)}
-                        <span className="text-body font-semibold">{getMealLabel(type)}</span>
-                      </div>
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {weekDays.map((day, dayIndex) => {
-                const dateStr = formatDateStr(day);
-                const isToday = day.toDateString() === new Date().toDateString();
-                const isLastRow = dayIndex === weekDays.length - 1;
-                return (
-                    <tr key={dateStr} className="group">
-                      {/* Day Column */}
-                      <td 
-                        className={`sticky left-0 z-20 p-2 border-r border-border text-center relative overflow-visible ${
-                          isToday ? 'bg-primary text-primary-foreground' : 'bg-card'
-                        }`}
+          /* Week View - Google Calendar Style Grid (Meals as rows, Days as columns) */
+          <div className="rounded-xl bg-card shadow-sm overflow-hidden isolate">
+            {/* Horizontal scroll container */}
+            <div 
+              className="overflow-x-auto overflow-y-hidden overscroll-x-contain"
+              style={{ WebkitOverflowScrolling: 'touch' }}
+            >
+              {/* CSS Grid - 1 meal label column + 7 day columns */}
+              <div 
+                className="grid min-w-[640px]"
+                style={{ gridTemplateColumns: '72px repeat(7, minmax(80px, 1fr))' }}
+              >
+                {/* ===== HEADER ROW: Corner + Day Headers ===== */}
+                {/* Corner cell (empty) - sticky left but low z-index */}
+                <div className="bg-muted p-2 border-b border-r border-border sticky left-0 z-[2]" />
+                {/* Day header cells */}
+                {weekDays.map((day, dayIndex) => {
+                  const isToday = day.toDateString() === new Date().toDateString();
+                  const isLastCol = dayIndex === weekDays.length - 1;
+                  return (
+                    <div 
+                      key={formatDateStr(day)}
+                      onClick={() => handleWeekCellClick(day)}
+                      className={`p-2 border-b border-border text-center cursor-pointer ${!isLastCol ? 'border-r border-border' : ''} ${isToday ? 'bg-primary' : 'bg-muted'}`}
+                    >
+                      <span className={`text-caption font-semibold block ${isToday ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
+                        {day.toLocaleDateString(langCode, { weekday: 'short' })}
+                      </span>
+                      <span className={`text-body font-bold block ${isToday ? 'text-primary-foreground' : 'text-foreground'}`}>
+                        {day.getDate()}
+                      </span>
+                    </div>
+                  );
+                })}
+
+                {/* ===== MEAL ROWS ===== */}
+                {mealTypes.map((type, typeIndex) => {
+                  const isLastRow = typeIndex === mealTypes.length - 1;
+                  return (
+                    <React.Fragment key={type}>
+                      {/* Meal type label cell - sticky left */}
+                      <div 
+                        className={`sticky left-0 z-[1] bg-card p-2 flex flex-col items-center justify-center gap-0.5 border-r border-border ${!isLastRow ? 'border-b border-border' : ''}`}
                       >
-                        {/* Shadow overlay on right edge */}
-                        <div 
-                          className="absolute top-0 -right-3 bottom-0 w-3 pointer-events-none"
-                          style={{ 
-                            background: 'linear-gradient(to right, rgba(0,0,0,0.06), transparent)',
-                          }}
-                        />
-                        <div className="flex flex-col items-center">
-                          <span className={`text-body font-semibold ${isToday ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
-                          {day.toLocaleDateString(langCode, { weekday: 'short' })}
-                        </span>
-                          <span className={`text-body font-semibold ${isToday ? 'text-primary-foreground' : 'text-foreground'}`}>
-                          {day.getDate()}
+                        {getMealIcon(type)}
+                        <span className="text-micro font-semibold text-muted-foreground text-center leading-tight">
+                          {getMealLabel(type)}
                         </span>
                       </div>
-                    </td>
-                      {/* Meal Columns */}
-                    {mealTypes.map((type, typeIndex) => {
-                      const slotMeals = getMealsForSlot(day, type);
-                      const isLastCol = typeIndex === mealTypes.length - 1;
-                      return (
-                        <td
-                          key={type}
+                      
+                      {/* Day cells for this meal type */}
+                      {weekDays.map((day, dayIndex) => {
+                        const dateStr = formatDateStr(day);
+                        const slotMeals = getMealsForSlot(day, type);
+                        const isLastCol = dayIndex === weekDays.length - 1;
+                        
+                        return (
+                          <div
+                            key={`${type}-${dateStr}`}
                             onClick={() => handleWeekCellClick(day)}
-                            className={`p-1.5 align-top cursor-pointer hover:bg-primary/5 transition-colors ${!isLastRow ? 'border-b border-border' : ''} ${!isLastCol ? 'border-r border-border' : ''}`}
-                        >
-                          {slotMeals.length > 0 ? (
+                            className={`p-1.5 cursor-pointer min-h-[72px] ${!isLastRow ? 'border-b border-border' : ''} ${!isLastCol ? 'border-r border-border' : ''}`}
+                          >
+                            {slotMeals.length > 0 ? (
                               <div className="space-y-1">
-                              {slotMeals.map(meal => {
+                                {slotMeals.map(meal => {
                                   const hasDish = meal.description.trim().length > 0;
                                   const mealUsers = meal.forUserIds
                                     .map(uid => users.find(u => u.id === uid))
@@ -1090,54 +1084,53 @@ const Meals: React.FC<MealsProps> = ({
                                   const adultCount = mealUsers.filter(u => u.role !== UserRole.CHILD).length;
                                   const kidCount = mealUsers.filter(u => u.role === UserRole.CHILD).length;
                                   
-                                return (
-                                  <div
-                                    key={meal.id}
-                                    className="px-2 py-1.5 rounded-md bg-muted/50 hover:bg-muted transition-colors"
-                                  >
-                                    {/* Dish name or RSVP label */}
-                                    {hasDish ? (
-                                      <span className="text-body font-semibold text-foreground line-clamp-2 leading-tight block">
-                                        <TranslatedMealDescription meal={meal} currentLang={currentLang} onUpdate={onUpdate} />
-                                      </span>
-                                    ) : (
-                                      <span className="text-caption font-medium text-muted-foreground block">
-                                        RSVP
-                                      </span>
-                                    )}
-                                    {/* RSVP counts - consistent format */}
-                                    <div className="flex items-center gap-2 text-caption text-muted-foreground mt-1">
-                                      {adultCount > 0 && (
-                                        <span className="flex items-center gap-0.5">
-                                          <UserIcon size={12} />
-                                          {adultCount}
+                                  return (
+                                    <div
+                                      key={meal.id}
+                                      className="px-1.5 py-1 rounded-md bg-muted/50"
+                                    >
+                                      {hasDish ? (
+                                        <span className="text-micro font-semibold text-foreground line-clamp-2 leading-tight block">
+                                          <TranslatedMealDescription meal={meal} currentLang={currentLang} onUpdate={onUpdate} />
+                                        </span>
+                                      ) : (
+                                        <span className="text-micro font-medium text-muted-foreground block">
+                                          RSVP
                                         </span>
                                       )}
-                                      {kidCount > 0 && (
-                                        <span className="flex items-center gap-0.5">
-                                          <Baby size={12} />
-                                          {kidCount}
-                                        </span>
-                                      )}
+                                      {/* RSVP counts */}
+                                      <div className="flex items-center gap-1 text-micro text-muted-foreground mt-0.5">
+                                        {adultCount > 0 && (
+                                          <span className="flex items-center gap-0.5">
+                                            <UserIcon size={10} />
+                                            {adultCount}
+                                          </span>
+                                        )}
+                                        {kidCount > 0 && (
+                                          <span className="flex items-center gap-0.5">
+                                            <Baby size={10} />
+                                            {kidCount}
+                                          </span>
+                                        )}
+                                      </div>
                                     </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          ) : (
-                              <div className="h-8 flex items-center justify-center">
+                                  );
+                                })}
+                              </div>
+                            ) : (
+                              <div className="h-full flex items-center justify-center min-h-[56px]">
                                 <span className="text-muted-foreground/30 text-lg">·</span>
-                            </div>
-                          )}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </React.Fragment>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
       )}
 
         </div>
@@ -1167,7 +1160,7 @@ const Meals: React.FC<MealsProps> = ({
             {/* Close Button */}
             <button
               onClick={() => setIsModalOpen(false)}
-              className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center hover:bg-secondary transition-colors right-4 top-4 text-muted-foreground"
+              className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center right-4 top-4 text-muted-foreground"
               aria-label={t['common.close'] || 'Close'}
             >
               <X size={20} />
@@ -1197,7 +1190,7 @@ const Meals: React.FC<MealsProps> = ({
                           className={`py-2.5 rounded-xl transition-colors flex flex-col items-center justify-center gap-1 ${
                             isSelected
                               ? 'bg-primary text-primary-foreground'
-                              : 'bg-card ring-1 ring-border text-muted-foreground hover:ring-input'
+                              : 'bg-card ring-1 ring-border text-muted-foreground'
                           }`}
                         >
                           {getMealIcon(type, isSelected)}
@@ -1225,7 +1218,7 @@ const Meals: React.FC<MealsProps> = ({
                             key={aud}
                             onClick={() => handleAudienceChange(aud)}
                             className={`flex-1 py-2 text-body font-medium rounded-full transition-colors ${
-                              active ? 'bg-card text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                              active ? 'bg-card text-primary shadow-sm' : 'text-muted-foreground'
                             }`}
                           >
                             {getAudienceLabel(aud)}
@@ -1257,7 +1250,7 @@ const Meals: React.FC<MealsProps> = ({
                     <button
                       onClick={handleAiSuggest}
                       disabled={loadingAi}
-                      className="absolute bottom-2 right-2 p-2 bg-card shadow-sm border border-border rounded-full text-primary hover:text-primary/80 transition-colors disabled:opacity-50"
+                      className="absolute bottom-2 right-2 p-2 bg-card shadow-sm border border-border rounded-full text-primary disabled:opacity-50"
                       title={t['meals.suggest_ai']}
                     >
                       {loadingAi ? (
@@ -1284,7 +1277,7 @@ const Meals: React.FC<MealsProps> = ({
                           className={`flex items-center gap-2 px-3 py-2 rounded-xl text-body transition-colors ${
                             isSelected
                               ? 'bg-primary text-primary-foreground'
-                              : 'bg-card text-foreground ring-1 ring-border hover:ring-input'
+                              : 'bg-card text-foreground ring-1 ring-border'
                           }`}
                         >
                           <Avatar
@@ -1305,7 +1298,7 @@ const Meals: React.FC<MealsProps> = ({
               {editingMealId && !isHelper && (
                 <button
                   onClick={handleDelete}
-                  className="p-3 rounded-xl bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors"
+                  className="p-3 rounded-xl bg-destructive/10 text-destructive"
                 >
                   <Trash2 size={20} />
                 </button>
@@ -1313,7 +1306,7 @@ const Meals: React.FC<MealsProps> = ({
               <button
                 onClick={handleSave}
                 disabled={!(description.trim().length > 0 || selectedUserIds.length > 0)}
-                className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity flex items-center justify-center gap-2"
+                className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 <Check size={18} />
                 {editingMealId ? (t['meals.save_changes'] ?? 'Save Changes') : (t['meals.add_meal'] ?? 'Add Meal')}

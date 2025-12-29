@@ -551,6 +551,9 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
   
   // Helper Management is only available to Core and Pro users (not Free)
   const hasHelperManagementAccess = subscriptionPlan === 'core' || subscriptionPlan === 'pro';
+  
+  // Helper upgrade modal state
+  const [showHelperUpgradeModal, setShowHelperUpgradeModal] = useState(false);
 
   // ─────────────────────────────────────────────────────────────────
   // Essential Info State (data comes from props, only UI state here)
@@ -891,59 +894,70 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
         </header>
 
         {/* Section Toggle Cards - Scrollable Horizontal Layout */}
-        <div className="mt-4 mb-6 -mx-4 px-4 overflow-x-auto scrollbar-hide">
+        <div className="mt-4 mb-6 -mx-4 px-4 pb-1 overflow-x-auto scrollbar-hide">
           <div className="flex gap-3" style={{ minWidth: 'min-content' }}>
             {/* Places Card */}
             <button
               onClick={() => setActiveSection("essentialInfo")}
-              className={`flex-shrink-0 min-w-[130px] px-4 py-3 rounded-xl text-center transition-all ${
+              className={`flex-shrink-0 min-w-[130px] px-3 py-2.5 rounded-xl text-left transition-all ${
                 activeSection === "essentialInfo"
                   ? "bg-primary text-primary-foreground shadow-md"
                   : "bg-card text-foreground shadow-sm"
               }`}
             >
-              <MapPin size={20} className="mx-auto mb-1" />
-              <span className="text-sm font-semibold block">{t['common.places'] || 'Places'}</span>
-              <span className={`text-xs ${activeSection === "essentialInfo" ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
+              <div className="flex items-center gap-2">
+                <MapPin size={16} />
+                <span className="text-title">{t['common.places'] || 'Places'}</span>
+              </div>
+              <div className={`text-caption mt-1 ml-6 ${activeSection === "essentialInfo" ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
                 {essentialStats.total} {t['common.items'] || 'items'}
-              </span>
+              </div>
             </button>
 
             {/* Practice Card */}
             <button
               onClick={() => setActiveSection("houseRoutine")}
-              className={`flex-shrink-0 min-w-[130px] px-4 py-3 rounded-xl text-center transition-all ${
+              className={`flex-shrink-0 min-w-[130px] px-3 py-2.5 rounded-xl text-left transition-all ${
                 activeSection === "houseRoutine"
                   ? "bg-primary text-primary-foreground shadow-md"
                   : "bg-card text-foreground shadow-sm"
               }`}
             >
-              <ListChecks size={20} className="mx-auto mb-1" />
-              <span className="text-sm font-semibold block">{t['common.practice'] || 'Practice'}</span>
-              <span className={`text-xs ${activeSection === "houseRoutine" ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
+              <div className="flex items-center gap-2">
+                <ListChecks size={16} />
+                <span className="text-title">{t['common.practice'] || 'Practice'}</span>
+              </div>
+              <div className={`text-caption mt-1 ml-6 ${activeSection === "houseRoutine" ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
                 {houseRoutineStats.total} {t['common.items'] || 'items'}
-              </span>
+              </div>
             </button>
 
             {/* Helper Card - Only available to Core and Pro users */}
             <button
-              onClick={() => hasHelperManagementAccess && setActiveSection("helper")}
-              className={`flex-shrink-0 min-w-[130px] px-4 py-3 rounded-xl text-center transition-all ${
+              onClick={() => {
+                if (hasHelperManagementAccess) {
+                  setActiveSection("helper");
+                } else {
+                  setShowHelperUpgradeModal(true);
+                }
+              }}
+              className={`flex-shrink-0 min-w-[130px] px-3 py-2.5 rounded-xl text-left transition-all ${
                 !hasHelperManagementAccess
-                  ? "bg-card/50 text-muted-foreground shadow-sm cursor-not-allowed opacity-60"
+                  ? "bg-card/50 text-muted-foreground shadow-sm opacity-60"
                   : activeSection === "helper"
                   ? "bg-primary text-primary-foreground shadow-md"
                   : "bg-card text-foreground shadow-sm"
               }`}
-              disabled={!hasHelperManagementAccess}
             >
-              {hasHelperManagementAccess ? (
-                <HeartHandshake size={20} className="mx-auto mb-1" />
-              ) : (
-                <Lock size={20} className="mx-auto mb-1" />
-              )}
-              <span className="text-sm font-semibold block">{t['common.helper'] || 'Helper'}</span>
-              <span className={`text-xs ${
+              <div className="flex items-center gap-2">
+                {hasHelperManagementAccess ? (
+                  <HeartHandshake size={16} />
+                ) : (
+                  <Lock size={16} />
+                )}
+                <span className="text-title">{t['common.helper'] || 'Helper'}</span>
+              </div>
+              <div className={`text-caption mt-1 ml-6 ${
                 !hasHelperManagementAccess 
                   ? "text-muted-foreground/60" 
                   : activeSection === "helper" 
@@ -954,7 +968,7 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
                   ? `${helpers.length} ${t['common.helpers'] || 'helpers'}`
                   : (t['common.upgrade_required'] || 'Upgrade')
                 }
-              </span>
+              </div>
             </button>
           </div>
         </div>
@@ -982,7 +996,7 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
                   className={`px-4 py-2 rounded-full text-body whitespace-nowrap transition-all ${
                     selectedEssentialCategory === "All"
                       ? "bg-card text-primary shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
+                      : "text-muted-foreground"
                   }`}
                 >
                   {t['common.all'] || 'All'} ({getEssentialItemCount("All")})
@@ -1006,7 +1020,7 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
                       className={`px-4 py-2 rounded-full text-body whitespace-nowrap transition-all flex items-center gap-1.5 ${
                         selectedEssentialCategory === cat
                           ? "bg-card text-primary shadow-sm"
-                          : "text-muted-foreground hover:text-foreground"
+                          : "text-muted-foreground"
                       }`}
                     >
                       {ESSENTIAL_CATEGORY_ICONS[cat]}
@@ -1036,7 +1050,7 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
                   className={`px-4 py-2 rounded-full text-body whitespace-nowrap transition-all ${
                     selectedHouseRoutineCategory === "All"
                       ? "bg-card text-primary shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
+                      : "text-muted-foreground"
                   }`}
                 >
                   {t['common.all'] || 'All'} ({getHouseRoutineItemCount("All")})
@@ -1048,7 +1062,7 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
                       className={`px-4 py-2 rounded-full text-body whitespace-nowrap transition-all flex items-center gap-1.5 ${
                         selectedHouseRoutineCategory === cat
                           ? "bg-card text-primary shadow-sm"
-                          : "text-muted-foreground hover:text-foreground"
+                          : "text-muted-foreground"
                       }`}
                     >
                       {HOUSE_ROUTINE_CATEGORY_ICONS[cat]}
@@ -1168,7 +1182,7 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
                 </p>
                 <button
                   onClick={onNavigateToProfile}
-                  className="px-6 py-2.5 bg-primary text-primary-foreground rounded-full text-body font-semibold hover:bg-primary/90 transition-colors"
+                  className="px-6 py-2.5 bg-primary text-primary-foreground rounded-full text-body font-semibold "
                 >
                   {t['common.view_plans'] || 'View Plans'}
                 </button>
@@ -1241,7 +1255,7 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
       {!isHelper && (
         <button
           onClick={activeSection === "essentialInfo" ? handleAddEssentialClick : handleAddHouseRoutineClick}
-          className={`fixed bottom-28 right-6 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-colors flex items-center justify-center z-30 ${
+          className={`fixed bottom-28 right-6 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg  flex items-center justify-center z-30 ${
             (isEssentialModalOpen || isHouseRoutineModalOpen || viewingHouseRoutineItem || activeSection === "helper") ? 'fab-hiding' : ''
           }`}
           aria-label={activeSection === "essentialInfo" ? "Add Essential Info" : "Add House Routine"}
@@ -1290,6 +1304,51 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
           t={t}
         />
       )}
+
+      {/* Helper Upgrade Modal */}
+      {showHelperUpgradeModal && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+          <div className="bg-card w-full max-w-sm rounded-2xl overflow-hidden relative shadow-lg">
+            {/* Close Button */}
+            <button 
+              onClick={() => setShowHelperUpgradeModal(false)} 
+              className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center right-3 top-3 text-muted-foreground"
+              aria-label={t['common.close'] || 'Close'}
+            >
+              <X size={20} />
+            </button>
+
+            {/* Content */}
+            <div className="p-6 pt-8">
+              {/* Icon */}
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center">
+                <HeartHandshake size={32} className="text-primary" />
+              </div>
+              
+              {/* Title */}
+              <h2 className="text-title text-foreground text-center mb-3">
+                {t['helper.management_title'] || 'Helper Management'}
+              </h2>
+              
+              {/* Description */}
+              <p className="text-body text-muted-foreground text-center mb-6">
+                {t['helper.upgrade_modal_desc'] || "Manage your domestic helper's employment records. Track when they work on statutory holidays, record overtime or time-in-lieu, and confirm monthly payslips with digital signatures from both employer and helper."}
+              </p>
+              
+              {/* Upgrade Button */}
+              <button
+                onClick={() => {
+                  setShowHelperUpgradeModal(false);
+                  onNavigateToProfile?.();
+                }}
+                className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground text-body font-semibold shadow-sm"
+              >
+                {t['common.upgrade'] || 'Upgrade'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -1333,7 +1392,7 @@ const EssentialInfoCard: React.FC<EssentialInfoCardProps> = ({
   };
 
   return (
-    <div className="bg-card rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+    <div className="bg-card rounded-xl p-4 shadow-sm">
       {/* Header */}
       <div className="flex items-start justify-between mb-2">
         <div className="flex items-center gap-3">
@@ -1362,7 +1421,7 @@ const EssentialInfoCard: React.FC<EssentialInfoCardProps> = ({
         {canEdit && (
           <button
             onClick={onEdit}
-            className="p-1.5 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+            className="p-1.5 rounded-lg text-muted-foreground"
           >
             <Pencil size={16} />
           </button>
@@ -1373,10 +1432,10 @@ const EssentialInfoCard: React.FC<EssentialInfoCardProps> = ({
       {item.address && (
         <button
           onClick={onOpenMap}
-          className="w-full text-left flex items-start gap-2 py-1.5 hover:text-primary transition-colors group"
+          className="w-full text-left flex items-start gap-2 py-1.5 group"
         >
-          <MapPin size={16} className="text-muted-foreground group-hover:text-primary mt-0.5 flex-shrink-0" />
-          <span className="text-body text-foreground group-hover:text-primary">{item.address}</span>
+          <MapPin size={16} className="text-muted-foreground mt-0.5 flex-shrink-0" />
+          <span className="text-body text-foreground">{item.address}</span>
         </button>
       )}
 
@@ -1384,10 +1443,10 @@ const EssentialInfoCard: React.FC<EssentialInfoCardProps> = ({
       {item.phone && (
         <button
           onClick={onCall}
-          className="w-full text-left flex items-center gap-2 py-1.5 hover:text-primary transition-colors group"
+          className="w-full text-left flex items-center gap-2 py-1.5 group"
         >
-          <Phone size={16} className="text-muted-foreground group-hover:text-primary flex-shrink-0" />
-          <span className="text-body text-foreground group-hover:text-primary">
+          <Phone size={16} className="text-muted-foreground flex-shrink-0" />
+          <span className="text-body text-foreground">
             {item.countryCode} {item.phone}
           </span>
         </button>
@@ -1459,7 +1518,7 @@ const HouseRoutineCard: React.FC<HouseRoutineCardProps> = ({
   const handleTap = canEdit ? onEdit : onView;
 
   return (
-    <div className="bg-card rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+    <div className="bg-card rounded-xl p-4 shadow-sm">
       {/* Header */}
       <div className="flex items-start justify-between mb-2">
         <div className="flex items-center gap-3">
@@ -1488,7 +1547,7 @@ const HouseRoutineCard: React.FC<HouseRoutineCardProps> = ({
         {canEdit && (
           <button
             onClick={onEdit}
-            className="p-2 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+            className="p-2 rounded-lg text-muted-foreground"
           >
             <Pencil size={16} />
           </button>
@@ -1575,7 +1634,7 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
         {/* Close Button */}
         <button 
           onClick={onClose} 
-          className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center hover:bg-secondary transition-colors right-4 top-4 text-muted-foreground"
+          className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center right-4 top-4 text-muted-foreground"
           aria-label={t['common.close'] || 'Close'}
         >
           <X size={20} />
@@ -1618,7 +1677,7 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
                     className={`px-3 py-2 rounded-lg text-body transition-all flex items-center gap-1.5 ${
                       isSelected
                         ? "text-white shadow-sm"
-                        : "bg-secondary text-foreground hover:bg-secondary/80"
+                        : "bg-secondary text-foreground"
                     }`}
                     style={isSelected ? { backgroundColor: config.color } : undefined}
                   >
@@ -1691,7 +1750,7 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
                               setShowCountryCodeDropdown(false);
                               setCountryCodeSearch('');
                             }}
-                            className="w-full text-left px-4 py-2 hover:bg-secondary transition-colors flex items-center justify-between"
+                            className="w-full text-left px-4 py-2 flex items-center justify-between"
                           >
                             <span className="text-body text-foreground">{item.country}</span>
                             <span className="text-body font-medium text-muted-foreground">{item.code}</span>
@@ -1752,14 +1811,14 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
           {isEditing && (
             <button
               onClick={onDelete}
-              className="p-3 rounded-xl bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors"
+              className="p-3 rounded-xl bg-destructive/10 text-destructive"
             >
               <Trash2 size={20} />
             </button>
           )}
           <button
             onClick={onSave}
-            className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body hover:bg-primary/90 transition-colors shadow-sm"
+            className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body  shadow-sm"
           >
             {isEditing ? t['common.update'] : t['common.save']}
           </button>
@@ -1802,7 +1861,7 @@ const HouseRoutineModal: React.FC<HouseRoutineModalProps> = ({
         {/* Close Button */}
         <button 
           onClick={onClose} 
-          className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center hover:bg-secondary transition-colors right-4 top-4 text-muted-foreground"
+          className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center right-4 top-4 text-muted-foreground"
           aria-label={t['common.close'] || 'Close'}
         >
           <X size={20} />
@@ -1850,7 +1909,7 @@ const HouseRoutineModal: React.FC<HouseRoutineModalProps> = ({
                     className={`px-3 py-2 rounded-lg text-body transition-all flex items-center gap-1.5 ${
                       isSelected
                         ? "text-white shadow-sm"
-                        : "bg-secondary text-foreground hover:bg-secondary/80"
+                        : "bg-secondary text-foreground"
                     }`}
                     style={isSelected ? { backgroundColor: config.color } : undefined}
                   >
@@ -1912,14 +1971,14 @@ const HouseRoutineModal: React.FC<HouseRoutineModalProps> = ({
           {isEditing && (
             <button
               onClick={onDelete}
-              className="p-3 rounded-xl bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors"
+              className="p-3 rounded-xl bg-destructive/10 text-destructive"
             >
               <Trash2 size={20} />
             </button>
           )}
           <button
             onClick={onSave}
-            className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body hover:bg-primary/90 transition-colors shadow-sm"
+            className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body  shadow-sm"
           >
             {isEditing ? t['common.update'] : t['common.save']}
           </button>
@@ -1981,7 +2040,7 @@ const HouseRoutineViewModal: React.FC<HouseRoutineViewModalProps> = ({
         {/* Close Button */}
         <button 
           onClick={onClose} 
-          className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center hover:bg-secondary transition-colors right-4 top-4 text-muted-foreground"
+          className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center right-4 top-4 text-muted-foreground"
           aria-label={t['common.close'] || 'Close'}
         >
           <X size={20} />
@@ -2025,7 +2084,7 @@ const HouseRoutineViewModal: React.FC<HouseRoutineViewModalProps> = ({
         <div className="p-5 pb-8 border-t border-border shrink-0">
           <button
             onClick={onClose}
-            className="w-full py-3.5 rounded-xl bg-secondary text-foreground text-body hover:bg-secondary/80 transition-colors"
+            className="w-full py-3.5 rounded-xl bg-secondary text-foreground text-body"
           >
             {t['common.close'] || 'Close'}
           </button>

@@ -248,7 +248,7 @@ const ToDo: React.FC<ToDoProps> = ({
   // State
   // ─────────────────────────────────────────────────────────────────
   
-  const [activeSection, setActiveSection] = useState<ToDoType>(initialSection || 'shopping');
+  const [activeSection, setActiveSection] = useState<ToDoType>(initialSection || 'task');
   
   // Notify parent of section changes (for onboarding)
   useEffect(() => {
@@ -824,7 +824,7 @@ const ToDo: React.FC<ToDoProps> = ({
               <button
                 onClick={() => setIsFilterDropdownOpen(!isFilterDropdownOpen)}
                 className={`p-2 rounded-full transition-colors relative ${
-                  isFilterDropdownOpen ? 'bg-muted' : 'hover:bg-muted'
+                  isFilterDropdownOpen ? 'bg-muted' : ''
                 }`}
               >
                 <SlidersHorizontal size={20} className="text-muted-foreground" />
@@ -858,7 +858,7 @@ const ToDo: React.FC<ToDoProps> = ({
                             className={`w-full text-left px-3 py-2 rounded-lg text-body transition-colors flex items-center justify-between ${
                               sortBy === option.value
                                 ? 'bg-primary/10 text-primary'
-                                : 'text-foreground hover:bg-muted'
+                                : 'text-foreground'
                             }`}
                           >
                             {getSortLabel(option.value)}
@@ -880,7 +880,7 @@ const ToDo: React.FC<ToDoProps> = ({
                       className={`w-full text-left px-3 py-2 rounded-lg text-body transition-colors flex items-center justify-between ${
                         showOnlyMine
                           ? 'bg-primary/10 text-primary'
-                          : 'text-foreground hover:bg-muted'
+                          : 'text-foreground'
                       }`}
                     >
                       <span className="flex items-center gap-2">
@@ -905,7 +905,7 @@ const ToDo: React.FC<ToDoProps> = ({
                             setSortBy('addedDate-desc');
                             setShowOnlyMine(false);
                           }}
-                          className="w-full px-3 py-2 rounded-lg text-body text-muted-foreground hover:bg-muted transition-colors text-center"
+                          className="w-full px-3 py-2 rounded-lg text-body text-muted-foreground text-center"
                         >
                           {t['common.reset_to_default']}
                         </button>
@@ -921,24 +921,6 @@ const ToDo: React.FC<ToDoProps> = ({
         {/* Section Toggle Cards */}
         <div className="mt-4 mb-6">
           <div className="grid grid-cols-2 gap-3">
-            {/* Shopping Card */}
-            <button
-              onClick={() => setActiveSection('shopping')}
-              className={`px-3 py-2.5 rounded-xl text-left transition-all ${
-                activeSection === 'shopping'
-                  ? 'bg-primary text-primary-foreground shadow-md'
-                  : 'bg-card text-foreground shadow-sm'
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <ShoppingCart size={16} />
-                <span className="text-title">{t['todo.shopping'] || 'Shopping'}</span>
-              </div>
-              <div className={`text-caption mt-1 ml-6 ${activeSection === 'shopping' ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
-                {shoppingStats.total} {t['dashboard.items_to_buy'] || 'items to buy'}
-              </div>
-            </button>
-
             {/* Tasks Card */}
             <button
               onClick={() => setActiveSection('task')}
@@ -954,6 +936,24 @@ const ToDo: React.FC<ToDoProps> = ({
               </div>
               <div className={`text-caption mt-1 ml-6 ${activeSection === 'task' ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
                 {taskStats.total} {t['dashboard.pending'] || 'pending'}
+              </div>
+            </button>
+
+            {/* Shopping Card */}
+            <button
+              onClick={() => setActiveSection('shopping')}
+              className={`px-3 py-2.5 rounded-xl text-left transition-all ${
+                activeSection === 'shopping'
+                  ? 'bg-primary text-primary-foreground shadow-md'
+                  : 'bg-card text-foreground shadow-sm'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <ShoppingCart size={16} />
+                <span className="text-title">{t['todo.shopping'] || 'Shopping'}</span>
+              </div>
+              <div className={`text-caption mt-1 ml-6 ${activeSection === 'shopping' ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
+                {shoppingStats.total} {t['dashboard.items_to_buy'] || 'items to buy'}
               </div>
             </button>
           </div>
@@ -977,7 +977,7 @@ const ToDo: React.FC<ToDoProps> = ({
                 className={`px-4 py-2 rounded-full text-body whitespace-nowrap transition-all ${
                   selectedCategory === 'All'
                     ? 'bg-card text-primary shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
+                    : 'text-muted-foreground'
                 }`}
               >
                 All ({getItemCount('All')})
@@ -1002,7 +1002,7 @@ const ToDo: React.FC<ToDoProps> = ({
                     className={`px-4 py-2 rounded-full text-body whitespace-nowrap transition-all flex items-center gap-1.5 ${
                       selectedCategory === cat
                         ? 'bg-card text-primary shadow-sm'
-                        : 'text-muted-foreground hover:text-foreground'
+                        : 'text-muted-foreground'
                     }`}
                   >
                     {categoryIcons[cat]}
@@ -1041,7 +1041,7 @@ const ToDo: React.FC<ToDoProps> = ({
                   <button
                     key={i}
                     onClick={() => handleSuggestionClick(s)}
-                    className={`px-3 py-1.5 rounded-full text-body font-medium transition-all flex items-center gap-1 border hover:opacity-80 ${getSuggestionPillStyle(s.category)}`}
+                    className={`px-3 py-1.5 rounded-full text-body font-medium transition-all flex items-center gap-1 border ${getSuggestionPillStyle(s.category)}`}
                   >
                     <Plus size={14} />
                     {s.name}
@@ -1058,7 +1058,7 @@ const ToDo: React.FC<ToDoProps> = ({
           <div
             className={`flex items-center gap-3 p-4 ${
               activeItems.length > 0 || !isAddingInline ? 'list-item-separator' : ''
-            } ${!isAddingInline ? 'hover:bg-muted/30 cursor-pointer' : ''}`}
+            } ${!isAddingInline ? 'cursor-pointer' : ''}`}
             onClick={() => !isAddingInline && setIsAddingInline(true)}
           >
             <div className="text-muted-foreground/50 shrink-0">
@@ -1101,7 +1101,7 @@ const ToDo: React.FC<ToDoProps> = ({
                   e.stopPropagation();
                   openDetailedSheet();
                 }}
-                className="p-1.5 rounded-full bg-primary text-primary-foreground hover:opacity-90 transition-opacity shrink-0"
+                className="p-1.5 rounded-full bg-primary text-primary-foreground shrink-0"
                 title={t['common.add_with_details'] || 'Add with details'}
               >
                 <Plus size={16} />
@@ -1188,7 +1188,7 @@ const ToDo: React.FC<ToDoProps> = ({
                         <Check size={14} className="text-primary-foreground" strokeWidth={3} />
                       </div>
                     ) : (
-                      <Circle size={22} className="text-muted-foreground/50 hover:text-primary transition-colors" />
+                      <Circle size={22} className="text-muted-foreground/50" />
                     )}
                   </button>
                   
@@ -1272,7 +1272,7 @@ const ToDo: React.FC<ToDoProps> = ({
                               {showCompleted && !isHelper && (
                 <button
                   onClick={handleClearAllCompleted}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-caption text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-caption text-destructive rounded-lg"
                 >
                   <Trash2 size={14} />
                   {t['todo.clear_all'] || 'Clear All'}
@@ -1311,7 +1311,7 @@ const ToDo: React.FC<ToDoProps> = ({
                     {!isHelper && (
                       <button
                         onClick={() => handleDelete(item.id)}
-                        className="text-muted-foreground hover:text-destructive transition-colors shrink-0"
+                        className="text-muted-foreground shrink-0"
                       >
                         <Trash2 size={18} />
                       </button>
@@ -1347,7 +1347,7 @@ const ToDo: React.FC<ToDoProps> = ({
                 setIsSheetOpen(false);
                 setEditingItemId(null);
               }}
-              className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center hover:bg-secondary transition-colors right-4 top-4 text-muted-foreground"
+              className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center right-4 top-4 text-muted-foreground"
               aria-label={t['common.close'] || 'Close'}
             >
               <X size={20} />
@@ -1527,7 +1527,7 @@ const ToDo: React.FC<ToDoProps> = ({
                         className={`flex-1 px-2 py-2 rounded-xl text-sm transition-all flex items-center justify-center gap-1 ${
                           sheetForm.category === cat
                             ? 'bg-primary text-primary-foreground'
-                            : 'bg-card text-foreground ring-1 ring-border hover:ring-input'
+                            : 'bg-card text-foreground ring-1 ring-border'
                         }`}
                       >
                         {getCategoryIcon(cat, sheetForm.category === cat)}
@@ -1551,7 +1551,7 @@ const ToDo: React.FC<ToDoProps> = ({
                       className={`flex items-center gap-2 px-3 py-2 rounded-xl text-body transition-all ${
                         sheetForm.assigneeId === user.id
                           ? 'bg-primary text-primary-foreground'
-                          : 'bg-card text-foreground ring-1 ring-border hover:ring-input'
+                          : 'bg-card text-foreground ring-1 ring-border'
                       }`}
                     >
                       <Avatar
@@ -1576,7 +1576,7 @@ const ToDo: React.FC<ToDoProps> = ({
                     setEditingItemId(null);
                     await handleDelete(itemId);
                   }}
-                  className="p-3 rounded-xl bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors"
+                  className="p-3 rounded-xl bg-destructive/10 text-destructive"
                 >
                   <Trash2 size={20} />
                 </button>
@@ -1584,7 +1584,7 @@ const ToDo: React.FC<ToDoProps> = ({
               <button
                 onClick={handleSheetSave}
                 disabled={!sheetForm.name?.trim()}
-                className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity flex items-center justify-center gap-2"
+                className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 <Check size={18} />
                 {editingItemId 

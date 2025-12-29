@@ -1,6 +1,6 @@
 import React from 'react';
-import { Home, ClipboardList, Utensils, DollarSign, Info } from 'lucide-react';
 import { NavItem, TranslationDictionary } from '../types';
+import { NAV_ITEMS } from '../config/navConfig';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -10,12 +10,13 @@ interface LayoutProps {
 }
 
 const Layout: React.FC<LayoutProps> = ({ children, activeView, onNavigate, t }) => {
+  // Build nav items from shared config
   const navItems: NavItem[] = [
-    { id: 'dashboard', label: t['nav.home'], icon: Home },
-    { id: 'todo', label: t['nav.todo'] || 'To Do', icon: ClipboardList },
-    { id: 'meals', label: t['nav.meals'], icon: Utensils },
-    { id: 'expenses', label: t['nav.cost'], icon: DollarSign },
-    { id: 'info', label: t['nav.info'], icon: Info },
+    { id: NAV_ITEMS.dashboard.id, label: t[NAV_ITEMS.dashboard.labelKey], icon: NAV_ITEMS.dashboard.icon },
+    { id: NAV_ITEMS.todo.id, label: t[NAV_ITEMS.todo.labelKey] || 'To Do', icon: NAV_ITEMS.todo.icon },
+    { id: NAV_ITEMS.meals.id, label: t[NAV_ITEMS.meals.labelKey], icon: NAV_ITEMS.meals.icon },
+    { id: NAV_ITEMS.expenses.id, label: t[NAV_ITEMS.expenses.labelKey], icon: NAV_ITEMS.expenses.icon },
+    { id: NAV_ITEMS.info.id, label: t[NAV_ITEMS.info.labelKey], icon: NAV_ITEMS.info.icon },
   ];
 
   return (

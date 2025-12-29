@@ -57,7 +57,7 @@ const HouseholdSwitchModal: React.FC<HouseholdSwitchModalProps> = ({
           <button
             onClick={onSwitch}
             style={{ backgroundColor: '#3EAFD2' }}
-            className="w-full hover:opacity-90 rounded-xl font-semibold py-3 transition-all text-white flex items-center justify-center gap-2"
+            className="w-full rounded-xl font-semibold py-3 text-white flex items-center justify-center gap-2"
           >
             <ArrowRight size={18} />
             {t['household.switch_to_this'] || 'Switch to This Household'}
@@ -65,7 +65,7 @@ const HouseholdSwitchModal: React.FC<HouseholdSwitchModalProps> = ({
           
           <button
             onClick={onStay}
-            className="w-full border-2 border-gray-200 hover:border-gray-300 rounded-xl font-semibold py-3 transition-all text-gray-700 flex items-center justify-center gap-2"
+            className="w-full border-2 border-gray-200 rounded-xl font-semibold py-3 text-gray-700 flex items-center justify-center gap-2"
           >
             <Home size={18} />
             {t['household.stay_in_current'] || 'Stay in Current Household'}

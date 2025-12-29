@@ -133,7 +133,7 @@ const InviteSetup: React.FC<InviteSetupProps> = ({ householdId, userId, onComple
       <button
         onClick={handleAcceptInvite}
         disabled={isSubmitting}
-        className="mt-6 w-full bg-brand-primary text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-brand-secondary transition-colors disabled:opacity-50"
+        className="mt-6 w-full bg-brand-primary text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 disabled:opacity-50"
       >
         {isSubmitting ? (
           <>

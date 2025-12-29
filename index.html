@@ -1,32 +1,11 @@
 <!DOCTYPE html>
 <html lang="en" class="light">
   <head>
-    <!-- Restore theme and set initial background before render to prevent flash -->
-    <script>
-      (function() {
-        var saved = localStorage.getItem('helpy_theme');
-        var systemPrefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-        // Support system mode: only follow OS if user explicitly chose 'system'
-        var isDark = saved === 'dark' || (saved === 'system' && systemPrefersDark);
-        if (isDark) {
-          document.documentElement.classList.remove('light');
-          document.documentElement.classList.add('dark');
-        }
-        // Set background based on session state AND theme to prevent flash
-        var hasSession = !!localStorage.getItem('helpy_current_session_user');
-        var bgColor = hasSession 
-          ? (isDark ? '#121212' : '#fafafa')
-          : '#fafafa';
-        document.documentElement.style.setProperty('--initial-bg', bgColor);
-        document.documentElement.style.backgroundColor = bgColor;
-      })();
-    </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <meta name="color-scheme" content="light dark" />
-    <!-- Theme color for status bar - matches background color -->
-    <meta name="theme-color" content="#fafafa" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)" />
+    <!-- IMPORTANT: these MUST follow Helpy's theme (not iOS), so do NOT use prefers-color-scheme media queries -->
+    <meta name="color-scheme" content="light" />
+    <meta name="theme-color" content="#fafafa" />
     <!-- iOS specific: ensures status bar text adapts to background -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -47,6 +26,38 @@
     
     <!-- Web App Manifest for Android/PWA -->
     <link rel="manifest" href="/manifest.json" />
+
+    <!-- Restore theme and set initial background before render to prevent flash -->
+    <script>
+      (function() {
+        var saved = localStorage.getItem('helpy_theme');
+        var systemPrefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        // Support system mode: only follow OS if user explicitly chose 'system'
+        var isDark = saved === 'dark' || (saved === 'system' && systemPrefersDark);
+        var html = document.documentElement;
+
+        if (isDark) {
+          html.classList.remove('light');
+          html.classList.add('dark');
+        } else {
+          html.classList.remove('dark');
+          html.classList.add('light');
+        }
+
+        // Set background based on session state AND theme to prevent flash
+        var hasSession = !!localStorage.getItem('helpy_current_session_user');
+        var bgColor = hasSession ? (isDark ? '#121212' : '#fafafa') : '#fafafa';
+        html.style.setProperty('--initial-bg', bgColor);
+        html.style.backgroundColor = bgColor;
+
+        // Force iOS to treat the page as light/dark based on APP theme (not OS)
+        var colorSchemeMeta = document.querySelector('meta[name="color-scheme"]');
+        if (colorSchemeMeta) colorSchemeMeta.setAttribute('content', isDark ? 'dark' : 'light');
+
+        var themeColorMeta = document.querySelector('meta[name="theme-color"]');
+        if (themeColorMeta) themeColorMeta.setAttribute('content', bgColor);
+      })();
+    </script>
 
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -186,10 +197,12 @@
           const isDark = document.documentElement.classList.contains('dark');
           const color = isDark ? DARK_COLOR : LIGHT_COLOR;
           
-          // Update all theme-color meta tags
-          document.querySelectorAll('meta[name="theme-color"]').forEach(meta => {
-            meta.setAttribute('content', color);
-          });
+          // Update theme-color and color-scheme to follow APP theme (not OS)
+          const themeColorMeta = document.querySelector('meta[name="theme-color"]');
+          if (themeColorMeta) themeColorMeta.setAttribute('content', color);
+
+          const colorSchemeMeta = document.querySelector('meta[name="color-scheme"]');
+          if (colorSchemeMeta) colorSchemeMeta.setAttribute('content', isDark ? 'dark' : 'light');
           
           // Update background for overscroll
           document.documentElement.style.backgroundColor = color;

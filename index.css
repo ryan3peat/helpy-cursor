@@ -181,11 +181,14 @@ html {
   overscroll-behavior-y: contain;
   /* Light mode overflow background */
   background-color: #fafafa !important;
+  /* Tell the browser/UI we are light unless .dark is present */
+  color-scheme: light;
 }
 
 html.dark {
   /* Dark mode overflow background */
   background-color: #121212 !important;
+  color-scheme: dark;
 }
 
 html.auth-page {

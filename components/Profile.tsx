@@ -108,6 +108,8 @@ const Profile: React.FC<ProfileProps> = ({
   // Add User Form State
   const [newName, setNewName] = useState('');
   const [newRole, setNewRole] = useState<UserRole>(UserRole.CHILD);
+  const [addUserStep, setAddUserStep] = useState<'form' | 'loading' | 'success' | 'invite'>('form');
+  const [addedUserName, setAddedUserName] = useState('');
 
   // Settings State
   const [selectedPlan, setSelectedPlan] = useState<'free' | 'core' | 'pro'>('free');
@@ -744,9 +746,11 @@ const Profile: React.FC<ProfileProps> = ({
     const nameToAdd = newName.trim();
     const roleToAdd = newRole;
     
-    // Close modal immediately for better UX
-    resetForm();
-    setIsAddModalOpen(false);
+    // Store name for success/invite display
+    setAddedUserName(nameToAdd);
+    
+    // Show loading step (keep modal open)
+    setAddUserStep('loading');
     
     try {
       // Children don't need invite links - they're added directly to the household
@@ -763,7 +767,12 @@ const Profile: React.FC<ProfileProps> = ({
         
         // Create child user directly without invite link
         await onAdd(newUser);
-        // User will appear via subscription update
+        
+        // Show brief success, then close (children don't need invite link)
+        setAddUserStep('success');
+        setTimeout(() => {
+          closeAddUserModal();
+        }, 1200);
       } else {
         // For Spouse, Helper, and Other, create user with invite link
         const result = await createInvite({
@@ -773,15 +782,31 @@ const Profile: React.FC<ProfileProps> = ({
           inviterId: currentUser.id
         });
         
-        // Show invite link modal for non-children
+        // Show success flash, then invite link
+        setAddUserStep('success');
         setInviteLink(result.inviteLink);
+        setTimeout(() => {
+          setAddUserStep('invite');
+        }, 800);
       }
     } catch (error) {
       console.error('Failed to add user:', error);
       alert(t['error.add_user'] || 'Failed to add user. Please try again.');
+      // On error, go back to form
+      setAddUserStep('form');
     } finally {
       setIsAddingUser(false);
     }
+  };
+  
+  // Close add user modal and reset state
+  const closeAddUserModal = () => {
+    setIsAddModalOpen(false);
+    setAddUserStep('form');
+    setAddedUserName('');
+    setInviteLink(null);
+    setIsCopied(false);
+    resetForm();
   };
 
   const handleDeleteUser = (id: string) => {
@@ -803,14 +828,26 @@ const Profile: React.FC<ProfileProps> = ({
   };
 
   const handleReinvite = async (userId: string) => {
+    // Find the user's name for the invite modal
+    const userToReinvite = users.find(u => u.id === userId);
+    const userName = userToReinvite?.name || '';
+    
+    // Open modal in loading state
+    setAddedUserName(userName);
+    setIsAddModalOpen(true);
+    setAddUserStep('loading');
+    
     try {
       const { resendInvite } = await import('../services/inviteService');
       const result = await resendInvite(userId, currentUser.householdId);
       setInviteLink(result.inviteLink);
       setIsCopied(false);
+      // Go directly to invite step (skip success for resend)
+      setAddUserStep('invite');
     } catch (error) {
       console.error('Failed to resend invite:', error);
       alert(t['error.generate_invite'] || 'Failed to generate new invite link');
+      closeAddUserModal();
     }
   };
 
@@ -1008,58 +1045,6 @@ const Profile: React.FC<ProfileProps> = ({
           </header>
 
           <div className="pt-6 space-y-6">
-            {/* Invite Link Modal */}
-            {inviteLink && (
-              <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
-                {/* Safe area bottom cover - fills the gap below the sheet */}
-                <div 
-                  className="absolute bottom-0 left-0 right-0 bg-card"
-                  style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
-                />
-                <div className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
-                  {/* Close Button */}
-                  <button 
-                    onClick={() => setInviteLink(null)} 
-                    className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center right-4 top-4 text-muted-foreground"
-                    aria-label={t['common.close'] || 'Close'}
-                  >
-                    <X size={20} />
-                  </button>
-
-                  {/* Header */}
-                  <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
-                    <h2 className="text-title text-foreground">{t['profile.invitation_link'] || 'Invitation Link'}</h2>
-                  </div>
-
-                  {/* Content */}
-                  <div className="p-5">
-                    <p className="text-body text-muted-foreground mb-4">{t['profile.share_link_text'] || 'Share this link with the new member:'}</p>
-                    <div className="bg-secondary p-3 rounded-lg break-all text-body font-mono text-foreground">
-                      {inviteLink}
-                    </div>
-                  </div>
-
-                  {/* Footer */}
-                  <div className="p-5 pb-8 border-t border-border flex gap-3 shrink-0">
-                    <button
-                      onClick={handleCopyInvite}
-                      className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body flex items-center justify-center gap-2 "
-                    >
-                      {isCopied ? <Check size={18} /> : <Copy size={18} />}
-                      {isCopied ? (t['profile.copied'] || 'Copied!') : (t['profile.copy_link'] || 'Copy')}
-                    </button>
-                    <button
-                      onClick={handleShareInvite}
-                      className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body flex items-center justify-center gap-2 shadow-sm"
-                    >
-                      <Share2 size={18} />
-                      {t['common.share'] || 'Share'}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
             {/* User Carousel */}
             <div className="bg-card rounded-3xl px-5 py-5 shadow-sm">
               {householdName && (
@@ -1355,7 +1340,7 @@ const Profile: React.FC<ProfileProps> = ({
           </div>
         </div>
 
-        {/* Add User Modal */}
+        {/* Add User Modal - Multi-step Flow */}
           {isAddModalOpen && (
             <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
               {/* Safe area bottom cover */}
@@ -1363,94 +1348,172 @@ const Profile: React.FC<ProfileProps> = ({
                 className="absolute bottom-0 left-0 right-0 bg-card"
                 style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
               />
-              <div className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ maxHeight: '80vh', marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
-                {/* Close Button */}
+              <div className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ minHeight: '400px', maxHeight: '80vh', marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
+                {/* Close Button - always visible */}
                 <button 
-                  onClick={() => setIsAddModalOpen(false)} 
+                  onClick={closeAddUserModal} 
                   className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center right-4 top-4 text-muted-foreground"
                   aria-label={t['common.close'] || 'Close'}
                 >
                   <X size={20} />
                 </button>
 
-                {/* Header */}
+                {/* Header - consistent across all steps */}
                 <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
-                  <h2 className="text-title text-foreground">{t['profile.addMember']}</h2>
+                  <h2 className="text-title text-foreground">{t['profile.addMember'] || 'Add Family Member'}</h2>
+                  {/* Show name subtitle for invite step */}
+                  {addUserStep === 'invite' && addedUserName && (
+                    <p className="text-body text-muted-foreground mt-1">
+                      {t['profile.share_with'] || 'Share with'} {addedUserName}
+                    </p>
+                  )}
                 </div>
 
-                {/* Form */}
-                <div className="p-5 space-y-4 flex-1 overflow-y-auto">
-                  <div>
-                    <label className="block text-caption text-muted-foreground mb-2 tracking-wide">{t['common.name']}</label>
-                    <input
-                      type="text"
-                      value={newName}
-                      onChange={(e) => setNewName(e.target.value)}
-                      className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
-                      placeholder={t['common.enter_name'] || 'Enter name'}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-caption text-muted-foreground mb-2 tracking-wide">{t['profile.role']}</label>
-                    <div className="grid grid-cols-2 gap-2">
+                {/* STEP: Form */}
+                {addUserStep === 'form' && (
+                  <>
+                    {/* Form */}
+                    <div className="p-5 space-y-4 flex-1 overflow-y-auto">
+                      <div>
+                        <label className="block text-caption text-muted-foreground mb-2 tracking-wide">{t['common.name']}</label>
+                        <input
+                          type="text"
+                          value={newName}
+                          onChange={(e) => setNewName(e.target.value)}
+                          className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
+                          placeholder={t['common.enter_name'] || 'Enter name'}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-caption text-muted-foreground mb-2 tracking-wide">{t['profile.role']}</label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setNewRole(UserRole.SPOUSE)}
+                            className={`px-4 py-3 rounded-lg font-semibold transition-colors ${
+                              newRole === UserRole.SPOUSE
+                                ? 'bg-[#F3E5F5] text-[#AB47BC] border-2 border-[#AB47BC]'
+                                : 'bg-secondary text-muted-foreground border-2 border-transparent '
+                            }`}
+                          >
+                            Spouse
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setNewRole(UserRole.HELPER)}
+                            className={`px-4 py-3 rounded-lg font-semibold transition-colors ${
+                              newRole === UserRole.HELPER
+                                ? 'bg-[#FFF3E0] text-[#FF9800] border-2 border-[#FF9800]'
+                                : 'bg-secondary text-muted-foreground border-2 border-transparent '
+                            }`}
+                          >
+                            Helper
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setNewRole(UserRole.CHILD)}
+                            className={`px-4 py-3 rounded-lg font-semibold transition-colors ${
+                              newRole === UserRole.CHILD
+                                ? 'bg-[#E8F5E9] text-[#4CAF50] border-2 border-[#4CAF50]'
+                                : 'bg-secondary text-muted-foreground border-2 border-transparent '
+                            }`}
+                          >
+                            Child
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setNewRole(UserRole.OTHER)}
+                            className={`px-4 py-3 rounded-lg font-semibold transition-colors ${
+                              newRole === UserRole.OTHER
+                                ? 'bg-[#FCE4EC] text-[#F06292] border-2 border-[#F06292]'
+                                : 'bg-secondary text-muted-foreground border-2 border-transparent '
+                            }`}
+                          >
+                            Other
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Footer */}
+                    <div className="p-5 pb-8 border-t border-border shrink-0">
                       <button
-                        type="button"
-                        onClick={() => setNewRole(UserRole.SPOUSE)}
-                        className={`px-4 py-3 rounded-lg font-semibold transition-colors ${
-                          newRole === UserRole.SPOUSE
-                            ? 'bg-[#F3E5F5] text-[#AB47BC] border-2 border-[#AB47BC]'
-                            : 'bg-secondary text-muted-foreground border-2 border-transparent '
-                        }`}
+                        onClick={handleAddUser}
+                        disabled={isAddingUser || !newName.trim()}
+                        className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground text-body shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        Spouse
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setNewRole(UserRole.HELPER)}
-                        className={`px-4 py-3 rounded-lg font-semibold transition-colors ${
-                          newRole === UserRole.HELPER
-                            ? 'bg-[#FFF3E0] text-[#FF9800] border-2 border-[#FF9800]'
-                            : 'bg-secondary text-muted-foreground border-2 border-transparent '
-                        }`}
-                      >
-                        Helper
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setNewRole(UserRole.CHILD)}
-                        className={`px-4 py-3 rounded-lg font-semibold transition-colors ${
-                          newRole === UserRole.CHILD
-                            ? 'bg-[#E8F5E9] text-[#4CAF50] border-2 border-[#4CAF50]'
-                            : 'bg-secondary text-muted-foreground border-2 border-transparent '
-                        }`}
-                      >
-                        Child
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setNewRole(UserRole.OTHER)}
-                        className={`px-4 py-3 rounded-lg font-semibold transition-colors ${
-                          newRole === UserRole.OTHER
-                            ? 'bg-[#FCE4EC] text-[#F06292] border-2 border-[#F06292]'
-                            : 'bg-secondary text-muted-foreground border-2 border-transparent '
-                        }`}
-                      >
-                        Other
+                        {t['common.add']}
                       </button>
                     </div>
-                  </div>
-                </div>
+                  </>
+                )}
 
-                {/* Footer */}
-                <div className="p-5 pb-8 border-t border-border shrink-0">
-                  <button
-                    onClick={handleAddUser}
-                    disabled={isAddingUser || !newName.trim()}
-                    className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground text-body shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isAddingUser ? (t['common.adding'] || 'Adding...') : t['common.add']}
-                  </button>
-                </div>
+                {/* STEP: Loading */}
+                {addUserStep === 'loading' && (
+                  <>
+                    <div className="flex-1 flex flex-col items-center justify-center px-5">
+                      <Loader2 size={40} className="text-primary animate-spin mb-4" />
+                      <p className="text-body text-muted-foreground">
+                        {t['profile.creating_invite'] || 'Creating invite...'}
+                      </p>
+                    </div>
+                    {/* Empty footer to maintain height */}
+                    <div className="p-5 pb-8 shrink-0">
+                      <div className="h-[52px]" />
+                    </div>
+                  </>
+                )}
+
+                {/* STEP: Success */}
+                {addUserStep === 'success' && (
+                  <>
+                    <div className="flex-1 flex flex-col items-center justify-center px-5">
+                      <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                        <CheckCircle size={32} className="text-primary" />
+                      </div>
+                      <p className="text-title font-semibold text-foreground">
+                        {addedUserName} {t['profile.added'] || 'added'}!
+                      </p>
+                    </div>
+                    {/* Empty footer to maintain height */}
+                    <div className="p-5 pb-8 shrink-0">
+                      <div className="h-[52px]" />
+                    </div>
+                  </>
+                )}
+
+                {/* STEP: Invite Link */}
+                {addUserStep === 'invite' && (
+                  <>
+                    {/* Content */}
+                    <div className="p-5 flex-1">
+                      <p className="text-body text-muted-foreground mb-4">
+                        {t['profile.share_link_text'] || 'Share this link with the new member:'}
+                      </p>
+                      <div className="bg-secondary p-3 rounded-lg break-all text-body font-mono text-foreground">
+                        {inviteLink}
+                      </div>
+                    </div>
+
+                    {/* Footer */}
+                    <div className="p-5 pb-8 border-t border-border flex gap-3 shrink-0">
+                      <button
+                        onClick={handleCopyInvite}
+                        className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body flex items-center justify-center gap-2"
+                      >
+                        {isCopied ? <Check size={18} /> : <Copy size={18} />}
+                        {isCopied ? (t['profile.copied'] || 'Copied!') : (t['profile.copy_link'] || 'Copy')}
+                      </button>
+                      <button
+                        onClick={handleShareInvite}
+                        className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body flex items-center justify-center gap-2 shadow-sm"
+                      >
+                        <Share2 size={18} />
+                        {t['common.share'] || 'Share'}
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           )}

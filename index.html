@@ -1,46 +1,35 @@
 <!DOCTYPE html>
 <html lang="en" class="light">
   <head>
-    <meta charset="UTF-8" />
-    <meta name="color-scheme" content="light dark" />
-    <!-- Theme color for status bar - both updated by JS to match app theme -->
-    <meta name="theme-color" content="#fafafa" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)" />
-    <!-- iOS status bar style -->
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <!-- Restore theme and set initial background before render to prevent flash -->
     <script>
       (function() {
         var saved = localStorage.getItem('helpy_theme');
         var systemPrefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-        
-        // Determine if dark mode should be applied
-        // Only follow system preference if user explicitly chose 'system'
+        // Support system mode: only follow OS if user explicitly chose 'system'
         var isDark = saved === 'dark' || (saved === 'system' && systemPrefersDark);
-        
         if (isDark) {
           document.documentElement.classList.remove('light');
           document.documentElement.classList.add('dark');
         }
         // Set background based on session state AND theme to prevent flash
-        // Must match theme to avoid light leak through backdrop-blur headers
         var hasSession = !!localStorage.getItem('helpy_current_session_user');
         var bgColor = hasSession 
-          ? (isDark ? '#121212' : '#fafafa')  // Match theme: dark=#121212, light=#fafafa
-          : '#fafafa';  // No session: grey (auth screens have their own blue backgrounds)
+          ? (isDark ? '#121212' : '#fafafa')
+          : '#fafafa';
         document.documentElement.style.setProperty('--initial-bg', bgColor);
-        // Also set html background directly for overscroll
         document.documentElement.style.backgroundColor = bgColor;
-        
-        // Update all theme-color meta tags immediately for iOS status bar
-        document.querySelectorAll('meta[name="theme-color"]').forEach(function(meta) {
-          meta.setAttribute('content', bgColor);
-        });
       })();
     </script>
+    <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <!-- iOS specific -->
+    <meta name="color-scheme" content="light dark" />
+    <!-- Theme color for status bar - matches background color -->
+    <meta name="theme-color" content="#fafafa" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)" />
+    <!-- iOS specific: ensures status bar text adapts to background -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Helpy" />
     <!-- Additional iOS PWA meta tags for better recognition -->
     <meta name="apple-touch-fullscreen" content="yes" />
@@ -63,13 +52,10 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
-        // Dark mode disabled temporarily - using 'class' mode so it only activates 
-        // when <html> has class="dark". Currently set to "light" to force light mode.
         darkMode: 'class',
         theme: {
           extend: {
             colors: {
-              // Brand colors aligned with Helpy design system
               brand: {
                 primary: '#3EAFD2',
                 secondary: '#2B9AC0',
@@ -77,7 +63,6 @@
                 text: '#1a1a1a',
                 muted: '#757575',
               },
-              // New Design System Colors
               background: 'hsl(var(--background) / <alpha-value>)',
               foreground: 'hsl(var(--foreground) / <alpha-value>)',
               border: 'hsl(var(--border) / <alpha-value>)',
@@ -142,26 +127,19 @@
     </script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-      /* CRITICAL: Prevent black flash during app load.
-         This style loads before external CSS and React, ensuring there's always
-         a visible background color. The --initial-bg is set by the inline script above. */
       html, body, #root {
-        background-color: var(--initial-bg, #3EAFD2);
+        background-color: var(--initial-bg, #fafafa);
       }
-      /* Dark mode overflow background - must be here to override inline JS styles */
       html.dark, html.dark body, html.dark #root {
         background-color: #121212 !important;
       }
-      /* Auth pages - blue overflow background */
       html.auth-page, html.auth-page body, html.auth-page #root {
         background-color: #3EAFD2 !important;
       }
-      /* Ensure root fills the viewport during React loading */
       #root:empty {
         min-height: 100vh;
         min-height: 100dvh;
       }
-      /* Legacy styles - kept for backward compatibility with other pages */
       .app-background {
         background: linear-gradient(180deg, #eef2ff 0%, #f8fafc 100%);
         min-height: 100vh;
@@ -199,32 +177,21 @@
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
     <script>
-      // Dynamic theme-color and color-scheme sync for class-based dark mode
+      // Dynamic theme-color sync for class-based dark mode
       (function() {
-        const LIGHT_COLOR = '#fafafa';  // hsl(0 0% 98%)
-        const DARK_COLOR = '#121212';   // hsl(0 0% 7%)
-        
-        function applyTheme(isDark) {
-          const html = document.documentElement;
-          if (isDark) {
-            html.classList.remove('light');
-            html.classList.add('dark');
-          } else {
-            html.classList.remove('dark');
-            html.classList.add('light');
-          }
-        }
+        const LIGHT_COLOR = '#fafafa';
+        const DARK_COLOR = '#121212';
         
         function updateThemeColor() {
           const isDark = document.documentElement.classList.contains('dark');
           const color = isDark ? DARK_COLOR : LIGHT_COLOR;
           
-          // Update all theme-color meta tags to match app theme
+          // Update all theme-color meta tags
           document.querySelectorAll('meta[name="theme-color"]').forEach(meta => {
             meta.setAttribute('content', color);
           });
           
-          // Update html background color for overscroll
+          // Update background for overscroll
           document.documentElement.style.backgroundColor = color;
         }
         
@@ -242,12 +209,19 @@
         
         observer.observe(document.documentElement, { attributes: true });
         
-        // Listen for OS preference changes (only applies when user explicitly chose 'system')
+        // Listen for OS preference changes (only when user chose 'system')
         if (window.matchMedia) {
           window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
             const savedTheme = localStorage.getItem('helpy_theme');
             if (savedTheme === 'system') {
-              applyTheme(e.matches);
+              const html = document.documentElement;
+              if (e.matches) {
+                html.classList.remove('light');
+                html.classList.add('dark');
+              } else {
+                html.classList.remove('dark');
+                html.classList.add('light');
+              }
             }
           });
         }

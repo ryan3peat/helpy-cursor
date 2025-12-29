@@ -8,7 +8,6 @@ import {
   Languages,
   Lightbulb,
   MessageCircleQuestionMark,
-  CircleCheckBig,
   Crown,
   CheckCircle2,
   UserCheck,
@@ -51,7 +50,7 @@ const AccordionSection: React.FC<{
         className="w-full px-5 py-4 flex items-center justify-between"
       >
         <div className="flex items-center gap-3">
-          <div className={isOpen ? 'text-foreground' : 'text-primary'}>{icon}</div>
+          <div className="text-primary">{icon}</div>
           <span className="text-title font-bold text-foreground">{title}</span>
         </div>
         {isOpen ? (
@@ -96,7 +95,7 @@ const FeatureCard: React.FC<{
           </span>
         )}
       </div>
-      <p className="text-body text-muted-foreground mt-0.5">{description}</p>
+      <p className="text-body font-normal text-muted-foreground mt-0.5">{description}</p>
     </div>
   </div>
 );
@@ -173,32 +172,6 @@ const TipCard: React.FC<{ title: string; description: string }> = ({ title, desc
     </div>
   </div>
 );
-
-// FAQ item component
-const FAQItem: React.FC<{ question: string; answer: string }> = ({ question, answer }) => {
-  const [isOpen, setIsOpen] = useState(false);
-
-  return (
-    <div className="border-b border-border last:border-b-0">
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full py-4 flex items-center justify-between text-left"
-      >
-        <span className="text-body font-medium text-foreground pr-4">{question}</span>
-        {isOpen ? (
-          <ChevronDown size={18} className="text-muted-foreground flex-shrink-0" />
-        ) : (
-          <ChevronRight size={18} className="text-muted-foreground flex-shrink-0" />
-        )}
-      </button>
-      {isOpen && (
-        <div className="pb-4 animate-fade-in">
-          <p className="text-body text-muted-foreground">{answer}</p>
-        </div>
-      )}
-    </div>
-  );
-};
 
 const UserGuide: React.FC<UserGuideProps> = ({ currentUser, t, onNavigateToPlan, onNavigateToFeedback }) => {
   const isAdmin = currentUser.role === UserRole.MASTER;
@@ -505,7 +478,7 @@ const UserGuide: React.FC<UserGuideProps> = ({ currentUser, t, onNavigateToPlan,
 
         <FeatureCard
           icon={<FEATURE_ICONS.routines size={14} />}
-          title={t['guide.routines_title'] || 'House Routines'}
+          title={t['guide.routines_title'] || 'Practice'}
           description={
             t['guide.routines_desc'] ||
             'Document house rules, schedules, cleaning instructions, and emergency procedures.'
@@ -652,48 +625,12 @@ const UserGuide: React.FC<UserGuideProps> = ({ currentUser, t, onNavigateToPlan,
         />
       </AccordionSection>
 
-      {/* FAQ */}
-      <AccordionSection title={t['guide.faq'] || 'FAQ'} icon={<CircleCheckBig size={20} />}>
-        <FAQItem
-          question={t['guide.faq_1_q'] || 'How do I invite a helper?'}
-          answer={
-            t['guide.faq_1_a'] ||
-            'Go to Profile, tap Add Family Member, select Helper role, and share the invite link.'
-          }
-        />
-        <FAQItem
-          question={t['guide.faq_2_q'] || 'How do I change my subscription?'}
-          answer={
-            t['guide.faq_2_a'] || 'Go to Profile > Settings > Subscription to view and change your plan.'
-          }
-        />
-        <FAQItem
-          question={t['guide.faq_3_q'] || "Why can't my helper edit certain things?"}
-          answer={
-            t['guide.faq_3_a'] || 'Helpers have view-only access to some features to protect family privacy.'
-          }
-        />
-        <FAQItem
-          question={t['guide.faq_4_q'] || 'How do I enable notifications?'}
-          answer={
-            t['guide.faq_4_a'] || 'Go to Profile > Settings > Account and toggle on Push Notifications.'
-          }
-        />
-        <FAQItem
-          question={t['guide.faq_5_q'] || 'Can I use Helpy in my language?'}
-          answer={
-            t['guide.faq_5_a'] ||
-            'Yes! Tap the language button on the dashboard to switch between supported languages.'
-          }
-        />
-      </AccordionSection>
-
       {/* Need Help Footer */}
       <button
         onClick={onNavigateToFeedback}
         className="w-full bg-card rounded-2xl px-5 py-4 shadow-sm flex items-center gap-3 text-left"
       >
-        <MessageCircleQuestionMark size={20} className="text-foreground flex-shrink-0" />
+        <MessageCircleQuestionMark size={20} className="text-primary flex-shrink-0" />
         <div className="flex-1">
           <h3 className="text-title font-bold text-foreground">
             {t['guide.need_help'] || 'Need Help?'}

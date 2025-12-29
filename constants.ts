@@ -804,7 +804,7 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'guide.info_desc': 'Store important places, house routines, and manage helpers.',
   'guide.places_title': 'Places',
   'guide.places_desc': 'Save important addresses like home, school, doctor, hospital, and shops.',
-  'guide.routines_title': 'House Routines',
+  'guide.routines_title': 'Practice',
   'guide.routines_desc': 'Document house rules, schedules, cleaning instructions, and emergency procedures.',
   'guide.helper_mgmt_title': 'Helper Management',
   'guide.helper_mgmt_desc': 'Track helper salary, holiday records, and generate payslips with digital signatures.',

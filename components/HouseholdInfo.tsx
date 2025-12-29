@@ -1397,7 +1397,7 @@ const EssentialInfoCard: React.FC<EssentialInfoCardProps> = ({
       <div className="flex items-start justify-between mb-2">
         <div className="flex items-center gap-3">
           <div
-            className="w-9 h-9 rounded-lg flex items-center justify-center"
+            className="w-9 h-9 rounded-full flex items-center justify-center"
             style={{ backgroundColor: config.bgColor, color: config.color }}
           >
             {ESSENTIAL_CATEGORY_ICONS[item.category]}
@@ -1523,7 +1523,7 @@ const HouseRoutineCard: React.FC<HouseRoutineCardProps> = ({
       <div className="flex items-start justify-between mb-2">
         <div className="flex items-center gap-3">
           <div
-            className="w-9 h-9 rounded-lg flex items-center justify-center"
+            className="w-9 h-9 rounded-full flex items-center justify-center"
             style={{ backgroundColor: config.bgColor, color: config.color }}
           >
             {HOUSE_ROUTINE_CATEGORY_ICONS[item.category]}

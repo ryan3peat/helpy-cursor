@@ -24,19 +24,14 @@
         // Also set html background directly for overscroll
         document.documentElement.style.backgroundColor = bgColor;
         
-        // Update color-scheme meta to match (fixes overscroll color)
-        var colorSchemeMeta = document.querySelector('meta[name="color-scheme"]');
-        if (colorSchemeMeta) {
-          colorSchemeMeta.setAttribute('content', isDark ? 'dark' : 'light');
-        }
       })();
     </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <!-- Color scheme - controlled by JS to match user selection, not OS preference -->
-    <meta name="color-scheme" content="light" />
-    <!-- Theme color for status bar - single tag updated by JS based on user selection -->
-    <meta name="theme-color" content="#fafafa" />
+    <meta name="color-scheme" content="light dark" />
+    <!-- Theme color for status bar - both tags updated by JS to match app theme -->
+    <meta name="theme-color" content="#fafafa" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)" />
     <!-- iOS specific: ensures status bar text adapts to background -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -218,19 +213,12 @@
           const isDark = document.documentElement.classList.contains('dark');
           const color = isDark ? DARK_COLOR : LIGHT_COLOR;
           
-          // Update theme-color meta tag
-          const themeColorMeta = document.querySelector('meta[name="theme-color"]');
-          if (themeColorMeta) {
-            themeColorMeta.setAttribute('content', color);
-          }
+          // Update all theme-color meta tags to match app theme
+          document.querySelectorAll('meta[name="theme-color"]').forEach(meta => {
+            meta.setAttribute('content', color);
+          });
           
-          // Update color-scheme meta tag (controls overscroll area color)
-          const colorSchemeMeta = document.querySelector('meta[name="color-scheme"]');
-          if (colorSchemeMeta) {
-            colorSchemeMeta.setAttribute('content', isDark ? 'dark' : 'light');
-          }
-          
-          // Also update html background color for overscroll
+          // Update html background color for overscroll
           document.documentElement.style.backgroundColor = color;
         }
         

@@ -290,10 +290,18 @@ const ToDo: React.FC<ToDoProps> = ({
   // Lock body scroll when sheet is open
   useScrollLock(isSheetOpen);
   
+  // Reset sheet scroll position when it opens
+  useEffect(() => {
+    if (isSheetOpen && sheetContentRef.current) {
+      sheetContentRef.current.scrollTop = 0;
+    }
+  }, [isSheetOpen]);
+  
   const [sheetForm, setSheetForm] = useState<Partial<ToDoItem>>({});
   const [editingItemId, setEditingItemId] = useState<string | null>(null); // Track if editing existing item
   const [showUnitSuggestions, setShowUnitSuggestions] = useState(false);
   const unitInputRef = useRef<HTMLInputElement>(null);
+  const sheetContentRef = useRef<HTMLDivElement>(null);
   const [showCompleted, setShowCompleted] = useState(false);
   const [showSuggested, setShowSuggested] = useState(true);
   const [optimisticItems, setOptimisticItems] = useState<ToDoItem[]>([]);
@@ -1400,7 +1408,7 @@ const ToDo: React.FC<ToDoProps> = ({
             </div>
             
             {/* Scrollable Form Content */}
-            <div className="flex-1 overflow-y-auto p-5 space-y-4">
+            <div ref={sheetContentRef} className="flex-1 overflow-y-auto p-5 space-y-4">
               {/* Name & Brand Row - 50/50 for Shopping, full width for Tasks */}
               <div className={activeSection === 'shopping' ? 'flex gap-3' : ''}>
                 <div className={activeSection === 'shopping' ? 'flex-1' : 'w-full'}>
@@ -1437,7 +1445,7 @@ const ToDo: React.FC<ToDoProps> = ({
               {/* Shopping-specific fields */}
               {activeSection === 'shopping' && (
                 <div className="flex gap-3">
-                  <div className="w-24">
+                  <div className="flex-1">
                     <label className="block text-caption text-muted-foreground tracking-wide mb-2">
                       {t['common.qty']}
                     </label>
@@ -1452,7 +1460,7 @@ const ToDo: React.FC<ToDoProps> = ({
                       }}
                       onFocus={e => e.target.select()}
                       placeholder={t['common.qty']}
-                      className="w-full px-4 py-3 bg-muted rounded-xl text-body text-foreground text-center outline-none border border-transparent focus:border-primary transition-colors placeholder:text-muted-foreground"
+                      className="w-full px-4 py-3 bg-muted rounded-xl text-body text-foreground outline-none border border-transparent focus:border-primary transition-colors placeholder:text-muted-foreground"
                     />
                   </div>
                   <div className="flex-1 relative">

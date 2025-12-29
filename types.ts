@@ -129,6 +129,7 @@ export interface Meal {
   description: string;
   forUserIds: string[];
   audience: MealAudience;
+  createdBy?: string; // User ID who created this meal (for notifications)
   // Translation fields
   descriptionLang?: string | null; // Language code of the description field (null if undetectable)
   descriptionTranslations?: Record<string, string>; // Translations: { "en": "original", "zh-CN": "translated", ... }
@@ -146,6 +147,12 @@ export interface Expense {
   // Translation fields
   merchantLang?: string | null; // Language code of the merchant field (null if undetectable)
   merchantTranslations?: Record<string, string>; // Translations: { "en": "original", "zh-CN": "translated", ... }
+}
+
+export interface HouseholdPlan {
+  plan: 'free' | 'core' | 'pro' | 'test';
+  status: string;
+  periodEnd?: string;
 }
 
 export interface NavItem {

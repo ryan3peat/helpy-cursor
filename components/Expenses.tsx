@@ -833,7 +833,7 @@ const Expenses: React.FC<ExpensesProps> = ({
               {t['expenses.title']}
             </h1>
             {/* Month Selector Button */}
-          <button
+            <button
               onClick={() => {
                 setPickerYear(selectedYear ?? now.getFullYear());
                 setIsMonthPickerOpen(true);
@@ -841,7 +841,7 @@ const Expenses: React.FC<ExpensesProps> = ({
               className="flex items-center gap-1.5 px-3 py-2 rounded-full bg-secondary text-foreground text-body"
             >
               <Calendar size={16} />
-              <span>{isAllTime ? t['common.all_expenses'] : `${MONTH_NAMES[selectedMonth]} ${selectedYear}`}</span>
+              <span>{selectedMonth === null || selectedYear === null ? t['common.all_expenses'] : `${MONTH_NAMES[selectedMonth]} ${selectedYear}`}</span>
               <ChevronDown size={16} />
           </button>
           </div>
@@ -852,7 +852,7 @@ const Expenses: React.FC<ExpensesProps> = ({
         <div className="mt-4 mb-6">
           <div className="bg-primary text-primary-foreground p-6 rounded-xl shadow-md">
             <p className="text-body opacity-80 mb-1">
-              {isAllTime ? t['common.total_for_all'] : `${t['common.total_for_month']} ${MONTH_NAMES_FULL[selectedMonth]}`}
+              {selectedMonth === null ? t['common.total_for_all'] : `${t['common.total_for_month']} ${MONTH_NAMES_FULL[selectedMonth]}`}
             </p>
             <h2 className="text-display">{formatCurrency(totalAmount)}</h2>
           </div>
@@ -964,9 +964,9 @@ const Expenses: React.FC<ExpensesProps> = ({
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                       <div className="text-center">
                         <p className="text-title text-foreground font-semibold">
-                          {isAllTime ? (t['common.all'] || 'All') : MONTH_NAMES[selectedMonth]}
+                          {selectedMonth === null ? (t['common.all'] || 'All') : MONTH_NAMES[selectedMonth]}
                         </p>
-                        {!isAllTime && (
+                        {selectedMonth !== null && selectedYear !== null && (
                           <p className="text-caption text-muted-foreground">{selectedYear}</p>
                         )}
                       </div>
@@ -1027,7 +1027,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                     <Receipt size={28} className="text-muted-foreground" />
                   </div>
                       <p className="text-body text-foreground">
-                        {isAllTime 
+                        {selectedMonth === null 
                           ? (t['expenses.no_expenses_yet'] || 'No expenses yet') 
                           : `${t['expenses.no_expenses_month'] || 'No expenses in'} ${MONTH_NAMES_FULL[selectedMonth]}`}
                       </p>

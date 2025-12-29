@@ -1432,7 +1432,6 @@ const ToDo: React.FC<ToDoProps> = ({
                     onChange={e => setSheetForm(prev => ({ ...prev, name: e.target.value }))}
                     placeholder={activeSection === 'shopping' ? t['common.eg_milk'] : t['common.eg_clean_bathroom']}
                     className="w-full px-4 py-3 bg-muted rounded-xl text-body text-foreground placeholder-muted-foreground outline-none border border-transparent focus:border-primary transition-colors"
-                    autoFocus={!editingItemId}
                   />
                 </div>
                 

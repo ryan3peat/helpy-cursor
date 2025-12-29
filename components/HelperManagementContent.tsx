@@ -298,7 +298,7 @@ export const HelperManagementContent: React.FC<Props> = ({
           </div>
           <button
             onClick={loadPastHolidays}
-            className="text-caption text-primary"
+            className="text-caption text-primary hover:underline"
           >
             {t['common.past'] || 'Past'}
           </button>
@@ -380,7 +380,7 @@ export const HelperManagementContent: React.FC<Props> = ({
           </div>
           <button
             onClick={loadPastPayslips}
-            className="text-caption text-primary"
+            className="text-caption text-primary hover:underline"
           >
             {t['common.past'] || 'Past'}
           </button>
@@ -402,7 +402,7 @@ export const HelperManagementContent: React.FC<Props> = ({
                     onNavigateToProfile();
                   }
                 }}
-                className="px-4 py-2 bg-primary text-primary-foreground rounded-lg "
+                className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
               >
                 {t['helper.input_salary'] || 'Input Salary Details'}
               </button>
@@ -424,7 +424,7 @@ export const HelperManagementContent: React.FC<Props> = ({
                 {isAdmin && !currentPayslip?.employerSignedAt && !currentPayslip?.helperSignedAt && (
                   <button
                     onClick={handleChangeAmount}
-                    className="text-caption text-primary"
+                    className="text-caption text-primary hover:underline"
                   >
                     {t['helper.change_amount'] || 'Change Amount'}
                   </button>
@@ -499,7 +499,7 @@ export const HelperManagementContent: React.FC<Props> = ({
                     className={`w-full px-4 py-2 rounded-lg transition-colors ${
                       !isAdmin 
                         ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                        : 'bg-gray-400 text-white'
+                        : 'bg-gray-400 text-white hover:bg-primary'
                     }`}
                   >
                     {t['helper.sign'] || 'Sign'}
@@ -526,7 +526,7 @@ export const HelperManagementContent: React.FC<Props> = ({
                     className={`w-full px-4 py-2 rounded-lg transition-colors ${
                       !isHelper 
                         ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                        : 'bg-gray-400 text-white'
+                        : 'bg-gray-400 text-white hover:bg-primary'
                     }`}
                   >
                     {t['helper.sign'] || 'Sign'}
@@ -563,7 +563,7 @@ export const HelperManagementContent: React.FC<Props> = ({
             <div className="space-y-3">
               <button
                 onClick={() => handleCompensationSelect('lieu')}
-                className="w-full py-3 px-4 bg-secondary rounded-lg text-left "
+                className="w-full py-3 px-4 bg-secondary rounded-lg text-left hover:bg-secondary/80 transition-colors"
               >
                 <span className="text-body font-medium">
                   {t['helper.time_in_lieu'] || 'Time-in-lieu (1 day off)'}
@@ -571,7 +571,7 @@ export const HelperManagementContent: React.FC<Props> = ({
               </button>
               <button
                 onClick={() => handleCompensationSelect('overtime')}
-                className="w-full py-3 px-4 bg-secondary rounded-lg text-left "
+                className="w-full py-3 px-4 bg-secondary rounded-lg text-left hover:bg-secondary/80 transition-colors"
               >
                 <span className="text-body font-medium">
                   {t['helper.overtime_pay'] || 'Overtime Pay'}
@@ -580,7 +580,7 @@ export const HelperManagementContent: React.FC<Props> = ({
             </div>
             <button
               onClick={() => setShowCompensationModal(null)}
-              className="w-full mt-4 py-2 text-muted-foreground"
+              className="w-full mt-4 py-2 text-muted-foreground hover:text-foreground transition-colors"
             >
               {t['common.cancel'] || 'Cancel'}
             </button>
@@ -648,14 +648,14 @@ export const HelperManagementContent: React.FC<Props> = ({
             <div className="flex gap-3">
               <button
                 onClick={() => setShowOvertimeModal(null)}
-                className="flex-1 py-3 bg-secondary text-foreground rounded-lg "
+                className="flex-1 py-3 bg-secondary text-foreground rounded-lg hover:bg-secondary/80 transition-colors"
               >
                 {t['common.cancel'] || 'Cancel'}
               </button>
               <button
                 onClick={handleOvertimeSave}
                 disabled={isLoading}
-                className="flex-1 py-3 bg-primary text-primary-foreground rounded-lg  disabled:opacity-50"
+                className="flex-1 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
               >
                 {isLoading ? '...' : (t['common.save'] || 'Save')}
               </button>
@@ -716,7 +716,7 @@ export const HelperManagementContent: React.FC<Props> = ({
             {parseInt(customAmount) !== calculatedTotal && (
               <button
                 onClick={() => setCustomAmount(calculatedTotal.toString())}
-                className="w-full mb-4 py-2 text-caption text-primary"
+                className="w-full mb-4 py-2 text-caption text-primary hover:underline"
               >
                 {t['helper.revert_to_calculated'] || 'Revert to Calculated Amount'} (${calculatedTotal.toLocaleString()})
               </button>
@@ -725,14 +725,14 @@ export const HelperManagementContent: React.FC<Props> = ({
             <div className="flex gap-3">
               <button
                 onClick={() => setShowChangeAmountModal(false)}
-                className="flex-1 py-3 bg-secondary text-foreground rounded-lg "
+                className="flex-1 py-3 bg-secondary text-foreground rounded-lg hover:bg-secondary/80 transition-colors"
               >
                 {t['common.cancel'] || 'Cancel'}
               </button>
               <button
                 onClick={handleSaveCustomAmount}
                 disabled={isLoading}
-                className="flex-1 py-3 bg-primary text-primary-foreground rounded-lg  disabled:opacity-50"
+                className="flex-1 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
               >
                 {isLoading ? '...' : (t['common.save'] || 'Save')}
               </button>
@@ -768,14 +768,14 @@ export const HelperManagementContent: React.FC<Props> = ({
             <div className="flex gap-3">
               <button
                 onClick={() => setShowSignConfirmModal(null)}
-                className="flex-1 py-3 bg-secondary text-foreground rounded-lg "
+                className="flex-1 py-3 bg-secondary text-foreground rounded-lg hover:bg-secondary/80 transition-colors"
               >
                 {t['common.cancel'] || 'Cancel'}
               </button>
               <button
                 onClick={handleSignConfirm}
                 disabled={isLoading}
-                className="flex-1 py-3 bg-primary text-primary-foreground rounded-lg  disabled:opacity-50"
+                className="flex-1 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
               >
                 {isLoading ? '...' : (t['helper.confirm_sign'] || 'Confirm & Sign')}
               </button>

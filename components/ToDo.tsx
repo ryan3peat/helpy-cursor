@@ -44,6 +44,26 @@ interface ToDoProps extends BaseViewProps {
 const SHOPPING_CATEGORIES = Object.values(ShoppingCategory);
 const TASK_CATEGORIES = Object.values(TaskCategory);
 
+// Unit suggestions for shopping items - shown as autocomplete options
+const UNIT_SUGGESTIONS = [
+  'catty',
+  'tael',
+  'g',
+  'kg',
+  'lb',
+  'ml',
+  'l',
+  'piece',
+  'dozen',
+  'bunch',
+  'bottle',
+  'jar',
+  'bag',
+  'can',
+  'tube',
+  'pack',
+];
+
 const RECURRENCE_OPTIONS: { value: RecurrenceFrequency; labelKey: string }[] = [
   { value: 'NONE', labelKey: 'tasks.recurrence' },
   { value: 'DAILY', labelKey: 'tasks.daily' },
@@ -272,6 +292,8 @@ const ToDo: React.FC<ToDoProps> = ({
   
   const [sheetForm, setSheetForm] = useState<Partial<ToDoItem>>({});
   const [editingItemId, setEditingItemId] = useState<string | null>(null); // Track if editing existing item
+  const [showUnitSuggestions, setShowUnitSuggestions] = useState(false);
+  const unitInputRef = useRef<HTMLInputElement>(null);
   const [showCompleted, setShowCompleted] = useState(false);
   const [showSuggested, setShowSuggested] = useState(true);
   const [optimisticItems, setOptimisticItems] = useState<ToDoItem[]>([]);
@@ -643,7 +665,7 @@ const ToDo: React.FC<ToDoProps> = ({
       category,
       assigneeId: getDefaultAssignee(users, currentUser),
       ...(activeSection === 'shopping' 
-        ? { quantity: '1', unit: '' }
+        ? { quantity: '1', unit: '', brand: '' }
         : { dueDate: today, dueTime: '', recurrence: { frequency: 'NONE' } }
       ),
     });
@@ -664,6 +686,7 @@ const ToDo: React.FC<ToDoProps> = ({
       assigneeId: item.assigneeId,
       quantity: item.quantity,
       unit: item.unit,
+      brand: item.brand,
       dueDate: item.dueDate,
       dueTime: item.dueTime,
       recurrence: item.recurrence,
@@ -698,6 +721,7 @@ const ToDo: React.FC<ToDoProps> = ({
         assigneeId: sheetForm.assigneeId,
         quantity: sheetForm.quantity || '1',
         unit: sheetForm.unit,
+        brand: sheetForm.brand,
         dueDate: sheetForm.dueDate,
         dueTime: sheetForm.dueTime,
         recurrence,
@@ -734,6 +758,7 @@ const ToDo: React.FC<ToDoProps> = ({
         nameTranslations: {},
         quantity: sheetForm.quantity || '1',
         unit: sheetForm.unit,
+        brand: sheetForm.brand,
         dueDate: sheetForm.dueDate,
         dueTime: sheetForm.dueTime,
         recurrence: sheetForm.recurrence,
@@ -1196,7 +1221,14 @@ const ToDo: React.FC<ToDoProps> = ({
                     <div className="flex items-center">
                       <span className={`text-body ${isCompleting ? 'text-muted-foreground line-through' : 'text-foreground'}`}>
                         <TranslatedItemName item={item} currentLang={currentLang} onUpdate={onUpdate} />
-                        {item.type === 'shopping' && item.quantity && item.quantity !== '1' && (
+                        {/* Brand (not translated) */}
+                        {item.type === 'shopping' && item.brand && (
+                          <span className="text-muted-foreground font-normal">
+                            {' ('}{item.brand}{')'}
+                          </span>
+                        )}
+                        {/* Quantity & Unit - show if qty is not 1, OR if unit is specified */}
+                        {item.type === 'shopping' && item.quantity && (item.quantity !== '1' || item.unit) && (
                           <span className="text-muted-foreground font-normal">
                             {' · '}{item.quantity}{item.unit ? ` ${item.unit}` : ''}
                           </span>
@@ -1369,19 +1401,37 @@ const ToDo: React.FC<ToDoProps> = ({
             
             {/* Scrollable Form Content */}
             <div className="flex-1 overflow-y-auto p-5 space-y-4">
-              {/* Name Input */}
-              <div>
-                <label className="block text-caption text-muted-foreground tracking-wide mb-2">
-                  {activeSection === 'shopping' ? t['common.item_name'] : t['common.task_name']}
-                </label>
-                <input
-                  type="text"
-                  value={sheetForm.name || ''}
-                  onChange={e => setSheetForm(prev => ({ ...prev, name: e.target.value }))}
-                  placeholder={activeSection === 'shopping' ? t['common.eg_milk'] : t['common.eg_clean_bathroom']}
-                  className="w-full px-4 py-3 bg-muted rounded-xl text-body text-foreground placeholder-muted-foreground outline-none border border-transparent focus:border-primary transition-colors"
-                  autoFocus={!editingItemId}
-                />
+              {/* Name & Brand Row - 50/50 for Shopping, full width for Tasks */}
+              <div className={activeSection === 'shopping' ? 'flex gap-3' : ''}>
+                <div className={activeSection === 'shopping' ? 'flex-1' : 'w-full'}>
+                  <label className="block text-caption text-muted-foreground tracking-wide mb-2">
+                    {activeSection === 'shopping' ? t['common.item_name'] : t['common.task_name']}
+                  </label>
+                  <input
+                    type="text"
+                    value={sheetForm.name || ''}
+                    onChange={e => setSheetForm(prev => ({ ...prev, name: e.target.value }))}
+                    placeholder={activeSection === 'shopping' ? t['common.eg_milk'] : t['common.eg_clean_bathroom']}
+                    className="w-full px-4 py-3 bg-muted rounded-xl text-body text-foreground placeholder-muted-foreground outline-none border border-transparent focus:border-primary transition-colors"
+                    autoFocus={!editingItemId}
+                  />
+                </div>
+                
+                {/* Brand - Shopping only, 50% width */}
+                {activeSection === 'shopping' && (
+                  <div className="flex-1">
+                    <label className="block text-caption text-muted-foreground tracking-wide mb-2">
+                      {t['common.brand'] || 'Brand'}
+                    </label>
+                    <input
+                      type="text"
+                      value={sheetForm.brand || ''}
+                      onChange={e => setSheetForm(prev => ({ ...prev, brand: e.target.value }))}
+                      placeholder={t['common.brand_placeholder'] || 'Your favorite brand'}
+                      className="w-full px-4 py-3 bg-muted rounded-xl text-body text-foreground placeholder-muted-foreground outline-none border border-transparent focus:border-primary transition-colors"
+                    />
+                  </div>
+                )}
               </div>
               
               {/* Shopping-specific fields */}
@@ -1405,17 +1455,61 @@ const ToDo: React.FC<ToDoProps> = ({
                       className="w-full px-4 py-3 bg-muted rounded-xl text-body text-foreground text-center outline-none border border-transparent focus:border-primary transition-colors placeholder:text-muted-foreground"
                     />
                   </div>
-                  <div className="flex-1">
+                  <div className="flex-1 relative">
                     <label className="block text-caption text-muted-foreground tracking-wide mb-2">
                       {t['common.unit']}
                     </label>
                     <input
+                      ref={unitInputRef}
                       type="text"
                       value={sheetForm.unit || ''}
-                      onChange={e => setSheetForm(prev => ({ ...prev, unit: e.target.value }))}
+                      onChange={e => {
+                        setSheetForm(prev => ({ ...prev, unit: e.target.value }));
+                        setShowUnitSuggestions(true);
+                      }}
+                      onFocus={() => setShowUnitSuggestions(true)}
+                      onBlur={() => {
+                        // Delay to allow click on suggestion
+                        setTimeout(() => setShowUnitSuggestions(false), 150);
+                      }}
                       placeholder={t['common.unit_placeholder']}
                       className="w-full px-4 py-3 bg-muted rounded-xl text-body text-foreground placeholder-muted-foreground outline-none border border-transparent focus:border-primary transition-colors"
+                      autoComplete="off"
                     />
+                    
+                    {/* Unit suggestions dropdown */}
+                    {showUnitSuggestions && (
+                      <div className="absolute left-0 right-0 top-full mt-1 bg-card rounded-xl shadow-md border border-border max-h-48 overflow-y-auto z-30">
+                        {UNIT_SUGGESTIONS
+                          .filter(unit => 
+                            !sheetForm.unit || 
+                            unit.toLowerCase().includes((sheetForm.unit || '').toLowerCase())
+                          )
+                          .map(unit => (
+                            <button
+                              key={unit}
+                              type="button"
+                              onMouseDown={(e) => {
+                                e.preventDefault(); // Prevent blur
+                                setSheetForm(prev => ({ ...prev, unit }));
+                                setShowUnitSuggestions(false);
+                                unitInputRef.current?.blur();
+                              }}
+                              className="w-full px-4 py-2.5 text-left text-body text-foreground transition-colors first:rounded-t-xl last:rounded-b-xl"
+                            >
+                              {unit}
+                            </button>
+                          ))
+                        }
+                        {sheetForm.unit && 
+                          !UNIT_SUGGESTIONS.some(u => u.toLowerCase() === (sheetForm.unit || '').toLowerCase()) && 
+                          UNIT_SUGGESTIONS.filter(u => u.toLowerCase().includes((sheetForm.unit || '').toLowerCase())).length === 0 && (
+                          <div className="px-4 py-2.5 text-caption text-muted-foreground">
+                            {t['common.use_custom'] || 'Use'} "{sheetForm.unit}"
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

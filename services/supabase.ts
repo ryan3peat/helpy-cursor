@@ -7,13 +7,33 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 // Note: This client won't have JWT tokens, so RLS policies won't work until migration is complete
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-// Global token refresh function (set by SupabaseContext)
+// Global token refresh function (set by SupabaseContext) - LEGACY, kept for fallback
 let globalTokenRefresh: (() => Promise<void>) | null = null;
 let currentToken: string | null = null;
+
+// THE PROPER WAY: Store reference to Clerk's getToken function
+// This allows us to get a FRESH token on every request (like Netflix/Spotify do)
+let globalGetFreshToken: (() => Promise<string | null>) | null = null;
+
+/**
+ * Set the fresh token getter function.
+ * This is called by SupabaseContext to register the token provider.
+ * Getting a fresh token on every request is the PROPER way to handle auth:
+ * - Clerk internally caches valid tokens (fast, no network call)
+ * - Clerk auto-refreshes expired tokens seamlessly
+ * - No more stale token issues!
+ */
+export const setFreshTokenGetter = (getter: (() => Promise<string | null>) | null) => {
+  globalGetFreshToken = getter;
+  if (getter) {
+    console.log('[Supabase] ✅ Fresh token getter registered - proper auth enabled');
+  }
+};
 
 /**
  * Set the token refresh function and current token
  * Called by SupabaseContext when creating authenticated client
+ * LEGACY - kept for backwards compatibility and fallback
  */
 export const setTokenRefresh = (refreshFn: (() => Promise<void>) | null, token: string | null) => {
   globalTokenRefresh = refreshFn;
@@ -49,9 +69,29 @@ export const createAuthenticatedClient = async (clerkToken: string | null, token
   const customFetch = async (url: RequestInfo | URL, options: RequestInit = {}) => {
     const headers = new Headers(options.headers);
     
-    // Always add Authorization header with current token
-    const token = currentToken || clerkToken;
-    headers.set('Authorization', `Bearer ${token}`);
+    // THE PROPER WAY: Get a FRESH token from Clerk on every request
+    // Clerk internally:
+    // - Returns cached token if still valid (microseconds, no network call)
+    // - Auto-refreshes if expired (seamless to caller)
+    // - Returns fresh token
+    // This is how Netflix/Spotify handle auth - no more stale token issues!
+    let token: string | null = null;
+    
+    if (globalGetFreshToken) {
+      try {
+        token = await globalGetFreshToken();
+      } catch (e) {
+        console.warn('[Supabase] Failed to get fresh token, falling back to cached:', e);
+        token = currentToken || clerkToken;
+      }
+    } else {
+      // Fallback to cached token if fresh getter not available
+      token = currentToken || clerkToken;
+    }
+    
+    if (token) {
+      headers.set('Authorization', `Bearer ${token}`);
+    }
     
     // Log for debugging (only first few requests to avoid spam)
     const requestUrl = typeof url === 'string' ? url : url.toString();
@@ -59,7 +99,8 @@ export const createAuthenticatedClient = async (clerkToken: string | null, token
       console.log('[Supabase] Request with JWT:', {
         url: requestUrl,
         hasAuth: headers.has('Authorization'),
-        authPreview: headers.get('Authorization')?.substring(0, 30) + '...'
+        authPreview: headers.get('Authorization')?.substring(0, 30) + '...',
+        tokenSource: globalGetFreshToken ? 'fresh' : 'cached'
       });
     }
     

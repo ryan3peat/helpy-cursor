@@ -1,9 +1,9 @@
 // contexts/SupabaseContext.tsx
 // Provides authenticated Supabase client with Clerk JWT token for RLS policies
 
-import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@clerk/clerk-react';
-import { createAuthenticatedClient, SupabaseClient, supabase, updateCurrentToken } from '../services/supabase';
+import { createAuthenticatedClient, SupabaseClient, supabase, updateCurrentToken, setFreshTokenGetter } from '../services/supabase';
 
 type SupabaseContextValue = {
   client: SupabaseClient | null;
@@ -18,6 +18,50 @@ let globalAuthenticatedClient: SupabaseClient | null = null;
 
 // Global token refresh callback for error handling
 let globalTokenRefreshCallback: (() => Promise<void>) | null = null;
+
+// Global reference to Clerk's getToken function - THE KEY TO PROPER TOKEN MANAGEMENT
+// This allows us to get a FRESH token on every request instead of using a stale cached one
+let globalGetToken: ((options?: { template: string }) => Promise<string | null>) | null = null;
+
+/**
+ * Get a fresh JWT token from Clerk.
+ * This is the PROPER way to handle tokens - Clerk internally:
+ * - Returns cached token if still valid (fast, no network call)
+ * - Auto-refreshes if expired (seamless to caller)
+ * - Returns the fresh token
+ * 
+ * This is how Netflix/Spotify handle auth - call the token provider fresh on each request.
+ */
+export const getFreshClerkToken = async (): Promise<string | null> => {
+  if (!globalGetToken) {
+    console.warn('[SupabaseContext] getFreshClerkToken called but globalGetToken not set');
+    return null;
+  }
+  
+  try {
+    const templateName = import.meta.env.VITE_CLERK_JWT_TEMPLATE_NAME || 'supabase';
+    const token = await globalGetToken({ template: templateName });
+    
+    if (token) {
+      // Update the cached token for backwards compatibility with existing code
+      updateCurrentToken(token);
+    }
+    
+    return token;
+  } catch (error) {
+    console.error('[SupabaseContext] getFreshClerkToken error:', error);
+    // Try basic token as fallback
+    try {
+      const basicToken = await globalGetToken({} as any);
+      if (basicToken) {
+        updateCurrentToken(basicToken);
+      }
+      return basicToken;
+    } catch {
+      return null;
+    }
+  }
+};
 
 export const useSupabase = () => {
   const context = useContext(SupabaseContext);
@@ -75,7 +119,7 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
   });
   const [client, setClient] = useState<SupabaseClient | null>(null);
   const [isAuthClient, setIsAuthClient] = useState(false);
-  const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  // Note: refreshIntervalRef removed - no longer needed with fresh token on every request
 
   console.log('[SupabaseContext] 📊 Current state:', { 
     isSignedIn, 
@@ -134,6 +178,22 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
       globalTokenRefreshCallback = null;
     };
   }, [refreshToken]);
+
+  // Store getToken function globally so we can get fresh tokens on every request
+  // This is the KEY to proper token management - no more stale cached tokens!
+  useEffect(() => {
+    if (getToken && isSignedIn) {
+      globalGetToken = getToken as any;
+      // Register the fresh token getter with supabase.ts
+      // This allows the customFetch to get fresh tokens on every request
+      setFreshTokenGetter(getFreshClerkToken);
+      console.log('[SupabaseContext] ✅ Fresh token getter registered - proper auth enabled');
+    }
+    return () => {
+      globalGetToken = null;
+      setFreshTokenGetter(null);
+    };
+  }, [getToken, isSignedIn]);
 
   useEffect(() => {
     console.log('[SupabaseContext] 🔄 useEffect triggered', { 
@@ -275,36 +335,12 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
     initClient();
   }, [getToken, isSignedIn]);
 
-  // Set up periodic token refresh (refresh 5 minutes before expiration)
-  // Most Clerk tokens expire after 1 hour, so refresh every 50 minutes
-  useEffect(() => {
-    if (!isSignedIn || !isAuthClient) {
-      // Clear interval if user signs out
-      if (refreshIntervalRef.current) {
-        clearInterval(refreshIntervalRef.current);
-        refreshIntervalRef.current = null;
-      }
-      return;
-    }
-
-    // Refresh token every 50 minutes (3000 seconds)
-    // This ensures tokens are refreshed before they expire (typically 1 hour = 3600 seconds)
-    const REFRESH_INTERVAL = 50 * 60 * 1000; // 50 minutes in milliseconds
-    
-    console.log('[SupabaseContext] ⏰ Setting up periodic token refresh (every 50 minutes)');
-    
-    refreshIntervalRef.current = setInterval(() => {
-      console.log('[SupabaseContext] ⏰ Periodic token refresh triggered');
-      refreshToken();
-    }, REFRESH_INTERVAL);
-
-    return () => {
-      if (refreshIntervalRef.current) {
-        clearInterval(refreshIntervalRef.current);
-        refreshIntervalRef.current = null;
-      }
-    };
-  }, [isSignedIn, isAuthClient, refreshToken]);
+  // REMOVED: Periodic token refresh is no longer needed!
+  // We now call getFreshClerkToken() on every Supabase request, which:
+  // - Returns cached token if still valid (fast, no network call)
+  // - Auto-refreshes if expired (Clerk handles this internally)
+  // - Returns fresh token seamlessly
+  // This is the proper way to handle tokens (like Netflix/Spotify do).
 
   // Expose diagnostic function globally for console debugging
   useEffect(() => {

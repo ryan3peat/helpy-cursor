@@ -83,6 +83,7 @@ export interface Database {
           created_at: string
           quantity: string | null
           unit: string | null
+          brand: string | null
           due_date: string | null
           due_time: string | null
           recurrence: Json | null
@@ -98,6 +99,7 @@ export interface Database {
           created_at?: string
           quantity?: string | null
           unit?: string | null
+          brand?: string | null
           due_date?: string | null
           due_time?: string | null
           recurrence?: Json | null
@@ -113,6 +115,7 @@ export interface Database {
           created_at?: string
           quantity?: string | null
           unit?: string | null
+          brand?: string | null
           due_date?: string | null
           due_time?: string | null
           recurrence?: Json | null

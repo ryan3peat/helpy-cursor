@@ -83,6 +83,7 @@ export interface ToDoItem {
   // Shopping-specific
   quantity?: string;
   unit?: string;
+  brand?: string; // Brand name (optional, not translated)
   // Task-specific
   dueDate?: string; // YYYY-MM-DD
   dueTime?: string; // HH:mm

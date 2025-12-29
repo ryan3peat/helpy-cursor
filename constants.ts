@@ -357,6 +357,8 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'common.task_name': 'Task Name',
   'common.unit': 'Unit',
   'common.unit_placeholder': 'pcs, kg, L...',
+  'common.brand': 'Brand',
+  'common.brand_placeholder': 'Your favorite brand',
   'common.added_date_newest': 'Added Date (newest)',
   'common.added_date_oldest': 'Added Date (oldest)',
   'common.due_date_newest': 'Due Date (newest)',

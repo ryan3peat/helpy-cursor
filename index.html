@@ -100,6 +100,10 @@
         };
         
         // Sheet overlay support - dims status bar to match bg-black/30 backdrop
+        // Colors calculated: original * 0.7 (30% black overlay)
+        // Light: #fafafa (250) * 0.7 = 175 = #afafaf
+        // Dark: #121212 (18) * 0.7 = 12.6 = #0d0d0d
+        // Auth: #3EAFD2 -> dimmed ~#2b7a93
         var sheetOpenCount = 0;
         window.__helpySetSheetOpen = function(isOpen) {
           sheetOpenCount = Math.max(0, sheetOpenCount + (isOpen ? 1 : -1));
@@ -111,11 +115,11 @@
           
           var color;
           if (isAuth) {
-            color = shouldDim ? '#2b8fb0' : AUTH_COLOR;
+            color = shouldDim ? '#2b7a93' : AUTH_COLOR;
           } else if (isDark) {
-            color = shouldDim ? '#0a0a0a' : DARK_COLOR;
+            color = shouldDim ? '#0d0d0d' : DARK_COLOR;
           } else {
-            color = shouldDim ? '#b8b8b8' : LIGHT_COLOR;
+            color = shouldDim ? '#afafaf' : LIGHT_COLOR;
           }
           
           setMeta('theme-color', color);

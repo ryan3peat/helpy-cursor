@@ -33,6 +33,12 @@
         if (themeColorMeta) {
           themeColorMeta.setAttribute('content', bgColor);
         }
+        
+        // Update color-scheme to match app theme (tells iOS which mode we're in)
+        var colorSchemeMeta = document.querySelector('meta[name="color-scheme"]');
+        if (colorSchemeMeta) {
+          colorSchemeMeta.setAttribute('content', isDark ? 'dark' : 'light');
+        }
       })();
     </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
@@ -221,6 +227,12 @@
           const themeColorMeta = document.querySelector('meta[name="theme-color"]');
           if (themeColorMeta) {
             themeColorMeta.setAttribute('content', color);
+          }
+          
+          // Update color-scheme to match app theme (tells iOS which mode we're in)
+          const colorSchemeMeta = document.querySelector('meta[name="color-scheme"]');
+          if (colorSchemeMeta) {
+            colorSchemeMeta.setAttribute('content', isDark ? 'dark' : 'light');
           }
           
           // Update html background color for overscroll

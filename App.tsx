@@ -81,20 +81,7 @@ const AppContent: React.FC = () => {
   const [clerkError, setClerkError] = useState<string | null>(null);
   const [editHelperUserId, setEditHelperUserId] = useState<string | null>(null);
 
-  // Debug overlay for theme/status bar (enable with ?debugTheme=1)
-  const [showThemeDebug, setShowThemeDebug] = useState(false);
-  useEffect(() => {
-    try {
-      const search = window.location.search || '';
-      const hashQuery = window.location.hash.includes('?') ? window.location.hash.split('?')[1] : '';
-      const params = new URLSearchParams(search);
-      const hashParams = new URLSearchParams(hashQuery);
-      const enabled = params.get('debugTheme') === '1' || hashParams.get('debugTheme') === '1';
-      setShowThemeDebug(enabled);
-    } catch {
-      setShowThemeDebug(false);
-    }
-  }, []);
+  // debugTheme overlay removed
 
   // Add timeout fallback if Clerk takes too long to load (10 seconds)
   useEffect(() => {
@@ -1070,26 +1057,6 @@ const AppContent: React.FC = () => {
 
   return (
     <>
-      {showThemeDebug && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 8,
-            left: 8,
-            right: 8,
-            zIndex: 9999,
-            padding: 10,
-            borderRadius: 12,
-            background: 'rgba(0,0,0,0.75)',
-            color: '#fff',
-            fontSize: 12,
-            lineHeight: 1.35,
-            fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
-          }}
-        >
-          <ThemeDebugContent />
-        </div>
-      )}
       {showIntro && <IntroAnimation onComplete={() => setShowIntro(false)} />}
       {onboardingStep > 0 && (
         <OnboardingOverlay
@@ -1107,35 +1074,6 @@ const AppContent: React.FC = () => {
       </Layout>
     </>
   );
-};
-
-const ThemeDebugContent: React.FC = () => {
-  const [text, setText] = React.useState<string>('loading…');
-
-  React.useEffect(() => {
-    const tick = () => {
-      const w = window as any;
-      const info = typeof w.__helpyGetThemeDebug === 'function' ? w.__helpyGetThemeDebug() : null;
-      if (!info) {
-        setText('no __helpyGetThemeDebug()');
-        return;
-      }
-      setText(
-        [
-          `savedTheme=${info.savedTheme} systemPrefersDark=${info.systemPrefersDark}`,
-          `htmlClass="${info.htmlClass}" authPage=${info.isAuthPage}`,
-          `meta theme-color=${info.metaThemeColor} color-scheme=${info.metaColorScheme}`,
-          `computedThemeColor=${info.computedThemeColor}`,
-        ].join('\n')
-      );
-    };
-
-    tick();
-    const id = window.setInterval(tick, 500);
-    return () => window.clearInterval(id);
-  }, []);
-
-  return <pre style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{text}</pre>;
 };
 
 // Main App component that wraps everything with TranslationProvider

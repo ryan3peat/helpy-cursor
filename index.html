@@ -42,16 +42,13 @@
         var AUTH_COLOR = '#3EAFD2';
 
         function getSavedTheme() {
+          // System mode removed: treat any legacy 'system' value as 'light'
           var t = localStorage.getItem(THEME_KEY);
-          return (t === 'light' || t === 'dark' || t === 'system') ? t : 'light';
+          return (t === 'dark') ? 'dark' : 'light';
         }
 
         function getEffectiveIsDark(savedTheme) {
-          if (savedTheme === 'dark') return true;
-          if (savedTheme === 'system') {
-            return !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
-          }
-          return false;
+          return savedTheme === 'dark';
         }
 
         function setMeta(name, value) {
@@ -93,21 +90,7 @@
           document.documentElement.classList.toggle('auth-page', !!isAuth);
           return applyTheme();
         };
-        window.__helpyGetThemeDebug = function() {
-          var html = document.documentElement;
-          var themeColorMeta = document.querySelector('meta[name="theme-color"]');
-          var colorSchemeMeta = document.querySelector('meta[name="color-scheme"]');
-          return {
-            savedTheme: getSavedTheme(),
-            systemPrefersDark: !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches),
-            htmlClass: html.className,
-            isDarkClass: html.classList.contains('dark'),
-            isAuthPage: html.classList.contains('auth-page'),
-            metaThemeColor: themeColorMeta ? themeColorMeta.getAttribute('content') : null,
-            metaColorScheme: colorSchemeMeta ? colorSchemeMeta.getAttribute('content') : null,
-            computedThemeColor: computeThemeColor(html.classList.contains('dark')),
-          };
-        };
+        // debug helpers removed
 
         // Initial apply (before React mounts)
         applyTheme();
@@ -128,19 +111,7 @@
         });
         observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
 
-        // OS listener (only when user explicitly chose system)
-        if (window.matchMedia) {
-          var mql = window.matchMedia('(prefers-color-scheme: dark)');
-          var handler = function() {
-            if (getSavedTheme() === 'system') applyTheme();
-          };
-          try {
-            mql.addEventListener('change', handler);
-          } catch (e) {
-            // Safari < 14
-            mql.addListener(handler);
-          }
-        }
+        // System mode removed: no OS listener
       })();
     </script>
 

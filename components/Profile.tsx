@@ -118,9 +118,9 @@ const Profile: React.FC<ProfileProps> = ({
   const [loadingPlan, setLoadingPlan] = useState<'free' | 'core' | 'pro' | 'test' | null>(null);
   
   // Appearance State
-  const [currentTheme, setCurrentTheme] = useState<'light' | 'dark' | 'system'>(() => {
+  const [currentTheme, setCurrentTheme] = useState<'light' | 'dark'>(() => {
     const saved = localStorage.getItem('helpy_theme');
-    if (saved === 'light' || saved === 'dark' || saved === 'system') return saved;
+    if (saved === 'light' || saved === 'dark') return saved;
     return 'light'; // Default to light (matches index.html behavior)
   });
   
@@ -1877,7 +1877,7 @@ const Profile: React.FC<ProfileProps> = ({
   };
 
   // Handle Theme Change
-  const handleThemeChange = (theme: 'light' | 'dark' | 'system') => {
+  const handleThemeChange = (theme: 'light' | 'dark') => {
     setCurrentTheme(theme);
     localStorage.setItem('helpy_theme', theme);
 
@@ -1892,7 +1892,6 @@ const Profile: React.FC<ProfileProps> = ({
     const html = document.documentElement;
     let isDark = false;
     if (theme === 'dark') isDark = true;
-    else if (theme === 'system') isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     html.classList.toggle('dark', isDark);
     html.classList.toggle('light', !isDark);
   };
@@ -2964,10 +2963,9 @@ const Profile: React.FC<ProfileProps> = ({
   // APPEARANCE VIEW
   // =====================================================
   if (activeSection === 'appearance') {
-    const themeOptions: Array<{ id: 'light' | 'dark' | 'system'; label: string; description: string; icon: React.ElementType }> = [
+    const themeOptions: Array<{ id: 'light' | 'dark'; label: string; description: string; icon: React.ElementType }> = [
       { id: 'light', label: t['settings.light'] || 'Light', description: t['settings.light_description'] || 'Always light', icon: Sun },
       { id: 'dark', label: t['settings.dark'] || 'Dark', description: t['settings.dark_description'] || 'Always dark', icon: Moon },
-      { id: 'system', label: t['settings.system'] || 'System', description: t['settings.system_description'] || 'Follows your OS preference', icon: Monitor },
     ];
 
     return (

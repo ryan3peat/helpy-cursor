@@ -64,28 +64,11 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
   } | null>(null);
   const hasCheckedUser = React.useRef(false);
 
-  // Set status bar and overflow to Helpy blue on auth pages
+  // Auth page styling handled by CSS only (html.auth-page class)
   React.useEffect(() => {
-    const HELPY_BLUE = '#3EAFD2';
-    
-    // Add class for CSS-based overflow background
     document.documentElement.classList.add('auth-page');
-    
-    // Update ALL theme-color meta tags for status bar
-    document.querySelectorAll('meta[name="theme-color"]').forEach(meta => {
-      meta.setAttribute('content', HELPY_BLUE);
-    });
-    
-    // Cleanup: restore when leaving auth
     return () => {
       document.documentElement.classList.remove('auth-page');
-      
-      // Restore ALL theme-color tags based on current theme
-      const isDark = document.documentElement.classList.contains('dark');
-      const restoreColor = isDark ? '#121212' : '#fafafa';
-      document.querySelectorAll('meta[name="theme-color"]').forEach(meta => {
-        meta.setAttribute('content', restoreColor);
-      });
     };
   }, []);
 

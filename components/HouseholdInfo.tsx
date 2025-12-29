@@ -943,7 +943,7 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
               }}
               className={`flex-shrink-0 min-w-[130px] px-3 py-2.5 rounded-xl text-left transition-all ${
                 !hasHelperManagementAccess
-                  ? "bg-card/50 text-muted-foreground shadow-sm opacity-60"
+                  ? "bg-card text-muted-foreground shadow-sm"
                   : activeSection === "helper"
                   ? "bg-primary text-primary-foreground shadow-md"
                   : "bg-card text-foreground shadow-sm"

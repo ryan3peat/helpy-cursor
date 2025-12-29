@@ -316,7 +316,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   );
 
   return (
-    <div className="pb-16 page-content bg-background">
+    <div className="min-h-screen bg-background pb-16 page-content">
       {/* Sticky Header - Push Up (No Shrink) */}
       <header 
         className="sticky top-0 z-20 bg-background px-5 pb-3 flex items-end transition-shadow duration-200"

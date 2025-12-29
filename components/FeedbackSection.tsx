@@ -281,17 +281,20 @@ const FeedbackSection: React.FC<FeedbackSectionProps> = ({
   
   // Render header
   const renderHeader = () => (
-    <div className="sticky top-0 z-20 bg-background border-b border-border">
-      <div className="flex items-center gap-3 px-4 py-4">
+    <header 
+      className="sticky top-0 z-20 bg-background flex items-end pb-3 px-4" 
+      style={{ height: '120px' }}
+    >
+      <div className="flex items-center gap-3">
         <button
           onClick={onBack}
           className="p-2 -ml-2 rounded-full"
         >
           <ChevronLeft size={24} className="text-foreground" />
         </button>
-        <h1 className="text-xl font-bold text-foreground">{t['feedback.title'] || 'Feedback'}</h1>
+        <h1 className="text-display text-foreground">{t['feedback.title'] || 'Feedback'}</h1>
       </div>
-    </div>
+    </header>
   );
   
   // Render message bubble

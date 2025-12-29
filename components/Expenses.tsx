@@ -365,15 +365,7 @@ const Expenses: React.FC<ExpensesProps> = ({
     };
   }, [selectedExpense]);
 
-  // Auto-focus amount field when entering manual mode
-  useEffect(() => {
-    if (addExpenseStage === 'manual' && amountInputRef.current) {
-      // Small delay to ensure the input is rendered
-      setTimeout(() => {
-        amountInputRef.current?.focus();
-      }, 100);
-    }
-  }, [addExpenseStage]);
+  // Note: Auto-focus removed for better UX on sheets
 
   // Check if any modal is open
   const isModalOpen = addExpenseStage !== 'closed' || selectedExpense || isMonthPickerOpen;

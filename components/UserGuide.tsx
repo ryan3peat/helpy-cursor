@@ -341,7 +341,7 @@ const UserGuide: React.FC<UserGuideProps> = ({ currentUser, t, onNavigateToPlan,
             <NAV_ITEMS.dashboard.icon size={18} className="text-foreground" />
             {t['guide.dashboard_title'] || 'Dashboard'}
           </h3>
-          <p className="text-body text-muted-foreground mt-1 ml-6">
+          <p className="text-body text-[#474747] dark:text-gray-100 mt-1 ml-6">
             {t['guide.dashboard_desc'] ||
               'Your home screen shows a quick overview of everything: shopping items needed, pending tasks, upcoming meals, and monthly expenses.'}
           </p>
@@ -365,7 +365,7 @@ const UserGuide: React.FC<UserGuideProps> = ({ currentUser, t, onNavigateToPlan,
             <NAV_ITEMS.todo.icon size={18} className="text-foreground" />
             {t['guide.todo_title'] || 'To-Do'}
           </h3>
-          <p className="text-body text-muted-foreground mt-1 ml-6">
+          <p className="text-body text-[#474747] dark:text-gray-100 mt-1 ml-6">
             {t['guide.todo_desc'] || 'Manage shopping lists and household tasks in one place.'}
           </p>
         </div>
@@ -398,7 +398,7 @@ const UserGuide: React.FC<UserGuideProps> = ({ currentUser, t, onNavigateToPlan,
             <NAV_ITEMS.meals.icon size={18} className="text-foreground" />
             {t['guide.meals_title'] || 'Meals'}
           </h3>
-          <p className="text-body text-muted-foreground mt-1 ml-6">
+          <p className="text-body text-[#474747] dark:text-gray-100 mt-1 ml-6">
             {t['guide.meals_desc'] || 'Plan breakfast, lunch, dinner, and snacks for your family.'}
           </p>
         </div>
@@ -428,7 +428,7 @@ const UserGuide: React.FC<UserGuideProps> = ({ currentUser, t, onNavigateToPlan,
                 <NAV_ITEMS.expenses.icon size={18} className="text-foreground" />
                 {t['guide.expenses_title'] || 'Expenses'}
               </h3>
-              <p className="text-body text-muted-foreground mt-1 ml-6">
+              <p className="text-body text-[#474747] dark:text-gray-100 mt-1 ml-6">
                 {t['guide.expenses_desc'] || 'Track household spending with categories and visual breakdowns.'}
               </p>
             </div>
@@ -462,7 +462,7 @@ const UserGuide: React.FC<UserGuideProps> = ({ currentUser, t, onNavigateToPlan,
             <NAV_ITEMS.info.icon size={18} className="text-foreground" />
             {t['guide.info_title'] || 'Household Info'}
           </h3>
-          <p className="text-body text-muted-foreground mt-1 ml-6">
+          <p className="text-body text-[#474747] dark:text-gray-100 mt-1 ml-6">
             {t['guide.info_desc'] || 'Store important places, house routines, and manage helpers.'}
           </p>
         </div>
@@ -503,7 +503,7 @@ const UserGuide: React.FC<UserGuideProps> = ({ currentUser, t, onNavigateToPlan,
       {/* Plan Comparison - Only show to Admin/Spouse */}
       {(isAdmin || isSpouse) && (
         <AccordionSection
-          title={t['guide.your_plan'] || 'Your Plan'}
+          title={t['guide.your_plan'] || 'Subscription'}
           icon={<Crown size={20} />}
         >
           <div className="overflow-x-auto -mx-2">

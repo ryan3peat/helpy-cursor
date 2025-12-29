@@ -1700,7 +1700,7 @@ const ToDo: React.FC<ToDoProps> = ({
               >
                 <Check size={18} />
                 {editingItemId 
-                  ? (t['meals.save_changes'] || 'Save Changes')
+                  ? (t['common.update'] || 'Update')
                   : (activeSection === 'shopping' ? (t['common.add_item'] || 'Add Item') : (t['common.add_task'] || 'Add Task'))
                 }
               </button>

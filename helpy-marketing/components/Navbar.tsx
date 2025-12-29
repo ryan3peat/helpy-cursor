@@ -13,7 +13,7 @@ export const Navbar = () => {
   const navItems = [
     { href: "/home", label: "Home" },
     { href: "/features", label: "Features" },
-    { href: "/plan", label: "Plan" },
+    { href: "/plan", label: "Subscription" },
     { href: "/faq", label: "FAQ" }
   ];
 

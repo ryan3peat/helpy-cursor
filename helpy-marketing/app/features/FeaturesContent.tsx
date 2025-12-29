@@ -21,12 +21,12 @@ export default function FeaturesContent() {
     },
     {
       icon: ClipboardList,
-      title: "To-Do & Shopping",
+      title: "To Do & Shopping",
       body: "Keep everyone in sync with a shared shopping list app that doubles as a household chore app for stress-free coordination."
     },
     {
       icon: Utensils,
-      title: "Meal Planning",
+      title: "Meals",
       body: "Finally, a meal planning app for families that works. Use our family meal scheduler to organize the week and guide your helper."
     },
     {

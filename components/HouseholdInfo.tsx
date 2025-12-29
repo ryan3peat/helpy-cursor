@@ -24,6 +24,7 @@ import {
   Baby,
   Sparkles,
   Shirt,
+  PawPrint,
   ShieldAlert,
   Zap,
   Heart,
@@ -114,24 +115,35 @@ const ESSENTIAL_CATEGORY_ICONS: Record<EssentialInfoCategory, React.ReactNode> =
 const HOUSE_ROUTINE_CATEGORY_ICONS: Record<HouseRoutineCategory, React.ReactNode> = {
   'House Rules': <ClipboardList size={18} />,
   'Routine': <Clock size={18} />,
-  'Meal Preparations': <UtensilsCrossed size={18} />,
+  'Cooking': <UtensilsCrossed size={18} />,
   'Child Care': <Baby size={18} />,
   'Cleaning': <Sparkles size={18} />,
-  'Grocery & Market': <ShoppingCart size={18} />,
-  'Laundry & Wardrobe': <Shirt size={18} />,
-  'Safety & Emergency': <ShieldAlert size={18} />,
-  'Energy & Bills': <Zap size={18} />,
-  'Helper Self-Care': <Heart size={18} />,
+  'Grocery': <ShoppingCart size={18} />,
+  'Laundry': <Shirt size={18} />,
+  'Pet Care': <PawPrint size={18} />,
+  'Safety': <ShieldAlert size={18} />,
+  'Utilities': <Zap size={18} />,
+  'Helper Care': <HeartHandshake size={18} />,
   'Others': <MoreHorizontal size={18} />,
 };
 
 // ─────────────────────────────────────────────────────────────────
 // ROLE STYLING CONFIG
 // ─────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────
+// ROLE STYLING CONFIG
+// NOTE: Keep in sync with Profile.tsx getRoleBadgeColor() for consistency
+// See docs/GLOBAL_RULES.md for consistency guidelines
+// ─────────────────────────────────────────────────────────────────
 const ROLE_STYLES: Record<UserRole, { bg: string; color: string; gradient: string }> = {
   [UserRole.MASTER]: { 
     bg: '#E6F7FB', 
     color: '#3EAFD2', // Helpy blue
+    gradient: 'linear-gradient(135deg, #3EAFD2 0%, #2E99BB 100%)'
+  },
+  [UserRole.SUPERADMIN]: { 
+    bg: '#3EAFD2', // Solid helpy blue background
+    color: '#FFFFFF', // White text - matches Profile.tsx "bg-primary text-white"
     gradient: 'linear-gradient(135deg, #3EAFD2 0%, #2E99BB 100%)'
   },
   [UserRole.SPOUSE]: { 
@@ -158,24 +170,36 @@ const ROLE_STYLES: Record<UserRole, { bg: string; color: string; gradient: strin
 
 // ─────────────────────────────────────────────────────────────────
 // Role priority for consistent sorting across all family members
+// NOTE: Keep in sync with Profile.tsx for consistency
+// See docs/GLOBAL_RULES.md for consistency guidelines
 // ─────────────────────────────────────────────────────────────────
 const ROLE_PRIORITY: Record<string, number> = {
-  'Admin': 1,
-  'Spouse': 2,
-  'Helper': 3,
-  'Child': 4,
-  'Other': 5,
+  'superadmin': 0,
+  'admin': 1,
+  'spouse': 2,
+  'helper': 3,
+  'child': 4,
+  'other': 5,
+};
+
+// Helper function to get role priority (case-insensitive)
+const getRolePriority = (role: string): number => {
+  return ROLE_PRIORITY[role.toLowerCase()] ?? 99;
 };
 
 // ─────────────────────────────────────────────────────────────────
 // Family Profile Carousel Component
+// NOTE: User card styling should match Profile.tsx for consistency
+// See docs/GLOBAL_RULES.md for consistency guidelines
 // ─────────────────────────────────────────────────────────────────
 interface FamilyProfileCarouselProps {
   users: User[];
+  currentUser: User;
   t: TranslationDictionary;
+  onNavigateToProfile?: () => void;
 }
 
-const FamilyProfileCarousel: React.FC<FamilyProfileCarouselProps> = ({ users, t }) => {
+const FamilyProfileCarousel: React.FC<FamilyProfileCarouselProps> = ({ users, currentUser, t, onNavigateToProfile }) => {
   const [activeIndex, setActiveIndex] = useState(0);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -184,8 +208,8 @@ const FamilyProfileCarousel: React.FC<FamilyProfileCarouselProps> = ({ users, t 
     return [...users]
       .filter(u => u.status === 'active')
       .sort((a, b) => {
-        const priorityA = ROLE_PRIORITY[a.role] ?? 99;
-        const priorityB = ROLE_PRIORITY[b.role] ?? 99;
+        const priorityA = getRolePriority(a.role);
+        const priorityB = getRolePriority(b.role);
         const roleDiff = priorityA - priorityB;
         if (roleDiff !== 0) return roleDiff;
         return a.name.localeCompare(b.name);
@@ -236,7 +260,26 @@ const FamilyProfileCarousel: React.FC<FamilyProfileCarouselProps> = ({ users, t 
                 background: 'hsl(var(--card))',
               }}
             >
-              <div className="p-5 flex-1">
+              <div className="p-5 flex-1 relative">
+                {/* Edit Icon - Top Right Corner */}
+                {/* Eligible users: Admins/SuperAdmins can edit anyone, users can edit themselves */}
+                {(currentUser.role === UserRole.MASTER || 
+                  currentUser.role === UserRole.SUPERADMIN || 
+                  currentUser.id === user.id) && onNavigateToProfile && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      // Store the user ID to edit in localStorage for Profile to pick up
+                      localStorage.setItem('helpy_profile_edit_user_id', user.id);
+                      onNavigateToProfile();
+                    }}
+                    className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center text-muted-foreground"
+                    aria-label={t['common.edit'] || 'Edit'}
+                  >
+                    <Pencil size={14} />
+                  </button>
+                )}
+                
                 {/* Profile Header */}
                 <div className="flex items-start gap-3 mb-4">
                   {/* Avatar */}
@@ -246,7 +289,7 @@ const FamilyProfileCarousel: React.FC<FamilyProfileCarouselProps> = ({ users, t 
                   />
                   
                   {/* Name & Role */}
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-0 pr-8">
                     <h3 className="text-title text-foreground truncate">
                       {user.name}
                     </h3>
@@ -636,14 +679,15 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
     const categoryMap: Record<HouseRoutineCategory, string> = {
       'House Rules': t['routine.category.house_rules'] || category,
       'Routine': t['routine.category.routine'] || category,
-      'Meal Preparations': t['routine.category.meal_preparations'] || category,
+      'Cooking': t['routine.category.cooking'] || category,
       'Child Care': t['routine.category.child_care'] || category,
       'Cleaning': t['routine.category.cleaning'] || category,
-      'Grocery & Market': t['routine.category.grocery_market'] || category,
-      'Laundry & Wardrobe': t['routine.category.laundry_wardrobe'] || category,
-      'Safety & Emergency': t['routine.category.safety_emergency'] || category,
-      'Energy & Bills': t['routine.category.energy_bills'] || category,
-      'Helper Self-Care': t['routine.category.helper_self_care'] || category,
+      'Grocery': t['routine.category.grocery'] || category,
+      'Laundry': t['routine.category.laundry'] || category,
+      'Pet Care': t['routine.category.pet_care'] || category,
+      'Safety': t['routine.category.safety'] || category,
+      'Utilities': t['routine.category.utilities'] || category,
+                      'Helper Care': t['routine.category.helper_care'] || category,
       'Others': t['routine.category.others'] || category,
     };
     return categoryMap[category] || category;
@@ -1092,7 +1136,12 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
         {/* FAMILY PROFILE CAROUSEL - Only visible in Essential Info section */}
         {/* ─────────────────────────────────────────────────────────────── */}
         {activeSection === "essentialInfo" && (
-          <FamilyProfileCarousel users={users} t={t} />
+          <FamilyProfileCarousel 
+            users={users} 
+            currentUser={currentUser}
+            t={t} 
+            onNavigateToProfile={onNavigateToProfile}
+          />
         )}
 
         {/* ─────────────────────────────────────────────────────────────── */}
@@ -1343,6 +1392,7 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
               <button
                 onClick={() => {
                   setShowHelperUpgradeModal(false);
+                  localStorage.setItem('helpy_profile_target_section', 'plan');
                   onNavigateToProfile?.();
                 }}
                 className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground text-body font-semibold shadow-sm"
@@ -1501,14 +1551,15 @@ const HouseRoutineCard: React.FC<HouseRoutineCardProps> = ({
     const categoryMap: Record<HouseRoutineCategory, string> = {
       'House Rules': t['routine.category.house_rules'] || category,
       'Routine': t['routine.category.routine'] || category,
-      'Meal Preparations': t['routine.category.meal_preparations'] || category,
+      'Cooking': t['routine.category.cooking'] || category,
       'Child Care': t['routine.category.child_care'] || category,
       'Cleaning': t['routine.category.cleaning'] || category,
-      'Grocery & Market': t['routine.category.grocery_market'] || category,
-      'Laundry & Wardrobe': t['routine.category.laundry_wardrobe'] || category,
-      'Safety & Emergency': t['routine.category.safety_emergency'] || category,
-      'Energy & Bills': t['routine.category.energy_bills'] || category,
-      'Helper Self-Care': t['routine.category.helper_self_care'] || category,
+      'Grocery': t['routine.category.grocery'] || category,
+      'Laundry': t['routine.category.laundry'] || category,
+      'Pet Care': t['routine.category.pet_care'] || category,
+      'Safety': t['routine.category.safety'] || category,
+      'Utilities': t['routine.category.utilities'] || category,
+                      'Helper Care': t['routine.category.helper_care'] || category,
       'Others': t['routine.category.others'] || category,
     };
     return categoryMap[category] || category;
@@ -1800,12 +1851,12 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
             <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
               {t['info.note'] || 'Note'}
             </label>
-            <input
-              type="text"
+            <textarea
               value={form.note}
               onChange={(e) => setForm({ ...form, note: e.target.value })}
               placeholder={t['info.note_placeholder'] || 'Any additional details...'}
-              className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
+              rows={2}
+              className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body resize-none"
             />
           </div>
         </div>
@@ -1874,18 +1925,18 @@ const HouseRoutineModal: React.FC<HouseRoutineModalProps> = ({
         {/* Header */}
         <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
           <h2 className="text-title text-foreground">
-            {isEditing ? (t['info.edit_routine'] || 'Edit Routine') : (t['info.add_routine'] || 'Add Routine')}
+            {isEditing ? (t['info.edit_practice'] || 'Edit Practice') : (t['info.add_practice'] || 'Add Practice')}
           </h2>
         </div>
 
         {/* Form */}
         <div className="p-5 space-y-4 flex-1 overflow-y-auto">
-          {/* Category */}
+          {/* Category - Compact 3-column grid for 4 rows */}
           <div>
             <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
               {t['common.category'] || 'Category'}
             </label>
-            <div className="flex flex-wrap gap-2">
+            <div className="grid grid-cols-3 gap-2">
               {HOUSE_ROUTINE_CATEGORIES.map((cat) => {
                 const config = HOUSE_ROUTINE_CATEGORY_CONFIG[cat];
                 const isSelected = form.category === cat;
@@ -1893,24 +1944,29 @@ const HouseRoutineModal: React.FC<HouseRoutineModalProps> = ({
                   const categoryMap: Record<HouseRoutineCategory, string> = {
                     'House Rules': t['routine.category.house_rules'] || category,
                     'Routine': t['routine.category.routine'] || category,
-                    'Meal Preparations': t['routine.category.meal_preparations'] || category,
+                    'Cooking': t['routine.category.cooking'] || category,
                     'Child Care': t['routine.category.child_care'] || category,
                     'Cleaning': t['routine.category.cleaning'] || category,
-                    'Grocery & Market': t['routine.category.grocery_market'] || category,
-                    'Laundry & Wardrobe': t['routine.category.laundry_wardrobe'] || category,
-                    'Safety & Emergency': t['routine.category.safety_emergency'] || category,
-                    'Energy & Bills': t['routine.category.energy_bills'] || category,
-                    'Helper Self-Care': t['routine.category.helper_self_care'] || category,
+                    'Grocery': t['routine.category.grocery'] || category,
+                    'Laundry': t['routine.category.laundry'] || category,
+                    'Pet Care': t['routine.category.pet_care'] || category,
+                    'Safety': t['routine.category.safety'] || category,
+                    'Utilities': t['routine.category.utilities'] || category,
+                      'Helper Care': t['routine.category.helper_care'] || category,
                     'Others': t['routine.category.others'] || category,
                   };
                   return categoryMap[category] || category;
                 };
+                // All buttons are now uniform width
+                const isWide = false;
                 return (
                   <button
                     key={cat}
                     type="button"
                     onClick={() => setForm({ ...form, category: cat })}
-                    className={`px-3 py-2 rounded-lg text-body transition-all flex items-center gap-1.5 ${
+                    className={`px-2 py-2 rounded-lg text-caption transition-all flex items-center gap-1.5 ${
+                      isWide ? 'col-span-2' : ''
+                    } ${
                       isSelected
                         ? "text-white shadow-sm"
                         : "bg-secondary text-foreground"
@@ -2016,14 +2072,15 @@ const HouseRoutineViewModal: React.FC<HouseRoutineViewModalProps> = ({
     const categoryMap: Record<HouseRoutineCategory, string> = {
       'House Rules': t['routine.category.house_rules'] || category,
       'Routine': t['routine.category.routine'] || category,
-      'Meal Preparations': t['routine.category.meal_preparations'] || category,
+      'Cooking': t['routine.category.cooking'] || category,
       'Child Care': t['routine.category.child_care'] || category,
       'Cleaning': t['routine.category.cleaning'] || category,
-      'Grocery & Market': t['routine.category.grocery_market'] || category,
-      'Laundry & Wardrobe': t['routine.category.laundry_wardrobe'] || category,
-      'Safety & Emergency': t['routine.category.safety_emergency'] || category,
-      'Energy & Bills': t['routine.category.energy_bills'] || category,
-      'Helper Self-Care': t['routine.category.helper_self_care'] || category,
+      'Grocery': t['routine.category.grocery'] || category,
+      'Laundry': t['routine.category.laundry'] || category,
+      'Pet Care': t['routine.category.pet_care'] || category,
+      'Safety': t['routine.category.safety'] || category,
+      'Utilities': t['routine.category.utilities'] || category,
+                      'Helper Care': t['routine.category.helper_care'] || category,
       'Others': t['routine.category.others'] || category,
     };
     return categoryMap[category] || category;

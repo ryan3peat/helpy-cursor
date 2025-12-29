@@ -1244,13 +1244,13 @@ const Meals: React.FC<MealsProps> = ({
                   </label>
                   <div className="relative">
                     <textarea
-                      autoFocus={!editingMealId}
                       rows={2}
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
                       placeholder={`${t['meals.whats_for'] ?? "What's for"} ${getMealLabel(modalType).toLowerCase()}?`}
-                      className="w-full bg-muted border border-transparent rounded-xl px-4 py-3 text-body focus:border-primary outline-none font-medium text-foreground resize-none placeholder:text-muted-foreground pr-12 transition-colors"
+                      className="w-full bg-muted border border-transparent rounded-xl px-4 py-3 text-body focus:border-primary outline-none font-medium text-foreground resize-none placeholder:text-muted-foreground transition-colors"
                     />
+                    {/* AI Suggest button - temporarily hidden
                     <button
                       onClick={handleAiSuggest}
                       disabled={loadingAi}
@@ -1263,6 +1263,7 @@ const Meals: React.FC<MealsProps> = ({
                         <Sparkles size={14} />
                       )}
                     </button>
+                    */}
                   </div>
                 </div>
 
@@ -1313,7 +1314,7 @@ const Meals: React.FC<MealsProps> = ({
                 className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 <Check size={18} />
-                {editingMealId ? (t['meals.save_changes'] ?? 'Save Changes') : (t['meals.add_meal'] ?? 'Add Meal')}
+                {editingMealId ? (t['common.update'] ?? 'Update') : (t['meals.add_meal'] ?? 'Add Meal')}
               </button>
             </div>
           </div>

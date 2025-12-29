@@ -3,7 +3,7 @@ import {
   AlertCircle, Heart, Settings, Plus, Trash2, X, Save, Camera,
   Image as ImageIcon, LogOut, Copy, Check, ChevronLeft, ChevronRight,
   Shield, Lock, Crown, Mail, Share2, Bell, BellOff, BellDot, Phone, CheckCircle, Loader2, GraduationCap,
-  MessageCircleQuestionMark, Palette, Sun, Moon, Monitor, BookOpen
+  MessageCircleQuestionMark, Palette, Sun, Moon, Monitor, BookOpen, Pencil, CalendarCheck, HandCoins
 } from 'lucide-react';
 import FeedbackSection from './FeedbackSection';
 import UserGuide from './UserGuide';
@@ -37,13 +37,19 @@ interface ProfileProps extends BaseViewProps {
 }
 
 // Role priority for consistent sorting across all family members
-// Uses plain strings for reliability across all data sources
+// Uses lowercase keys for case-insensitive matching
 const ROLE_PRIORITY: Record<string, number> = {
-  'Admin': 1,
-  'Spouse': 2,
-  'Helper': 3,
-  'Child': 4,
-  'Other': 5,
+  'superadmin': 0,
+  'admin': 1,
+  'spouse': 2,
+  'helper': 3,
+  'child': 4,
+  'other': 5,
+};
+
+// Helper function to get role priority (case-insensitive)
+const getRolePriority = (role: string): number => {
+  return ROLE_PRIORITY[role.toLowerCase()] ?? 99;
 };
 
 // localStorage key for caching household name
@@ -525,9 +531,9 @@ const Profile: React.FC<ProfileProps> = ({
     return users
       .filter(u => u && u.id)
       .sort((a, b) => {
-        // Use fallback of 99 for unknown roles to sort them last
-        const priorityA = ROLE_PRIORITY[a.role] ?? 99;
-        const priorityB = ROLE_PRIORITY[b.role] ?? 99;
+        // Use case-insensitive role priority lookup
+        const priorityA = getRolePriority(a.role);
+        const priorityB = getRolePriority(b.role);
         const roleDiff = priorityA - priorityB;
         if (roleDiff !== 0) return roleDiff;
         return a.name.localeCompare(b.name);
@@ -1197,14 +1203,14 @@ const Profile: React.FC<ProfileProps> = ({
             {/* Selected User Profile Card */}
             {selectedUser && (
               <div className="bg-card rounded-3xl shadow-sm p-6 mb-6 relative">
-                {/* Delete button - Hidden for Helper, positioned top right */}
-                {selectedUser.id !== currentUser.id && !isHelper && (
+                {/* Edit button (pencil) - positioned top right */}
+                {(!isHelper || selectedUser.id === currentUser.id) && (
                   <button
-                    onClick={() => handleDeleteUser(selectedUser.id)}
-                    className="absolute top-4 right-4 p-2.5 text-muted-foreground rounded-xl"
-                    aria-label={t['profile.delete_member'] || 'Delete member'}
+                    onClick={handleOpenEdit}
+                    className="absolute top-4 right-4 p-2.5 text-muted-foreground hover:text-foreground rounded-xl transition-colors"
+                    aria-label={t['common.edit'] || 'Edit'}
                   >
-                    <Trash2 size={18} />
+                    <Pencil size={18} />
                   </button>
                 )}
                 {/* Header: Avatar + Name + Role */}
@@ -1280,7 +1286,7 @@ const Profile: React.FC<ProfileProps> = ({
                         <>
                           <BellDot size={16} className="text-orange-500 shrink-0 mt-0.5" />
                           <div className="text-body text-muted-foreground">
-                             <p className="font-bold text-foreground mb-1">Setup incomplete. <span className="font-normal">Ask {selectedUser.name.split(' ')[0]} to:</span></p>
+                             <p className="font-bold text-foreground mb-1">Notification setup is incomplete. <span className="font-normal">Ask {selectedUser.name.split(' ')[0]} to:</span></p>
                              <ol className="list-decimal pl-4 space-y-1">
                                <li>Add to Home Screen (iPhone/Android)</li>
                                <li>Enable Notification in <strong>Settings &gt; Account</strong></li>
@@ -1303,32 +1309,19 @@ const Profile: React.FC<ProfileProps> = ({
                   })()}
                 </div>
 
-                {/* Action Row */}
-                <div className="mt-4 pt-4">
-                  <div className="h-px bg-border -mt-4 mb-4" />
-                  <div className="flex items-center gap-2">
-                    {/* Edit button - Helper can only edit their own profile */}
-                    {(!isHelper || selectedUser.id === currentUser.id) && (
+                {/* Action Row - Only Resend Invite when pending */}
+                {selectedUser.status === 'pending' && !isHelper && (
+                  <div className="mt-4 pt-4">
+                    <div className="h-px bg-border -mt-4 mb-4" />
                     <button
-                      onClick={handleOpenEdit}
-                      className="flex items-center justify-center gap-2 px-4 py-2.5 bg-secondary text-foreground rounded-xl  whitespace-nowrap"
+                      onClick={() => handleReinvite(selectedUser.id)}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl"
                     >
-                      <Settings size={16} className="shrink-0" />
-                      <span className="text-body font-medium">{t['common.edit'] || 'Edit'}</span>
+                      <Share2 size={16} className="shrink-0" />
+                      <span className="text-body font-medium">{t['profile.resend_invite'] || 'Resend Invite'}</span>
                     </button>
-                    )}
-                    {/* Resend button - Hidden for Helper */}
-                    {selectedUser.status === 'pending' && !isHelper && (
-                      <button
-                        onClick={() => handleReinvite(selectedUser.id)}
-                        className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl  whitespace-nowrap"
-                      >
-                        <Share2 size={16} className="shrink-0" />
-                        <span className="text-body font-medium">{t['profile.resend_invite'] || 'Resend Invite'}</span>
-                      </button>
-                    )}
                   </div>
-                </div>
+                )}
 
                 {/* Content Section */}
                 <div className="mt-4 pt-4">
@@ -1370,6 +1363,47 @@ const Profile: React.FC<ProfileProps> = ({
                       )}
                     </div>
                   </div>
+
+                  {/* Helper-specific info: Start Date & Total Monthly Salary */}
+                  {(selectedUser.role === UserRole.HELPER || selectedUser.role === 'Helper') && (
+                    <>
+                      {/* Start Date */}
+                      <div className="mt-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <CalendarCheck size={16} className="text-primary" />
+                          <h4 className="text-body font-bold text-foreground">{t['profile.start_date'] || 'Start Date'}</h4>
+                        </div>
+                        {selectedUser.helperStartDate ? (
+                          <span className="text-body text-foreground">
+                            {new Date(selectedUser.helperStartDate).toLocaleDateString(
+                              currentLang === 'en' ? 'en-GB' : currentLang,
+                              { day: 'numeric', month: 'short', year: 'numeric' }
+                            )}
+                          </span>
+                        ) : (
+                          <span className="text-caption text-muted-foreground">{t['common.not_set'] || 'Not set'}</span>
+                        )}
+                      </div>
+
+                      {/* Total Monthly Salary */}
+                      <div className="mt-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <HandCoins size={16} className="text-primary" />
+                          <h4 className="text-body font-bold text-foreground">{t['profile.total_salary'] || 'Total Monthly Salary'}</h4>
+                        </div>
+                        {selectedUser.helperBaseSalary ? (
+                          <span className="text-title font-bold text-primary">
+                            HK${(
+                              (selectedUser.helperBaseSalary || 0) +
+                              (selectedUser.helperOtherAllowances || []).reduce((sum, a) => sum + a.amount, 0)
+                            ).toLocaleString()}
+                          </span>
+                        ) : (
+                          <span className="text-caption text-muted-foreground">{t['profile.salary_not_set'] || 'Not configured'}</span>
+                        )}
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             )}
@@ -1862,6 +1896,25 @@ const Profile: React.FC<ProfileProps> = ({
                         </span>
                       </div>
                     </div>
+                  </div>
+                )}
+
+                {/* DELETE USER SECTION - At very bottom of scrollable form */}
+                {selectedUser && selectedUser.id !== currentUser.id && !isHelper && (
+                  <div className="pt-6 mt-4 border-t border-border">
+                    <button
+                      onClick={() => {
+                        setIsEditModalOpen(false);
+                        handleDeleteUser(selectedUser.id);
+                      }}
+                      className="w-full flex items-center justify-center gap-2 py-3 bg-destructive/10 text-destructive rounded-xl hover:bg-destructive/20 transition-colors"
+                    >
+                      <Trash2 size={16} />
+                      <span className="text-body font-medium">{t['profile.remove_member'] || 'Remove from Family'}</span>
+                    </button>
+                    <p className="text-caption text-muted-foreground text-center mt-2">
+                      {t['profile.remove_warning'] || 'This will permanently remove this person from your family.'}
+                    </p>
                   </div>
                 )}
                 </div>

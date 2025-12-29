@@ -34,7 +34,7 @@ export const NAV_ITEMS = {
   },
   expenses: {
     id: 'expenses',
-    labelKey: 'nav.cost',
+    labelKey: 'nav.expenses',
     icon: DollarSign,
   },
   info: {

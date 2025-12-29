@@ -39,7 +39,7 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'dashboard.shopping': 'Shopping',
   'dashboard.items_needed': 'Items needed',
   'dashboard.tasks': 'Tasks',
-  'dashboard.todo': 'To-Do',
+  'dashboard.todo': 'To Do',
   'dashboard.meals': 'Meals',
   'dashboard.planned': 'Planned',
   'dashboard.expenses': 'Expenses',
@@ -59,7 +59,7 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'filter.general': 'General',
 
   // Shopping
-  'shopping.title': 'Shopping List',
+  'shopping.title': 'Shopping',
   'shopping.new_item': 'New Item',
   'shopping.item_name': 'Item Name',
   'shopping.unit_placeholder': 'Unit (pkt, kg)',
@@ -139,7 +139,7 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'meal.type.breakfast': 'Breakfast',
   'meal.type.lunch': 'Lunch',
   'meal.type.dinner': 'Dinner',
-  'meal.type.snacks': 'Snack',
+  'meal.type.snacks': 'Snacks',
 
   // Meal Audience
   'meals.audience_label': 'This meal is for',
@@ -174,7 +174,7 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'expenses.manual_entry': 'Manual Entry',
 
   // Household Info
-  'info.title': 'Household Info',
+  'info.title': 'Family Info',
   'info.add_section': 'Add Custom Section',
   'info.edit_info': 'Edit Info',
   'info.new_info': 'New Info',
@@ -202,6 +202,7 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'profile.copy_link': 'Copy Link',
   'profile.copied': 'Copied!',
   'profile.restart_tutorial': 'Restart Tutorial',
+  'profile.add_family': 'Add Family',
 
   // Onboarding - Common
   'onboarding.welcome': 'Welcome, {name}!',
@@ -274,7 +275,7 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'nav.home': 'Home',
   'nav.todo': 'To Do',
   'nav.meals': 'Meals',
-  'nav.cost': 'Expenses',
+  'nav.expenses': 'Expenses',
   'nav.info': 'Info',
   'nav.profile': 'Profile',
   
@@ -336,6 +337,7 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'common.places': 'Places',
   'common.practice': 'Practice',
   'common.training': 'Training',
+  'common.tutorial': 'Tutorial',
   'common.helper': 'Helper',
   'common.helpers': 'helpers',
   'common.past': 'Past',
@@ -623,6 +625,8 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'expenses.show_all_expenses': 'Show All Expenses',
   'expenses.yes_delete': 'Yes, delete',
   'expenses.in_currency': 'in',
+  'expenses.receipt_scanner': 'Receipt Scanner',
+  'expenses.scanner_locked_desc': 'Upgrade to scan or upload receipts',
 
   // Expenses - Image Viewer
   'expenses.double_tap_reset': 'Double tap to reset',
@@ -631,17 +635,18 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'expenses.double_tap_zoom': 'Double tap to zoom',
   'expenses.tap_outside_close': 'Tap outside to close',
 
-  // House Routine Categories
+  // House Routine / Practice Categories
   'routine.category.house_rules': 'House Rules',
   'routine.category.routine': 'Routine',
-  'routine.category.meal_preparations': 'Meal Preparations',
+  'routine.category.cooking': 'Cooking',
   'routine.category.child_care': 'Child Care',
   'routine.category.cleaning': 'Cleaning',
-  'routine.category.grocery_market': 'Grocery & Market',
-  'routine.category.laundry_wardrobe': 'Laundry & Wardrobe',
-  'routine.category.safety_emergency': 'Safety & Emergency',
-  'routine.category.energy_bills': 'Energy & Bills',
-  'routine.category.helper_self_care': 'Helper Self-Care',
+  'routine.category.grocery': 'Grocery',
+  'routine.category.laundry': 'Laundry',
+  'routine.category.pet_care': 'Pet Care',
+  'routine.category.safety': 'Safety',
+  'routine.category.utilities': 'Utilities',
+  'routine.category.helper_care': 'Helper Care',
   'routine.category.others': 'Others',
 
   // HouseholdInfo - Form Labels
@@ -806,7 +811,7 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'guide.your_role': 'Your Role',
   'guide.getting_started': 'Getting Started',
   'guide.features': 'Features',
-  'guide.your_plan': 'Your Plan',
+  'guide.your_plan': 'Subscription',
   'guide.tips': 'Tips & Best Practices',
   'guide.faq': 'FAQ',
   'guide.need_help': 'Need Help?',
@@ -820,7 +825,7 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   // User Guide - To-Do
   'guide.todo_title': 'To-Do',
   'guide.todo_desc': 'Manage shopping lists and household tasks in one place.',
-  'guide.shopping_title': 'Shopping Lists',
+  'guide.shopping_title': 'Shopping',
   'guide.shopping_desc': 'Add items with quantity, assign to family members or your helper, and organize by location.',
   'guide.tasks_title': 'Tasks',
   'guide.tasks_desc': 'Create tasks with due dates, set recurrence for repeating chores, and assign to specific people.',

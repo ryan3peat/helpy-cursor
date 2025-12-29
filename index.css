@@ -183,6 +183,11 @@ html {
   background-color: hsl(var(--background));
 }
 
+/* Fix: Explicitly set dark mode background for iOS overscroll */
+html.dark {
+  background-color: hsl(0 0% 7%) !important;
+}
+
 body {
   font-family: var(--font-sans);
   /* Use the initial-bg set by index.html inline script, which is based on session state.
@@ -480,11 +485,11 @@ button:focus-visible {
 .helpy-logo {
   font-family: 'Peanut Butter', Inter, sans-serif;
   font-size: 20px;
-  color: #D1D5DB;
+  color: #BABABA;
 }
 
 .dark .helpy-logo {
-  color: #4B5563;
+  color: #5F5F5F;
 }
 
 /* Breathing animation for intro */

@@ -606,10 +606,10 @@ const Dashboard: React.FC<DashboardProps> = ({
       {/* Footer */}
         <div className="helpy-footer">
           <span className="helpy-logo">helpy</span>
-          <p className="text-[#D1D5DB] dark:text-[#4B5563] text-caption mt-2 leading-relaxed">
+          <p className="text-[#BABABA] dark:text-[#5F5F5F] text-caption mt-2 leading-relaxed">
             "I just want you to know<br />I'm real grateful you're here"
           </p>
-          <p className="text-[#D1D5DB] dark:text-[#4B5563] text-micro mt-1">
+          <p className="text-[#BABABA] dark:text-[#5F5F5F] text-caption mt-1">
             Aibileen Clark, The Help
           </p>
           

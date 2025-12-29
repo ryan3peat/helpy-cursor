@@ -281,7 +281,7 @@ const FeedbackSection: React.FC<FeedbackSectionProps> = ({
   
   // Render header
   const renderHeader = () => (
-    <div className="sticky top-0 z-20 bg-background/80 backdrop-blur-md border-b border-border">
+    <div className="sticky top-0 z-20 bg-background border-b border-border">
       <div className="flex items-center gap-3 px-4 py-4">
         <button
           onClick={onBack}

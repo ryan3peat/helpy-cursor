@@ -437,18 +437,21 @@ button:focus-visible {
 /* Bottom sheet wrapper */
 .bottom-sheet-backdrop {
   animation: backdrop-fade-in 0.3s ease-out forwards;
-  /* Extend backdrop behind status bar for iOS PWA black-translucent */
-  top: calc(-1 * env(safe-area-inset-top, 0px)) !important;
 }
 
-/* Overlay backdrop class - extends behind iOS status bar */
-.status-bar-extend {
-  top: calc(-1 * env(safe-area-inset-top, 0px)) !important;
-}
-
-/* All fixed full-screen backdrops extend behind status bar */
-.fixed.inset-0[class*="bg-black/"] {
-  top: calc(-1 * env(safe-area-inset-top, 0px)) !important;
+/* iOS PWA: Cover status bar area with backdrop (black-translucent mode) */
+.bottom-sheet-backdrop::before,
+.status-bar-extend::before {
+  content: '';
+  position: fixed;
+  top: calc(-1 * env(safe-area-inset-top, 59px));
+  left: 0;
+  right: 0;
+  height: env(safe-area-inset-top, 59px);
+  background: inherit;
+  backdrop-filter: inherit;
+  -webkit-backdrop-filter: inherit;
+  z-index: inherit;
 }
 
 .bottom-sheet-content {

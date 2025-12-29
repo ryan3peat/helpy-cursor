@@ -1457,6 +1457,14 @@ const ToDo: React.FC<ToDoProps> = ({
                     type="text"
                     value={sheetForm.name || ''}
                     onChange={e => setSheetForm(prev => ({ ...prev, name: e.target.value }))}
+                    onFocus={() => {
+                      // When editing, keyboard opens on tap - scroll to keep input visible
+                      if (editingItemId) {
+                        setTimeout(() => {
+                          sheetContentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+                        }, 100);
+                      }
+                    }}
                     placeholder={activeSection === 'shopping' ? t['common.eg_milk'] : t['common.eg_clean_bathroom']}
                     className="w-full px-4 py-3 bg-muted rounded-xl text-body text-foreground placeholder-muted-foreground outline-none border border-transparent focus:border-primary transition-colors"
                     autoFocus={!editingItemId}

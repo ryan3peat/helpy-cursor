@@ -179,12 +179,17 @@
    ───────────────────────────────────────────────────────────────── */
 html {
   overscroll-behavior-y: contain;
-  /* Match theme background - visible on overscroll. !important overrides JS inline styles */
-  background-color: hsl(var(--background)) !important;
+  /* Light mode overflow background */
+  background-color: #fafafa !important;
 }
 
-/* Auth pages - blue overflow background to match auth UI */
+html.dark {
+  /* Dark mode overflow background */
+  background-color: #121212 !important;
+}
+
 html.auth-page {
+  /* Auth pages - blue overflow background */
   background-color: #3EAFD2 !important;
 }
 

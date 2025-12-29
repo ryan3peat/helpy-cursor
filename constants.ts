@@ -406,6 +406,11 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   // Profile - Settings & Account
   'profile.invitation_link': 'Invitation Link',
   'profile.share_link_text': 'Share this link with the new member:',
+  'profile.invite_title': 'Join Helpy',
+  'profile.invite_hi': 'Hi',
+  'profile.invite_join_family': 'would like you to join the family in the Helpy app!',
+  'profile.invite_app_description': 'Helpy is the home management app connecting families and helpers, organizing meals, tasks, and expenses in one place.',
+  'profile.invite_click_below': 'Click below to join:',
   'profile.resend_invite': 'Resend Invite',
   'profile.manage_account': 'Manage your account',
   'profile.delete_family_member': 'Delete Family Member',

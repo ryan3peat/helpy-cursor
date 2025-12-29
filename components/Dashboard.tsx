@@ -533,7 +533,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 
             <button
               onClick={dismiss}
-              className="w-1/2 py-3.5 rounded-xl bg-transparent border border-primary text-primary text-body font-semibold"
+              className="w-1/2 py-[13px] rounded-xl bg-transparent border border-primary text-primary text-body font-semibold"
             >
               Not now
             </button>
@@ -655,8 +655,12 @@ const Dashboard: React.FC<DashboardProps> = ({
             <div className="p-5">
               <ol className="list-decimal pl-5 space-y-2">
                 <li className="text-body text-foreground">Tap <strong>Share</strong> <Share size={16} className="inline-block text-muted-foreground ml-1" /></li>
-                <li className="text-body text-foreground">Tap <strong>Add to Home Screen</strong> <SquarePlus size={16} className="inline-block text-muted-foreground ml-1" /></li>
-                <li className="text-body text-foreground">Open Helpy from your Home Screen</li>
+                <li className="text-body text-foreground">
+                  Tap <strong>Add to Home Screen</strong> <SquarePlus size={16} className="inline-block text-muted-foreground ml-1" />
+                  <p className="text-caption text-muted-foreground mt-1">Switch on "Open as Web App" if available</p>
+                </li>
+                <li className="text-body text-foreground">Tap <strong>Add</strong></li>
+                <li className="text-body text-foreground">Done and open Helpy from your homescreen</li>
               </ol>
             </div>
 

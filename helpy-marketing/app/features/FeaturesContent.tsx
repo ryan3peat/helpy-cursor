@@ -8,7 +8,7 @@ import {
   Utensils,
   DollarSign,
   Info,
-  BookOpen,
+  HeartHandshake,
   Quote
 } from "lucide-react";
 
@@ -40,9 +40,9 @@ export default function FeaturesContent() {
       body: "Store important details in one family notes app. It serves as a family profile manager for all your contacts, routines, and house rules."
     },
     {
-      icon: BookOpen,
-      title: "Training Guides",
-      body: "Use our daily routine planner for families to build bespoke training modules. Helpers can reference instructions anytime, ensuring clarity and confidence for everyone."
+      icon: HeartHandshake,
+      title: "Helper Management",
+      body: "Stay aligned with your domestic helper on holidays and pay. Track statutory holidays, manage overtime compensation, and confirm monthly payslips together with a dual-signature system."
     }
   ];
 
@@ -151,8 +151,8 @@ export default function FeaturesContent() {
                 {
                   quote:
                     "Helpy turned our busy home into a team effort. I don't have to repeat myself, and our helper feels much more confident.",
-                  name: "Lina, mom of two",
-                  role: "Singapore"
+                  name: "Michelle, mom of two",
+                  role: "Hong Kong"
                 },
                 {
                   quote:
@@ -162,9 +162,9 @@ export default function FeaturesContent() {
                 },
                 {
                   quote:
-                    "We live in different countries from my parents, but still support their helper. Helpy lets us share instructions and check-ins in one place.",
-                  name: "Kenji and Aiko",
-                  role: "Tokyo"
+                    "We both work long hours, so coordinating with our helper was always a challenge. Helpy keeps everyone on the same page, even when we're not home.",
+                  name: "David and Karen",
+                  role: "Hong Kong"
                 }
               ].map((item, idx) => (
                 <div key={idx} className={`${idx === 0 ? '' : 'border-l border-border'} pl-6 py-2`}>

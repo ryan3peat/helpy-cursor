@@ -27,35 +27,105 @@
     <!-- Web App Manifest for Android/PWA -->
     <link rel="manifest" href="/manifest.json" />
 
-    <!-- Restore theme and set initial background before render to prevent flash -->
+    <!--
+      Single authority for theme + iOS status bar.
+      - Computes effective theme from saved setting (light/dark/system) + OS (only in system mode)
+      - Sets html class (dark/light) + auth-page override
+      - Sets meta theme-color + color-scheme
+      - Keeps overflow background stable
+    -->
     <script>
       (function() {
-        var saved = localStorage.getItem('helpy_theme');
-        var systemPrefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-        // Support system mode: only follow OS if user explicitly chose 'system'
-        var isDark = saved === 'dark' || (saved === 'system' && systemPrefersDark);
-        var html = document.documentElement;
+        var THEME_KEY = 'helpy_theme';
+        var LIGHT_COLOR = '#fafafa';
+        var DARK_COLOR = '#121212';
+        var AUTH_COLOR = '#3EAFD2';
 
-        if (isDark) {
-          html.classList.remove('light');
-          html.classList.add('dark');
-        } else {
-          html.classList.remove('dark');
-          html.classList.add('light');
+        function getSavedTheme() {
+          var t = localStorage.getItem(THEME_KEY);
+          return (t === 'light' || t === 'dark' || t === 'system') ? t : 'light';
         }
 
-        // Set background based on session state AND theme to prevent flash
-        var hasSession = !!localStorage.getItem('helpy_current_session_user');
-        var bgColor = hasSession ? (isDark ? '#121212' : '#fafafa') : '#fafafa';
-        html.style.setProperty('--initial-bg', bgColor);
-        html.style.backgroundColor = bgColor;
+        function getEffectiveIsDark(savedTheme) {
+          if (savedTheme === 'dark') return true;
+          if (savedTheme === 'system') {
+            return !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          }
+          return false;
+        }
 
-        // Force iOS to treat the page as light/dark based on APP theme (not OS)
-        var colorSchemeMeta = document.querySelector('meta[name="color-scheme"]');
-        if (colorSchemeMeta) colorSchemeMeta.setAttribute('content', isDark ? 'dark' : 'light');
+        function setMeta(name, value) {
+          var el = document.querySelector('meta[name="' + name + '"]');
+          if (el) el.setAttribute('content', value);
+        }
 
-        var themeColorMeta = document.querySelector('meta[name="theme-color"]');
-        if (themeColorMeta) themeColorMeta.setAttribute('content', bgColor);
+        function computeThemeColor(isDark) {
+          var html = document.documentElement;
+          var isAuth = html.classList.contains('auth-page');
+          if (isAuth) return AUTH_COLOR;
+          return isDark ? DARK_COLOR : LIGHT_COLOR;
+        }
+
+        function applyTheme() {
+          var html = document.documentElement;
+          var savedTheme = getSavedTheme();
+          var isDark = getEffectiveIsDark(savedTheme);
+
+          html.classList.toggle('dark', isDark);
+          html.classList.toggle('light', !isDark);
+
+          var color = computeThemeColor(isDark);
+
+          // Set initial background to prevent flash (session-aware not needed here; auth-page handles its own)
+          html.style.setProperty('--initial-bg', color);
+          html.style.backgroundColor = color;
+
+          // Status bar + UI hints
+          setMeta('theme-color', color);
+          setMeta('color-scheme', isDark ? 'dark' : 'light');
+
+          return { savedTheme: savedTheme, isDark: isDark, color: color };
+        }
+
+        // Expose helpers for React code (Profile/Auth)
+        window.__helpyApplyTheme = applyTheme;
+        window.__helpySetAuthPage = function(isAuth) {
+          document.documentElement.classList.toggle('auth-page', !!isAuth);
+          return applyTheme();
+        };
+
+        // Initial apply (before React mounts)
+        applyTheme();
+
+        // Only react to relevant html class changes (dark/auth-page), avoid thrash from unrelated class mutations.
+        var lastState = null;
+        function stateKey() {
+          var html = document.documentElement;
+          return (html.classList.contains('dark') ? 'd' : 'l') + (html.classList.contains('auth-page') ? 'a' : 'n');
+        }
+        lastState = stateKey();
+
+        var observer = new MutationObserver(function() {
+          var next = stateKey();
+          if (next === lastState) return;
+          lastState = next;
+          applyTheme();
+        });
+        observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+
+        // OS listener (only when user explicitly chose system)
+        if (window.matchMedia) {
+          var mql = window.matchMedia('(prefers-color-scheme: dark)');
+          var handler = function() {
+            if (getSavedTheme() === 'system') applyTheme();
+          };
+          try {
+            mql.addEventListener('change', handler);
+          } catch (e) {
+            // Safari < 14
+            mql.addListener(handler);
+          }
+        }
       })();
     </script>
 
@@ -187,58 +257,5 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
-    <script>
-      // Dynamic theme-color sync for class-based dark mode
-      (function() {
-        const LIGHT_COLOR = '#fafafa';
-        const DARK_COLOR = '#121212';
-        
-        function updateThemeColor() {
-          const isDark = document.documentElement.classList.contains('dark');
-          const color = isDark ? DARK_COLOR : LIGHT_COLOR;
-          
-          // Update theme-color and color-scheme to follow APP theme (not OS)
-          const themeColorMeta = document.querySelector('meta[name="theme-color"]');
-          if (themeColorMeta) themeColorMeta.setAttribute('content', color);
-
-          const colorSchemeMeta = document.querySelector('meta[name="color-scheme"]');
-          if (colorSchemeMeta) colorSchemeMeta.setAttribute('content', isDark ? 'dark' : 'light');
-          
-          // Update background for overscroll
-          document.documentElement.style.backgroundColor = color;
-        }
-        
-        // Initial update
-        updateThemeColor();
-        
-        // Watch for class changes on <html>
-        const observer = new MutationObserver(mutations => {
-          mutations.forEach(mutation => {
-            if (mutation.attributeName === 'class') {
-              updateThemeColor();
-            }
-          });
-        });
-        
-        observer.observe(document.documentElement, { attributes: true });
-        
-        // Listen for OS preference changes (only when user chose 'system')
-        if (window.matchMedia) {
-          window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
-            const savedTheme = localStorage.getItem('helpy_theme');
-            if (savedTheme === 'system') {
-              const html = document.documentElement;
-              if (e.matches) {
-                html.classList.remove('light');
-                html.classList.add('dark');
-              } else {
-                html.classList.remove('dark');
-                html.classList.add('light');
-              }
-            }
-          });
-        }
-      })();
-    </script>
   </body>
 </html>

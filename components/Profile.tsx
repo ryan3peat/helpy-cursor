@@ -1880,24 +1880,21 @@ const Profile: React.FC<ProfileProps> = ({
   const handleThemeChange = (theme: 'light' | 'dark' | 'system') => {
     setCurrentTheme(theme);
     localStorage.setItem('helpy_theme', theme);
-    
+
+    // Single authority: index.html controller also updates theme-color + color-scheme for iOS status bar.
+    const w = window as any;
+    if (typeof w.__helpyApplyTheme === 'function') {
+      w.__helpyApplyTheme();
+      return;
+    }
+
+    // Fallback (shouldn't happen): keep class-only behavior
     const html = document.documentElement;
     let isDark = false;
-    
-    if (theme === 'dark') {
-      isDark = true;
-    } else if (theme === 'system') {
-      isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    }
-    // 'light' keeps isDark = false
-    
-    if (isDark) {
-      html.classList.remove('light');
-      html.classList.add('dark');
-    } else {
-      html.classList.remove('dark');
-      html.classList.add('light');
-    }
+    if (theme === 'dark') isDark = true;
+    else if (theme === 'system') isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    html.classList.toggle('dark', isDark);
+    html.classList.toggle('light', !isDark);
   };
 
   // Handle Delete Account

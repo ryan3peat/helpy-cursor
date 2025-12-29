@@ -66,9 +66,19 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
 
   // Auth page styling handled by CSS only (html.auth-page class)
   React.useEffect(() => {
-    document.documentElement.classList.add('auth-page');
+    // Use the global theme controller so status bar becomes Helpy blue on auth screens
+    const w = window as any;
+    if (typeof w.__helpySetAuthPage === 'function') {
+      w.__helpySetAuthPage(true);
+    } else {
+      document.documentElement.classList.add('auth-page');
+    }
     return () => {
-      document.documentElement.classList.remove('auth-page');
+      if (typeof w.__helpySetAuthPage === 'function') {
+        w.__helpySetAuthPage(false);
+      } else {
+        document.documentElement.classList.remove('auth-page');
+      }
     };
   }, []);
 

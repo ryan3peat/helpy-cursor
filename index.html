@@ -3,9 +3,11 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <!-- IMPORTANT: these MUST follow Helpy's theme (not iOS), so do NOT use prefers-color-scheme media queries -->
-    <meta name="color-scheme" content="light" />
-    <meta name="theme-color" content="#fafafa" />
+    <!-- color-scheme: light dark tells iOS we support both; JS will override theme-color dynamically -->
+    <meta name="color-scheme" content="light dark" />
+    <!-- Two theme-color tags with media queries - iOS needs both; JS updates ALL of them to match app theme -->
+    <meta name="theme-color" content="#fafafa" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)" />
     <!-- iOS specific: ensures status bar text adapts to background -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -52,8 +54,10 @@
         }
 
         function setMeta(name, value) {
-          var el = document.querySelector('meta[name="' + name + '"]');
-          if (el) el.setAttribute('content', value);
+          // Update ALL matching meta tags (iOS needs both theme-color tags updated)
+          document.querySelectorAll('meta[name="' + name + '"]').forEach(function(el) {
+            el.setAttribute('content', value);
+          });
         }
 
         function computeThemeColor(isDark) {

@@ -81,9 +81,9 @@
           html.style.setProperty('--initial-bg', color);
           html.style.backgroundColor = color;
 
-          // Status bar + UI hints
+          // Status bar - only update theme-color, leave color-scheme static as "light dark"
+          // (CSS color-scheme property on html/html.dark handles the rest)
           setMeta('theme-color', color);
-          setMeta('color-scheme', isDark ? 'dark' : 'light');
 
           return { savedTheme: savedTheme, isDark: isDark, color: color };
         }

@@ -25,7 +25,9 @@ import {
   BookOpen,
   UserPlus,
   ArrowDownToLine,
-  Share
+  Share,
+  LayoutGrid,
+  SquarePlus
 } from 'lucide-react';
 import Avatar from './ui/Avatar';
 import { ToDoItem, Meal, User, MealType, TranslationDictionary, UserRole, Expense } from '../types';
@@ -498,7 +500,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         <div className="rounded-3xl p-5 shadow-sm border bg-[#EAF7FB] border-[#BFE7F3] dark:bg-primary/10 dark:border-primary/20">
           {/* Title row (icon + text inline) */}
           <div className="flex items-center gap-2">
-            {shouldShowIosSteps ? <Share size={20} className="text-primary" /> : <ArrowDownToLine size={20} className="text-primary" />}
+            <LayoutGrid size={20} className="text-primary" />
             <p className="text-title font-bold text-primary">
               {shouldShowIosSteps ? 'Add Helpy to Home Screen' : 'Install Helpy'}
             </p>
@@ -652,8 +654,8 @@ const Dashboard: React.FC<DashboardProps> = ({
             {/* Body */}
             <div className="p-5">
               <ol className="list-decimal pl-5 space-y-2">
-                <li className="text-body text-foreground">Tap <strong>Share</strong></li>
-                <li className="text-body text-foreground">Tap <strong>Add to Home Screen</strong></li>
+                <li className="text-body text-foreground">Tap <strong>Share</strong> <Share size={16} className="inline-block text-muted-foreground ml-1" /></li>
+                <li className="text-body text-foreground">Tap <strong>Add to Home Screen</strong> <SquarePlus size={16} className="inline-block text-muted-foreground ml-1" /></li>
                 <li className="text-body text-foreground">Open Helpy from your Home Screen</li>
               </ol>
             </div>

@@ -51,7 +51,7 @@ const AccordionSection: React.FC<{
         className="w-full px-5 py-4 flex items-center justify-between"
       >
         <div className="flex items-center gap-3">
-          <div className="text-foreground">{icon}</div>
+          <div className={isOpen ? 'text-foreground' : 'text-primary'}>{icon}</div>
           <span className="text-title font-bold text-foreground">{title}</span>
         </div>
         {isOpen ? (
@@ -79,7 +79,7 @@ const FeatureCard: React.FC<{
   t: TranslationDictionary;
 }> = ({ icon, title, description, isPremium, t }) => (
   <div className="flex gap-2.5 py-2 ml-6">
-    <div className={`p-1.5 rounded-lg ${isPremium ? 'bg-amber-500/10' : 'bg-muted'} h-fit`}>
+    <div className="h-fit mt-0.5">
       {isPremium ? (
         <div className="text-amber-600">{icon}</div>
       ) : (

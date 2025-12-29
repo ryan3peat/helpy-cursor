@@ -46,20 +46,52 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     // Verify inviter is Admin or SuperAdmin
     if (inviterId) {
-      const { data: inviter } = await supabase
-        .from('users')
-        .select('id, household_id, role, clerk_id')
-        .or(`clerk_id.eq.${inviterId},id.eq.${inviterId}`)
-        .eq('household_id', householdId)
-        .maybeSingle();
+      console.log('[Invite API] Looking up inviter:', { inviterId, householdId });
+      
+      // Check if inviterId looks like a UUID (Supabase ID) or Clerk ID
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(inviterId);
+      
+      let inviter, inviterError;
+      if (isUUID) {
+        // Query by Supabase UUID
+        const result = await supabase
+          .from('users')
+          .select('id, household_id, role, clerk_id')
+          .eq('id', inviterId)
+          .eq('household_id', householdId)
+          .maybeSingle();
+        inviter = result.data;
+        inviterError = result.error;
+      } else {
+        // Query by Clerk ID
+        const result = await supabase
+          .from('users')
+          .select('id, household_id, role, clerk_id')
+          .eq('clerk_id', inviterId)
+          .eq('household_id', householdId)
+          .maybeSingle();
+        inviter = result.data;
+        inviterError = result.error;
+      }
+
+      console.log('[Invite API] Inviter lookup result:', { inviter, error: inviterError, isUUID });
+
+      if (inviterError) {
+        console.error('[Invite API] Supabase inviter lookup error:', inviterError);
+        return res.status(500).json({ error: `Database error looking up inviter: ${inviterError.message}` });
+      }
 
       if (!inviter) {
-        return res.status(403).json({ error: 'Inviter not found' });
+        console.error('[Invite API] Inviter not found for:', { inviterId, householdId });
+        return res.status(403).json({ error: `Inviter not found (id: ${inviterId})` });
       }
 
       if (inviter.role !== 'Admin' && inviter.role !== 'SuperAdmin') {
+        console.error('[Invite API] Inviter is not admin:', { role: inviter.role });
         return res.status(403).json({ error: 'Only admins can invite family members' });
       }
+      
+      console.log('[Invite API] Inviter verified as admin');
     }
     // ─────────────────────────────────────────────────────────────
     // Enforce household limits before creating the pending user

@@ -738,7 +738,7 @@ const Meals: React.FC<MealsProps> = ({
               disabled={isCurrentWeek}
               className={`px-4 rounded-xl font-semibold text-body transition-colors h-12 ${
                 isCurrentWeek
-                  ? 'bg-muted text-primary cursor-default'
+                  ? 'bg-muted text-muted-foreground cursor-default'
                   : 'bg-primary text-primary-foreground shadow-sm'
               }`}
             >

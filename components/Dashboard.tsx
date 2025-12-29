@@ -496,58 +496,45 @@ const Dashboard: React.FC<DashboardProps> = ({
       {/* PWA Install Nudge (Mobile Only) */}
       {(canPromptInstall || shouldShowIosSteps) && (
         <div className="rounded-3xl p-5 shadow-sm border bg-[#EAF7FB] border-[#BFE7F3] dark:bg-primary/10 dark:border-primary/20">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-              {shouldShowIosSteps ? <Share size={20} /> : <ArrowDownToLine size={20} />}
-            </div>
+          {/* Title row (icon + text inline) */}
+          <div className="flex items-center gap-2">
+            {shouldShowIosSteps ? <Share size={20} className="text-primary" /> : <ArrowDownToLine size={20} className="text-primary" />}
+            <p className="text-title font-bold text-primary">
+              {shouldShowIosSteps ? 'Add Helpy to Home Screen' : 'Install Helpy'}
+            </p>
+          </div>
 
-            <div className="flex-1 min-w-0">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-title font-bold text-primary">
-                    {shouldShowIosSteps ? 'Add Helpy to Home Screen' : 'Install Helpy'}
-                  </p>
-                  <p className="text-body text-primary/80 mt-1">
-                    {shouldShowIosSteps
-                      ? 'Helpy works best as an app. On iPhone, adding to Home Screen helps with notifications.'
-                      : 'Open faster, full screen, and get a smoother notification setup.'}
-                  </p>
-                </div>
+          {/* Body */}
+          <p className="text-body text-primary/80 mt-2">
+            {shouldShowIosSteps
+              ? 'Helpy works best as an app. On iPhone, adding to Home Screen helps with notifications.'
+              : 'Open faster, full screen, and get a smoother notification setup.'}
+          </p>
 
-                <button
-                  onClick={dismiss}
-                  className="w-10 h-10 rounded-full flex items-center justify-center text-primary/70"
-                  aria-label="Close"
-                >
-                  <X size={20} />
-                </button>
-              </div>
+          {/* Buttons - 50/50 width */}
+          <div className="flex items-center gap-3 mt-4">
+            {shouldShowIosSteps ? (
+              <button
+                onClick={() => setShowIosInstallSteps(true)}
+                className="w-1/2 py-3.5 rounded-xl bg-primary text-primary-foreground text-body font-semibold shadow-sm"
+              >
+                Show steps
+              </button>
+            ) : (
+              <button
+                onClick={promptInstall}
+                className="w-1/2 py-3.5 rounded-xl bg-primary text-primary-foreground text-body font-semibold shadow-sm"
+              >
+                Install app
+              </button>
+            )}
 
-              <div className="flex items-center gap-3 mt-4">
-                {shouldShowIosSteps ? (
-                  <button
-                    onClick={() => setShowIosInstallSteps(true)}
-                    className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body font-semibold shadow-sm"
-                  >
-                    Show steps
-                  </button>
-                ) : (
-                  <button
-                    onClick={promptInstall}
-                    className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body font-semibold shadow-sm"
-                  >
-                    Install app
-                  </button>
-                )}
-
-                <button
-                  onClick={dismiss}
-                  className="px-4 py-3.5 rounded-xl bg-secondary text-foreground text-body font-medium"
-                >
-                  Not now
-                </button>
-              </div>
-            </div>
+            <button
+              onClick={dismiss}
+              className="w-1/2 py-3.5 rounded-xl bg-transparent border border-primary text-primary text-body font-semibold"
+            >
+              Not now
+            </button>
           </div>
         </div>
       )}

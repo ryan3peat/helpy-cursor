@@ -295,7 +295,6 @@ const ToDo: React.FC<ToDoProps> = ({
   const [showUnitSuggestions, setShowUnitSuggestions] = useState(false);
   const unitInputRef = useRef<HTMLInputElement>(null);
   const sheetContentRef = useRef<HTMLDivElement>(null);
-  const nameInputRef = useRef<HTMLInputElement>(null);
   const [showCompleted, setShowCompleted] = useState(false);
   const [showSuggested, setShowSuggested] = useState(true);
   const [optimisticItems, setOptimisticItems] = useState<ToDoItem[]>([]);
@@ -372,34 +371,12 @@ const ToDo: React.FC<ToDoProps> = ({
     }
   }, [isAddingInline]);
 
-  // Ensure sheet opens showing the name field (iOS Safari can open mid-scroll when keyboard is up)
+  // Reset sheet scroll position when it opens
   useEffect(() => {
-    if (!isSheetOpen) return;
-
-    // Always reset sheet scroll to top
-    sheetContentRef.current?.scrollTo({ top: 0, behavior: 'auto' });
-
-    const raf = requestAnimationFrame(() => {
-      sheetContentRef.current?.scrollTo({ top: 0, behavior: 'auto' });
-      if (!editingItemId) {
-        nameInputRef.current?.focus();
-        nameInputRef.current?.scrollIntoView({ block: 'start' });
-      }
-    });
-
-    const timeoutId = window.setTimeout(() => {
-      sheetContentRef.current?.scrollTo({ top: 0, behavior: 'auto' });
-      if (!editingItemId) {
-        nameInputRef.current?.focus();
-        nameInputRef.current?.scrollIntoView({ block: 'start' });
-      }
-    }, 80);
-
-    return () => {
-      cancelAnimationFrame(raf);
-      window.clearTimeout(timeoutId);
-    };
-  }, [isSheetOpen, editingItemId]);
+    if (isSheetOpen && sheetContentRef.current) {
+      sheetContentRef.current.scrollTop = 0;
+    }
+  }, [isSheetOpen]);
   
   useEffect(() => {
     setOptimisticCompleted(prev => {
@@ -1443,7 +1420,6 @@ const ToDo: React.FC<ToDoProps> = ({
                     {activeSection === 'shopping' ? t['common.item_name'] : t['common.task_name']}
                   </label>
                   <input
-                    ref={nameInputRef}
                     type="text"
                     value={sheetForm.name || ''}
                     onChange={e => setSheetForm(prev => ({ ...prev, name: e.target.value }))}

@@ -121,7 +121,7 @@ const Profile: React.FC<ProfileProps> = ({
   const [currentTheme, setCurrentTheme] = useState<'light' | 'dark' | 'system'>(() => {
     const saved = localStorage.getItem('helpy_theme');
     if (saved === 'light' || saved === 'dark' || saved === 'system') return saved;
-    return 'system'; // Default to system
+    return 'light'; // Default to light (matches index.html behavior)
   });
   
   // Plan confirmation modal state (for promo/referral codes)

@@ -8,10 +8,11 @@
     <!-- Restore theme and set initial background before render to prevent flash -->
     <script>
       (function() {
-        var saved = localStorage.getItem('helpy_theme') || 'system'; // Default to system
+        var saved = localStorage.getItem('helpy_theme');
         var systemPrefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
         
         // Determine if dark mode should be applied
+        // Only follow system preference if user explicitly chose 'system'
         var isDark = saved === 'dark' || (saved === 'system' && systemPrefersDark);
         
         if (isDark) {
@@ -253,10 +254,10 @@
         
         observer.observe(document.documentElement, { attributes: true });
         
-        // Listen for OS preference changes (only applies when theme is 'system')
+        // Listen for OS preference changes (only applies when user explicitly chose 'system')
         if (window.matchMedia) {
           window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
-            const savedTheme = localStorage.getItem('helpy_theme') || 'system';
+            const savedTheme = localStorage.getItem('helpy_theme');
             if (savedTheme === 'system') {
               applyTheme(e.matches);
             }

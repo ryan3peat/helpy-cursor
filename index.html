@@ -10,7 +10,7 @@
     <meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)" />
     <!-- iOS specific: ensures status bar text adapts to background -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Helpy" />
     <!-- Additional iOS PWA meta tags for better recognition -->
     <meta name="apple-touch-fullscreen" content="yes" />
@@ -99,30 +99,10 @@
           return applyTheme();
         };
         
-        // Sheet overlay support - dims status bar to match bg-black/30 backdrop
-        // Colors calculated: original * 0.7 (30% black overlay)
-        // Light: #fafafa (250) * 0.7 = 175 = #afafaf
-        // Dark: #121212 (18) * 0.7 = 12.6 = #0d0d0d
-        // Auth: #3EAFD2 -> dimmed ~#2b7a93
-        var sheetOpenCount = 0;
+        // Sheet overlay support - with black-translucent status bar,
+        // the backdrop blur/dim naturally shows through, no color manipulation needed
         window.__helpySetSheetOpen = function(isOpen) {
-          sheetOpenCount = Math.max(0, sheetOpenCount + (isOpen ? 1 : -1));
-          var shouldDim = sheetOpenCount > 0;
-          
-          var savedTheme = getSavedTheme();
-          var isDark = getEffectiveIsDark(savedTheme);
-          var isAuth = document.documentElement.classList.contains('auth-page');
-          
-          var color;
-          if (isAuth) {
-            color = shouldDim ? '#2b7a93' : AUTH_COLOR;
-          } else if (isDark) {
-            color = shouldDim ? '#0d0d0d' : DARK_COLOR;
-          } else {
-            color = shouldDim ? '#afafaf' : LIGHT_COLOR;
-          }
-          
-          setMeta('theme-color', color);
+          // No-op: transparent status bar shows backdrop naturally
         };
 
         // Initial apply (before React mounts)

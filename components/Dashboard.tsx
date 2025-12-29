@@ -23,7 +23,9 @@ import {
   BellDot,
   GraduationCap,
   BookOpen,
-  UserPlus
+  UserPlus,
+  ArrowDownToLine,
+  Share
 } from 'lucide-react';
 import Avatar from './ui/Avatar';
 import { ToDoItem, Meal, User, MealType, TranslationDictionary, UserRole, Expense } from '../types';
@@ -114,6 +116,93 @@ const TranslatedFamilyNotes: React.FC<{
   return <>{translatedNotes}</>;
 };
 
+type BeforeInstallPromptEvent = Event & {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
+};
+
+function isRunningAsPwa(): boolean {
+  const isStandalone = window.matchMedia?.('(display-mode: standalone)')?.matches;
+  const isIosStandalone = (window.navigator as any).standalone === true;
+  return Boolean(isStandalone || isIosStandalone);
+}
+
+function isIosDevice(): boolean {
+  const ua = navigator.userAgent.toLowerCase();
+  return /iphone|ipad|ipod/.test(ua);
+}
+
+function isMobileDevice(): boolean {
+  const uaDataMobile = (navigator as any).userAgentData?.mobile;
+  if (typeof uaDataMobile === 'boolean') return uaDataMobile;
+
+  const ua = navigator.userAgent.toLowerCase();
+  return /iphone|ipad|ipod|android/.test(ua);
+}
+
+function usePwaInstallNudge() {
+  const DISMISS_HOURS = 72;
+  const DISMISS_KEY = 'helpy_pwa_nudge_dismissed_until';
+
+  const [isInstalled, setIsInstalled] = useState<boolean>(() => isRunningAsPwa());
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [dismissedUntil, setDismissedUntil] = useState<number>(() => {
+    const raw = localStorage.getItem(DISMISS_KEY);
+    return raw ? Number(raw) : 0;
+  });
+
+  useEffect(() => {
+    // If we're currently running as PWA, ensure we never show the banner.
+    if (isRunningAsPwa()) setIsInstalled(true);
+
+    const onBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault(); // required to trigger prompt from our custom button
+      setDeferredPrompt(e as BeforeInstallPromptEvent);
+    };
+
+    const onInstalled = () => {
+      setIsInstalled(true);
+      setDeferredPrompt(null);
+    };
+
+    window.addEventListener('beforeinstallprompt', onBeforeInstallPrompt);
+    window.addEventListener('appinstalled', onInstalled);
+
+    // Keep state in sync if display-mode changes
+    const mm = window.matchMedia?.('(display-mode: standalone)');
+    const onChange = () => setIsInstalled(isRunningAsPwa());
+    mm?.addEventListener?.('change', onChange);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', onBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', onInstalled);
+      mm?.removeEventListener?.('change', onChange);
+    };
+  }, []);
+
+  const isDismissed = dismissedUntil > Date.now();
+  const isMobile = isMobileDevice();
+
+  const dismiss = () => {
+    const until = Date.now() + DISMISS_HOURS * 60 * 60 * 1000;
+    localStorage.setItem(DISMISS_KEY, String(until));
+    setDismissedUntil(until);
+  };
+
+  const canPromptInstall = isMobile && !isInstalled && !!deferredPrompt && !isDismissed;
+  const shouldShowIosSteps = isMobile && !isInstalled && isIosDevice() && !isDismissed;
+
+  const promptInstall = async () => {
+    if (!deferredPrompt) return;
+    await deferredPrompt.prompt();
+    const choice = await deferredPrompt.userChoice;
+    setDeferredPrompt(null); // one-shot
+    if (choice.outcome !== 'accepted') dismiss();
+  };
+
+  return { canPromptInstall, shouldShowIosSteps, dismiss, promptInstall };
+}
+
 const Dashboard: React.FC<DashboardProps> = ({
   todoItems,
   meals,
@@ -164,6 +253,8 @@ const Dashboard: React.FC<DashboardProps> = ({
   const [isDeletingNotes, setIsDeletingNotes] = useState(false);
   const [timeOfDay, setTimeOfDay] = useState('');
   const [showLangModal, setShowLangModal] = useState(false);
+  const [showIosInstallSteps, setShowIosInstallSteps] = useState(false);
+  const { canPromptInstall, shouldShowIosSteps, dismiss, promptInstall } = usePwaInstallNudge();
   
   // Scroll header animation
   const { isScrolled } = useScrollHeader();
@@ -402,6 +493,65 @@ const Dashboard: React.FC<DashboardProps> = ({
       {/* Content */}
       <div className="px-5 pt-12 space-y-5">
 
+      {/* PWA Install Nudge (Mobile Only) */}
+      {(canPromptInstall || shouldShowIosSteps) && (
+        <div className="rounded-3xl p-5 shadow-sm border bg-[#EAF7FB] border-[#BFE7F3] dark:bg-primary/10 dark:border-primary/20">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+              {shouldShowIosSteps ? <Share size={20} /> : <ArrowDownToLine size={20} />}
+            </div>
+
+            <div className="flex-1 min-w-0">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-title font-bold text-primary">
+                    {shouldShowIosSteps ? 'Add Helpy to Home Screen' : 'Install Helpy'}
+                  </p>
+                  <p className="text-body text-primary/80 mt-1">
+                    {shouldShowIosSteps
+                      ? 'Helpy works best as an app. On iPhone, adding to Home Screen helps with notifications.'
+                      : 'Open faster, full screen, and get a smoother notification setup.'}
+                  </p>
+                </div>
+
+                <button
+                  onClick={dismiss}
+                  className="w-10 h-10 rounded-full flex items-center justify-center text-primary/70"
+                  aria-label="Close"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="flex items-center gap-3 mt-4">
+                {shouldShowIosSteps ? (
+                  <button
+                    onClick={() => setShowIosInstallSteps(true)}
+                    className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body font-semibold shadow-sm"
+                  >
+                    Show steps
+                  </button>
+                ) : (
+                  <button
+                    onClick={promptInstall}
+                    className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body font-semibold shadow-sm"
+                  >
+                    Install app
+                  </button>
+                )}
+
+                <button
+                  onClick={dismiss}
+                  className="px-4 py-3.5 rounded-xl bg-secondary text-foreground text-body font-medium"
+                >
+                  Not now
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Family Notes */}
       <div id="onboarding-family-board" className="relative group">
         <div className="relative bg-primary p-5 rounded-2xl shadow-sm">
@@ -481,6 +631,61 @@ const Dashboard: React.FC<DashboardProps> = ({
           )}
         </div>
       </div>
+
+      {/* iOS Add to Home Screen Steps */}
+      {showIosInstallSteps && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
+          {/* Safe area bottom cover */}
+          <div
+            className="absolute bottom-0 left-0 right-0 bg-card"
+            style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
+          />
+
+          <div
+            className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content relative"
+            style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}
+          >
+            {/* Close Button */}
+            <button
+              onClick={() => setShowIosInstallSteps(false)}
+              className="absolute z-10 right-4 top-4 w-10 h-10 rounded-full flex items-center justify-center text-muted-foreground"
+              aria-label="Close"
+            >
+              <X size={20} />
+            </button>
+
+            {/* Header */}
+            <div className="pt-6 pb-4 px-5 border-b border-border">
+              <h2 className="text-title text-foreground">Add Helpy to Home Screen</h2>
+              <p className="text-body text-muted-foreground mt-1">
+                It will look and feel like an app.
+              </p>
+            </div>
+
+            {/* Body */}
+            <div className="p-5">
+              <ol className="list-decimal pl-5 space-y-2">
+                <li className="text-body text-foreground">Tap <strong>Share</strong></li>
+                <li className="text-body text-foreground">Tap <strong>Add to Home Screen</strong></li>
+                <li className="text-body text-foreground">Open Helpy from your Home Screen</li>
+              </ol>
+            </div>
+
+            {/* Footer */}
+            <div className="p-5 pb-8 border-t border-border flex gap-3">
+              <button
+                onClick={() => {
+                  setShowIosInstallSteps(false);
+                  dismiss();
+                }}
+                className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body font-semibold shadow-sm"
+              >
+                Got it
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Today's Menu */}
       <div

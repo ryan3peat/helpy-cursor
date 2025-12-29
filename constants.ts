@@ -171,6 +171,7 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'expenses.scan_receipt': 'Scan Receipt',
   'expenses.analyzing': 'Analyzing Receipt with AI...',
   'expenses.breakdown': 'Spending Breakdown',
+  'expenses.manual_entry': 'Manual Entry',
 
   // Household Info
   'info.title': 'Household Info',
@@ -408,6 +409,8 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'profile.share_link_text': 'Share this link with the new member:',
   'profile.invite_title': 'Join Helpy',
   'profile.invite_hi': 'Hi',
+  'whatsapp.not_installed': 'WhatsApp is not installed.\n\nWould you like to download it from the App Store?',
+  'whatsapp.not_installed_android': 'WhatsApp is not installed.\n\nWould you like to download it from the Play Store?',
   'profile.invite_join_family': 'would like you to join the family in the Helpy app!',
   'profile.invite_app_description': 'Helpy is the home management app connecting families and helpers, organizing meals, tasks, and expenses in one place.',
   'profile.invite_click_below': 'Click below to join:',
@@ -525,10 +528,37 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'auth.please_wait': 'Please wait a moment',
   'auth.setting_up': 'Setting up your account',
   'auth.almost_ready': 'Almost ready',
+  'auth.sign_up': 'Sign Up',
+  'auth.sign_in': 'Sign In',
+  'auth.sign_up_email': 'Sign Up with Email',
+  'auth.sign_up_google': 'Sign Up with Google',
+  'auth.no_account': "Don't have an account?",
+  'auth.already_have_account': 'Already have an account?',
+  'auth.back_to_sign_in': 'Back to Sign In',
+  'auth.create_account': 'Create Account',
+  'auth.creating_account': 'Creating Account...',
+  'auth.see_features': 'See Helpyfam Features',
+  'auth.quote': "\"I just want you to know\nI'm real grateful you're here\"",
+  'auth.quote_author': 'Aibileen Clark, The Help',
+  'auth.or_continue_email': 'Or continue with email',
+  'auth.processing': 'Processing...',
+  'auth.verification_failed': 'Verification failed. Please try again.',
 
   // Invite
   'invite.loading': 'Loading invitation...',
   'invite.completing': 'Completing invitation...',
+  'invite.welcome': 'Welcome!',
+  'invite.error_title': 'Invitation Error',
+  'invite.invalid_or_expired': 'This invitation is invalid or has expired.',
+  'invite.go_home': 'Go to Home',
+  'invite.verify_email_title': 'Verify Your Email',
+  'invite.code_sent_to': 'We sent a code to',
+  'invite.verification_code': 'Verification Code',
+  'invite.verifying': 'Verifying...',
+  'invite.verify_email': 'Verify Email',
+  'invite.added_as': "You'll be added as:",
+  'invite.invited_to_join': "You've been invited to join",
+  'invite.household_suffix': "'s household",
 
   // Placeholders
   'placeholder.search_country': 'Search country...',
@@ -540,6 +570,8 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'placeholder.last_name': 'Doe',
   'placeholder.enter_password': 'Enter password',
   'placeholder.min_8_chars': 'At least 8 characters',
+  'placeholder.email_example': 'john@example.com',
+  'placeholder.password_hint': 'Must be at least 8 characters',
 
   // Common - additional
   'common.saving': 'Saving...',
@@ -655,6 +687,9 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'common.add_item': 'Add Item',
   'common.add_task': 'Add Task',
   'common.back': 'Back',
+  'common.email': 'Email',
+  'common.password': 'Password',
+  'common.verify': 'Verify',
 
   // Profile - Additional
   'profile.delete_member': 'Delete member',

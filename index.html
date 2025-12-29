@@ -93,6 +93,21 @@
           document.documentElement.classList.toggle('auth-page', !!isAuth);
           return applyTheme();
         };
+        window.__helpyGetThemeDebug = function() {
+          var html = document.documentElement;
+          var themeColorMeta = document.querySelector('meta[name="theme-color"]');
+          var colorSchemeMeta = document.querySelector('meta[name="color-scheme"]');
+          return {
+            savedTheme: getSavedTheme(),
+            systemPrefersDark: !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches),
+            htmlClass: html.className,
+            isDarkClass: html.classList.contains('dark'),
+            isAuthPage: html.classList.contains('auth-page'),
+            metaThemeColor: themeColorMeta ? themeColorMeta.getAttribute('content') : null,
+            metaColorScheme: colorSchemeMeta ? colorSchemeMeta.getAttribute('content') : null,
+            computedThemeColor: computeThemeColor(html.classList.contains('dark')),
+          };
+        };
 
         // Initial apply (before React mounts)
         applyTheme();

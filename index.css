@@ -437,6 +437,18 @@ button:focus-visible {
 /* Bottom sheet wrapper */
 .bottom-sheet-backdrop {
   animation: backdrop-fade-in 0.3s ease-out forwards;
+  /* Extend backdrop behind status bar for iOS PWA black-translucent */
+  top: calc(-1 * env(safe-area-inset-top, 0px)) !important;
+}
+
+/* Overlay backdrop class - extends behind iOS status bar */
+.status-bar-extend {
+  top: calc(-1 * env(safe-area-inset-top, 0px)) !important;
+}
+
+/* All fixed full-screen backdrops extend behind status bar */
+.fixed.inset-0[class*="bg-black/"] {
+  top: calc(-1 * env(safe-area-inset-top, 0px)) !important;
 }
 
 .bottom-sheet-content {

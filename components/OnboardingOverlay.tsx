@@ -365,9 +365,7 @@ const OnboardingOverlay: React.FC<OnboardingOverlayProps> = ({
   // ═══════════════════════════════════════════════════════════════════
   if (showSkipConfirm) {
     return (
-      <div className="fixed inset-0 z-[60] pointer-events-none">
-        <div className="absolute inset-0 bg-black/60 pointer-events-auto" />
-        <div className="absolute inset-0 flex items-center justify-center p-6 pointer-events-auto">
+      <div className="fixed inset-0 z-[60] bg-black/60 flex items-center justify-center p-6 status-bar-extend">
           <div className="bg-card rounded-3xl shadow-2xl p-8 w-[320px] border border-border animate-slide-up relative">
             <h3 className="text-xl font-bold text-foreground mb-3 text-center">
               {t['onboarding.skip_confirm_title'] || 'Skip Tutorial?'}
@@ -391,7 +389,6 @@ const OnboardingOverlay: React.FC<OnboardingOverlayProps> = ({
             </div>
           </div>
         </div>
-      </div>
     );
   }
 
@@ -400,10 +397,8 @@ const OnboardingOverlay: React.FC<OnboardingOverlayProps> = ({
   // ═══════════════════════════════════════════════════════════════════
   if (isLarge) {
     return (
-      <div className="fixed inset-0 z-[60] pointer-events-none">
-        <div className="absolute inset-0 bg-black/60 pointer-events-auto" />
-        <div className="absolute inset-0 flex items-center justify-center p-6 pointer-events-auto">
-          <div className="bg-card rounded-3xl shadow-2xl p-8 w-[320px] border border-border animate-slide-up relative">
+      <div className="fixed inset-0 z-[60] bg-black/60 flex items-center justify-center p-6 status-bar-extend">
+        <div className="bg-card rounded-3xl shadow-2xl p-8 w-[320px] border border-border animate-slide-up relative">
             {/* Close/Skip button */}
             <button
               onClick={handleSkipClick}
@@ -441,7 +436,6 @@ const OnboardingOverlay: React.FC<OnboardingOverlayProps> = ({
             )}
           </div>
         </div>
-      </div>
     );
   }
 
@@ -449,9 +443,8 @@ const OnboardingOverlay: React.FC<OnboardingOverlayProps> = ({
   // SMALL CARD - With pointer
   // ═══════════════════════════════════════════════════════════════════
   return (
-    <div className="fixed inset-0 z-[60] pointer-events-none">
-      <div className="absolute inset-0 bg-black/50 pointer-events-auto" />
-      <div className={`absolute ${getPositionClasses(currentStep.tooltipPosition)} p-4 pointer-events-auto`}>
+    <div className="fixed inset-0 z-[60] bg-black/50 status-bar-extend">
+      <div className={`absolute ${getPositionClasses(currentStep.tooltipPosition)} p-4`}>
         <div className="bg-card rounded-3xl shadow-2xl p-6 w-[280px] relative border border-border animate-slide-up">
           {/* Arrow pointer */}
           <div className={getArrowClasses(currentStep.tooltipPosition)} />

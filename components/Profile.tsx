@@ -724,6 +724,7 @@ const Profile: React.FC<ProfileProps> = ({
   const getRoleBadgeColor = (role: UserRole) => {
     switch (role) {
       case UserRole.MASTER: return 'bg-primary/10 text-primary'; // Helpy blue #3EAFD2
+      case UserRole.SUPERADMIN: return 'bg-primary text-white'; // Solid Helpy blue with white text
       case UserRole.SPOUSE: return 'bg-[#F3E5F5] text-[#AB47BC]';
       case UserRole.HELPER: return 'bg-[#FFF3E0] text-[#FF9800]';
       case UserRole.CHILD: return 'bg-[#E8F5E9] text-[#4CAF50]';

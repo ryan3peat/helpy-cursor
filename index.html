@@ -6,8 +6,8 @@
     <!-- Theme color for status bar - both updated by JS to match app theme -->
     <meta name="theme-color" content="#fafafa" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)" />
-    <!-- iOS status bar style - updated by JS to match app theme (iOS 14.5+) -->
-    <meta name="apple-mobile-web-app-status-bar-style" content="dark-content" />
+    <!-- iOS status bar style -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <!-- Restore theme and set initial background before render to prevent flash -->
     <script>
       (function() {
@@ -36,14 +36,6 @@
         document.querySelectorAll('meta[name="theme-color"]').forEach(function(meta) {
           meta.setAttribute('content', bgColor);
         });
-        
-        // Update iOS status bar style to match app theme (iOS 14.5+)
-        // dark-content = dark text (for light backgrounds)
-        // light-content = light text (for dark backgrounds)
-        var statusBarMeta = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
-        if (statusBarMeta) {
-          statusBarMeta.setAttribute('content', isDark ? 'light-content' : 'dark-content');
-        }
       })();
     </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
@@ -231,14 +223,6 @@
           document.querySelectorAll('meta[name="theme-color"]').forEach(meta => {
             meta.setAttribute('content', color);
           });
-          
-          // Update iOS status bar style to match app theme (iOS 14.5+)
-          // dark-content = dark text (for light backgrounds)
-          // light-content = light text (for dark backgrounds)
-          const statusBarMeta = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
-          if (statusBarMeta) {
-            statusBarMeta.setAttribute('content', isDark ? 'light-content' : 'dark-content');
-          }
           
           // Update html background color for overscroll
           document.documentElement.style.backgroundColor = color;

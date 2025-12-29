@@ -179,13 +179,13 @@
    ───────────────────────────────────────────────────────────────── */
 html {
   overscroll-behavior-y: contain;
-  /* Match theme background - visible on overscroll */
-  background-color: hsl(var(--background));
+  /* Match theme background - visible on overscroll. !important overrides JS inline styles */
+  background-color: hsl(var(--background)) !important;
 }
 
-/* Fix: Explicitly set dark mode background for iOS overscroll */
-html.dark {
-  background-color: hsl(0 0% 7%) !important;
+/* Auth pages - blue overflow background to match auth UI */
+html.auth-page {
+  background-color: #3EAFD2 !important;
 }
 
 body {

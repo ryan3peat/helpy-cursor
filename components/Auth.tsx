@@ -64,6 +64,32 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
   } | null>(null);
   const hasCheckedUser = React.useRef(false);
 
+  // Set status bar and overflow to Helpy blue on auth pages
+  React.useEffect(() => {
+    const HELPY_BLUE = '#3EAFD2';
+    
+    // Add class for CSS-based overflow background
+    document.documentElement.classList.add('auth-page');
+    
+    // Update theme-color meta tag for status bar
+    const themeColorMeta = document.querySelector('meta[name="theme-color"]');
+    if (themeColorMeta) {
+      themeColorMeta.setAttribute('content', HELPY_BLUE);
+    }
+    
+    // Cleanup: restore when leaving auth
+    return () => {
+      document.documentElement.classList.remove('auth-page');
+      
+      // Restore theme-color based on current theme
+      const isDark = document.documentElement.classList.contains('dark');
+      const restoreColor = isDark ? '#121212' : '#fafafa';
+      if (themeColorMeta) {
+        themeColorMeta.setAttribute('content', restoreColor);
+      }
+    };
+  }, []);
+
   React.useEffect(() => {
     console.log('🔵 [Auth] useEffect triggered:', { 
       isLoaded, 
@@ -983,7 +1009,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
               },
               elements: {
                 rootBox: "w-full",
-                cardBox: "w-full shadow-lg rounded-2xl overflow-hidden",
+                cardBox: "w-full shadow-sm rounded-2xl overflow-hidden",
                 card: "bg-white rounded-2xl border-0 shadow-none p-6",
                 headerTitle: "text-xl font-bold text-[#474747]",
                 headerSubtitle: "text-sm text-gray-500",

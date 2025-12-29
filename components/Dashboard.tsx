@@ -34,6 +34,7 @@ import { ToDoItem, Meal, User, MealType, TranslationDictionary, UserRole, Expens
 import { formatCurrency } from '../currencyConfig';
 import { useScrollHeader } from '../hooks/useScrollHeader';
 import { useScrollLock } from '../hooks/useScrollLock';
+import { useSheetTheme } from '../hooks/useSheetTheme';
 import { SUPPORTED_LANGUAGES } from '../constants';
 import { useTranslatedContent } from '../hooks/useTranslatedContent';
 
@@ -263,6 +264,9 @@ const Dashboard: React.FC<DashboardProps> = ({
   
   // Lock body scroll when language modal is open
   useScrollLock(showLangModal);
+  
+  // Dim status bar when sheet is open (iOS)
+  useSheetTheme(showLangModal || showIosInstallSteps);
 
   // Only sync tempNotes with familyNotes when NOT editing (prevents overwriting user input)
   useEffect(() => {

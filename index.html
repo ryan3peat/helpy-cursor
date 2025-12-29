@@ -98,7 +98,28 @@
           document.documentElement.classList.toggle('auth-page', !!isAuth);
           return applyTheme();
         };
-        // debug helpers removed
+        
+        // Sheet overlay support - dims status bar to match bg-black/30 backdrop
+        var sheetOpenCount = 0;
+        window.__helpySetSheetOpen = function(isOpen) {
+          sheetOpenCount = Math.max(0, sheetOpenCount + (isOpen ? 1 : -1));
+          var shouldDim = sheetOpenCount > 0;
+          
+          var savedTheme = getSavedTheme();
+          var isDark = getEffectiveIsDark(savedTheme);
+          var isAuth = document.documentElement.classList.contains('auth-page');
+          
+          var color;
+          if (isAuth) {
+            color = shouldDim ? '#2b8fb0' : AUTH_COLOR;
+          } else if (isDark) {
+            color = shouldDim ? '#0a0a0a' : DARK_COLOR;
+          } else {
+            color = shouldDim ? '#b8b8b8' : LIGHT_COLOR;
+          }
+          
+          setMeta('theme-color', color);
+        };
 
         // Initial apply (before React mounts)
         applyTheme();

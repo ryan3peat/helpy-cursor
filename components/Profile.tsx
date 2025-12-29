@@ -14,6 +14,7 @@ import { createCheckoutSession, createPortalSession, syncSubscription, changeSub
 import { useSupabase } from '../contexts/SupabaseContext';
 import { deleteItem, uploadAvatarImage } from '../services/supabaseService';
 import { useScrollLock } from '@/hooks/useScrollLock';
+import { useSheetTheme } from '@/hooks/useSheetTheme';
 import {
   isPushSupported,
   getNotificationPermission,
@@ -202,6 +203,9 @@ const Profile: React.FC<ProfileProps> = ({
 
   // Lock scroll when any modal is open
   useScrollLock(isAddModalOpen || isEditModalOpen || deleteConfirmOpen || showPhotoOptions || subscriptionCanceled || isPlanConfirmOpen);
+  
+  // Dim status bar when sheet is open (iOS)
+  useSheetTheme(isAddModalOpen || isEditModalOpen || deleteConfirmOpen || showPhotoOptions || subscriptionCanceled || isPlanConfirmOpen || isDeleteAccountModalOpen || isFinalDeleteConfirmOpen);
 
   // Track if we've handled the initial edit (to prevent re-opening on data refresh)
   const [initialEditHandled, setInitialEditHandled] = useState(false);

@@ -25,6 +25,7 @@ import Avatar from './ui/Avatar';
 import { useScrollHeader } from '@/hooks/useScrollHeader';
 import { useTranslatedContent } from '@/hooks/useTranslatedContent';
 import { useScrollLock } from '@/hooks/useScrollLock';
+import { useSheetTheme } from '@/hooks/useSheetTheme';
 import { Meal, MealType, MealAudience, User, UserRole, BaseViewProps } from '../types';
 import { suggestMeal } from '../services/geminiService';
 import { detectInputLanguage } from '../services/languageDetectionService';
@@ -96,6 +97,9 @@ const Meals: React.FC<MealsProps> = ({
   
   // Lock body scroll when modal is open
   useScrollLock(isModalOpen);
+  
+  // Dim status bar when sheet is open (iOS)
+  useSheetTheme(isModalOpen);
   
   const [editingMealId, setEditingMealId] = useState<string | null>(null);
 

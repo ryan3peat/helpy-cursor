@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ChevronRight, X } from 'lucide-react';
 import { TranslationDictionary, UserRole } from '../types';
+import { useSheetTheme } from '../hooks/useSheetTheme';
 
 // Action types for onboarding steps
 export type OnboardingAction = 
@@ -291,6 +292,9 @@ const OnboardingOverlay: React.FC<OnboardingOverlayProps> = ({
   const [showSkipConfirm, setShowSkipConfirm] = useState(false);
   const steps = getStepsForRole(userRole, t);
   const currentStep = steps[stepIndex];
+  
+  // Dim status bar when overlay is visible (iOS)
+  useSheetTheme(!!currentStep && currentStep.currentPage === currentPage);
   
   // Don't render if no step
   if (!currentStep) return null;

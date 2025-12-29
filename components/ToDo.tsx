@@ -23,6 +23,7 @@ import Avatar from './ui/Avatar';
 import { useScrollHeader } from '@/hooks/useScrollHeader';
 import { useTranslatedContent } from '@/hooks/useTranslatedContent';
 import { useScrollLock } from '@/hooks/useScrollLock';
+import { useSheetTheme } from '@/hooks/useSheetTheme';
 import { ToDoItem, ToDoType, ShoppingCategory, TaskCategory, RecurrenceFrequency, User, UserRole, BaseViewProps } from '../types';
 import { detectInputLanguage } from '../services/languageDetectionService';
 
@@ -289,6 +290,9 @@ const ToDo: React.FC<ToDoProps> = ({
   
   // Lock body scroll when sheet is open
   useScrollLock(isSheetOpen);
+  
+  // Dim status bar when sheet is open (iOS)
+  useSheetTheme(isSheetOpen);
   
   const [sheetForm, setSheetForm] = useState<Partial<ToDoItem>>({});
   const [editingItemId, setEditingItemId] = useState<string | null>(null); // Track if editing existing item

@@ -29,6 +29,7 @@ import {
 import { useScrollHeader } from '@/hooks/useScrollHeader';
 import { useTranslatedContent } from '@/hooks/useTranslatedContent';
 import { useScrollLock } from '@/hooks/useScrollLock';
+import { useSheetTheme } from '@/hooks/useSheetTheme';
 import { Expense, BaseViewProps, User, UserRole, HouseholdPlan } from '../types';
 import { EXPENSE_CATEGORIES } from '../constants';
 import { detectInputLanguage } from '../services/languageDetectionService';
@@ -307,6 +308,9 @@ const Expenses: React.FC<ExpensesProps> = ({
   
   // Lock body scroll when any modal is open
   useScrollLock(addExpenseStage !== 'closed' || !!selectedExpense || isMonthPickerOpen);
+  
+  // Dim status bar when sheet is open (iOS)
+  useSheetTheme(addExpenseStage !== 'closed' || !!selectedExpense || isMonthPickerOpen);
 
   // Refs
   const fileInputRef = useRef<HTMLInputElement>(null);

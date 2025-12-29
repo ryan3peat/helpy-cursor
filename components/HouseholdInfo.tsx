@@ -2,6 +2,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useScrollHeader } from "@/hooks/useScrollHeader";
 import { useScrollLock } from "@/hooks/useScrollLock";
+import { useSheetTheme } from "@/hooks/useSheetTheme";
 import {
   Plus,
   X,
@@ -580,6 +581,9 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
   
   // Lock body scroll when any modal is open
   useScrollLock(isEssentialModalOpen || isHouseRoutineModalOpen || !!viewingHouseRoutineItem);
+  
+  // Dim status bar when sheet is open (iOS)
+  useSheetTheme(isEssentialModalOpen || isHouseRoutineModalOpen || !!viewingHouseRoutineItem || showHelperUpgradeModal);
   
   const [houseRoutineForm, setHouseRoutineForm] = useState<CreateHouseRoutine>({
     category: "House Rules",

@@ -295,6 +295,7 @@ const ToDo: React.FC<ToDoProps> = ({
   const [showUnitSuggestions, setShowUnitSuggestions] = useState(false);
   const unitInputRef = useRef<HTMLInputElement>(null);
   const sheetContentRef = useRef<HTMLDivElement>(null);
+  const [sheetMaxHeightPx, setSheetMaxHeightPx] = useState<number | null>(null);
   const [showCompleted, setShowCompleted] = useState(false);
   const [showSuggested, setShowSuggested] = useState(true);
   const [optimisticItems, setOptimisticItems] = useState<ToDoItem[]>([]);
@@ -376,6 +377,32 @@ const ToDo: React.FC<ToDoProps> = ({
     if (isSheetOpen && sheetContentRef.current) {
       sheetContentRef.current.scrollTop = 0;
     }
+  }, [isSheetOpen]);
+
+  // Keep sheet height within the *visible* viewport (fixes iOS keyboard pushing header off-screen)
+  useEffect(() => {
+    if (!isSheetOpen) {
+      setSheetMaxHeightPx(null);
+      return;
+    }
+
+    const compute = () => {
+      const vvHeight = window.visualViewport?.height;
+      const h = typeof vvHeight === 'number' && vvHeight > 0 ? vvHeight : window.innerHeight;
+      // leave top breathing room (matches existing -60px behavior)
+      setSheetMaxHeightPx(Math.max(240, Math.floor(h - 60)));
+    };
+
+    compute();
+    window.visualViewport?.addEventListener('resize', compute);
+    window.visualViewport?.addEventListener('scroll', compute);
+    window.addEventListener('resize', compute);
+
+    return () => {
+      window.visualViewport?.removeEventListener('resize', compute);
+      window.visualViewport?.removeEventListener('scroll', compute);
+      window.removeEventListener('resize', compute);
+    };
   }, [isSheetOpen]);
   
   useEffect(() => {
@@ -1383,7 +1410,10 @@ const ToDo: React.FC<ToDoProps> = ({
           />
           <div 
             className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col"
-            style={{ maxHeight: 'calc(100dvh - 60px)', marginBottom: 'env(safe-area-inset-bottom, 34px)' }}
+            style={{
+              maxHeight: sheetMaxHeightPx ? `${sheetMaxHeightPx}px` : 'calc(100dvh - 60px)',
+              marginBottom: 'env(safe-area-inset-bottom, 34px)',
+            }}
           >
             {/* Close Button */}
             <button

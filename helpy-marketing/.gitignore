@@ -1,2 +1,5 @@
 .vercel
 .env*.local
+
+# Next.js build output (never commit)
+.next/

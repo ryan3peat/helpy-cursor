@@ -44,13 +44,17 @@
         var AUTH_COLOR = '#3EAFD2';
 
         function getSavedTheme() {
-          // System mode removed: treat any legacy 'system' value as 'light'
           var t = localStorage.getItem(THEME_KEY);
-          return (t === 'dark') ? 'dark' : 'light';
+          if (t === 'light' || t === 'dark' || t === 'system') return t;
+          return 'light'; // Default
         }
 
         function getEffectiveIsDark(savedTheme) {
-          return savedTheme === 'dark';
+          if (savedTheme === 'dark') return true;
+          if (savedTheme === 'system') {
+            return !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          }
+          return false;
         }
 
         function setMeta(name, value) {
@@ -115,7 +119,19 @@
         });
         observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
 
-        // System mode removed: no OS listener
+        // OS preference listener for System mode
+        if (window.matchMedia) {
+          var mql = window.matchMedia('(prefers-color-scheme: dark)');
+          var osHandler = function() {
+            if (getSavedTheme() === 'system') applyTheme();
+          };
+          try {
+            mql.addEventListener('change', osHandler);
+          } catch (e) {
+            // Safari < 14
+            mql.addListener(osHandler);
+          }
+        }
       })();
     </script>
 

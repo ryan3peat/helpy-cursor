@@ -22,7 +22,8 @@ import {
   BellOff,
   BellDot,
   GraduationCap,
-  BookOpen
+  BookOpen,
+  UserPlus
 } from 'lucide-react';
 import Avatar from './ui/Avatar';
 import { ToDoItem, Meal, User, MealType, TranslationDictionary, UserRole, Expense } from '../types';
@@ -57,6 +58,8 @@ interface DashboardProps {
   onRestartTutorial?: () => void;
   /** Open the user guide page */
   onOpenUserGuide?: () => void;
+  /** Open the add family member sheet in Profile */
+  onOpenAddFamily?: () => void;
 }
 
 // Component for displaying translated meal description
@@ -131,6 +134,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   realtimeStatus = 'connected',
   onRestartTutorial,
   onOpenUserGuide,
+  onOpenAddFamily,
 }) => {
   // ─────────────────────────────────────────────────────────────────
   // Safety check for currentUser
@@ -585,7 +589,7 @@ const Dashboard: React.FC<DashboardProps> = ({
       {/* How to use Helpy */}
       <div className="bg-card rounded-3xl p-6 shadow-sm">
         <p className="text-title font-bold text-foreground mb-6">{t['dashboard.need_help'] || 'Need Help Getting Started?'}</p>
-        <div className="flex items-center">
+        <div className="flex items-center justify-center">
           {onRestartTutorial && (
             <button onClick={onRestartTutorial} className="flex-1 flex flex-col items-center gap-1.5">
               <GraduationCap size={24} className="text-primary" />
@@ -599,6 +603,17 @@ const Dashboard: React.FC<DashboardProps> = ({
               <BookOpen size={24} className="text-primary" />
               <span className="text-body font-medium text-foreground">{t['guide.title'] || 'User Guide'}</span>
             </button>
+          )}
+          {/* Add Family - Hidden for Helper */}
+          {onOpenAddFamily && currentUser.role !== UserRole.HELPER && (
+            <>
+              {/* Vertical Divider */}
+              <div className="h-12 w-px bg-border mx-4"></div>
+              <button onClick={onOpenAddFamily} className="flex-1 flex flex-col items-center gap-1.5">
+                <UserPlus size={24} className="text-primary" />
+                <span className="text-body font-medium text-foreground">{t['profile.add_family'] || 'Add Family'}</span>
+              </button>
+            </>
           )}
         </div>
       </div>

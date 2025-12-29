@@ -846,6 +846,10 @@ const AppContent: React.FC = () => {
               localStorage.setItem('helpy_profile_target_section', 'guide');
               setActiveView('profile');
             }}
+            onOpenAddFamily={() => {
+              localStorage.setItem('helpy_profile_target_section', 'add_family');
+              setActiveView('profile');
+            }}
           />
         );
 

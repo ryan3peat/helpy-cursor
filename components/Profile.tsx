@@ -77,6 +77,11 @@ const Profile: React.FC<ProfileProps> = ({
       setTimeout(() => setActiveSection('guide'), 100);
       // Clear the flag
       localStorage.removeItem('helpy_profile_target_section');
+    } else if (targetSection === 'add_family') {
+      // Open the Add Family Member sheet directly
+      setIsAddModalOpen(true);
+      // Clear the flag
+      localStorage.removeItem('helpy_profile_target_section');
     }
   }, []);
 

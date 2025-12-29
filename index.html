@@ -147,6 +147,14 @@
       html, body, #root {
         background-color: var(--initial-bg, #3EAFD2);
       }
+      /* Dark mode overflow background - must be here to override inline JS styles */
+      html.dark, html.dark body, html.dark #root {
+        background-color: #121212 !important;
+      }
+      /* Auth pages - blue overflow background */
+      html.auth-page, html.auth-page body, html.auth-page #root {
+        background-color: #3EAFD2 !important;
+      }
       /* Ensure root fills the viewport during React loading */
       #root:empty {
         min-height: 100vh;

@@ -120,8 +120,9 @@ const Profile: React.FC<ProfileProps> = ({
   // Add User Form State
   const [newName, setNewName] = useState('');
   const [newRole, setNewRole] = useState<UserRole>(UserRole.CHILD);
-  const [addUserStep, setAddUserStep] = useState<'form' | 'loading' | 'success' | 'invite'>('form');
+  const [addUserStep, setAddUserStep] = useState<'form' | 'loading' | 'success' | 'invite' | 'limit_error'>('form');
   const [addedUserName, setAddedUserName] = useState('');
+  const [limitErrorMessage, setLimitErrorMessage] = useState('');
 
   // Settings State
   const [selectedPlan, setSelectedPlan] = useState<'free' | 'core' | 'pro'>('free');
@@ -805,11 +806,18 @@ const Profile: React.FC<ProfileProps> = ({
           setAddUserStep('invite');
         }, 800);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to add user:', error);
-      alert(t['error.add_user'] || 'Failed to add user. Please try again.');
-      // On error, go back to form
-      setAddUserStep('form');
+      
+      // Check if it's a plan limit error
+      const errorMessage = error?.message || '';
+      if (errorMessage.includes('limit reached')) {
+        setLimitErrorMessage(errorMessage);
+        setAddUserStep('limit_error');
+      } else {
+        alert(t['error.add_user'] || 'Failed to add user. Please try again.');
+        setAddUserStep('form');
+      }
     } finally {
       setIsAddingUser(false);
     }
@@ -822,6 +830,7 @@ const Profile: React.FC<ProfileProps> = ({
     setAddedUserName('');
     setInviteLink(null);
     setIsCopied(false);
+    setLimitErrorMessage('');
     resetForm();
   };
 
@@ -917,67 +926,10 @@ const Profile: React.FC<ProfileProps> = ({
     const greeting = inviteeName ? `${t['profile.invite_hi'] || 'Hi'} ${inviteeName}, ` : '';
     const message = `${greeting}${inviterName} ${t['profile.invite_join_family'] || 'would like you to join the family in the Helpy app!'}\n\n${t['profile.invite_app_description'] || 'Helpy is the home management app connecting families and helpers, organizing meals, tasks, and expenses in one place.'}\n\n${t['profile.invite_click_below'] || 'Click below to join:'}\n${inviteLink}`;
     
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-    const isAndroid = /Android/.test(navigator.userAgent);
-    
-    if (isIOS) {
-      // iOS: Try WhatsApp app first, redirect to App Store if not installed
-      let appOpened = false;
-      
-      const handleVisibility = () => {
-        if (document.visibilityState === 'hidden') {
-          appOpened = true;
-        }
-      };
-      
-      document.addEventListener('visibilitychange', handleVisibility);
-      
-      // Try WhatsApp app (URI scheme - returns where you left off)
-      window.location.href = `whatsapp://send?text=${encodeURIComponent(message)}`;
-      
-      // After 1 second, if app didn't open, redirect to App Store
-      setTimeout(() => {
-        document.removeEventListener('visibilitychange', handleVisibility);
-        if (!appOpened && document.visibilityState === 'visible') {
-          const goToStore = window.confirm(
-            t['whatsapp.not_installed'] || 'WhatsApp is not installed.\n\nWould you like to download it from the App Store?'
-          );
-          if (goToStore) {
-            window.location.href = 'https://apps.apple.com/app/whatsapp-messenger/id310633997';
-          }
-        }
-      }, 1000);
-    } else if (isAndroid) {
-      // Android: Try WhatsApp app first, redirect to Play Store if not installed
-      let appOpened = false;
-      
-      const handleVisibility = () => {
-        if (document.visibilityState === 'hidden') {
-          appOpened = true;
-        }
-      };
-      
-      document.addEventListener('visibilitychange', handleVisibility);
-      
-      // Try WhatsApp app (URI scheme - returns where you left off)
-      window.location.href = `whatsapp://send?text=${encodeURIComponent(message)}`;
-      
-      // After 1 second, if app didn't open, redirect to Play Store
-      setTimeout(() => {
-        document.removeEventListener('visibilitychange', handleVisibility);
-        if (!appOpened && document.visibilityState === 'visible') {
-          const goToStore = window.confirm(
-            t['whatsapp.not_installed_android'] || 'WhatsApp is not installed.\n\nWould you like to download it from the Play Store?'
-          );
-          if (goToStore) {
-            window.location.href = 'https://play.google.com/store/apps/details?id=com.whatsapp';
-          }
-        }
-      }, 1000);
-    } else {
-      // Desktop: Open WhatsApp Web in new tab
-      window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
-    }
+    // Use Universal Link - works reliably on all platforms (iOS, Android, Desktop)
+    // iOS/Android will open WhatsApp if installed, or show the app store if not
+    // No unreliable timeout detection needed
+    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
   };
 
   const handleOpenEdit = () => {
@@ -1650,6 +1602,51 @@ const Profile: React.FC<ProfileProps> = ({
                     </div>
                   </>
                 )}
+
+                {/* STEP: Plan Limit Error */}
+                {addUserStep === 'limit_error' && (
+                  <>
+                    <div className="flex-1 flex flex-col items-center justify-center px-5">
+                      <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mb-4">
+                        <AlertCircle size={32} className="text-destructive" />
+                      </div>
+                      <p className="text-title font-semibold text-foreground mb-2 text-center">
+                        {limitErrorMessage.includes('Helper') 
+                          ? (t['error.helper_limit_title'] || 'Helper Limit Reached')
+                          : (t['error.family_limit_title'] || 'Family Member Limit Reached')
+                        }
+                      </p>
+                      <p className="text-body text-muted-foreground text-center">
+                        {t['error.upgrade_to_add_more'] || 'Upgrade your plan to add more members to your household.'}
+                      </p>
+                    </div>
+                    
+                    {/* Footer with Upgrade button */}
+                    <div className="p-5 pb-8 border-t border-border flex flex-col gap-3 shrink-0">
+                      <button
+                        onClick={() => {
+                          closeAddUserModal();
+                          // Scroll to plan section after modal closes
+                          setTimeout(() => {
+                            const planSection = document.getElementById('plan-section');
+                            if (planSection) {
+                              planSection.scrollIntoView({ behavior: 'smooth' });
+                            }
+                          }, 300);
+                        }}
+                        className="w-full py-3.5 rounded-2xl bg-primary text-primary-foreground text-body font-semibold shadow-sm"
+                      >
+                        {t['common.upgrade_plan'] || 'Upgrade Plan'}
+                      </button>
+                      <button
+                        onClick={() => setAddUserStep('form')}
+                        className="w-full py-3.5 rounded-2xl bg-secondary text-foreground text-body font-semibold"
+                      >
+                        {t['common.go_back'] || 'Go Back'}
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           )}
@@ -2276,7 +2273,7 @@ const Profile: React.FC<ProfileProps> = ({
             )}
 
             {/* Upgrade/Change Plan Section */}
-            <div className="mb-6">
+            <div id="plan-section" className="mb-6">
               <h3 className="text-title font-bold text-foreground mb-4">
                 {subscriptionInfo && subscriptionInfo.status === 'active' ? (t['subscription.change_plan'] || 'Change Plan') : (t['subscription.choose_plan'] || 'Choose Your Plan')}
               </h3>

@@ -396,13 +396,14 @@ const Dashboard: React.FC<DashboardProps> = ({
     })
     .reduce((sum, e) => sum + e.amount, 0);
 
-  const StatCard = ({ title, count, icon: Icon, colorClass, onClick, label }: any) => (
+  const StatCard = ({ title, count, icon: Icon, colorClass, onClick, label, showAddButton, onAddClick }: any) => (
     <button
       onClick={onClick}
       className="relative w-full p-4 rounded-2xl flex flex-col h-32 text-left bg-card shadow-sm border border-border"
     >
-      <div className="absolute top-4 right-4 opacity-80">
-        <Icon size={18} className={colorClass} />
+      {/* Top icon - vertically centered with add button for alignment */}
+      <div className="absolute top-3 right-3 w-9 h-9 flex items-center justify-center opacity-80">
+        <Icon size={20} className={colorClass} />
       </div>
       <div className="mt-auto">
         <span className="text-display text-foreground block mb-1">
@@ -413,6 +414,20 @@ const Dashboard: React.FC<DashboardProps> = ({
           <span className="text-caption text-muted-foreground">{label}</span>
         </div>
       </div>
+      {/* Add Button - bottom right corner, aligned with top icon */}
+      {showAddButton && (
+        <div className="absolute bottom-3 right-3 w-9 h-9 flex items-center justify-center">
+          <div
+            onClick={(e) => {
+              e.stopPropagation();
+              onAddClick?.();
+            }}
+            className="p-1.5 rounded-full bg-primary flex items-center justify-center shadow-sm"
+          >
+            <Plus size={16} className="text-primary-foreground" />
+          </div>
+        </div>
+      )}
     </button>
   );
 
@@ -759,6 +774,8 @@ const Dashboard: React.FC<DashboardProps> = ({
           label={t['dashboard.todo']}
           colorClass="text-primary"
           onClick={() => onNavigate('todo', { section: 'shopping' })}
+          showAddButton={true}
+          onAddClick={() => onNavigate('todo', { section: 'shopping', openAddSheet: true })}
         />
         <StatCard
           title={t['dashboard.tasks']}
@@ -766,6 +783,8 @@ const Dashboard: React.FC<DashboardProps> = ({
           icon={ClipboardList}
           label={t['dashboard.todo']}
           colorClass="text-primary"
+          showAddButton={true}
+          onAddClick={() => onNavigate('todo', { section: 'task', openAddSheet: true })}
           onClick={() => onNavigate('todo', { section: 'task' })}
         />
       </div>

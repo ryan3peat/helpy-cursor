@@ -113,7 +113,7 @@ const ESSENTIAL_CATEGORY_ICONS: Record<EssentialInfoCategory, React.ReactNode> =
 
 // Map house routine categories to Lucide icons
 const HOUSE_ROUTINE_CATEGORY_ICONS: Record<HouseRoutineCategory, React.ReactNode> = {
-  'House Rules': <ClipboardList size={18} />,
+  'Home Rules': <ClipboardList size={18} />,
   'Routine': <Clock size={18} />,
   'Cooking': <UtensilsCrossed size={18} />,
   'Child Care': <Baby size={18} />,
@@ -629,7 +629,7 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
   useSheetTheme(isEssentialModalOpen || isHouseRoutineModalOpen || !!viewingHouseRoutineItem || showHelperUpgradeModal);
   
   const [houseRoutineForm, setHouseRoutineForm] = useState<CreateHouseRoutine>({
-    category: "House Rules",
+    category: "Home Rules",
     customCategory: "",
     name: "",
     note: "",
@@ -677,7 +677,7 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
 
   const getRoutineCategoryLabel = (category: HouseRoutineCategory): string => {
     const categoryMap: Record<HouseRoutineCategory, string> = {
-      'House Rules': t['routine.category.house_rules'] || category,
+      'Home Rules': t['routine.category.house_rules'] || category,
       'Routine': t['routine.category.routine'] || category,
       'Cooking': t['routine.category.cooking'] || category,
       'Child Care': t['routine.category.child_care'] || category,
@@ -832,7 +832,7 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
   const handleAddHouseRoutineClick = () => {
     setEditingHouseRoutineItem(null);
     setHouseRoutineForm({
-      category: selectedHouseRoutineCategory === "All" ? "House Rules" : selectedHouseRoutineCategory,
+      category: selectedHouseRoutineCategory === "All" ? "Home Rules" : selectedHouseRoutineCategory,
       customCategory: "",
       name: "",
       note: "",
@@ -1549,7 +1549,7 @@ const HouseRoutineCard: React.FC<HouseRoutineCardProps> = ({
 
   const getRoutineCategoryLabel = (category: HouseRoutineCategory): string => {
     const categoryMap: Record<HouseRoutineCategory, string> = {
-      'House Rules': t['routine.category.house_rules'] || category,
+      'Home Rules': t['routine.category.house_rules'] || category,
       'Routine': t['routine.category.routine'] || category,
       'Cooking': t['routine.category.cooking'] || category,
       'Child Care': t['routine.category.child_care'] || category,
@@ -1709,7 +1709,7 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
             <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
               {t['common.category'] || 'Category'}
             </label>
-            <div className="flex flex-wrap gap-2">
+            <div className="grid grid-cols-3 gap-2">
               {ESSENTIAL_CATEGORIES.map((cat) => {
                 const config = CATEGORY_CONFIG[cat];
                 const isSelected = form.category === cat;
@@ -1729,7 +1729,7 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
                     key={cat}
                     type="button"
                     onClick={() => setForm({ ...form, category: cat })}
-                    className={`px-3 py-2 rounded-lg text-body transition-all flex items-center gap-1.5 ${
+                    className={`px-3 py-2 rounded-xl text-body transition-all flex items-center justify-start gap-1.5 ${
                       isSelected
                         ? "text-white shadow-sm"
                         : "bg-secondary text-foreground"
@@ -1942,7 +1942,7 @@ const HouseRoutineModal: React.FC<HouseRoutineModalProps> = ({
                 const isSelected = form.category === cat;
                 const getCatLabel = (category: HouseRoutineCategory): string => {
                   const categoryMap: Record<HouseRoutineCategory, string> = {
-                    'House Rules': t['routine.category.house_rules'] || category,
+                    'Home Rules': t['routine.category.house_rules'] || category,
                     'Routine': t['routine.category.routine'] || category,
                     'Cooking': t['routine.category.cooking'] || category,
                     'Child Care': t['routine.category.child_care'] || category,
@@ -1964,7 +1964,7 @@ const HouseRoutineModal: React.FC<HouseRoutineModalProps> = ({
                     key={cat}
                     type="button"
                     onClick={() => setForm({ ...form, category: cat })}
-                    className={`px-2 py-2 rounded-lg text-caption transition-all flex items-center gap-1.5 ${
+                    className={`px-2 py-2 rounded-xl text-caption transition-all flex items-center gap-1.5 ${
                       isWide ? 'col-span-2' : ''
                     } ${
                       isSelected
@@ -2070,7 +2070,7 @@ const HouseRoutineViewModal: React.FC<HouseRoutineViewModalProps> = ({
   
   const getRoutineCategoryLabel = (category: HouseRoutineCategory): string => {
     const categoryMap: Record<HouseRoutineCategory, string> = {
-      'House Rules': t['routine.category.house_rules'] || category,
+      'Home Rules': t['routine.category.house_rules'] || category,
       'Routine': t['routine.category.routine'] || category,
       'Cooking': t['routine.category.cooking'] || category,
       'Child Care': t['routine.category.child_care'] || category,

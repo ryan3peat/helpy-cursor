@@ -181,7 +181,7 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'info.category': 'Category',
   'info.title_label': 'Title',
   'info.content_label': 'Content',
-  'info.cat.house_rules': 'House Rules',
+  'info.cat.house_rules': 'Home Rules',
   'info.placeholder.category': 'General',
   'info.placeholder.title': 'e.g. WiFi Password',
   'info.placeholder.content': 'Enter details...',
@@ -347,7 +347,7 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'common.hospital': 'Hospital',
   'common.shops': 'Shops',
   'common.others': 'Others',
-  'common.house_rules': 'House Rules',
+  'common.house_rules': 'Home Rules',
   'common.routine': 'Routine',
   'common.cleaning': 'Cleaning',
   'common.general': 'General',
@@ -579,6 +579,8 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'common.saving': 'Saving...',
   'common.items': 'items',
   'common.share': 'Share',
+  'common.upgrade_plan': 'Upgrade Plan',
+  'common.go_back': 'Go Back',
   'common.deleting': 'Deleting...',
 
   // Language & Translation
@@ -636,7 +638,7 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'expenses.tap_outside_close': 'Tap outside to close',
 
   // House Routine / Practice Categories
-  'routine.category.house_rules': 'House Rules',
+  'routine.category.house_rules': 'Home Rules',
   'routine.category.routine': 'Routine',
   'routine.category.cooking': 'Cooking',
   'routine.category.child_care': 'Child Care',
@@ -740,6 +742,9 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'error.cancel_subscription': 'Failed to cancel subscription. Please try again.',
   'error.delete_account_unable': 'Unable to delete account. Please try again.',
   'error.delete_account': 'Failed to delete account. Please try again or contact support.',
+  'error.helper_limit_title': 'Helper Limit Reached',
+  'error.family_limit_title': 'Family Member Limit Reached',
+  'error.upgrade_to_add_more': 'Upgrade your plan to add more members to your household.',
 
   // Settings - Push Notifications
   'settings.push_not_supported': 'Not supported in this browser',

@@ -40,6 +40,7 @@ interface ToDoProps extends BaseViewProps {
   onDelete: (id: string) => Promise<void>;
   initialSection?: 'shopping' | 'task';
   onSectionChange?: (section: string) => void;
+  autoOpenSheet?: boolean; // Auto-open add sheet when navigating from Dashboard (+) button
 }
 
 const SHOPPING_CATEGORIES = Object.values(ShoppingCategory);
@@ -254,6 +255,7 @@ const ToDo: React.FC<ToDoProps> = ({
   currentLang,
   initialSection,
   onSectionChange,
+  autoOpenSheet,
 }) => {
   // ─────────────────────────────────────────────────────────────────
   // Role-based permissions
@@ -695,6 +697,17 @@ const ToDo: React.FC<ToDoProps> = ({
     
     setIsSheetOpen(true);
   };
+  
+  // Auto-open add sheet when navigating from Dashboard (+) button
+  useEffect(() => {
+    if (autoOpenSheet) {
+      // Small delay to ensure section is set first
+      const timer = setTimeout(() => {
+        openDetailedSheet();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [autoOpenSheet]);
   
   const openEditSheet = (item: ToDoItem) => {
     setEditingItemId(item.id);

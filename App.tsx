@@ -277,11 +277,11 @@ const AppContent: React.FC = () => {
     }
   }, [signOut]);
 
-  // Navigation data (e.g., initialSection for ToDo)
-  const [navData, setNavData] = useState<{ section?: string } | null>(null);
+  // Navigation data (e.g., initialSection for ToDo, openAddSheet to auto-open add sheet)
+  const [navData, setNavData] = useState<{ section?: string; openAddSheet?: boolean } | null>(null);
 
   // Navigation
-  const handleNavigate = (view: string, data?: { section?: string }) => {
+  const handleNavigate = (view: string, data?: { section?: string; openAddSheet?: boolean }) => {
     setActiveView(view);
     setNavData(data ?? null);
     // Scroll to top when navigating to a new view
@@ -865,6 +865,7 @@ const AppContent: React.FC = () => {
             t={translations}
             currentLang={lang}
             initialSection={navData?.section as 'shopping' | 'task' | undefined}
+            autoOpenSheet={navData?.openAddSheet}
           />
         );
 

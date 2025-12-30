@@ -3,7 +3,7 @@
 // Note: "Practice" means household customs/methods, NOT training/exercise
 
 export type PracticeCategory =
-  | 'House Rules'
+  | 'Home Rules'
   | 'Routine'
   | 'Cooking'
   | 'Child Care'
@@ -17,7 +17,7 @@ export type PracticeCategory =
   | 'Others';
 
 export const PRACTICE_CATEGORIES: PracticeCategory[] = [
-  'House Rules',
+  'Home Rules',
   'Routine',
   'Cooking',
   'Child Care',
@@ -58,7 +58,7 @@ export const HOUSE_ROUTINE_CATEGORIES = PRACTICE_CATEGORIES;
 
 // Category colors
 export const PRACTICE_CATEGORY_CONFIG: Record<PracticeCategory, { color: string; bgColor: string }> = {
-  'House Rules': { color: '#7E57C2', bgColor: '#EDE7F6' },
+  'Home Rules': { color: '#7E57C2', bgColor: '#EDE7F6' },
   'Routine': { color: '#AB47BC', bgColor: '#F3E5F5' },
   'Cooking': { color: '#FF9800', bgColor: '#FFF3E0' },
   'Child Care': { color: '#F06292', bgColor: '#FCE4EC' },

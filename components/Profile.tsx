@@ -2204,19 +2204,19 @@ const Profile: React.FC<ProfileProps> = ({
           { 
             id: 'manual_expenses', 
             name: t['plan.feature.manual_expenses'] || 'Add expenses manually',
-            description: t['plan.feature.manual_expenses_desc'] || 'Quickly enter the amount, category, merchant, and date for any purchase.',
+            description: t['plan.feature.manual_expenses_desc'] || 'Enter amount, category, shop, and date quickly.',
             isLimit: false 
           },
           { 
             id: 'ai_scan', 
             name: t['plan.feature.ai_scan'] || 'AI receipt scanning',
-            description: t['plan.feature.ai_scan_desc'] || 'Snap a photo of your receipt to automatically fill in the total amount and merchant name.',
+            description: t['plan.feature.ai_scan_desc'] || 'Take or upload receipt photo and automatically capture the details.',
             isLimit: false 
           },
           { 
             id: 'spending_summary', 
             name: t['plan.feature.spending_summary'] || 'Monthly Spending Summary',
-            description: t['plan.feature.spending_summary_desc'] || 'Visualize your budget with pie charts by category, plus totals and percentage breakdowns.',
+            description: t['plan.feature.spending_summary_desc'] || 'Pie charts show category totals and percentages.',
             isLimit: false 
           },
         ]
@@ -2228,7 +2228,7 @@ const Profile: React.FC<ProfileProps> = ({
           { 
             id: 'helper_records', 
             name: t['plan.feature.helper_records'] || 'Helper payslips & holiday records',
-            description: t['plan.feature.helper_records_desc'] || 'Track overtime and holidays, then generate and sign digital payslips effortlessly.',
+            description: t['plan.feature.helper_records_desc'] || 'Track overtime/holidays; generate signed payslips easily.',
             isLimit: false 
           },
         ]

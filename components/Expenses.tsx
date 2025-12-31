@@ -301,6 +301,7 @@ const Expenses: React.FC<ExpensesProps> = ({
 
   const [localExpenses, setLocalExpenses] = useState<Expense[]>([...expenses]);
   const [showFreeUpgradeBanner, setShowFreeUpgradeBanner] = useState(false);
+  const [showSummaryUpgradeModal, setShowSummaryUpgradeModal] = useState(false);
 
   // Scroll header hook
   const { isScrolled } = useScrollHeader();
@@ -309,7 +310,7 @@ const Expenses: React.FC<ExpensesProps> = ({
   useScrollLock(addExpenseStage !== 'closed' || !!selectedExpense || isMonthPickerOpen);
   
   // Dim status bar when sheet is open (iOS)
-  useSheetTheme(addExpenseStage !== 'closed' || !!selectedExpense || isMonthPickerOpen);
+  useSheetTheme(addExpenseStage !== 'closed' || !!selectedExpense || isMonthPickerOpen || showSummaryUpgradeModal);
 
   // Refs
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -878,14 +879,20 @@ const Expenses: React.FC<ExpensesProps> = ({
                 {t['common.list']}
           </button>
           <button
-                onClick={() => setView('chart')}
+                onClick={() => {
+                  if (isFreePlan) {
+                    setShowSummaryUpgradeModal(true);
+                  } else {
+                    setView('chart');
+                  }
+                }}
                 className={`flex-1 px-4 py-2 rounded-full text-body whitespace-nowrap transition-all flex items-center justify-center gap-2 ${
-                  view === 'chart'
+                  view === 'chart' && !isFreePlan
                     ? 'bg-card text-primary shadow-sm'
                     : 'text-muted-foreground'
                 }`}
               >
-                <PieIcon size={18} />
+                {isFreePlan ? <Lock size={18} /> : <PieIcon size={18} />}
                 {t['common.summary']}
           </button>
             </div>
@@ -1821,6 +1828,54 @@ const Expenses: React.FC<ExpensesProps> = ({
                 className="w-full mt-3 py-3.5 rounded-xl bg-card text-foreground text-body border border-border"
               >
                 {t['expenses.show_all_expenses'] || 'Show All Expenses'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─────────────────────────────────────────────────────────────── */}
+      {/* SUMMARY UPGRADE MODAL */}
+      {/* ─────────────────────────────────────────────────────────────── */}
+      {showSummaryUpgradeModal && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+          <div className="bg-card w-full max-w-sm rounded-2xl overflow-hidden relative shadow-lg">
+            {/* Close Button */}
+            <button 
+              onClick={() => setShowSummaryUpgradeModal(false)} 
+              className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center right-3 top-3 text-muted-foreground"
+              aria-label={t['common.close'] || 'Close'}
+            >
+              <X size={20} />
+            </button>
+
+            {/* Content */}
+            <div className="p-6 pt-8">
+              {/* Icon */}
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center">
+                <PieIcon size={32} className="text-primary" />
+              </div>
+              
+              {/* Title */}
+              <h2 className="text-title text-foreground text-center mb-3">
+                {t['expenses.summary_title'] || 'Monthly Summary'}
+              </h2>
+              
+              {/* Description */}
+              <p className="text-body text-muted-foreground text-center mb-6">
+                {t['expenses.summary_upgrade_desc'] || "Get insights into your spending habits. View your expenses broken down by category with visual charts, and track your monthly totals at a glance."}
+              </p>
+              
+              {/* Upgrade Button */}
+              <button
+                onClick={() => {
+                  setShowSummaryUpgradeModal(false);
+                  localStorage.setItem('helpy_profile_target_section', 'plan');
+                  onNavigateToPlan?.();
+                }}
+                className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground text-body font-semibold shadow-sm"
+              >
+                {t['common.upgrade'] || 'Upgrade'}
               </button>
             </div>
           </div>

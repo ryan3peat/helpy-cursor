@@ -769,13 +769,13 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'plan.feature.family_members': 'Family members',
   'plan.feature.helpers': 'Helpers',
   'plan.feature.manual_expenses': 'Add expenses manually',
-  'plan.feature.manual_expenses_desc': 'Quickly enter the amount, category, merchant, and date for any purchase.',
+  'plan.feature.manual_expenses_desc': 'Enter amount, category, shop, and date quickly.',
   'plan.feature.ai_scan': 'AI receipt scanning',
-  'plan.feature.ai_scan_desc': 'Snap a photo of your receipt to automatically fill in the total amount and merchant name.',
+  'plan.feature.ai_scan_desc': 'Take or upload receipt photo and automatically capture the details.',
   'plan.feature.spending_summary': 'Monthly Spending Summary',
-  'plan.feature.spending_summary_desc': 'Visualize your budget with pie charts by category, plus totals and percentage breakdowns.',
+  'plan.feature.spending_summary_desc': 'Pie charts show category totals and percentages.',
   'plan.feature.helper_records': 'Helper payslips & holiday records',
-  'plan.feature.helper_records_desc': 'Track overtime and holidays, then generate and sign digital payslips effortlessly.',
+  'plan.feature.helper_records_desc': 'Track overtime/holidays; generate signed payslips easily.',
   
   // Plan Features - Test (for Stripe testing)
   'plan.feature.test_desc': 'Test plan for payment testing',
@@ -1019,4 +1019,23 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   
   // Helper Privacy Note
   'guide.helper_privacy_note': 'Your financial information and family details remain private. Helpers only see what they need to help manage your household.',
+
+  // Expenses - Upgrade Modal
+  'expenses.summary_title': 'Monthly Summary',
+  'expenses.summary_upgrade_desc': 'Get insights into your spending habits. View your expenses broken down by category with visual charts, and track your monthly totals at a glance.',
+  'common.upgrade': 'Upgrade',
+
+  // Subscription - Referral & Downgrade
+  'subscription.invalid_referral_code': 'Invalid or expired referral code',
+  'subscription.confirm_downgrade_free': 'Are you sure you want to downgrade to the Free plan? Your subscription will be canceled immediately and you will lose access to premium features.',
+  'subscription.downgrade_success': 'Your subscription has been canceled. You are now on the Free plan.',
+
+  // Profile - Additional
+  'common.not_set': 'Not set',
+  'profile.salary_not_set': 'Not configured',
+  'profile.learn_features': 'Learn how to use Helpy',
+  'profile.addMember': 'Add Family Member',
+  'profile.share_with': 'Share with',
+  'profile.creating_invite': 'Creating invite...',
+  'profile.added': 'added',
 };

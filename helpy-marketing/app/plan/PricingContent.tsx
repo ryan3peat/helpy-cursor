@@ -44,19 +44,19 @@ const featureSections = [
       { 
         id: 'manual_expenses', 
         name: 'Add expenses manually',
-        description: 'Quickly enter the amount, category, merchant, and date for any purchase.',
+        description: 'Enter amount, category, shop, and date quickly.',
         isLimit: false 
       },
       { 
         id: 'ai_scan', 
         name: 'AI receipt scanning',
-        description: 'Snap a photo of your receipt to automatically fill in the total amount and merchant name.',
+        description: 'Take or upload receipt photo and automatically capture the details.',
         isLimit: false 
       },
       { 
         id: 'spending_summary', 
         name: 'Monthly Spending Summary',
-        description: 'Visualize your budget with pie charts by category, plus totals and percentage breakdowns.',
+        description: 'Pie charts show category totals and percentages.',
         isLimit: false 
       },
     ]
@@ -68,7 +68,7 @@ const featureSections = [
       { 
         id: 'helper_records', 
         name: 'Helper payslips & holiday records',
-        description: 'Track overtime and holidays, then generate and sign digital payslips effortlessly.',
+        description: 'Track overtime/holidays; generate signed payslips easily.',
         isLimit: false 
       },
     ]

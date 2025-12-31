@@ -873,7 +873,7 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   
   // User Guide - Notifications
   'guide.notifications_title': 'Push Notifications',
-  'guide.notifications_desc': 'Get notified when new tasks, meals, or expenses are added. Enable in Profile > Settings > Account.',
+  'guide.notifications_desc': 'Get notified when new tasks, meals, or expenses are added. Enable in Profile > Settings.',
   
   // User Guide - Role Descriptions
   'guide.role_admin_title': 'Admin',
@@ -969,7 +969,7 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'guide.faq_3_q': 'Why can\'t my helper edit certain things?',
   'guide.faq_3_a': 'Helpers have view-only access to some features to protect family privacy.',
   'guide.faq_4_q': 'How do I enable notifications?',
-  'guide.faq_4_a': 'Go to Profile > Settings > Account and toggle on Push Notifications.',
+  'guide.faq_4_a': 'Go to Profile > Settings and toggle on Push Notifications.',
   'guide.faq_5_q': 'Can I use Helpy in my language?',
   'guide.faq_5_a': 'Yes! Tap the language button on the dashboard to switch between supported languages.',
   

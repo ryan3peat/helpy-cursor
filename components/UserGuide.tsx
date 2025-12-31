@@ -237,7 +237,7 @@ const UserGuide: React.FC<UserGuideProps> = ({ currentUser, t, onNavigateToPlan,
           </h3>
           <p className="text-body text-muted-foreground">
             {t['guide.notifications_desc'] ||
-              'Get notified when new tasks, meals, or expenses are added. Enable in Profile > Settings > Account.'}
+              'Get notified when new tasks, meals, or expenses are added. Enable in Profile > Settings.'}
           </p>
         </div>
       </AccordionSection>

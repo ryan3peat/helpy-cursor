@@ -779,16 +779,6 @@ const Dashboard: React.FC<DashboardProps> = ({
       {/* Stat Cards */}
       <div className="grid grid-cols-2 gap-5">
         <StatCard
-          title={t['dashboard.shopping']}
-          count={shoppingCount}
-          icon={ShoppingCart}
-          label={t['dashboard.todo']}
-          colorClass="text-primary"
-          onClick={() => onNavigate('todo', { section: 'shopping' })}
-          showAddButton={true}
-          onAddClick={() => onNavigate('todo', { section: 'shopping', openAddSheet: true })}
-        />
-        <StatCard
           title={t['dashboard.tasks']}
           count={activeTaskCount}
           icon={ClipboardList}
@@ -797,6 +787,16 @@ const Dashboard: React.FC<DashboardProps> = ({
           showAddButton={true}
           onAddClick={() => onNavigate('todo', { section: 'task', openAddSheet: true })}
           onClick={() => onNavigate('todo', { section: 'task' })}
+        />
+        <StatCard
+          title={t['dashboard.shopping']}
+          count={shoppingCount}
+          icon={ShoppingCart}
+          label={t['dashboard.todo']}
+          colorClass="text-primary"
+          onClick={() => onNavigate('todo', { section: 'shopping' })}
+          showAddButton={true}
+          onAddClick={() => onNavigate('todo', { section: 'shopping', openAddSheet: true })}
         />
       </div>
 
@@ -815,6 +815,8 @@ const Dashboard: React.FC<DashboardProps> = ({
         })()}
         colorClass="text-primary"
         onClick={() => onNavigate('expenses')}
+        showAddButton={true}
+        onAddClick={() => onNavigate('expenses', { openAddSheet: true })}
       />
       )}
 

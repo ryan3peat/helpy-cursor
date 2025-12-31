@@ -23,6 +23,7 @@ import {
   hasActiveSubscription
 } from '../services/pushNotificationService';
 import { compressImageForAvatar } from '../utils/imageCompression';
+import { getRoleConfig } from '../config/rolePermissions';
 
 interface ProfileProps extends BaseViewProps {
   users: User[];
@@ -1478,11 +1479,11 @@ const Profile: React.FC<ProfileProps> = ({
                       </div>
                       <div>
                         <label className="block text-caption text-muted-foreground mb-2 tracking-wide">{t['profile.role']}</label>
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="flex gap-2">
                           <button
                             type="button"
                             onClick={() => setNewRole(UserRole.SPOUSE)}
-                            className={`px-4 py-3 rounded-lg font-semibold transition-colors ${
+                            className={`flex-1 px-3 py-2.5 rounded-lg font-semibold transition-colors text-body ${
                               newRole === UserRole.SPOUSE
                                 ? 'bg-[#F3E5F5] text-[#AB47BC] border-2 border-[#AB47BC]'
                                 : 'bg-secondary text-muted-foreground border-2 border-transparent '
@@ -1493,7 +1494,7 @@ const Profile: React.FC<ProfileProps> = ({
                           <button
                             type="button"
                             onClick={() => setNewRole(UserRole.HELPER)}
-                            className={`px-4 py-3 rounded-lg font-semibold transition-colors ${
+                            className={`flex-1 px-3 py-2.5 rounded-lg font-semibold transition-colors text-body ${
                               newRole === UserRole.HELPER
                                 ? 'bg-[#FFF3E0] text-[#FF9800] border-2 border-[#FF9800]'
                                 : 'bg-secondary text-muted-foreground border-2 border-transparent '
@@ -1504,7 +1505,7 @@ const Profile: React.FC<ProfileProps> = ({
                           <button
                             type="button"
                             onClick={() => setNewRole(UserRole.CHILD)}
-                            className={`px-4 py-3 rounded-lg font-semibold transition-colors ${
+                            className={`flex-1 px-3 py-2.5 rounded-lg font-semibold transition-colors text-body ${
                               newRole === UserRole.CHILD
                                 ? 'bg-[#E8F5E9] text-[#4CAF50] border-2 border-[#4CAF50]'
                                 : 'bg-secondary text-muted-foreground border-2 border-transparent '
@@ -1515,7 +1516,7 @@ const Profile: React.FC<ProfileProps> = ({
                           <button
                             type="button"
                             onClick={() => setNewRole(UserRole.OTHER)}
-                            className={`px-4 py-3 rounded-lg font-semibold transition-colors ${
+                            className={`flex-1 px-3 py-2.5 rounded-lg font-semibold transition-colors text-body ${
                               newRole === UserRole.OTHER
                                 ? 'bg-[#FCE4EC] text-[#F06292] border-2 border-[#F06292]'
                                 : 'bg-secondary text-muted-foreground border-2 border-transparent '
@@ -1525,6 +1526,63 @@ const Profile: React.FC<ProfileProps> = ({
                           </button>
                         </div>
                       </div>
+                      
+                      {/* Role Info Box - dynamically shows selected role's capabilities */}
+                      {(() => {
+                        const roleConfig = getRoleConfig(newRole);
+                        if (!roleConfig) return null;
+                        return (
+                          <div className="bg-muted rounded-xl p-4 mt-2" style={{ height: '340px', overflow: 'auto' }}>
+                            <p className="text-body font-semibold text-foreground mb-1">
+                              {roleConfig.displayName}
+                            </p>
+                            <p className="text-caption text-muted-foreground mb-3">
+                              {roleConfig.description}
+                            </p>
+                            
+                            {/* What they can do */}
+                            {roleConfig.abilities.length > 0 && (
+                              <div className="mb-3">
+                                <p className="text-caption text-muted-foreground mb-1.5 font-semibold">
+                                  {t['guide.what_you_can_do'] || 'What they can do:'}
+                                </p>
+                                <div className="space-y-1">
+                                  {roleConfig.abilities.map((ability) => (
+                                    <div key={ability.key} className="flex items-start gap-2">
+                                      <Check size={12} className="text-primary mt-0.5 flex-shrink-0" />
+                                      <span className="text-caption text-foreground">{ability.label}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            
+                            {/* What they can't do */}
+                            {roleConfig.restrictions.length > 0 && (
+                              <div>
+                                <p className="text-caption text-muted-foreground mb-1.5 font-semibold">
+                                  {t['guide.what_you_cant_do'] || "What they can't do:"}
+                                </p>
+                                <div className="space-y-1">
+                                  {roleConfig.restrictions.map((restriction) => (
+                                    <div key={restriction.key} className="flex items-start gap-2">
+                                      <X size={12} className="text-destructive mt-0.5 flex-shrink-0" />
+                                      <span className="text-caption text-foreground">{restriction.label}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            
+                            {/* Full access note for roles with no restrictions */}
+                            {roleConfig.restrictions.length === 0 && (
+                              <p className="text-caption text-muted-foreground">
+                                {t['guide.full_access'] || 'Full access - no restrictions'}
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
 
                     {/* Footer */}

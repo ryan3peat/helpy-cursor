@@ -197,6 +197,7 @@ interface ExpensesProps extends BaseViewProps {
   onAdd: (expense: Expense) => Promise<Expense> | Expense | void;
   onUpdate?: (expense: Expense) => Promise<void> | void;
   onDelete?: (id: string) => Promise<void> | void;
+  autoOpenSheet?: boolean; // Auto-open add sheet when navigating from Dashboard (+) button
 }
 
 interface PendingReceipt {
@@ -249,6 +250,7 @@ const Expenses: React.FC<ExpensesProps> = ({
   onDelete,
   t,
   currentLang,
+  autoOpenSheet,
 }) => {
   // ─────────────────────────────────────────────────────────────────
   // Role-based permissions
@@ -266,8 +268,8 @@ const Expenses: React.FC<ExpensesProps> = ({
 
   // Month/Year Selection State
   const now = new Date();
-  // Default to December of the current year
-  const [selectedMonth, setSelectedMonth] = useState<number | null>(11); // 0-indexed, 11 = December
+  // Default to current month of the current year
+  const [selectedMonth, setSelectedMonth] = useState<number | null>(now.getMonth()); // 0-indexed (0 = January, 11 = December)
   const [selectedYear, setSelectedYear] = useState<number | null>(now.getFullYear());
   const [isMonthPickerOpen, setIsMonthPickerOpen] = useState(false);
   const [pickerYear, setPickerYear] = useState(now.getFullYear()); // Year shown in picker
@@ -484,6 +486,13 @@ const Expenses: React.FC<ExpensesProps> = ({
     setShowFreeUpgradeBanner(isFreePlan);
     setAddExpenseStage(isFreePlan ? 'manual' : 'options');
   };
+
+  // Auto-open add sheet when navigating from Dashboard (+) button
+  useEffect(() => {
+    if (autoOpenSheet) {
+      openAddExpenseSheet();
+    }
+  }, [autoOpenSheet]);
 
   const closeAddExpenseSheet = () => {
     setAddExpenseStage('closed');

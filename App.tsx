@@ -901,6 +901,7 @@ const AppContent: React.FC = () => {
             onDelete={handleDeleteExpense}
             t={translations}
             currentLang={lang}
+            autoOpenSheet={navData?.openAddSheet}
           />
         );
 

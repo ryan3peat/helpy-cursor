@@ -21,6 +21,7 @@ import { User, UserRole, TranslationDictionary } from '../types';
 import { SUBSCRIPTION_PLANS } from '../services/stripeService';
 import { SUPPORTED_LANGUAGES } from '../constants';
 import { NAV_ITEMS, FEATURE_ICONS } from '../config/navConfig';
+import { getGuideRoles, getRoleConfig, RoleConfig } from '../config/rolePermissions';
 
 interface UserGuideProps {
   currentUser: User;
@@ -242,7 +243,7 @@ const UserGuide: React.FC<UserGuideProps> = ({ currentUser, t, onNavigateToPlan,
         </div>
       </AccordionSection>
 
-      {/* Roles Section */}
+      {/* Roles Section - Dynamically rendered from centralized config */}
       <AccordionSection
         title={t['guide.roles_title'] || 'Roles'}
         icon={<Users size={20} />}
@@ -252,81 +253,46 @@ const UserGuide: React.FC<UserGuideProps> = ({ currentUser, t, onNavigateToPlan,
           {t['guide.roles_desc'] || 'Helpy has different roles with different permissions. Learn what each role can do.'}
         </p>
 
-        {/* Admin Role */}
-        <RoleCard
-          title={t['guide.role_admin_title'] || 'Admin'}
-          description={t['guide.role_admin_desc'] || 'The household owner with full control'}
-          isCurrentRole={isAdmin}
-          t={t}
-        >
-          <AbilityItem>{t['guide.admin_ability_1'] || 'Add and manage family members'}</AbilityItem>
-          <AbilityItem>{t['guide.admin_ability_2'] || 'Invite helpers with secure links'}</AbilityItem>
-          <AbilityItem>{t['guide.admin_ability_3'] || 'Manage subscription and billing'}</AbilityItem>
-          <AbilityItem>{t['guide.admin_ability_4'] || 'Edit the Family Board'}</AbilityItem>
-          <AbilityItem>{t['guide.admin_ability_5'] || 'Delete any items'}</AbilityItem>
-          <AbilityItem>{t['guide.admin_ability_6'] || 'View all expenses and monthly summaries'}</AbilityItem>
-        </RoleCard>
-
-        {/* Spouse Role */}
-        <RoleCard
-          title={t['guide.role_spouse_title'] || 'Spouse'}
-          description={t['guide.role_spouse_desc'] || 'A partner with nearly full access'}
-          isCurrentRole={isSpouse}
-          t={t}
-        >
-          <AbilityItem>{t['guide.spouse_ability_1'] || 'Add and edit family members'}</AbilityItem>
-          <AbilityItem>{t['guide.spouse_ability_2'] || 'Manage tasks, meals, and expenses'}</AbilityItem>
-          <AbilityItem>{t['guide.spouse_ability_3'] || 'Edit the Family Board'}</AbilityItem>
-          <AbilityItem>{t['guide.spouse_ability_4'] || 'Access all household information'}</AbilityItem>
-          <AbilityItem>{t['guide.spouse_ability_5'] || 'View all expenses and monthly summaries'}</AbilityItem>
-          <RestrictionItem>{t['guide.spouse_restriction_1'] || 'Cannot manage subscription or billing'}</RestrictionItem>
-        </RoleCard>
-
-        {/* Helper Role */}
-        <RoleCard
-          title={t['guide.role_helper_title'] || 'Helper'}
-          description={t['guide.role_helper_desc'] || 'Household staff with limited access'}
-          isCurrentRole={isHelper}
-          t={t}
-        >
-          <AbilityItem>{t['guide.helper_ability_1'] || 'View and complete shopping lists'}</AbilityItem>
-          <AbilityItem>{t['guide.helper_ability_2'] || 'Mark tasks as done'}</AbilityItem>
-          <AbilityItem>{t['guide.helper_ability_3'] || 'View meal plans and RSVP'}</AbilityItem>
-          <AbilityItem>{t['guide.helper_ability_4'] || 'Access places and routines'}</AbilityItem>
-          <AbilityItem>{t['guide.helper_ability_5'] || 'Sign payslips digitally'}</AbilityItem>
-          <AbilityItem>{t['guide.helper_ability_6'] || 'Enter and view their own expenses'}</AbilityItem>
-          <RestrictionItem>{t['guide.helper_restriction_1'] || 'Cannot see expenses from others'}</RestrictionItem>
-          <RestrictionItem>{t['guide.helper_restriction_2'] || 'Cannot edit Family Board'}</RestrictionItem>
-          <RestrictionItem>{t['guide.helper_restriction_3'] || 'Cannot add family members'}</RestrictionItem>
-        </RoleCard>
-
-        {/* Child Role */}
-        <RoleCard
-          title={t['guide.role_child_title'] || 'Child'}
-          description={t['guide.role_child_desc'] || 'Family member with basic access'}
-          isCurrentRole={isChild}
-          t={t}
-        >
-          <AbilityItem>{t['guide.child_ability_1'] || 'See your tasks and chores'}</AbilityItem>
-          <AbilityItem>{t['guide.child_ability_2'] || 'Check meal plans'}</AbilityItem>
-          <AbilityItem>{t['guide.child_ability_3'] || 'RSVP for meals'}</AbilityItem>
-          <AbilityItem>{t['guide.child_ability_4'] || 'View your own profile'}</AbilityItem>
-          <RestrictionItem>{t['guide.child_restriction_1'] || 'Cannot view expenses'}</RestrictionItem>
-          <RestrictionItem>{t['guide.child_restriction_2'] || 'Cannot edit household info'}</RestrictionItem>
-        </RoleCard>
-
-        {/* Other Role */}
-        <RoleCard
-          title={t['guide.role_other_title'] || 'Other'}
-          description={t['guide.role_other_desc'] || 'Extended family or guest access'}
-          isCurrentRole={currentUser.role === UserRole.OTHER}
-          t={t}
-        >
-          <AbilityItem>{t['guide.other_ability_1'] || 'View shared content'}</AbilityItem>
-          <AbilityItem>{t['guide.other_ability_2'] || 'RSVP for meals'}</AbilityItem>
-          <AbilityItem>{t['guide.other_ability_3'] || 'See basic household info'}</AbilityItem>
-          <RestrictionItem>{t['guide.other_restriction_1'] || 'Limited editing capabilities'}</RestrictionItem>
-        </RoleCard>
+        {getGuideRoles().map((roleConfig) => (
+          <RoleCard
+            key={roleConfig.role}
+            title={roleConfig.displayName}
+            description={roleConfig.description}
+            isCurrentRole={currentUser.role === roleConfig.role}
+            t={t}
+          >
+            {/* What you can do */}
+            {roleConfig.abilities.length > 0 && (
+              <div className="mb-3">
+                <p className="text-caption text-muted-foreground mb-2 font-semibold">
+                  {t['guide.what_you_can_do'] || 'What they can do:'}
+                </p>
+                {roleConfig.abilities.map((ability) => (
+                  <AbilityItem key={ability.key}>{ability.label}</AbilityItem>
+                ))}
+              </div>
+            )}
+            
+            {/* What you can't do */}
+            {roleConfig.restrictions.length > 0 && (
+              <div>
+                <p className="text-caption text-muted-foreground mb-2 font-semibold">
+                  {t['guide.what_you_cant_do'] || "What they can't do:"}
+                </p>
+                {roleConfig.restrictions.map((restriction) => (
+                  <RestrictionItem key={restriction.key}>{restriction.label}</RestrictionItem>
+                ))}
+              </div>
+            )}
+            
+            {/* Special case: Admin has no restrictions */}
+            {roleConfig.restrictions.length === 0 && roleConfig.role === UserRole.MASTER && (
+              <p className="text-caption text-muted-foreground mt-2">
+                {t['guide.full_access'] || 'Full access - no restrictions'}
+              </p>
+            )}
+          </RoleCard>
+        ))}
       </AccordionSection>
 
       {/* Features Section */}

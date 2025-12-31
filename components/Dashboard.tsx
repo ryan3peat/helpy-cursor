@@ -756,7 +756,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                           </p>
                         ) : (
                           <p className="text-body text-muted-foreground leading-tight">
-                            {t['meals.hungry_no_menu'] ?? "Someone's hungry, menu unknown..."}
+                            {t['meals.hungry_no_menu'] ?? "Someone's joining. No menu yet"}
                           </p>
                         )}
                       </div>

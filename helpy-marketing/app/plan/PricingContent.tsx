@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Check, X, Heart } from "lucide-react";
+import { Check, X, CircleStar } from "lucide-react";
 
 // Helpy brand colors
 const HELPY_BLUE = '#3EAFD2';
@@ -142,7 +142,7 @@ export default function PricingContent() {
         spending_summary: { included: true },
         helper_records: { included: true },
       },
-      badge: { text: 'Popular', icon: Heart },
+      badge: true,
       isFree: false
     }
   ];
@@ -211,14 +211,10 @@ export default function PricingContent() {
                   color: hasColoredBg ? 'white' : 'hsl(var(--foreground))'
                 }}
               >
-                {/* Popular badge */}
+                {/* CircleStar badge */}
                 {plan.badge && (
-                  <div 
-                    className="absolute top-6 right-6 flex flex-col items-center"
-                    style={{ color: 'white' }}
-                  >
-                    <plan.badge.icon size={36} strokeWidth={1.5} />
-                    <span className="text-sm font-bold mt-1">{plan.badge.text}</span>
+                  <div className="absolute top-6 right-6">
+                    <CircleStar size={36} strokeWidth={2} color="white" />
                   </div>
                 )}
 

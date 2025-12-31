@@ -587,7 +587,7 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'language.ai_disclaimer': 'Translation provided by AI. For accuracy, please refer to the original language version if in doubt.',
 
   // Meals - additional
-  'meals.hungry_no_menu': "Someone's hungry, menu unknown...",
+  'meals.hungry_no_menu': "Someone's joining. No menu yet",
 
   // Subscription & Payment
   'subscription.payment_success': 'Payment successful! Your subscription is being updated...',

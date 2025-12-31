@@ -3,7 +3,7 @@ import {
   AlertCircle, Heart, Settings, Plus, Trash2, X, Save, Camera,
   Image as ImageIcon, LogOut, Copy, Check, ChevronLeft, ChevronRight,
   Shield, Lock, Crown, Mail, Share2, Bell, BellOff, BellDot, Phone, CheckCircle, Loader2, GraduationCap,
-  MessageCircleQuestionMark, Palette, Sun, Moon, Monitor, BookOpen, Pencil, CalendarCheck, HandCoins, Award
+  MessageCircleQuestionMark, Palette, Sun, Moon, Monitor, BookOpen, Pencil, CalendarCheck, HandCoins, CircleStar
 } from 'lucide-react';
 import FeedbackSection from './FeedbackSection';
 import UserGuide from './UserGuide';
@@ -89,6 +89,18 @@ const Profile: React.FC<ProfileProps> = ({
       setIsAddModalOpen(true);
       // Clear the flag
       localStorage.removeItem('helpy_profile_target_section');
+    }
+    
+    // Check if we should select a specific user (e.g., from Family Info pencil icon)
+    const editUserId = localStorage.getItem('helpy_profile_edit_user_id');
+    if (editUserId) {
+      // Verify the user exists in the users list before selecting
+      const userExists = users.some(u => u.id === editUserId);
+      if (userExists) {
+        setSelectedUserId(editUserId);
+      }
+      // Clear the flag
+      localStorage.removeItem('helpy_profile_edit_user_id');
     }
   }, []);
 
@@ -1224,7 +1236,7 @@ const Profile: React.FC<ProfileProps> = ({
                           <div className="text-body text-muted-foreground">
                              <p className="font-bold text-foreground mb-1">Notifications off.</p>
                              <ol className="list-decimal pl-4 space-y-1">
-                               <li>Enable in <strong>Settings &gt; Account</strong> below</li>
+                               <li>Enable in <strong>Settings</strong> below</li>
                                <li>Tap <strong>Allow</strong> if asked</li>
                              </ol>
                           </div>
@@ -1241,7 +1253,7 @@ const Profile: React.FC<ProfileProps> = ({
                              <p className="font-bold text-foreground mb-1">Notification setup is incomplete. <span className="font-normal">Ask {selectedUser.name.split(' ')[0]} to:</span></p>
                              <ol className="list-decimal pl-4 space-y-1">
                                <li>Add to Home Screen (iPhone/Android)</li>
-                               <li>Enable Notification in <strong>Settings &gt; Account</strong></li>
+                               <li>Enable Notification in <strong>Settings</strong></li>
                                <li>Tap <strong>Allow</strong> if asked</li>
                              </ol>
                           </div>
@@ -2299,7 +2311,7 @@ const Profile: React.FC<ProfileProps> = ({
           spending_summary: { included: true },
           helper_records: { included: true },
         },
-        badge: { text: t['common.popular'] || 'Popular', icon: Heart },
+        badge: true,
         isFree: false
       }
     ];
@@ -2327,7 +2339,7 @@ const Profile: React.FC<ProfileProps> = ({
       <div className="min-h-screen bg-background pb-40 animate-fade-in">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
           {renderSettingsHeader(t['common.plan'] || 'Subscription', () => setActiveSection('settings'))}
-          <div className="pt-6 pb-24">
+          <div className="pt-6">
 
             {/* Success Message Banner */}
             {subscriptionSuccess && (
@@ -2546,16 +2558,10 @@ const Profile: React.FC<ProfileProps> = ({
                         backgroundColor: p.accentColor || undefined,
                       }}
                     >
-                      {/* Corner badge - height matches Pro/price block */}
+                      {/* Corner badge - CircleStar icon */}
                       {p.badge && !isCurrentPlan && (
-                        <div 
-                          className="absolute top-6 right-6 flex flex-col items-center"
-                          style={{ 
-                            color: hasColoredBg ? 'white' : p.accentColor
-                          }}
-                        >
-                          <p.badge.icon size={36} strokeWidth={1.5} />
-                          <span className="text-body font-bold mt-1">{p.badge.text}</span>
+                        <div className="absolute top-6 right-6">
+                          <CircleStar size={36} strokeWidth={2} color="white" />
                         </div>
                       )}
 
@@ -2935,7 +2941,7 @@ const Profile: React.FC<ProfileProps> = ({
       <div className="min-h-screen bg-background pb-40 animate-fade-in">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
           {renderSettingsHeader(t['common.security'] || 'Account', () => setActiveSection('settings'))}
-          <div className="pt-6 pb-24">
+          <div className="pt-6">
             
             <div className="space-y-6">
               {/* Profile Information Section */}
@@ -3081,135 +3087,6 @@ const Profile: React.FC<ProfileProps> = ({
                     <div className="bg-primary/10 border border-primary/20 rounded-xl p-4">
                       <p className="text-body text-primary">
                         Your account is managed through Google. Password changes must be made through your Google account settings.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Notifications Section */}
-              <div className="bg-card p-6 rounded-2xl shadow-sm border border-border">
-                <h3 className="text-title font-bold text-foreground mb-4">{t['profile.notifications'] || 'Notifications'}</h3>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
-                        <Bell size={20} className="text-primary-foreground" />
-                      </div>
-                      <div>
-                        <p className="font-semibold text-foreground text-body">{t['profile.enable_notifications'] || 'Enable Notifications'}</p>
-                        <p className="text-caption text-muted-foreground">
-                          {!pushSupported 
-                            ? (t['settings.push_not_supported'] || 'Not supported in this browser')
-                            : pushPermission === 'denied'
-                            ? (t['settings.push_blocked'] || 'Blocked - enable in browser settings')
-                            : (t['settings.push_description'] || 'Get notified when family adds items')}
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      disabled={!pushSupported || pushPermission === 'denied' || isTogglingNotifications}
-                      onClick={async () => {
-                        if (!pushSupported || pushPermission === 'denied') return;
-                        
-                        setIsTogglingNotifications(true);
-                        isTogglingRef.current = true; // Set ref to prevent useEffect from resetting
-                        const newValue = !accountData.notificationsEnabled;
-                        
-                        try {
-                          if (newValue) {
-                            // Enable notifications - subscribe to push
-                            // Update local state first for immediate UI feedback
-                            setAccountData({ ...accountData, notificationsEnabled: true });
-                            
-                            // IMPORTANT: Subscribe to push FIRST, before updating DB
-                            // This prevents race condition where DB update triggers refetch 
-                            // before subscription is saved
-                            let subscriptionSuccess = false;
-                            try {
-                              const subscription = await subscribeToPush(
-                                currentUser.id,
-                                currentUser.householdId
-                              );
-                              
-                              if (subscription) {
-                                console.log('[Profile] Successfully subscribed to push notifications');
-                                subscriptionSuccess = true;
-                              } else {
-                                console.warn('[Profile] Failed to subscribe to push notifications');
-                              }
-                              setPushPermission(getNotificationPermission());
-                            } catch (subError) {
-                              console.error('[Profile] Error subscribing to push:', subError);
-                              setPushPermission(getNotificationPermission());
-                            }
-                            
-                            // Now update database (this triggers refetch, but subscription is already saved)
-                            await onUpdate(currentUser.id, { notificationsEnabled: true });
-                            
-                            if (!subscriptionSuccess) {
-                              console.warn('[Profile] notifications_enabled is set to true but push subscription failed');
-                            }
-                          } else {
-                            // Disable notifications - unsubscribe from push
-                            // Update local state first
-                            setAccountData({ ...accountData, notificationsEnabled: false });
-                            
-                            // Save to database immediately
-                            await onUpdate(currentUser.id, { notificationsEnabled: false });
-                            
-                            // Then unsubscribe (non-blocking)
-                            try {
-                              await unsubscribeFromPush(currentUser.id, currentUser.householdId);
-                              console.log('[Profile] Successfully unsubscribed from push notifications');
-                            } catch (unsubError) {
-                              console.error('[Profile] Error unsubscribing from push:', unsubError);
-                              // DB is already updated, so continue
-                            }
-                          }
-                        } catch (error) {
-                          console.error('[Profile] Error toggling notifications:', error);
-                          // Revert local state on error
-                          setAccountData({ ...accountData, notificationsEnabled: !newValue });
-                          // Show error to user (you could add a toast notification here)
-                          setIsTogglingNotifications(false);
-                          isTogglingRef.current = false;
-                          return;
-                        }
-                        // Delay clearing toggling flag to let real-time update propagate
-                        // This prevents the toggle from flipping back during the sync
-                        setTimeout(() => {
-                          isTogglingRef.current = false;
-                          setIsTogglingNotifications(false);
-                        }, 800);
-                      }}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                        !pushSupported || pushPermission === 'denied'
-                          ? 'bg-muted-foreground/20 cursor-not-allowed'
-                          : accountData.notificationsEnabled 
-                          ? 'bg-primary' 
-                          : 'bg-muted-foreground/30'
-                      }`}
-                    >
-                      {isTogglingNotifications ? (
-                        <span className="absolute inset-0 flex items-center justify-center">
-                          <Loader2 size={14} className="animate-spin text-muted-foreground" />
-                        </span>
-                      ) : (
-                        <span
-                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                            accountData.notificationsEnabled ? 'translate-x-6' : 'translate-x-1'
-                          }`}
-                        />
-                      )}
-                    </button>
-                  </div>
-                  
-                  {/* Permission blocked message */}
-                  {pushSupported && pushPermission === 'denied' && (
-                    <div className="bg-destructive/10 border border-destructive/20 rounded-xl p-3 mt-2">
-                      <p className="text-caption text-destructive">
-                        Notifications are blocked. To enable them, go to your browser settings and allow notifications for this site.
                       </p>
                     </div>
                   )}
@@ -3434,7 +3311,7 @@ const Profile: React.FC<ProfileProps> = ({
       <div className="min-h-screen bg-background pb-40 animate-fade-in">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
           {renderSettingsHeader(t['settings.appearance'] || 'Appearance', () => setActiveSection('settings'))}
-          <div className="pt-6 pb-24">
+          <div className="pt-6">
             <div className="bg-card rounded-3xl shadow-sm overflow-hidden">
               {themeOptions.map((option, index) => (
                 <div key={option.id}>
@@ -3478,7 +3355,7 @@ const Profile: React.FC<ProfileProps> = ({
       <div className="min-h-screen bg-background pb-40 animate-fade-in">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
           {renderSettingsHeader(t['guide.title'] || 'User Guide', () => setActiveSection('settings'))}
-          <div className="pt-6 pb-24">
+          <div className="pt-6">
             <UserGuide
               currentUser={currentUser}
               t={t}
@@ -3518,7 +3395,7 @@ const Profile: React.FC<ProfileProps> = ({
       <div className="min-h-screen bg-background pb-40 animate-fade-in">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
           {renderSettingsHeader(t['common.settings'] || 'Settings', () => setActiveSection('main'))}
-          <div className="pt-6 pb-24">
+          <div className="pt-6">
 
             <div className="bg-card rounded-3xl shadow-sm overflow-hidden">
               {[
@@ -3545,6 +3422,122 @@ const Profile: React.FC<ProfileProps> = ({
                   )}
                 </div>
               ))}
+            </div>
+
+            {/* Notifications Toggle */}
+            <div className="bg-card rounded-3xl shadow-sm overflow-hidden mt-6">
+              <div className="px-5 py-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Bell size={18} className="text-primary" />
+                  <div>
+                    <p className="font-bold text-foreground text-title">{t['profile.notifications'] || 'Notifications'}</p>
+                    {!pushSupported ? (
+                      <p className="text-caption text-muted-foreground">
+                        {t['settings.push_not_supported'] || 'Not supported in this browser'}
+                      </p>
+                    ) : pushPermission === 'denied' ? (
+                      <p className="text-caption text-muted-foreground">
+                        {t['settings.push_blocked'] || 'Blocked - enable in browser settings'}
+                      </p>
+                    ) : (
+                      <>
+                        <p className="text-caption text-muted-foreground">Get notified about family activity</p>
+                        <p className="text-caption text-muted-foreground">Shopping, Tasks, Meals, Expenses, Family Board</p>
+                      </>
+                    )}
+                  </div>
+                </div>
+                <button
+                  disabled={!pushSupported || pushPermission === 'denied' || isTogglingNotifications}
+                  onClick={async () => {
+                    if (!pushSupported || pushPermission === 'denied') return;
+                    
+                    setIsTogglingNotifications(true);
+                    isTogglingRef.current = true;
+                    const newValue = !accountData.notificationsEnabled;
+                    
+                    try {
+                      if (newValue) {
+                        setAccountData({ ...accountData, notificationsEnabled: true });
+                        
+                        let subscriptionSuccess = false;
+                        try {
+                          const subscription = await subscribeToPush(
+                            currentUser.id,
+                            currentUser.householdId
+                          );
+                          
+                          if (subscription) {
+                            console.log('[Profile] Successfully subscribed to push notifications');
+                            subscriptionSuccess = true;
+                          } else {
+                            console.warn('[Profile] Failed to subscribe to push notifications');
+                          }
+                          setPushPermission(getNotificationPermission());
+                        } catch (subError) {
+                          console.error('[Profile] Error subscribing to push:', subError);
+                          setPushPermission(getNotificationPermission());
+                        }
+                        
+                        await onUpdate(currentUser.id, { notificationsEnabled: true });
+                        
+                        if (!subscriptionSuccess) {
+                          console.warn('[Profile] notifications_enabled is set to true but push subscription failed');
+                        }
+                      } else {
+                        setAccountData({ ...accountData, notificationsEnabled: false });
+                        await onUpdate(currentUser.id, { notificationsEnabled: false });
+                        
+                        try {
+                          await unsubscribeFromPush(currentUser.id, currentUser.householdId);
+                          console.log('[Profile] Successfully unsubscribed from push notifications');
+                        } catch (unsubError) {
+                          console.error('[Profile] Error unsubscribing from push:', unsubError);
+                        }
+                      }
+                    } catch (error) {
+                      console.error('[Profile] Error toggling notifications:', error);
+                      setAccountData({ ...accountData, notificationsEnabled: !newValue });
+                      setIsTogglingNotifications(false);
+                      isTogglingRef.current = false;
+                      return;
+                    }
+                    setTimeout(() => {
+                      isTogglingRef.current = false;
+                      setIsTogglingNotifications(false);
+                    }, 800);
+                  }}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    !pushSupported || pushPermission === 'denied'
+                      ? 'bg-muted-foreground/20 cursor-not-allowed'
+                      : accountData.notificationsEnabled 
+                      ? 'bg-primary' 
+                      : 'bg-muted-foreground/30'
+                  }`}
+                >
+                  {isTogglingNotifications ? (
+                    <span className="absolute inset-0 flex items-center justify-center">
+                      <Loader2 size={14} className="animate-spin text-muted-foreground" />
+                    </span>
+                  ) : (
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        accountData.notificationsEnabled ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  )}
+                </button>
+              </div>
+              {/* Permission blocked message */}
+              {pushSupported && pushPermission === 'denied' && (
+                <div className="mx-5 mb-4">
+                  <div className="bg-destructive/10 border border-destructive/20 rounded-xl p-3">
+                    <p className="text-caption text-destructive">
+                      Notifications are blocked. To enable them, go to your browser settings and allow notifications for this site.
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

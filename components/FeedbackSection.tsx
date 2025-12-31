@@ -340,7 +340,7 @@ const FeedbackSection: React.FC<FeedbackSectionProps> = ({
   
   return (
     <div className="min-h-screen bg-background pb-40 animate-fade-in">
-      <div className="max-w-2xl mx-auto px-4 sm:px-6">
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
         {renderHeader()}
         
         <div className="pt-4">
@@ -560,7 +560,7 @@ const FeedbackSection: React.FC<FeedbackSectionProps> = ({
         </div>
         
         {/* Footer */}
-        <div className="helpy-footer mt-8">
+        <div className="helpy-footer">
           <span className="helpy-logo">helpy</span>
         </div>
       </div>

@@ -241,7 +241,7 @@ const AppContent: React.FC = () => {
     autoSubscribeIfNeeded(
       user.id,
       user.householdId,
-      user.notificationsEnabled ?? true
+      user.notificationsEnabled === true  // Only if EXPLICITLY true, not undefined/null
     ).then(success => {
       if (success) {
         console.log('[App] Push notifications auto-subscribed successfully (from handleLogin)');
@@ -436,7 +436,7 @@ const AppContent: React.FC = () => {
     autoSubscribeIfNeeded(
       currentUser.id,
       currentUser.householdId,
-      currentUser.notificationsEnabled ?? true  // Default to true if not set
+      currentUser.notificationsEnabled === true  // Only if EXPLICITLY true, not undefined/null
     ).then(success => {
       if (success) {
         console.log('[App] Push notifications auto-subscribed successfully');

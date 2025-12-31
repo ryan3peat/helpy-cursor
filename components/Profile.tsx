@@ -3426,10 +3426,10 @@ const Profile: React.FC<ProfileProps> = ({
 
             {/* Notifications Toggle */}
             <div className="bg-card rounded-3xl shadow-sm overflow-hidden mt-6">
-              <div className="px-5 py-4 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Bell size={18} className="text-primary" />
-                  <div>
+              <div className="px-5 py-4 flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <Bell size={18} className="text-primary shrink-0" />
+                  <div className="min-w-0">
                     <p className="font-bold text-foreground text-title">{t['profile.notifications'] || 'Notifications'}</p>
                     {!pushSupported ? (
                       <p className="text-caption text-muted-foreground">
@@ -3440,10 +3440,7 @@ const Profile: React.FC<ProfileProps> = ({
                         {t['settings.push_blocked'] || 'Blocked - enable in browser settings'}
                       </p>
                     ) : (
-                      <>
-                        <p className="text-caption text-muted-foreground">Get notified about family activity</p>
-                        <p className="text-caption text-muted-foreground">Shopping, Tasks, Meals, Expenses, Family Board</p>
-                      </>
+                      <p className="text-caption text-muted-foreground">Get notified about family activity: Shopping, Tasks, Meals, Expenses, Family Board</p>
                     )}
                   </div>
                 </div>
@@ -3507,7 +3504,7 @@ const Profile: React.FC<ProfileProps> = ({
                       setIsTogglingNotifications(false);
                     }, 800);
                   }}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  className={`shrink-0 relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
                     !pushSupported || pushPermission === 'denied'
                       ? 'bg-muted-foreground/20 cursor-not-allowed'
                       : accountData.notificationsEnabled 

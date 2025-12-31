@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
-  AlertCircle, Heart, Settings, Plus, Trash2, X, Save, Camera,
+  AlertCircle, AlertTriangle, Heart, Settings, Plus, Trash2, X, Save, Camera,
   Image as ImageIcon, LogOut, Copy, Check, ChevronLeft, ChevronRight,
   Shield, Lock, Crown, Mail, Share2, Bell, BellOff, BellDot, Phone, CheckCircle, Loader2, GraduationCap,
   MessageCircleQuestionMark, Palette, Sun, Moon, Monitor, BookOpen, Pencil, CalendarCheck, HandCoins, CircleStar
@@ -174,6 +174,14 @@ const Profile: React.FC<ProfileProps> = ({
   const [subscriptionSuccess, setSubscriptionSuccess] = useState(false);
   const [subscriptionCanceled, setSubscriptionCanceled] = useState(false);
 
+  // Downgrade confirmation modal state
+  const [showDowngradeModal, setShowDowngradeModal] = useState(false);
+  const [pendingDowngrade, setPendingDowngrade] = useState<{
+    type: 'paid_to_paid' | 'paid_to_free';
+    targetPlan?: 'core' | 'pro';
+    targetPeriod?: 'monthly' | 'yearly';
+  } | null>(null);
+
   // Push Notification State
   const [isTogglingNotifications, setIsTogglingNotifications] = useState(false);
   const isTogglingRef = useRef(false); // Ref version to check in useEffect without triggering re-runs
@@ -222,10 +230,10 @@ const Profile: React.FC<ProfileProps> = ({
   }, []);
 
   // Lock scroll when any modal is open
-  useScrollLock(isAddModalOpen || isEditModalOpen || deleteConfirmOpen || showPhotoOptions || subscriptionCanceled || isPlanConfirmOpen);
+  useScrollLock(isAddModalOpen || isEditModalOpen || deleteConfirmOpen || showPhotoOptions || subscriptionCanceled || isPlanConfirmOpen || showDowngradeModal);
   
   // Dim status bar when sheet is open (iOS)
-  useSheetTheme(isAddModalOpen || isEditModalOpen || deleteConfirmOpen || showPhotoOptions || subscriptionCanceled || isPlanConfirmOpen || isDeleteAccountModalOpen || isFinalDeleteConfirmOpen);
+  useSheetTheme(isAddModalOpen || isEditModalOpen || deleteConfirmOpen || showPhotoOptions || subscriptionCanceled || isPlanConfirmOpen || isDeleteAccountModalOpen || isFinalDeleteConfirmOpen || showDowngradeModal);
 
   // Track if we've handled the initial edit (to prevent re-opening on data refresh)
   const [initialEditHandled, setInitialEditHandled] = useState(false);
@@ -660,7 +668,7 @@ const Profile: React.FC<ProfileProps> = ({
   };
 
   // Stripe Checkout Handler - handles both new subscriptions and plan changes
-  const handleSelectPlan = async (plan: 'core' | 'pro' | 'test', period: 'monthly' | 'yearly', promoCode?: string, referralCode?: string) => {
+  const handleSelectPlan = async (plan: 'core' | 'pro' | 'test', period: 'monthly' | 'yearly', promoCode?: string, referralCode?: string, skipConfirmation?: boolean) => {
     try {
       setPromoCodeError(null);
       setLoadingPlan(plan);
@@ -671,6 +679,24 @@ const Profile: React.FC<ProfileProps> = ({
         subscriptionInfo.plan !== 'free';
       
       if (hasActivePaidSubscription && plan !== 'test') {
+        // Determine if this is a downgrade
+        const planRank = { free: 0, core: 1, pro: 2 };
+        const currentPlanRank = planRank[subscriptionInfo?.plan as keyof typeof planRank] ?? 0;
+        const targetPlanRank = planRank[plan as keyof typeof planRank] ?? 0;
+        const isDowngrade = targetPlanRank < currentPlanRank;
+
+        // Show confirmation modal for downgrades (unless skipConfirmation is true - meaning user already confirmed)
+        if (isDowngrade && !skipConfirmation) {
+          setPendingDowngrade({
+            type: 'paid_to_paid',
+            targetPlan: plan as 'core' | 'pro',
+            targetPeriod: period,
+          });
+          setShowDowngradeModal(true);
+          setLoadingPlan(null);
+          return;
+        }
+
         // Change existing subscription instead of creating new checkout
         const result = await changeSubscription(currentUser.householdId, plan as 'core' | 'pro', period, currentUser.id);
         
@@ -706,12 +732,14 @@ const Profile: React.FC<ProfileProps> = ({
     }
   };
 
-  // Handle downgrade to Free plan
-  const handleDowngradeToFree = async () => {
-    if (!confirm(t['subscription.confirm_downgrade_free'] || 'Are you sure you want to downgrade to the Free plan? Your subscription will be canceled immediately and you will lose access to premium features.')) {
-      return;
-    }
-    
+  // Handle downgrade to Free plan - shows confirmation modal
+  const handleDowngradeToFree = () => {
+    setPendingDowngrade({ type: 'paid_to_free' });
+    setShowDowngradeModal(true);
+  };
+
+  // Execute the actual downgrade to Free (called after modal confirmation)
+  const executeDowngradeToFree = async () => {
     try {
       setLoadingPlan('core'); // Use 'core' as a loading indicator for downgrade
       await downgradeToFree(currentUser.householdId, currentUser.id);
@@ -724,6 +752,29 @@ const Profile: React.FC<ProfileProps> = ({
       alert(error instanceof Error ? error.message : 'Failed to downgrade. Please try again.');
       setLoadingPlan(null);
     }
+  };
+
+  // Handle confirmation from downgrade modal
+  const handleConfirmDowngrade = async () => {
+    if (!pendingDowngrade) return;
+    
+    setShowDowngradeModal(false);
+    
+    if (pendingDowngrade.type === 'paid_to_free') {
+      await executeDowngradeToFree();
+    } else if (pendingDowngrade.type === 'paid_to_paid' && pendingDowngrade.targetPlan && pendingDowngrade.targetPeriod) {
+      // Call handleSelectPlan with skipConfirmation=true to bypass the modal
+      await handleSelectPlan(pendingDowngrade.targetPlan, pendingDowngrade.targetPeriod, undefined, undefined, true);
+    }
+    
+    setPendingDowngrade(null);
+  };
+
+  // Handle cancel from downgrade modal
+  const handleCancelDowngrade = () => {
+    setShowDowngradeModal(false);
+    setPendingDowngrade(null);
+    setLoadingPlan(null);
   };
 
   // Stripe Portal Handler (for managing existing subscription)
@@ -1235,10 +1286,10 @@ const Profile: React.FC<ProfileProps> = ({
                         <>
                           <BellOff size={16} className="text-destructive shrink-0 mt-0.5" />
                           <div className="text-body text-muted-foreground">
-                             <p className="font-bold text-foreground mb-1">Notifications off.</p>
+                             <p className="font-bold text-foreground mb-1">{t['notifications.off'] || 'Notifications off.'}</p>
                              <ol className="list-decimal pl-4 space-y-1">
-                               <li>Enable in <strong>Settings</strong> below</li>
-                               <li>Tap <strong>Allow</strong> if asked</li>
+                               <li>{t['notifications.off_step1'] || 'Enable in'} <strong>{t['notifications.off_step1_settings'] || 'Settings'}</strong> {t['notifications.off_step1_below'] || 'below'}</li>
+                               <li>{t['notifications.tap'] || 'Tap'} <strong>{t['notifications.allow'] || 'Allow'}</strong> {t['notifications.if_asked'] || 'if asked'}</li>
                              </ol>
                           </div>
                         </>
@@ -1251,11 +1302,11 @@ const Profile: React.FC<ProfileProps> = ({
                         <>
                           <BellDot size={16} className="text-orange-500 shrink-0 mt-0.5" />
                           <div className="text-body text-muted-foreground">
-                             <p className="font-bold text-foreground mb-1">Notification setup is incomplete. <span className="font-normal">Ask {selectedUser.name.split(' ')[0]} to:</span></p>
+                             <p className="font-bold text-foreground mb-1">{t['notifications.incomplete'] || 'Notification setup is incomplete.'} <span className="font-normal">{(t['notifications.ask_to'] || 'Ask {name} to:').replace('{name}', selectedUser.name.split(' ')[0])}</span></p>
                              <ol className="list-decimal pl-4 space-y-1">
-                               <li>Add to Home Screen (iPhone/Android)</li>
-                               <li>Enable Notification in <strong>Settings</strong></li>
-                               <li>Tap <strong>Allow</strong> if asked</li>
+                               <li>{t['notifications.step_add_home'] || 'Add to Home Screen (iPhone/Android)'}</li>
+                               <li>{t['notifications.step_enable'] || 'Enable Notification in'} <strong>{t['notifications.off_step1_settings'] || 'Settings'}</strong></li>
+                               <li>{t['notifications.tap'] || 'Tap'} <strong>{t['notifications.allow'] || 'Allow'}</strong> {t['notifications.if_asked'] || 'if asked'}</li>
                              </ol>
                           </div>
                         </>
@@ -1752,13 +1803,13 @@ const Profile: React.FC<ProfileProps> = ({
                     }}
                     className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body "
                   >
-                    Cancel
+                    {t['common.cancel'] || 'Cancel'}
                   </button>
                   <button
                     onClick={confirmDeleteUser}
                     className="flex-1 py-3.5 rounded-xl bg-destructive/10 text-destructive text-body "
                   >
-                    Delete
+                    {t['common.delete'] || 'Delete'}
                   </button>
                 </div>
               </div>
@@ -1929,7 +1980,7 @@ const Profile: React.FC<ProfileProps> = ({
                             autoComplete="off"
                             value={allowance.name}
                             onChange={(e) => updateOtherAllowance(index, 'name', e.target.value)}
-                            placeholder="Allowance name"
+                            placeholder={t['profile.allowance_name_placeholder'] || 'Allowance name'}
                             className="flex-1 px-3 py-2 rounded-lg bg-secondary border border-border"
                           />
                           <input
@@ -1999,13 +2050,13 @@ const Profile: React.FC<ProfileProps> = ({
                     onClick={() => setIsEditModalOpen(false)}
                     className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body "
                   >
-                    Cancel
+                    {t['common.cancel'] || 'Cancel'}
                   </button>
                   <button
                     onClick={handleSaveEdit}
                     className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body shadow-sm"
                   >
-                    Save
+                    {t['common.save'] || 'Save'}
                   </button>
                 </div>
               </div>
@@ -2059,7 +2110,7 @@ const Profile: React.FC<ProfileProps> = ({
                   onClick={() => setShowPhotoOptions(false)}
                   className="w-full py-3.5 bg-muted rounded-xl font-semibold text-foreground"
                 >
-                  Cancel
+                  {t['common.cancel'] || 'Cancel'}
                 </button>
               </div>
             </div>
@@ -2871,7 +2922,7 @@ const Profile: React.FC<ProfileProps> = ({
                 <div className="flex-1 overflow-y-auto max-h-[60vh]">
                 <div className="p-5 space-y-4">
                   <p className="text-body text-foreground">
-                    {`You are about to upgrade to the ${pendingPlan.plan === 'core' ? 'Core' : pendingPlan.plan === 'pro' ? 'Pro' : 'Test'} plan.`}
+                    {(t['subscription.upgrade_to'] || 'You are about to upgrade to the {plan} plan.').replace('{plan}', pendingPlan.plan === 'core' ? 'Core' : pendingPlan.plan === 'pro' ? 'Pro' : 'Test')}
                   </p>
 
                   {/* Referral Code Section */}
@@ -2977,6 +3028,62 @@ const Profile: React.FC<ProfileProps> = ({
                   >
                     {loadingPlan !== null ? (t['common.processing'] || 'Processing...') : (t['common.continue'] || 'Continue')}
                   </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Downgrade Confirmation Modal */}
+          {showDowngradeModal && pendingDowngrade && (
+            <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+              <div className="bg-card w-full max-w-sm rounded-2xl overflow-hidden relative shadow-lg">
+                {/* Close Button */}
+                <button 
+                  onClick={handleCancelDowngrade} 
+                  className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center right-3 top-3 text-muted-foreground"
+                  aria-label={t['common.close'] || 'Close'}
+                >
+                  <X size={20} />
+                </button>
+
+                {/* Content */}
+                <div className="p-6 pt-8">
+                  {/* Icon */}
+                  <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-destructive/10 flex items-center justify-center">
+                    <AlertTriangle size={32} className="text-destructive" />
+                  </div>
+                  
+                  {/* Title */}
+                  <h2 className="text-title text-foreground text-center mb-3">
+                    {pendingDowngrade.type === 'paid_to_free' 
+                      ? (t['subscription.downgrade_to_free_title'] || 'Cancel Subscription')
+                      : (t['subscription.downgrade_plan_title'] || 'Downgrade Plan')
+                    }
+                  </h2>
+                  
+                  {/* Description */}
+                  <p className="text-body text-muted-foreground text-center mb-6">
+                    {pendingDowngrade.type === 'paid_to_free' 
+                      ? (t['subscription.downgrade_to_free_desc'] || 'This is immediate and you will NOT receive a refund for your remaining paid period. You will lose access to premium features.')
+                      : (t['subscription.downgrade_plan_desc'] || 'Your unused time will be credited toward your next invoice. This change takes effect immediately.')
+                    }
+                  </p>
+                  
+                  {/* Buttons */}
+                  <div className="flex gap-3">
+                    <button
+                      onClick={handleCancelDowngrade}
+                      className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body"
+                    >
+                      {t['common.cancel'] || 'Cancel'}
+                    </button>
+                    <button
+                      onClick={handleConfirmDowngrade}
+                      className="flex-1 py-3.5 rounded-xl bg-destructive/10 text-destructive text-body font-semibold"
+                    >
+                      {t['common.confirm'] || 'Confirm'}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -3144,7 +3251,7 @@ const Profile: React.FC<ProfileProps> = ({
                   {isGoogleAuth && (
                     <div className="bg-primary/10 border border-primary/20 rounded-xl p-4">
                       <p className="text-body text-primary">
-                        Your account is managed through Google. Password changes must be made through your Google account settings.
+                        {t['profile.google_managed'] || 'Your account is managed through Google. Password changes must be made through your Google account settings.'}
                       </p>
                     </div>
                   )}
@@ -3178,7 +3285,7 @@ const Profile: React.FC<ProfileProps> = ({
                 }} 
                 className="w-full bg-primary text-primary-foreground py-4 rounded-xl font-semibold shadow-sm "
               >
-                Save Changes
+                {t['common.save_changes'] || 'Save Changes'}
               </button>
 
               {/* Delete Account Button - Only for Master Users */}
@@ -3226,13 +3333,13 @@ const Profile: React.FC<ProfileProps> = ({
                   onClick={() => setIsDeleteAccountModalOpen(false)}
                   className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body "
                 >
-                  Cancel
+                  {t['common.cancel'] || 'Cancel'}
                 </button>
                 <button
                   onClick={handleFirstDeleteConfirm}
                   className="flex-1 py-3.5 rounded-xl bg-destructive/10 text-destructive text-body "
                 >
-                  Continue
+                  {t['common.continue'] || 'Continue'}
                 </button>
               </div>
             </div>
@@ -3278,7 +3385,7 @@ const Profile: React.FC<ProfileProps> = ({
                   disabled={isDeletingAccount}
                   className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body  disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Cancel
+                  {t['common.cancel'] || 'Cancel'}
                 </button>
                 <button
                   onClick={handleDeleteAccount}
@@ -3345,7 +3452,7 @@ const Profile: React.FC<ProfileProps> = ({
                   }}
                   className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground text-body  font-semibold"
                 >
-                  Got it
+                  {t['common.got_it'] || 'Got it'}
                 </button>
               </div>
             </div>
@@ -3498,7 +3605,7 @@ const Profile: React.FC<ProfileProps> = ({
                         {t['settings.push_blocked'] || 'Blocked - enable in browser settings'}
                       </p>
                     ) : (
-                      <p className="text-caption text-muted-foreground">Get notified about family activity: Shopping, Tasks, Meals, Expenses, Family Board</p>
+                      <p className="text-caption text-muted-foreground">{t['settings.push_description_full'] || 'Get notified about family activity: Shopping, Tasks, Meals, Expenses, Family Board'}</p>
                     )}
                   </div>
                 </div>
@@ -3588,7 +3695,7 @@ const Profile: React.FC<ProfileProps> = ({
                 <div className="mx-5 mb-4">
                   <div className="bg-destructive/10 border border-destructive/20 rounded-xl p-3">
                     <p className="text-caption text-destructive">
-                      Notifications are blocked. To enable them, go to your browser settings and allow notifications for this site.
+                      {t['settings.notifications_blocked'] || 'Notifications are blocked. To enable them, go to your browser settings and allow notifications for this site.'}
                     </p>
                   </div>
                 </div>

@@ -237,8 +237,8 @@ const Dashboard: React.FC<DashboardProps> = ({
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <h2 className="text-xl font-semibold text-destructive mb-2">Account Setup Incomplete</h2>
-          <p className="text-muted-foreground">Please try logging out and signing in again.</p>
+          <h2 className="text-xl font-semibold text-destructive mb-2">{t['error.account_setup_incomplete'] || 'Account Setup Incomplete'}</h2>
+          <p className="text-muted-foreground">{t['error.please_logout_signin'] || 'Please try logging out and signing in again.'}</p>
         </div>
       </div>
     );
@@ -675,22 +675,22 @@ const Dashboard: React.FC<DashboardProps> = ({
 
             {/* Header */}
             <div className="pt-6 pb-4 px-5 border-b border-border">
-              <h2 className="text-title text-foreground">Add Helpy to Home Screen</h2>
+              <h2 className="text-title text-foreground">{t['pwa.add_to_home'] || 'Add Helpy to Home Screen'}</h2>
               <p className="text-body text-muted-foreground mt-1">
-                It will look and feel like an app.
+                {t['pwa.looks_like_app'] || 'It will look and feel like an app.'}
               </p>
             </div>
 
             {/* Body */}
             <div className="p-5">
               <ol className="list-decimal pl-5 space-y-2">
-                <li className="text-body text-foreground">Tap <strong>Share</strong> <Share size={16} className="inline-block text-muted-foreground ml-1" /></li>
+                <li className="text-body text-foreground">{t['pwa.step_tap_share'] || 'Tap Share'} <Share size={16} className="inline-block text-muted-foreground ml-1" /></li>
                 <li className="text-body text-foreground">
-                  Tap <strong>Add to Home Screen</strong> <SquarePlus size={16} className="inline-block text-muted-foreground ml-1" />
-                  <p className="text-caption text-muted-foreground mt-1">Switch on "Open as Web App" if available</p>
+                  {t['pwa.step_add_home'] || 'Add to Home Screen'} <SquarePlus size={16} className="inline-block text-muted-foreground ml-1" />
+                  <p className="text-caption text-muted-foreground mt-1">{t['pwa.step_open_as_webapp'] || 'Switch on "Open as Web App" if available'}</p>
                 </li>
-                <li className="text-body text-foreground">Tap <strong>Add</strong></li>
-                <li className="text-body text-foreground">Done and open Helpy from your homescreen</li>
+                <li className="text-body text-foreground">{t['pwa.step_tap_add'] || 'Tap Add'}</li>
+                <li className="text-body text-foreground">{t['pwa.step_done'] || 'Done and open Helpy from your homescreen'}</li>
               </ol>
             </div>
 
@@ -703,7 +703,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                 }}
                 className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body font-semibold shadow-sm"
               >
-                Got it
+                {t['common.got_it'] || 'Got it'}
               </button>
             </div>
           </div>

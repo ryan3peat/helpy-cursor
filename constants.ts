@@ -751,6 +751,21 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'settings.push_blocked': 'Blocked - enable in browser settings',
   'settings.push_description': 'Get notified when family adds items',
 
+  // Notification Status Messages
+  'notifications.child': "Children accounts don't receive notifications.",
+  'notifications.off': 'Notifications off.',
+  'notifications.off_step1': 'Enable in',
+  'notifications.off_step1_settings': 'Settings',
+  'notifications.off_step1_below': 'below',
+  'notifications.tap': 'Tap',
+  'notifications.allow': 'Allow',
+  'notifications.if_asked': 'if asked',
+  'notifications.incomplete': 'Notification setup is incomplete.',
+  'notifications.ask_to': 'Ask {name} to:',
+  'notifications.step_add_home': 'Add to Home Screen (iPhone/Android)',
+  'notifications.step_enable': 'Enable Notification in',
+  'notifications.ready': 'Notifications active.',
+
   // Plan Features - Unified feature matrix
   // Plan Section Titles
   'plan.section.users': 'Users',
@@ -1041,6 +1056,10 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'subscription.invalid_referral_code': 'Invalid or expired referral code',
   'subscription.confirm_downgrade_free': 'Are you sure you want to downgrade to the Free plan? Your subscription will be canceled immediately and you will lose access to premium features.',
   'subscription.downgrade_success': 'Your subscription has been canceled. You are now on the Free plan.',
+  'subscription.downgrade_to_free_title': 'Cancel Subscription',
+  'subscription.downgrade_to_free_desc': 'This is immediate and you will NOT receive a refund for your remaining paid period. You will lose access to premium features.',
+  'subscription.downgrade_plan_title': 'Downgrade Plan',
+  'subscription.downgrade_plan_desc': 'Your unused time will be credited toward your next invoice. This change takes effect immediately.',
 
   // Profile - Additional
   'common.not_set': 'Not set',
@@ -1050,4 +1069,66 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'profile.share_with': 'Share with',
   'profile.creating_invite': 'Creating invite...',
   'profile.added': 'added',
+
+  // Common - Additional (Translation Audit)
+  'common.error': 'Error',
+  'common.or': 'or',
+  'common.continue': 'Continue',
+  'common.confirm': 'Confirm',
+  'common.got_it': 'Got it',
+  'common.save_changes': 'Save Changes',
+  'common.view_plan': 'View Plan',
+
+  // Settings - Appearance (Translation Audit)
+  'settings.appearance': 'Appearance',
+  'settings.light': 'Light',
+  'settings.dark': 'Dark',
+  'settings.system': 'System',
+  'settings.light_description': 'Always light',
+  'settings.dark_description': 'Always dark',
+  'settings.system_description': 'Follows your device',
+  'settings.push_description_full': 'Get notified about family activity: Shopping, Tasks, Meals, Expenses, Family Board',
+  'settings.notifications_blocked': 'Notifications are blocked. To enable them, go to your browser settings and allow notifications for this site.',
+
+  // Subscription - Additional (Translation Audit)
+  'subscription.trial_banner': 'Free Trial',
+  'subscription.days_remaining': 'days remaining',
+  'subscription.referral_code': 'Referral Code (for free trial)',
+  'subscription.referral_code_placeholder': 'e.g., PROMOCODE',
+  'subscription.referral_valid': '30-day free trial will be applied!',
+  'subscription.promo_code': 'Promo code (optional)',
+  'subscription.promo_code_placeholder': 'Enter promo code',
+  'subscription.promo_code_hint': 'We will apply this code on the Stripe checkout page.',
+  'subscription.upgrade_to': 'You are about to upgrade to the {plan} plan.',
+
+  // Profile - Additional (Translation Audit)
+  'profile.start_date': 'Start Date',
+  'profile.confirmDelete': 'Are you sure you want to delete this family member? This action cannot be undone.',
+  'profile.remove_member': 'Remove from Family',
+  'profile.remove_warning': 'This will permanently remove this person from your family.',
+  'profile.google_managed': 'Your account is managed through Google. Password changes must be made through your Google account settings.',
+  'profile.allowance_name_placeholder': 'Allowance name',
+
+  // PWA Install (Translation Audit)
+  'pwa.add_to_home': 'Add Helpy to Home Screen',
+  'pwa.looks_like_app': 'It will look and feel like an app.',
+  'pwa.step_tap_share': 'Tap Share',
+  'pwa.step_add_home': 'Add to Home Screen',
+  'pwa.step_open_as_webapp': 'Switch on "Open as Web App" if available',
+  'pwa.step_tap_add': 'Tap Add',
+  'pwa.step_done': 'Done and open Helpy from your homescreen',
+
+  // Error - Additional (Translation Audit)
+  'error.account_setup_incomplete': 'Account Setup Incomplete',
+  'error.please_logout_signin': 'Please try logging out and signing in again.',
+
+  // Helper - Payslip Breakdown (Translation Audit)
+  'helper.breakdown_base_salary': 'Base Salary',
+  'helper.breakdown_other_allowances': 'Other Allowances',
+  'helper.breakdown_overtime': 'Overtime',
+  'helper.breakdown_calculated_total': 'Calculated Total',
+  'helper.til_badge': 'TIL',
+
+  // User Guide - Additional (Translation Audit)
+  'guide.rsvp': 'RSVP',
 };

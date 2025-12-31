@@ -330,7 +330,7 @@ export const HelperManagementContent: React.FC<Props> = ({
                     {/* TIL Tag */}
                     {isWorking && compensationType === 'lieu' && (
                       <span className="px-1.5 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 rounded">
-                        TIL
+                        {t['helper.til_badge'] || 'TIL'}
                       </span>
                     )}
                     {/* OT Tag with amount */}
@@ -684,23 +684,23 @@ export const HelperManagementContent: React.FC<Props> = ({
             {/* Current breakdown (read-only) */}
             <div className="bg-secondary/50 rounded-lg p-3 mb-4 space-y-1 text-caption">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Base Salary</span>
+                <span className="text-muted-foreground">{t['helper.breakdown_base_salary'] || 'Base Salary'}</span>
                 <span>${baseSalary.toLocaleString()}</span>
               </div>
               {otherAllowances > 0 && (
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Other Allowances</span>
+                  <span className="text-muted-foreground">{t['helper.breakdown_other_allowances'] || 'Other Allowances'}</span>
                   <span>${otherAllowances.toLocaleString()}</span>
                 </div>
               )}
               {overtimeTotal > 0 && (
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Overtime</span>
+                  <span className="text-muted-foreground">{t['helper.breakdown_overtime'] || 'Overtime'}</span>
                   <span>${overtimeTotal.toLocaleString()}</span>
                 </div>
               )}
               <div className="flex justify-between pt-2 border-t border-border text-body">
-                <span className="text-muted-foreground">Calculated Total</span>
+                <span className="text-muted-foreground">{t['helper.breakdown_calculated_total'] || 'Calculated Total'}</span>
                 <span className="font-medium">${totalSalary.toLocaleString()}</span>
               </div>
             </div>
@@ -839,7 +839,7 @@ const PastHolidaysModal: React.FC<{
                   <div className="flex items-center gap-2">
                     <p className="text-body font-medium">{record.holidayName}</p>
                     {record.isWorking && record.compensationType === 'lieu' && (
-                      <span className="px-1.5 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 rounded">TIL</span>
+                      <span className="px-1.5 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 rounded">{t['helper.til_badge'] || 'TIL'}</span>
                     )}
                     {record.isWorking && record.compensationType === 'overtime' && (
                       <span className="px-1.5 py-0.5 text-xs font-medium bg-orange-100 text-orange-700 rounded">

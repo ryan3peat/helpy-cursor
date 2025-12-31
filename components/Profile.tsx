@@ -1583,25 +1583,25 @@ const Profile: React.FC<ProfileProps> = ({
                         const roleConfig = getRoleConfig(newRole);
                         if (!roleConfig) return null;
                         return (
-                          <div className="bg-muted rounded-xl p-4 mt-2" style={{ height: '340px', overflow: 'auto' }}>
+                          <div className="bg-muted rounded-xl p-4 mt-2" style={{ height: '400px', overflow: 'auto' }}>
                             <p className="text-body font-semibold text-foreground mb-1">
                               {roleConfig.displayName}
                             </p>
-                            <p className="text-caption text-muted-foreground mb-3">
+                            <p className="text-body text-muted-foreground mb-3">
                               {roleConfig.description}
                             </p>
                             
                             {/* What they can do */}
                             {roleConfig.abilities.length > 0 && (
                               <div className="mb-3">
-                                <p className="text-caption text-muted-foreground mb-1.5 font-semibold">
+                                <p className="text-body text-muted-foreground mb-1.5 font-semibold">
                                   {t['guide.what_you_can_do'] || 'What they can do:'}
                                 </p>
                                 <div className="space-y-1">
                                   {roleConfig.abilities.map((ability) => (
                                     <div key={ability.key} className="flex items-start gap-2">
-                                      <Check size={12} className="text-primary mt-0.5 flex-shrink-0" />
-                                      <span className="text-caption text-foreground">{ability.label}</span>
+                                      <Check size={14} className="text-primary mt-0.5 flex-shrink-0" />
+                                      <span className="text-body text-foreground">{ability.label}</span>
                                     </div>
                                   ))}
                                 </div>
@@ -1611,14 +1611,14 @@ const Profile: React.FC<ProfileProps> = ({
                             {/* What they can't do */}
                             {roleConfig.restrictions.length > 0 && (
                               <div>
-                                <p className="text-caption text-muted-foreground mb-1.5 font-semibold">
+                                <p className="text-body text-muted-foreground mb-1.5 font-semibold">
                                   {t['guide.what_you_cant_do'] || "What they can't do:"}
                                 </p>
                                 <div className="space-y-1">
                                   {roleConfig.restrictions.map((restriction) => (
                                     <div key={restriction.key} className="flex items-start gap-2">
-                                      <X size={12} className="text-destructive mt-0.5 flex-shrink-0" />
-                                      <span className="text-caption text-foreground">{restriction.label}</span>
+                                      <X size={14} className="text-destructive mt-0.5 flex-shrink-0" />
+                                      <span className="text-body text-foreground">{restriction.label}</span>
                                     </div>
                                   ))}
                                 </div>

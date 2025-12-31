@@ -371,7 +371,7 @@ const UserGuide: React.FC<UserGuideProps> = ({ currentUser, t, onNavigateToPlan,
 
         <FeatureCard
           icon={<UserCheck size={14} />}
-          title="RSVP"
+          title={t['guide.rsvp'] || 'RSVP'}
           description={t['guide.meals_rsvp'] || 'Family members can RSVP to meals so you know who will be eating.'}
           t={t}
         />

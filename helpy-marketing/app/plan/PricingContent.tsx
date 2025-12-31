@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Check, X, CircleStar } from "lucide-react";
+import { Check, X, Star } from "lucide-react";
 
 // Helpy brand colors
 const HELPY_BLUE = '#3EAFD2';
@@ -211,10 +211,10 @@ export default function PricingContent() {
                   color: hasColoredBg ? 'white' : 'hsl(var(--foreground))'
                 }}
               >
-                {/* CircleStar badge */}
+                {/* Star badge */}
                 {plan.badge && (
                   <div className="absolute top-6 right-6">
-                    <CircleStar size={36} strokeWidth={2} color="white" />
+                    <Star size={36} strokeWidth={2} color="white" fill="white" />
                   </div>
                 )}
 

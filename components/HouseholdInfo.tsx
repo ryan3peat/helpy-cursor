@@ -1751,6 +1751,7 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
             </label>
             <input
               type="text"
+              autoComplete="off"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
               placeholder={t['info.name_placeholder'] || 'e.g., City General Hospital'}
@@ -1767,6 +1768,7 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
               <MapPin size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <input
                 type="text"
+                autoComplete="off"
                 value={form.address}
                 onChange={(e) => setForm({ ...form, address: e.target.value })}
                 placeholder={t['info.address_placeholder'] || '123 Main St, City'}
@@ -1784,6 +1786,7 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
               <div className="relative w-28 country-code-dropdown">
                 <input
                   type="text"
+                  autoComplete="off"
                   readOnly
                   value={form.countryCode}
                   onClick={() => setShowCountryCodeDropdown(true)}
@@ -1819,6 +1822,7 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
                     <div className="p-2 bg-card border-t border-border shrink-0">
                       <input
                         type="text"
+                        autoComplete="off"
                         value={countryCodeSearch}
                         onChange={(e) => setCountryCodeSearch(e.target.value)}
                         placeholder={t['placeholder.search_country'] || 'Search country...'}
@@ -1832,6 +1836,7 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
                 <Phone size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <input
                   type="tel"
+                  autoComplete="off"
                   inputMode="tel"
                   value={form.phone}
                   onChange={(e) => {
@@ -1989,6 +1994,7 @@ const HouseRoutineModal: React.FC<HouseRoutineModalProps> = ({
               </label>
               <input
                 type="text"
+                autoComplete="off"
                 value={form.customCategory}
                 onChange={(e) => setForm({ ...form, customCategory: e.target.value })}
                 placeholder={t['info.custom_category_placeholder'] || 'Enter custom category'}
@@ -2004,6 +2010,7 @@ const HouseRoutineModal: React.FC<HouseRoutineModalProps> = ({
             </label>
             <input
               type="text"
+              autoComplete="off"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
               placeholder={t['info.routine_name_placeholder'] || 'e.g., How to make the bed'}

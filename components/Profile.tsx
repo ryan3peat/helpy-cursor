@@ -1457,6 +1457,7 @@ const Profile: React.FC<ProfileProps> = ({
                         <label className="block text-caption text-muted-foreground mb-2 tracking-wide">{t['common.name']}</label>
                         <input
                           type="text"
+                          autoComplete="off"
                           value={newName}
                           onChange={(e) => setNewName(e.target.value)}
                           className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
@@ -1724,6 +1725,7 @@ const Profile: React.FC<ProfileProps> = ({
                     <label className="block text-caption text-muted-foreground mb-2 tracking-wide">{t['profile.name_label'] || 'Name'}</label>
                     <input
                       type="text"
+                      autoComplete="off"
                       value={editName}
                       onChange={(e) => setEditName(e.target.value)}
                       className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
@@ -1754,6 +1756,7 @@ const Profile: React.FC<ProfileProps> = ({
                     <div className="flex gap-2 mb-2">
                       <input
                         type="text"
+                        autoComplete="off"
                         value={newAllergyInput}
                         onChange={(e) => setNewAllergyInput(e.target.value)}
                         onKeyPress={(e) => e.key === 'Enter' && addAllergy()}
@@ -1782,6 +1785,7 @@ const Profile: React.FC<ProfileProps> = ({
                     <div className="flex gap-2 mb-2">
                       <input
                         type="text"
+                        autoComplete="off"
                         value={newPreferenceInput}
                         onChange={(e) => setNewPreferenceInput(e.target.value)}
                         onKeyPress={(e) => e.key === 'Enter' && addPreference()}
@@ -1831,6 +1835,7 @@ const Profile: React.FC<ProfileProps> = ({
                       </label>
                       <input
                         type="text"
+                        autoComplete="off"
                         inputMode="numeric"
                         value={editHelperBaseSalary || ''}
                         onChange={(e) => {
@@ -1851,6 +1856,7 @@ const Profile: React.FC<ProfileProps> = ({
                         <div key={index} className="flex gap-2 mb-2">
                           <input
                             type="text"
+                            autoComplete="off"
                             value={allowance.name}
                             onChange={(e) => updateOtherAllowance(index, 'name', e.target.value)}
                             placeholder="Allowance name"
@@ -1858,6 +1864,7 @@ const Profile: React.FC<ProfileProps> = ({
                           />
                           <input
                             type="text"
+                            autoComplete="off"
                             inputMode="numeric"
                             value={allowance.amount || ''}
                             onChange={(e) => {
@@ -2513,6 +2520,7 @@ const Profile: React.FC<ProfileProps> = ({
                     <div className="relative">
                       <input
                         type="text"
+                        autoComplete="off"
                         value={referralCodeInput}
                         onChange={(e) => {
                           const value = e.target.value.toUpperCase();
@@ -2563,6 +2571,7 @@ const Profile: React.FC<ProfileProps> = ({
                     </label>
                     <input
                       type="text"
+                      autoComplete="off"
                       value={promoCodeInput}
                       onChange={(e) => {
                         setPromoCodeInput(e.target.value);
@@ -2673,6 +2682,7 @@ const Profile: React.FC<ProfileProps> = ({
                             <div className="p-2 sticky top-0 bg-card border-b border-border">
                               <input
                                 type="text"
+                                autoComplete="off"
                                 value={countryCodeSearch}
                                 onChange={e => setCountryCodeSearch(e.target.value)}
                                 placeholder={t['placeholder.search_country'] || 'Search country...'}

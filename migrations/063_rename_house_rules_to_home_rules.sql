@@ -14,3 +14,4 @@ FROM practices
 WHERE category IN ('House Rules', 'Home Rules')
 GROUP BY category;
 
+

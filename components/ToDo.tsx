@@ -1128,6 +1128,7 @@ const ToDo: React.FC<ToDoProps> = ({
                 <input
                   ref={inlineInputRef}
                   type="text"
+                  autoComplete="off"
                   value={inlineInputValue}
                   onChange={e => setInlineInputValue(e.target.value)}
                   onKeyDown={e => {
@@ -1441,6 +1442,7 @@ const ToDo: React.FC<ToDoProps> = ({
                   </label>
                   <input
                     type="text"
+                    autoComplete="off"
                     value={sheetForm.name || ''}
                     onChange={e => setSheetForm(prev => ({ ...prev, name: e.target.value }))}
                     placeholder={activeSection === 'shopping' ? t['common.eg_milk'] : t['common.eg_clean_bathroom']}
@@ -1456,6 +1458,7 @@ const ToDo: React.FC<ToDoProps> = ({
                     </label>
                     <input
                       type="text"
+                      autoComplete="off"
                       value={sheetForm.brand || ''}
                       onChange={e => setSheetForm(prev => ({ ...prev, brand: e.target.value }))}
                       placeholder={t['common.brand_placeholder'] || 'Your favorite brand'}
@@ -1474,6 +1477,7 @@ const ToDo: React.FC<ToDoProps> = ({
                     </label>
                     <input
                       type="text"
+                      autoComplete="off"
                       inputMode="decimal"
                       value={sheetForm.quantity ?? ''}
                       onChange={e => {
@@ -1493,6 +1497,7 @@ const ToDo: React.FC<ToDoProps> = ({
                     <input
                       ref={unitInputRef}
                       type="text"
+                      autoComplete="off"
                       value={sheetForm.unit || ''}
                       onChange={e => {
                         setSheetForm(prev => ({ ...prev, unit: e.target.value }));

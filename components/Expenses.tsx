@@ -1243,6 +1243,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                       <input
                         ref={amountInputRef}
                         type="text"
+                        autoComplete="off"
                         inputMode="decimal"
                         value={editAmount}
                         onChange={(e) => {
@@ -1266,6 +1267,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                     </label>
                     <input
                       type="text"
+                      autoComplete="off"
                       value={editMerchant}
                       onChange={(e) => setEditMerchant(e.target.value)}
                       placeholder={t['common.where_did_you_spend']}
@@ -1383,6 +1385,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                       </span>
                       <input
                         type="text"
+                        autoComplete="off"
                         inputMode="decimal"
                         value={editAmount}
                         onChange={(e) => {
@@ -1406,6 +1409,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                     </label>
                 <input
                   type="text"
+                  autoComplete="off"
                   value={editMerchant}
                   onChange={(e) => setEditMerchant(e.target.value)}
                   placeholder={t['common.store_name']}
@@ -1567,6 +1571,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                       </span>
                       <input
                         type="text"
+                        autoComplete="off"
                         inputMode="decimal"
                         className="flex-1 px-4 py-4 rounded-xl bg-muted border border-border focus:border-primary outline-none transition-all text-display"
                         value={exAmount}
@@ -1590,6 +1595,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                     </label>
                     <input
                       type="text"
+                      autoComplete="off"
                       className="w-full px-4 py-3 rounded-lg bg-muted border border-border focus:border-primary outline-none transition-all text-body"
                       value={exMerchant}
                       onChange={(e) => setExMerchant(e.target.value)}

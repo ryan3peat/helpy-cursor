@@ -3,7 +3,7 @@ import {
   AlertCircle, Heart, Settings, Plus, Trash2, X, Save, Camera,
   Image as ImageIcon, LogOut, Copy, Check, ChevronLeft, ChevronRight,
   Shield, Lock, Crown, Mail, Share2, Bell, BellOff, BellDot, Phone, CheckCircle, Loader2, GraduationCap,
-  MessageCircleQuestionMark, Palette, Sun, Moon, Monitor, BookOpen, Pencil, CalendarCheck, HandCoins
+  MessageCircleQuestionMark, Palette, Sun, Moon, Monitor, BookOpen, Pencil, CalendarCheck, HandCoins, Award
 } from 'lucide-react';
 import FeedbackSection from './FeedbackSection';
 import UserGuide from './UserGuide';
@@ -2144,21 +2144,118 @@ const Profile: React.FC<ProfileProps> = ({
   };
 
   if (activeSection === 'plan') {
+    // Helpy brand colors
+    const HELPY_BLUE = '#3EAFD2';
+    const HELPY_PINK = '#F06292';
+    
+    // Feature sections for organized display
+    const featureSections = [
+      {
+        id: 'users',
+        title: t['plan.section.users'] || 'Users',
+        features: [
+          { 
+            id: 'family', 
+            name: t['plan.feature.family_members'] || 'Family members',
+            isLimit: true 
+          },
+          { 
+            id: 'helpers', 
+            name: t['plan.feature.helpers'] || 'Helpers',
+            isLimit: true 
+          },
+        ]
+      },
+      {
+        id: 'basic_features',
+        title: t['plan.section.basic_features'] || 'Basic Features',
+        features: [
+          { 
+            id: 'home', 
+            name: t['plan.feature.home'] || 'Home (Family Board & Widgets)',
+            isLimit: false 
+          },
+          { 
+            id: 'todo', 
+            name: t['plan.feature.todo'] || 'To Do (Tasks & Shopping)',
+            isLimit: false 
+          },
+          { 
+            id: 'meal_planning', 
+            name: t['plan.feature.meal_planning'] || 'Meal Planning',
+            isLimit: false 
+          },
+          { 
+            id: 'family_info', 
+            name: t['plan.feature.family_info'] || 'Family Info',
+            isLimit: false 
+          },
+          { 
+            id: 'ai_translations', 
+            name: t['plan.feature.ai_translations'] || 'AI Translations',
+            isLimit: false 
+          },
+        ]
+      },
+      {
+        id: 'expenses',
+        title: t['plan.section.expenses'] || 'Expenses',
+        features: [
+          { 
+            id: 'manual_expenses', 
+            name: t['plan.feature.manual_expenses'] || 'Add expenses manually',
+            description: t['plan.feature.manual_expenses_desc'] || 'Quickly enter the amount, category, merchant, and date for any purchase.',
+            isLimit: false 
+          },
+          { 
+            id: 'ai_scan', 
+            name: t['plan.feature.ai_scan'] || 'AI receipt scanning',
+            description: t['plan.feature.ai_scan_desc'] || 'Snap a photo of your receipt to automatically fill in the total amount and merchant name.',
+            isLimit: false 
+          },
+          { 
+            id: 'spending_summary', 
+            name: t['plan.feature.spending_summary'] || 'Monthly Spending Summary',
+            description: t['plan.feature.spending_summary_desc'] || 'Visualize your budget with pie charts by category, plus totals and percentage breakdowns.',
+            isLimit: false 
+          },
+        ]
+      },
+      {
+        id: 'helper_management',
+        title: t['plan.section.helper_management'] || 'Helper Management',
+        features: [
+          { 
+            id: 'helper_records', 
+            name: t['plan.feature.helper_records'] || 'Helper payslips & holiday records',
+            description: t['plan.feature.helper_records_desc'] || 'Track overtime and holidays, then generate and sign digital payslips effortlessly.',
+            isLimit: false 
+          },
+        ]
+      }
+    ];
+
     const plans = [
       {
         id: 'free',
         name: t['common.free'] || 'Free',
         monthlyPrice: 0,
         yearlyPrice: 0,
-        features: [
-          t['plan.feature.free_family'] || 'Up to 3 family members (incl. admin)',
-          t['plan.feature.free_helper'] || '1 Helper',
-          t['plan.feature.free_expenses'] || 'Manual expense entry only',
-        ],
-        limitations: [
-          t['plan.feature.free_no_scan'] || 'No receipt scanning or summary',
-        ],
-        highlight: false,
+        accentColor: null, // White/neutral
+        featureValues: {
+          family: { included: true, value: '3' },
+          helpers: { included: true, value: '1' },
+          home: { included: true },
+          todo: { included: true },
+          meal_planning: { included: true },
+          family_info: { included: true },
+          ai_translations: { included: true },
+          manual_expenses: { included: true },
+          ai_scan: { included: false },
+          spending_summary: { included: false },
+          helper_records: { included: false },
+        },
+        badge: null,
         isFree: true
       },
       {
@@ -2166,14 +2263,21 @@ const Profile: React.FC<ProfileProps> = ({
         name: t['common.core'] || 'Core',
         monthlyPrice: 88,
         yearlyPrice: 845,
-        features: [
-          t['plan.feature.core_family'] || 'Up to 4 family members (incl. admin)',
-          t['plan.feature.core_helper'] || '1 Helper',
-          t['plan.feature.core_expenses'] || 'All Expense Functions',
-          t['plan.feature.core_helper_mgmt'] || 'Helper Management',
-        ],
-        limitations: [],
-        highlight: false,
+        accentColor: HELPY_BLUE,
+        featureValues: {
+          family: { included: true, value: '4' },
+          helpers: { included: true, value: '1' },
+          home: { included: true },
+          todo: { included: true },
+          meal_planning: { included: true },
+          family_info: { included: true },
+          ai_translations: { included: true },
+          manual_expenses: { included: true },
+          ai_scan: { included: true },
+          spending_summary: { included: true },
+          helper_records: { included: true },
+        },
+        badge: null,
         isFree: false
       },
       {
@@ -2181,14 +2285,21 @@ const Profile: React.FC<ProfileProps> = ({
         name: t['common.pro'] || 'Pro',
         monthlyPrice: 118,
         yearlyPrice: 1133,
-        features: [
-          t['plan.feature.pro_family'] || 'Up to 8 family members (incl. admin)',
-          t['plan.feature.pro_helpers'] || 'Up to 4 Helpers',
-          t['plan.feature.pro_expenses'] || 'All Expense Functions',
-          t['plan.feature.pro_helper_mgmt'] || 'Helper Management',
-        ],
-        limitations: [],
-        highlight: true,
+        accentColor: HELPY_PINK,
+        featureValues: {
+          family: { included: true, value: '8' },
+          helpers: { included: true, value: '4' },
+          home: { included: true },
+          todo: { included: true },
+          meal_planning: { included: true },
+          family_info: { included: true },
+          ai_translations: { included: true },
+          manual_expenses: { included: true },
+          ai_scan: { included: true },
+          spending_summary: { included: true },
+          helper_records: { included: true },
+        },
+        badge: { text: t['common.popular'] || 'Popular', icon: Heart },
         isFree: false
       }
     ];
@@ -2204,6 +2315,13 @@ const Profile: React.FC<ProfileProps> = ({
       : subscriptionInfo?.plan === 'pro'
       ? (subscriptionInfo?.period === 'yearly' ? 1133 : 118)
       : 0;
+    
+    // Current plan card colors based on plan
+    const currentPlanColors = subscriptionInfo?.plan === 'core'
+      ? { bg: HELPY_BLUE, text: 'white', textMuted: 'rgba(255,255,255,0.8)', border: 'rgba(255,255,255,0.2)', badgeBg: 'white', badgeBorder: 'white', badgeText: HELPY_BLUE }
+      : subscriptionInfo?.plan === 'pro'
+      ? { bg: HELPY_PINK, text: 'white', textMuted: 'rgba(255,255,255,0.8)', border: 'rgba(255,255,255,0.2)', badgeBg: 'white', badgeBorder: 'white', badgeText: HELPY_PINK }
+      : { bg: 'hsl(var(--card))', text: 'hsl(var(--foreground))', textMuted: 'hsl(var(--muted-foreground))', border: 'hsl(var(--border))', badgeBg: 'white', badgeBorder: HELPY_BLUE, badgeText: HELPY_BLUE };
 
     return (
       <div className="min-h-screen bg-background pb-40 animate-fade-in">
@@ -2231,14 +2349,34 @@ const Profile: React.FC<ProfileProps> = ({
                 </div>
               </div>
             ) : (
-              <div className="mt-6 bg-primary rounded-3xl p-6 shadow-md text-primary-foreground mb-6">
+              <div 
+                className="mt-6 rounded-3xl p-6 shadow-md mb-6"
+                style={{ 
+                  backgroundColor: currentPlanColors.bg, 
+                  color: currentPlanColors.text
+                }}
+              >
                 <div className="flex items-center justify-between mb-4">
                   <div>
-                    <h3 className="text-title font-semibold text-primary-foreground/90 mb-1">{t['common.current_plan'] || 'Current Plan'}</h3>
+                    <span 
+                      className="text-caption font-bold px-3 py-1 rounded-full border inline-block mb-2"
+                      style={{ 
+                        backgroundColor: currentPlanColors.badgeBg,
+                        borderColor: currentPlanColors.badgeBorder,
+                        color: currentPlanColors.badgeText
+                      }}
+                    >
+                      {t['common.current_plan'] || 'Current Plan'}
+                    </span>
                     <p className="text-display font-bold">{currentPlanName}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-body text-primary-foreground/80 mb-1">{t['common.price'] || 'Price'}</p>
+                    <p 
+                      className="text-body mb-1"
+                      style={{ color: currentPlanColors.textMuted }}
+                    >
+                      {t['common.price'] || 'Price'}
+                    </p>
                     {planPrice > 0 ? (
                       <p className="text-title font-bold">
                         HK${planPrice}
@@ -2251,19 +2389,40 @@ const Profile: React.FC<ProfileProps> = ({
                 </div>
                 
                 {subscriptionInfo?.status === 'active' && subscriptionInfo?.periodEnd ? (
-                  <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-primary-foreground/20">
+                  <div 
+                    className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t"
+                    style={{ borderColor: currentPlanColors.border }}
+                  >
                     <div>
-                      <p className="text-caption text-primary-foreground/70 mb-1">{t['common.expires_on'] || 'Expires On'}</p>
+                      <p 
+                        className="text-caption mb-1"
+                        style={{ color: currentPlanColors.textMuted }}
+                      >
+                        {t['common.expires_on'] || 'Expires On'}
+                      </p>
                       <p className="text-body font-semibold">{formatDate(subscriptionInfo.periodEnd)}</p>
                     </div>
                     <div>
-                      <p className="text-caption text-primary-foreground/70 mb-1">{t['common.next_payment'] || 'Next Payment'}</p>
+                      <p 
+                        className="text-caption mb-1"
+                        style={{ color: currentPlanColors.textMuted }}
+                      >
+                        {t['common.next_payment'] || 'Next Payment'}
+                      </p>
                       <p className="text-body font-semibold">{getNextPaymentDate(subscriptionInfo.periodEnd, subscriptionInfo.period) || (t['common.na'] || 'N/A')}</p>
                     </div>
                   </div>
                 ) : subscriptionInfo?.status !== 'active' && (
-                  <div className="mt-4 pt-4 border-t border-primary-foreground/20">
-                    <p className="text-body text-primary-foreground/80">{t['common.no_active_subscription'] || 'No active subscription'}</p>
+                  <div 
+                    className="mt-4 pt-4 border-t"
+                    style={{ borderColor: currentPlanColors.border }}
+                  >
+                    <p 
+                      className="text-body"
+                      style={{ color: currentPlanColors.textMuted }}
+                    >
+                      {t['common.no_active_subscription'] || 'No active subscription'}
+                    </p>
                   </div>
                 )}
 
@@ -2271,7 +2430,11 @@ const Profile: React.FC<ProfileProps> = ({
                   <button
                     onClick={handleCancelSubscription}
                     disabled={isLoading}
-                    className="w-full mt-4 bg-primary-foreground/20 text-primary-foreground py-3 rounded-xl font-semibold disabled:opacity-50"
+                    className="w-full mt-4 py-3 rounded-xl font-semibold disabled:opacity-50"
+                    style={{ 
+                      backgroundColor: subscriptionInfo?.plan ? 'rgba(255,255,255,0.2)' : 'hsl(var(--secondary))',
+                      color: currentPlanColors.text
+                    }}
                   >
                     {isLoading ? (t['common.processing'] || 'Processing...') : (t['common.cancel_subscription'] || 'Cancel Subscription')}
                   </button>
@@ -2370,71 +2533,192 @@ const Profile: React.FC<ProfileProps> = ({
                     return t['common.select_plan'] || 'Select Plan';
                   };
 
+                  // Determine if this is a colored card (blue/pink) vs white
+                  const hasColoredBg = !!p.accentColor;
+
                   return (
                     <div
                       key={p.id}
-                      className={`bg-card rounded-2xl p-6 border-2 transition-colors ${
-                        p.highlight
-                          ? 'border-primary shadow-md'
-                          : isCurrentPlan
-                          ? 'border-primary'
-                          : 'border-border'
+                      className={`rounded-2xl overflow-hidden transition-colors relative shadow-md ${
+                        hasColoredBg ? '' : 'bg-card border border-border'
                       }`}
+                      style={{ 
+                        backgroundColor: p.accentColor || undefined,
+                      }}
                     >
-                      <div className="flex items-start justify-between mb-4">
-                        <div>
-                          <h3 className="text-title font-bold text-foreground">{p.name}</h3>
-                          <div className="flex items-baseline gap-1 mt-1">
+                      {/* Corner badge - height matches Pro/price block */}
+                      {p.badge && !isCurrentPlan && (
+                        <div 
+                          className="absolute top-6 right-6 flex flex-col items-center"
+                          style={{ 
+                            color: hasColoredBg ? 'white' : p.accentColor
+                          }}
+                        >
+                          <p.badge.icon size={36} strokeWidth={1.5} />
+                          <span className="text-body font-bold mt-1">{p.badge.text}</span>
+                        </div>
+                      )}
+
+                      <div className="p-6">
+                        {/* Header */}
+                        <div className="mb-5">
+                          {/* Plan name with Current Plan badge */}
+                          <div className="flex items-center gap-3 mb-1">
+                            <h3 
+                              className="text-title font-bold"
+                              style={{ color: hasColoredBg ? 'white' : 'hsl(var(--foreground))' }}
+                            >
+                              {p.name}
+                            </h3>
+                            {isCurrentPlan && (
+                              <span 
+                                className="text-caption font-bold px-3 py-1 rounded-full border"
+                                style={{ 
+                                  backgroundColor: 'white',
+                                  borderColor: hasColoredBg ? 'white' : HELPY_BLUE,
+                                  color: p.accentColor || HELPY_BLUE
+                                }}
+                              >
+                                {t['common.current_plan'] || 'Current Plan'}
+                              </span>
+                            )}
+                          </div>
+                          {/* Price */}
+                          <div className="flex items-baseline gap-1">
                             {p.isFree ? (
-                              <span className="text-display font-bold text-foreground">
+                              <span 
+                                className="text-display font-bold"
+                                style={{ color: hasColoredBg ? 'white' : 'hsl(var(--foreground))' }}
+                              >
                                 {t['common.free'] || 'Free'}
                               </span>
                             ) : (
                               <>
-                                <span className="text-display font-bold text-foreground">
+                                <span 
+                                  className="text-display font-bold"
+                                  style={{ color: hasColoredBg ? 'white' : 'hsl(var(--foreground))' }}
+                                >
                                   HK${price}
                                 </span>
-                                <span className="text-muted-foreground text-body">
+                                <span 
+                                  className="text-body"
+                                  style={{ color: hasColoredBg ? 'rgba(255,255,255,0.8)' : 'hsl(var(--muted-foreground))' }}
+                                >
                                   /{billingPeriod === 'monthly' ? t['common.mo'] : t['common.yr']}
                                 </span>
                               </>
                             )}
                           </div>
                         </div>
-                        <div className="flex flex-col items-end gap-1">
-                          {isCurrentPlan && (
-                            <span className="bg-primary text-primary-foreground text-caption font-bold px-3 py-1 rounded-full">
-                              {t['common.current_plan'] || 'Current Plan'}
+
+                        {/* Feature Matrix with Sections */}
+                        <div className="space-y-4 mb-6">
+                          {featureSections.map((section, sectionIndex) => (
+                            <div key={section.id}>
+                              {/* Section divider (except for first section) */}
+                              {sectionIndex > 0 && (
+                                <div 
+                                  className="border-t my-4"
+                                  style={{ borderColor: hasColoredBg ? 'rgba(255,255,255,0.2)' : 'hsl(var(--border))' }}
+                                />
+                              )}
+                              
+                              {/* Section title */}
+                              <p 
+                                className="text-body font-semibold mb-3"
+                                style={{ color: hasColoredBg ? 'rgba(255,255,255,0.6)' : 'hsl(var(--muted-foreground))' }}
+                              >
+                                {section.title}
+                              </p>
+                              
+                              {/* Section features */}
+                              <div className="space-y-3">
+                                {section.features.map((feature) => {
+                                  const featureValue = p.featureValues[feature.id as keyof typeof p.featureValues];
+                                  const isIncluded = featureValue?.included ?? false;
+                                  const limitValue = featureValue && 'value' in featureValue ? featureValue.value : null;
+
+                                  // For limit features (family/helpers), show number as the leading element
+                                  if (feature.isLimit && limitValue) {
+                                    return (
+                                      <div key={feature.id} className="flex items-start gap-3">
+                                        <span 
+                                          className="text-title font-bold flex-shrink-0 w-5 text-center"
+                                          style={{ 
+                                            color: hasColoredBg ? 'white' : 'hsl(var(--primary))'
+                                          }}
+                                        >
+                                          {limitValue}
                             </span>
-                          )}
-                          {p.highlight && !isCurrentPlan && (
-                            <span className="bg-primary text-primary-foreground text-caption font-bold px-3 py-1 rounded-full">
-                              {t['common.popular'] || 'Popular'}
-                            </span>
+                                        <div className="min-w-0">
+                                          <p 
+                                            className="text-body font-semibold"
+                                            style={{ color: hasColoredBg ? 'white' : 'hsl(var(--foreground))' }}
+                                          >
+                                            {feature.name}
+                                          </p>
+                                          {feature.description && (
+                                            <p 
+                                              className="text-body font-normal"
+                                              style={{ color: hasColoredBg ? 'rgba(255,255,255,0.7)' : 'hsl(var(--muted-foreground))' }}
+                                            >
+                                              {feature.description}
+                                            </p>
                           )}
                         </div>
                       </div>
+                                    );
+                                  }
 
-                      <ul className="space-y-2 mb-4">
-                        {p.features.map((feature, idx) => (
-                          <li key={idx} className="flex items-center gap-2 text-body text-muted-foreground">
-                            <Check size={16} className="text-primary flex-shrink-0" />
-                            {feature}
-                          </li>
-                        ))}
-                      </ul>
-
-                      {/* Limitations for Free plan */}
-                      {p.limitations && p.limitations.length > 0 && (
-                        <ul className="space-y-2 mb-4">
-                          {p.limitations.map((limitation, idx) => (
-                            <li key={idx} className="flex items-center gap-2 text-body text-muted-foreground/70">
-                              <X size={16} className="text-muted-foreground/50 flex-shrink-0" />
-                              {limitation}
-                            </li>
+                                  // For regular features, show check/X icon
+                                  return (
+                                    <div key={feature.id} className="flex items-start gap-3">
+                                      <div className="w-5 flex justify-center flex-shrink-0">
+                                        {isIncluded ? (
+                                          <Check 
+                                            size={18} 
+                                            className="mt-0.5" 
+                                            style={{ color: hasColoredBg ? 'white' : 'hsl(var(--primary))' }} 
+                                          />
+                                        ) : (
+                                          <X 
+                                            size={18} 
+                                            className="mt-0.5" 
+                                            style={{ color: hasColoredBg ? 'rgba(255,255,255,0.4)' : 'hsl(var(--muted-foreground) / 0.4)' }}
+                                          />
+                                        )}
+                                      </div>
+                                      <div className="min-w-0">
+                                        <p 
+                                          className="text-body font-semibold"
+                                          style={{ 
+                                            color: hasColoredBg 
+                                              ? (isIncluded ? 'white' : 'rgba(255,255,255,0.5)')
+                                              : (isIncluded ? 'hsl(var(--foreground))' : 'hsl(var(--muted-foreground) / 0.5)')
+                                          }}
+                                        >
+                                          {feature.name}
+                                        </p>
+                                        {feature.description && (
+                                          <p 
+                                            className="text-body font-normal"
+                                            style={{ 
+                                              color: hasColoredBg 
+                                                ? (isIncluded ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.4)')
+                                                : (isIncluded ? 'hsl(var(--muted-foreground))' : 'hsl(var(--muted-foreground) / 0.4)')
+                                            }}
+                                          >
+                                            {feature.description}
+                                          </p>
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
                           ))}
-                        </ul>
-                      )}
+                        </div>
 
                       {/* Button for paid plans */}
                       {!p.isFree && (
@@ -2450,14 +2734,18 @@ const Profile: React.FC<ProfileProps> = ({
                           }}
                           disabled={loadingPlan !== null || isCurrentPlan || !isAdmin}
                           className={`w-full py-3 rounded-xl font-semibold transition-colors ${
-                            isCurrentPlan
-                              ? 'bg-secondary text-muted-foreground cursor-not-allowed'
-                              : !isAdmin
-                              ? 'bg-muted text-muted-foreground cursor-not-allowed'
-                              : isDowngrade
-                              ? 'bg-muted-foreground/20 text-foreground border border-border'
-                              : 'bg-primary text-primary-foreground '
-                          }`}
+                              isCurrentPlan || !isAdmin
+                                ? 'cursor-not-allowed'
+                                : ''
+                            }`}
+                            style={{ 
+                              backgroundColor: hasColoredBg 
+                                ? (isCurrentPlan || !isAdmin ? 'rgba(255,255,255,0.2)' : 'white')
+                                : (isCurrentPlan || !isAdmin ? 'hsl(var(--secondary))' : 'hsl(var(--primary))'),
+                              color: hasColoredBg 
+                                ? (isCurrentPlan || !isAdmin ? 'rgba(255,255,255,0.6)' : p.accentColor)
+                                : (isCurrentPlan || !isAdmin ? 'hsl(var(--muted-foreground))' : 'white'),
+                            }}
                         >
                           {getButtonLabel()}
                         </button>
@@ -2465,7 +2753,13 @@ const Profile: React.FC<ProfileProps> = ({
 
                       {/* Free plan - show current plan indicator OR downgrade button */}
                       {p.isFree && isCurrentPlan && (
-                        <div className="w-full py-3 rounded-xl font-semibold text-center bg-secondary text-muted-foreground">
+                          <div 
+                            className="w-full py-3 rounded-xl font-semibold text-center"
+                            style={{
+                              backgroundColor: 'hsl(var(--secondary))',
+                              color: 'hsl(var(--muted-foreground))'
+                            }}
+                          >
                           {t['common.current_plan'] || 'Current Plan'}
                         </div>
                       )}
@@ -2475,15 +2769,19 @@ const Profile: React.FC<ProfileProps> = ({
                         <button
                           onClick={handleDowngradeToFree}
                           disabled={loadingPlan !== null || !isAdmin}
-                          className={`w-full py-3 rounded-xl font-semibold transition-colors ${
-                            !isAdmin
-                              ? 'bg-muted text-muted-foreground cursor-not-allowed'
-                              : 'bg-muted-foreground/20 text-foreground border border-border'
-                          }`}
+                            className={`w-full py-3 rounded-xl font-semibold transition-colors border ${
+                              !isAdmin ? 'cursor-not-allowed' : ''
+                            }`}
+                            style={{
+                              backgroundColor: 'hsl(var(--muted-foreground) / 0.1)',
+                              borderColor: 'hsl(var(--border))',
+                              color: !isAdmin ? 'hsl(var(--muted-foreground))' : 'hsl(var(--foreground))'
+                            }}
                         >
                           {loadingPlan !== null ? (t['common.processing'] || 'Processing...') : !isAdmin ? (t['common.only_admin_can_change'] || 'Only Admin Can Change') : (t['common.downgrade'] || 'Downgrade')}
                         </button>
                       )}
+                      </div>
                     </div>
                   );
                 })}

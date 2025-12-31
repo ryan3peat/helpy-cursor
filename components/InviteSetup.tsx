@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from "react";
 import { Loader2, ChevronRight } from "lucide-react";
 import { useUser, useClerk } from "@clerk/clerk-react";
 import type { User } from "../types";
+import ErrorBanner from "./ui/ErrorBanner";
 import { getUser, completeInviteRegistration } from "@/services/userService";
 
 console.log('🔄 InviteSetup rendered');
@@ -129,7 +130,12 @@ const InviteSetup: React.FC<InviteSetupProps> = ({ householdId, userId, onComple
       <p className="text-gray-500 mt-2">
         Accept invitation for {invitedUser.email ?? "your account"}.
       </p>
-      {error && <p className="text-[#F06292] mt-2">{error}</p>}
+      <ErrorBanner 
+        error={error} 
+        onDismiss={() => setError('')} 
+        title="Error"
+        className="mt-2"
+      />
       <button
         onClick={handleAcceptInvite}
         disabled={isSubmitting}

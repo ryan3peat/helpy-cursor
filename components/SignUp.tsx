@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSignUp, useSignIn } from '@clerk/clerk-react';
 import { Loader2, ArrowLeft } from 'lucide-react';
+import ErrorBanner from './ui/ErrorBanner';
 
 interface SignUpProps {
   onBackToSignIn: () => void;
@@ -371,11 +372,11 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
               We sent a code to {verificationTarget}
             </p>
 
-            {error && (
-              <div className="mb-4 p-3 bg-[#F06292]/10 border border-[#F06292]/20 rounded-xl text-[#F06292] text-body">
-                {error}
-              </div>
-            )}
+            <ErrorBanner 
+              error={error} 
+              onDismiss={() => setError('')} 
+              title="Error"
+            />
 
             <form onSubmit={handleVerify} className="space-y-4">
               <div>
@@ -455,11 +456,11 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
 
           <h2 className="text-title text-[#474747] mb-5">Sign Up</h2>
 
-          {error && (
-            <div className="mb-4 p-3 bg-[#F06292]/10 border border-[#F06292]/20 rounded-xl text-[#F06292] text-body">
-              {error}
-            </div>
-          )}
+          <ErrorBanner 
+            error={error} 
+            onDismiss={() => setError('')} 
+            title="Error"
+          />
 
           {/* Google Sign Up Button */}
           <div className="mb-4">

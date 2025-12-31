@@ -20,6 +20,7 @@ import {
   ArrowUpDown,
 } from 'lucide-react';
 import Avatar from './ui/Avatar';
+import ErrorBanner from './ui/ErrorBanner';
 import { useScrollHeader } from '@/hooks/useScrollHeader';
 import { useTranslatedContent } from '@/hooks/useTranslatedContent';
 import { useScrollLock } from '@/hooks/useScrollLock';
@@ -306,6 +307,7 @@ const ToDo: React.FC<ToDoProps> = ({
   const [optimisticItems, setOptimisticItems] = useState<ToDoItem[]>([]);
   const [optimisticCompleted, setOptimisticCompleted] = useState<Record<string, boolean>>({});
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
+  const [error, setError] = useState<string | null>(null);
   
   // Track items animating to completed (iOS-style delayed move)
   const [completingIds, setCompletingIds] = useState<Set<string>>(new Set());
@@ -521,9 +523,10 @@ const ToDo: React.FC<ToDoProps> = ({
       await onAdd(newItem);
       // Success: clear optimistic item, real item comes from App state
       setOptimisticItems(prev => prev.filter(i => i.id !== newItem.id));
-    } catch (error) {
-      console.error('Failed to add item:', error);
+    } catch (err) {
+      console.error('Failed to add item:', err);
       setOptimisticItems(prev => prev.filter(i => i.id !== newItem.id));
+      setError(t['error.add_item'] || 'Failed to add item. Please try again.');
     }
   };
   
@@ -553,9 +556,10 @@ const ToDo: React.FC<ToDoProps> = ({
       await onAdd(newItem);
       // Success: clear optimistic item, real item comes from App state
       setOptimisticItems(prev => prev.filter(i => i.id !== newItem.id));
-    } catch (error) {
-      console.error('Failed to add item:', error);
+    } catch (err) {
+      console.error('Failed to add item:', err);
       setOptimisticItems(prev => prev.filter(i => i.id !== newItem.id));
+      setError(t['error.add_item'] || 'Failed to add item. Please try again.');
     }
   };
   
@@ -589,8 +593,8 @@ const ToDo: React.FC<ToDoProps> = ({
       
       try {
         await onUpdate(id, { completed: true });
-      } catch (error) {
-        console.error('Failed to update item:', error);
+      } catch (err) {
+        console.error('Failed to update item:', err);
         // Rollback on error
         setCompletingIds(prev => {
           const next = new Set(prev);
@@ -607,6 +611,7 @@ const ToDo: React.FC<ToDoProps> = ({
           delete next[id];
           return next;
         });
+        setError(t['error.update_item'] || 'Failed to update item. Please try again.');
       }
     } else {
       // Uncompleting: instant, no animation
@@ -614,13 +619,14 @@ const ToDo: React.FC<ToDoProps> = ({
       
       try {
         await onUpdate(id, { completed: false });
-      } catch (error) {
-        console.error('Failed to update item:', error);
+      } catch (err) {
+        console.error('Failed to update item:', err);
         setOptimisticCompleted(prev => {
           const next = { ...prev };
           delete next[id];
           return next;
         });
+        setError(t['error.update_item'] || 'Failed to update item. Please try again.');
       }
     }
   };
@@ -630,13 +636,14 @@ const ToDo: React.FC<ToDoProps> = ({
     
     try {
       await onDelete(id);
-    } catch (error) {
-      console.error('Failed to delete item:', error);
+    } catch (err) {
+      console.error('Failed to delete item:', err);
       setDeletingIds(prev => {
         const next = new Set(prev);
         next.delete(id);
         return next;
       });
+      setError(t['error.delete_item'] || 'Failed to delete item. Please try again.');
     }
   };
   
@@ -658,8 +665,8 @@ const ToDo: React.FC<ToDoProps> = ({
     // Delete each item
     try {
       await Promise.all(completedIds.map(id => onDelete(id)));
-    } catch (error) {
-      console.error('Failed to delete some items:', error);
+    } catch (err) {
+      console.error('Failed to delete some items:', err);
       // Rollback on error
       completedIds.forEach(id => {
         setDeletingIds(prev => {
@@ -668,6 +675,7 @@ const ToDo: React.FC<ToDoProps> = ({
           return next;
         });
       });
+      setError(t['error.delete_items'] || 'Failed to delete some items. Please try again.');
     }
   };
   
@@ -769,8 +777,9 @@ const ToDo: React.FC<ToDoProps> = ({
       
       try {
         await onUpdate(itemId, updates);
-      } catch (error) {
-        console.error('Failed to update item:', error);
+      } catch (err) {
+        console.error('Failed to update item:', err);
+        setError(t['error.update_item'] || 'Failed to update item. Please try again.');
       }
     } else {
       // Adding new item
@@ -803,9 +812,10 @@ const ToDo: React.FC<ToDoProps> = ({
         await onAdd(newItem);
         // Success: clear optimistic item, real item comes from App state
         setOptimisticItems(prev => prev.filter(i => i.id !== newItem.id));
-      } catch (error) {
-        console.error('Failed to add item:', error);
+      } catch (err) {
+        console.error('Failed to add item:', err);
         setOptimisticItems(prev => prev.filter(i => i.id !== newItem.id));
+        setError(t['error.add_item'] || 'Failed to add item. Please try again.');
       }
     }
   };
@@ -974,6 +984,13 @@ const ToDo: React.FC<ToDoProps> = ({
             </div>
           </div>
         </header>
+
+        {/* Error Banner */}
+        <ErrorBanner 
+          error={error} 
+          onDismiss={() => setError(null)} 
+          title={t['common.error'] || 'Error'}
+        />
 
         {/* Section Toggle Cards */}
         <div className="mt-4 mb-6">

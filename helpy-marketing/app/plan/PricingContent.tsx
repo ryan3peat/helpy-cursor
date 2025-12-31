@@ -2,7 +2,78 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Check } from "lucide-react";
+import { Check, X, Heart } from "lucide-react";
+
+// Helpy brand colors
+const HELPY_BLUE = '#3EAFD2';
+const HELPY_PINK = '#F06292';
+
+// Feature sections
+const featureSections = [
+  {
+    id: 'users',
+    title: 'Users',
+    features: [
+      { 
+        id: 'family', 
+        name: 'Family members',
+        isLimit: true 
+      },
+      { 
+        id: 'helpers', 
+        name: 'Helpers',
+        isLimit: true 
+      },
+    ]
+  },
+  {
+    id: 'basic_features',
+    title: 'Basic Features',
+    features: [
+      { id: 'home', name: 'Home (Family Board & Widgets)', isLimit: false },
+      { id: 'todo', name: 'To Do (Tasks & Shopping)', isLimit: false },
+      { id: 'meal_planning', name: 'Meal Planning', isLimit: false },
+      { id: 'family_info', name: 'Family Info', isLimit: false },
+      { id: 'ai_translations', name: 'AI Translations', isLimit: false },
+    ]
+  },
+  {
+    id: 'expenses',
+    title: 'Expenses',
+    features: [
+      { 
+        id: 'manual_expenses', 
+        name: 'Add expenses manually',
+        description: 'Quickly enter the amount, category, merchant, and date for any purchase.',
+        isLimit: false 
+      },
+      { 
+        id: 'ai_scan', 
+        name: 'AI receipt scanning',
+        description: 'Snap a photo of your receipt to automatically fill in the total amount and merchant name.',
+        isLimit: false 
+      },
+      { 
+        id: 'spending_summary', 
+        name: 'Monthly Spending Summary',
+        description: 'Visualize your budget with pie charts by category, plus totals and percentage breakdowns.',
+        isLimit: false 
+      },
+    ]
+  },
+  {
+    id: 'helper_management',
+    title: 'Helper Management',
+    features: [
+      { 
+        id: 'helper_records', 
+        name: 'Helper payslips & holiday records',
+        description: 'Track overtime and holidays, then generate and sign digital payslips effortlessly.',
+        isLimit: false 
+      },
+    ]
+  }
+];
 
 export default function PricingContent() {
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
@@ -13,42 +84,66 @@ export default function PricingContent() {
       name: "Free",
       monthlyPrice: 0,
       yearlyPrice: 0,
-      description: "For families just getting started with Helpy.",
-      features: [
-        "Up to 3 family members (incl. admin)",
-        "1 Helper",
-        "Manual expense entry only (no scan)",
-        "No Helper Management"
-      ],
-      highlight: false
+      accentColor: null,
+      featureValues: {
+        family: { included: true, value: '3' },
+        helpers: { included: true, value: '1' },
+        home: { included: true },
+        todo: { included: true },
+        meal_planning: { included: true },
+        family_info: { included: true },
+        ai_translations: { included: true },
+        manual_expenses: { included: true },
+        ai_scan: { included: false },
+        spending_summary: { included: false },
+        helper_records: { included: false },
+      },
+      badge: null,
+      isFree: true
     },
     {
       id: 'core',
       name: "Core",
       monthlyPrice: 88,
       yearlyPrice: 845,
-      description: "For growing families who need more organization.",
-      features: [
-        "Up to 4 family members (incl. admin)",
-        "1 Helper",
-        "All Expense Functions",
-        "Helper Management"
-      ],
-      highlight: false
+      accentColor: HELPY_BLUE,
+      featureValues: {
+        family: { included: true, value: '4' },
+        helpers: { included: true, value: '1' },
+        home: { included: true },
+        todo: { included: true },
+        meal_planning: { included: true },
+        family_info: { included: true },
+        ai_translations: { included: true },
+        manual_expenses: { included: true },
+        ai_scan: { included: true },
+        spending_summary: { included: true },
+        helper_records: { included: true },
+      },
+      badge: null,
+      isFree: false
     },
     {
       id: 'pro',
       name: "Pro",
       monthlyPrice: 118,
       yearlyPrice: 1133,
-      description: "For busy families with multiple helpers or complex schedules.",
-      features: [
-        "Up to 8 family members (incl. admin)",
-        "Up to 4 Helpers",
-        "All Expense Functions",
-        "Helper Management"
-      ],
-      highlight: true
+      accentColor: HELPY_PINK,
+      featureValues: {
+        family: { included: true, value: '8' },
+        helpers: { included: true, value: '4' },
+        home: { included: true },
+        todo: { included: true },
+        meal_planning: { included: true },
+        family_info: { included: true },
+        ai_translations: { included: true },
+        manual_expenses: { included: true },
+        ai_scan: { included: true },
+        spending_summary: { included: true },
+        helper_records: { included: true },
+      },
+      badge: { text: 'Popular', icon: Heart },
+      isFree: false
     }
   ];
 
@@ -92,7 +187,7 @@ export default function PricingContent() {
               }`}
             >
               Yearly
-              <span className="ml-1.5 text-xs text-primary font-semibold">Save 20%</span>
+              <span className="ml-1.5 text-xs font-semibold" style={{ color: HELPY_BLUE }}>Save 20%</span>
             </button>
           </div>
         </div>
@@ -105,39 +200,144 @@ export default function PricingContent() {
         >
           {plans.map((plan) => {
             const price = billingPeriod === 'monthly' ? plan.monthlyPrice : plan.yearlyPrice;
+            const hasColoredBg = plan.accentColor !== null;
             
             return (
               <div
                 key={plan.id}
-                className="relative flex flex-col rounded-2xl bg-card p-6 shadow-soft hover:shadow-md transition-shadow"
+                className="relative flex flex-col rounded-2xl p-6 shadow-soft hover:shadow-md transition-shadow overflow-hidden"
+                style={{ 
+                  backgroundColor: plan.accentColor || 'hsl(var(--card))',
+                  color: hasColoredBg ? 'white' : 'hsl(var(--foreground))'
+                }}
               >
-                {plan.highlight && (
-                  <span className="absolute -top-3 right-4 px-3 py-1 bg-primary text-primary-foreground text-xs font-semibold rounded-full">
-                    Popular
-                  </span>
+                {/* Popular badge */}
+                {plan.badge && (
+                  <div 
+                    className="absolute top-6 right-6 flex flex-col items-center"
+                    style={{ color: 'white' }}
+                  >
+                    <plan.badge.icon size={36} strokeWidth={1.5} />
+                    <span className="text-sm font-bold mt-1">{plan.badge.text}</span>
+                  </div>
                 )}
-                <p className="text-sm font-semibold tracking-wide text-primary">
-                  {plan.name}
-                </p>
-                <p className="mt-3 text-3xl font-semibold text-foreground">
-                  {price === 0 ? 'Free' : `HK$${price}`}
-                  {price > 0 && (
-                    <span className="text-sm font-normal text-muted-foreground">
-                      {billingPeriod === 'monthly' ? ' / month' : ' / year'}
-                    </span>
-                  )}
-                </p>
-                <p className="mt-3 text-sm text-muted-foreground leading-relaxed">
-                  {plan.description}
-                </p>
-                <ul className="mt-5 space-y-3 text-sm text-foreground">
-                  {plan.features.map((feature, i) => (
-                    <li key={i} className="flex items-start gap-2.5">
-                      <Check className="mt-0.5 h-5 w-5 text-primary flex-shrink-0" />
-                      <span className="leading-relaxed">{feature}</span>
-                    </li>
+
+                {/* Header */}
+                <div className="mb-5">
+                  <p className="text-sm font-bold tracking-wide" style={{ color: hasColoredBg ? 'white' : plan.accentColor || HELPY_BLUE }}>
+                    {plan.name}
+                  </p>
+                  <p className="mt-3 text-3xl font-semibold">
+                    {price === 0 ? 'Free' : `HK$${price}`}
+                    {price > 0 && (
+                      <span className="text-sm font-normal" style={{ color: hasColoredBg ? 'rgba(255,255,255,0.8)' : 'hsl(var(--muted-foreground))' }}>
+                        {billingPeriod === 'monthly' ? ' / mo' : ' / yr'}
+                      </span>
+                    )}
+                  </p>
+                </div>
+
+                {/* Feature sections */}
+                <div className="space-y-4 flex-1">
+                  {featureSections.map((section, sectionIndex) => (
+                    <div key={section.id}>
+                      {/* Divider */}
+                      {sectionIndex > 0 && (
+                        <div 
+                          className="border-t my-4"
+                          style={{ borderColor: hasColoredBg ? 'rgba(255,255,255,0.2)' : 'hsl(var(--border))' }}
+                        />
+                      )}
+                      
+                      {/* Section title */}
+                      <p 
+                        className="text-sm font-semibold mb-3"
+                        style={{ color: hasColoredBg ? 'rgba(255,255,255,0.6)' : 'hsl(var(--muted-foreground))' }}
+                      >
+                        {section.title}
+                      </p>
+                      
+                      {/* Features */}
+                      <div className="space-y-3">
+                        {section.features.map((feature) => {
+                          const featureValue = plan.featureValues[feature.id as keyof typeof plan.featureValues];
+                          const isIncluded = featureValue?.included ?? false;
+                          const limitValue = featureValue && 'value' in featureValue ? featureValue.value : null;
+
+                          // Limit features (family/helpers)
+                          if (feature.isLimit && limitValue) {
+                            return (
+                              <div key={feature.id} className="flex items-start gap-3">
+                                <span 
+                                  className="text-base font-bold flex-shrink-0 w-5 text-center"
+                                  style={{ color: hasColoredBg ? 'white' : HELPY_BLUE }}
+                                >
+                                  {limitValue}
+                                </span>
+                                <div className="min-w-0">
+                                  <p className="text-sm font-semibold">{feature.name}</p>
+                                  {feature.description && (
+                                    <p 
+                                      className="text-sm font-normal"
+                                      style={{ color: hasColoredBg ? 'rgba(255,255,255,0.7)' : 'hsl(var(--muted-foreground))' }}
+                                    >
+                                      {feature.description}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          }
+
+                          // Regular features
+                          return (
+                            <div key={feature.id} className="flex items-start gap-3">
+                              <div className="w-5 flex justify-center flex-shrink-0">
+                                {isIncluded ? (
+                                  <Check 
+                                    size={18} 
+                                    className="mt-0.5" 
+                                    style={{ color: hasColoredBg ? 'white' : HELPY_BLUE }} 
+                                  />
+                                ) : (
+                                  <X 
+                                    size={18} 
+                                    className="mt-0.5" 
+                                    style={{ color: hasColoredBg ? 'rgba(255,255,255,0.4)' : 'hsl(var(--muted-foreground) / 0.4)' }}
+                                  />
+                                )}
+                              </div>
+                              <div className="min-w-0">
+                                <p 
+                                  className="text-sm font-semibold"
+                                  style={{ 
+                                    color: hasColoredBg 
+                                      ? (isIncluded ? 'white' : 'rgba(255,255,255,0.5)')
+                                      : (isIncluded ? 'hsl(var(--foreground))' : 'hsl(var(--muted-foreground) / 0.5)')
+                                  }}
+                                >
+                                  {feature.name}
+                                </p>
+                                {feature.description && (
+                                  <p 
+                                    className="text-sm font-normal"
+                                    style={{ 
+                                      color: hasColoredBg 
+                                        ? (isIncluded ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.4)')
+                                        : (isIncluded ? 'hsl(var(--muted-foreground))' : 'hsl(var(--muted-foreground) / 0.4)')
+                                    }}
+                                  >
+                                    {feature.description}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
                   ))}
-                </ul>
+                </div>
               </div>
             );
           })}

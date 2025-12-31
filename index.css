@@ -488,8 +488,8 @@ button:focus-visible {
 .helpy-footer {
   text-align: center;
   padding: 2rem 0;
-  /* Ensures footer is at least this far from top of page */
-  margin-top: auto;
+  /* Consistent spacing from last content element */
+  margin-top: 3rem;
 }
 
 @media (max-width: 640px) {

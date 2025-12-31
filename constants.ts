@@ -751,23 +751,31 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'settings.push_blocked': 'Blocked - enable in browser settings',
   'settings.push_description': 'Get notified when family adds items',
 
-  // Plan Features - Free
-  'plan.feature.free_family': 'Up to 3 family members (incl. admin)',
-  'plan.feature.free_helper': '1 Helper',
-  'plan.feature.free_expenses': 'Manual expense entry only',
-  'plan.feature.free_no_scan': 'No receipt scanning',
+  // Plan Features - Unified feature matrix
+  // Plan Section Titles
+  'plan.section.users': 'Users',
+  'plan.section.basic_features': 'Basic Features',
+  'plan.section.expenses': 'Expenses',
+  'plan.section.helper_management': 'Helper Management',
   
-  // Plan Features - Core
-  'plan.feature.core_family': 'Up to 4 family members (incl. admin)',
-  'plan.feature.core_helper': '1 Helper',
-  'plan.feature.core_expenses': 'All Expense Functions',
-  'plan.feature.core_helper_mgmt': 'Helper Management',
+  // Basic Features
+  'plan.feature.home': 'Home (Family Board & Widgets)',
+  'plan.feature.todo': 'To Do (Tasks & Shopping)',
+  'plan.feature.meal_planning': 'Meal Planning',
+  'plan.feature.family_info': 'Family Info',
+  'plan.feature.ai_translations': 'AI Translations',
   
-  // Plan Features - Pro
-  'plan.feature.pro_family': 'Up to 8 family members (incl. admin)',
-  'plan.feature.pro_helpers': 'Up to 4 Helpers',
-  'plan.feature.pro_expenses': 'All Expense Functions',
-  'plan.feature.pro_helper_mgmt': 'Helper Management',
+  // Plan Features
+  'plan.feature.family_members': 'Family members',
+  'plan.feature.helpers': 'Helpers',
+  'plan.feature.manual_expenses': 'Add expenses manually',
+  'plan.feature.manual_expenses_desc': 'Quickly enter the amount, category, merchant, and date for any purchase.',
+  'plan.feature.ai_scan': 'AI receipt scanning',
+  'plan.feature.ai_scan_desc': 'Snap a photo of your receipt to automatically fill in the total amount and merchant name.',
+  'plan.feature.spending_summary': 'Monthly Spending Summary',
+  'plan.feature.spending_summary_desc': 'Visualize your budget with pie charts by category, plus totals and percentage breakdowns.',
+  'plan.feature.helper_records': 'Helper payslips & holiday records',
+  'plan.feature.helper_records_desc': 'Track overtime and holidays, then generate and sign digital payslips effortlessly.',
   
   // Plan Features - Test (for Stripe testing)
   'plan.feature.test_desc': 'Test plan for payment testing',

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Calendar, FileText, Check, X, AlertTriangle } from 'lucide-react';
+import ErrorBanner from './ui/ErrorBanner';
 import type { User, TranslationDictionary } from '@/types';
 import { UserRole } from '@/types';
 import type { HKStatutoryHoliday, HelperHolidayRecord, HelperPayslipConfirmation, CompensationType } from '@src/types/helperManagement';
@@ -55,6 +56,7 @@ export const HelperManagementContent: React.FC<Props> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [showChangeAmountModal, setShowChangeAmountModal] = useState(false);
   const [customAmount, setCustomAmount] = useState('');
+  const [error, setError] = useState<string | null>(null);
   
   const isHelper = currentUser.role === UserRole.HELPER;
   const isAdmin = currentUser.role === UserRole.MASTER;
@@ -208,11 +210,11 @@ export const HelperManagementContent: React.FC<Props> = ({
   const handleSignClick = (type: 'employer' | 'helper') => {
     // Validate role-based permissions
     if (type === 'employer' && !isAdmin) {
-      alert('Only Admin users can sign the employer side');
+      setError(t['error.only_admin_sign'] || 'Only Admin users can sign the employer side');
       return;
     }
     if (type === 'helper' && !isHelper) {
-      alert('Only the Helper can sign their side');
+      setError(t['error.only_helper_sign'] || 'Only the Helper can sign their side');
       return;
     }
     // Show confirmation modal
@@ -234,9 +236,9 @@ export const HelperManagementContent: React.FC<Props> = ({
       await updatePayslipAmount(currentPayslip.id, newAmount);
       setShowChangeAmountModal(false);
       loadPayslip();
-    } catch (error: any) {
-      console.error('Failed to update amount:', error);
-      alert(error.message || 'Failed to update amount');
+    } catch (err: any) {
+      console.error('Failed to update amount:', err);
+      setError(err.message || (t['error.update_amount'] || 'Failed to update amount'));
     } finally {
       setIsLoading(false);
     }
@@ -250,9 +252,9 @@ export const HelperManagementContent: React.FC<Props> = ({
       await signPayslip(currentPayslip.id, showSignConfirmModal, currentUser.id);
       setShowSignConfirmModal(null);
       loadPayslip();
-    } catch (error) {
-      console.error('Failed to sign payslip:', error);
-      alert('Failed to sign payslip. It may have already been signed.');
+    } catch (err) {
+      console.error('Failed to sign payslip:', err);
+      setError(t['error.sign_payslip'] || 'Failed to sign payslip. It may have already been signed.');
     } finally {
       setIsLoading(false);
     }
@@ -285,6 +287,13 @@ export const HelperManagementContent: React.FC<Props> = ({
 
   return (
     <div className="space-y-4">
+      {/* Error Banner */}
+      <ErrorBanner 
+        error={error} 
+        onDismiss={() => setError(null)} 
+        title={t['common.error'] || 'Error'}
+      />
+      
       {/* ═══════════════════════════════════════════════════════════════ */}
       {/* TILE 1: Statutory Holidays */}
       {/* ═══════════════════════════════════════════════════════════════ */}

@@ -11,7 +11,7 @@ const translationCache: Record<string, TranslationDictionary> = {};
 
 // Cache version - increment this when BASE_TRANSLATIONS changes significantly
 // This will invalidate old localStorage caches
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v2';
 
 /**
  * Get static translations from Supabase

@@ -7,7 +7,6 @@ import {
   Image as ImageIcon,
   AlertCircle,
   Check,
-  Edit,
   Trash2,
   Receipt,
   ReceiptText,
@@ -1672,7 +1671,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                     }}
                     disabled={savingExisting}
                   >
-                    <Edit size={18} /> {t['common.edit'] || 'Edit'}
+                    <Pencil size={18} /> {t['common.edit'] || 'Edit'}
                   </button>
                 </div>
               )}

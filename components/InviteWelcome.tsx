@@ -5,6 +5,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSignUp, useSignIn, useClerk, useUser, SignUp } from '@clerk/clerk-react';
 import { Loader2, Mail, ArrowRight } from 'lucide-react';
+import ErrorBanner from './ui/ErrorBanner';
 
 interface InviteWelcomeProps {
   householdId: string;
@@ -375,11 +376,11 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
               We sent a code to {formData.email}
             </p>
 
-            {error && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-body">
-                {error}
-              </div>
-            )}
+            <ErrorBanner 
+              error={error} 
+              onDismiss={() => setError('')} 
+              title="Error"
+            />
 
             <form onSubmit={handleVerify} className="space-y-4">
               <div>
@@ -547,11 +548,11 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
                   <span>Back</span>
                 </button>
 
-                {error && (
-                  <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-body">
-                    {error}
-                  </div>
-                )}
+                <ErrorBanner 
+                  error={error} 
+                  onDismiss={() => setError('')} 
+                  title="Error"
+                />
 
                 <form onSubmit={handleSignUp} className="space-y-4">
                   <div className="grid grid-cols-2 gap-3">

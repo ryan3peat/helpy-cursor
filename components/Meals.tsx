@@ -8,7 +8,7 @@ import {
   Sun,
   Moon,
   Cookie,
-  Edit2,
+  Pencil,
   Trash2,
   ChevronLeft,
   ChevronRight,
@@ -22,6 +22,7 @@ import {
   Check
 } from 'lucide-react';
 import Avatar from './ui/Avatar';
+import ErrorBanner from './ui/ErrorBanner';
 import { useScrollHeader } from '@/hooks/useScrollHeader';
 import { useTranslatedContent } from '@/hooks/useTranslatedContent';
 import { useScrollLock } from '@/hooks/useScrollLock';
@@ -82,6 +83,7 @@ const Meals: React.FC<MealsProps> = ({
 
   const [view, setView] = useState<'day' | 'week'>('day');
   const [loadingAi, setLoadingAi] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
   
   // Scroll header hook for animation
@@ -280,11 +282,16 @@ const Meals: React.FC<MealsProps> = ({
       ? meal.forUserIds.filter(id => id !== currentUser.id)
       : [...meal.forUserIds, currentUser.id];
     
-    // If leaving and meal becomes empty (no description AND no participants), delete it
-    if (isIn && newUserIds.length === 0 && !meal.description.trim()) {
-      onDelete(meal.id);
-    } else {
-      onUpdate(meal.id, { forUserIds: newUserIds });
+    try {
+      // If leaving and meal becomes empty (no description AND no participants), delete it
+      if (isIn && newUserIds.length === 0 && !meal.description.trim()) {
+        onDelete(meal.id);
+      } else {
+        onUpdate(meal.id, { forUserIds: newUserIds });
+      }
+    } catch (err) {
+      console.error('Failed to update meal:', err);
+      setError(t['error.update_meal'] || 'Failed to update meal. Please try again.');
     }
   };
 
@@ -302,7 +309,12 @@ const Meals: React.FC<MealsProps> = ({
       descriptionLang: null,
       descriptionTranslations: {}
     };
-    onAdd(newMeal);
+    try {
+      onAdd(newMeal);
+    } catch (err) {
+      console.error('Failed to add meal:', err);
+      setError(t['error.add_meal'] || 'Failed to add meal. Please try again.');
+    }
   };
 
   // --- Avatars for eaters ---
@@ -374,44 +386,54 @@ const Meals: React.FC<MealsProps> = ({
     if (!hasDish && !hasPeople) return;
 
     const dateStr = formatDateStr(modalDate);
-    if (editingMealId) {
-      const existingMeal = meals.find(m => m.id === editingMealId);
-      const descriptionChanged = existingMeal && existingMeal.description !== description;
-      const detectedLang = descriptionChanged ? detectInputLanguage(currentLang) : undefined;
-      
-      onUpdate(editingMealId, {
-        description,
-        forUserIds: selectedUserIds,
-        type: modalType,
-        audience: modalAudience,
-        ...(descriptionChanged && detectedLang !== undefined ? {
+    try {
+      if (editingMealId) {
+        const existingMeal = meals.find(m => m.id === editingMealId);
+        const descriptionChanged = existingMeal && existingMeal.description !== description;
+        const detectedLang = descriptionChanged ? detectInputLanguage(currentLang) : undefined;
+        
+        onUpdate(editingMealId, {
+          description,
+          forUserIds: selectedUserIds,
+          type: modalType,
+          audience: modalAudience,
+          ...(descriptionChanged && detectedLang !== undefined ? {
+            descriptionLang: detectedLang || null,
+            descriptionTranslations: {} // Reset translations when description changes
+          } : {}),
+        });
+      } else {
+        // Create new meal - detect language
+        const detectedLang = detectInputLanguage(currentLang);
+        const newMeal: Meal = {
+          id: Date.now().toString(),
+          date: dateStr,
+          type: modalType,
+          description,
+          forUserIds: selectedUserIds,
+          audience: modalAudience,
+          createdBy: currentUser.id, // Track who created this meal for notifications
           descriptionLang: detectedLang || null,
-          descriptionTranslations: {} // Reset translations when description changes
-        } : {}),
-      });
-    } else {
-      // Create new meal - detect language
-      const detectedLang = detectInputLanguage(currentLang);
-      const newMeal: Meal = {
-        id: Date.now().toString(),
-        date: dateStr,
-        type: modalType,
-        description,
-        forUserIds: selectedUserIds,
-        audience: modalAudience,
-        createdBy: currentUser.id, // Track who created this meal for notifications
-        descriptionLang: detectedLang || null,
-        descriptionTranslations: {}
-      };
-      onAdd(newMeal);
+          descriptionTranslations: {}
+        };
+        onAdd(newMeal);
+      }
+      setIsModalOpen(false);
+    } catch (err) {
+      console.error('Failed to save meal:', err);
+      setError(t['error.save_meal'] || 'Failed to save meal. Please try again.');
     }
-    setIsModalOpen(false);
   };
 
   const handleDelete = () => {
     if (editingMealId) {
-      onDelete(editingMealId);
-      setIsModalOpen(false);
+      try {
+        onDelete(editingMealId);
+        setIsModalOpen(false);
+      } catch (err) {
+        console.error('Failed to delete meal:', err);
+        setError(t['error.delete_meal'] || 'Failed to delete meal. Please try again.');
+      }
     }
   };
 
@@ -517,7 +539,7 @@ const Meals: React.FC<MealsProps> = ({
                   <TranslatedMealDescription meal={meal} currentLang={currentLang} onUpdate={onUpdate} />
                 </p>
                 <button className="flex items-center gap-1 text-caption font-medium text-muted-foreground  mt-2">
-                  <Edit2 size={10} />
+                  <Pencil size={10} />
                   {t['meals.edit_dish'] ?? 'Edit dish'}
                 </button>
               </div>
@@ -702,6 +724,12 @@ const Meals: React.FC<MealsProps> = ({
 
       {/* Content */}
       <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
+        {/* Error Banner */}
+        <ErrorBanner 
+          error={error} 
+          onDismiss={() => setError(null)} 
+          title={t['common.error'] || 'Error'}
+        />
         {/* ─────────────────────────────────────────────────────────────── */}
         {/* WEEK NAVIGATION */}
         {/* ─────────────────────────────────────────────────────────────── */}

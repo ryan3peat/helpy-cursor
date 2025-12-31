@@ -600,7 +600,9 @@ const AppContent: React.FC = () => {
 
   const handleUpdateExpense = async (expense: Expense) => {
     if (!hid) return;
-    const { id, ...data } = expense;
+    // Exclude createdBy from update - it's a Clerk ID in the app but needs to be UUID in DB
+    // The created_by field shouldn't change after creation anyway
+    const { id, createdBy, ...data } = expense;
     setExpenses(prev => prev.map(e => e.id === id ? { ...e, ...data } : e));  // Optimistic
     await updateItem(hid, 'expenses', id, data);
   };
@@ -691,9 +693,11 @@ const AppContent: React.FC = () => {
   const handleSaveFamilyNotes = async (notes: string): Promise<void> => {
     if (!hid) return;
     const previousNotes = familyNotes; // Store previous value
+    const previousLang = familyNotesLang; // Store previous language
     setFamilyNotes(notes); // Optimistic update
-    // Reset translation fields when notes change (will be detected and saved)
-    setFamilyNotesLang(null);
+    // Set language to current UI language (what user is typing in) for immediate translation support
+    // Reset translations when notes change (will be regenerated on display)
+    setFamilyNotesLang(lang);
     setFamilyNotesTranslations({});
     
     try {
@@ -701,7 +705,9 @@ const AppContent: React.FC = () => {
       await saveFamilyNotes(hid, notes, lang, currentUser?.id);
     } catch (error) {
       console.error('Failed to save notes:', error);
-      setFamilyNotes(previousNotes); // Rollback on error
+      // Rollback on error
+      setFamilyNotes(previousNotes);
+      setFamilyNotesLang(previousLang);
       throw error; // Re-throw so Dashboard knows save failed
     }
   };

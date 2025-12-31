@@ -30,6 +30,7 @@ import {
   SquarePlus
 } from 'lucide-react';
 import Avatar from './ui/Avatar';
+import ErrorBanner from './ui/ErrorBanner';
 import { ToDoItem, Meal, User, MealType, TranslationDictionary, UserRole, Expense } from '../types';
 import { formatCurrency } from '../currencyConfig';
 import { useScrollHeader } from '../hooks/useScrollHeader';
@@ -255,6 +256,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   const [isSavingNotes, setIsSavingNotes] = useState(false);
   const [isDeletingNotes, setIsDeletingNotes] = useState(false);
   const [timeOfDay, setTimeOfDay] = useState('');
+  const [error, setError] = useState<string | null>(null);
   const [showLangModal, setShowLangModal] = useState(false);
   const [showIosInstallSteps, setShowIosInstallSteps] = useState(false);
   const { canPromptInstall, shouldShowIosSteps, dismiss, promptInstall } = usePwaInstallNudge();
@@ -287,8 +289,9 @@ const Dashboard: React.FC<DashboardProps> = ({
     try {
       await onUpdateNotes(tempNotes);
       setIsEditingNotes(false);
-    } catch (error) {
-      console.error('Failed to save notes:', error);
+    } catch (err) {
+      console.error('Failed to save notes:', err);
+      setError(t['error.save_notes'] || 'Failed to save notes. Please try again.');
     } finally {
       setIsSavingNotes(false);
     }
@@ -313,8 +316,9 @@ const Dashboard: React.FC<DashboardProps> = ({
       await onUpdateNotes('');
       setTempNotes('');
       setIsEditingNotes(false);
-    } catch (error) {
-      console.error('Failed to delete notes:', error);
+    } catch (err) {
+      console.error('Failed to delete notes:', err);
+      setError(t['error.delete_notes'] || 'Failed to delete notes. Please try again.');
     } finally {
       setIsDeletingNotes(false);
     }
@@ -513,6 +517,13 @@ const Dashboard: React.FC<DashboardProps> = ({
 
       {/* Content */}
       <div className="px-5 pt-12 space-y-5">
+
+      {/* Error Banner */}
+      <ErrorBanner 
+        error={error} 
+        onDismiss={() => setError(null)} 
+        title={t['common.error'] || 'Error'}
+      />
 
       {/* PWA Install Nudge (Mobile Only) */}
       {(canPromptInstall || shouldShowIosSteps) && (

@@ -36,6 +36,7 @@ import {
   Lock,
 } from "lucide-react";
 import Avatar from "./ui/Avatar";
+import ErrorBanner from "./ui/ErrorBanner";
 import { BaseViewProps, User, UserRole, TranslationDictionary } from "@/types";
 import { useTranslatedContent } from "@/hooks/useTranslatedContent";
 import { detectInputLanguage } from "@/services/languageDetectionService";
@@ -564,6 +565,7 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
   // Subscription Plan State (for Helper Management access control)
   // ─────────────────────────────────────────────────────────────────
   const [subscriptionPlan, setSubscriptionPlan] = useState<string>('free');
+  const [error, setError] = useState<string | null>(null);
   
   // Fetch subscription plan on mount
   useEffect(() => {
@@ -751,8 +753,9 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
         // Add new - use optimistic handler
         await onAddEssentialInfo(createData);
       }
-    } catch (error) {
-      console.error("Failed to save:", error);
+    } catch (err) {
+      console.error("Failed to save:", err);
+      setError(t['error.save_essential_info'] || 'Failed to save. Please try again.');
     }
   };
 
@@ -767,8 +770,9 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
     // Use optimistic delete handler
     try {
       await onDeleteEssentialInfo(itemToDelete.id);
-    } catch (error) {
-      console.error("Failed to delete:", error);
+    } catch (err) {
+      console.error("Failed to delete:", err);
+      setError(t['error.delete_essential_info'] || 'Failed to delete. Please try again.');
     }
   };
 
@@ -896,8 +900,9 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
         // Add new - use optimistic handler
         await onAddHouseRoutine(createData);
       }
-    } catch (error) {
-      console.error("Failed to save house routine:", error);
+    } catch (err) {
+      console.error("Failed to save house routine:", err);
+      setError(t['error.save_house_routine'] || 'Failed to save. Please try again.');
     }
   };
 
@@ -912,8 +917,9 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
     // Use optimistic delete handler
     try {
       await onDeleteHouseRoutine(itemToDelete.id);
-    } catch (error) {
-      console.error("Failed to delete house routine:", error);
+    } catch (err) {
+      console.error("Failed to delete house routine:", err);
+      setError(t['error.delete_house_routine'] || 'Failed to delete. Please try again.');
     }
   };
 
@@ -940,6 +946,13 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
             </span>
           </h1>
         </header>
+
+        {/* Error Banner */}
+        <ErrorBanner 
+          error={error} 
+          onDismiss={() => setError(null)} 
+          title={t['common.error'] || 'Error'}
+        />
 
         {/* Section Toggle Cards - Scrollable Horizontal Layout */}
         <div className="mt-4 mb-6 -mx-4 px-4 pb-1 overflow-x-auto scrollbar-hide">

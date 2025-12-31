@@ -276,7 +276,7 @@ export default function PricingContent() {
                                 </span>
                                 <div className="min-w-0">
                                   <p className="text-sm font-semibold">{feature.name}</p>
-                                  {feature.description && (
+                                  {'description' in feature && feature.description && (
                                     <p 
                                       className="text-sm font-normal"
                                       style={{ color: hasColoredBg ? 'rgba(255,255,255,0.7)' : 'hsl(var(--muted-foreground))' }}
@@ -318,7 +318,7 @@ export default function PricingContent() {
                                 >
                                   {feature.name}
                                 </p>
-                                {feature.description && (
+                                {'description' in feature && feature.description && (
                                   <p 
                                     className="text-sm font-normal"
                                     style={{ 

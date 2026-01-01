@@ -25,6 +25,10 @@ export interface RoleConfig {
   description: string;
   abilities: RoleAbility[];
   restrictions: RoleRestriction[];
+  // For profile-only roles (like Child) - different display format
+  isProfileOnly?: boolean;
+  profileFor?: RoleAbility[]; // "This profile is for:" items
+  note?: string; // Note text shown at bottom
   // Technical permissions for code checks
   permissions: {
     // Essential Info (Places)
@@ -228,32 +232,30 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
   [UserRole.CHILD]: {
     role: UserRole.CHILD,
     displayName: 'Child',
-    description: 'Family member with full access',
-    abilities: [
-      { key: 'manage_family', label: 'Add and manage family members' },
-      { key: 'edit_family_board', label: 'Edit the Family Board' },
-      { key: 'manage_items', label: 'Add, edit, and delete all items' },
-      { key: 'view_expenses', label: 'View all expenses and spending summaries' },
-      { key: 'setup_places', label: 'Set up places and practice' },
-      { key: 'meals_kids', label: 'RSVP for "Everyone" and "Kids" meals' },
+    description: 'Profile only family members - not actual app users',
+    // This is a profile-only role with different display format
+    isProfileOnly: true,
+    profileFor: [
+      { key: 'meal_planning', label: 'Meal planning (who\'s eating)' },
+      { key: 'allergies', label: 'Tracking allergies and preferences' },
+      { key: 'family_list', label: 'Showing in the family list' },
     ],
-    restrictions: [
-      { key: 'no_adults_meals', label: 'Join "Adults only" meals' },
-      { key: 'no_billing', label: 'Manage subscription or billing' },
-      { key: 'no_delete_household', label: 'Delete the household account' },
-      { key: 'no_notifications', label: 'Receive push notifications' },
-    ],
+    note: 'Children don\'t log in - add them directly for household planning. The invitation link will not be generated.',
+    // Keep abilities/restrictions empty for profile-only roles
+    abilities: [],
+    restrictions: [],
+    // Permissions are N/A for profile-only roles (they don't use the app)
     permissions: {
-      places: { add: true, edit: true, delete: true, view: true },
-      practice: { add: true, edit: true, delete: true, view: true },
-      shopping: { add: true, edit: true, delete: true, complete: true },
-      tasks: { add: true, edit: true, delete: true, complete: true },
-      meals: { add: true, edit: true, delete: true, joinAll: true, joinAdults: false, joinKids: true },
-      expenses: { add: true, editOwn: true, editOthers: true, deleteOwn: true, deleteOthers: true, viewOwn: true, viewOthers: true, viewSummary: true },
-      familyNotes: { edit: true, view: true },
-      userManagement: { addInvite: true, editOwnProfile: true, editOwnRole: true, editOthersProfile: true, deleteOthers: true },
-      subscription: { viewPlans: true, changePlan: false, cancel: false, managePayment: false },
-      account: { deleteHousehold: false, logout: true },
+      places: { add: false, edit: false, delete: false, view: false },
+      practice: { add: false, edit: false, delete: false, view: false },
+      shopping: { add: false, edit: false, delete: false, complete: false },
+      tasks: { add: false, edit: false, delete: false, complete: false },
+      meals: { add: false, edit: false, delete: false, joinAll: true, joinAdults: false, joinKids: true },
+      expenses: { add: false, editOwn: false, editOthers: false, deleteOwn: false, deleteOthers: false, viewOwn: false, viewOthers: false, viewSummary: false },
+      familyNotes: { edit: false, view: false },
+      userManagement: { addInvite: false, editOwnProfile: false, editOwnRole: false, editOthersProfile: false, deleteOthers: false },
+      subscription: { viewPlans: false, changePlan: false, cancel: false, managePayment: false },
+      account: { deleteHousehold: false, logout: false },
     },
     showInGuide: true,
     showInAddMember: true,

@@ -158,16 +158,22 @@ IMPORTANT:
 JSON to translate:
 ${JSON.stringify(dictionary, null, 2)}`;
 
-  const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: {
-        responseMimeType: 'application/json',
-      },
-    }),
-  });
+  let response;
+  try {
+    response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+          responseMimeType: 'application/json',
+        },
+      }),
+    });
+  } catch (fetchError) {
+    const errorMsg = fetchError instanceof Error ? fetchError.message : String(fetchError);
+    throw new Error(`Network error connecting to Gemini API: ${errorMsg}`);
+  }
 
   if (!response.ok) {
     const errorText = await response.text();

@@ -480,6 +480,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                 {(() => {
                   switch(currentLang) {
                     case 'en': return 'en';
+                    case 'zh-HK': return '粵';
                     case 'zh-CN': return '简中';
                     case 'zh-TW': return '繁中';
                     case 'tl': return 'tl';
@@ -919,6 +920,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                 const getDisplayName = (code: string) => {
                   switch(code) {
                     case 'en': return 'English (en)';
+                    case 'zh-HK': return '粵語 (zh-HK)';
                     case 'zh-CN': return '简体中文 (zh-CN)';
                     case 'zh-TW': return '繁體中文 (zh-TW)';
                     case 'tl': return 'Tagalog (tl)';

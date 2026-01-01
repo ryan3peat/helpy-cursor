@@ -117,6 +117,14 @@ const RestrictionItem: React.FC<{ children: React.ReactNode }> = ({ children }) 
   </div>
 );
 
+// Bullet list item component (for profile-only roles like Child)
+const BulletItem: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <div className="flex items-start gap-2 py-1.5">
+    <span className="text-primary mt-0.5 flex-shrink-0">•</span>
+    <span className="text-body text-foreground">{children}</span>
+  </div>
+);
+
 // Role card component - expandable card for each role
 const RoleCard: React.FC<{
   title: string;
@@ -261,35 +269,61 @@ const UserGuide: React.FC<UserGuideProps> = ({ currentUser, t, onNavigateToPlan,
             isCurrentRole={currentUser.role === roleConfig.role}
             t={t}
           >
-            {/* What you can do */}
-            {roleConfig.abilities.length > 0 && (
-              <div className="mb-3">
-                <p className="text-caption text-muted-foreground mb-2 font-semibold">
-                  {t['guide.what_you_can_do'] || 'What they can do:'}
-                </p>
-                {roleConfig.abilities.map((ability) => (
-                  <AbilityItem key={ability.key}>{ability.label}</AbilityItem>
-                ))}
-              </div>
-            )}
-            
-            {/* What you can't do */}
-            {roleConfig.restrictions.length > 0 && (
-              <div>
-                <p className="text-caption text-muted-foreground mb-2 font-semibold">
-                  {t['guide.what_you_cant_do'] || "What they can't do:"}
-                </p>
-                {roleConfig.restrictions.map((restriction) => (
-                  <RestrictionItem key={restriction.key}>{restriction.label}</RestrictionItem>
-                ))}
-              </div>
-            )}
-            
-            {/* Special case: Admin has no restrictions */}
-            {roleConfig.restrictions.length === 0 && roleConfig.role === UserRole.MASTER && (
-              <p className="text-caption text-muted-foreground mt-2">
-                {t['guide.full_access'] || 'Full access - no restrictions'}
-              </p>
+            {/* Profile-only roles (like Child) have different display format */}
+            {roleConfig.isProfileOnly ? (
+              <>
+                {/* This profile is for: */}
+                {roleConfig.profileFor && roleConfig.profileFor.length > 0 && (
+                  <div className="mb-3">
+                    <p className="text-caption text-muted-foreground mb-2 font-semibold">
+                      {t['guide.this_profile_is_for'] || 'This profile is for:'}
+                    </p>
+                    {roleConfig.profileFor.map((item) => (
+                      <BulletItem key={item.key}>{item.label}</BulletItem>
+                    ))}
+                  </div>
+                )}
+                
+                {/* Note */}
+                {roleConfig.note && (
+                  <p className="text-caption text-muted-foreground mt-2">
+                    {t['guide.child_note'] || roleConfig.note}
+                  </p>
+                )}
+              </>
+            ) : (
+              <>
+                {/* What you can do */}
+                {roleConfig.abilities.length > 0 && (
+                  <div className="mb-3">
+                    <p className="text-caption text-muted-foreground mb-2 font-semibold">
+                      {t['guide.what_you_can_do'] || 'What they can do:'}
+                    </p>
+                    {roleConfig.abilities.map((ability) => (
+                      <AbilityItem key={ability.key}>{ability.label}</AbilityItem>
+                    ))}
+                  </div>
+                )}
+                
+                {/* What you can't do */}
+                {roleConfig.restrictions.length > 0 && (
+                  <div>
+                    <p className="text-caption text-muted-foreground mb-2 font-semibold">
+                      {t['guide.what_you_cant_do'] || "What they can't do:"}
+                    </p>
+                    {roleConfig.restrictions.map((restriction) => (
+                      <RestrictionItem key={restriction.key}>{restriction.label}</RestrictionItem>
+                    ))}
+                  </div>
+                )}
+                
+                {/* Special case: Admin has no restrictions */}
+                {roleConfig.restrictions.length === 0 && roleConfig.role === UserRole.MASTER && (
+                  <p className="text-caption text-muted-foreground mt-2">
+                    {t['guide.full_access'] || 'Full access - no restrictions'}
+                  </p>
+                )}
+              </>
             )}
           </RoleCard>
         ))}

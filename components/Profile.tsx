@@ -1582,6 +1582,46 @@ const Profile: React.FC<ProfileProps> = ({
                       {(() => {
                         const roleConfig = getRoleConfig(newRole);
                         if (!roleConfig) return null;
+                        
+                        // Profile-only roles (like Child) have a different display format
+                        if (roleConfig.isProfileOnly) {
+                          return (
+                            <div className="bg-muted rounded-xl p-4 mt-2" style={{ height: '400px', overflow: 'auto' }}>
+                              <p className="text-body font-semibold text-foreground mb-1">
+                                {roleConfig.displayName}
+                              </p>
+                              <p className="text-body text-muted-foreground mb-3">
+                                {roleConfig.description}
+                              </p>
+                              
+                              {/* This profile is for: */}
+                              {roleConfig.profileFor && roleConfig.profileFor.length > 0 && (
+                                <div className="mb-3">
+                                  <p className="text-body text-muted-foreground mb-1.5 font-semibold">
+                                    {t['guide.this_profile_is_for'] || 'This profile is for:'}
+                                  </p>
+                                  <div className="space-y-1">
+                                    {roleConfig.profileFor.map((item) => (
+                                      <div key={item.key} className="flex items-start gap-2">
+                                        <span className="text-primary mt-0.5 flex-shrink-0">•</span>
+                                        <span className="text-body text-foreground">{item.label}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              
+                              {/* Note */}
+                              {roleConfig.note && (
+                                <p className="text-caption text-muted-foreground">
+                                  {t['guide.child_note'] || roleConfig.note}
+                                </p>
+                              )}
+                            </div>
+                          );
+                        }
+                        
+                        // Regular roles (Admin, Spouse, Helper, Other)
                         return (
                           <div className="bg-muted rounded-xl p-4 mt-2" style={{ height: '400px', overflow: 'auto' }}>
                             <p className="text-body font-semibold text-foreground mb-1">

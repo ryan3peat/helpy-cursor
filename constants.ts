@@ -19,6 +19,7 @@ export const SHOPPING_CATEGORY_COLORS: Record<ShoppingCategory, string> = {
 
 export const SUPPORTED_LANGUAGES = [
   { code: 'en', name: 'English' },
+  { code: 'zh-HK', name: 'Cantonese' },
   { code: 'zh-CN', name: 'Chinese Simplified' },
   { code: 'zh-TW', name: 'Chinese Traditional' },
   { code: 'tl', name: 'Tagalog' },
@@ -898,7 +899,7 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'guide.role_helper_title': 'Helper',
   'guide.role_helper_desc': 'Household staff with task-focused access',
   'guide.role_child_title': 'Child',
-  'guide.role_child_desc': 'Family member with full access',
+  'guide.role_child_desc': 'Profile only family members - not actual app users',
   'guide.role_other_title': 'Other',
   'guide.role_other_desc': 'Extended family or guest with full access',
 
@@ -944,17 +945,12 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'guide.helper_restriction_6': 'Manage family members',
   'guide.helper_restriction_7': 'Access subscription settings',
   
-  // User Guide - Child Abilities
-  'guide.child_ability_1': 'Add and manage family members',
-  'guide.child_ability_2': 'Edit the Family Board',
-  'guide.child_ability_3': 'Add, edit, and delete all items',
-  'guide.child_ability_4': 'View all expenses and spending summaries',
-  'guide.child_ability_5': 'Set up places and practice',
-  'guide.child_ability_6': 'RSVP for "Everyone" and "Kids" meals',
-  'guide.child_restriction_1': 'Join "Adults only" meals',
-  'guide.child_restriction_2': 'Manage subscription or billing',
-  'guide.child_restriction_3': 'Delete the household account',
-  'guide.child_restriction_4': 'Receive push notifications',
+  // User Guide - Child Profile (Profile-only role)
+  'guide.this_profile_is_for': 'This profile is for:',
+  'guide.child_profile_1': "Meal planning (who's eating)",
+  'guide.child_profile_2': 'Tracking allergies and preferences',
+  'guide.child_profile_3': 'Showing in the family list',
+  'guide.child_note': "Children don't log in - add them directly for household planning. The invitation link will not be generated.",
   
   // User Guide - Other Role Abilities
   'guide.other_ability_1': 'Add and manage family members',

@@ -5,55 +5,15 @@
 // 1. Push events - displaying notifications when received
 // 2. Notification clicks - opening the app to the relevant view
 // 3. Notification close - tracking dismissed notifications
-// 4. Offline caching - cache static assets for offline access
+// ============================================================================
+// NOTE: Offline caching DISABLED - was causing CSS loading issues
 // ============================================================================
 
 // App base URL (will be set dynamically based on where SW is registered)
 const APP_BASE_URL = self.location.origin;
 
-// ============================================================================
-// OFFLINE CACHING CONFIGURATION
-// ============================================================================
-
-const CACHE_VERSION = 'v1';
-const STATIC_CACHE = `helpy-static-${CACHE_VERSION}`;
-const RUNTIME_CACHE = `helpy-runtime-${CACHE_VERSION}`;
-
-// Static assets to pre-cache during install
-const STATIC_ASSETS = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-  '/icons/icon-192.png',
-  '/icons/icon-512.png',
-  '/icons/apple-touch-icon.png',
-  '/helpy-logo.PNG',
-];
-
-// URL patterns that should use cache-first strategy
-const CACHE_FIRST_PATTERNS = [
-  /\/icons\//,
-  /\/fonts\//,
-  /\.png$/,
-  /\.jpg$/,
-  /\.jpeg$/,
-  /\.svg$/,
-  /\.woff2?$/,
-  /\.ttf$/,
-  /fonts\.googleapis\.com/,
-  /fonts\.gstatic\.com/,
-  /cdn\.tailwindcss\.com/,
-  /api\.dicebear\.com/,
-  /cdn-icons-png\.flaticon\.com/,
-];
-
-// URL patterns that should never be cached
-const NO_CACHE_PATTERNS = [
-  /\/api\//,
-  /supabase\.co/,
-  /clerk\./,
-  /stripe\./,
-];
+// Cache version - increment to force cache clear
+const CACHE_VERSION = 'v2-no-cache';
 
 // Icon paths
 const ICON_PATH = '/icons/icon-192.png';
@@ -400,23 +360,21 @@ self.addEventListener('install', (event) => {
   console.log('[SW] Installing service worker...');
   console.log('[SW] Service worker scope:', self.registration?.scope);
   
-  // Pre-cache static assets
+  // Skip waiting to activate immediately - NO caching
   event.waitUntil(
-    caches.open(STATIC_CACHE)
-      .then(cache => {
-        console.log('[SW] Pre-caching static assets...');
-        return cache.addAll(STATIC_ASSETS);
-      })
-      .then(() => {
-        console.log('[SW] Static assets cached successfully');
-        // Skip waiting to activate immediately
-        return self.skipWaiting();
-      })
-      .catch(error => {
-        console.warn('[SW] Failed to pre-cache some assets:', error);
-        // Still skip waiting even if caching fails
-        return self.skipWaiting();
-      })
+    // Clear ALL existing caches to fix broken state
+    caches.keys().then(cacheNames => {
+      console.log('[SW] Clearing all caches to fix broken state...');
+      return Promise.all(
+        cacheNames.map(name => {
+          console.log('[SW] Deleting cache:', name);
+          return caches.delete(name);
+        })
+      );
+    }).then(() => {
+      console.log('[SW] All caches cleared');
+      return self.skipWaiting();
+    })
   );
 });
 
@@ -424,18 +382,16 @@ self.addEventListener('activate', (event) => {
   console.log('[SW] Service worker activated');
   console.log('[SW] Service worker state:', self.registration?.active?.state);
   
-  // Clean up old caches and take control
+  // Take control and clear caches
   event.waitUntil(
     Promise.all([
-      // Delete old cache versions
+      // Delete ALL caches
       caches.keys().then(cacheNames => {
         return Promise.all(
-          cacheNames
-            .filter(name => name.startsWith('helpy-') && name !== STATIC_CACHE && name !== RUNTIME_CACHE)
-            .map(name => {
-              console.log('[SW] Deleting old cache:', name);
-              return caches.delete(name);
-            })
+          cacheNames.map(name => {
+            console.log('[SW] Deleting cache:', name);
+            return caches.delete(name);
+          })
         );
       }),
       // Take control of all clients immediately
@@ -452,106 +408,10 @@ self.addEventListener('activate', (event) => {
 });
 
 // ============================================================================
-// FETCH HANDLER - OFFLINE CACHING
+// FETCH HANDLER - DISABLED (was causing CSS issues)
 // ============================================================================
-
-self.addEventListener('fetch', (event) => {
-  const { request } = event;
-  const url = new URL(request.url);
-  
-  // Skip non-GET requests
-  if (request.method !== 'GET') {
-    return;
-  }
-  
-  // Skip requests that should never be cached (API, Supabase, Clerk, Stripe)
-  if (NO_CACHE_PATTERNS.some(pattern => pattern.test(request.url))) {
-    return;
-  }
-  
-  // Check if this is a cache-first request (static assets, fonts, images)
-  const isCacheFirst = CACHE_FIRST_PATTERNS.some(pattern => pattern.test(request.url));
-  
-  if (isCacheFirst) {
-    // Cache-first strategy: Try cache, fall back to network, update cache
-    event.respondWith(
-      caches.match(request)
-        .then(cachedResponse => {
-          if (cachedResponse) {
-            // Return cached response, but also fetch and update cache in background
-            event.waitUntil(
-              fetch(request)
-                .then(networkResponse => {
-                  if (networkResponse.ok) {
-                    return caches.open(RUNTIME_CACHE)
-                      .then(cache => cache.put(request, networkResponse));
-                  }
-                })
-                .catch(() => {/* Network failed, that's fine - we served from cache */})
-            );
-            return cachedResponse;
-          }
-          
-          // Not in cache - fetch from network and cache it
-          return fetch(request)
-            .then(networkResponse => {
-              if (networkResponse.ok) {
-                const responseClone = networkResponse.clone();
-                caches.open(RUNTIME_CACHE)
-                  .then(cache => cache.put(request, responseClone));
-              }
-              return networkResponse;
-            });
-        })
-    );
-    return;
-  }
-  
-  // Network-first strategy for navigation and HTML
-  if (request.mode === 'navigate' || request.destination === 'document') {
-    event.respondWith(
-      fetch(request)
-        .then(networkResponse => {
-          // Cache successful HTML responses
-          if (networkResponse.ok) {
-            const responseClone = networkResponse.clone();
-            caches.open(RUNTIME_CACHE)
-              .then(cache => cache.put(request, responseClone));
-          }
-          return networkResponse;
-        })
-        .catch(() => {
-          // Network failed - try to serve from cache
-          return caches.match(request)
-            .then(cachedResponse => {
-              if (cachedResponse) {
-                return cachedResponse;
-              }
-              // Last resort: serve the cached index.html for SPA routing
-              return caches.match('/index.html');
-            });
-        })
-    );
-    return;
-  }
-  
-  // Default: Network first, cache as fallback
-  event.respondWith(
-    fetch(request)
-      .then(networkResponse => {
-        // Only cache successful responses
-        if (networkResponse.ok && networkResponse.type === 'basic') {
-          const responseClone = networkResponse.clone();
-          caches.open(RUNTIME_CACHE)
-            .then(cache => cache.put(request, responseClone));
-        }
-        return networkResponse;
-      })
-      .catch(() => {
-        return caches.match(request);
-      })
-  );
-});
+// All fetch requests go directly to network - no caching
+// This ensures fresh CSS/JS is always loaded
 
 
 // ============================================================================

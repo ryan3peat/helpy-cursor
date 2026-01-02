@@ -61,7 +61,14 @@ export function useScrollHeader(config: ScrollHeaderConfig = {}): ScrollHeaderSt
         
         // Ignore negative/elastic scroll
         if (scrollY >= 0) {
-          if (scrollY > collapseThreshold) {
+          // Immediate expand when at very top - bypass cooldown for instant response
+          if (scrollY < 5) {
+            if (isLockedRef.current) {
+              isLockedRef.current = false;
+              if (timeoutRef.current) clearTimeout(timeoutRef.current);
+            }
+            updateScrollState(false);
+          } else if (scrollY > collapseThreshold) {
             updateScrollState(true);
           } else if (scrollY < expandThreshold) {
             updateScrollState(false);

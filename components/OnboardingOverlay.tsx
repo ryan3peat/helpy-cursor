@@ -341,7 +341,8 @@ const OnboardingOverlay: React.FC<OnboardingOverlayProps> = ({
       case 'bottom-center':
         return 'absolute w-4 h-4 bg-card transform rotate-45 -bottom-2 right-8 border-r border-b border-border';
       case 'center-near-family-board':
-        return 'absolute w-4 h-4 bg-card transform rotate-45 -top-2 left-1/2 -ml-2 border-l border-t border-border';
+        // Arrow points DOWN toward family board (below the tooltip)
+        return 'absolute w-4 h-4 bg-card transform rotate-45 -bottom-2 left-1/2 -ml-2 border-r border-b border-border';
       default:
         return 'hidden';
     }

@@ -417,6 +417,8 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'profile.invite_join_family': 'would like you to join the family in the Helpy app!',
   'profile.invite_app_description': 'Helpy is the home management app connecting families and helpers, organizing meals, tasks, and expenses in one place.',
   'profile.invite_click_below': 'Click below to join:',
+  'profile.invite_signup_guidance': 'Signing up is quick:\n- Fastest: Use "Sign Up with Google" (1 click, no verification needed)\n- Or use email: Make sure you have access to the email you use - we\'ll send a 6-digit code to verify. Check your spam/junk folder if you don\'t see it!',
+  'profile.invite_access_app': 'Once you sign up, you can always access the app at: app.helpyfam.com',
   'profile.resend_invite': 'Resend Invite',
   'profile.manage_account': 'Manage your account',
   'profile.delete_family_member': 'Delete Family Member',

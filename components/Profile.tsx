@@ -949,7 +949,9 @@ const Profile: React.FC<ProfileProps> = ({
     const inviterName = currentUser.name || currentUser.firstName || 'Someone';
     const inviteeName = addedUserName || '';
     const greeting = inviteeName ? `${t['profile.invite_hi'] || 'Hi'} ${inviteeName}, ` : '';
-    const message = `${greeting}${inviterName} ${t['profile.invite_join_family'] || 'would like you to join the family in the Helpy app!'}\n\n${t['profile.invite_app_description'] || 'Helpy is the home management app connecting families and helpers, organizing meals, tasks, and expenses in one place.'}\n\n${t['profile.invite_click_below'] || 'Click below to join:'}\n${inviteLink}`;
+    const signupGuidance = t['profile.invite_signup_guidance'] || 'Signing up is quick:\n- Fastest: Use "Sign Up with Google" (1 click, no verification needed)\n- Or use email: Make sure you have access to the email you use - we\'ll send a 6-digit code to verify. Check your spam/junk folder if you don\'t see it!';
+    const accessApp = t['profile.invite_access_app'] || 'Once you sign up, you can always access the app at: app.helpyfam.com';
+    const message = `${greeting}${inviterName} ${t['profile.invite_join_family'] || 'would like you to join the family in the Helpy app!'}\n\n${t['profile.invite_app_description'] || 'Helpy is the home management app connecting families and helpers, organizing meals, tasks, and expenses in one place.'}\n\n${signupGuidance}\n\n${accessApp}\n\n${t['profile.invite_click_below'] || 'Click below to join:'}\n${inviteLink}`;
     
     navigator.clipboard.writeText(message);
     setIsCopied(true);
@@ -962,7 +964,9 @@ const Profile: React.FC<ProfileProps> = ({
     const inviterName = currentUser.name || currentUser.firstName || 'Someone';
     const inviteeName = addedUserName || '';
     const greeting = inviteeName ? `${t['profile.invite_hi'] || 'Hi'} ${inviteeName}, ` : '';
-    const shareText = `${greeting}${inviterName} ${t['profile.invite_join_family'] || 'would like you to join the family in the Helpy app!'}\n\n${t['profile.invite_app_description'] || 'Helpy is the home management app connecting families and helpers, organizing meals, tasks, and expenses in one place.'}\n\n${t['profile.invite_click_below'] || 'Click below to join:'}`;
+    const signupGuidance = t['profile.invite_signup_guidance'] || 'Signing up is quick:\n- Fastest: Use "Sign Up with Google" (1 click, no verification needed)\n- Or use email: Make sure you have access to the email you use - we\'ll send a 6-digit code to verify. Check your spam/junk folder if you don\'t see it!';
+    const accessApp = t['profile.invite_access_app'] || 'Once you sign up, you can always access the app at: app.helpyfam.com';
+    const shareText = `${greeting}${inviterName} ${t['profile.invite_join_family'] || 'would like you to join the family in the Helpy app!'}\n\n${t['profile.invite_app_description'] || 'Helpy is the home management app connecting families and helpers, organizing meals, tasks, and expenses in one place.'}\n\n${signupGuidance}\n\n${accessApp}\n\n${t['profile.invite_click_below'] || 'Click below to join:'}`;
     
     // Use Web Share API if available (mobile devices)
     if (navigator.share) {
@@ -990,7 +994,9 @@ const Profile: React.FC<ProfileProps> = ({
     const inviterName = currentUser.name || currentUser.firstName || 'Someone';
     const inviteeName = addedUserName || '';
     const greeting = inviteeName ? `${t['profile.invite_hi'] || 'Hi'} ${inviteeName}, ` : '';
-    const message = `${greeting}${inviterName} ${t['profile.invite_join_family'] || 'would like you to join the family in the Helpy app!'}\n\n${t['profile.invite_app_description'] || 'Helpy is the home management app connecting families and helpers, organizing meals, tasks, and expenses in one place.'}\n\n${t['profile.invite_click_below'] || 'Click below to join:'}\n${inviteLink}`;
+    const signupGuidance = t['profile.invite_signup_guidance'] || 'Signing up is quick:\n- Fastest: Use "Sign Up with Google" (1 click, no verification needed)\n- Or use email: Make sure you have access to the email you use - we\'ll send a 6-digit code to verify. Check your spam/junk folder if you don\'t see it!';
+    const accessApp = t['profile.invite_access_app'] || 'Once you sign up, you can always access the app at: app.helpyfam.com';
+    const message = `${greeting}${inviterName} ${t['profile.invite_join_family'] || 'would like you to join the family in the Helpy app!'}\n\n${t['profile.invite_app_description'] || 'Helpy is the home management app connecting families and helpers, organizing meals, tasks, and expenses in one place.'}\n\n${signupGuidance}\n\n${accessApp}\n\n${t['profile.invite_click_below'] || 'Click below to join:'}\n${inviteLink}`;
     
     // Use Universal Link - works reliably on all platforms (iOS, Android, Desktop)
     // iOS/Android will open WhatsApp if installed, or show the app store if not

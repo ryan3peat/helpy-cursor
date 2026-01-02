@@ -369,8 +369,7 @@ const Dashboard: React.FC<DashboardProps> = ({
       const container = carouselRef.current;
       const cardWidth = 220 + 16; // w-[220px] + gap-4 (16px)
       const newIndex = Math.round(container.scrollLeft / cardWidth);
-      const totalItems = validUsers.length + (!isHelper && onOpenAddFamily ? 1 : 0);
-      setActiveCarouselIndex(Math.min(Math.max(newIndex, 0), totalItems - 1));
+      setActiveCarouselIndex(Math.min(Math.max(newIndex, 0), validUsers.length - 1));
     }
   };
 
@@ -700,136 +699,134 @@ const Dashboard: React.FC<DashboardProps> = ({
       )}
 
       {/* Family Carousel */}
-      <div className="space-y-3">
-        <div 
-          ref={carouselRef}
-          onScroll={handleCarouselScroll}
-          className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide -mx-5 px-5 snap-x snap-mandatory"
-        >
-          {validUsers.map((user) => {
-            const isCurrent = user.id === currentUser.id;
-            return (
-              <div
-                key={user.id}
-                onClick={() => onSelectFamilyMember?.(user.id)}
-                className="flex-shrink-0 w-[220px] bg-card rounded-2xl shadow-sm overflow-hidden cursor-pointer snap-start"
-              >
-                {/* Avatar - Edge to Edge at Top */}
-                <div className="relative w-full h-[200px]">
-                  {/* Avatar Image - Rounded only at top (inherited from card overflow-hidden) */}
-                  <div className="w-full h-full bg-secondary">
-                    <img 
-                      src={getAvatarUrl(user)} 
-                      alt={user.name} 
-                      className="w-full h-full object-cover" 
-                    />
-                  </div>
-                  
-                  {/* Role Badge - Bottom Left (inside avatar) */}
-                  <div className="absolute bottom-3 left-3">
-                    <span className={`inline-block px-3 py-1 rounded-full text-caption font-semibold ${getRoleBadgeColor(user.role)}`}>
-                      {user.role}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Content Area - With padding */}
-                <div className="p-4">
-                  {/* Name + Pending Status - Same row */}
-                <div className="flex items-center justify-between mt-1">
-                  <h3 className="text-title font-bold text-foreground truncate">
-                    {user.name.split(' ')[0]} {isCurrent ? `(${t['common.you'] || 'You'})` : ''}
-                  </h3>
-                  {user.status === 'pending' && (
-                    <span className="text-caption text-muted-foreground flex-shrink-0 ml-2">
-                      {t['common.pending'] || 'Pending'}
-                    </span>
-                  )}
-                </div>
-
-                {/* Collapsible Section - Allergies & Preferences */}
-                <div 
-                  className="grid transition-[grid-template-rows] duration-300 ease-out"
-                  style={{
-                    gridTemplateRows: isScrolled ? '0fr' : '1fr'
-                  }}
-                >
-                  <div className={`overflow-hidden transition-opacity duration-300 ease-out ${isScrolled ? 'opacity-0' : 'opacity-100'}`}>
-                    {/* Divider */}
-                    <div className="h-px bg-border my-3" />
-
-                    {/* Allergies */}
-                    <div className="mb-2.5">
-                      <div className="flex items-center gap-1.5 mb-1.5">
-                        <AlertCircle size={12} className="text-destructive flex-shrink-0" />
-                        <span className="text-caption font-bold text-foreground">
-                          {t['profile.allergies'] || 'Allergies'}
-                        </span>
-                      </div>
-                      <div className="flex flex-wrap gap-1">
-                        {renderTruncatedTags(user.allergies, 'allergy')}
-                      </div>
-                    </div>
-
-                    {/* Preferences */}
-                    <div>
-                      <div className="flex items-center gap-1.5 mb-1.5">
-                        <Heart size={12} className="text-foreground flex-shrink-0" />
-                        <span className="text-caption font-bold text-foreground">
-                          {t['profile.preferences'] || 'Preferences'}
-                        </span>
-                      </div>
-                      <div className="flex flex-wrap gap-1">
-                        {renderTruncatedTags(user.preferences, 'preference')}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                </div>
-              </div>
-            );
-          })}
-
-          {/* Add Button at END - Hidden for Helper */}
-          {!isHelper && onOpenAddFamily && (
+      <div 
+        ref={carouselRef}
+        onScroll={handleCarouselScroll}
+        className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide -mx-5 px-5"
+      >
+        {validUsers.map((user) => {
+          const isCurrent = user.id === currentUser.id;
+          return (
             <div
-              onClick={() => {
-                haptics.light(); // Haptic feedback on (+) button press
-                onOpenAddFamily();
-              }}
-              className="flex-shrink-0 w-[220px] bg-secondary/30 rounded-2xl flex flex-col items-center justify-center cursor-pointer border-2 border-dashed border-border snap-start"
+              key={user.id}
+              onClick={() => onSelectFamilyMember?.(user.id)}
+              className="flex-shrink-0 w-[220px] bg-card rounded-2xl shadow-sm overflow-hidden cursor-pointer"
             >
-              <div className="w-16 h-16 rounded-full bg-card flex items-center justify-center shadow-sm">
-                <Plus size={28} className="text-primary" />
+              {/* Avatar - Edge to Edge at Top */}
+              <div className="relative w-full h-[200px]">
+                {/* Avatar Image - Rounded only at top (inherited from card overflow-hidden) */}
+                <div className="w-full h-full bg-secondary">
+                  <img 
+                    src={getAvatarUrl(user)} 
+                    alt={user.name} 
+                    className="w-full h-full object-cover" 
+                  />
+                </div>
+                
+                {/* Role Badge - Bottom Left (inside avatar) */}
+                <div className="absolute bottom-3 left-3">
+                  <span className={`inline-block px-3 py-1 rounded-full text-caption font-semibold ${getRoleBadgeColor(user.role)}`}>
+                    {user.role}
+                  </span>
+                </div>
               </div>
-              <span className="text-body font-semibold text-foreground mt-3">
-                {t['common.add'] || 'Add'}
-              </span>
-            </div>
-          )}
-        </div>
 
-        {/* Carousel Dots */}
-        {(validUsers.length + (!isHelper && onOpenAddFamily ? 1 : 0)) > 1 && (
-          <div className="flex justify-center gap-1.5 pt-1">
-            {Array.from({ length: validUsers.length + (!isHelper && onOpenAddFamily ? 1 : 0) }).map((_, index) => (
-              <button
-                key={index}
-                onClick={() => scrollToCarouselIndex(index)}
-                className="transition-all duration-300 rounded-full"
+              {/* Content Area - With padding */}
+              <div className="p-4">
+                {/* Name + Pending Status - Same row */}
+              <div className="flex items-center justify-between mt-1">
+                <h3 className="text-title font-bold text-foreground truncate">
+                  {user.name.split(' ')[0]} {isCurrent ? `(${t['common.you'] || 'You'})` : ''}
+                </h3>
+                {user.status === 'pending' && (
+                  <span className="text-caption text-muted-foreground flex-shrink-0 ml-2">
+                    {t['common.pending'] || 'Pending'}
+                  </span>
+                )}
+              </div>
+
+              {/* Collapsible Section - Allergies & Preferences */}
+              <div 
+                className="grid transition-[grid-template-rows] duration-300 ease-out"
                 style={{
-                  width: index === activeCarouselIndex ? '20px' : '8px',
-                  height: '8px',
-                  backgroundColor: index === activeCarouselIndex 
-                    ? 'hsl(var(--primary))' 
-                    : 'hsl(var(--muted-foreground) / 0.25)',
+                  gridTemplateRows: isScrolled ? '0fr' : '1fr'
                 }}
-                aria-label={`Go to item ${index + 1}`}
-              />
-            ))}
+              >
+                <div className={`overflow-hidden transition-opacity duration-300 ease-out ${isScrolled ? 'opacity-0' : 'opacity-100'}`}>
+                  {/* Divider */}
+                  <div className="h-px bg-border my-3" />
+
+                  {/* Allergies */}
+                  <div className="mb-2.5">
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                      <AlertCircle size={12} className="text-destructive flex-shrink-0" />
+                      <span className="text-caption font-bold text-foreground">
+                        {t['profile.allergies'] || 'Allergies'}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {renderTruncatedTags(user.allergies, 'allergy')}
+                    </div>
+                  </div>
+
+                  {/* Preferences */}
+                  <div>
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                      <Heart size={12} className="text-foreground flex-shrink-0" />
+                      <span className="text-caption font-bold text-foreground">
+                        {t['profile.preferences'] || 'Preferences'}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {renderTruncatedTags(user.preferences, 'preference')}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              </div>
+            </div>
+          );
+        })}
+
+        {/* Add Button at END - Hidden for Helper */}
+        {!isHelper && onOpenAddFamily && (
+          <div
+            onClick={() => {
+              haptics.light(); // Haptic feedback on (+) button press
+              onOpenAddFamily();
+            }}
+            className="flex-shrink-0 w-[220px] bg-secondary/30 rounded-2xl flex flex-col items-center justify-center cursor-pointer border-2 border-dashed border-border"
+          >
+            <div className="w-16 h-16 rounded-full bg-card flex items-center justify-center shadow-sm">
+              <Plus size={28} className="text-primary" />
+            </div>
+            <span className="text-body font-semibold text-foreground mt-3">
+              {t['common.add'] || 'Add'}
+            </span>
           </div>
         )}
       </div>
+
+      {/* Carousel Dots */}
+      {validUsers.length > 1 && (
+        <div className="flex justify-center gap-1.5 pt-1">
+          {validUsers.map((_, index) => (
+            <button
+              key={index}
+              onClick={() => scrollToCarouselIndex(index)}
+              className="transition-all duration-300 rounded-full"
+              style={{
+                width: index === activeCarouselIndex ? '20px' : '8px',
+                height: '8px',
+                backgroundColor: index === activeCarouselIndex 
+                  ? 'hsl(var(--primary))' 
+                  : 'hsl(var(--muted-foreground) / 0.25)',
+              }}
+              aria-label={`Go to item ${index + 1}`}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Family Notes */}
       <div id="onboarding-family-board" className="relative group">

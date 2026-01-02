@@ -257,7 +257,33 @@ const Dashboard: React.FC<DashboardProps> = ({
   // ─────────────────────────────────────────────────────────────────
   // Family Carousel Helpers
   // ─────────────────────────────────────────────────────────────────
-  const validUsers = users.filter(user => user && user.id && user.name);
+  
+  // Role priority for consistent sorting (same as Profile.tsx)
+  const ROLE_PRIORITY: Record<string, number> = {
+    'superadmin': 0,
+    'admin': 1,
+    'spouse': 2,
+    'helper': 3,
+    'child': 4,
+    'other': 5,
+  };
+  
+  const getRolePriority = (role: string): number => {
+    return ROLE_PRIORITY[role.toLowerCase()] ?? 99;
+  };
+
+  // Filter and sort users by role priority, then alphabetically
+  const validUsers = React.useMemo(() => {
+    return users
+      .filter(user => user && user.id && user.name)
+      .sort((a, b) => {
+        const priorityA = getRolePriority(a.role);
+        const priorityB = getRolePriority(b.role);
+        const roleDiff = priorityA - priorityB;
+        if (roleDiff !== 0) return roleDiff;
+        return a.name.localeCompare(b.name);
+      });
+  }, [users]);
 
   const getAvatarUrl = (user: User) => {
     const isDicebearAvatar = user.avatar?.includes('dicebear');
@@ -674,44 +700,54 @@ const Dashboard: React.FC<DashboardProps> = ({
                 </div>
               </div>
 
-              {/* Name - Left aligned, Bold */}
-              <h3 className="text-title font-bold text-foreground truncate mt-1">
-                {user.name.split(' ')[0]} {isCurrent ? `(${t['common.you'] || 'You'})` : ''}
-              </h3>
-
-              {/* Pending Status (if applicable) */}
-              {user.status === 'pending' && (
-                <span className="text-micro text-muted-foreground">
-                  {t['common.pending'] || 'Pending'}
-                </span>
-              )}
-
-              {/* Divider */}
-              <div className="h-px bg-border my-3" />
-
-              {/* Allergies */}
-              <div className="mb-2.5">
-                <div className="flex items-center gap-1.5 mb-1.5">
-                  <AlertCircle size={12} className="text-destructive flex-shrink-0" />
-                  <span className="text-caption font-bold text-foreground">
-                    {t['profile.allergies'] || 'Allergies'}
+              {/* Name + Pending Status - Same row */}
+              <div className="flex items-center justify-between mt-1">
+                <h3 className="text-title font-bold text-foreground truncate">
+                  {user.name.split(' ')[0]} {isCurrent ? `(${t['common.you'] || 'You'})` : ''}
+                </h3>
+                {user.status === 'pending' && (
+                  <span className="text-caption text-muted-foreground flex-shrink-0 ml-2">
+                    {t['common.pending'] || 'Pending'}
                   </span>
-                </div>
-                <div className="flex flex-wrap gap-1">
-                  {renderTruncatedTags(user.allergies, 'allergy')}
-                </div>
+                )}
               </div>
 
-              {/* Preferences */}
-              <div>
-                <div className="flex items-center gap-1.5 mb-1.5">
-                  <Heart size={12} className="text-foreground flex-shrink-0" />
-                  <span className="text-caption font-bold text-foreground">
-                    {t['profile.preferences'] || 'Preferences'}
-                  </span>
-                </div>
-                <div className="flex flex-wrap gap-1">
-                  {renderTruncatedTags(user.preferences, 'preference')}
+              {/* Collapsible Section - Allergies & Preferences */}
+              <div 
+                className="grid transition-[grid-template-rows] duration-300 ease-out"
+                style={{
+                  gridTemplateRows: isScrolled ? '0fr' : '1fr'
+                }}
+              >
+                <div className={`overflow-hidden transition-opacity duration-300 ease-out ${isScrolled ? 'opacity-0' : 'opacity-100'}`}>
+                  {/* Divider */}
+                  <div className="h-px bg-border my-3" />
+
+                  {/* Allergies */}
+                  <div className="mb-2.5">
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                      <AlertCircle size={12} className="text-destructive flex-shrink-0" />
+                      <span className="text-caption font-bold text-foreground">
+                        {t['profile.allergies'] || 'Allergies'}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {renderTruncatedTags(user.allergies, 'allergy')}
+                    </div>
+                  </div>
+
+                  {/* Preferences */}
+                  <div>
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                      <Heart size={12} className="text-foreground flex-shrink-0" />
+                      <span className="text-caption font-bold text-foreground">
+                        {t['profile.preferences'] || 'Preferences'}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {renderTruncatedTags(user.preferences, 'preference')}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

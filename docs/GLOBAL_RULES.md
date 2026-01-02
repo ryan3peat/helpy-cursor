@@ -14,17 +14,33 @@ Both components display user information and must maintain visual and behavioral
 ### Elements That Must Stay in Sync
 
 #### 1. Role Badge Styling
+
+**Note:** Profile.tsx and HouseholdInfo.tsx currently use **different color schemes** for some roles. This is intentional - Profile uses the standard badge colors, while HouseholdInfo uses a distinct palette for the user carousel cards.
+
 - **Profile.tsx**: Uses `getRoleBadgeColor()` function
 - **HouseholdInfo.tsx**: Uses `ROLE_STYLES` constant
 
-| Role | Style |
-|------|-------|
-| Admin (MASTER) | Light blue bg (`#E6F7FB`), helpy blue text (`#3EAFD2`) |
-| SuperAdmin | **Solid helpy blue** bg (`#3EAFD2`), white text |
-| Spouse | Light purple bg (`#F3E5F5`), purple text (`#AB47BC`) |
-| Helper | Light orange bg (`#FFF3E0`), orange text (`#FF9800`) |
-| Child | Light green bg (`#E8F5E9`), green text (`#4CAF50`) |
-| Other | Light pink bg (`#FCE4EC`), pink text (`#F06292`) |
+**Profile.tsx Colors (Role Badges):**
+
+| Role | Background | Text |
+|------|------------|------|
+| Admin (MASTER) | `bg-primary/10` | `text-primary` (#3EAFD2) |
+| SuperAdmin | `bg-primary` (#3EAFD2) | `text-white` |
+| Spouse | `#F3E5F5` (light purple) | `#AB47BC` (purple) |
+| Helper | `#FFF3E0` (light orange) | `#FF9800` (orange) |
+| Child | `#E8F5E9` (light green) | `#4CAF50` (green) |
+| Other | `#FCE4EC` (light pink) | `#F06292` (pink) |
+
+**HouseholdInfo.tsx Colors (Carousel Cards):**
+
+| Role | Background | Text/Accent |
+|------|------------|-------------|
+| Admin (MASTER) | `#E6F7FB` (light blue) | `#3EAFD2` (helpy blue) |
+| SuperAdmin | `#3EAFD2` (solid blue) | `#FFFFFF` (white) |
+| Spouse | `#FCE4EC` (light pink) | `#F06292` (pink) |
+| Helper | `#D1FAE5` (light green) | `#047857` (green) |
+| Child | `#FEF3C7` (light amber) | `#D97706` (amber) |
+| Other | `#FCE4EC` (light pink) | `#F06292` (pink) |
 
 #### 2. Role Priority (Sorting Order)
 Both components should sort users in the same order:
@@ -49,25 +65,26 @@ Both components should sort users in the same order:
 
 When making changes to user-related UI in either component, verify:
 
-- [ ] Role badge colors match between Profile and HouseholdInfo
 - [ ] All UserRole enum values are handled (including SUPERADMIN)
 - [ ] Sorting/priority order is consistent
 - [ ] Edit permissions follow the same logic
 - [ ] Avatar styling is consistent
+- [ ] Update both Profile.tsx and HouseholdInfo.tsx color schemes if adding new roles
 
 ### Code References
 
-**Profile.tsx - Role Badge Colors:**
+**Profile.tsx & Dashboard.tsx - Role Badge Colors:**
+Badge style: White solid background with colored text, EXCEPT SuperAdmin (solid blue bg + white text)
 ```typescript
 const getRoleBadgeColor = (role: UserRole) => {
   switch (role) {
-    case UserRole.MASTER: return 'bg-primary/10 text-primary';
-    case UserRole.SUPERADMIN: return 'bg-primary text-white'; // Solid blue
-    case UserRole.SPOUSE: return 'bg-[#F3E5F5] text-[#AB47BC]';
-    case UserRole.HELPER: return 'bg-[#FFF3E0] text-[#FF9800]';
-    case UserRole.CHILD: return 'bg-[#E8F5E9] text-[#4CAF50]';
-    case UserRole.OTHER: return 'bg-[#FCE4EC] text-[#F06292]';
-    default: return 'bg-[#F5F5F5] text-[#757575]';
+    case UserRole.SUPERADMIN: return 'bg-primary text-white'; // Solid blue with white text
+    case UserRole.MASTER: return 'bg-white text-primary'; // White bg, cyan text
+    case UserRole.SPOUSE: return 'bg-white text-[#AB47BC]'; // White bg, purple text
+    case UserRole.HELPER: return 'bg-white text-[#FF9800]'; // White bg, orange text
+    case UserRole.CHILD: return 'bg-white text-[#4CAF50]'; // White bg, green text
+    case UserRole.OTHER: return 'bg-white text-[#F06292]'; // White bg, pink text
+    default: return 'bg-white text-[#757575]';
   }
 };
 ```
@@ -75,10 +92,12 @@ const getRoleBadgeColor = (role: UserRole) => {
 **HouseholdInfo.tsx - Role Styles:**
 ```typescript
 const ROLE_STYLES: Record<UserRole, { bg: string; color: string; gradient: string }> = {
-  [UserRole.MASTER]: { bg: '#E6F7FB', color: '#3EAFD2', ... },
-  [UserRole.SUPERADMIN]: { bg: '#3EAFD2', color: '#FFFFFF', ... }, // Solid blue
-  [UserRole.SPOUSE]: { bg: '#FCE4EC', color: '#F06292', ... },
-  // ... etc
+  [UserRole.SUPERADMIN]: { bg: '#3EAFD2', color: '#FFFFFF', gradient: '...' },
+  [UserRole.MASTER]: { bg: '#FFFFFF', color: '#3EAFD2', gradient: '...' },
+  [UserRole.SPOUSE]: { bg: '#FFFFFF', color: '#AB47BC', gradient: '...' },
+  [UserRole.HELPER]: { bg: '#FFFFFF', color: '#FF9800', gradient: '...' },
+  [UserRole.CHILD]: { bg: '#FFFFFF', color: '#4CAF50', gradient: '...' },
+  [UserRole.OTHER]: { bg: '#FFFFFF', color: '#F06292', gradient: '...' },
 };
 ```
 
@@ -98,16 +117,27 @@ When adding a new `UserRole`:
 
 ## Color Palette Reference
 
+**Profile.tsx Badge Colors:**
+
 | Name | Hex | Usage |
 |------|-----|-------|
 | Helpy Blue (Primary) | `#3EAFD2` | Primary actions, Admin badges |
-| Orange | `#FF9800` | Helper role |
 | Purple | `#AB47BC` | Spouse role |
+| Orange | `#FF9800` | Helper role |
 | Green | `#4CAF50` | Child role |
 | Pink | `#F06292` | Other role |
 | Gray | `#757575` | Default/unknown |
 
+**HouseholdInfo.tsx Carousel Colors:**
+
+| Name | Hex | Usage |
+|------|-----|-------|
+| Helpy Blue (Primary) | `#3EAFD2` | Admin badges |
+| Pink | `#F06292` | Spouse role, Other role |
+| Green | `#047857` | Helper role |
+| Amber | `#D97706` | Child role |
+
 ---
 
-*Last updated: December 2024*
+*Last updated: January 2025*
 

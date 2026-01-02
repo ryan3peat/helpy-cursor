@@ -36,11 +36,10 @@ All design tokens are defined in:
 | Page | Status | Notes |
 |------|--------|-------|
 | HouseholdInfo | Complete | Full design system + scroll animation |
-| Dashboard | Pending | - |
-| Tasks | Pending | - |
-| Meals | Pending | - |
-| Expenses | Pending | - |
-| Shopping | Pending | - |
+| Dashboard | Complete | Uses `useScrollHeader` |
+| ToDo (Tasks + Shopping) | Complete | Uses `useScrollHeader`, combined Tasks and Shopping |
+| Meals | Complete | Uses `useScrollHeader` + iOS scroll fix |
+| Expenses | Complete | Uses `useScrollHeader` |
 
 ---
 
@@ -74,75 +73,4 @@ See `SEGMENTED_CONTROL_PATTERN.md` for full implementation.
 
 ---
 
-## TODO (Mock Data)
-
-The following mock data needs to be removed from `HouseholdInfo.tsx` after running migrations:
-
-1. Remove `MOCK_ESSENTIAL_ITEMS` array
-2. Change `useState(MOCK_ESSENTIAL_ITEMS)` to `useState<EssentialInfo[]>([])`
-3. Change `isLoading` back to `true`
-4. Uncomment the subscription `useEffect` block
-
-Migrations to run in Supabase:
-- `migrations/001_essential_info.sql`
-- `migrations/002_training_modules.sql`
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+*Last updated: January 2025*

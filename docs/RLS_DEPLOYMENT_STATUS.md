@@ -24,7 +24,6 @@ Some components and services still use the old `supabase` import directly. These
 - `components/Profile.tsx` - Uses `import { supabase } from '../services/supabase'`
 - `components/Expenses.tsx` - Uses `import { supabase } from '../services/supabase'`
 - `services/supabaseService.ts` - Uses `import { supabase } from './supabase'`
-- `services/trainingService.ts` - Uses `import { supabase } from './supabase'`
 
 ## 🧪 Immediate Testing
 
@@ -119,7 +118,6 @@ export function getSupabaseClient(): SupabaseClient {
 2. **High:** `services/supabaseService.ts` - Core data operations
 3. **Medium:** `components/Profile.tsx` - User profile
 4. **Medium:** `components/Expenses.tsx` - Expense management
-5. **Low:** `services/trainingService.ts` - Training modules
 
 ## 🚨 If Everything is Broken
 
@@ -152,7 +150,7 @@ If you encounter issues:
 3. Verify JWT token is in request headers
 4. Test with a simple query in browser console
 
+---
 
-
-
+*Last updated: January 2025*
 

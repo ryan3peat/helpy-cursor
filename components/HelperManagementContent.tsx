@@ -617,6 +617,7 @@ export const HelperManagementContent: React.FC<Props> = ({
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
                 <input
                   type="number"
+                  autoComplete="one-time-code"
                   value={overtimeAmount}
                   onChange={(e) => setOvertimeAmount(e.target.value)}
                   placeholder="0"
@@ -714,6 +715,7 @@ export const HelperManagementContent: React.FC<Props> = ({
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
                 <input
                   type="number"
+                  autoComplete="one-time-code"
                   value={customAmount}
                   onChange={(e) => setCustomAmount(e.target.value)}
                   className="w-full pl-8 pr-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"

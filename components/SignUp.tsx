@@ -385,6 +385,7 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
                 </label>
                 <input
                   type="text"
+                  autoComplete="one-time-code"
                   inputMode="numeric"
                   pattern="[0-9]*"
                   value={code}
@@ -506,6 +507,7 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
                 </label>
                 <input
                   type="text"
+                  autoComplete="given-name"
                   value={formData.firstName}
                   onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
                   placeholder="John"
@@ -519,6 +521,7 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
                 </label>
                 <input
                   type="text"
+                  autoComplete="family-name"
                   value={formData.lastName}
                   onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
                   placeholder="Doe"
@@ -534,6 +537,7 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
               </label>
               <input
                 type="email"
+                autoComplete="email"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 placeholder="john@example.com"
@@ -548,6 +552,7 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
               </label>
               <input
                 type="password"
+                autoComplete="new-password"
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 placeholder="Enter password"

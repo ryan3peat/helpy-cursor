@@ -134,38 +134,39 @@ const HOUSE_ROUTINE_CATEGORY_ICONS: Record<HouseRoutineCategory, React.ReactNode
 // ─────────────────────────────────────────────────────────────────
 // ROLE STYLING CONFIG
 // NOTE: Keep in sync with Profile.tsx getRoleBadgeColor() for consistency
+// Badge style: White background with colored text, except SuperAdmin (solid blue)
 // See docs/GLOBAL_RULES.md for consistency guidelines
 // ─────────────────────────────────────────────────────────────────
 const ROLE_STYLES: Record<UserRole, { bg: string; color: string; gradient: string }> = {
   [UserRole.MASTER]: { 
-    bg: '#E6F7FB', 
-    color: '#3EAFD2', // Helpy blue
+    bg: '#FFFFFF', // White background for badge
+    color: '#3EAFD2', // Helpy blue text
     gradient: 'linear-gradient(135deg, #3EAFD2 0%, #2E99BB 100%)'
   },
   [UserRole.SUPERADMIN]: { 
     bg: '#3EAFD2', // Solid helpy blue background
-    color: '#FFFFFF', // White text - matches Profile.tsx "bg-primary text-white"
+    color: '#FFFFFF', // White text
     gradient: 'linear-gradient(135deg, #3EAFD2 0%, #2E99BB 100%)'
   },
   [UserRole.SPOUSE]: { 
-    bg: '#FCE4EC', 
-    color: '#F06292',
-    gradient: 'linear-gradient(135deg, #F06292 0%, #C74B7A 100%)'
+    bg: '#FFFFFF', // White background for badge
+    color: '#AB47BC', // Purple text
+    gradient: 'linear-gradient(135deg, #AB47BC 0%, #8E24AA 100%)'
   },
   [UserRole.HELPER]: { 
-    bg: '#D1FAE5', 
-    color: '#047857',
-    gradient: 'linear-gradient(135deg, #10B981 0%, #047857 100%)'
+    bg: '#FFFFFF', // White background for badge
+    color: '#FF9800', // Orange text
+    gradient: 'linear-gradient(135deg, #FF9800 0%, #F57C00 100%)'
   },
   [UserRole.CHILD]: { 
-    bg: '#FEF3C7', 
-    color: '#D97706',
-    gradient: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)'
+    bg: '#FFFFFF', // White background for badge
+    color: '#4CAF50', // Green text
+    gradient: 'linear-gradient(135deg, #4CAF50 0%, #388E3C 100%)'
   },
   [UserRole.OTHER]: { 
-    bg: '#FCE4EC', 
-    color: '#F06292',
-    gradient: 'linear-gradient(135deg, #F48FB1 0%, #F06292 100%)'
+    bg: '#FFFFFF', // White background for badge
+    color: '#F06292', // Pink text
+    gradient: 'linear-gradient(135deg, #F06292 0%, #E91E63 100%)'
   },
 };
 
@@ -596,7 +597,9 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
   }, [householdId, supabase]);
   
   // Helper Management is only available to Core and Pro users (not Free)
-  const hasHelperManagementAccess = subscriptionPlan === 'core' || subscriptionPlan === 'pro';
+  // SuperAdmin bypasses all plan restrictions - can see all paid features
+  const isSuperAdmin = currentUser.role === UserRole.SUPERADMIN;
+  const hasHelperManagementAccess = subscriptionPlan === 'core' || subscriptionPlan === 'pro' || isSuperAdmin;
   
   // Helper upgrade modal state
   const [showHelperUpgradeModal, setShowHelperUpgradeModal] = useState(false);
@@ -1144,18 +1147,6 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
         {/* MAIN CONTENT */}
         {/* ─────────────────────────────────────────────────────────────── */}
         <div className="pt-4">
-
-        {/* ─────────────────────────────────────────────────────────────── */}
-        {/* FAMILY PROFILE CAROUSEL - Only visible in Essential Info section */}
-        {/* ─────────────────────────────────────────────────────────────── */}
-        {activeSection === "essentialInfo" && (
-          <FamilyProfileCarousel 
-            users={users} 
-            currentUser={currentUser}
-            t={t} 
-            onNavigateToProfile={onNavigateToProfile}
-          />
-        )}
 
         {/* ─────────────────────────────────────────────────────────────── */}
         {/* ESSENTIAL INFO SECTION */}
@@ -1764,7 +1755,7 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
             </label>
             <input
               type="text"
-              autoComplete="off"
+              autoComplete="one-time-code"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
               placeholder={t['info.name_placeholder'] || 'e.g., City General Hospital'}
@@ -1781,7 +1772,7 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
               <MapPin size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <input
                 type="text"
-                autoComplete="off"
+                autoComplete="one-time-code"
                 value={form.address}
                 onChange={(e) => setForm({ ...form, address: e.target.value })}
                 placeholder={t['info.address_placeholder'] || '123 Main St, City'}
@@ -1799,7 +1790,7 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
               <div className="relative w-28 country-code-dropdown">
                 <input
                   type="text"
-                  autoComplete="off"
+                  autoComplete="one-time-code"
                   readOnly
                   value={form.countryCode}
                   onClick={() => setShowCountryCodeDropdown(true)}
@@ -1835,7 +1826,7 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
                     <div className="p-2 bg-card border-t border-border shrink-0">
                       <input
                         type="text"
-                        autoComplete="off"
+                        autoComplete="one-time-code"
                         value={countryCodeSearch}
                         onChange={(e) => setCountryCodeSearch(e.target.value)}
                         placeholder={t['placeholder.search_country'] || 'Search country...'}
@@ -1849,7 +1840,7 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
                 <Phone size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <input
                   type="tel"
-                  autoComplete="off"
+                  autoComplete="one-time-code"
                   inputMode="tel"
                   value={form.phone}
                   onChange={(e) => {
@@ -1870,6 +1861,7 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
               {t['info.note'] || 'Note'}
             </label>
             <textarea
+              autoComplete="one-time-code"
               value={form.note}
               onChange={(e) => setForm({ ...form, note: e.target.value })}
               placeholder={t['info.note_placeholder'] || 'Any additional details...'}
@@ -2007,7 +1999,7 @@ const HouseRoutineModal: React.FC<HouseRoutineModalProps> = ({
               </label>
               <input
                 type="text"
-                autoComplete="off"
+                autoComplete="one-time-code"
                 value={form.customCategory}
                 onChange={(e) => setForm({ ...form, customCategory: e.target.value })}
                 placeholder={t['info.custom_category_placeholder'] || 'Enter custom category'}
@@ -2023,7 +2015,7 @@ const HouseRoutineModal: React.FC<HouseRoutineModalProps> = ({
             </label>
             <input
               type="text"
-              autoComplete="off"
+              autoComplete="one-time-code"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
               placeholder={t['info.routine_name_placeholder'] || 'e.g., How to make the bed'}
@@ -2037,6 +2029,7 @@ const HouseRoutineModal: React.FC<HouseRoutineModalProps> = ({
               {t['common.note'] || 'Note'}
             </label>
             <textarea
+              autoComplete="one-time-code"
               value={form.note}
               onChange={(e) => setForm({ ...form, note: e.target.value })}
               placeholder={t['info.routine_note_placeholder'] || 'Enter the instructions, steps, or details...'}

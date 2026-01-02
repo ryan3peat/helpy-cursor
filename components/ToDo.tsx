@@ -1145,7 +1145,7 @@ const ToDo: React.FC<ToDoProps> = ({
                 <input
                   ref={inlineInputRef}
                   type="text"
-                  autoComplete="off"
+                  autoComplete="one-time-code"
                   value={inlineInputValue}
                   onChange={e => setInlineInputValue(e.target.value)}
                   onKeyDown={e => {
@@ -1459,7 +1459,7 @@ const ToDo: React.FC<ToDoProps> = ({
                   </label>
                   <input
                     type="text"
-                    autoComplete="off"
+                    autoComplete="one-time-code"
                     value={sheetForm.name || ''}
                     onChange={e => setSheetForm(prev => ({ ...prev, name: e.target.value }))}
                     placeholder={activeSection === 'shopping' ? t['common.eg_milk'] : t['common.eg_clean_bathroom']}
@@ -1475,7 +1475,7 @@ const ToDo: React.FC<ToDoProps> = ({
                     </label>
                     <input
                       type="text"
-                      autoComplete="off"
+                      autoComplete="one-time-code"
                       value={sheetForm.brand || ''}
                       onChange={e => setSheetForm(prev => ({ ...prev, brand: e.target.value }))}
                       placeholder={t['common.brand_placeholder'] || 'Your favorite brand'}
@@ -1494,7 +1494,7 @@ const ToDo: React.FC<ToDoProps> = ({
                     </label>
                     <input
                       type="text"
-                      autoComplete="off"
+                      autoComplete="one-time-code"
                       inputMode="decimal"
                       value={sheetForm.quantity ?? ''}
                       onChange={e => {
@@ -1514,7 +1514,7 @@ const ToDo: React.FC<ToDoProps> = ({
                     <input
                       ref={unitInputRef}
                       type="text"
-                      autoComplete="off"
+                      autoComplete="one-time-code"
                       value={sheetForm.unit || ''}
                       onChange={e => {
                         setSheetForm(prev => ({ ...prev, unit: e.target.value }));
@@ -1527,7 +1527,6 @@ const ToDo: React.FC<ToDoProps> = ({
                       }}
                       placeholder={t['common.unit_placeholder']}
                       className="w-full px-4 py-3 bg-muted rounded-xl text-body text-foreground placeholder-muted-foreground outline-none border border-transparent focus:border-primary transition-colors"
-                      autoComplete="off"
                     />
                     
                     {/* Unit suggestions dropdown */}

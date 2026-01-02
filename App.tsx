@@ -285,7 +285,10 @@ const AppContent: React.FC = () => {
     setActiveView(view);
     setNavData(data ?? null);
     // Scroll to top when navigating to a new view
-    window.scrollTo(0, 0);
+    // Exception: Meals has its own auto-scroll to Today (see docs/MEALS_SCROLL_FIX.md)
+    if (view !== 'meals') {
+      window.scrollTo(0, 0);
+    }
   };
   
   // Handle edit helper from Helper Management - navigates to Profile and opens edit modal
@@ -854,6 +857,10 @@ const AppContent: React.FC = () => {
             }}
             onOpenAddFamily={() => {
               localStorage.setItem('helpy_profile_target_section', 'add_family');
+              setActiveView('profile');
+            }}
+            onSelectFamilyMember={(userId: string) => {
+              localStorage.setItem('helpy_profile_edit_user_id', userId);
               setActiveView('profile');
             }}
           />

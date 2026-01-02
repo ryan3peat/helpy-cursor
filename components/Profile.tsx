@@ -792,15 +792,17 @@ const Profile: React.FC<ProfileProps> = ({
 
   // --- Helper Functions ---
   // Colors based on brand palette: #3EAFD2, #FF9800, #7E57C2, #4CAF50, #F06292, #AB47BC, #757575
+  // Role badge colors: White background with colored text, except SuperAdmin (solid blue)
+  // All badges have subtle shadow for depth
   const getRoleBadgeColor = (role: UserRole) => {
     switch (role) {
-      case UserRole.MASTER: return 'bg-primary/10 text-primary'; // Helpy blue #3EAFD2
-      case UserRole.SUPERADMIN: return 'bg-primary text-white'; // Solid Helpy blue with white text
-      case UserRole.SPOUSE: return 'bg-[#F3E5F5] text-[#AB47BC]';
-      case UserRole.HELPER: return 'bg-[#FFF3E0] text-[#FF9800]';
-      case UserRole.CHILD: return 'bg-[#E8F5E9] text-[#4CAF50]';
-      case UserRole.OTHER: return 'bg-[#FCE4EC] text-[#F06292]';
-      default: return 'bg-[#F5F5F5] text-[#757575]';
+      case UserRole.SUPERADMIN: return 'bg-primary text-white shadow-sm'; // Solid blue with white text
+      case UserRole.MASTER: return 'bg-white text-primary shadow-sm'; // White bg, cyan text
+      case UserRole.SPOUSE: return 'bg-white text-[#AB47BC] shadow-sm'; // White bg, purple text
+      case UserRole.HELPER: return 'bg-white text-[#FF9800] shadow-sm'; // White bg, orange text
+      case UserRole.CHILD: return 'bg-white text-[#4CAF50] shadow-sm'; // White bg, green text
+      case UserRole.OTHER: return 'bg-white text-[#F06292] shadow-sm'; // White bg, pink text
+      default: return 'bg-white text-[#757575] shadow-sm';
     }
   };
 
@@ -1521,7 +1523,7 @@ const Profile: React.FC<ProfileProps> = ({
                         <label className="block text-caption text-muted-foreground mb-2 tracking-wide">{t['common.name']}</label>
                         <input
                           type="text"
-                          autoComplete="off"
+                          autoComplete="one-time-code"
                           value={newName}
                           onChange={(e) => setNewName(e.target.value)}
                           className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
@@ -1886,7 +1888,7 @@ const Profile: React.FC<ProfileProps> = ({
                     <label className="block text-caption text-muted-foreground mb-2 tracking-wide">{t['profile.name_label'] || 'Name'}</label>
                     <input
                       type="text"
-                      autoComplete="off"
+                      autoComplete="one-time-code"
                       value={editName}
                       onChange={(e) => setEditName(e.target.value)}
                       className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
@@ -1917,7 +1919,7 @@ const Profile: React.FC<ProfileProps> = ({
                     <div className="flex gap-2 mb-2">
                       <input
                         type="text"
-                        autoComplete="off"
+                        autoComplete="one-time-code"
                         value={newAllergyInput}
                         onChange={(e) => setNewAllergyInput(e.target.value)}
                         onKeyPress={(e) => e.key === 'Enter' && addAllergy()}
@@ -1946,7 +1948,7 @@ const Profile: React.FC<ProfileProps> = ({
                     <div className="flex gap-2 mb-2">
                       <input
                         type="text"
-                        autoComplete="off"
+                        autoComplete="one-time-code"
                         value={newPreferenceInput}
                         onChange={(e) => setNewPreferenceInput(e.target.value)}
                         onKeyPress={(e) => e.key === 'Enter' && addPreference()}
@@ -1996,7 +1998,7 @@ const Profile: React.FC<ProfileProps> = ({
                       </label>
                       <input
                         type="text"
-                        autoComplete="off"
+                        autoComplete="one-time-code"
                         inputMode="numeric"
                         value={editHelperBaseSalary || ''}
                         onChange={(e) => {
@@ -2017,7 +2019,7 @@ const Profile: React.FC<ProfileProps> = ({
                         <div key={index} className="flex gap-2 mb-2">
                           <input
                             type="text"
-                            autoComplete="off"
+                            autoComplete="one-time-code"
                             value={allowance.name}
                             onChange={(e) => updateOtherAllowance(index, 'name', e.target.value)}
                             placeholder={t['profile.allowance_name_placeholder'] || 'Allowance name'}
@@ -2025,7 +2027,7 @@ const Profile: React.FC<ProfileProps> = ({
                           />
                           <input
                             type="text"
-                            autoComplete="off"
+                            autoComplete="one-time-code"
                             inputMode="numeric"
                             value={allowance.amount || ''}
                             onChange={(e) => {
@@ -2973,7 +2975,7 @@ const Profile: React.FC<ProfileProps> = ({
                     <div className="relative">
                       <input
                         type="text"
-                        autoComplete="off"
+                        autoComplete="one-time-code"
                         value={referralCodeInput}
                         onChange={(e) => {
                           const value = e.target.value.toUpperCase();
@@ -3024,7 +3026,7 @@ const Profile: React.FC<ProfileProps> = ({
                     </label>
                     <input
                       type="text"
-                      autoComplete="off"
+                      autoComplete="one-time-code"
                       value={promoCodeInput}
                       onChange={(e) => {
                         setPromoCodeInput(e.target.value);
@@ -3158,6 +3160,7 @@ const Profile: React.FC<ProfileProps> = ({
                       <label className="text-caption font-bold text-muted-foreground ml-1">{t['profile.first_name'] || 'First Name'}</label>
                       <input
                         type="text"
+                        autoComplete="given-name"
                         value={accountData.firstName}
                         onChange={e => setAccountData({ ...accountData, firstName: e.target.value })}
                         className="w-full bg-muted border border-border rounded-xl px-4 py-3 text-foreground font-medium focus:border-primary outline-none transition-colors text-body"
@@ -3167,6 +3170,7 @@ const Profile: React.FC<ProfileProps> = ({
                       <label className="text-caption font-bold text-muted-foreground ml-1">{t['profile.last_name'] || 'Last Name'}</label>
                       <input
                         type="text"
+                        autoComplete="family-name"
                         value={accountData.lastName}
                         onChange={e => setAccountData({ ...accountData, lastName: e.target.value })}
                         className="w-full bg-muted border border-border rounded-xl px-4 py-3 text-foreground font-medium focus:border-primary outline-none transition-colors text-body"
@@ -3179,6 +3183,7 @@ const Profile: React.FC<ProfileProps> = ({
                       <div className="relative w-32 country-code-dropdown">
                         <input
                           type="text"
+                          autoComplete="one-time-code"
                           readOnly
                           value={accountData.countryCode}
                           onClick={() => setShowCountryCodeDropdown(true)}
@@ -3191,7 +3196,7 @@ const Profile: React.FC<ProfileProps> = ({
                             <div className="p-2 sticky top-0 bg-card border-b border-border">
                               <input
                                 type="text"
-                                autoComplete="off"
+                                autoComplete="one-time-code"
                                 value={countryCodeSearch}
                                 onChange={e => setCountryCodeSearch(e.target.value)}
                                 placeholder={t['placeholder.search_country'] || 'Search country...'}
@@ -3225,6 +3230,7 @@ const Profile: React.FC<ProfileProps> = ({
                       <div className="relative flex-1">
                         <input
                           type="tel"
+                          autoComplete="tel"
                           value={accountData.phoneNumber}
                           onChange={e => setAccountData({ ...accountData, phoneNumber: e.target.value })}
                           placeholder={t['placeholder.mobile_number'] || 'Mobile number'}
@@ -3246,6 +3252,7 @@ const Profile: React.FC<ProfileProps> = ({
                     <div className="relative">
                       <input
                         type="email"
+                        autoComplete="email"
                         value={accountData.email}
                         onChange={e => setAccountData({ ...accountData, email: e.target.value })}
                         disabled={isGoogleAuth}
@@ -3265,6 +3272,7 @@ const Profile: React.FC<ProfileProps> = ({
                         <div className="relative">
                           <input
                             type="password"
+                            autoComplete="current-password"
                             placeholder="••••••••"
                             value={accountData.currentPassword}
                             onChange={e => setAccountData({ ...accountData, currentPassword: e.target.value })}
@@ -3278,6 +3286,7 @@ const Profile: React.FC<ProfileProps> = ({
                         <div className="relative">
                           <input
                             type="password"
+                            autoComplete="new-password"
                             placeholder="••••••••"
                             value={accountData.newPassword}
                             onChange={e => setAccountData({ ...accountData, newPassword: e.target.value })}

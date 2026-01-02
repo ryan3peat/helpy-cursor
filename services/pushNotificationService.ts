@@ -708,21 +708,21 @@ export async function autoSubscribeIfNeeded(
     }
 
     // Check current permission state
+    // IMPORTANT: Auto-subscribe should NEVER request permission - only explicit toggle should do that
+    // If permission is 'default' (never asked), skip and wait for user to toggle ON explicitly
     const permission = getNotificationPermission();
     if (permission === 'denied') {
       console.log('[Push] Auto-subscribe skipped: permission denied');
       return false;
     }
 
-    // If permission is default, request it once here (user has notifications enabled)
-    let effectivePermission = permission;
-    if (effectivePermission === 'default') {
-      console.log('[Push] Requesting notification permission for auto-subscribe...');
-      effectivePermission = await requestNotificationPermission();
+    if (permission === 'default') {
+      console.log('[Push] Auto-subscribe skipped: permission not yet granted (user needs to toggle ON explicitly)');
+      return false;
     }
 
-    if (effectivePermission !== 'granted') {
-      console.log('[Push] Auto-subscribe skipped: permission not granted (current:', effectivePermission, ')');
+    if (permission !== 'granted') {
+      console.log('[Push] Auto-subscribe skipped: permission not granted (current:', permission, ')');
       return false;
     }
 

@@ -79,7 +79,8 @@ A pill-shaped segmented control with a debossed container effect. The active tab
 |----------|-------|---------|
 | `background` | transparent | No background |
 | `color` | `text-muted-foreground` | Gray text |
-| `hover:color` | `text-foreground` | Darker on hover |
+
+> **Note:** Hover effects are deprecated for this mobile-first PWA. Do not add `hover:` classes.
 
 ### Shadow Overlay (Critical!)
 | Property | Value | Purpose |
@@ -135,7 +136,7 @@ const SegmentedControl = ({ tabs, activeTab, onTabChange }) => {
             className={`px-4 py-2 rounded-full text-body whitespace-nowrap transition-all ${
               activeTab === tab.id
                 ? "bg-card text-primary shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
+                : "text-muted-foreground"
             }`}
           >
             {tab.icon && <span className="mr-1.5">{tab.icon}</span>}
@@ -161,62 +162,6 @@ const SegmentedControl = ({ tabs, activeTab, onTabChange }) => {
 - **Example**: `/components/HouseholdInfo.tsx`
 - **Docs**: `/docs/SEGMENTED_CONTROL_PATTERN.md`
 
+---
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+*Last updated: January 2025*

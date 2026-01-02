@@ -1,0 +1,29 @@
+# Helpy Cursor Rules
+
+## Critical Patterns - DO NOT MODIFY
+
+### Meals.tsx iOS Scroll Fix
+
+The Meals page has a specific pattern to prevent iOS Safari flicker when auto-scrolling to "Today". This pattern MUST NOT be changed:
+
+1. **Use `useLayoutEffect`** (NOT `useEffect`) for the auto-scroll logic
+2. **Synchronous scroll FIRST** - try to scroll immediately without RAF
+3. **RAF fallback ONLY if element not found** - handles rare DOM timing issue
+4. **`isScrollReady` state** must hide content (`opacity: 0`) until scroll completes
+5. **`shouldAutoScroll` ref** initialized to `true`
+
+**Key insight:** Content stays hidden (`opacity: 0`) until AFTER scroll completes, so even the RAF fallback doesn't cause flicker.
+
+See `docs/MEALS_SCROLL_FIX.md` for full explanation.
+
+**Why this matters:** iOS Safari does "speculative paints" before JavaScript completes. Without this fix, users see content flash at the wrong scroll position before jumping to Today.
+
+---
+
+## Code Style
+
+- Use Tailwind CSS for styling
+- Follow existing component patterns
+- Keep translations in the `t` object
+- Use `useScrollHeader` hook for sticky header animations
+- Use `useScrollLock` when modals are open

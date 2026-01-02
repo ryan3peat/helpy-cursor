@@ -27,7 +27,9 @@ import {
   ArrowDownToLine,
   Share,
   LayoutGrid,
-  SquarePlus
+  SquarePlus,
+  AlertCircle,
+  Heart
 } from 'lucide-react';
 import Avatar from './ui/Avatar';
 import ErrorBanner from './ui/ErrorBanner';
@@ -66,6 +68,8 @@ interface DashboardProps {
   onOpenUserGuide?: () => void;
   /** Open the add family member sheet in Profile */
   onOpenAddFamily?: () => void;
+  /** Navigate to Profile and select a specific family member */
+  onSelectFamilyMember?: (userId: string) => void;
 }
 
 // Component for displaying translated meal description
@@ -228,6 +232,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   onRestartTutorial,
   onOpenUserGuide,
   onOpenAddFamily,
+  onSelectFamilyMember,
 }) => {
   // ─────────────────────────────────────────────────────────────────
   // Safety check for currentUser
@@ -248,6 +253,72 @@ const Dashboard: React.FC<DashboardProps> = ({
   // Role-based permissions
   // ─────────────────────────────────────────────────────────────────
   const isHelper = currentUser.role === UserRole.HELPER;
+
+  // ─────────────────────────────────────────────────────────────────
+  // Family Carousel Helpers
+  // ─────────────────────────────────────────────────────────────────
+  const validUsers = users.filter(user => user && user.id && user.name);
+
+  const getAvatarUrl = (user: User) => {
+    const isDicebearAvatar = user.avatar?.includes('dicebear');
+    if (isDicebearAvatar) {
+      const seed = encodeURIComponent(user.name);
+      const bgColor = user.status === 'pending' ? '9CA3AF' : '3EAFD2';
+      return `https://api.dicebear.com/7.x/initials/svg?seed=${seed}&backgroundColor=${bgColor}&fontSize=40`;
+    }
+    return user.avatar;
+  };
+
+  // Role badge colors: White background with colored text, except SuperAdmin (solid blue)
+  // All badges have subtle shadow for depth
+  const getRoleBadgeColor = (role: UserRole) => {
+    switch (role) {
+      case UserRole.SUPERADMIN: return 'bg-primary text-white shadow-sm'; // Solid blue with white text
+      case UserRole.MASTER: return 'bg-white text-primary shadow-sm'; // White bg, cyan text
+      case UserRole.SPOUSE: return 'bg-white text-[#AB47BC] shadow-sm'; // White bg, purple text
+      case UserRole.HELPER: return 'bg-white text-[#FF9800] shadow-sm'; // White bg, orange text
+      case UserRole.CHILD: return 'bg-white text-[#4CAF50] shadow-sm'; // White bg, green text
+      case UserRole.OTHER: return 'bg-white text-[#F06292] shadow-sm'; // White bg, pink text
+      default: return 'bg-white text-[#757575] shadow-sm';
+    }
+  };
+
+  // Render allergies/preferences with truncation (show 3, then +X)
+  const renderTruncatedTags = (
+    items: string[] | undefined,
+    type: 'allergy' | 'preference'
+  ) => {
+    if (!items || items.length === 0) {
+      return (
+        <span className="text-caption text-muted-foreground">
+          {t['profile.none'] || 'None listed'}
+        </span>
+      );
+    }
+
+    const maxVisible = 3;
+    const visibleItems = items.slice(0, maxVisible);
+    const remainingCount = items.length - maxVisible;
+
+    const tagStyle = type === 'allergy'
+      ? 'px-2 py-1 bg-destructive/10 text-destructive rounded-full text-caption font-medium'
+      : 'px-2 py-1 bg-foreground/10 text-foreground rounded-full text-caption font-medium';
+
+    return (
+      <>
+        {visibleItems.map((item) => (
+          <span key={item} className={tagStyle}>
+            {item}
+          </span>
+        ))}
+        {remainingCount > 0 && (
+          <span className={tagStyle}>
+            +{remainingCount}
+          </span>
+        )}
+      </>
+    );
+  };
 
   const shoppingCount = todoItems.filter(i => i.type === 'shopping' && !i.completed).length;
   const activeTaskCount = todoItems.filter(i => i.type === 'task' && !i.completed).length;
@@ -517,7 +588,7 @@ const Dashboard: React.FC<DashboardProps> = ({
       </header>
 
       {/* Content */}
-      <div className="px-5 pt-12 space-y-5">
+      <div className="px-5 pt-5 space-y-5">
 
       {/* Error Banner */}
       <ErrorBanner 
@@ -571,6 +642,97 @@ const Dashboard: React.FC<DashboardProps> = ({
           </div>
         </div>
       )}
+
+      {/* Family Carousel */}
+      <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide -mx-5 px-5">
+        {validUsers.map((user) => {
+          const isCurrent = user.id === currentUser.id;
+          return (
+            <div
+              key={user.id}
+              onClick={() => onSelectFamilyMember?.(user.id)}
+              className="flex-shrink-0 w-[220px] bg-card rounded-3xl shadow-sm p-5 cursor-pointer"
+            >
+              {/* Large Portrait Avatar - Centered at Top */}
+              <div className="flex justify-center mb-4">
+                <div className="relative w-[180px] h-[180px] rounded-2xl overflow-visible">
+                  {/* Avatar Image */}
+                  <div className="w-full h-full rounded-2xl overflow-hidden bg-secondary shadow-sm">
+                    <img 
+                      src={getAvatarUrl(user)} 
+                      alt={user.name} 
+                      className="w-full h-full object-cover" 
+                    />
+                  </div>
+                  
+                  {/* Role Badge - Bottom Left (inside avatar) */}
+                  <div className="absolute bottom-3 left-3">
+                    <span className={`inline-block px-3 py-1 rounded-full text-caption font-semibold ${getRoleBadgeColor(user.role)}`}>
+                      {user.role}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Name - Left aligned, Bold */}
+              <h3 className="text-title font-bold text-foreground truncate mt-1">
+                {user.name.split(' ')[0]} {isCurrent ? `(${t['common.you'] || 'You'})` : ''}
+              </h3>
+
+              {/* Pending Status (if applicable) */}
+              {user.status === 'pending' && (
+                <span className="text-micro text-muted-foreground">
+                  {t['common.pending'] || 'Pending'}
+                </span>
+              )}
+
+              {/* Divider */}
+              <div className="h-px bg-border my-3" />
+
+              {/* Allergies */}
+              <div className="mb-2.5">
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <AlertCircle size={12} className="text-destructive flex-shrink-0" />
+                  <span className="text-caption font-bold text-foreground">
+                    {t['profile.allergies'] || 'Allergies'}
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {renderTruncatedTags(user.allergies, 'allergy')}
+                </div>
+              </div>
+
+              {/* Preferences */}
+              <div>
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <Heart size={12} className="text-foreground flex-shrink-0" />
+                  <span className="text-caption font-bold text-foreground">
+                    {t['profile.preferences'] || 'Preferences'}
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {renderTruncatedTags(user.preferences, 'preference')}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+
+        {/* Add Button at END - Hidden for Helper */}
+        {!isHelper && onOpenAddFamily && (
+          <div
+            onClick={onOpenAddFamily}
+            className="flex-shrink-0 w-[220px] bg-secondary/30 rounded-3xl flex flex-col items-center justify-center cursor-pointer border-2 border-dashed border-border"
+          >
+            <div className="w-16 h-16 rounded-full bg-card flex items-center justify-center shadow-sm">
+              <Plus size={28} className="text-primary" />
+            </div>
+            <span className="text-body font-semibold text-foreground mt-3">
+              {t['common.add'] || 'Add'}
+            </span>
+          </div>
+        )}
+      </div>
 
       {/* Family Notes */}
       <div id="onboarding-family-board" className="relative group">

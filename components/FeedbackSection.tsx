@@ -353,12 +353,14 @@ const FeedbackSection: React.FC<FeedbackSectionProps> = ({
           <div className="bg-card border border-border rounded-2xl p-4 mb-6 space-y-3">
             <input
               type="text"
+              autoComplete="one-time-code"
               value={newSubject}
               onChange={(e) => setNewSubject(e.target.value)}
               placeholder={t['feedback.subject_placeholder'] || 'Brief description of your feedback'}
               className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-foreground"
             />
             <textarea
+              autoComplete="one-time-code"
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
               placeholder={t['feedback.message_placeholder'] || 'Tell us more...'}

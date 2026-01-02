@@ -263,6 +263,7 @@ const AcceptInvite: React.FC<AcceptInviteProps> = ({ onComplete }) => {
               <label className="block text-caption text-gray-500 mb-1">Verification Code</label>
               <input
                 type="text"
+                autoComplete="one-time-code"
                 inputMode="numeric"
                 pattern="[0-9]*"
                 value={verificationCode}
@@ -327,6 +328,7 @@ const AcceptInvite: React.FC<AcceptInviteProps> = ({ onComplete }) => {
               <label className="block text-caption text-gray-500 mb-1">First Name</label>
               <input
                 type="text"
+                autoComplete="given-name"
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
                 required
@@ -338,6 +340,7 @@ const AcceptInvite: React.FC<AcceptInviteProps> = ({ onComplete }) => {
               <label className="block text-caption text-gray-500 mb-1">Last Name</label>
               <input
                 type="text"
+                autoComplete="family-name"
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
                 required
@@ -353,6 +356,7 @@ const AcceptInvite: React.FC<AcceptInviteProps> = ({ onComplete }) => {
             </label>
             <input
               type="email"
+              autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-body focus:ring-2 focus:ring-brand-primary outline-none"
@@ -366,6 +370,7 @@ const AcceptInvite: React.FC<AcceptInviteProps> = ({ onComplete }) => {
             </label>
             <input
               type="tel"
+              autoComplete="tel"
               inputMode="tel"
               value={phoneNumber}
               onChange={(e) => {
@@ -382,6 +387,7 @@ const AcceptInvite: React.FC<AcceptInviteProps> = ({ onComplete }) => {
             <label className="block text-caption text-gray-500 mb-1">Password</label>
             <input
               type="password"
+              autoComplete="new-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required

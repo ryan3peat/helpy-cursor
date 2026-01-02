@@ -256,9 +256,11 @@ const Expenses: React.FC<ExpensesProps> = ({
   // Role-based permissions
   // ─────────────────────────────────────────────────────────────────
   const isHelper = currentUser.role === UserRole.HELPER;
+  const isSuperAdmin = currentUser.role === UserRole.SUPERADMIN;
 
   const planKey = (householdPlan?.plan || 'free') as 'free' | 'core' | 'pro' | 'test';
-  const isFreePlan = planKey === 'free';
+  // SuperAdmin bypasses all plan restrictions - can see all paid features
+  const isFreePlan = planKey === 'free' && !isSuperAdmin;
   const planLabel =
     planKey === 'core' ? 'Core' : planKey === 'pro' ? 'Pro' : planKey === 'test' ? 'Test' : 'Free';
 
@@ -1258,7 +1260,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                       <input
                         ref={amountInputRef}
                         type="text"
-                        autoComplete="off"
+                        autoComplete="one-time-code"
                         inputMode="decimal"
                         value={editAmount}
                         onChange={(e) => {
@@ -1282,7 +1284,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                     </label>
                     <input
                       type="text"
-                      autoComplete="off"
+                      autoComplete="one-time-code"
                       value={editMerchant}
                       onChange={(e) => setEditMerchant(e.target.value)}
                       placeholder={t['common.where_did_you_spend']}
@@ -1400,7 +1402,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                       </span>
                       <input
                         type="text"
-                        autoComplete="off"
+                        autoComplete="one-time-code"
                         inputMode="decimal"
                         value={editAmount}
                         onChange={(e) => {
@@ -1424,7 +1426,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                     </label>
                 <input
                   type="text"
-                  autoComplete="off"
+                  autoComplete="one-time-code"
                   value={editMerchant}
                   onChange={(e) => setEditMerchant(e.target.value)}
                   placeholder={t['common.store_name']}
@@ -1586,7 +1588,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                       </span>
                       <input
                         type="text"
-                        autoComplete="off"
+                        autoComplete="one-time-code"
                         inputMode="decimal"
                         className="flex-1 px-4 py-4 rounded-xl bg-muted border border-border focus:border-primary outline-none transition-all text-display"
                         value={exAmount}
@@ -1610,7 +1612,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                     </label>
                     <input
                       type="text"
-                      autoComplete="off"
+                      autoComplete="one-time-code"
                       className="w-full px-4 py-3 rounded-lg bg-muted border border-border focus:border-primary outline-none transition-all text-body"
                       value={exMerchant}
                       onChange={(e) => setExMerchant(e.target.value)}

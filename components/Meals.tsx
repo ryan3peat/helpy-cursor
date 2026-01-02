@@ -121,9 +121,18 @@ const Meals: React.FC<MealsProps> = ({
   // Ref: Day view container for auto-scroll to current day
   const dayViewRef = useRef<HTMLDivElement | null>(null);
 
-  // Ref: Track if we should auto-scroll (only on view change or Today click)
-  // Initialized to true so scroll happens on mount before first paint
+  // ─────────────────────────────────────────────────────────────────
+  // ⚠️  iOS FLICKER FIX - DO NOT MODIFY WITHOUT READING docs/MEALS_SCROLL_FIX.md
+  // ─────────────────────────────────────────────────────────────────
+  // This pattern prevents iOS Safari from showing content at wrong scroll
+  // position before auto-scrolling to "Today". The fix has 4 parts:
+  // 1. shouldAutoScroll ref (initialized to true)
+  // 2. isScrollReady state (hides content until scroll complete)
+  // 3. useLayoutEffect (NOT useEffect) with synchronous scroll FIRST
+  // 4. RAF fallback ONLY if element not found (fixes "today card not showing")
+  // ─────────────────────────────────────────────────────────────────
   const shouldAutoScroll = useRef(true);
+  const [isScrollReady, setIsScrollReady] = useState(false);
 
   const mealTypes = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER, MealType.SNACKS];
   const langCode = currentLang === 'en' ? 'en-GB' : currentLang;
@@ -463,25 +472,55 @@ const Meals: React.FC<MealsProps> = ({
     goToToday();
   };
 
-  // Auto-scroll Day view (only when explicitly requested)
-  // Using useLayoutEffect (not useEffect) ensures scroll happens BEFORE browser paint.
-  // This prevents the iOS Safari flicker where content briefly shows at wrong scroll position.
+  // ─────────────────────────────────────────────────────────────────
+  // ⚠️  iOS FLICKER FIX - DO NOT CHANGE TO useEffect
+  // ─────────────────────────────────────────────────────────────────
+  // useLayoutEffect runs BEFORE browser paint (useEffect runs after).
+  // Primary scroll is synchronous. RAF is ONLY used as fallback if element
+  // isn't found on first attempt (fixes "today card not showing" bug).
+  // See docs/MEALS_SCROLL_FIX.md for full explanation.
+  // ─────────────────────────────────────────────────────────────────
   useLayoutEffect(() => {
-    if (view !== 'day') return;
-    if (!shouldAutoScroll.current) return;
-
-    // Synchronous scroll - no RAF wrapper so it runs before first paint
-    const targetDateStr = formatDateStr(new Date(currentViewDate));
-    const targetEl = document.getElementById(`day-${targetDateStr}`);
-    
-    if (targetEl) {
-      // Calculate scroll position with offset for sticky header + breathing room
-      const headerOffset = 200;
-      const elementPosition = targetEl.getBoundingClientRect().top + window.scrollY;
-      window.scrollTo({ top: elementPosition - headerOffset, behavior: 'auto' });
+    if (view !== 'day') {
+      // Week view doesn't need scroll - mark ready immediately
+      if (!isScrollReady) setIsScrollReady(true);
+      return;
     }
-    shouldAutoScroll.current = false;
-  }, [view, currentViewDate]);
+    if (!shouldAutoScroll.current) {
+      // No scroll needed - mark ready immediately
+      if (!isScrollReady) setIsScrollReady(true);
+      return;
+    }
+
+    const performScroll = (): boolean => {
+      const targetDateStr = formatDateStr(new Date(currentViewDate));
+      const targetEl = document.getElementById(`day-${targetDateStr}`);
+      
+      if (targetEl) {
+        // Calculate scroll position with offset for sticky header + breathing room
+        const headerOffset = 200;
+        const elementPosition = targetEl.getBoundingClientRect().top + window.scrollY;
+        window.scrollTo({ top: elementPosition - headerOffset, behavior: 'auto' });
+        return true;
+      }
+      return false;
+    };
+
+    // Try synchronous scroll first (prevents iOS flicker)
+    if (performScroll()) {
+      shouldAutoScroll.current = false;
+      if (!isScrollReady) setIsScrollReady(true);
+    } else {
+      // Element not found yet - retry on next animation frame
+      // This handles rare cases where DOM isn't fully ready on first render
+      const rafId = requestAnimationFrame(() => {
+        performScroll(); // Best effort - scroll if element exists now
+        shouldAutoScroll.current = false;
+        if (!isScrollReady) setIsScrollReady(true);
+      });
+      return () => cancelAnimationFrame(rafId);
+    }
+  }, [view, currentViewDate, isScrollReady]);
 
   // Close quick join popover when clicking outside
   useEffect(() => {
@@ -722,8 +761,11 @@ const Meals: React.FC<MealsProps> = ({
         </div>
       </header>
 
-      {/* Content */}
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
+      {/* Content - hidden until scroll completes to prevent iOS flicker */}
+      <div 
+        className="max-w-2xl mx-auto px-4 sm:px-6 page-content"
+        style={{ opacity: isScrollReady ? 1 : 0 }}
+      >
         {/* Error Banner */}
         <ErrorBanner 
           error={error} 
@@ -1269,6 +1311,7 @@ const Meals: React.FC<MealsProps> = ({
                   <div className="relative">
                     <textarea
                       rows={2}
+                      autoComplete="one-time-code"
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
                       placeholder={`${t['meals.whats_for'] ?? "What's for"} ${getMealLabel(modalType).toLowerCase()}?`}

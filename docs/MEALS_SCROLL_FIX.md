@@ -85,6 +85,12 @@ useLayoutEffect(() => {
 
 ## Files
 
-- `/components/Meals.tsx` - Lines ~708-760, ~460-500
+- `/components/Meals.tsx` - Reference implementation
 - `/components/ToDo.tsx` - Reference implementation
 - `/components/Expenses.tsx` - Reference implementation
+- `/docs/SCROLL_HEADER_PATTERN.md` - Header pattern documentation
+- `/docs/DESIGN_SYSTEM.md` - Comprehensive design system
+
+---
+
+*Last updated: January 2025*

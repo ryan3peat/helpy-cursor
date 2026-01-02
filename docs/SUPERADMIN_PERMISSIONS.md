@@ -214,4 +214,4 @@ SELECT COUNT(*) FROM households;        -- Should see ALL households
 
 ---
 
-**Last Updated**: Migration 060_comprehensive_superadmin_permissions.sql
+**Last Updated**: January 2025

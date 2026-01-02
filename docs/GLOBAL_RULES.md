@@ -20,27 +20,33 @@ Both components display user information and must maintain visual and behavioral
 - **Profile.tsx**: Uses `getRoleBadgeColor()` function
 - **HouseholdInfo.tsx**: Uses `ROLE_STYLES` constant
 
-**Profile.tsx Colors (Role Badges):**
+**Profile.tsx & Dashboard.tsx (Role Badges):**
+
+White solid background with colored text for all roles, **EXCEPT SuperAdmin** (solid blue bg + white text).
 
 | Role | Background | Text |
 |------|------------|------|
-| Admin (MASTER) | `bg-primary/10` | `text-primary` (#3EAFD2) |
-| SuperAdmin | `bg-primary` (#3EAFD2) | `text-white` |
-| Spouse | `#F3E5F5` (light purple) | `#AB47BC` (purple) |
-| Helper | `#FFF3E0` (light orange) | `#FF9800` (orange) |
-| Child | `#E8F5E9` (light green) | `#4CAF50` (green) |
-| Other | `#FCE4EC` (light pink) | `#F06292` (pink) |
+| **SuperAdmin** | `bg-primary` (#3EAFD2) | `text-white` |
+| Admin (MASTER) | `bg-white` | `text-primary` (#3EAFD2) |
+| Spouse | `bg-white` | `text-[#AB47BC]` (purple) |
+| Helper | `bg-white` | `text-[#FF9800]` (orange) |
+| Child | `bg-white` | `text-[#4CAF50]` (green) |
+| Other | `bg-white` | `text-[#F06292]` (pink) |
+
+This ensures badges are visible when overlaid on images (like in the Dashboard family carousel).
 
 **HouseholdInfo.tsx Colors (Carousel Cards):**
 
+Same color scheme as above:
+
 | Role | Background | Text/Accent |
 |------|------------|-------------|
-| Admin (MASTER) | `#E6F7FB` (light blue) | `#3EAFD2` (helpy blue) |
-| SuperAdmin | `#3EAFD2` (solid blue) | `#FFFFFF` (white) |
-| Spouse | `#FCE4EC` (light pink) | `#F06292` (pink) |
-| Helper | `#D1FAE5` (light green) | `#047857` (green) |
-| Child | `#FEF3C7` (light amber) | `#D97706` (amber) |
-| Other | `#FCE4EC` (light pink) | `#F06292` (pink) |
+| **SuperAdmin** | `#3EAFD2` (solid blue) | `#FFFFFF` (white) |
+| Admin (MASTER) | `#FFFFFF` (white) | `#3EAFD2` (helpy blue) |
+| Spouse | `#FFFFFF` (white) | `#AB47BC` (purple) |
+| Helper | `#FFFFFF` (white) | `#FF9800` (orange) |
+| Child | `#FFFFFF` (white) | `#4CAF50` (green) |
+| Other | `#FFFFFF` (white) | `#F06292` (pink) |
 
 #### 2. Role Priority (Sorting Order)
 Both components should sort users in the same order:

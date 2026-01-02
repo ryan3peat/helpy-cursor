@@ -30,6 +30,7 @@ import { useSheetTheme } from '@/hooks/useSheetTheme';
 import { Meal, MealType, MealAudience, User, UserRole, BaseViewProps } from '../types';
 import { suggestMeal } from '../services/geminiService';
 import { detectInputLanguage } from '../services/languageDetectionService';
+import { haptics } from '../utils/haptics';
 
 interface MealsProps extends BaseViewProps {
   meals: Meal[];
@@ -283,6 +284,14 @@ const Meals: React.FC<MealsProps> = ({
   const handleQuickRsvp = (meal: Meal, e: React.MouseEvent) => {
     e.stopPropagation();
     const isIn = isUserInMeal(meal);
+    
+    // Haptic feedback - success when joining, light when leaving
+    if (isIn) {
+      haptics.light();
+    } else {
+      haptics.success();
+    }
+    
     const newUserIds = isIn
       ? meal.forUserIds.filter(id => id !== currentUser.id)
       : [...meal.forUserIds, currentUser.id];

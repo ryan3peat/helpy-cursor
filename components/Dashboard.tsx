@@ -40,6 +40,7 @@ import { useScrollLock } from '../hooks/useScrollLock';
 import { useSheetTheme } from '../hooks/useSheetTheme';
 import { SUPPORTED_LANGUAGES } from '../constants';
 import { useTranslatedContent } from '../hooks/useTranslatedContent';
+import { haptics } from '../utils/haptics';
 
 import type { ConnectionStatus } from '../hooks/useRealtimeStatus';
 
@@ -358,8 +359,8 @@ const Dashboard: React.FC<DashboardProps> = ({
   const [showIosInstallSteps, setShowIosInstallSteps] = useState(false);
   const { canPromptInstall, shouldShowIosSteps, dismiss, promptInstall } = usePwaInstallNudge();
   
-  // Scroll header animation - expand cards earlier (at ~80% visibility)
-  const { isScrolled } = useScrollHeader({ expandThreshold: 55 });
+  // Scroll header animation - expand cards earlier (at ~70% visibility)
+  const { isScrolled } = useScrollHeader({ collapseThreshold: 90, expandThreshold: 70 });
   
   // Lock body scroll when language modal is open
   useScrollLock(showLangModal);
@@ -386,9 +387,11 @@ const Dashboard: React.FC<DashboardProps> = ({
     try {
       await onUpdateNotes(tempNotes);
       setIsEditingNotes(false);
+      haptics.success(); // Haptic feedback on successful save
     } catch (err) {
       console.error('Failed to save notes:', err);
       setError(t['error.save_notes'] || 'Failed to save notes. Please try again.');
+      haptics.error();
     } finally {
       setIsSavingNotes(false);
     }
@@ -521,6 +524,7 @@ const Dashboard: React.FC<DashboardProps> = ({
           <div
             onClick={(e) => {
               e.stopPropagation();
+              haptics.light(); // Haptic feedback on (+) button press
               onAddClick?.();
             }}
             className="p-1.5 rounded-full bg-primary flex items-center justify-center shadow-sm"
@@ -757,7 +761,10 @@ const Dashboard: React.FC<DashboardProps> = ({
         {/* Add Button at END - Hidden for Helper */}
         {!isHelper && onOpenAddFamily && (
           <div
-            onClick={onOpenAddFamily}
+            onClick={() => {
+              haptics.light(); // Haptic feedback on (+) button press
+              onOpenAddFamily();
+            }}
             className="flex-shrink-0 w-[220px] bg-secondary/30 rounded-3xl flex flex-col items-center justify-center cursor-pointer border-2 border-dashed border-border"
           >
             <div className="w-16 h-16 rounded-full bg-card flex items-center justify-center shadow-sm">
@@ -1042,7 +1049,10 @@ const Dashboard: React.FC<DashboardProps> = ({
             <>
               {/* Vertical Divider */}
               <div className="h-12 w-px bg-border mx-4"></div>
-              <button onClick={onOpenAddFamily} className="flex-1 flex flex-col items-center gap-1.5">
+              <button onClick={() => {
+                haptics.light(); // Haptic feedback on Add Family button
+                onOpenAddFamily();
+              }} className="flex-1 flex flex-col items-center gap-1.5">
                 <UserPlus size={24} className="text-primary" />
                 <span className="text-body font-medium text-foreground">{t['profile.add_family'] || 'Add Family'}</span>
               </button>

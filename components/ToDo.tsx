@@ -27,6 +27,7 @@ import { useScrollLock } from '@/hooks/useScrollLock';
 import { useSheetTheme } from '@/hooks/useSheetTheme';
 import { ToDoItem, ToDoType, ShoppingCategory, TaskCategory, RecurrenceFrequency, User, UserRole, BaseViewProps } from '../types';
 import { detectInputLanguage } from '../services/languageDetectionService';
+import { haptics } from '../utils/haptics';
 
 // ─────────────────────────────────────────────────────────────────
 // Types & Constants
@@ -568,6 +569,9 @@ const ToDo: React.FC<ToDoProps> = ({
   
   const handleToggleComplete = async (id: string, completed: boolean) => {
     if (completed) {
+      // Haptic feedback on task completion
+      haptics.success();
+      
       // Phase 1: Show check + fade out (200ms)
       setCompletingIds(prev => new Set(prev).add(id));
       setOptimisticCompleted(prev => ({ ...prev, [id]: true }));

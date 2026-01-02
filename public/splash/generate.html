@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Helpy Splash Screen Generator</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif; 
+      padding: 20px; 
+      max-width: 1200px; 
+      margin: 0 auto;
+      background: #f5f5f5;
+    }
+    h1 { color: #3EAFD2; }
+    .info { background: #e8f5e9; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; }
+    .card { 
+      background: white; 
+      padding: 15px; 
+      border-radius: 12px; 
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .card h3 { margin: 0 0 5px; font-size: 14px; }
+    .card p { margin: 0 0 10px; font-size: 12px; color: #666; }
+    .preview { 
+      width: 100%; 
+      aspect-ratio: 9/19.5; 
+      background: #3EAFD2; 
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 10px;
+    }
+    .preview img { max-width: 60%; }
+    button { 
+      width: 100%; 
+      padding: 10px; 
+      background: #3EAFD2; 
+      color: white; 
+      border: none; 
+      border-radius: 8px; 
+      cursor: pointer;
+      font-weight: 600;
+    }
+    button:hover { background: #2B9AC0; }
+    button:disabled { background: #ccc; cursor: not-allowed; }
+    #generateAll { 
+      padding: 15px 30px; 
+      font-size: 18px; 
+      margin-bottom: 20px; 
+    }
+    .status { margin-top: 10px; font-size: 12px; color: #4caf50; }
+    #linkTags { 
+      background: #1e1e1e; 
+      color: #9cdcfe; 
+      padding: 15px; 
+      border-radius: 8px; 
+      font-family: monospace;
+      font-size: 11px;
+      white-space: pre-wrap;
+      overflow-x: auto;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Helpy iOS Splash Screen Generator</h1>
+  
+  <div class="info">
+    <strong>Instructions:</strong>
+    <ol>
+      <li>Click "Generate All Splash Screens" below</li>
+      <li>Each image will download automatically</li>
+      <li>Move all downloaded images to <code>public/splash/</code></li>
+      <li>Copy the link tags at the bottom to <code>index.html</code></li>
+    </ol>
+  </div>
+  
+  <button id="generateAll" onclick="generateAll()">Generate All Splash Screens</button>
+  <div id="progress"></div>
+  
+  <h2>Device Sizes</h2>
+  <div class="grid" id="grid"></div>
+  
+  <h2>Link Tags for index.html</h2>
+  <div id="linkTags"></div>
+
+  <!-- Hidden canvas for generation -->
+  <canvas id="canvas" style="display:none;"></canvas>
+
+  <script>
+    // iOS device splash screen sizes
+    const SPLASH_SIZES = [
+      { width: 1290, height: 2796, scale: 3, name: 'iPhone 15 Pro Max' },
+      { width: 1179, height: 2556, scale: 3, name: 'iPhone 15 Pro' },
+      { width: 1170, height: 2532, scale: 3, name: 'iPhone 15/14/13/12' },
+      { width: 1284, height: 2778, scale: 3, name: 'iPhone 15/14 Plus' },
+      { width: 1080, height: 2340, scale: 3, name: 'iPhone 13/12 mini' },
+      { width: 1242, height: 2688, scale: 3, name: 'iPhone 11 Pro Max' },
+      { width: 1125, height: 2436, scale: 3, name: 'iPhone 11 Pro/X/XS' },
+      { width: 828, height: 1792, scale: 2, name: 'iPhone 11/XR' },
+      { width: 1242, height: 2208, scale: 3, name: 'iPhone 8/7/6 Plus' },
+      { width: 750, height: 1334, scale: 2, name: 'iPhone 8/7/6/SE' },
+      { width: 640, height: 1136, scale: 2, name: 'iPhone SE 1st/5' },
+      { width: 2048, height: 2732, scale: 2, name: 'iPad Pro 12.9"' },
+      { width: 1668, height: 2388, scale: 2, name: 'iPad Pro 11"' },
+      { width: 1668, height: 2224, scale: 2, name: 'iPad Pro 10.5"' },
+      { width: 1640, height: 2360, scale: 2, name: 'iPad 10th gen' },
+      { width: 1620, height: 2160, scale: 2, name: 'iPad 9th/8th/7th' },
+      { width: 1488, height: 2266, scale: 2, name: 'iPad mini 6th' },
+      { width: 1536, height: 2048, scale: 2, name: 'iPad 6th/5th/mini' },
+    ];
+
+    const BACKGROUND_COLOR = '#3EAFD2';
+    let logo = null;
+    let generated = new Set();
+
+    // Load logo
+    const logoImg = new Image();
+    logoImg.crossOrigin = 'anonymous';
+    logoImg.onload = () => {
+      logo = logoImg;
+      console.log('Logo loaded:', logo.width, 'x', logo.height);
+    };
+    logoImg.onerror = () => {
+      console.warn('Could not load logo');
+    };
+    logoImg.src = '/helpy-logo.PNG';
+
+    // Render the grid
+    function renderGrid() {
+      const grid = document.getElementById('grid');
+      grid.innerHTML = SPLASH_SIZES.map((size, i) => `
+        <div class="card">
+          <h3>${size.name}</h3>
+          <p>${size.width}x${size.height} @${size.scale}x</p>
+          <div class="preview">
+            <img src="/helpy-logo.PNG" alt="helpy">
+          </div>
+          <button id="btn-${i}" onclick="generateOne(${i})">Generate</button>
+          <div class="status" id="status-${i}"></div>
+        </div>
+      `).join('');
+    }
+
+    // Generate a single splash screen
+    async function generateOne(index) {
+      const size = SPLASH_SIZES[index];
+      const canvas = document.getElementById('canvas');
+      const ctx = canvas.getContext('2d');
+      
+      canvas.width = size.width;
+      canvas.height = size.height;
+      
+      // Fill background
+      ctx.fillStyle = BACKGROUND_COLOR;
+      ctx.fillRect(0, 0, size.width, size.height);
+      
+      // Draw logo if loaded
+      if (logo) {
+        const targetWidth = size.width * 0.35;
+        const scale = targetWidth / logo.width;
+        const logoWidth = logo.width * scale;
+        const logoHeight = logo.height * scale;
+        const x = (size.width - logoWidth) / 2;
+        const y = (size.height - logoHeight) / 2;
+        ctx.drawImage(logo, x, y, logoWidth, logoHeight);
+      } else {
+        // Fallback text
+        const fontSize = Math.floor(size.width * 0.12);
+        ctx.font = `bold ${fontSize}px -apple-system, sans-serif`;
+        ctx.fillStyle = '#FFFFFF';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('helpy', size.width / 2, size.height / 2);
+      }
+      
+      // Download
+      const filename = `splash-${size.width}x${size.height}.png`;
+      const link = document.createElement('a');
+      link.download = filename;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      
+      generated.add(index);
+      document.getElementById(`status-${index}`).textContent = '✓ Downloaded';
+      document.getElementById(`btn-${index}`).disabled = true;
+    }
+
+    // Generate all
+    async function generateAll() {
+      const btn = document.getElementById('generateAll');
+      btn.disabled = true;
+      btn.textContent = 'Generating...';
+      
+      // Wait for logo to load
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      for (let i = 0; i < SPLASH_SIZES.length; i++) {
+        if (!generated.has(i)) {
+          document.getElementById('progress').textContent = 
+            `Generating ${i + 1} of ${SPLASH_SIZES.length}...`;
+          await generateOne(i);
+          await new Promise(resolve => setTimeout(resolve, 300)); // Small delay between downloads
+        }
+      }
+      
+      document.getElementById('progress').textContent = 
+        `✓ All ${SPLASH_SIZES.length} splash screens generated!`;
+      btn.textContent = 'Done!';
+    }
+
+    // Generate link tags
+    function generateLinkTags() {
+      const tags = SPLASH_SIZES.map(size => {
+        const deviceWidth = size.width / size.scale;
+        const deviceHeight = size.height / size.scale;
+        return `<link rel="apple-touch-startup-image" href="/splash/splash-${size.width}x${size.height}.png" media="(device-width: ${deviceWidth}px) and (device-height: ${deviceHeight}px) and (-webkit-device-pixel-ratio: ${size.scale})">`;
+      }).join('\n');
+      
+      document.getElementById('linkTags').textContent = tags;
+    }
+
+    // Initialize
+    renderGrid();
+    generateLinkTags();
+  </script>
+</body>
+</html>
+

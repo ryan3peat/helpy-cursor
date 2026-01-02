@@ -1,6 +1,7 @@
 import React from 'react';
 import { NavItem, TranslationDictionary } from '../types';
 import { NAV_ITEMS } from '../config/navConfig';
+import { haptics } from '../utils/haptics';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -18,6 +19,11 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, onNavigate, t }) 
     { id: NAV_ITEMS.expenses.id, label: t[NAV_ITEMS.expenses.labelKey], icon: NAV_ITEMS.expenses.icon },
     { id: NAV_ITEMS.info.id, label: t[NAV_ITEMS.info.labelKey], icon: NAV_ITEMS.info.icon },
   ];
+
+  const handleNavClick = (itemId: string) => {
+    haptics.selection(); // Subtle haptic on nav change
+    onNavigate(itemId);
+  };
 
   return (
     <div className="min-h-screen pb-20 bg-background">
@@ -42,7 +48,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, onNavigate, t }) 
             return (
               <button
                 key={item.id}
-                onClick={() => onNavigate(item.id)}
+                onClick={() => handleNavClick(item.id)}
                 className="flex flex-col items-center justify-center gap-0.5 w-full h-full"
               >
                 <Icon 

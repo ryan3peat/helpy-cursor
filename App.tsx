@@ -7,7 +7,8 @@ import Meals from './components/Meals';
 import Expenses from './components/Expenses';
 import Profile from './components/Profile';
 import HouseholdInfo from './components/HouseholdInfo';
-import IntroAnimation from './components/IntroAnimation';
+// IntroAnimation removed - replaced by iOS splash screen + simple fade-in
+import { initBadgeTracking, updateBadgeFromData, markAppAsSeen } from './services/appBadgeService';
 import Auth from './components/Auth';
 import OnboardingOverlay, { OnboardingAction } from './components/OnboardingOverlay';
 import InviteSetup from './components/InviteSetup';
@@ -63,19 +64,14 @@ const AppContent: React.FC = () => {
   const { user: clerkUser, isSignedIn, isLoaded: clerkLoaded } = useUser();
   const { setStaticTranslating, isAnyTranslating } = useTranslationContext();
   const isSupabaseReady = useSupabaseReady(); // Wait for authenticated Supabase client
-  // Skip intro animation for returning users or notification deep links
-  const [showIntro, setShowIntro] = useState(() => {
-    // Skip intro if user has existing session (returning user)
-    const hasSession = localStorage.getItem('helpy_current_session_user');
-    if (hasSession) return false;
-    
-    // Skip intro if this is a deep link (e.g., from notification click)
-    // Notification URLs have hashes like #meals, #todo?section=shopping, etc.
-    const hash = window.location.hash;
-    if (hash && hash !== '#' && hash !== '#/') return false;
-    
-    return true;
-  });
+  // App fade-in state (replaces old intro animation)
+  const [appReady, setAppReady] = useState(false);
+  
+  // Trigger fade-in after a brief moment (allows splash screen to show)
+  useEffect(() => {
+    const timer = setTimeout(() => setAppReady(true), 100);
+    return () => clearTimeout(timer);
+  }, []);
   const [activeView, setActiveView] = useState('dashboard');
   const [clerkLoadTimeout, setClerkLoadTimeout] = useState(false);
   const [clerkError, setClerkError] = useState<string | null>(null);
@@ -232,8 +228,9 @@ const AppContent: React.FC = () => {
     
     setCurrentUser(user);
     localStorage.setItem('helpy_current_session_user', JSON.stringify(user));
-    setShowIntro(false);
     setActiveView('dashboard');
+    // Mark app as seen for badge tracking
+    markAppAsSeen();
     console.log('✅ [App] handleLogin completed, currentUser should be set');
     
     // Trigger auto-subscribe immediately after login
@@ -265,7 +262,6 @@ const AppContent: React.FC = () => {
       localStorage.removeItem('helpy_current_session_user');
       setActiveView('dashboard');
       setUsers([]);
-      setShowIntro(true);
     } catch (error) {
       console.error('Logout error:', error);
       loginProcessedRef.current = false;
@@ -273,7 +269,6 @@ const AppContent: React.FC = () => {
       localStorage.removeItem('helpy_current_session_user');
       setActiveView('dashboard');
       setUsers([]);
-      setShowIntro(true);
     }
   }, [signOut]);
 
@@ -416,6 +411,27 @@ const AppContent: React.FC = () => {
       console.warn('[App] Failed to initialize push notifications:', err);
     });
   }, []);
+
+  // Initialize app badge tracking (for PWA icon badge)
+  useEffect(() => {
+    if (!currentUser) return;
+    
+    // Initialize badge tracking - marks app as seen when opened/visible
+    const cleanup = initBadgeTracking(
+      currentUser.id,
+      () => ({ todoItems, meals, expenses })
+    );
+    
+    return cleanup;
+  }, [currentUser?.id]);
+
+  // Update badge when data changes (only when app is in background)
+  useEffect(() => {
+    if (!currentUser || document.visibilityState === 'visible') return;
+    
+    // Update badge count when new data arrives while app is backgrounded
+    updateBadgeFromData(currentUser.id, todoItems, meals, expenses);
+  }, [todoItems.length, meals.length, expenses.length, currentUser?.id]);
 
   // Auto-subscribe to push notifications if user has them enabled
   // This ensures users with notificationsEnabled=true get subscribed automatically
@@ -1067,16 +1083,18 @@ const AppContent: React.FC = () => {
     console.log('🟠 [App] Rendering Auth component - no currentUser');
     console.log('🟠 [App] Clerk state:', { clerkLoaded, isSignedIn, clerkUser: !!clerkUser });
     return (
-      <>
-        {showIntro && <IntroAnimation onComplete={() => setShowIntro(false)} />}
+      <div 
+        className={`transition-opacity duration-300 ${appReady ? 'opacity-100' : 'opacity-0'}`}
+      >
         <Auth onLogin={handleLogin} t={translations} />
-      </>
+      </div>
     );
   }
 
   return (
-    <>
-      {showIntro && <IntroAnimation onComplete={() => setShowIntro(false)} />}
+    <div 
+      className={`transition-opacity duration-300 ${appReady ? 'opacity-100' : 'opacity-0'}`}
+    >
       {onboardingStep > 0 && (
         <OnboardingOverlay
           stepIndex={onboardingStep - 1}
@@ -1091,7 +1109,7 @@ const AppContent: React.FC = () => {
       <Layout activeView={activeView} onNavigate={handleNavigate} t={translations}>
         {renderView()}
       </Layout>
-    </>
+    </div>
   );
 };
 

@@ -32,6 +32,7 @@ import { useSheetTheme } from '@/hooks/useSheetTheme';
 import { Expense, BaseViewProps, User, UserRole, HouseholdPlan } from '../types';
 import { EXPENSE_CATEGORIES } from '../constants';
 import { detectInputLanguage } from '../services/languageDetectionService';
+import { haptics } from '../utils/haptics';
 import { formatCurrency, DEFAULT_CURRENCY, getCurrencySymbol } from '../currencyConfig';
 import {
   uploadReceiptImage,
@@ -659,14 +660,19 @@ const Expenses: React.FC<ExpensesProps> = ({
         console.warn('[Expenses] Cannot link receipt - no valid expense UUID available');
       }
 
+      // Haptic feedback on successful save
+      haptics.success();
+      
     } catch (addError) {
       console.error('[Expenses] Error saving expense:', addError);
       if (!expenseLikelySaved) {
         setError(addError instanceof Error ? addError.message : 'Failed to save expense. Please try again.');
+        haptics.error();
       } else {
         // Expense was likely saved (optimistic or returned), so avoid blocking banner
         console.warn('[Expenses] Expense likely saved; suppressing error banner.');
         setError(null);
+        haptics.success();
       }
     } finally {
       // Always close dialog and clear saving state so the user isn't stuck

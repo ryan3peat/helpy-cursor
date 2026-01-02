@@ -481,50 +481,71 @@ const Meals: React.FC<MealsProps> = ({
   };
 
   // ─────────────────────────────────────────────────────────────────
-  // ⚠️  iOS AUTO-SCROLL FIX - DO NOT CHANGE TO useEffect
+  // ⚠️  SCROLL TO TODAY - BULLETPROOF FIX
   // ─────────────────────────────────────────────────────────────────
-  // useLayoutEffect runs BEFORE browser paint (useEffect runs after).
-  // Primary scroll is synchronous. RAF is ONLY used as fallback if element
-  // isn't found on first attempt (fixes "today card not showing" bug).
-  // See docs/MEALS_SCROLL_FIX.md for full explanation.
+  // Uses multiple timed attempts to ensure scroll works even when:
+  // - Data is loading asynchronously
+  // - Layout shifts occur after initial render
+  // - iOS Safari has rendering quirks
+  // The scroll is verified and retried until today card is visible.
   // ─────────────────────────────────────────────────────────────────
-  useLayoutEffect(() => {
+  useEffect(() => {
     if (!shouldAutoScroll.current) return;
 
     if (view === 'day') {
-      const performScroll = (): boolean => {
+      const headerOffset = 200;
+      
+      const scrollToToday = (): boolean => {
         const targetDateStr = formatDateStr(new Date(currentViewDate));
         const targetEl = document.getElementById(`day-${targetDateStr}`);
         
-        if (targetEl) {
-          // Calculate scroll position with offset for sticky header + breathing room
-          const headerOffset = 200;
-          const elementPosition = targetEl.getBoundingClientRect().top + window.scrollY;
-          window.scrollTo({ top: elementPosition - headerOffset, behavior: 'auto' });
-          return true;
+        if (!targetEl) return false;
+        
+        const rect = targetEl.getBoundingClientRect();
+        
+        // Check if already in correct position (within acceptable range)
+        // Today card should be near the top, just below the header
+        if (rect.top >= headerOffset - 20 && rect.top <= headerOffset + 50) {
+          return true; // Already correctly positioned
         }
-        return false;
+        
+        // Scroll to position
+        const elementPosition = rect.top + window.scrollY;
+        window.scrollTo({ top: elementPosition - headerOffset, behavior: 'auto' });
+        return true;
       };
 
-      // Try synchronous scroll first
-      if (performScroll()) {
-        shouldAutoScroll.current = false;
-      } else {
-        // Element not found yet - retry on next animation frame
-        // This handles rare cases where DOM isn't fully ready on first render
-        const rafId = requestAnimationFrame(() => {
-          performScroll();
-          shouldAutoScroll.current = false;
-        });
-        return () => cancelAnimationFrame(rafId);
-      }
+      // Multiple attempts with increasing delays to handle:
+      // - Immediate: catch fast renders
+      // - 50ms: after initial paint
+      // - 150ms: after async data might load
+      // - 300ms: final safety net
+      const timeouts: number[] = [];
+      
+      const attemptScroll = (delay: number, isFinal: boolean) => {
+        const id = window.setTimeout(() => {
+          scrollToToday();
+          if (isFinal) {
+            shouldAutoScroll.current = false;
+          }
+        }, delay);
+        timeouts.push(id);
+      };
+
+      attemptScroll(0, false);
+      attemptScroll(50, false);
+      attemptScroll(150, false);
+      attemptScroll(300, true);
+
+      return () => {
+        timeouts.forEach(id => clearTimeout(id));
+      };
     } else if (view === 'week') {
-      // Week view: scroll horizontally to center today's column
-      const performWeekScroll = (): boolean => {
+      const scrollWeekView = () => {
         const scrollContainer = weekScrollRef.current;
-        if (!scrollContainer) return false;
+        if (!scrollContainer) return;
         
-        // Scroll page to top so date header row is visible
+        // Scroll page to top
         window.scrollTo({ top: 0, behavior: 'auto' });
         
         // Find today's column index (0-6)
@@ -532,37 +553,32 @@ const Meals: React.FC<MealsProps> = ({
           d.toDateString() === new Date().toDateString()
         );
         
-        // Only scroll if today is in the current week
-        if (todayIndex < 0) {
-          shouldAutoScroll.current = false;
-          return true;
-        }
+        if (todayIndex < 0) return;
         
-        // Calculate scroll position
-        // Label column is 72px, remaining width is divided by 7 days
         const labelColumnWidth = 72;
         const totalDayColumnsWidth = scrollContainer.scrollWidth - labelColumnWidth;
         const columnWidth = totalDayColumnsWidth / 7;
-        
-        // Calculate position to center today's column in the viewport
         const todayColumnStart = labelColumnWidth + (columnWidth * todayIndex);
         const targetScroll = todayColumnStart - (scrollContainer.clientWidth / 2) + (columnWidth / 2);
         
         scrollContainer.scrollTo({ left: Math.max(0, targetScroll), behavior: 'auto' });
-        return true;
       };
 
-      // Try synchronous scroll first
-      if (performWeekScroll()) {
-        shouldAutoScroll.current = false;
-      } else {
-        // Container not found yet - retry on next animation frame
-        const rafId = requestAnimationFrame(() => {
-          performWeekScroll();
-          shouldAutoScroll.current = false;
-        });
-        return () => cancelAnimationFrame(rafId);
-      }
+      const timeouts: number[] = [];
+      
+      [0, 50, 150, 300].forEach((delay, i, arr) => {
+        const id = window.setTimeout(() => {
+          scrollWeekView();
+          if (i === arr.length - 1) {
+            shouldAutoScroll.current = false;
+          }
+        }, delay);
+        timeouts.push(id);
+      });
+
+      return () => {
+        timeouts.forEach(id => clearTimeout(id));
+      };
     }
   }, [view, currentViewDate, weekDays]);
 

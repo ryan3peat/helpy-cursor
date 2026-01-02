@@ -15,7 +15,7 @@ The Meals page MUST use the exact same structure as ToDo and Expenses:
 Key rules:
 1. Header INSIDE the `page-content` wrapper (not outside)
 2. Header uses `-mx-4 px-4 sm:-mx-6 sm:px-6` to extend edge-to-edge
-3. Use `useLayoutEffect` (NOT `useEffect`) for auto-scroll
+3. Use `useEffect` with MULTIPLE TIMED ATTEMPTS (0ms, 50ms, 150ms, 300ms) for auto-scroll
 4. NO scroll-pending/scroll-ready classes
 
 See `docs/MEALS_SCROLL_FIX.md` for details.

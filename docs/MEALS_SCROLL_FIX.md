@@ -8,7 +8,13 @@ This document explains the auto-scroll fix for the Meals page that scrolls to "T
 
 ## The Problem
 
-When users land on the Meals page, it should auto-scroll to show "Today's" meals.
+When users land on the Meals page, it should auto-scroll to show "Today's" meals at the top of the viewport.
+
+**Previous issues:**
+- First visit: today card appeared at bottom (scroll not working)
+- Re-visit: today card correctly at top
+
+**Root cause:** Single scroll attempt would fire before layout was fully settled, especially on first app load when data was still loading.
 
 ---
 
@@ -40,33 +46,57 @@ Key points:
 - Header uses `-mx-4 px-4` to extend edge-to-edge
 - No `scroll-pending` class
 
-### 2. useLayoutEffect for Auto-Scroll
+### 2. Multiple Timed Scroll Attempts
+
+The bulletproof fix uses **multiple scroll attempts** at increasing delays:
 
 ```tsx
-useLayoutEffect(() => {
-  if (view !== 'day') return;
+useEffect(() => {
   if (!shouldAutoScroll.current) return;
 
-  const performScroll = (): boolean => {
-    const targetEl = document.getElementById(`day-${targetDateStr}`);
-    if (targetEl) {
-      window.scrollTo({ top: position, behavior: 'auto' });
+  if (view === 'day') {
+    const headerOffset = 200;
+    
+    const scrollToToday = (): boolean => {
+      const targetEl = document.getElementById(`day-${targetDateStr}`);
+      if (!targetEl) return false;
+      
+      const rect = targetEl.getBoundingClientRect();
+      
+      // Check if already in correct position
+      if (rect.top >= headerOffset - 20 && rect.top <= headerOffset + 50) {
+        return true;
+      }
+      
+      const elementPosition = rect.top + window.scrollY;
+      window.scrollTo({ top: elementPosition - headerOffset, behavior: 'auto' });
       return true;
-    }
-    return false;
-  };
+    };
 
-  if (performScroll()) {
-    shouldAutoScroll.current = false;
-  } else {
-    const rafId = requestAnimationFrame(() => {
-      performScroll();
-      shouldAutoScroll.current = false;
+    // Multiple attempts at 0ms, 50ms, 150ms, 300ms
+    const timeouts: number[] = [];
+    [0, 50, 150, 300].forEach((delay, i, arr) => {
+      const id = window.setTimeout(() => {
+        scrollToToday();
+        if (i === arr.length - 1) {
+          shouldAutoScroll.current = false;
+        }
+      }, delay);
+      timeouts.push(id);
     });
-    return () => cancelAnimationFrame(rafId);
+
+    return () => timeouts.forEach(id => clearTimeout(id));
   }
-}, [view, currentViewDate]);
+}, [view, currentViewDate, weekDays]);
 ```
+
+**Why this works:**
+- `0ms`: Catches fast renders
+- `50ms`: After initial paint settles
+- `150ms`: After async data might load
+- `300ms`: Final safety net
+
+Each attempt checks if already in position (avoids visible jumps) and scrolls if needed.
 
 ---
 
@@ -77,9 +107,9 @@ useLayoutEffect(() => {
 | Match ToDo/Expenses structure | Proven to work without flicker |
 | Header INSIDE page-content | Consistent with other pages |
 | Use `-mx-4 px-4` on header | Extends header edge-to-edge |
-| Use `useLayoutEffect` | Runs before browser paint |
-| NO `useEffect` for scroll | Runs after paint → visible jump |
-| RAF fallback for missing element | Handles rare DOM timing issue |
+| Use multiple timed attempts | Handles async data loading + layout shifts |
+| Check position before scrolling | Prevents visible scroll jumps |
+| Use `useEffect` (not useLayoutEffect) | Works better with timed attempts |
 
 ---
 

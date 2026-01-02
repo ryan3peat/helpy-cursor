@@ -552,6 +552,12 @@ const AppContent: React.FC = () => {
 
   const hid = currentUser?.householdId ?? '';
 
+  // Helper to detect temporary/optimistic IDs that haven't been saved to database yet
+  // These IDs are created for optimistic UI updates before real-time sync brings the real UUID
+  const isTempId = (id: string): boolean => {
+    return id.startsWith('temp-') || id.startsWith('todo-') || /^\d{13,}$/.test(id);
+  };
+
   // ToDo CRUD Handlers
   const handleAddTodoItem = async (item: ToDoItem) => {
     if (!hid) return item;
@@ -564,15 +570,27 @@ const AppContent: React.FC = () => {
 
   const handleUpdateTodoItem = async (id: string, data: Partial<ToDoItem>) => {
     if (!hid) return;
+    // Optimistically update UI
     setTodoItems(prev => prev.map(item => 
       item.id === id ? { ...item, ...data } : item
     ));
+    // Skip database call for temp IDs - real-time sync will handle it
+    if (isTempId(id)) {
+      console.warn('⚠️ Skipping update for temp item - waiting for real ID:', id);
+      return;
+    }
     await updateItem(hid, 'todo_items', id, data);
   };
 
   const handleDeleteTodoItem = async (id: string) => {
     if (!hid) return;
+    // Optimistically remove from UI
     setTodoItems(prev => prev.filter(item => item.id !== id));
+    // Skip database call for temp IDs - item not in database yet
+    if (isTempId(id)) {
+      console.warn('⚠️ Skipping delete for temp item - not yet saved:', id);
+      return;
+    }
     await deleteItem(hid, 'todo_items', id);
   };
 
@@ -589,12 +607,22 @@ const AppContent: React.FC = () => {
   const handleUpdateMeal = async (id: string, data: Partial<Meal>) => {
     if (!hid) return;
     setMeals(prev => prev.map(m => m.id === id ? { ...m, ...data } : m));  // Optimistic
+    // Skip database call for temp IDs - real-time sync will handle it
+    if (isTempId(id)) {
+      console.warn('⚠️ Skipping update for temp meal - waiting for real ID:', id);
+      return;
+    }
     await updateItem(hid, 'meals', id, data);
   };
 
   const handleDeleteMeal = async (id: string) => {
     if (!hid) return;
     setMeals(prev => prev.filter(m => m.id !== id));  // Optimistic
+    // Skip database call for temp IDs - item not in database yet
+    if (isTempId(id)) {
+      console.warn('⚠️ Skipping delete for temp meal - not yet saved:', id);
+      return;
+    }
     await deleteItem(hid, 'meals', id);
   };
 
@@ -623,12 +651,22 @@ const AppContent: React.FC = () => {
     // The created_by field shouldn't change after creation anyway
     const { id, createdBy, ...data } = expense;
     setExpenses(prev => prev.map(e => e.id === id ? { ...e, ...data } : e));  // Optimistic
+    // Skip database call for temp IDs - real-time sync will handle it
+    if (isTempId(id)) {
+      console.warn('⚠️ Skipping update for temp expense - waiting for real ID:', id);
+      return;
+    }
     await updateItem(hid, 'expenses', id, data);
   };
 
   const handleDeleteExpense = async (id: string) => {
     if (!hid) return;
     setExpenses(prev => prev.filter(e => e.id !== id));  // Optimistic
+    // Skip database call for temp IDs - item not in database yet
+    if (isTempId(id)) {
+      console.warn('⚠️ Skipping delete for temp expense - not yet saved:', id);
+      return;
+    }
     await deleteItem(hid, 'expenses', id);
   };
 
@@ -667,11 +705,23 @@ const AppContent: React.FC = () => {
   const handleUpdateUser = async (id: string, data: Partial<User>) => {
     if (!hid) return;
     setUsers(prev => prev.map(u => u.id === id ? { ...u, ...data } : u));  // Optimistic
+    // Skip database call for temp IDs - real-time sync will handle it
+    if (isTempId(id)) {
+      console.warn('⚠️ Skipping update for temp user - waiting for real ID:', id);
+      return;
+    }
     await updateItem(hid, 'users', id, data);
   };
 
   const handleDeleteUser = async (id: string) => {
     if (!hid || !currentUser) return;
+
+    // Skip for temp IDs - user not in database yet
+    if (isTempId(id)) {
+      console.warn('⚠️ Skipping delete for temp user - not yet saved:', id);
+      setUsers(prev => prev.filter(u => u.id !== id));  // Just remove from UI
+      return;
+    }
 
     try {
       // Use the new API endpoint that handles different user roles properly
@@ -772,6 +822,11 @@ const AppContent: React.FC = () => {
     setEssentialItems(prev => prev.map(item => 
       item.id === id ? { ...item, ...data } : item
     ));  // Optimistic
+    // Skip database call for temp IDs - real-time sync will handle it
+    if (isTempId(id)) {
+      console.warn('⚠️ Skipping update for temp essential info - waiting for real ID:', id);
+      return;
+    }
     try {
       await updateEssentialInfo(hid, id, data);
     } catch (error) {
@@ -784,6 +839,11 @@ const AppContent: React.FC = () => {
     if (!hid) return;
     const previousItems = essentialItems;
     setEssentialItems(prev => prev.filter(item => item.id !== id));  // Optimistic
+    // Skip database call for temp IDs - item not in database yet
+    if (isTempId(id)) {
+      console.warn('⚠️ Skipping delete for temp essential info - not yet saved:', id);
+      return;
+    }
     try {
       await deleteEssentialInfo(hid, id);
     } catch (error) {
@@ -819,6 +879,11 @@ const AppContent: React.FC = () => {
     setHouseRoutineItems(prev => prev.map(i => 
       i.id === id ? { ...i, ...data } : i
     ));  // Optimistic
+    // Skip database call for temp IDs - real-time sync will handle it
+    if (isTempId(id)) {
+      console.warn('⚠️ Skipping update for temp house routine - waiting for real ID:', id);
+      return;
+    }
     try {
       const updated = await updateHouseRoutine(hid, id, data);
       // Ensure state reflects server-mapped data (translations, etc.)
@@ -833,6 +898,11 @@ const AppContent: React.FC = () => {
     if (!hid) return;
     const previousItems = houseRoutineItems;
     setHouseRoutineItems(prev => prev.filter(i => i.id !== id));  // Optimistic
+    // Skip database call for temp IDs - item not in database yet
+    if (isTempId(id)) {
+      console.warn('⚠️ Skipping delete for temp house routine - not yet saved:', id);
+      return;
+    }
     try {
       await deleteHouseRoutine(hid, id);
     } catch (error) {

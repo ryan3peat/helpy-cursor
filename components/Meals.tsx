@@ -122,17 +122,13 @@ const Meals: React.FC<MealsProps> = ({
   const dayViewRef = useRef<HTMLDivElement | null>(null);
 
   // ─────────────────────────────────────────────────────────────────
-  // ⚠️  iOS FLICKER FIX - DO NOT MODIFY WITHOUT READING docs/MEALS_SCROLL_FIX.md
+  // ⚠️  iOS AUTO-SCROLL FIX - DO NOT MODIFY WITHOUT READING docs/MEALS_SCROLL_FIX.md
   // ─────────────────────────────────────────────────────────────────
-  // This pattern prevents iOS Safari from showing content at wrong scroll
-  // position before auto-scrolling to "Today". The fix has 4 parts:
-  // 1. shouldAutoScroll ref (initialized to true)
-  // 2. isScrollReady state (hides content until scroll complete)
-  // 3. useLayoutEffect (NOT useEffect) with synchronous scroll FIRST
-  // 4. RAF fallback ONLY if element not found (fixes "today card not showing")
+  // Auto-scrolls to "Today" on page load using useLayoutEffect.
+  // useLayoutEffect runs BEFORE browser paint, preventing visible scroll jump.
+  // RAF fallback handles rare cases where DOM isn't ready on first attempt.
   // ─────────────────────────────────────────────────────────────────
   const shouldAutoScroll = useRef(true);
-  const [isScrollReady, setIsScrollReady] = useState(false);
 
   const mealTypes = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER, MealType.SNACKS];
   const langCode = currentLang === 'en' ? 'en-GB' : currentLang;
@@ -473,7 +469,7 @@ const Meals: React.FC<MealsProps> = ({
   };
 
   // ─────────────────────────────────────────────────────────────────
-  // ⚠️  iOS FLICKER FIX - DO NOT CHANGE TO useEffect
+  // ⚠️  iOS AUTO-SCROLL FIX - DO NOT CHANGE TO useEffect
   // ─────────────────────────────────────────────────────────────────
   // useLayoutEffect runs BEFORE browser paint (useEffect runs after).
   // Primary scroll is synchronous. RAF is ONLY used as fallback if element
@@ -481,16 +477,8 @@ const Meals: React.FC<MealsProps> = ({
   // See docs/MEALS_SCROLL_FIX.md for full explanation.
   // ─────────────────────────────────────────────────────────────────
   useLayoutEffect(() => {
-    if (view !== 'day') {
-      // Week view doesn't need scroll - mark ready immediately
-      if (!isScrollReady) setIsScrollReady(true);
-      return;
-    }
-    if (!shouldAutoScroll.current) {
-      // No scroll needed - mark ready immediately
-      if (!isScrollReady) setIsScrollReady(true);
-      return;
-    }
+    if (view !== 'day') return;
+    if (!shouldAutoScroll.current) return;
 
     const performScroll = (): boolean => {
       const targetDateStr = formatDateStr(new Date(currentViewDate));
@@ -506,21 +494,19 @@ const Meals: React.FC<MealsProps> = ({
       return false;
     };
 
-    // Try synchronous scroll first (prevents iOS flicker)
+    // Try synchronous scroll first
     if (performScroll()) {
       shouldAutoScroll.current = false;
-      if (!isScrollReady) setIsScrollReady(true);
     } else {
       // Element not found yet - retry on next animation frame
       // This handles rare cases where DOM isn't fully ready on first render
       const rafId = requestAnimationFrame(() => {
-        performScroll(); // Best effort - scroll if element exists now
+        performScroll();
         shouldAutoScroll.current = false;
-        if (!isScrollReady) setIsScrollReady(true);
       });
       return () => cancelAnimationFrame(rafId);
     }
-  }, [view, currentViewDate, isScrollReady]);
+  }, [view, currentViewDate]);
 
   // Close quick join popover when clicking outside
   useEffect(() => {
@@ -721,51 +707,48 @@ const Meals: React.FC<MealsProps> = ({
 
   return (
     <div className="min-h-screen bg-background pb-40">
-      {/* STICKY HEADER - Rubber bands with content on overscroll */}
-      <header 
-        className="sticky top-0 z-20 bg-background flex items-end pb-3 px-4 sm:px-6" 
-        style={{ height: '120px' }}
-      >
-        <div className="max-w-2xl mx-auto w-full flex items-center justify-between">
-          <h1 className="text-display text-foreground">
-            {t['meals.title']}
-          </h1>
-          
-          {/* Day/Week Toggle - Matches Expenses month selector style */}
-          <div className="relative rounded-full overflow-hidden shrink-0 bg-secondary">
-            <div className="flex p-0.5">
-              {['day', 'week'].map(v => {
-                const isActive = view === v;
-                return (
-                  <button
-                    key={v}
-                    onClick={() => setView(v as 'day' | 'week')}
-                    className={`py-2 px-3 rounded-full text-body font-medium flex items-center gap-1.5 transition-colors ${
-                      isActive
-                        ? 'bg-background text-primary shadow-sm'
-                        : 'text-muted-foreground'
-                    }`}
-                  >
-                    {v === 'day' ? (
-                      <><Rows3 size={16} /> {t['meals.view_day'] ?? 'Day'}</>
-                    ) : (
-                      <><Sheet size={16} /> {t['meals.view_week'] ?? 'Week'}</>
-                    )}
-                  </button>
-                );
-              })}
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
+        {/* ─────────────────────────────────────────────────────────────── */}
+        {/* STICKY HEADER - Push Up (No Shrink) - matches ToDo/Expenses */}
+        {/* ─────────────────────────────────────────────────────────────── */}
+        <header 
+          className="sticky top-0 z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 pb-3 flex items-end" 
+          style={{ height: '120px' }}
+        >
+          <div className="flex items-center justify-between w-full">
+            <h1 className="text-display text-foreground">
+              {t['meals.title']}
+            </h1>
+            
+            {/* Day/Week Toggle - Matches Expenses month selector style */}
+            <div className="relative rounded-full overflow-hidden shrink-0 bg-secondary">
+              <div className="flex p-0.5">
+                {['day', 'week'].map(v => {
+                  const isActive = view === v;
+                  return (
+                    <button
+                      key={v}
+                      onClick={() => setView(v as 'day' | 'week')}
+                      className={`py-2 px-3 rounded-full text-body font-medium flex items-center gap-1.5 transition-colors ${
+                        isActive
+                          ? 'bg-background text-primary shadow-sm'
+                          : 'text-muted-foreground'
+                      }`}
+                    >
+                      {v === 'day' ? (
+                        <><Rows3 size={16} /> {t['meals.view_day'] ?? 'Day'}</>
+                      ) : (
+                        <><Sheet size={16} /> {t['meals.view_week'] ?? 'Week'}</>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+              {/* Inset shadow overlay */}
+              <div className="absolute inset-0 rounded-full pointer-events-none shadow-[inset_0_1px_2px_rgba(0,0,0,0.06)]" />
             </div>
-            {/* Inset shadow overlay */}
-            <div className="absolute inset-0 rounded-full pointer-events-none shadow-[inset_0_1px_2px_rgba(0,0,0,0.06)]" />
           </div>
-        </div>
-      </header>
-
-      {/* Content - hidden until scroll completes to prevent iOS flicker */}
-      <div 
-        className="max-w-2xl mx-auto px-4 sm:px-6 page-content"
-        style={{ opacity: isScrollReady ? 1 : 0 }}
-      >
+        </header>
         {/* Error Banner */}
         <ErrorBanner 
           error={error} 

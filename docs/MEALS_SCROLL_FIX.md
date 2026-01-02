@@ -1,100 +1,51 @@
-# Meals Page iOS Scroll Flicker Fix
+# Meals Page Auto-Scroll Fix
 
 ## ⚠️ CRITICAL - DO NOT MODIFY THIS PATTERN
 
-This document explains the iOS Safari flicker fix for the Meals page auto-scroll to "Today" feature. **This fix has been implemented multiple times because it keeps getting accidentally reverted. Please read this before modifying any scroll-related code in Meals.tsx.**
+This document explains the auto-scroll fix for the Meals page that scrolls to "Today" on load.
 
 ---
 
-## The Problems (2 Issues)
+## The Problem
 
-### Problem 1: iOS Flicker
-When users land on the Meals page, it auto-scrolls to show "Today's" meals. On iOS Safari, this causes a **visual flicker** where:
-
-1. Page renders at scroll position 0 (top)
-2. User briefly sees content at wrong position
-3. Page scrolls to Today
-4. User sees content jump → **FLICKER!**
-
-This does NOT happen on Chrome desktop because Chrome batches paints differently.
-
-### Problem 2: Today Card Not Showing
-Occasionally, the "Today" card element doesn't exist in the DOM when `useLayoutEffect` first runs. This causes the scroll to fail silently, leaving users at the top of the page instead of at Today.
+When users land on the Meals page, it should auto-scroll to show "Today's" meals.
 
 ---
 
-## The Solution (4 Parts)
+## The Solution
 
-### Part 1: `isScrollReady` State
+### 1. Match ToDo/Expenses Structure
+
+The Meals page must use the **exact same structure** as ToDo and Expenses:
 
 ```tsx
-const [isScrollReady, setIsScrollReady] = useState(false);
+return (
+  <div className="min-h-screen bg-background pb-40">
+    <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
+      <header 
+        className="sticky top-0 z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 pb-3 flex items-end" 
+        style={{ height: '120px' }}
+      >
+        {/* Header content */}
+      </header>
+      
+      {/* Rest of page content */}
+    </div>
+  </div>
+);
 ```
 
-Content is hidden (`opacity: 0`) until scroll completes. This prevents users from seeing content at the wrong position.
+Key points:
+- Header is INSIDE the `page-content` wrapper
+- Header uses `-mx-4 px-4` to extend edge-to-edge
+- No `scroll-pending` class
 
-### Part 2: `useLayoutEffect` (NOT useEffect)
+### 2. useLayoutEffect for Auto-Scroll
 
 ```tsx
 useLayoutEffect(() => {
-  // scroll logic here
-}, [view, currentViewDate, isScrollReady]);
-```
-
-- `useLayoutEffect` runs **synchronously BEFORE browser paint**
-- `useEffect` runs **AFTER browser paint** ← causes flicker!
-
-### Part 3: Synchronous Scroll FIRST
-
-The primary scroll attempt is synchronous (no RAF):
-
-```tsx
-// Try synchronous scroll first (prevents iOS flicker)
-if (performScroll()) {
-  shouldAutoScroll.current = false;
-  if (!isScrollReady) setIsScrollReady(true);
-}
-```
-
-This happens before the browser paints, so no flicker.
-
-### Part 4: RAF Fallback ONLY If Element Not Found
-
-If the element doesn't exist on first try, use RAF as fallback:
-
-```tsx
-else {
-  // Element not found yet - retry on next animation frame
-  const rafId = requestAnimationFrame(() => {
-    performScroll();
-    shouldAutoScroll.current = false;
-    if (!isScrollReady) setIsScrollReady(true);
-  });
-  return () => cancelAnimationFrame(rafId);
-}
-```
-
-**Why this doesn't cause flicker:** Content is still hidden (`opacity: 0`) because `isScrollReady` is still `false`. The content only becomes visible AFTER the RAF scroll completes.
-
----
-
-## The Complete Pattern
-
-```tsx
-// State to track if scroll is complete
-const [isScrollReady, setIsScrollReady] = useState(false);
-const shouldAutoScroll = useRef(true);
-
-// useLayoutEffect - runs BEFORE paint
-useLayoutEffect(() => {
-  if (view !== 'day') {
-    if (!isScrollReady) setIsScrollReady(true);
-    return;
-  }
-  if (!shouldAutoScroll.current) {
-    if (!isScrollReady) setIsScrollReady(true);
-    return;
-  }
+  if (view !== 'day') return;
+  if (!shouldAutoScroll.current) return;
 
   const performScroll = (): boolean => {
     const targetEl = document.getElementById(`day-${targetDateStr}`);
@@ -105,25 +56,16 @@ useLayoutEffect(() => {
     return false;
   };
 
-  // Try synchronous scroll first (prevents iOS flicker)
   if (performScroll()) {
     shouldAutoScroll.current = false;
-    if (!isScrollReady) setIsScrollReady(true);
   } else {
-    // Element not found - RAF fallback (content still hidden)
     const rafId = requestAnimationFrame(() => {
       performScroll();
       shouldAutoScroll.current = false;
-      if (!isScrollReady) setIsScrollReady(true);
     });
     return () => cancelAnimationFrame(rafId);
   }
-}, [view, currentViewDate, isScrollReady]);
-
-// Content wrapper - hidden until ready
-<div style={{ opacity: isScrollReady ? 1 : 0 }}>
-  {/* content */}
-</div>
+}, [view, currentViewDate]);
 ```
 
 ---
@@ -132,37 +74,17 @@ useLayoutEffect(() => {
 
 | Rule | Why |
 |------|-----|
+| Match ToDo/Expenses structure | Proven to work without flicker |
+| Header INSIDE page-content | Consistent with other pages |
+| Use `-mx-4 px-4` on header | Extends header edge-to-edge |
 | Use `useLayoutEffect` | Runs before browser paint |
-| NO `useEffect` for scroll | Runs after paint → flicker |
-| Synchronous scroll FIRST | Prevents iOS flicker in normal case |
-| RAF ONLY as fallback | Handles rare "element not found" case |
-| `isScrollReady` state | Hides content until scroll done |
-| `opacity: 0` until ready | Prevents speculative paint visibility |
-| `behavior: 'auto'` | Instant scroll, no animation |
-
----
-
-## Why RAF Fallback Doesn't Cause Flicker
-
-You might think "but RAF runs after paint, won't that cause flicker?"
-
-**No, because:**
-1. Content has `opacity: 0` (hidden) until `isScrollReady` is `true`
-2. `isScrollReady` is only set to `true` AFTER the scroll (inside RAF callback)
-3. So the sequence is: hidden → RAF scrolls → set visible → paint at correct position
-
----
-
-## History
-
-This fix has been implemented and accidentally reverted multiple times. The issue only appears on **iOS Safari** (not Chrome desktop), which is why it's easy to miss during development.
-
-- Initial fix: `useLayoutEffect` without RAF
-- Enhanced fix: Added `isScrollReady` state to hide content until scroll completes
-- Final fix: Added RAF fallback for rare "today card not showing" bug
+| NO `useEffect` for scroll | Runs after paint → visible jump |
+| RAF fallback for missing element | Handles rare DOM timing issue |
 
 ---
 
 ## Files
 
-- `/components/Meals.tsx` - Lines ~124-140, ~475-525, ~765
+- `/components/Meals.tsx` - Lines ~708-760, ~460-500
+- `/components/ToDo.tsx` - Reference implementation
+- `/components/Expenses.tsx` - Reference implementation

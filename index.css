@@ -505,6 +505,17 @@ button:focus-visible {
   flex-direction: column;
 }
 
+/* ─────────────────────────────────────────────────────────────────
+   iOS SCROLL FIX - Hides content until auto-scroll completes
+   See docs/MEALS_SCROLL_FIX.md - DO NOT REMOVE
+   ───────────────────────────────────────────────────────────────── */
+.scroll-pending {
+  opacity: 0 !important;
+}
+.scroll-ready {
+  opacity: 1 !important;
+}
+
 .helpy-logo {
   font-family: 'Peanut Butter', Inter, sans-serif;
   font-size: 20px;

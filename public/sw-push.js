@@ -302,7 +302,7 @@ self.addEventListener('notificationclose', (event) => {
 
 
 // ============================================================================
-// MESSAGE HANDLER (for debugging)
+// MESSAGE HANDLER (for debugging and cache management)
 // ============================================================================
 // Handle messages from the main app
 self.addEventListener('message', (event) => {
@@ -311,6 +311,30 @@ self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
     return; // No response needed
+  }
+  
+  // Emergency cache clear - triggered from app settings
+  if (event.data && event.data.type === 'CLEAR_ALL_CACHES') {
+    console.log('[SW] 🧹 Emergency cache clear requested...');
+    caches.keys().then(cacheNames => {
+      return Promise.all(
+        cacheNames.map(name => {
+          console.log('[SW] Deleting cache:', name);
+          return caches.delete(name);
+        })
+      );
+    }).then(() => {
+      console.log('[SW] ✅ All caches cleared successfully');
+      if (event.ports && event.ports[0]) {
+        event.ports[0].postMessage({ success: true, message: 'All caches cleared' });
+      }
+    }).catch(error => {
+      console.error('[SW] ❌ Failed to clear caches:', error);
+      if (event.ports && event.ports[0]) {
+        event.ports[0].postMessage({ success: false, error: error.message });
+      }
+    });
+    return;
   }
   
   if (event.data && event.data.type === 'PING') {

@@ -24,6 +24,7 @@ import {
 } from '../services/pushNotificationService';
 import { compressImageForAvatar } from '../utils/imageCompression';
 import { getRoleConfig } from '../config/rolePermissions';
+import { clearAllCachesAndReload } from '../utils/clearCache';
 
 interface ProfileProps extends BaseViewProps {
   users: User[];
@@ -3755,6 +3756,27 @@ const Profile: React.FC<ProfileProps> = ({
                   </div>
                 </div>
               )}
+            </div>
+
+            {/* Clear Cache - Emergency fix for broken UI */}
+            <div className="bg-card rounded-3xl shadow-sm overflow-hidden mt-6">
+              <button
+                onClick={() => {
+                  if (window.confirm(t['settings.clear_cache_confirm'] || 'This will clear all cached data and reload the app. Continue?')) {
+                    clearAllCachesAndReload();
+                  }
+                }}
+                className="w-full px-5 py-4 flex items-center justify-between"
+              >
+                <div className="flex items-center gap-3">
+                  <Trash2 size={18} className="text-muted-foreground" />
+                  <div>
+                    <p className="font-bold text-foreground text-title text-left">{t['settings.clear_cache'] || 'Clear Cache'}</p>
+                    <p className="text-caption text-muted-foreground text-left">{t['settings.clear_cache_description'] || 'Fix display issues by clearing cached data'}</p>
+                  </div>
+                </div>
+                <ChevronRight size={20} className="text-muted-foreground" />
+              </button>
             </div>
           </div>
 

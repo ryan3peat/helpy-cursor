@@ -54,6 +54,9 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
   const [showSignUp, setShowSignUp] = useState(false);
   const [showHouseholdSwitch, setShowHouseholdSwitch] = useState(false);
   const [showRemovedFromHousehold, setShowRemovedFromHousehold] = useState(false);
+  // Delay rendering the SignIn form to let Clerk component mount
+  // This prevents the flash of the container without the form
+  const [signInReady, setSignInReady] = useState(false);
   const [householdSwitchInfo, setHouseholdSwitchInfo] = useState<{
     currentHouseholdName: string;
     newHouseholdName: string;
@@ -81,6 +84,16 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
       }
     };
   }, []);
+  
+  // Delay showing the SignIn form to let Clerk component mount fully
+  // This prevents the flash of container without the form
+  React.useEffect(() => {
+    if (isLoaded && !user) {
+      // Give Clerk's SignIn component time to render
+      const timer = setTimeout(() => setSignInReady(true), 150);
+      return () => clearTimeout(timer);
+    }
+  }, [isLoaded, user]);
 
   React.useEffect(() => {
     console.log('🔵 [Auth] useEffect triggered:', { 
@@ -958,6 +971,26 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
       };
       
       return <SignUp onBackToSignIn={handleBackToSignIn} />;
+    }
+    
+    // Wait for SignIn component to be ready (prevents flash of container without form)
+    if (!signInReady) {
+      console.log('🔴 [Auth] Waiting for SignIn component to be ready...');
+      return (
+        <div className="min-h-screen flex flex-col justify-end pb-24" style={{ backgroundColor: '#3EAFD2' }}>
+          <div className="text-white text-center">
+            <div className="broom-loader-wrapper">
+              <div className="broom-loader mb-4">
+                <BroomIcon className="broom-icon-svg" />
+                <div className="broom-track"></div>
+                <div className="broom-trail"></div>
+              </div>
+              <p className="text-body whitespace-nowrap">Tidying things up...</p>
+            </div>
+            <p className="text-caption text-white/60 mt-2">Please wait a moment</p>
+          </div>
+        </div>
+      );
     }
     
     console.log('🔴 [Auth] Rendering SignIn component - Clerk loaded but no authenticated user');

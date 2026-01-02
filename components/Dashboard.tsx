@@ -359,8 +359,8 @@ const Dashboard: React.FC<DashboardProps> = ({
   const [showIosInstallSteps, setShowIosInstallSteps] = useState(false);
   const { canPromptInstall, shouldShowIosSteps, dismiss, promptInstall } = usePwaInstallNudge();
   
-  // Scroll header animation - expand cards earlier (at ~70% visibility)
-  const { isScrolled } = useScrollHeader({ collapseThreshold: 90, expandThreshold: 70 });
+  // Scroll header animation - expand cards earlier (at ~50% visibility)
+  const { isScrolled } = useScrollHeader({ collapseThreshold: 130, expandThreshold: 110 });
   
   // Lock body scroll when language modal is open
   useScrollLock(showLangModal);
@@ -681,30 +681,30 @@ const Dashboard: React.FC<DashboardProps> = ({
             <div
               key={user.id}
               onClick={() => onSelectFamilyMember?.(user.id)}
-              className="flex-shrink-0 w-[220px] bg-card rounded-3xl shadow-sm p-5 cursor-pointer"
+              className="flex-shrink-0 w-[220px] bg-card rounded-3xl shadow-sm overflow-hidden cursor-pointer"
             >
-              {/* Large Portrait Avatar - Centered at Top */}
-              <div className="flex justify-center mb-4">
-                <div className="relative w-[180px] h-[180px] rounded-2xl overflow-visible">
-                  {/* Avatar Image */}
-                  <div className="w-full h-full rounded-2xl overflow-hidden bg-secondary shadow-sm">
-                    <img 
-                      src={getAvatarUrl(user)} 
-                      alt={user.name} 
-                      className="w-full h-full object-cover" 
-                    />
-                  </div>
-                  
-                  {/* Role Badge - Bottom Left (inside avatar) */}
-                  <div className="absolute bottom-3 left-3">
-                    <span className={`inline-block px-3 py-1 rounded-full text-caption font-semibold ${getRoleBadgeColor(user.role)}`}>
-                      {user.role}
-                    </span>
-                  </div>
+              {/* Avatar - Edge to Edge at Top */}
+              <div className="relative w-full h-[200px]">
+                {/* Avatar Image - Rounded only at top (inherited from card overflow-hidden) */}
+                <div className="w-full h-full bg-secondary">
+                  <img 
+                    src={getAvatarUrl(user)} 
+                    alt={user.name} 
+                    className="w-full h-full object-cover" 
+                  />
+                </div>
+                
+                {/* Role Badge - Bottom Left (inside avatar) */}
+                <div className="absolute bottom-3 left-3">
+                  <span className={`inline-block px-3 py-1 rounded-full text-caption font-semibold ${getRoleBadgeColor(user.role)}`}>
+                    {user.role}
+                  </span>
                 </div>
               </div>
 
-              {/* Name + Pending Status - Same row */}
+              {/* Content Area - With padding */}
+              <div className="p-4">
+                {/* Name + Pending Status - Same row */}
               <div className="flex items-center justify-between mt-1">
                 <h3 className="text-title font-bold text-foreground truncate">
                   {user.name.split(' ')[0]} {isCurrent ? `(${t['common.you'] || 'You'})` : ''}
@@ -753,6 +753,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                     </div>
                   </div>
                 </div>
+              </div>
               </div>
             </div>
           );

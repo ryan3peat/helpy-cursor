@@ -1129,4 +1129,50 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
 
   // User Guide - Additional (Translation Audit)
   'guide.rsvp': 'RSVP',
+
+  // Alert Modal - Common (added for native alert() replacement)
+  'common.ok': 'OK',
+  'common.clear_all': 'Clear All',
+  'common.keep_subscription': 'Keep Subscription',
+  'common.cancel_subscription': 'Cancel',
+
+  // Alert Modal - ToDo
+  'todo.clear_completed_title': 'Clear Completed Items',
+
+  // Alert Modal - Subscription
+  'subscription.cancel_title': 'Cancel Subscription',
+  'subscription.downgrade_success_title': 'Subscription Canceled',
+
+  // Alert Modal - Settings
+  'settings.clear_cache_action': 'Clear Cache',
+
+  // Alert Modal - Maps (HouseholdInfo)
+  'maps.open_in_maps': 'Open in Maps',
+  'maps.open_apple_maps': 'Open Apple Maps',
+
+  // Alert Modal - Error Titles
+  'error.downgrade_title': 'Downgrade Failed',
+  'error.portal_title': 'Portal Error',
+  'error.add_user_title': 'Add User Failed',
+  'error.invite_title': 'Invite Failed',
+  'error.invalid_file_title': 'Invalid File',
+  'error.file_too_large_title': 'File Too Large',
+  'error.upload_failed_title': 'Upload Failed',
+  'error.cancel_subscription_title': 'Cancellation Failed',
+  'error.delete_account_title': 'Delete Failed',
+  'error.invite_expired_title': 'Invitation Expired',
+  'error.invite_expired': 'This invitation has expired. Please ask for a new invite link.',
+  'error.email_conflict_title': 'Email Already Used',
+  'error.email_conflict': 'This email is already associated with another Helpy account. If you already have an account, please sign in instead of signing up. Or use a different email address.',
+  'error.invite_processing_title': 'Invitation Error',
+  'error.invite_processing': 'There was a problem processing your invitation. Please try clicking the invite link again or contact the household admin for a new link.',
+  'error.account_setup_title': 'Account Setup Failed',
+  'error.unknown': 'Unknown error',
+  'error.try_again': 'Please try again.',
+  'error.create_household_title': 'Household Creation Failed',
+  'error.create_household': 'Failed to create household',
+  'error.switch_household_title': 'Household Switch Failed',
+  'error.switch_household': 'Failed to switch household',
+  'error.remove_user_title': 'Remove User Failed',
+  'error.remove_user': 'Failed to remove user',
 };

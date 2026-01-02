@@ -291,12 +291,13 @@ const ToDo: React.FC<ToDoProps> = ({
   const [inlineInputValue, setInlineInputValue] = useState('');
   const inlineInputRef = useRef<HTMLInputElement>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [showClearCompletedConfirm, setShowClearCompletedConfirm] = useState(false);
   
   // Lock body scroll when sheet is open
-  useScrollLock(isSheetOpen);
+  useScrollLock(isSheetOpen || showClearCompletedConfirm);
   
   // Dim status bar when sheet is open (iOS)
-  useSheetTheme(isSheetOpen);
+  useSheetTheme(isSheetOpen || showClearCompletedConfirm);
   
   const [sheetForm, setSheetForm] = useState<Partial<ToDoItem>>({});
   const [editingItemId, setEditingItemId] = useState<string | null>(null); // Track if editing existing item
@@ -651,12 +652,12 @@ const ToDo: React.FC<ToDoProps> = ({
     }
   };
   
-  const handleClearAllCompleted = async () => {
-    const confirmed = window.confirm(
-      t['confirm.clear_completed'] || 'Delete all completed items?\n\nThis action cannot be undone.'
-    );
-    
-    if (!confirmed) return;
+  const handleClearAllCompleted = () => {
+    setShowClearCompletedConfirm(true);
+  };
+  
+  const confirmClearAllCompleted = async () => {
+    setShowClearCompletedConfirm(false);
     
     // Get all completed item IDs for current section
     const completedIds = completedItems.map(item => item.id);
@@ -1741,6 +1742,46 @@ const ToDo: React.FC<ToDoProps> = ({
                   ? (t['common.update'] || 'Update')
                   : (activeSection === 'shopping' ? (t['common.add_item'] || 'Add Item') : (t['common.add_task'] || 'Add Task'))
                 }
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Clear Completed Confirmation Modal */}
+      {showClearCompletedConfirm && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
+          {/* Safe area bottom cover */}
+          <div 
+            className="absolute bottom-0 left-0 right-0 bg-card"
+            style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
+          />
+          <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
+            {/* Header */}
+            <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
+              <h2 className="text-title text-foreground">{t['todo.clear_completed_title'] || 'Clear Completed Items'}</h2>
+            </div>
+
+            {/* Content */}
+            <div className="p-5">
+              <p className="text-body text-muted-foreground">
+                {t['confirm.clear_completed'] || 'Delete all completed items? This action cannot be undone.'}
+              </p>
+            </div>
+
+            {/* Footer */}
+            <div className="p-5 pb-8 border-t border-border flex gap-3 shrink-0">
+              <button
+                onClick={() => setShowClearCompletedConfirm(false)}
+                className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body"
+              >
+                {t['common.cancel'] || 'Cancel'}
+              </button>
+              <button
+                onClick={confirmClearAllCompleted}
+                className="flex-1 py-3.5 rounded-xl bg-destructive/10 text-destructive text-body"
+              >
+                {t['common.clear_all'] || 'Clear All'}
               </button>
             </div>
           </div>

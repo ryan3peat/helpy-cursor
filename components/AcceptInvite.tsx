@@ -196,7 +196,7 @@ const AcceptInvite: React.FC<AcceptInviteProps> = ({ onComplete }) => {
   if (status === 'loading' || status === 'signin') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-brand-primary to-brand-secondary">
-        <div className="bg-white rounded-3xl p-8 shadow-2xl text-center max-w-md">
+        <div className="bg-white rounded-2xl p-8 shadow-2xl text-center max-w-md">
           <Loader2 className="w-12 h-12 animate-spin text-brand-primary mx-auto mb-4" />
           <h2 className="text-title text-gray-800">
             {status === 'signin' ? 'Signing you in...' : 'Loading invitation...'}
@@ -211,7 +211,7 @@ const AcceptInvite: React.FC<AcceptInviteProps> = ({ onComplete }) => {
   if (status === 'error') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-brand-primary to-brand-secondary">
-        <div className="bg-white rounded-3xl p-8 shadow-2xl text-center max-w-md">
+        <div className="bg-white rounded-2xl p-8 shadow-2xl text-center max-w-md">
           <XCircle className="w-12 h-12 text-[#F06292] mx-auto mb-4" />
           <h2 className="text-title text-gray-800">Invitation Error</h2>
           <p className="text-gray-500 mt-2">{errorMessage || 'This invitation is invalid or has expired.'}</p>
@@ -230,7 +230,7 @@ const AcceptInvite: React.FC<AcceptInviteProps> = ({ onComplete }) => {
   if (status === 'complete') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-brand-primary to-brand-secondary">
-        <div className="bg-white rounded-3xl p-8 shadow-2xl text-center max-w-md">
+        <div className="bg-white rounded-2xl p-8 shadow-2xl text-center max-w-md">
           <CheckCircle className="w-12 h-12 text-[#4CAF50] mx-auto mb-4" />
           <h2 className="text-title text-gray-800">Welcome to Helpy!</h2>
           <p className="text-gray-500 mt-2">Your account is ready. Redirecting...</p>
@@ -246,7 +246,7 @@ const AcceptInvite: React.FC<AcceptInviteProps> = ({ onComplete }) => {
     
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-brand-primary to-brand-secondary p-6">
-        <div className="bg-white rounded-3xl p-8 shadow-2xl w-full max-w-md">
+        <div className="bg-white rounded-2xl p-8 shadow-2xl w-full max-w-md">
           <div className="text-center mb-8">
             <h1 className="text-display text-gray-800">Verify Your {verifyType}</h1>
             <p className="text-gray-500 mt-2">We sent a code to {verifyTarget}</p>
@@ -301,7 +301,7 @@ const AcceptInvite: React.FC<AcceptInviteProps> = ({ onComplete }) => {
   // Signup form
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-brand-primary to-brand-secondary p-6">
-      <div className="bg-white rounded-3xl p-8 shadow-2xl w-full max-w-md">
+      <div className="bg-white rounded-2xl p-8 shadow-2xl w-full max-w-md">
         {/* Header */}
         <div className="text-center mb-8">
           <div className="w-16 h-16 bg-brand-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">

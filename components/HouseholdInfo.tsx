@@ -603,6 +603,10 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
   
   // Helper upgrade modal state
   const [showHelperUpgradeModal, setShowHelperUpgradeModal] = useState(false);
+  
+  // Maps choice modal state (when Google Maps not installed on iOS)
+  const [showMapsChoiceModal, setShowMapsChoiceModal] = useState(false);
+  const [pendingMapsAddress, setPendingMapsAddress] = useState<string>('');
 
   // ─────────────────────────────────────────────────────────────────
   // Essential Info State (data comes from props, only UI state here)
@@ -628,10 +632,10 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
   const [viewingHouseRoutineItem, setViewingHouseRoutineItem] = useState<HouseRoutine | null>(null);
   
   // Lock body scroll when any modal is open
-  useScrollLock(isEssentialModalOpen || isHouseRoutineModalOpen || !!viewingHouseRoutineItem);
+  useScrollLock(isEssentialModalOpen || isHouseRoutineModalOpen || !!viewingHouseRoutineItem || showMapsChoiceModal);
   
   // Dim status bar when sheet is open (iOS)
-  useSheetTheme(isEssentialModalOpen || isHouseRoutineModalOpen || !!viewingHouseRoutineItem || showHelperUpgradeModal);
+  useSheetTheme(isEssentialModalOpen || isHouseRoutineModalOpen || !!viewingHouseRoutineItem || showHelperUpgradeModal || showMapsChoiceModal);
   
   const [houseRoutineForm, setHouseRoutineForm] = useState<CreateHouseRoutine>({
     category: "Home Rules",
@@ -799,18 +803,13 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
       // Try Google Maps app (URI scheme - works like tel:, returns where you left off)
       window.location.href = `comgooglemaps://?q=${encoded}`;
       
-      // After 1 second, if app didn't open, ASK user (prevents double-open race condition)
+      // After 1 second, if app didn't open, show modal to ask user
       setTimeout(() => {
         document.removeEventListener('visibilitychange', handleVisibility);
         if (!appOpened && document.visibilityState === 'visible') {
-          // Google Maps didn't open - ask user instead of auto-opening
-          const openAppleMaps = window.confirm(
-            t['maps.google_not_installed'] || 'Google Maps is not installed.\n\nOpen in Apple Maps instead?'
-          );
-          if (openAppleMaps) {
-            // Apple Maps URI scheme - returns where you left off
-            window.location.href = `maps://maps.apple.com/?q=${encoded}`;
-          }
+          // Google Maps didn't open - show modal to ask user
+          setPendingMapsAddress(encoded);
+          setShowMapsChoiceModal(true);
         }
       }, 1000);
     } else if (isAndroid) {
@@ -820,6 +819,13 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
     } else {
       // Desktop: open Google Maps web in new tab
       window.open(`https://www.google.com/maps/search/?api=1&query=${encoded}`, "_blank");
+    }
+  };
+  
+  const handleOpenAppleMaps = () => {
+    setShowMapsChoiceModal(false);
+    if (pendingMapsAddress) {
+      window.location.href = `maps://maps.apple.com/?q=${pendingMapsAddress}`;
     }
   };
 
@@ -1407,6 +1413,46 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
           </div>
         </div>
       )}
+
+      {/* Maps Choice Modal (iOS - when Google Maps not installed) */}
+      {showMapsChoiceModal && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
+          {/* Safe area bottom cover */}
+          <div 
+            className="absolute bottom-0 left-0 right-0 bg-card"
+            style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
+          />
+          <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
+            {/* Header */}
+            <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
+              <h2 className="text-title text-foreground">{t['maps.open_in_maps'] || 'Open in Maps'}</h2>
+            </div>
+
+            {/* Content */}
+            <div className="p-5">
+              <p className="text-body text-muted-foreground">
+                {t['maps.google_not_installed'] || 'Google Maps is not installed. Open in Apple Maps instead?'}
+              </p>
+            </div>
+
+            {/* Footer */}
+            <div className="p-5 pb-8 border-t border-border flex gap-3 shrink-0">
+              <button
+                onClick={() => setShowMapsChoiceModal(false)}
+                className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body"
+              >
+                {t['common.cancel'] || 'Cancel'}
+              </button>
+              <button
+                onClick={handleOpenAppleMaps}
+                className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body"
+              >
+                {t['maps.open_apple_maps'] || 'Open Apple Maps'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -1450,7 +1496,7 @@ const EssentialInfoCard: React.FC<EssentialInfoCardProps> = ({
   };
 
   return (
-    <div className="bg-card rounded-xl p-4 shadow-sm">
+    <div className="bg-card rounded-2xl p-4 shadow-sm">
       {/* Header */}
       <div className="flex items-start justify-between mb-2">
         <div className="flex items-center gap-3">
@@ -1577,7 +1623,7 @@ const HouseRoutineCard: React.FC<HouseRoutineCardProps> = ({
   const handleTap = canEdit ? onEdit : onView;
 
   return (
-    <div className="bg-card rounded-xl p-4 shadow-sm">
+    <div className="bg-card rounded-2xl p-4 shadow-sm">
       {/* Header */}
       <div className="flex items-start justify-between mb-2">
         <div className="flex items-center gap-3">

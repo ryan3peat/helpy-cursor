@@ -54,6 +54,63 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
   const [showSignUp, setShowSignUp] = useState(false);
   const [showHouseholdSwitch, setShowHouseholdSwitch] = useState(false);
   const [showRemovedFromHousehold, setShowRemovedFromHousehold] = useState(false);
+  
+  // Generic alert modal state (replaces native alert())
+  const [alertModal, setAlertModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: 'error' | 'success' | 'info';
+  }>({ isOpen: false, title: '', message: '', type: 'info' });
+  
+  const showAlert = (title: string, message: string, type: 'error' | 'success' | 'info' = 'info') => {
+    setAlertModal({ isOpen: true, title, message, type });
+  };
+  
+  // Alert Modal Component (renders on top of any screen)
+  const AlertModal = () => {
+    if (!alertModal.isOpen) return null;
+    return (
+      <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center">
+        {/* Safe area bottom cover */}
+        <div 
+          className="absolute bottom-0 left-0 right-0 bg-card"
+          style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
+        />
+        <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
+          {/* Header */}
+          <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
+            <h2 className={`text-title ${alertModal.type === 'error' ? 'text-destructive' : alertModal.type === 'success' ? 'text-primary' : 'text-foreground'}`}>
+              {alertModal.title}
+            </h2>
+          </div>
+
+          {/* Content */}
+          <div className="p-5">
+            <p className="text-body text-muted-foreground">
+              {alertModal.message}
+            </p>
+          </div>
+
+          {/* Footer */}
+          <div className="p-5 pb-8 border-t border-border shrink-0">
+            <button
+              onClick={() => setAlertModal(prev => ({ ...prev, isOpen: false }))}
+              className={`w-full py-3.5 rounded-xl text-body ${
+                alertModal.type === 'error' 
+                  ? 'bg-destructive/10 text-destructive' 
+                  : alertModal.type === 'success'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-secondary text-foreground'
+              }`}
+            >
+              {t['common.ok'] || 'OK'}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
   // Delay rendering the SignIn form to let Clerk component mount
   // This prevents the flash of the container without the form
   const [signInReady, setSignInReady] = useState(false);
@@ -237,7 +294,11 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
             return;
           } else if (result.expired) {
             console.log('⏰ Invitation expired');
-            alert('This invitation has expired. Please ask for a new invite link.');
+            showAlert(
+              t['error.invite_expired_title'] || 'Invitation Expired',
+              t['error.invite_expired'] || 'This invitation has expired. Please ask for a new invite link.',
+              'error'
+            );
             window.history.replaceState({}, '', window.location.pathname);
           } else if (result.notFound) {
             console.log('⚠️ [Auth] Invitation not found, may already be activated');
@@ -254,7 +315,11 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
           } else if (result.emailConflict) {
             // Email already used by another account
             console.log('📧 [Auth] Email conflict - another account has this email');
-            alert('This email is already associated with another Helpy account. If you already have an account, please sign in instead of signing up. Or use a different email address.');
+            showAlert(
+              t['error.email_conflict_title'] || 'Email Already Used',
+              t['error.email_conflict'] || 'This email is already associated with another Helpy account. If you already have an account, please sign in instead of signing up. Or use a different email address.',
+              'error'
+            );
             window.history.replaceState({}, '', window.location.pathname);
             setIsCreatingUser(false);
             return;
@@ -502,7 +567,11 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
       if (wasInviteAttempt && finalHid && finalUid) {
         console.error('❌ [Auth] Invite params detected but not processed - NOT creating new household');
         console.error('❌ [Auth] Invite details:', { hid: finalHid, uid: finalUid });
-        alert('There was a problem processing your invitation. Please try clicking the invite link again or contact the household admin for a new link.');
+        showAlert(
+          t['error.invite_processing_title'] || 'Invitation Error',
+          t['error.invite_processing'] || 'There was a problem processing your invitation. Please try clicking the invite link again or contact the household admin for a new link.',
+          'error'
+        );
         window.history.replaceState({}, '', window.location.pathname);
         setIsCreatingUser(false);
         return;
@@ -576,7 +645,11 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
       console.log('✅ [Auth] onLogin() called successfully, resetting isCreatingUser');
     } catch (error: any) {
       console.error('❌ Failed to create user:', error);
-      alert(`Account setup failed: ${error.message || 'Unknown error'}\n\nPlease try signing up again.`);
+      showAlert(
+        t['error.account_setup_title'] || 'Account Setup Failed',
+        `${error.message || t['error.unknown'] || 'Unknown error'}. ${t['error.try_again'] || 'Please try signing up again.'}`,
+        'error'
+      );
       
       // Reset so user can try again
       hasCheckedUser.current = false;
@@ -688,7 +761,11 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
       
     } catch (error: any) {
       console.error('❌ Failed to create new household:', error);
-      alert(`Failed to create household: ${error.message || 'Unknown error'}`);
+      showAlert(
+        t['error.create_household_title'] || 'Household Creation Failed',
+        `${t['error.create_household'] || 'Failed to create household'}: ${error.message || t['error.unknown'] || 'Unknown error'}`,
+        'error'
+      );
       setIsCreatingUser(false);
     }
   };
@@ -844,7 +921,11 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
       }
     } catch (error: any) {
       console.error('Failed to switch household:', error);
-      alert(`Failed to switch household: ${error.message || 'Unknown error'}`);
+      showAlert(
+        t['error.switch_household_title'] || 'Household Switch Failed',
+        `${t['error.switch_household'] || 'Failed to switch household'}: ${error.message || t['error.unknown'] || 'Unknown error'}`,
+        'error'
+      );
       setIsCreatingUser(false);
     }
   };
@@ -903,6 +984,8 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
   // Loading state while creating user OR while user is authenticated but being processed
   if (isCreatingUser || (isLoaded && user && !hasCheckedUser.current)) {
     return (
+      <>
+      <AlertModal />
       <div className="min-h-screen flex flex-col justify-end pb-24" style={{ backgroundColor: '#3EAFD2' }}>
         <div className="text-white text-center">
           <div className="broom-loader-wrapper">
@@ -916,6 +999,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
           <p className="text-caption text-white/60 mt-2">Setting up your account</p>
         </div>
       </div>
+      </>
     );
   }
 
@@ -996,6 +1080,8 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
     console.log('🔴 [Auth] Rendering SignIn component - Clerk loaded but no authenticated user');
     console.log('🔴 [Auth] State:', { isLoaded, hasUser: !!user });
     return (
+      <>
+      <AlertModal />
       <div className="min-h-screen w-full flex flex-col items-center justify-center p-6" style={{ backgroundColor: '#3EAFD2' }}>
         
         {/* Single container for logo + auth to ensure alignment */}
@@ -1079,6 +1165,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
           </a>
         </div>
       </div>
+      </>
     );
   }
 

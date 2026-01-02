@@ -183,6 +183,28 @@ const Profile: React.FC<ProfileProps> = ({
     targetPeriod?: 'monthly' | 'yearly';
   } | null>(null);
 
+  // Cancel subscription confirmation modal state
+  const [showCancelSubConfirm, setShowCancelSubConfirm] = useState(false);
+  
+  // Clear cache confirmation modal state
+  const [showClearCacheConfirm, setShowClearCacheConfirm] = useState(false);
+
+  // Generic alert modal state (replaces native alert())
+  const [alertModal, setAlertModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: 'error' | 'success' | 'info';
+  }>({ isOpen: false, title: '', message: '', type: 'info' });
+  
+  const showAlert = (title: string, message: string, type: 'error' | 'success' | 'info' = 'info') => {
+    setAlertModal({ isOpen: true, title, message, type });
+  };
+  
+  const closeAlert = () => {
+    setAlertModal(prev => ({ ...prev, isOpen: false }));
+  };
+
   // Push Notification State
   const [isTogglingNotifications, setIsTogglingNotifications] = useState(false);
   const isTogglingRef = useRef(false); // Ref version to check in useEffect without triggering re-runs
@@ -231,10 +253,10 @@ const Profile: React.FC<ProfileProps> = ({
   }, []);
 
   // Lock scroll when any modal is open
-  useScrollLock(isAddModalOpen || isEditModalOpen || deleteConfirmOpen || showPhotoOptions || subscriptionCanceled || isPlanConfirmOpen || showDowngradeModal);
+  useScrollLock(isAddModalOpen || isEditModalOpen || deleteConfirmOpen || showPhotoOptions || subscriptionCanceled || isPlanConfirmOpen || showDowngradeModal || showCancelSubConfirm || showClearCacheConfirm || alertModal.isOpen);
   
   // Dim status bar when sheet is open (iOS)
-  useSheetTheme(isAddModalOpen || isEditModalOpen || deleteConfirmOpen || showPhotoOptions || subscriptionCanceled || isPlanConfirmOpen || isDeleteAccountModalOpen || isFinalDeleteConfirmOpen || showDowngradeModal);
+  useSheetTheme(isAddModalOpen || isEditModalOpen || deleteConfirmOpen || showPhotoOptions || subscriptionCanceled || isPlanConfirmOpen || isDeleteAccountModalOpen || isFinalDeleteConfirmOpen || showDowngradeModal || showCancelSubConfirm || showClearCacheConfirm || alertModal.isOpen);
 
   // Track if we've handled the initial edit (to prevent re-opening on data refresh)
   const [initialEditHandled, setInitialEditHandled] = useState(false);
@@ -704,7 +726,11 @@ const Profile: React.FC<ProfileProps> = ({
         if (result.success) {
           // Refresh subscription info
           await fetchSubscriptionInfo(0, false);
-          alert(result.message || `Successfully changed to ${plan.toUpperCase()} plan!`);
+          showAlert(
+            t['subscription.plan_changed_title'] || 'Plan Changed',
+            result.message || `Successfully changed to ${plan.toUpperCase()} plan!`,
+            'success'
+          );
         } else {
           throw new Error(result.error || 'Failed to change subscription');
         }
@@ -746,11 +772,19 @@ const Profile: React.FC<ProfileProps> = ({
       await downgradeToFree(currentUser.householdId, currentUser.id);
       // Refresh subscription info
       await fetchSubscriptionInfo(0, false);
-      alert(t['subscription.downgrade_success'] || 'Your subscription has been canceled. You are now on the Free plan.');
+      showAlert(
+        t['subscription.downgrade_success_title'] || 'Subscription Canceled',
+        t['subscription.downgrade_success'] || 'Your subscription has been canceled. You are now on the Free plan.',
+        'success'
+      );
       setLoadingPlan(null);
     } catch (error) {
       console.error('Downgrade error:', error);
-      alert(error instanceof Error ? error.message : 'Failed to downgrade. Please try again.');
+      showAlert(
+        t['error.downgrade_title'] || 'Downgrade Failed',
+        error instanceof Error ? error.message : 'Failed to downgrade. Please try again.',
+        'error'
+      );
       setLoadingPlan(null);
     }
   };
@@ -786,7 +820,11 @@ const Profile: React.FC<ProfileProps> = ({
       window.location.href = portalUrl;
     } catch (error) {
       console.error('Portal error:', error);
-      alert(error instanceof Error ? error.message : 'Failed to open subscription management.');
+      showAlert(
+        t['error.portal_title'] || 'Portal Error',
+        error instanceof Error ? error.message : 'Failed to open subscription management.',
+        'error'
+      );
       setIsLoading(false);
     }
   };
@@ -882,7 +920,11 @@ const Profile: React.FC<ProfileProps> = ({
         setLimitErrorMessage(errorMessage);
         setAddUserStep('limit_error');
       } else {
-        alert(t['error.add_user'] || 'Failed to add user. Please try again.');
+        showAlert(
+          t['error.add_user_title'] || 'Add User Failed',
+          t['error.add_user'] || 'Failed to add user. Please try again.',
+          'error'
+        );
         setAddUserStep('form');
       }
     } finally {
@@ -938,7 +980,11 @@ const Profile: React.FC<ProfileProps> = ({
       setAddUserStep('invite');
     } catch (error) {
       console.error('Failed to resend invite:', error);
-      alert(t['error.generate_invite'] || 'Failed to generate new invite link');
+      showAlert(
+        t['error.invite_title'] || 'Invite Failed',
+        t['error.generate_invite'] || 'Failed to generate new invite link',
+        'error'
+      );
       closeAddUserModal();
     }
   };
@@ -1062,13 +1108,21 @@ const Profile: React.FC<ProfileProps> = ({
 
     // Validate file type
     if (!file.type.startsWith('image/')) {
-      alert(t['error.select_image'] || 'Please select an image file');
+      showAlert(
+        t['error.invalid_file_title'] || 'Invalid File',
+        t['error.select_image'] || 'Please select an image file',
+        'error'
+      );
       return;
     }
 
     // Validate file size (max 10MB before compression - we'll compress it down)
     if (file.size > 10 * 1024 * 1024) {
-      alert(t['error.image_too_large'] || 'Image size must be less than 10MB');
+      showAlert(
+        t['error.file_too_large_title'] || 'File Too Large',
+        t['error.image_too_large'] || 'Image size must be less than 10MB',
+        'error'
+      );
       return;
     }
 
@@ -1092,7 +1146,11 @@ const Profile: React.FC<ProfileProps> = ({
       console.log('✅ Avatar updated successfully');
     } catch (error) {
       console.error('❌ Failed to upload avatar:', error);
-      alert(t['error.upload_image'] || 'Failed to upload image. Please try again.');
+      showAlert(
+        t['error.upload_failed_title'] || 'Upload Failed',
+        t['error.upload_image'] || 'Failed to upload image. Please try again.',
+        'error'
+      );
     } finally {
       setIsUploadingAvatar(false);
     }
@@ -1171,7 +1229,7 @@ const Profile: React.FC<ProfileProps> = ({
 
           <div className="pt-6 space-y-6">
             {/* User Carousel */}
-            <div className="bg-card rounded-3xl px-5 py-5 shadow-sm">
+            <div className="bg-card rounded-2xl px-5 py-5 shadow-sm">
               {householdName && (
                 <h2 className="text-title font-bold text-foreground mb-1">{householdName}</h2>
               )}
@@ -1228,7 +1286,7 @@ const Profile: React.FC<ProfileProps> = ({
 
             {/* Selected User Profile Card */}
             {selectedUser && (
-              <div className="bg-card rounded-3xl shadow-sm p-6 mb-6 relative">
+              <div className="bg-card rounded-2xl shadow-sm p-6 mb-6 relative">
                 {/* Edit button (pencil) - positioned top right */}
                 {(!isHelper || selectedUser.id === currentUser.id) && (
                   <button
@@ -1437,7 +1495,7 @@ const Profile: React.FC<ProfileProps> = ({
             {/* Quick Settings Button */}
             <button
               onClick={() => setActiveSection('settings')}
-              className="w-full bg-card px-5 py-4 rounded-3xl shadow-sm flex items-center justify-between "
+              className="w-full bg-card px-5 py-4 rounded-2xl shadow-sm flex items-center justify-between "
             >
               <div className="flex items-center gap-3">
                 <Settings size={18} className="text-primary" />
@@ -1450,7 +1508,7 @@ const Profile: React.FC<ProfileProps> = ({
             </button>
 
             {/* User Guide & Tutorial Card */}
-            <div className="w-full bg-card rounded-3xl shadow-sm overflow-hidden">
+            <div className="w-full bg-card rounded-2xl shadow-sm overflow-hidden">
               {/* User Guide */}
               <button
                 onClick={() => setActiveSection('guide')}
@@ -1750,7 +1808,7 @@ const Profile: React.FC<ProfileProps> = ({
                     <div className="p-5 pb-8 border-t border-border flex gap-2 shrink-0">
                       <button
                         onClick={handleWhatsAppShare}
-                        className="flex-1 py-3.5 rounded-2xl bg-[#25D366] text-white text-body flex items-center justify-center gap-2 shadow-sm"
+                        className="flex-1 py-3.5 rounded-xl bg-[#25D366] text-white text-body flex items-center justify-center gap-2 shadow-sm"
                       >
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                           <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
@@ -1759,14 +1817,14 @@ const Profile: React.FC<ProfileProps> = ({
                       </button>
                       <button
                         onClick={handleShareInvite}
-                        className="flex-1 py-3.5 rounded-2xl bg-secondary text-foreground text-body flex items-center justify-center gap-2"
+                        className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body flex items-center justify-center gap-2"
                       >
                         <Share2 size={18} />
                         {t['common.share'] || 'Share'}
                       </button>
                       <button
                         onClick={handleCopyInvite}
-                        className="flex-1 py-3.5 rounded-2xl bg-secondary text-foreground text-body flex items-center justify-center gap-2"
+                        className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body flex items-center justify-center gap-2"
                       >
                         {isCopied ? <Check size={18} /> : <Copy size={18} />}
                         {isCopied ? (t['profile.copied'] || 'Copied!') : (t['profile.copy_link'] || 'Copy')}
@@ -1806,13 +1864,13 @@ const Profile: React.FC<ProfileProps> = ({
                             }
                           }, 300);
                         }}
-                        className="w-full py-3.5 rounded-2xl bg-primary text-primary-foreground text-body font-semibold shadow-sm"
+                        className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground text-body font-semibold shadow-sm"
                       >
                         {t['common.upgrade_plan'] || 'Upgrade Plan'}
                       </button>
                       <button
                         onClick={() => setAddUserStep('form')}
-                        className="w-full py-3.5 rounded-2xl bg-secondary text-foreground text-body font-semibold"
+                        className="w-full py-3.5 rounded-xl bg-secondary text-foreground text-body font-semibold"
                       >
                         {t['common.go_back'] || 'Go Back'}
                       </button>
@@ -2177,10 +2235,12 @@ const Profile: React.FC<ProfileProps> = ({
   // =====================================================
   // PLAN SELECTION VIEW
   // =====================================================
-  const handleCancelSubscription = async () => {
-    if (!window.confirm(t['subscription.confirm_cancel'] || 'Are you sure you want to cancel your subscription? You will lose access to premium features at the end of your billing period.')) {
-      return;
-    }
+  const handleCancelSubscription = () => {
+    setShowCancelSubConfirm(true);
+  };
+  
+  const confirmCancelSubscription = async () => {
+    setShowCancelSubConfirm(false);
     
     try {
       setIsLoading(true);
@@ -2188,7 +2248,11 @@ const Profile: React.FC<ProfileProps> = ({
       await handleManageSubscription();
     } catch (error) {
       console.error('Error canceling subscription:', error);
-      alert(t['error.cancel_subscription'] || 'Failed to cancel subscription. Please try again.');
+      showAlert(
+        t['error.cancel_subscription_title'] || 'Cancellation Failed',
+        t['error.cancel_subscription'] || 'Failed to cancel subscription. Please try again.',
+        'error'
+      );
       setIsLoading(false);
     }
   };
@@ -2239,7 +2303,11 @@ const Profile: React.FC<ProfileProps> = ({
 
   const handleDeleteAccount = async () => {
     if (!currentUser?.householdId || !clerkUser) {
-      alert(t['error.delete_account_unable'] || 'Unable to delete account. Please try again.');
+      showAlert(
+        t['error.delete_account_title'] || 'Delete Failed',
+        t['error.delete_account_unable'] || 'Unable to delete account. Please try again.',
+        'error'
+      );
       return;
     }
 
@@ -2295,7 +2363,11 @@ const Profile: React.FC<ProfileProps> = ({
       onLogout();
     } catch (error) {
       console.error('Error deleting account:', error);
-      alert(t['error.delete_account'] || 'Failed to delete account. Please try again or contact support.');
+      showAlert(
+        t['error.delete_account_title'] || 'Delete Failed',
+        t['error.delete_account'] || 'Failed to delete account. Please try again or contact support.',
+        'error'
+      );
       setIsDeletingAccount(false);
       setIsFinalDeleteConfirmOpen(false);
     }
@@ -2514,14 +2586,14 @@ const Profile: React.FC<ProfileProps> = ({
 
             {/* Current Subscription Summary Tile */}
             {isLoadingSubscription ? (
-              <div className="mt-6 bg-card rounded-3xl p-6 shadow-sm border border-border mb-6">
+              <div className="mt-6 bg-card rounded-2xl p-6 shadow-sm border border-border mb-6">
                 <div className="flex items-center justify-center py-8">
                   <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
                 </div>
               </div>
             ) : (
               <div 
-                className="mt-6 rounded-3xl p-6 shadow-md mb-6"
+                className="mt-6 rounded-2xl p-6 shadow-md mb-6"
                 style={{ 
                   backgroundColor: currentPlanColors.bg, 
                   color: currentPlanColors.text
@@ -3534,7 +3606,7 @@ const Profile: React.FC<ProfileProps> = ({
         <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
           {renderSettingsHeader(t['settings.appearance'] || 'Appearance', () => setActiveSection('settings'))}
           <div className="pt-6">
-            <div className="bg-card rounded-3xl shadow-sm overflow-hidden">
+            <div className="bg-card rounded-2xl shadow-sm overflow-hidden">
               {themeOptions.map((option, index) => (
                 <div key={option.id}>
                   <button
@@ -3619,7 +3691,7 @@ const Profile: React.FC<ProfileProps> = ({
           {renderSettingsHeader(t['common.settings'] || 'Settings', () => setActiveSection('main'))}
           <div className="pt-6">
 
-            <div className="bg-card rounded-3xl shadow-sm overflow-hidden">
+            <div className="bg-card rounded-2xl shadow-sm overflow-hidden">
               {[
                 { id: 'plan', label: t['common.plan'] || 'Subscription', icon: Crown, helperHidden: true },
                 { id: 'security', label: t['common.security'] || 'Account', icon: Shield, helperHidden: false },
@@ -3647,7 +3719,7 @@ const Profile: React.FC<ProfileProps> = ({
             </div>
 
             {/* Notifications Toggle */}
-            <div className="bg-card rounded-3xl shadow-sm overflow-hidden mt-6">
+            <div className="bg-card rounded-2xl shadow-sm overflow-hidden mt-6">
               <div className="px-5 py-4 flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
                   <Bell size={18} className="text-primary shrink-0" />
@@ -3760,13 +3832,9 @@ const Profile: React.FC<ProfileProps> = ({
             </div>
 
             {/* Clear Cache - Emergency fix for broken UI */}
-            <div className="bg-card rounded-3xl shadow-sm overflow-hidden mt-6">
+            <div className="bg-card rounded-2xl shadow-sm overflow-hidden mt-6">
               <button
-                onClick={() => {
-                  if (window.confirm(t['settings.clear_cache_confirm'] || 'This will clear all cached data and reload the app. Continue?')) {
-                    clearAllCachesAndReload();
-                  }
-                }}
+                onClick={() => setShowClearCacheConfirm(true)}
                 className="w-full px-5 py-4 flex items-center justify-between"
               >
                 <div className="flex items-center gap-3">
@@ -3786,6 +3854,131 @@ const Profile: React.FC<ProfileProps> = ({
             <span className="helpy-logo">helpy</span>
           </div>
         </div>
+
+        {/* Cancel Subscription Confirmation Modal */}
+        {showCancelSubConfirm && (
+          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
+            {/* Safe area bottom cover */}
+            <div 
+              className="absolute bottom-0 left-0 right-0 bg-card"
+              style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
+            />
+            <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
+              {/* Header */}
+              <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
+                <h2 className="text-title text-foreground">{t['subscription.cancel_title'] || 'Cancel Subscription'}</h2>
+              </div>
+
+              {/* Content */}
+              <div className="p-5">
+                <p className="text-body text-muted-foreground">
+                  {t['subscription.confirm_cancel'] || 'Are you sure you want to cancel your subscription? You will lose access to premium features at the end of your billing period.'}
+                </p>
+              </div>
+
+              {/* Footer */}
+              <div className="p-5 pb-8 border-t border-border flex gap-3 shrink-0">
+                <button
+                  onClick={() => setShowCancelSubConfirm(false)}
+                  className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body"
+                >
+                  {t['common.keep_subscription'] || 'Keep Subscription'}
+                </button>
+                <button
+                  onClick={confirmCancelSubscription}
+                  className="flex-1 py-3.5 rounded-xl bg-destructive/10 text-destructive text-body"
+                >
+                  {t['common.cancel_subscription'] || 'Cancel'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Clear Cache Confirmation Modal */}
+        {showClearCacheConfirm && (
+          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
+            {/* Safe area bottom cover */}
+            <div 
+              className="absolute bottom-0 left-0 right-0 bg-card"
+              style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
+            />
+            <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
+              {/* Header */}
+              <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
+                <h2 className="text-title text-foreground">{t['settings.clear_cache'] || 'Clear Cache'}</h2>
+              </div>
+
+              {/* Content */}
+              <div className="p-5">
+                <p className="text-body text-muted-foreground">
+                  {t['settings.clear_cache_confirm'] || 'This will clear all cached data and reload the app. Continue?'}
+                </p>
+              </div>
+
+              {/* Footer */}
+              <div className="p-5 pb-8 border-t border-border flex gap-3 shrink-0">
+                <button
+                  onClick={() => setShowClearCacheConfirm(false)}
+                  className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body"
+                >
+                  {t['common.cancel'] || 'Cancel'}
+                </button>
+                <button
+                  onClick={() => {
+                    setShowClearCacheConfirm(false);
+                    clearAllCachesAndReload();
+                  }}
+                  className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body"
+                >
+                  {t['settings.clear_cache_action'] || 'Clear Cache'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Generic Alert Modal (replaces native alert()) */}
+        {alertModal.isOpen && (
+          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
+            {/* Safe area bottom cover */}
+            <div 
+              className="absolute bottom-0 left-0 right-0 bg-card"
+              style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
+            />
+            <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
+              {/* Header */}
+              <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
+                <h2 className={`text-title ${alertModal.type === 'error' ? 'text-destructive' : alertModal.type === 'success' ? 'text-primary' : 'text-foreground'}`}>
+                  {alertModal.title}
+                </h2>
+              </div>
+
+              {/* Content */}
+              <div className="p-5">
+                <p className="text-body text-muted-foreground">
+                  {alertModal.message}
+                </p>
+              </div>
+
+              {/* Footer */}
+              <div className="p-5 pb-8 border-t border-border shrink-0">
+                <button
+                  onClick={() => setAlertModal(prev => ({ ...prev, isOpen: false }))}
+                  className={`w-full py-3.5 rounded-xl text-body ${
+                    alertModal.type === 'error' 
+                      ? 'bg-destructive/10 text-destructive' 
+                      : alertModal.type === 'success'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-secondary text-foreground'
+                  }`}
+                >
+                  {t['common.ok'] || 'OK'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }

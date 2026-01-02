@@ -76,6 +76,18 @@ const AppContent: React.FC = () => {
   const [clerkLoadTimeout, setClerkLoadTimeout] = useState(false);
   const [clerkError, setClerkError] = useState<string | null>(null);
   const [editHelperUserId, setEditHelperUserId] = useState<string | null>(null);
+  
+  // Generic alert modal state (replaces native alert())
+  const [alertModal, setAlertModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: 'error' | 'success' | 'info';
+  }>({ isOpen: false, title: '', message: '', type: 'info' });
+  
+  const showAlert = useCallback((title: string, message: string, type: 'error' | 'success' | 'info' = 'info') => {
+    setAlertModal({ isOpen: true, title, message, type });
+  }, []);
 
   // debugTheme overlay removed
 
@@ -754,7 +766,11 @@ const AppContent: React.FC = () => {
       console.error('Failed to delete user:', error);
       // Revert optimistic update on error
       // Note: In a real app, you'd want to refetch the users list here
-      alert(`Failed to remove user: ${error.message}`);
+      showAlert(
+        translations['error.remove_user_title'] || 'Remove User Failed',
+        `${translations['error.remove_user'] || 'Failed to remove user'}: ${error.message}`,
+        'error'
+      );
     }
   };
 
@@ -1179,6 +1195,48 @@ const AppContent: React.FC = () => {
       <Layout activeView={activeView} onNavigate={handleNavigate} t={translations}>
         {renderView()}
       </Layout>
+
+      {/* Generic Alert Modal (replaces native alert()) */}
+      {alertModal.isOpen && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center">
+          {/* Safe area bottom cover */}
+          <div 
+            className="absolute bottom-0 left-0 right-0 bg-card"
+            style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
+          />
+          <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
+            {/* Header */}
+            <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
+              <h2 className={`text-title ${alertModal.type === 'error' ? 'text-destructive' : alertModal.type === 'success' ? 'text-primary' : 'text-foreground'}`}>
+                {alertModal.title}
+              </h2>
+            </div>
+
+            {/* Content */}
+            <div className="p-5">
+              <p className="text-body text-muted-foreground">
+                {alertModal.message}
+              </p>
+            </div>
+
+            {/* Footer */}
+            <div className="p-5 pb-8 border-t border-border shrink-0">
+              <button
+                onClick={() => setAlertModal(prev => ({ ...prev, isOpen: false }))}
+                className={`w-full py-3.5 rounded-xl text-body ${
+                  alertModal.type === 'error' 
+                    ? 'bg-destructive/10 text-destructive' 
+                    : alertModal.type === 'success'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-secondary text-foreground'
+                }`}
+              >
+                {translations['common.ok'] || 'OK'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

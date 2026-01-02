@@ -143,7 +143,7 @@ export const FamilyMemberSkeleton: React.FC = () => (
  * Dashboard Card Skeleton - for summary cards
  */
 export const DashboardCardSkeleton: React.FC = () => (
-  <div className="bg-card rounded-3xl p-6 space-y-4">
+  <div className="bg-card rounded-2xl p-6 space-y-4">
     <div className="flex items-center justify-between">
       <Skeleton className="h-5 w-24" />
       <Skeleton className="w-8 h-8 rounded-full" />
@@ -160,7 +160,7 @@ export const DashboardCardSkeleton: React.FC = () => (
  * Essential Info Card Skeleton
  */
 export const EssentialInfoCardSkeleton: React.FC = () => (
-  <div className="bg-card rounded-3xl p-5 space-y-3">
+  <div className="bg-card rounded-2xl p-5 space-y-3">
     <div className="flex items-center gap-3">
       <SkeletonCircle size="w-12 h-12" />
       <div className="flex-1 space-y-1.5">

@@ -41,7 +41,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, onNavigate, t }) 
           transform: 'translateZ(0)',  // GPU layer for stable positioning on iOS
         }}
       >
-        <div className="flex justify-around items-center h-16">
+        <div className="flex justify-around items-stretch h-16">
           {navItems.map((item) => {
             const isActive = activeView === item.id;
             const Icon = item.icon;
@@ -49,19 +49,23 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, onNavigate, t }) 
               <button
                 key={item.id}
                 onClick={() => handleNavClick(item.id)}
-                className="flex flex-col items-center justify-center gap-0.5 w-full h-full"
+                className="flex flex-col items-center w-full pt-2"
               >
-                <Icon 
-                  size={22} 
-                  strokeWidth={isActive ? 2.5 : 1.75}
-                  className={`transition-colors duration-200 ${
-                    isActive 
-                      ? 'text-primary' 
-                      : 'text-muted-foreground'
-                  }`}
-                />
+                {/* Icon container with fixed height to keep icon position stable */}
+                <div className="h-6 flex items-center justify-center">
+                  <Icon 
+                    size={22} 
+                    strokeWidth={isActive ? 2.5 : 1.75}
+                    className={`transition-colors duration-200 ${
+                      isActive 
+                        ? 'text-primary' 
+                        : 'text-muted-foreground'
+                    }`}
+                  />
+                </div>
+                {/* Text with truncation to prevent wrapping */}
                 <span 
-                  className={`text-micro transition-colors duration-200 ${
+                  className={`text-micro transition-colors duration-200 mt-0.5 max-w-full px-1 truncate ${
                     isActive 
                       ? 'text-primary' 
                       : 'text-muted-foreground'

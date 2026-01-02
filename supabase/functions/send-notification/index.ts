@@ -900,9 +900,10 @@ serve(async (req: Request) => {
 
     // Filter out the creator from recipients (except for testing - Liko gets self-notifications)
     const LIKO_TEST_MODE = true; // TODO: Set to false in production
+    const LIKO_EMAIL = 'julianoliko@gmail.com';
     const recipients = users.filter(u => {
       // In test mode, don't filter out Liko so he can test by adding items himself
-      if (LIKO_TEST_MODE && (u.name === 'Liko' || u.name?.includes('Liko'))) {
+      if (LIKO_TEST_MODE && u.email === LIKO_EMAIL) {
         return true;
       }
       

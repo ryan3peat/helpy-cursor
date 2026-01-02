@@ -52,7 +52,7 @@ These colors are consistent in both light and dark modes.
 | `text-title` | 1rem (16px) | Card titles, headings |
 | `text-body` | 0.875rem (14px) | Body text, button labels |
 | `text-caption` | 0.75rem (12px) | Labels, tags, badges |
-| `text-micro` | 0.625rem (10px) | Smallest text |
+| `text-micro` | 0.75rem (12px) | Smallest text |
 
 ### Font Weights
 

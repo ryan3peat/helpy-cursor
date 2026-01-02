@@ -173,12 +173,12 @@
 }
 
 /* ─────────────────────────────────────────────────────────────────
-   iOS PWA FIXED ELEMENT PROTECTION
-   Contains rubber-band effect to prevent fixed elements (like 
-   bottom nav) from shifting. Preserves the bouncy scroll feel.
+   iOS PWA OVERSCROLL BEHAVIOR
+   Disables rubber-band bounce effect for more app-like feel and
+   to prevent scroll animation timing issues.
    ───────────────────────────────────────────────────────────────── */
 html {
-  overscroll-behavior-y: contain;
+  overscroll-behavior-y: none;
   /* Light mode overflow background */
   background-color: #fafafa !important;
   /* Tell the browser/UI we are light unless .dark is present */

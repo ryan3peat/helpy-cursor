@@ -121,6 +121,9 @@ const Meals: React.FC<MealsProps> = ({
 
   // Ref: Day view container for auto-scroll to current day
   const dayViewRef = useRef<HTMLDivElement | null>(null);
+  
+  // Ref: Week view horizontal scroll container for auto-scroll to today column
+  const weekScrollRef = useRef<HTMLDivElement | null>(null);
 
   // ─────────────────────────────────────────────────────────────────
   // ⚠️  iOS AUTO-SCROLL FIX - DO NOT MODIFY WITHOUT READING docs/MEALS_SCROLL_FIX.md
@@ -486,36 +489,82 @@ const Meals: React.FC<MealsProps> = ({
   // See docs/MEALS_SCROLL_FIX.md for full explanation.
   // ─────────────────────────────────────────────────────────────────
   useLayoutEffect(() => {
-    if (view !== 'day') return;
     if (!shouldAutoScroll.current) return;
 
-    const performScroll = (): boolean => {
-      const targetDateStr = formatDateStr(new Date(currentViewDate));
-      const targetEl = document.getElementById(`day-${targetDateStr}`);
-      
-      if (targetEl) {
-        // Calculate scroll position with offset for sticky header + breathing room
-        const headerOffset = 200;
-        const elementPosition = targetEl.getBoundingClientRect().top + window.scrollY;
-        window.scrollTo({ top: elementPosition - headerOffset, behavior: 'auto' });
-        return true;
-      }
-      return false;
-    };
+    if (view === 'day') {
+      const performScroll = (): boolean => {
+        const targetDateStr = formatDateStr(new Date(currentViewDate));
+        const targetEl = document.getElementById(`day-${targetDateStr}`);
+        
+        if (targetEl) {
+          // Calculate scroll position with offset for sticky header + breathing room
+          const headerOffset = 200;
+          const elementPosition = targetEl.getBoundingClientRect().top + window.scrollY;
+          window.scrollTo({ top: elementPosition - headerOffset, behavior: 'auto' });
+          return true;
+        }
+        return false;
+      };
 
-    // Try synchronous scroll first
-    if (performScroll()) {
-      shouldAutoScroll.current = false;
-    } else {
-      // Element not found yet - retry on next animation frame
-      // This handles rare cases where DOM isn't fully ready on first render
-      const rafId = requestAnimationFrame(() => {
-        performScroll();
+      // Try synchronous scroll first
+      if (performScroll()) {
         shouldAutoScroll.current = false;
-      });
-      return () => cancelAnimationFrame(rafId);
+      } else {
+        // Element not found yet - retry on next animation frame
+        // This handles rare cases where DOM isn't fully ready on first render
+        const rafId = requestAnimationFrame(() => {
+          performScroll();
+          shouldAutoScroll.current = false;
+        });
+        return () => cancelAnimationFrame(rafId);
+      }
+    } else if (view === 'week') {
+      // Week view: scroll horizontally to center today's column
+      const performWeekScroll = (): boolean => {
+        const scrollContainer = weekScrollRef.current;
+        if (!scrollContainer) return false;
+        
+        // Scroll page to top so date header row is visible
+        window.scrollTo({ top: 0, behavior: 'auto' });
+        
+        // Find today's column index (0-6)
+        const todayIndex = weekDays.findIndex(d => 
+          d.toDateString() === new Date().toDateString()
+        );
+        
+        // Only scroll if today is in the current week
+        if (todayIndex < 0) {
+          shouldAutoScroll.current = false;
+          return true;
+        }
+        
+        // Calculate scroll position
+        // Label column is 72px, remaining width is divided by 7 days
+        const labelColumnWidth = 72;
+        const totalDayColumnsWidth = scrollContainer.scrollWidth - labelColumnWidth;
+        const columnWidth = totalDayColumnsWidth / 7;
+        
+        // Calculate position to center today's column in the viewport
+        const todayColumnStart = labelColumnWidth + (columnWidth * todayIndex);
+        const targetScroll = todayColumnStart - (scrollContainer.clientWidth / 2) + (columnWidth / 2);
+        
+        scrollContainer.scrollTo({ left: Math.max(0, targetScroll), behavior: 'auto' });
+        return true;
+      };
+
+      // Try synchronous scroll first
+      if (performWeekScroll()) {
+        shouldAutoScroll.current = false;
+      } else {
+        // Container not found yet - retry on next animation frame
+        const rafId = requestAnimationFrame(() => {
+          performWeekScroll();
+          shouldAutoScroll.current = false;
+        });
+        return () => cancelAnimationFrame(rafId);
+      }
     }
-  }, [view, currentViewDate]);
+  }, [view, currentViewDate, weekDays]);
 
   // Close quick join popover when clicking outside
   useEffect(() => {
@@ -746,7 +795,10 @@ const Meals: React.FC<MealsProps> = ({
                   return (
                     <button
                       key={v}
-                      onClick={() => setView(v as 'day' | 'week')}
+                      onClick={() => {
+                        shouldAutoScroll.current = true;
+                        setView(v as 'day' | 'week');
+                      }}
                       className={`py-2 px-3 rounded-full text-body font-medium flex items-center gap-1.5 transition-colors ${
                         isActive
                           ? 'bg-background text-primary shadow-sm'
@@ -1087,6 +1139,7 @@ const Meals: React.FC<MealsProps> = ({
           <div className="rounded-xl bg-card shadow-sm overflow-hidden isolate">
             {/* Horizontal scroll container */}
             <div 
+              ref={weekScrollRef}
               className="overflow-x-auto overflow-y-hidden overscroll-x-contain"
               style={{ WebkitOverflowScrolling: 'touch' }}
             >

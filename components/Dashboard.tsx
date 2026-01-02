@@ -702,7 +702,7 @@ const Dashboard: React.FC<DashboardProps> = ({
       <div 
         ref={carouselRef}
         onScroll={handleCarouselScroll}
-        className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide -mx-5 px-5"
+        className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide -mx-5 px-5 snap-x snap-mandatory"
       >
         {validUsers.map((user) => {
           const isCurrent = user.id === currentUser.id;
@@ -710,7 +710,7 @@ const Dashboard: React.FC<DashboardProps> = ({
             <div
               key={user.id}
               onClick={() => onSelectFamilyMember?.(user.id)}
-              className="flex-shrink-0 w-[220px] bg-card rounded-2xl shadow-sm overflow-hidden cursor-pointer"
+              className="flex-shrink-0 w-[220px] bg-card rounded-2xl shadow-sm overflow-hidden cursor-pointer snap-start"
             >
               {/* Avatar - Edge to Edge at Top */}
               <div className="relative w-full h-[200px]">
@@ -793,11 +793,11 @@ const Dashboard: React.FC<DashboardProps> = ({
           <div
             onClick={() => {
               haptics.light(); // Haptic feedback on (+) button press
-              onOpenAddFamily();
-            }}
-            className="flex-shrink-0 w-[220px] bg-secondary/30 rounded-2xl flex flex-col items-center justify-center cursor-pointer border-2 border-dashed border-border"
-          >
-            <div className="w-16 h-16 rounded-full bg-card flex items-center justify-center shadow-sm">
+            onOpenAddFamily();
+          }}
+          className="flex-shrink-0 w-[220px] bg-secondary/30 rounded-2xl flex flex-col items-center justify-center cursor-pointer border-2 border-dashed border-border snap-start"
+        >
+          <div className="w-16 h-16 rounded-full bg-card flex items-center justify-center shadow-sm">
               <Plus size={28} className="text-primary" />
             </div>
             <span className="text-body font-semibold text-foreground mt-3">

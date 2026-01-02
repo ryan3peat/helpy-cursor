@@ -702,7 +702,7 @@ const Dashboard: React.FC<DashboardProps> = ({
       <div 
         ref={carouselRef}
         onScroll={handleCarouselScroll}
-        className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide -mx-5 px-5 snap-x snap-mandatory"
+        className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide -mx-5 px-5 snap-x snap-mandatory scroll-px-5"
       >
         {validUsers.map((user) => {
           const isCurrent = user.id === currentUser.id;

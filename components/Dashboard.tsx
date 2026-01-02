@@ -358,8 +358,8 @@ const Dashboard: React.FC<DashboardProps> = ({
   const [showIosInstallSteps, setShowIosInstallSteps] = useState(false);
   const { canPromptInstall, shouldShowIosSteps, dismiss, promptInstall } = usePwaInstallNudge();
   
-  // Scroll header animation
-  const { isScrolled } = useScrollHeader();
+  // Scroll header animation - expand cards earlier (at ~80% visibility)
+  const { isScrolled } = useScrollHeader({ expandThreshold: 55 });
   
   // Lock body scroll when language modal is open
   useScrollLock(showLangModal);

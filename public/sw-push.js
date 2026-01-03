@@ -139,13 +139,46 @@ function openBadgeDB() {
 
 /**
  * Increment badge count and update app icon
+ * Uses actual pending notification count for consistency with OS badge
  */
 async function incrementBadge() {
-  const currentCount = await getBadgeCount();
-  const newCount = currentCount + 1;
-  await saveBadgeCount(newCount);
-  await setAppBadge(newCount);
-  console.log(`[SW] 🔴 Badge incremented: ${currentCount} → ${newCount}`);
+  try {
+    // Get actual pending notifications count from the OS
+    // This ensures badge matches what iOS/Android shows on lock screen
+    const notifications = await self.registration.getNotifications();
+    const count = notifications.length + 1; // +1 for the one we're about to show
+    
+    // Also save to IndexedDB for persistence
+    await saveBadgeCount(count);
+    await setAppBadge(count);
+    console.log(`[SW] 🔴 Badge set to ${count} (${notifications.length} existing + 1 new)`);
+  } catch (error) {
+    console.warn('[SW] Failed to get notification count, using IndexedDB fallback:', error);
+    // Fallback to IndexedDB method
+    const currentCount = await getBadgeCount();
+    const newCount = currentCount + 1;
+    await saveBadgeCount(newCount);
+    await setAppBadge(newCount);
+    console.log(`[SW] 🔴 Badge incremented (fallback): ${currentCount} → ${newCount}`);
+  }
+}
+
+/**
+ * Sync badge with actual pending notifications
+ * Call this to ensure badge matches OS notification count
+ */
+async function syncBadgeWithNotifications() {
+  try {
+    const notifications = await self.registration.getNotifications();
+    const count = notifications.length;
+    await saveBadgeCount(count);
+    await setAppBadge(count);
+    console.log(`[SW] 🔴 Badge synced to ${count} (actual notification count)`);
+    return count;
+  } catch (error) {
+    console.warn('[SW] Failed to sync badge with notifications:', error);
+    return -1;
+  }
 }
 
 /**
@@ -424,12 +457,22 @@ self.addEventListener('notificationclick', (event) => {
 self.addEventListener('notificationclose', (event) => {
   console.log('[SW] Notification closed:', event);
   
-  // Could track analytics here if needed
-  const data = event.notification.data || {};
-  if (data.notificationId) {
-    // Mark as read in database (optional)
-    // This would require sending a fetch request to the server
-  }
+  // Sync badge with remaining notifications after a brief delay
+  // (to ensure the closed notification is no longer counted)
+  event.waitUntil(
+    (async () => {
+      // Small delay to ensure notification is removed from system list
+      await new Promise(resolve => setTimeout(resolve, 100));
+      await syncBadgeWithNotifications();
+      
+      // Could track analytics here if needed
+      const data = event.notification.data || {};
+      if (data.notificationId) {
+        // Mark as read in database (optional)
+        // This would require sending a fetch request to the server
+      }
+    })()
+  );
 });
 
 
@@ -454,6 +497,22 @@ self.addEventListener('message', (event) => {
       }
     }).catch(error => {
       console.error('[SW] Failed to clear badge:', error);
+      if (event.ports && event.ports[0]) {
+        event.ports[0].postMessage({ success: false, error: error.message });
+      }
+    });
+    return;
+  }
+  
+  // Sync badge with actual notification count
+  if (event.data && event.data.type === 'SYNC_BADGE') {
+    console.log('[SW] 🔴 Sync badge requested from app');
+    syncBadgeWithNotifications().then((count) => {
+      if (event.ports && event.ports[0]) {
+        event.ports[0].postMessage({ success: true, count, message: `Badge synced to ${count}` });
+      }
+    }).catch(error => {
+      console.error('[SW] Failed to sync badge:', error);
       if (event.ports && event.ports[0]) {
         event.ports[0].postMessage({ success: false, error: error.message });
       }

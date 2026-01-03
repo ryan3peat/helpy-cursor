@@ -86,6 +86,43 @@ const clearServiceWorkerBadge = async (): Promise<void> => {
 };
 
 /**
+ * Tell the service worker to sync badge with actual notification count
+ * This ensures the app icon badge matches the OS notification count
+ */
+export const syncBadgeWithServiceWorker = async (): Promise<number> => {
+  try {
+    const registration = await navigator.serviceWorker?.ready;
+    if (!registration?.active) {
+      console.log('[Badge] No active service worker');
+      return -1;
+    }
+
+    const messageChannel = new MessageChannel();
+    
+    return new Promise((resolve) => {
+      const timeout = setTimeout(() => {
+        console.log('[Badge] Service worker badge sync timed out');
+        resolve(-1);
+      }, 1000);
+      
+      messageChannel.port1.onmessage = (event) => {
+        clearTimeout(timeout);
+        console.log('[Badge] Service worker badge sync response:', event.data);
+        resolve(event.data?.count ?? -1);
+      };
+
+      registration.active.postMessage(
+        { type: 'SYNC_BADGE' },
+        [messageChannel.port2]
+      );
+    });
+  } catch (error) {
+    console.warn('[Badge] Failed to sync service worker badge:', error);
+    return -1;
+  }
+};
+
+/**
  * Get the last seen timestamp for the current user
  */
 export const getLastSeenAt = (): Date | null => {
@@ -173,12 +210,18 @@ export const updateBadgeFromData = (
 };
 
 /**
- * Mark app as seen and clear badge
+ * Mark app as seen and sync badge with actual notifications
  * Call this when the app becomes visible/active
+ * 
+ * Note: We sync instead of clear because the user may still have
+ * pending notifications they haven't dismissed yet. The badge should
+ * reflect the actual notification count, not 0.
  */
 export const markAppAsSeen = async (): Promise<void> => {
   updateLastSeenAt();
-  await clearAppBadge();
+  // Sync badge with actual notification count instead of blindly clearing
+  // This ensures consistency between app icon badge and OS notification count
+  await syncBadgeWithServiceWorker();
 };
 
 /**
@@ -220,6 +263,7 @@ export default {
   isBadgeSupported,
   setAppBadge,
   clearAppBadge,
+  syncBadgeWithServiceWorker,
   getLastSeenAt,
   updateLastSeenAt,
   calculateBadgeCount,

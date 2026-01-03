@@ -69,10 +69,11 @@ const getExpenseCategoryConfig = (category: string): ExpenseCategoryConfig => {
   return EXPENSE_CATEGORY_CONFIG[category] || EXPENSE_CATEGORY_CONFIG['Miscellaneous'];
 };
 
-// Zoomable Image Component - optimized for smooth, jitter-free gestures
+// Zoomable Image Component - optimized for smooth, jitter-free gestures with bounds
 const ZoomableImage: React.FC<{ imageSrc: string; onClose: () => void; t: Record<string, string> }> = ({ imageSrc, onClose, t }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
+  const imageContainerRef = useRef<HTMLDivElement>(null);
   
   // Store transform values in refs to avoid re-renders during gestures
   const transformRef = useRef({ scale: 1, x: 0, y: 0 });
@@ -91,11 +92,45 @@ const ZoomableImage: React.FC<{ imageSrc: string; onClose: () => void; t: Record
   // Only used for UI display (instructions text)
   const [isZoomed, setIsZoomed] = useState(false);
 
+  // Constrain position to keep image within bounds
+  const constrainPosition = (x: number, y: number, scale: number) => {
+    if (!imageRef.current || !imageContainerRef.current) return { x, y };
+    
+    const img = imageRef.current;
+    const container = imageContainerRef.current;
+    
+    // Get the natural dimensions and displayed dimensions
+    const containerRect = container.getBoundingClientRect();
+    const imgWidth = img.offsetWidth;
+    const imgHeight = img.offsetHeight;
+    
+    // Calculate how much the image extends beyond the container when scaled
+    const scaledWidth = imgWidth * scale;
+    const scaledHeight = imgHeight * scale;
+    
+    // Calculate max allowed pan (half the overflow on each side)
+    const maxPanX = Math.max(0, (scaledWidth - containerRect.width) / 2);
+    const maxPanY = Math.max(0, (scaledHeight - containerRect.height) / 2);
+    
+    // Constrain position
+    const constrainedX = Math.max(-maxPanX, Math.min(maxPanX, x));
+    const constrainedY = Math.max(-maxPanY, Math.min(maxPanY, y));
+    
+    return { x: constrainedX, y: constrainedY };
+  };
+
   // Apply transform directly to DOM for smooth updates (no React re-render)
-  const applyTransform = () => {
+  const applyTransform = (constrain = false) => {
     if (imageRef.current) {
-      const { scale, x, y } = transformRef.current;
-      imageRef.current.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
+      const t = transformRef.current;
+      
+      if (constrain) {
+        const constrained = constrainPosition(t.x, t.y, t.scale);
+        t.x = constrained.x;
+        t.y = constrained.y;
+      }
+      
+      imageRef.current.style.transform = `translate(${t.x}px, ${t.y}px) scale(${t.scale})`;
     }
   };
 
@@ -163,22 +198,30 @@ const ZoomableImage: React.FC<{ imageSrc: string; onClose: () => void; t: Record
       const scaleChange = newScale / g.startScale;
       
       // Calculate new position to keep focal point under fingers
-      const newX = g.startX - (g.startCenterX - g.startX) * (scaleChange - 1) + (currentCenterX - g.startCenterX);
-      const newY = g.startY - (g.startCenterY - g.startY) * (scaleChange - 1) + (currentCenterY - g.startCenterY);
+      let newX = g.startX - (g.startCenterX - g.startX) * (scaleChange - 1) + (currentCenterX - g.startCenterX);
+      let newY = g.startY - (g.startCenterY - g.startY) * (scaleChange - 1) + (currentCenterY - g.startCenterY);
+      
+      // Constrain position during pinch
+      const constrained = constrainPosition(newX, newY, newScale);
       
       // Update refs and apply directly to DOM
       t.scale = newScale;
-      t.x = newX;
-      t.y = newY;
+      t.x = constrained.x;
+      t.y = constrained.y;
       applyTransform();
       
     } else if (e.touches.length === 1 && g.isGesturing && t.scale > 1) {
-      // Pan
+      // Pan with constraints
       const deltaX = e.touches[0].clientX - g.lastTouchX;
       const deltaY = e.touches[0].clientY - g.lastTouchY;
       
-      t.x += deltaX;
-      t.y += deltaY;
+      const newX = t.x + deltaX;
+      const newY = t.y + deltaY;
+      
+      // Apply constraints
+      const constrained = constrainPosition(newX, newY, t.scale);
+      t.x = constrained.x;
+      t.y = constrained.y;
       
       g.lastTouchX = e.touches[0].clientX;
       g.lastTouchY = e.touches[0].clientY;
@@ -207,6 +250,8 @@ const ZoomableImage: React.FC<{ imageSrc: string; onClose: () => void; t: Record
       applyTransform();
       setIsZoomed(false);
     } else {
+      // Apply final constraints with animation
+      applyTransform(true);
       setIsZoomed(true);
     }
   };
@@ -225,14 +270,31 @@ const ZoomableImage: React.FC<{ imageSrc: string; onClose: () => void; t: Record
       t.y = 0;
       setIsZoomed(false);
     } else {
-      // Zoom towards tap point
-      const targetScale = 2.5;
-      const scaleChange = targetScale / t.scale;
-      
-      t.x = t.x - (e.clientX - t.x) * (scaleChange - 1);
-      t.y = t.y - (e.clientY - t.y) * (scaleChange - 1);
-      t.scale = targetScale;
-      setIsZoomed(true);
+      // Zoom towards tap point - get tap position relative to image center
+      const imgRect = imageRef.current?.getBoundingClientRect();
+      if (imgRect) {
+        const targetScale = 2.5;
+        const imgCenterX = imgRect.left + imgRect.width / 2;
+        const imgCenterY = imgRect.top + imgRect.height / 2;
+        
+        // Calculate offset from center to tap point
+        const offsetX = e.clientX - imgCenterX;
+        const offsetY = e.clientY - imgCenterY;
+        
+        // New position moves opposite to offset, scaled
+        let newX = -offsetX * (targetScale - 1);
+        let newY = -offsetY * (targetScale - 1);
+        
+        // Apply constraints
+        const constrained = constrainPosition(newX, newY, targetScale);
+        t.x = constrained.x;
+        t.y = constrained.y;
+        t.scale = targetScale;
+        setIsZoomed(true);
+      } else {
+        t.scale = 2.5;
+        setIsZoomed(true);
+      }
     }
     
     applyTransform();
@@ -243,7 +305,7 @@ const ZoomableImage: React.FC<{ imageSrc: string; onClose: () => void; t: Record
     const t = transformRef.current;
     const delta = e.deltaY > 0 ? 0.9 : 1.1;
     t.scale = Math.max(1, Math.min(5, t.scale * delta));
-    applyTransform();
+    applyTransform(true);
     setIsZoomed(t.scale > 1);
   };
 
@@ -255,18 +317,19 @@ const ZoomableImage: React.FC<{ imageSrc: string; onClose: () => void; t: Record
       style={{ touchAction: 'none', zIndex: 99999 }}
     >
       <div className="relative w-full max-w-lg flex flex-col items-center">
-        {/* Close button */}
+        {/* Close button - helpy blue with white X */}
         <button
           onClick={(e) => { e.stopPropagation(); onClose(); }}
-          className="absolute -top-2 -right-2 text-white z-10 w-10 h-10 rounded-full bg-black/60 flex items-center justify-center"
+          className="absolute -top-2 -right-2 text-white z-10 w-10 h-10 rounded-full bg-primary shadow-lg flex items-center justify-center"
           aria-label={t['common.close'] || 'Close'}
         >
           <X size={20} />
         </button>
         
-        {/* Image container */}
+        {/* Image container - helpy white background */}
         <div 
-          className="overflow-hidden rounded-2xl bg-black w-full"
+          ref={imageContainerRef}
+          className="overflow-hidden rounded-2xl bg-card w-full shadow-xl"
           onClick={(e) => e.stopPropagation()}
         >
           <img 

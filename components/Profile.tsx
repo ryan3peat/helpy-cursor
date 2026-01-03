@@ -3175,7 +3175,7 @@ const Profile: React.FC<ProfileProps> = ({
                 </div>
 
                 {/* Footer Buttons */}
-                <div className="p-5 border-t border-border flex gap-3 shrink-0">
+                <div className="p-5 pb-8 border-t border-border flex gap-3 shrink-0">
                   <button
                     onClick={() => {
                       if (loadingPlan !== null) return;

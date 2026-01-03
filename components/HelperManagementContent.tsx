@@ -327,7 +327,7 @@ export const HelperManagementContent: React.FC<Props> = ({
       
       {/* Helper Info Header */}
       <div className="pb-2">
-        <p className="text-body font-medium text-foreground" style={{ fontSize: '16px' }}>
+        <p className="text-body font-medium text-foreground" style={{ fontSize: '20px' }}>
           {helper.firstName || helper.name?.split(' ')[0] || 'Helper'}
         </p>
         {helper.helperStartDate && (
@@ -482,7 +482,7 @@ export const HelperManagementContent: React.FC<Props> = ({
                   loadPastPayslips();
                 }
               }}
-              className="w-full flex items-center justify-center gap-2 py-3 text-body font-medium text-primary"
+              className="w-full flex items-center justify-start gap-2 py-3 text-body font-medium text-primary"
             >
               {showPastPayslips ? (
                 <>
@@ -865,7 +865,7 @@ const PayslipCard: React.FC<{
     <div className="bg-card rounded-xl p-4 shadow-sm">
       {/* Header: Month + Year with optional checkmark */}
       <div className="flex items-center justify-between mb-1">
-        <h4 className="text-display text-foreground">{monthYear}</h4>
+        <h4 className="text-foreground font-bold" style={{ fontSize: '20px' }}>{monthYear}</h4>
         {isBothSigned && (
           <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center">
             <Check size={14} className="text-green-600" />
@@ -874,12 +874,28 @@ const PayslipCard: React.FC<{
       </div>
       <p className="text-caption text-muted-foreground mb-4">{t['helper.payslip'] || 'Payslip'}</p>
       
-      {/* Total Amount */}
-      <div className="flex items-center justify-between mb-4">
-        <span className="text-body text-muted-foreground">{t['helper.total'] || 'Total'}</span>
-        <span className="text-title font-bold text-foreground">
-          HK${(payslip?.salaryAmount || totalSalary).toLocaleString()}
-        </span>
+      {/* Salary Breakdown */}
+      <div className="space-y-1 mb-4">
+        <div className="flex items-center justify-between">
+          <span className="text-body text-muted-foreground">{t['helper.base_salary'] || 'Base Salary'}</span>
+          <span className="text-body text-foreground">
+            HK${baseSalary.toLocaleString()}
+          </span>
+        </div>
+        {overtimeTotal > 0 && (
+          <div className="flex items-center justify-between">
+            <span className="text-body text-muted-foreground">{t['helper.overtime'] || 'Overtime'}</span>
+            <span className="text-body text-foreground">
+              HK${overtimeTotal.toLocaleString()}
+            </span>
+          </div>
+        )}
+        <div className="flex items-center justify-between pt-1">
+          <span className="text-body text-foreground font-bold">{t['helper.total'] || 'Total'}</span>
+          <span className="text-title font-bold text-foreground">
+            HK${(payslip?.salaryAmount || totalSalary).toLocaleString()}
+          </span>
+        </div>
       </div>
       
       {/* Change Amount button - only for Admin and only if no signatures */}
@@ -1078,7 +1094,7 @@ const PastPayslipCard: React.FC<{
         className="w-full flex items-center justify-between p-4"
       >
         <div className="flex items-center gap-3">
-          <span className="text-body font-medium text-foreground">{monthYear}</span>
+          <span className="text-foreground font-bold" style={{ fontSize: '20px' }}>{monthYear}</span>
           {isBothSigned && (
             <Check size={16} className="text-green-600" />
           )}
@@ -1097,17 +1113,29 @@ const PastPayslipCard: React.FC<{
       {isExpanded && (
         <div className="px-4 pb-4 pt-0 border-t border-border">
           <div className="pt-3 space-y-2 text-caption">
+            {/* Base Salary */}
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">{t['helper.base_salary'] || 'Base Salary'}</span>
+              <span>HK${((payslip.salaryAmount || 0) - (payslip.overtimeTotal || 0)).toLocaleString()}</span>
+            </div>
+            {/* Overtime */}
             {(payslip.overtimeTotal || 0) > 0 && (
               <div className="flex justify-between">
                 <span className="text-muted-foreground">{t['helper.overtime'] || 'Overtime'}</span>
                 <span>HK${payslip.overtimeTotal?.toLocaleString()}</span>
               </div>
             )}
-            <div className="flex justify-between">
+            {/* Total */}
+            <div className="flex justify-between pt-1">
+              <span className="text-foreground font-bold">{t['helper.total'] || 'Total'}</span>
+              <span className="font-bold">HK${payslip.salaryAmount.toLocaleString()}</span>
+            </div>
+            {/* Signature details */}
+            <div className="flex justify-between pt-2 border-t border-border mt-2">
               <span className="text-muted-foreground">{t['helper.employer'] || 'Employer'}</span>
               <span className={payslip.employerSignedAt ? 'text-green-600' : 'text-muted-foreground'}>
                 {payslip.employerSignedAt 
-                  ? `Signed by David, ${formatSignedDate(payslip.employerSignedAt)}`
+                  ? `Signed ${formatSignedDate(payslip.employerSignedAt)}`
                   : 'Not signed'
                 }
               </span>
@@ -1116,7 +1144,7 @@ const PastPayslipCard: React.FC<{
               <span className="text-muted-foreground">{t['helper.helper'] || 'Helper'}</span>
               <span className={payslip.helperSignedAt ? 'text-green-600' : 'text-muted-foreground'}>
                 {payslip.helperSignedAt 
-                  ? `Signed by ${helper.firstName || helper.name?.split(' ')[0] || 'Helper'}, ${formatSignedDate(payslip.helperSignedAt)}`
+                  ? `Signed ${formatSignedDate(payslip.helperSignedAt)}`
                   : 'Not signed'
                 }
               </span>

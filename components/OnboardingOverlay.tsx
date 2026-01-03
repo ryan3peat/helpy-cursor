@@ -296,6 +296,43 @@ const OnboardingOverlay: React.FC<OnboardingOverlayProps> = ({
   // Dim status bar when overlay is visible (iOS)
   useSheetTheme(!!currentStep && currentStep.currentPage === currentPage);
   
+  // Scroll target element into view when step becomes active
+  useEffect(() => {
+    if (!currentStep) return;
+    if (currentStep.currentPage !== currentPage) return;
+    if (currentStep.currentSection && currentStep.currentSection !== currentSection) return;
+    if (!currentStep.targetElement) return;
+    
+    // Use multiple timed attempts to ensure element is visible and positioned
+    const scrollToTarget = () => {
+      const element = document.getElementById(currentStep.targetElement!);
+      if (element) {
+        // Special handling for Family Board - need to scroll enough to collapse family cards
+        // and position the board where the tooltip arrow (at ~470px from top) points at it
+        if (currentStep.targetElement === 'onboarding-family-board') {
+          const rect = element.getBoundingClientRect();
+          const currentScrollY = window.scrollY;
+          // We want the Family Board to be at ~480px from viewport top
+          // (tooltip is at 270px + ~200px height = arrow at ~470px pointing down)
+          const targetViewportY = 480;
+          const scrollTo = currentScrollY + rect.top - targetViewportY;
+          // Ensure we scroll at least 140px to collapse the family cards
+          const minScroll = 140;
+          const finalScroll = Math.max(scrollTo, minScroll);
+          window.scrollTo({ top: finalScroll, behavior: 'smooth' });
+        } else {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }
+    };
+    
+    // Multiple attempts like the Meals scroll fix
+    const attempts = [0, 50, 150, 300];
+    const timeouts = attempts.map(delay => setTimeout(scrollToTarget, delay));
+    
+    return () => timeouts.forEach(t => clearTimeout(t));
+  }, [currentStep, currentPage, currentSection]);
+  
   // Don't render if no step
   if (!currentStep) return null;
   

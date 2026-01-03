@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Camera,
   PieChart as PieIcon,
@@ -68,13 +69,21 @@ const getExpenseCategoryConfig = (category: string): ExpenseCategoryConfig => {
   return EXPENSE_CATEGORY_CONFIG[category] || EXPENSE_CATEGORY_CONFIG['Miscellaneous'];
 };
 
-// Zoomable Image Component with touch gestures - zooms towards focal point
+// Zoomable Image Component with smooth touch gestures
 const ZoomableImage: React.FC<{ imageSrc: string; onClose: () => void; t: Record<string, string> }> = ({ imageSrc, onClose, t }) => {
   const [scale, setScale] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
-  const [lastTouch, setLastTouch] = useState<{ distance: number; center: { x: number; y: number }; scale: number; position: { x: number; y: number } } | null>(null);
-  const imgRef = useRef<HTMLImageElement>(null);
+  const [isGesturing, setIsGesturing] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  
+  // Use refs to track gesture state without causing re-renders
+  const gestureRef = useRef({
+    startDistance: 0,
+    startScale: 1,
+    startPosition: { x: 0, y: 0 },
+    startCenter: { x: 0, y: 0 },
+    lastPanPoint: { x: 0, y: 0 },
+  });
 
   // Use non-passive touch event listener to properly prevent browser default gestures
   useEffect(() => {
@@ -87,7 +96,6 @@ const ZoomableImage: React.FC<{ imageSrc: string; onClose: () => void; t: Record
       }
     };
 
-    // Must use { passive: false } for preventDefault to work on touch events
     container.addEventListener('touchmove', preventDefaultTouch, { passive: false });
 
     return () => {
@@ -101,105 +109,72 @@ const ZoomableImage: React.FC<{ imageSrc: string; onClose: () => void; t: Record
     setScale(prev => Math.max(1, Math.min(5, prev * delta)));
   };
 
-  const getTouchDistance = (touches: TouchList) => {
-    const touch1 = touches[0];
-    const touch2 = touches[1];
-    return Math.hypot(touch2.clientX - touch1.clientX, touch2.clientY - touch1.clientY);
+  const getDistance = (t1: React.Touch, t2: React.Touch) => {
+    return Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
   };
 
-  const getTouchCenter = (touches: TouchList) => {
-    const touch1 = touches[0];
-    const touch2 = touches[1];
-    return {
-      x: (touch1.clientX + touch2.clientX) / 2,
-      y: (touch1.clientY + touch2.clientY) / 2,
-    };
-  };
+  const getCenter = (t1: React.Touch, t2: React.Touch) => ({
+    x: (t1.clientX + t2.clientX) / 2,
+    y: (t1.clientY + t2.clientY) / 2,
+  });
 
   const handleTouchStart = (e: React.TouchEvent) => {
     if (e.touches.length === 2) {
-      const distance = getTouchDistance(e.touches);
-      const center = getTouchCenter(e.touches);
-      setLastTouch({ distance, center, scale, position });
+      // Pinch start
+      const distance = getDistance(e.touches[0], e.touches[1]);
+      const center = getCenter(e.touches[0], e.touches[1]);
+      gestureRef.current = {
+        startDistance: distance,
+        startScale: scale,
+        startPosition: { ...position },
+        startCenter: center,
+        lastPanPoint: { x: 0, y: 0 },
+      };
+      setIsGesturing(true);
     } else if (e.touches.length === 1 && scale > 1) {
-      const touch = e.touches[0];
-      setLastTouch({
-        distance: 0,
-        center: { x: touch.clientX - position.x, y: touch.clientY - position.y },
-        scale,
-        position,
-      });
+      // Pan start
+      gestureRef.current.lastPanPoint = {
+        x: e.touches[0].clientX - position.x,
+        y: e.touches[0].clientY - position.y,
+      };
+      setIsGesturing(true);
     }
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (e.touches.length === 2 && lastTouch && lastTouch.distance > 0) {
-      const distance = getTouchDistance(e.touches);
-      const center = getTouchCenter(e.touches);
-      const scaleChange = distance / lastTouch.distance;
-      const newScale = Math.max(1, Math.min(5, lastTouch.scale * scaleChange));
+    if (e.touches.length === 2) {
+      // Pinch zoom - simple and stable
+      const distance = getDistance(e.touches[0], e.touches[1]);
+      const { startDistance, startScale } = gestureRef.current;
       
-      // Zoom towards the focal point (center of pinch)
-      // Calculate how much the position needs to shift based on scale change
-      const img = imgRef.current;
-      if (img) {
-        const rect = img.getBoundingClientRect();
-        const imgCenterX = rect.left + rect.width / 2;
-        const imgCenterY = rect.top + rect.height / 2;
-        
-        // Distance from pinch center to image center
-        const dx = center.x - imgCenterX;
-        const dy = center.y - imgCenterY;
-        
-        // Adjust position to keep the pinch point stationary
-        const scaleDiff = newScale / lastTouch.scale;
-        const newX = lastTouch.position.x - dx * (scaleDiff - 1);
-        const newY = lastTouch.position.y - dy * (scaleDiff - 1);
-        
-        setScale(newScale);
-        setPosition({ x: newX, y: newY });
-      } else {
+      if (startDistance > 0) {
+        const newScale = Math.max(1, Math.min(5, startScale * (distance / startDistance)));
         setScale(newScale);
       }
-      
-      setLastTouch({ distance, center, scale: newScale, position });
-    } else if (e.touches.length === 1 && scale > 1 && lastTouch) {
+    } else if (e.touches.length === 1 && scale > 1) {
+      // Pan
       const touch = e.touches[0];
       setPosition({
-        x: touch.clientX - lastTouch.center.x,
-        y: touch.clientY - lastTouch.center.y,
+        x: touch.clientX - gestureRef.current.lastPanPoint.x,
+        y: touch.clientY - gestureRef.current.lastPanPoint.y,
       });
     }
   };
 
   const handleTouchEnd = () => {
-    setLastTouch(null);
+    setIsGesturing(false);
     if (scale <= 1) {
       setScale(1);
       setPosition({ x: 0, y: 0 });
     }
   };
 
-  const handleDoubleClick = (e: React.MouseEvent) => {
+  const handleDoubleClick = () => {
     if (scale > 1) {
       setScale(1);
       setPosition({ x: 0, y: 0 });
     } else {
-      // Zoom towards the tap point
-      const img = imgRef.current;
-      if (img) {
-        const rect = img.getBoundingClientRect();
-        const imgCenterX = rect.left + rect.width / 2;
-        const imgCenterY = rect.top + rect.height / 2;
-        const dx = e.clientX - imgCenterX;
-        const dy = e.clientY - imgCenterY;
-        
-        // Zoom to 2x and adjust position to keep tap point visible
-        setScale(2);
-        setPosition({ x: -dx, y: -dy });
-      } else {
-        setScale(2);
-      }
+      setScale(2.5);
     }
   };
 
@@ -234,7 +209,7 @@ const ZoomableImage: React.FC<{ imageSrc: string; onClose: () => void; t: Record
               maxHeight: '70vh',
               transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
               transformOrigin: 'center center',
-              transition: lastTouch ? 'none' : 'transform 0.15s ease-out',
+              transition: isGesturing ? 'none' : 'transform 0.2s ease-out',
               touchAction: 'none',
             }}
             onWheel={handleWheel}
@@ -1123,52 +1098,67 @@ const Expenses: React.FC<ExpensesProps> = ({
                   </p>
                 </div>
               ) : (
-                <div className="bg-card rounded-xl shadow-sm overflow-hidden">
-                  {filteredExpenses.map((expense, index) => {
-                    const config = getExpenseCategoryConfig(expense.category);
-                    return (
-            <button
-              key={expense.id}
-              type="button"
-              onClick={() => openExistingModal(expense)}
-              className={`w-full p-4 flex items-start gap-4 text-left ${
-                index !== filteredExpenses.length - 1 ? 'list-item-separator' : ''
-              }`}
-            >
-              {/* Category Icon */}
-              <div
-                className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
-                style={{ backgroundColor: config.bgColor, color: config.color }}
-              >
-                {config.icon}
-              </div>
-              
-              {/* Info - 3 Lines */}
-              <div className="flex-1 min-w-0">
-                <p className="text-title text-foreground truncate">
-                  <TranslatedMerchantName expense={expense} currentLang={currentLang} onUpdate={onUpdate} />
-                </p>
-                <p className="text-caption text-muted-foreground">{getCategoryLabel(expense.category)}</p>
-                <p className="text-caption text-muted-foreground">
-                  {new Date(expense.date).toLocaleDateString(
-                    currentLang === 'en' ? 'en-GB' : currentLang,
-                    { day: 'numeric', month: 'short', year: 'numeric' }
-                  )}
-                </p>
-              </div>
-              
-              {/* Right Side - Amount & Receipt Indicator */}
-              <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                <span className="text-title text-foreground">{formatCurrency(expense.amount, expense.currency)}</span>
-                {expense.receiptUrl ? (
-                  <ReceiptText size={14} className="text-muted-foreground" />
-                ) : null}
-              </div>
-            </button>
-                    );
-                  })}
-        </div>
-      )}
+                <div className="relative">
+                  {/* Expense List Card - rounded top only for torn effect */}
+                  <div className="bg-card rounded-t-xl shadow-sm overflow-hidden">
+                    {filteredExpenses.map((expense, index) => {
+                      const config = getExpenseCategoryConfig(expense.category);
+                      return (
+                        <button
+                          key={expense.id}
+                          type="button"
+                          onClick={() => openExistingModal(expense)}
+                          className={`w-full p-4 flex items-start gap-4 text-left ${
+                            index !== filteredExpenses.length - 1 ? 'list-item-separator' : ''
+                          }`}
+                        >
+                          {/* Category Icon */}
+                          <div
+                            className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
+                            style={{ backgroundColor: config.bgColor, color: config.color }}
+                          >
+                            {config.icon}
+                          </div>
+                          
+                          {/* Info - 3 Lines */}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-title text-foreground truncate">
+                              <TranslatedMerchantName expense={expense} currentLang={currentLang} onUpdate={onUpdate} />
+                            </p>
+                            <p className="text-caption text-muted-foreground">{getCategoryLabel(expense.category)}</p>
+                            <p className="text-caption text-muted-foreground">
+                              {new Date(expense.date).toLocaleDateString(
+                                currentLang === 'en' ? 'en-GB' : currentLang,
+                                { day: 'numeric', month: 'short', year: 'numeric' }
+                              )}
+                            </p>
+                          </div>
+                          
+                          {/* Right Side - Amount & Receipt Indicator */}
+                          <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                            <span className="text-title text-foreground">{formatCurrency(expense.amount, expense.currency)}</span>
+                            {expense.receiptUrl ? (
+                              <ReceiptText size={14} className="text-muted-foreground" />
+                            ) : null}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {/* Torn receipt zigzag edge */}
+                  <div 
+                    className="h-3 w-full"
+                    style={{
+                      background: `linear-gradient(135deg, hsl(var(--card)) 25%, transparent 25%) -10px 0,
+                                   linear-gradient(225deg, hsl(var(--card)) 25%, transparent 25%) -10px 0,
+                                   linear-gradient(315deg, hsl(var(--card)) 25%, transparent 25%),
+                                   linear-gradient(45deg, hsl(var(--card)) 25%, transparent 25%)`,
+                      backgroundSize: '20px 12px',
+                      backgroundPosition: 'top',
+                    }}
+                  />
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -1604,26 +1594,23 @@ const Expenses: React.FC<ExpensesProps> = ({
             {/* Scrollable Content */}
             <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 p-5 space-y-4">
             {/* Receipt Thumbnail - Edge-to-edge with vertical scroll */}
-            <div className="rounded-xl overflow-hidden border border-border -mx-5 mx-0">
+            <div className="rounded-xl overflow-hidden border border-border">
               {selectedExpense.receiptUrl ? (
                 <button
                   type="button"
-                  className="relative w-full"
-                  onClick={async () => {
-                    const refreshed = await refreshReceiptUrl(selectedExpense.receiptUrl);
-                    const urlToUse = refreshed || receiptPreviewUrl || selectedExpense.receiptUrl;
-                    if (refreshed) {
-                      setReceiptPreviewUrl(refreshed);
-                    }
+                  className="relative w-full block"
+                  onClick={() => {
+                    // Use already-preloaded URL immediately (no delay)
+                    const urlToUse = receiptPreviewUrl || selectedExpense.receiptUrl;
                     setZoomImageSrc(urlToUse);
                   }}
                 >
                   {/* Scrollable image container */}
-                  <div className="max-h-72 overflow-y-auto overflow-x-hidden bg-secondary">
+                  <div className="max-h-72 overflow-y-auto overflow-x-hidden">
                     <img
                       src={receiptPreviewUrl || selectedExpense.receiptUrl}
                       alt="Receipt"
-                      className="w-full"
+                      className="w-full block"
                       onError={async () => {
                         if (triedReceiptRefresh) return;
                         setTriedReceiptRefresh(true);
@@ -1827,12 +1814,15 @@ const Expenses: React.FC<ExpensesProps> = ({
       {/* ─────────────────────────────────────────────────────────────── */}
       {/* IMAGE ZOOM MODAL */}
       {/* ─────────────────────────────────────────────────────────────── */}
-      {zoomImageSrc && (
+      {/* IMAGE ZOOM MODAL - Rendered via Portal to escape stacking context */}
+      {/* ─────────────────────────────────────────────────────────────── */}
+      {zoomImageSrc && createPortal(
         <ZoomableImage
           imageSrc={zoomImageSrc}
           onClose={() => setZoomImageSrc(null)}
           t={t}
-        />
+        />,
+        document.body
       )}
 
       {/* ─────────────────────────────────────────────────────────────── */}

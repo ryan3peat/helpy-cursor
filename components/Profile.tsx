@@ -598,9 +598,9 @@ const Profile: React.FC<ProfileProps> = ({
   }, [users]);
 
   // Calculate total member count for quota display (family + helpers combined)
-  // Count all users except pending (status can be 'active', undefined, or null - all count as active)
+  // Count ALL users (active + pending) since pending invites also consume quota slots
   const totalMemberCount = React.useMemo(() => {
-    return users.filter(u => u && u.id && u.status !== 'pending').length;
+    return users.filter(u => u && u.id).length;
   }, [users]);
   
   // Total slots = family slots + helper slots

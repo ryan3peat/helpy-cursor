@@ -267,20 +267,38 @@ const AppContent: React.FC = () => {
   }, [currentUser]);
 
   const handleLogout = useCallback(async () => {
+    // Helper function to clear all cached data
+    const clearAllCaches = () => {
+      localStorage.removeItem('helpy_current_session_user');
+      localStorage.removeItem('helpy_cached_users');
+      localStorage.removeItem('helpy_cached_todos');
+      localStorage.removeItem('helpy_cached_meals');
+      localStorage.removeItem('helpy_cached_expenses');
+      localStorage.removeItem('helpy_cached_family_notes');
+      localStorage.removeItem('helpy_cached_family_notes_lang');
+      localStorage.removeItem('helpy_cached_family_notes_translations');
+    };
+
+    const resetState = () => {
+      loginProcessedRef.current = false;
+      setCurrentUser(null);
+      clearAllCaches();
+      setActiveView('dashboard');
+      setUsers([]);
+      setTodoItems([]);
+      setMeals([]);
+      setExpenses([]);
+      setFamilyNotes('');
+      setFamilyNotesLang(null);
+      setFamilyNotesTranslations({});
+    };
+
     try {
       await signOut();
-      loginProcessedRef.current = false;
-      setCurrentUser(null);
-      localStorage.removeItem('helpy_current_session_user');
-      setActiveView('dashboard');
-      setUsers([]);
+      resetState();
     } catch (error) {
       console.error('Logout error:', error);
-      loginProcessedRef.current = false;
-      setCurrentUser(null);
-      localStorage.removeItem('helpy_current_session_user');
-      setActiveView('dashboard');
-      setUsers([]);
+      resetState();
     }
   }, [signOut]);
 
@@ -331,19 +349,79 @@ const AppContent: React.FC = () => {
 
   const skipOnboarding = () => setOnboardingStep(0);
 
-  // Global Data State
-  const [users, setUsers] = useState<User[]>([]);
-  const [todoItems, setTodoItems] = useState<ToDoItem[]>([]);
-  const [meals, setMeals] = useState<Meal[]>([]);
-  const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [familyNotes, setFamilyNotes] = useState('');
-  const [familyNotesLang, setFamilyNotesLang] = useState<string | null>(null);
-  const [familyNotesTranslations, setFamilyNotesTranslations] = useState<Record<string, string>>({});
+  // Global Data State - With localStorage caching for instant load
+  const [users, setUsers] = useState<User[]>(() => {
+    const cached = localStorage.getItem('helpy_cached_users');
+    return cached ? JSON.parse(cached) : [];
+  });
+  const [todoItems, setTodoItems] = useState<ToDoItem[]>(() => {
+    const cached = localStorage.getItem('helpy_cached_todos');
+    return cached ? JSON.parse(cached) : [];
+  });
+  const [meals, setMeals] = useState<Meal[]>(() => {
+    const cached = localStorage.getItem('helpy_cached_meals');
+    return cached ? JSON.parse(cached) : [];
+  });
+  const [expenses, setExpenses] = useState<Expense[]>(() => {
+    const cached = localStorage.getItem('helpy_cached_expenses');
+    return cached ? JSON.parse(cached) : [];
+  });
+  const [familyNotes, setFamilyNotes] = useState(() => {
+    return localStorage.getItem('helpy_cached_family_notes') || '';
+  });
+  const [familyNotesLang, setFamilyNotesLang] = useState<string | null>(() => {
+    return localStorage.getItem('helpy_cached_family_notes_lang') || null;
+  });
+  const [familyNotesTranslations, setFamilyNotesTranslations] = useState<Record<string, string>>(() => {
+    const cached = localStorage.getItem('helpy_cached_family_notes_translations');
+    return cached ? JSON.parse(cached) : {};
+  });
   const [essentialItems, setEssentialItems] = useState<EssentialInfo[]>([]);
   const [houseRoutineItems, setHouseRoutineItems] = useState<HouseRoutine[]>([]);
   
   // Household limits for family member quota (used by Dashboard)
   const [householdLimits, setHouseholdLimits] = useState<{ maxFamily: number; maxHelpers: number }>({ maxFamily: 3, maxHelpers: 1 });
+
+  // ─────────────────────────────────────────────────────────────────
+  // Cache Updates - Save to localStorage when data changes
+  // ─────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (users.length > 0 && currentUser?.householdId) {
+      localStorage.setItem('helpy_cached_users', JSON.stringify(users));
+    }
+  }, [users, currentUser?.householdId]);
+
+  useEffect(() => {
+    if (todoItems.length > 0 && currentUser?.householdId) {
+      localStorage.setItem('helpy_cached_todos', JSON.stringify(todoItems));
+    }
+  }, [todoItems, currentUser?.householdId]);
+
+  useEffect(() => {
+    if (meals.length > 0 && currentUser?.householdId) {
+      localStorage.setItem('helpy_cached_meals', JSON.stringify(meals));
+    }
+  }, [meals, currentUser?.householdId]);
+
+  useEffect(() => {
+    if (expenses.length > 0 && currentUser?.householdId) {
+      localStorage.setItem('helpy_cached_expenses', JSON.stringify(expenses));
+    }
+  }, [expenses, currentUser?.householdId]);
+
+  useEffect(() => {
+    if (currentUser?.householdId) {
+      if (familyNotes) {
+        localStorage.setItem('helpy_cached_family_notes', familyNotes);
+      }
+      if (familyNotesLang) {
+        localStorage.setItem('helpy_cached_family_notes_lang', familyNotesLang);
+      }
+      if (Object.keys(familyNotesTranslations).length > 0) {
+        localStorage.setItem('helpy_cached_family_notes_translations', JSON.stringify(familyNotesTranslations));
+      }
+    }
+  }, [familyNotes, familyNotesLang, familyNotesTranslations, currentUser?.householdId]);
 
   // Sync function for periodic backup fetching
   const syncAllData = useCallback(async () => {

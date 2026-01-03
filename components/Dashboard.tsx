@@ -355,8 +355,9 @@ const Dashboard: React.FC<DashboardProps> = ({
   const activeTaskCount = todoItems.filter(i => i.type === 'task' && !i.completed).length;
   
   // Calculate total member count for quota display (family + helpers combined)
+  // Count all users except pending (status can be 'active', undefined, or null - all count as active)
   const totalMemberCount = useMemo(() => {
-    return users.filter(u => u && u.id && u.status === 'active').length;
+    return users.filter(u => u && u.id && u.status !== 'pending').length;
   }, [users]);
   
   // Total slots = family slots + helper slots

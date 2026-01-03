@@ -32,13 +32,12 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, onNavigate, t }) 
 
       {/* Bottom Navigation - iOS Style */}
       <nav
-        className="fixed bottom-0 left-0 w-full z-50 
+        className="fixed bottom-0 left-0 w-full z-10 
           bg-background
           border-t border-black/5 dark:border-white/5"
         style={{ 
           paddingBottom: 'env(safe-area-inset-bottom)',
           boxShadow: '0 -4px 16px rgba(0, 0, 0, 0.04)',
-          transform: 'translateZ(0)',  // GPU layer for stable positioning on iOS
         }}
       >
         <div className="flex justify-around items-stretch h-16">

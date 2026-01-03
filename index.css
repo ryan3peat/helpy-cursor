@@ -447,7 +447,7 @@ button:focus-visible {
 }
 
 .page-fade-in {
-  animation: page-fade-in 150ms ease-out forwards;
+  opacity: 1; /* Simple opacity instead of animation to avoid stacking context */
 }
 
 /* ─────────────────────────────────────────────────────────────────
@@ -475,9 +475,11 @@ button:focus-visible {
 }
 
 
-/* Bottom sheet wrapper */
-.bottom-sheet-backdrop {
+/* Bottom sheet wrapper - MUST be above bottom nav */
+.bottom-sheet-backdrop,
+.bottom-sheet-backdrop[class*="z-"] {
   animation: backdrop-fade-in 0.3s ease-out forwards;
+  z-index: 9999 !important; /* Force above everything including nav */
 }
 
 /* iOS PWA: Cover status bar area with backdrop (black-translucent mode) */

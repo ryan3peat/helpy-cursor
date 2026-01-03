@@ -278,11 +278,46 @@ const Meals: React.FC<MealsProps> = ({
   const getUsersForAudience = (audience: MealAudience): User[] => {
     // Only include active users
     const activeUsers = users.filter(u => u.status === 'active');
+    let filtered: User[];
     switch (audience) {
-      case 'ALL': return activeUsers;
-      case 'ADULTS': return activeUsers.filter(u => u.role !== UserRole.CHILD);
-      case 'KIDS': return activeUsers.filter(u => u.role === UserRole.CHILD);
+      case 'ALL': filtered = activeUsers; break;
+      case 'ADULTS': filtered = activeUsers.filter(u => u.role !== UserRole.CHILD); break;
+      case 'KIDS': filtered = activeUsers.filter(u => u.role === UserRole.CHILD); break;
     }
+    
+    // Sort users for selection:
+    // If helper exists: Helper → Myself → Spouse → Others → Child
+    // If no helper: Myself → Spouse → Others → Child
+    const hasHelper = activeUsers.some(u => u.role === UserRole.HELPER);
+    
+    const getRolePriority = (user: User): number => {
+      // Myself always gets special priority
+      if (user.id === currentUser.id) {
+        return hasHelper ? 1 : 0; // After helper if helper exists, first if no helper
+      }
+      
+      switch (user.role) {
+        case UserRole.HELPER:
+          return 0; // Helper first (only if hasHelper)
+        case UserRole.MASTER:
+        case UserRole.SUPERADMIN:
+          return 1; // Admin roles (but currentUser check above takes precedence)
+        case UserRole.SPOUSE:
+          return 2;
+        case UserRole.OTHER:
+          return 3;
+        case UserRole.CHILD:
+          return 4;
+        default:
+          return 5;
+      }
+    };
+    
+    return [...filtered].sort((a, b) => {
+      const priorityDiff = getRolePriority(a) - getRolePriority(b);
+      if (priorityDiff !== 0) return priorityDiff;
+      return a.name.localeCompare(b.name);
+    });
   };
 
   // --- Quick RSVP ---

@@ -69,23 +69,37 @@ const getExpenseCategoryConfig = (category: string): ExpenseCategoryConfig => {
   return EXPENSE_CATEGORY_CONFIG[category] || EXPENSE_CATEGORY_CONFIG['Miscellaneous'];
 };
 
-// Zoomable Image Component with smooth touch gestures
+// Zoomable Image Component - optimized for smooth, jitter-free gestures
 const ZoomableImage: React.FC<{ imageSrc: string; onClose: () => void; t: Record<string, string> }> = ({ imageSrc, onClose, t }) => {
-  const [scale, setScale] = useState(1);
-  const [position, setPosition] = useState({ x: 0, y: 0 });
-  const [isGesturing, setIsGesturing] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const imageRef = useRef<HTMLImageElement>(null);
   
-  // Use refs to track gesture state without causing re-renders
+  // Store transform values in refs to avoid re-renders during gestures
+  const transformRef = useRef({ scale: 1, x: 0, y: 0 });
   const gestureRef = useRef({
+    isGesturing: false,
     startDistance: 0,
     startScale: 1,
-    startPosition: { x: 0, y: 0 },
-    startCenter: { x: 0, y: 0 },
-    lastPanPoint: { x: 0, y: 0 },
+    startX: 0,
+    startY: 0,
+    startCenterX: 0,
+    startCenterY: 0,
+    lastTouchX: 0,
+    lastTouchY: 0,
   });
+  
+  // Only used for UI display (instructions text)
+  const [isZoomed, setIsZoomed] = useState(false);
 
-  // Use non-passive touch event listener to properly prevent browser default gestures
+  // Apply transform directly to DOM for smooth updates (no React re-render)
+  const applyTransform = () => {
+    if (imageRef.current) {
+      const { scale, x, y } = transformRef.current;
+      imageRef.current.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
+    }
+  };
+
+  // Use non-passive touch event listener
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -97,93 +111,148 @@ const ZoomableImage: React.FC<{ imageSrc: string; onClose: () => void; t: Record
     };
 
     container.addEventListener('touchmove', preventDefaultTouch, { passive: false });
-
-    return () => {
-      container.removeEventListener('touchmove', preventDefaultTouch);
-    };
+    return () => container.removeEventListener('touchmove', preventDefaultTouch);
   }, []);
 
-  const handleWheel = (e: React.WheelEvent) => {
-    e.preventDefault();
-    const delta = e.deltaY > 0 ? 0.9 : 1.1;
-    setScale(prev => Math.max(1, Math.min(5, prev * delta)));
-  };
-
-  const getDistance = (t1: React.Touch, t2: React.Touch) => {
+  const getDistance = (t1: Touch, t2: Touch) => {
     return Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
   };
 
-  const getCenter = (t1: React.Touch, t2: React.Touch) => ({
-    x: (t1.clientX + t2.clientX) / 2,
-    y: (t1.clientY + t2.clientY) / 2,
-  });
-
   const handleTouchStart = (e: React.TouchEvent) => {
+    const g = gestureRef.current;
+    const t = transformRef.current;
+    
     if (e.touches.length === 2) {
       // Pinch start
-      const distance = getDistance(e.touches[0], e.touches[1]);
-      const center = getCenter(e.touches[0], e.touches[1]);
-      gestureRef.current = {
-        startDistance: distance,
-        startScale: scale,
-        startPosition: { ...position },
-        startCenter: center,
-        lastPanPoint: { x: 0, y: 0 },
-      };
-      setIsGesturing(true);
-    } else if (e.touches.length === 1 && scale > 1) {
+      g.isGesturing = true;
+      g.startDistance = getDistance(e.touches[0], e.touches[1]);
+      g.startScale = t.scale;
+      g.startX = t.x;
+      g.startY = t.y;
+      g.startCenterX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+      g.startCenterY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      
+      // Disable CSS transition during gesture
+      if (imageRef.current) {
+        imageRef.current.style.transition = 'none';
+      }
+    } else if (e.touches.length === 1 && t.scale > 1) {
       // Pan start
-      gestureRef.current.lastPanPoint = {
-        x: e.touches[0].clientX - position.x,
-        y: e.touches[0].clientY - position.y,
-      };
-      setIsGesturing(true);
+      g.isGesturing = true;
+      g.lastTouchX = e.touches[0].clientX;
+      g.lastTouchY = e.touches[0].clientY;
+      
+      if (imageRef.current) {
+        imageRef.current.style.transition = 'none';
+      }
     }
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (e.touches.length === 2) {
-      // Pinch zoom - simple and stable
+    const g = gestureRef.current;
+    const t = transformRef.current;
+    
+    if (e.touches.length === 2 && g.startDistance > 0) {
+      // Pinch zoom
       const distance = getDistance(e.touches[0], e.touches[1]);
-      const { startDistance, startScale } = gestureRef.current;
+      const currentCenterX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+      const currentCenterY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
       
-      if (startDistance > 0) {
-        const newScale = Math.max(1, Math.min(5, startScale * (distance / startDistance)));
-        setScale(newScale);
-      }
-    } else if (e.touches.length === 1 && scale > 1) {
+      // Calculate new scale
+      const newScale = Math.max(1, Math.min(5, g.startScale * (distance / g.startDistance)));
+      const scaleChange = newScale / g.startScale;
+      
+      // Calculate new position to keep focal point under fingers
+      const newX = g.startX - (g.startCenterX - g.startX) * (scaleChange - 1) + (currentCenterX - g.startCenterX);
+      const newY = g.startY - (g.startCenterY - g.startY) * (scaleChange - 1) + (currentCenterY - g.startCenterY);
+      
+      // Update refs and apply directly to DOM
+      t.scale = newScale;
+      t.x = newX;
+      t.y = newY;
+      applyTransform();
+      
+    } else if (e.touches.length === 1 && g.isGesturing && t.scale > 1) {
       // Pan
-      const touch = e.touches[0];
-      setPosition({
-        x: touch.clientX - gestureRef.current.lastPanPoint.x,
-        y: touch.clientY - gestureRef.current.lastPanPoint.y,
-      });
+      const deltaX = e.touches[0].clientX - g.lastTouchX;
+      const deltaY = e.touches[0].clientY - g.lastTouchY;
+      
+      t.x += deltaX;
+      t.y += deltaY;
+      
+      g.lastTouchX = e.touches[0].clientX;
+      g.lastTouchY = e.touches[0].clientY;
+      
+      applyTransform();
     }
   };
 
   const handleTouchEnd = () => {
-    setIsGesturing(false);
-    if (scale <= 1) {
-      setScale(1);
-      setPosition({ x: 0, y: 0 });
+    const g = gestureRef.current;
+    const t = transformRef.current;
+    
+    g.isGesturing = false;
+    g.startDistance = 0;
+    
+    // Re-enable transition for snap-back animation
+    if (imageRef.current) {
+      imageRef.current.style.transition = 'transform 0.2s ease-out';
+    }
+    
+    // Reset if zoomed out
+    if (t.scale <= 1) {
+      t.scale = 1;
+      t.x = 0;
+      t.y = 0;
+      applyTransform();
+      setIsZoomed(false);
+    } else {
+      setIsZoomed(true);
     }
   };
 
-  const handleDoubleClick = () => {
-    if (scale > 1) {
-      setScale(1);
-      setPosition({ x: 0, y: 0 });
-    } else {
-      setScale(2.5);
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    const t = transformRef.current;
+    
+    if (imageRef.current) {
+      imageRef.current.style.transition = 'transform 0.25s ease-out';
     }
+    
+    if (t.scale > 1) {
+      // Reset
+      t.scale = 1;
+      t.x = 0;
+      t.y = 0;
+      setIsZoomed(false);
+    } else {
+      // Zoom towards tap point
+      const targetScale = 2.5;
+      const scaleChange = targetScale / t.scale;
+      
+      t.x = t.x - (e.clientX - t.x) * (scaleChange - 1);
+      t.y = t.y - (e.clientY - t.y) * (scaleChange - 1);
+      t.scale = targetScale;
+      setIsZoomed(true);
+    }
+    
+    applyTransform();
+  };
+
+  const handleWheel = (e: React.WheelEvent) => {
+    e.preventDefault();
+    const t = transformRef.current;
+    const delta = e.deltaY > 0 ? 0.9 : 1.1;
+    t.scale = Math.max(1, Math.min(5, t.scale * delta));
+    applyTransform();
+    setIsZoomed(t.scale > 1);
   };
 
   return (
     <div 
       ref={containerRef}
-      className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+      className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center p-4"
       onClick={onClose}
-      style={{ touchAction: 'none' }}
+      style={{ touchAction: 'none', zIndex: 99999 }}
     >
       <div className="relative w-full max-w-lg flex flex-col items-center">
         {/* Close button */}
@@ -195,21 +264,23 @@ const ZoomableImage: React.FC<{ imageSrc: string; onClose: () => void; t: Record
           <X size={20} />
         </button>
         
-        {/* Image container with rounded corners */}
+        {/* Image container */}
         <div 
           className="overflow-hidden rounded-2xl bg-black w-full"
           onClick={(e) => e.stopPropagation()}
         >
           <img 
+            ref={imageRef}
             src={imageSrc} 
             alt="Receipt" 
             className="w-full object-contain select-none"
             style={{
               maxHeight: '70vh',
-              transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
+              transform: 'translate(0px, 0px) scale(1)',
               transformOrigin: 'center center',
-              transition: isGesturing ? 'none' : 'transform 0.2s ease-out',
+              transition: 'transform 0.2s ease-out',
               touchAction: 'none',
+              willChange: 'transform',
             }}
             onWheel={handleWheel}
             onTouchStart={handleTouchStart}
@@ -220,9 +291,9 @@ const ZoomableImage: React.FC<{ imageSrc: string; onClose: () => void; t: Record
           />
         </div>
         
-        {/* Instructions */}
-        <p className="text-caption text-white/70 mt-4 text-center">
-          {scale > 1 
+        {/* Instructions - pill style for visibility */}
+        <p className="text-caption text-primary mt-4 text-center bg-white/90 backdrop-blur-sm px-4 py-2 rounded-full shadow-sm">
+          {isZoomed 
             ? `${t['expenses.double_tap_reset'] || 'Double tap to reset'} · ${t['expenses.drag_to_pan'] || 'Drag to pan'}` 
             : `${t['expenses.pinch_to_zoom'] || 'Pinch to zoom'} · ${t['expenses.double_tap_zoom'] || 'Double tap to zoom'}`}
         </p>
@@ -370,6 +441,9 @@ const Expenses: React.FC<ExpensesProps> = ({
   
   // Cache for preloaded receipt URLs - maps expense ID to signed URL
   const preloadedReceiptUrls = useRef<Map<string, string>>(new Map());
+  
+  // Track previous selected expense ID to avoid resetting image on same-expense updates
+  const prevSelectedExpenseId = useRef<string | null>(null);
 
   useEffect(() => {
     setLocalExpenses([...expenses]);
@@ -427,10 +501,20 @@ const Expenses: React.FC<ExpensesProps> = ({
       setReceiptPreviewUrl(null);
       setTriedReceiptRefresh(false);
       setReceiptImageLoaded(false);
+      prevSelectedExpenseId.current = null;
       return;
     }
-    // Reset loading state for new expense
-    setReceiptImageLoaded(false);
+    
+    // Check if this is the same expense (just updated) or a different one
+    const isSameExpense = prevSelectedExpenseId.current === selectedExpense.id;
+    prevSelectedExpenseId.current = selectedExpense.id;
+    
+    // Only reset image loading state when switching to a DIFFERENT expense
+    if (!isSameExpense) {
+      setReceiptImageLoaded(false);
+      setTriedReceiptRefresh(false);
+    }
+    
     setExAmount(selectedExpense.amount.toFixed(2));
     setExMerchant(selectedExpense.merchant || '');
     setExCategory(selectedExpense.category || EXPENSE_CATEGORIES[0]);
@@ -451,34 +535,36 @@ const Expenses: React.FC<ExpensesProps> = ({
       iso = new Date().toISOString().slice(0, 10);
     }
     setExDate(iso);
-    setTriedReceiptRefresh(false);
 
-    // Check if we have a preloaded URL - use it instantly!
-    const preloadedUrl = preloadedReceiptUrls.current.get(selectedExpense.id);
-    if (preloadedUrl) {
-      setReceiptPreviewUrl(preloadedUrl);
-      // Image should already be in browser cache, so it will load instantly
-      return;
-    }
-
-    // Fallback: use the stored URL and refresh in background
-    setReceiptPreviewUrl(selectedExpense.receiptUrl || null);
-
-    // Proactively refresh signed receipt URLs so images remain viewable even when cached links expire
-    let cancelled = false;
-    (async () => {
-      if (!selectedExpense.receiptUrl) return;
-      const refreshed = await refreshReceiptUrl(selectedExpense.receiptUrl);
-      if (!cancelled && refreshed) {
-        setReceiptPreviewUrl(refreshed);
-        // Also cache for future use
-        preloadedReceiptUrls.current.set(selectedExpense.id, refreshed);
+    // Only fetch/set receipt URL when switching to a different expense
+    if (!isSameExpense) {
+      // Check if we have a preloaded URL - use it instantly!
+      const preloadedUrl = preloadedReceiptUrls.current.get(selectedExpense.id);
+      if (preloadedUrl) {
+        setReceiptPreviewUrl(preloadedUrl);
+        // Image should already be in browser cache, so it will load instantly
+        return;
       }
-    })();
 
-    return () => {
-      cancelled = true;
-    };
+      // Fallback: use the stored URL and refresh in background
+      setReceiptPreviewUrl(selectedExpense.receiptUrl || null);
+      
+      // Proactively refresh signed receipt URLs so images remain viewable even when cached links expire
+      let cancelled = false;
+      (async () => {
+        if (!selectedExpense.receiptUrl) return;
+        const refreshed = await refreshReceiptUrl(selectedExpense.receiptUrl);
+        if (!cancelled && refreshed) {
+          setReceiptPreviewUrl(refreshed);
+          // Also cache for future use
+          preloadedReceiptUrls.current.set(selectedExpense.id, refreshed);
+        }
+      })();
+
+      return () => {
+        cancelled = true;
+      };
+    }
   }, [selectedExpense]);
 
   // Note: Auto-focus removed for better UX on sheets
@@ -986,7 +1072,7 @@ const Expenses: React.FC<ExpensesProps> = ({
         <div className="mt-4 mb-6">
           <div className="bg-primary text-primary-foreground p-6 rounded-xl shadow-md">
             <p className="text-body opacity-80 mb-1">
-              {selectedMonth === null ? t['common.total_for_all'] : `${t['common.total_for_month']} ${MONTH_NAMES_FULL[selectedMonth]}`}
+              {selectedMonth === null ? t['common.total_for_all'] : `${t['common.total_for_month']} ${MONTH_NAMES_FULL[selectedMonth]} ${selectedYear}`}
             </p>
             <h2 className="text-display">{formatCurrency(totalAmount)}</h2>
           </div>
@@ -1223,17 +1309,34 @@ const Expenses: React.FC<ExpensesProps> = ({
                       );
                     })}
                   </div>
-                  {/* Torn receipt zigzag edge - simple triangles */}
+                  {/* Torn receipt zigzag edge - simple triangles with shadow */}
                   <div 
-                    className="w-full"
-                    style={{
-                      height: '12px',
-                      backgroundImage: `linear-gradient(135deg, hsl(var(--card)) 50%, transparent 50%),
-                                        linear-gradient(225deg, hsl(var(--card)) 50%, transparent 50%)`,
-                      backgroundSize: '16px 12px',
-                      backgroundRepeat: 'repeat-x',
-                    }}
-                  />
+                    className="w-full relative"
+                    style={{ height: '12px' }}
+                  >
+                    {/* Shadow layer */}
+                    <div 
+                      className="absolute inset-0"
+                      style={{
+                        backgroundImage: `linear-gradient(135deg, rgba(0,0,0,0.08) 50%, transparent 50%),
+                                          linear-gradient(225deg, rgba(0,0,0,0.08) 50%, transparent 50%)`,
+                        backgroundSize: '16px 12px',
+                        backgroundRepeat: 'repeat-x',
+                        transform: 'translateY(2px)',
+                        filter: 'blur(2px)',
+                      }}
+                    />
+                    {/* Main zigzag */}
+                    <div 
+                      className="absolute inset-0"
+                      style={{
+                        backgroundImage: `linear-gradient(135deg, hsl(var(--card)) 50%, transparent 50%),
+                                          linear-gradient(225deg, hsl(var(--card)) 50%, transparent 50%)`,
+                        backgroundSize: '16px 12px',
+                        backgroundRepeat: 'repeat-x',
+                      }}
+                    />
+                  </div>
                 </div>
               )}
             </div>

@@ -123,6 +123,43 @@ const getDefaultAssignee = (users: User[], currentUser: User): string => {
   return helper?.id || currentUser.id;
 };
 
+// Sort users for "Assign to" selection:
+// If helper exists: Helper → Myself → Spouse → Others → Child
+// If no helper: Myself → Spouse → Others → Child
+const getSortedUsersForAssignment = (users: User[], currentUser: User): User[] => {
+  const activeUsers = users.filter(u => u.status === 'active');
+  const hasHelper = activeUsers.some(u => u.role === UserRole.HELPER);
+  
+  const getRolePriority = (user: User): number => {
+    // Myself always gets special priority
+    if (user.id === currentUser.id) {
+      return hasHelper ? 1 : 0; // After helper if helper exists, first if no helper
+    }
+    
+    switch (user.role) {
+      case UserRole.HELPER:
+        return 0; // Helper first (only if hasHelper)
+      case UserRole.MASTER:
+      case UserRole.SUPERADMIN:
+        return 1; // Admin roles (but currentUser check above takes precedence)
+      case UserRole.SPOUSE:
+        return 2;
+      case UserRole.OTHER:
+        return 3;
+      case UserRole.CHILD:
+        return 4;
+      default:
+        return 5;
+    }
+  };
+  
+  return [...activeUsers].sort((a, b) => {
+    const priorityDiff = getRolePriority(a) - getRolePriority(b);
+    if (priorityDiff !== 0) return priorityDiff;
+    return a.name.localeCompare(b.name);
+  });
+};
+
 // Returns badge styling for category (background + text color)
 // Colors based on brand palette: #3EAFD2, #FF9800, #7E57C2, #4CAF50, #F06292, #AB47BC, #757575
 const getCategoryBadgeStyle = (category: string): string => {
@@ -1695,7 +1732,7 @@ const ToDo: React.FC<ToDoProps> = ({
                   {t['todo.assign_to'] || 'Assign to'}
                 </label>
                 <div className="flex flex-wrap gap-2">
-                  {users.filter(u => u.status === 'active').map(user => (
+                  {getSortedUsersForAssignment(users, currentUser).map(user => (
                     <button
                       key={user.id}
                       onClick={() => setSheetForm(prev => ({ ...prev, assigneeId: user.id }))}

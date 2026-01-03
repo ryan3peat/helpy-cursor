@@ -354,13 +354,16 @@ const Dashboard: React.FC<DashboardProps> = ({
   const shoppingCount = todoItems.filter(i => i.type === 'shopping' && !i.completed).length;
   const activeTaskCount = todoItems.filter(i => i.type === 'task' && !i.completed).length;
   
-  // Calculate family member count for quota display (excluding helpers for now - showing total family slots)
-  const familyCount = useMemo(() => {
-    return users.filter(u => u && u.id && u.status === 'active' && u.role !== UserRole.HELPER).length;
+  // Calculate total member count for quota display (family + helpers combined)
+  const totalMemberCount = useMemo(() => {
+    return users.filter(u => u && u.id && u.status === 'active').length;
   }, [users]);
   
-  // Check if at family member limit
-  const isAtFamilyLimit = familyCount >= householdLimits.maxFamily;
+  // Total slots = family slots + helper slots
+  const totalMaxSlots = householdLimits.maxFamily + householdLimits.maxHelpers;
+  
+  // Check if at total member limit
+  const isAtMemberLimit = totalMemberCount >= totalMaxSlots;
   
   const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [tempNotes, setTempNotes] = useState(familyNotes);
@@ -806,7 +809,7 @@ const Dashboard: React.FC<DashboardProps> = ({
           <div
             onClick={() => {
               haptics.light();
-              if (isAtFamilyLimit) {
+              if (isAtMemberLimit) {
                 // Navigate to plan section for upgrade
                 localStorage.setItem('helpy_profile_target_section', 'plan');
                 onNavigate('profile');
@@ -817,20 +820,28 @@ const Dashboard: React.FC<DashboardProps> = ({
             className="flex-shrink-0 w-[220px] bg-secondary/30 rounded-2xl flex flex-col items-center justify-center cursor-pointer border-2 border-dashed border-border snap-start"
           >
             <div className="w-16 h-16 rounded-full bg-card flex items-center justify-center shadow-sm">
-              {isAtFamilyLimit ? (
+              {isAtMemberLimit ? (
                 <Crown size={28} className="text-primary" />
               ) : (
                 <Plus size={28} className="text-primary" />
               )}
             </div>
             <span className="text-body font-semibold text-foreground mt-3">
-              {isAtFamilyLimit 
+              {isAtMemberLimit 
                 ? (t['common.upgrade'] || 'Upgrade')
                 : (t['common.add'] || 'Add')
               }
             </span>
-            <span className={`text-caption mt-1 ${isAtFamilyLimit ? 'text-destructive' : 'text-muted-foreground'}`}>
-              {familyCount} {t['common.of'] || 'of'} {householdLimits.maxFamily} {t['dashboard.slots'] || 'slots'}
+            {isAtMemberLimit && (
+              <span className="text-caption text-muted-foreground">
+                {t['common.to_add_more'] || 'to add more'}
+              </span>
+            )}
+            <span className="text-caption text-muted-foreground mt-2">
+              {totalMemberCount} {t['common.of'] || 'of'} {totalMaxSlots}
+            </span>
+            <span className="text-caption text-muted-foreground">
+              {t['dashboard.member_slots_used'] || 'member slots used'}
             </span>
           </div>
         )}

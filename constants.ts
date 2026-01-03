@@ -52,6 +52,7 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'dashboard.language': 'Language',
   'dashboard.need_help': 'Need Help Getting Started?',
   'dashboard.slots': 'slots',
+  'dashboard.member_slots_used': 'member slots used',
 
   // Filters & Common Tabs
   'filter.all': 'All',
@@ -291,6 +292,7 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'common.upgrade_to_add_more': 'Upgrade to Add More',
   'profile.family_slots_used': 'family slots used',
   'profile.helper_slots_used': 'helper slots used',
+  'profile.member_slots_used': 'member slots used',
   'common.remove': 'Remove',
   'common.confirm_clear': 'Are you sure you want to clear these items?',
   'common.close': 'Close',
@@ -1055,6 +1057,7 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'expenses.summary_title': 'Monthly Summary',
   'expenses.summary_upgrade_desc': 'Get insights into your spending habits. View your expenses broken down by category with visual charts, and track your monthly totals at a glance.',
   'common.upgrade': 'Upgrade',
+  'common.to_add_more': 'to add more',
 
   // Subscription - Referral & Downgrade
   'subscription.invalid_referral_code': 'Invalid or expired referral code',

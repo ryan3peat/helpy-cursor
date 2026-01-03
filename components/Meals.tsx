@@ -737,6 +737,14 @@ const Meals: React.FC<MealsProps> = ({
 
   return (
     <div className="min-h-screen bg-background pb-40">
+      {/* Fixed background shield - sits just behind sticky header (z-19) 
+          to prevent any flicker during iOS Safari scroll operations */}
+      <div 
+        className="fixed top-0 left-0 right-0 z-[19] bg-background"
+        style={{ height: '120px' }}
+        aria-hidden="true"
+      />
+      
       <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
         {/* ─────────────────────────────────────────────────────────────── */}
         {/* STICKY HEADER - Push Up (No Shrink) - matches ToDo/Expenses */}

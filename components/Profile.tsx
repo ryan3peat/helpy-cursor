@@ -597,14 +597,16 @@ const Profile: React.FC<ProfileProps> = ({
       });
   }, [users]);
 
-  // Calculate family and helper counts for quota display
-  const { familyCount, helperCount } = React.useMemo(() => {
-    const activeUsers = users.filter(u => u && u.id && u.status === 'active');
-    return {
-      familyCount: activeUsers.filter(u => u.role !== UserRole.HELPER).length,
-      helperCount: activeUsers.filter(u => u.role === UserRole.HELPER).length
-    };
+  // Calculate total member count for quota display (family + helpers combined)
+  const totalMemberCount = React.useMemo(() => {
+    return users.filter(u => u && u.id && u.status === 'active').length;
   }, [users]);
+  
+  // Total slots = family slots + helper slots
+  const totalMaxSlots = householdLimits.maxFamily + householdLimits.maxHelpers;
+  
+  // Check if at total member limit
+  const isAtMemberLimit = totalMemberCount >= totalMaxSlots;
 
   // Find selected user, fallback to current user if not found
   const selectedUser = validUsers.find(u => u.id === selectedUserId) || validUsers.find(u => u.id === currentUser.id) || validUsers[0];
@@ -1595,15 +1597,8 @@ const Profile: React.FC<ProfileProps> = ({
                   <h2 className="text-title text-foreground">{t['profile.addMember'] || 'Add Family Member'}</h2>
                   {/* Show slot usage for form step */}
                   {addUserStep === 'form' && (
-                    <p className={`text-caption mt-1 ${
-                      (newRole === UserRole.HELPER ? helperCount >= householdLimits.maxHelpers : familyCount >= householdLimits.maxFamily)
-                        ? 'text-destructive'
-                        : 'text-muted-foreground'
-                    }`}>
-                      {newRole === UserRole.HELPER
-                        ? `${helperCount} ${t['common.of'] || 'of'} ${householdLimits.maxHelpers} ${t['profile.helper_slots_used'] || 'helper slots used'}`
-                        : `${familyCount} ${t['common.of'] || 'of'} ${householdLimits.maxFamily} ${t['profile.family_slots_used'] || 'family slots used'}`
-                      }
+                    <p className="text-caption mt-1 text-muted-foreground">
+                      {totalMemberCount} {t['common.of'] || 'of'} {totalMaxSlots} {t['profile.member_slots_used'] || 'member slots used'}
                     </p>
                   )}
                   {/* Show name subtitle for invite step */}
@@ -1780,43 +1775,32 @@ const Profile: React.FC<ProfileProps> = ({
 
                     {/* Footer */}
                     <div className="p-5 pb-8 border-t border-border shrink-0">
-                      {/* Check if at limit based on selected role */}
-                      {(() => {
-                        const isAtLimit = newRole === UserRole.HELPER 
-                          ? helperCount >= householdLimits.maxHelpers 
-                          : familyCount >= householdLimits.maxFamily;
-                        
-                        if (isAtLimit) {
-                          return (
-                            <button
-                              onClick={() => {
-                                closeAddUserModal();
-                                // Navigate to plan section
-                                setTimeout(() => {
-                                  setActiveSection('settings');
-                                  setTimeout(() => setActiveSection('plan'), 100);
-                                }, 300);
-                              }}
-                              className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground text-body font-semibold shadow-sm flex items-center justify-center gap-2"
-                            >
-                              <Crown size={18} />
-                              {t['common.upgrade_to_add_more'] || 'Upgrade to Add More'}
-                            </button>
-                          );
-                        }
-                        
-                        return (
-                          <button
-                            onClick={handleAddUser}
-                            disabled={isAddingUser || !newName.trim()}
-                            className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground text-body shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            {newRole === UserRole.CHILD 
-                              ? t['common.add'] 
-                              : (t['common.add_and_invite'] || 'Add and Send Invite Link')}
-                          </button>
-                        );
-                      })()}
+                      {isAtMemberLimit ? (
+                        <button
+                          onClick={() => {
+                            closeAddUserModal();
+                            // Navigate to plan section
+                            setTimeout(() => {
+                              setActiveSection('settings');
+                              setTimeout(() => setActiveSection('plan'), 100);
+                            }, 300);
+                          }}
+                          className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground text-body font-semibold shadow-sm flex items-center justify-center gap-2"
+                        >
+                          <Crown size={18} />
+                          {t['common.upgrade_to_add_more'] || 'Upgrade to Add More'}
+                        </button>
+                      ) : (
+                        <button
+                          onClick={handleAddUser}
+                          disabled={isAddingUser || !newName.trim()}
+                          className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground text-body shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {newRole === UserRole.CHILD 
+                            ? t['common.add'] 
+                            : (t['common.add_and_invite'] || 'Add and Send Invite Link')}
+                        </button>
+                      )}
                     </div>
                   </>
                 )}

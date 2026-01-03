@@ -104,6 +104,27 @@ export const HelperManagementContent: React.FC<Props> = ({
 
   const loadPayslip = async () => {
     try {
+      // In demo mode, create a mock current payslip (unsigned)
+      if (isDemoMode) {
+        const now = new Date();
+        const mockCurrentPayslip: HelperPayslipConfirmation = {
+          id: 'demo-payslip-current',
+          householdId: 'demo-household',
+          helperId: 'demo-helper-004',
+          month: now.getMonth() + 1,
+          year: now.getFullYear(),
+          salaryAmount: 6106,  // Base salary for current month
+          overtimeTotal: 0,
+          employerSignedAt: null,
+          employerUserId: null,
+          helperSignedAt: null,
+          createdAt: new Date().toISOString(),
+        };
+        setCurrentPayslip(mockCurrentPayslip);
+        setOvertimeTotal(0);
+        return;
+      }
+      
       // Get overtime total for current month
       const now = new Date();
       const overtime = await getOvertimeTotalForMonth(helperId, householdId, now.getMonth() + 1, now.getFullYear());

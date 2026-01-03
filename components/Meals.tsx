@@ -85,6 +85,7 @@ const Meals: React.FC<MealsProps> = ({
   const [view, setView] = useState<'day' | 'week'>('day');
   const [loadingAi, setLoadingAi] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [contentReady, setContentReady] = useState(false);
   
   
   // Scroll header hook for animation
@@ -483,10 +484,13 @@ const Meals: React.FC<MealsProps> = ({
   // ─────────────────────────────────────────────────────────────────
   // AUTO-SCROLL TO TODAY - SINGLE ATTEMPT, NO RACE CONDITIONS
   // Uses useLayoutEffect to scroll BEFORE browser paint (no flicker)
-  // Single requestAnimationFrame ensures DOM is ready without race conditions
+  // Content is hidden until scroll completes to prevent wrong-day flash
   // ─────────────────────────────────────────────────────────────────
   useLayoutEffect(() => {
-    if (!shouldAutoScroll.current) return;
+    if (!shouldAutoScroll.current) {
+      if (!contentReady) setContentReady(true);
+      return;
+    }
 
     if (view === 'day') {
       const headerOffset = 200;
@@ -497,6 +501,7 @@ const Meals: React.FC<MealsProps> = ({
         const targetEl = document.getElementById(`day-${targetDateStr}`);
         if (!targetEl) {
           shouldAutoScroll.current = false;
+          setContentReady(true);
           return;
         }
         
@@ -504,6 +509,7 @@ const Meals: React.FC<MealsProps> = ({
         const elementPosition = rect.top + window.scrollY;
         window.scrollTo({ top: elementPosition - headerOffset, behavior: 'auto' });
         shouldAutoScroll.current = false;
+        setContentReady(true);
       });
 
       return () => cancelAnimationFrame(frameId);
@@ -513,6 +519,7 @@ const Meals: React.FC<MealsProps> = ({
         const scrollContainer = weekScrollRef.current;
         if (!scrollContainer) {
           shouldAutoScroll.current = false;
+          setContentReady(true);
           return;
         }
         
@@ -532,6 +539,7 @@ const Meals: React.FC<MealsProps> = ({
         }
         
         shouldAutoScroll.current = false;
+        setContentReady(true);
       });
 
       return () => cancelAnimationFrame(frameId);
@@ -842,9 +850,9 @@ const Meals: React.FC<MealsProps> = ({
       </div>
 
         {/* ─────────────────────────────────────────────────────────────── */}
-        {/* MAIN CONTENT */}
+        {/* MAIN CONTENT - Hidden until scroll completes to prevent flicker */}
         {/* ─────────────────────────────────────────────────────────────── */}
-        <div className="pt-4">
+        <div className="pt-4" style={{ opacity: contentReady ? 1 : 0 }}>
 
       {/* Day View */}
       {view === 'day' ? (

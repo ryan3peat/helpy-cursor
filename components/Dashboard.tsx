@@ -149,7 +149,7 @@ const FamilyCardWithGlow: React.FC<{
   return (
     <div
       onClick={onSelect}
-      className="flex-shrink-0 w-[220px] h-full relative snap-start"
+      className="h-full relative snap-start"
     >
       {/* Photo Glow - Blurred copy positioned behind the card */}
       <div 
@@ -213,10 +213,18 @@ const FamilyCardWithGlow: React.FC<{
           <div 
             className="grid transition-[grid-template-rows] duration-300 ease-out"
             style={{
-              gridTemplateRows: isScrolled ? '0fr' : '1fr'
+              gridTemplateRows: isScrolled ? '0fr' : '1fr',
+              willChange: 'grid-template-rows',
+              contain: 'layout style',
             }}
           >
-            <div className={`overflow-hidden transition-opacity duration-300 ease-out ${isScrolled ? 'opacity-0' : 'opacity-100'}`}>
+            <div 
+              className={`overflow-hidden transition-opacity duration-300 ease-out ${isScrolled ? 'opacity-0' : 'opacity-100'}`}
+              style={{
+                willChange: 'opacity',
+                transform: 'translateZ(0)',
+              }}
+            >
               {/* Divider */}
               <div className="h-px bg-border my-3" />
 
@@ -849,7 +857,7 @@ const Dashboard: React.FC<DashboardProps> = ({
       <div 
         ref={carouselRef}
         onScroll={handleCarouselScroll}
-        className="flex items-stretch gap-4 overflow-x-auto pb-2 scrollbar-hide -mx-5 px-5 snap-x snap-mandatory scroll-px-5"
+        className="grid grid-flow-col auto-cols-[220px] gap-4 overflow-x-auto pb-2 scrollbar-hide -mx-5 px-5 snap-x snap-mandatory scroll-px-5"
       >
         {validUsers.map((user) => (
           <FamilyCardWithGlow
@@ -878,7 +886,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                 onOpenAddFamily();
               }
             }}
-            className="flex-shrink-0 w-[220px] h-full bg-secondary/30 rounded-2xl flex flex-col items-center justify-center cursor-pointer border-2 border-dashed border-border snap-start"
+            className="h-full bg-secondary/30 rounded-2xl flex flex-col items-center justify-center cursor-pointer border-2 border-dashed border-border snap-start"
           >
             <div className="w-16 h-16 rounded-full bg-card flex items-center justify-center shadow-sm">
               {isAtMemberLimit ? (

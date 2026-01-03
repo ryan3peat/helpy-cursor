@@ -19,7 +19,8 @@ import {
   Baby,
   Rows3,
   Sheet,
-  Check
+  Check,
+  Youtube
 } from 'lucide-react';
 import Avatar from './ui/Avatar';
 import ErrorBanner from './ui/ErrorBanner';
@@ -1339,7 +1340,7 @@ const Meals: React.FC<MealsProps> = ({
                 {/* Dish Input */}
                 <div>
                   <label className="block text-caption text-muted-foreground tracking-wide mb-2">
-                    {t['meals.the_dish'] ?? 'The Dish'}
+                    {t['meals.the_dish'] ?? 'Dish'}
                   </label>
                   <div className="relative">
                     <textarea
@@ -1366,6 +1367,45 @@ const Meals: React.FC<MealsProps> = ({
                     */}
                   </div>
                 </div>
+
+                {/* Search Recipe in YouTube - Always visible, disabled when no dish name */}
+                <button
+                  onClick={() => {
+                    if (!description.trim()) return;
+                    
+                    const searchQuery = encodeURIComponent(`Recipe: ${description.trim()}`);
+                    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+                    const isAndroid = /Android/.test(navigator.userAgent);
+                    
+                    if (isIOS) {
+                      // iOS: Try YouTube app URI scheme first
+                      // Using window.location.href ensures user returns where they left off
+                      window.location.href = `youtube://www.youtube.com/results?search_query=${searchQuery}`;
+                      
+                      // Fallback to web after short delay if app not installed
+                      setTimeout(() => {
+                        if (document.visibilityState === 'visible') {
+                          window.location.href = `https://www.youtube.com/results?search_query=${searchQuery}`;
+                        }
+                      }, 500);
+                    } else if (isAndroid) {
+                      // Android: intent URI opens YouTube app if installed, falls back to browser
+                      window.location.href = `intent://www.youtube.com/results?search_query=${searchQuery}#Intent;scheme=https;package=com.google.android.youtube;end`;
+                    } else {
+                      // Desktop: open in new tab
+                      window.open(`https://www.youtube.com/results?search_query=${searchQuery}`, '_blank');
+                    }
+                  }}
+                  disabled={!description.trim()}
+                  className={`w-full py-3 rounded-xl text-body font-semibold flex items-center justify-center gap-2 ${
+                    description.trim()
+                      ? 'bg-primary/10 text-primary'
+                      : 'bg-muted text-muted-foreground'
+                  }`}
+                >
+                  <Youtube size={18} />
+                  {t['meals.search_youtube'] ?? 'Search Recipe in YouTube'}
+                </button>
 
                 {/* People Section */}
                 <div>

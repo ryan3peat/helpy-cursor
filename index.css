@@ -339,13 +339,27 @@ div:where(.scale-95, .scale-105, .scale-110, [class*="hover:scale"], [class*="ac
 }
 
 /* ─────────────────────────────────────────────────────────────────
+   INTERNAL PAGE/SECTION FADE ANIMATION
+   Used for Profile sections, UserGuide accordions, etc.
+   ───────────────────────────────────────────────────────────────── */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-fade-in {
+  animation: fade-in 150ms ease-out forwards;
+}
+
+/* ─────────────────────────────────────────────────────────────────
    PAGE TRANSITION FIX - Prevent header light leak
    
    Sticky headers must NOT participate in the page fade-in animation.
    Otherwise there's a split-second flash at the top edge where the
    header background hasn't painted yet.
    ───────────────────────────────────────────────────────────────── */
-.animate-fade-in .sticky {
+.animate-fade-in .sticky,
+.page-fade-in .sticky {
   opacity: 1 !important;
 }
 
@@ -420,6 +434,20 @@ button:focus-visible {
   padding: 0 !important;
   margin: 0 !important;
   border: none !important;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   PAGE TRANSITION ANIMATION
+   ───────────────────────────────────────────────────────────────── */
+
+/* Page fade-in animation - zero risk, runs AFTER useLayoutEffect */
+@keyframes page-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.page-fade-in {
+  animation: page-fade-in 150ms ease-out forwards;
 }
 
 /* ─────────────────────────────────────────────────────────────────

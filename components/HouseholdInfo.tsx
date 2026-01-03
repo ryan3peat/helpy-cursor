@@ -1149,6 +1149,36 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
               />
             </div>
           )}
+
+          {/* Helper Selector Tabs */}
+          {activeSection === "helper" && hasHelperManagementAccess && helpers.length > 0 && (
+            <div 
+              className="relative rounded-full overflow-hidden"
+              style={{ backgroundColor: 'hsl(var(--muted))' }}
+            >
+              {/* Scrollable button container */}
+              <div className="flex p-1 overflow-x-auto scrollbar-hide">
+                {helpers.map(helper => (
+                  <button
+                    key={helper.id}
+                    onClick={() => setSelectedHelperId(helper.id)}
+                    className={`px-4 py-2 rounded-full text-body whitespace-nowrap transition-all ${
+                      selectedHelperId === helper.id
+                        ? "bg-card text-primary shadow-sm"
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    {helper.name}
+                  </button>
+                ))}
+              </div>
+              {/* Inset shadow overlay - fixed to outer container, doesn't scroll */}
+              <div 
+                className="absolute inset-0 rounded-full pointer-events-none"
+                style={{ boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.06)' }}
+              />
+            </div>
+          )}
         </div>
 
         {/* ─────────────────────────────────────────────────────────────── */}
@@ -1254,27 +1284,6 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
               </div>
             ) : (
               <>
-                {/* Helper Selector */}
-                {helpers.length > 0 && (
-                  <div className="mb-4">
-                    <div className="flex gap-2 overflow-x-auto scrollbar-hide">
-                      {helpers.map(helper => (
-                        <button
-                          key={helper.id}
-                          onClick={() => setSelectedHelperId(helper.id)}
-                          className={`px-4 py-2 rounded-full whitespace-nowrap transition-all ${
-                            selectedHelperId === helper.id
-                              ? "bg-primary text-primary-foreground"
-                              : "bg-card text-foreground"
-                          }`}
-                        >
-                          {helper.name}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                
                 {/* Helper Content */}
                 {selectedHelperId && (() => {
                   const selectedHelper = helpers.find(h => h.id === selectedHelperId);

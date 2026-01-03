@@ -27,8 +27,8 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, onNavigate, t }) 
 
   return (
     <div className="min-h-screen pb-20 bg-background">
-      {/* Main Content Area */}
-      <div className="flex-1">{children}</div>
+      {/* Main Content Area - key forces remount, animation triggers on mount */}
+      <div key={activeView} className="flex-1 page-fade-in">{children}</div>
 
       {/* Bottom Navigation - iOS Style */}
       <nav

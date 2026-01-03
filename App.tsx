@@ -76,6 +76,8 @@ const AppContent: React.FC = () => {
     demoFamilyNotes,
     demoFamilyNotesLang,
     demoFamilyNotesTranslations,
+    demoEssentialItems,
+    demoHouseRoutineItems,
   } = useDemoMode();
   // App fade-in state (replaces old intro animation)
   const [appReady, setAppReady] = useState(false);
@@ -1122,10 +1124,10 @@ const AppContent: React.FC = () => {
         return (
           <HouseholdInfo
             householdId={hid}
-            currentUser={currentUser!}
-            users={users}
-            essentialItems={essentialItems}
-            houseRoutineItems={houseRoutineItems}
+            currentUser={isDemoMode ? demoUsers[0] : currentUser!}
+            users={isDemoMode ? demoUsers : users}
+            essentialItems={isDemoMode ? demoEssentialItems : essentialItems}
+            houseRoutineItems={isDemoMode ? demoHouseRoutineItems : houseRoutineItems}
             onAddEssentialInfo={handleAddEssentialInfo}
             onUpdateEssentialInfo={handleUpdateEssentialInfo}
             onDeleteEssentialInfo={handleDeleteEssentialInfo}

@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
 import { User, UserRole, ToDoItem, Meal, Expense, MealType, MealAudience, ShoppingCategory, TaskCategory } from '../types';
+import type { EssentialInfo, EssentialInfoCategory } from '@src/types/essentialInfo';
+import type { HouseRoutine, HouseRoutineCategory } from '@src/types/houseRoutine';
 
 // ============================================================================
 // DEMO MODE CONTEXT
@@ -17,6 +19,8 @@ interface DemoModeContextType {
   demoFamilyNotes: string;
   demoFamilyNotesLang: string;
   demoFamilyNotesTranslations: Record<string, string>;
+  demoEssentialItems: EssentialInfo[];
+  demoHouseRoutineItems: HouseRoutine[];
 }
 
 const DemoModeContext = createContext<DemoModeContextType | null>(null);
@@ -347,6 +351,204 @@ const DEMO_FAMILY_NOTES_TRANSLATIONS: Record<string, string> = {
 };
 
 // ============================================================================
+// MOCK ESSENTIAL INFO (PLACES) - Hong Kong locations
+// ============================================================================
+
+const createDemoEssentialItems = (): EssentialInfo[] => [
+  // Home
+  {
+    id: 'demo-place-001',
+    householdId: 'demo-household',
+    category: 'Home' as EssentialInfoCategory,
+    name: 'Wong Family Residence',
+    address: '88 Tai Po Road, Sha Tin, NT',
+    countryCode: '+852',
+    phone: '26001234',
+    note: 'Passcode: 8899. Building management: Mr. Chan at lobby.',
+  },
+  // School
+  {
+    id: 'demo-place-002',
+    householdId: 'demo-household',
+    category: 'School' as EssentialInfoCategory,
+    name: "ESF Discovery College - Ethan's School",
+    address: '38 Siena Avenue, Discovery Bay, Lantau Island',
+    countryCode: '+852',
+    phone: '39696088',
+    note: 'Drop-off: 7:45am. Pick-up: 3:30pm (Gate B). Teacher: Ms. Johnson.',
+  },
+  {
+    id: 'demo-place-003',
+    householdId: 'demo-household',
+    category: 'School' as EssentialInfoCategory,
+    name: 'ESF Kennedy School (Backup)',
+    address: '19 Sha Wan Drive, Pokfulam',
+    countryCode: '+852',
+    phone: '25791902',
+    note: 'For swimming lessons on Saturdays 10am.',
+  },
+  // Doctor
+  {
+    id: 'demo-place-004',
+    householdId: 'demo-household',
+    category: 'Doctor' as EssentialInfoCategory,
+    name: 'Dr. Lee Family Clinic',
+    address: 'Room 1205, Prince Building, Central',
+    countryCode: '+852',
+    phone: '25231234',
+    note: 'Ethan\'s pediatrician. Appointments needed. Best time: morning.',
+  },
+  {
+    id: 'demo-place-005',
+    householdId: 'demo-household',
+    category: 'Doctor' as EssentialInfoCategory,
+    name: 'Dr. Chen Dental',
+    address: 'Level 8, Tower 1, Grand Century Place, Mongkok',
+    countryCode: '+852',
+    phone: '27891234',
+    note: 'Whole family dentist. 6-month checkup reminder.',
+  },
+  // Hospital
+  {
+    id: 'demo-place-006',
+    householdId: 'demo-household',
+    category: 'Hospital' as EssentialInfoCategory,
+    name: 'Prince of Wales Hospital - Emergency',
+    address: '30-32 Ngan Shing Street, Sha Tin',
+    countryCode: '+852',
+    phone: '26322211',
+    note: 'Nearest A&E. Keep medical cards in wallet.',
+  },
+  // Shops
+  {
+    id: 'demo-place-007',
+    householdId: 'demo-household',
+    category: 'Shops' as EssentialInfoCategory,
+    name: 'Tai Po Hui Wet Market',
+    address: 'Fu Shin Street, Tai Po',
+    countryCode: '+852',
+    phone: '',
+    note: 'Ask for Mrs. Lam for fresh fish (Stall 23). Best before 9am.',
+  },
+  {
+    id: 'demo-place-008',
+    householdId: 'demo-household',
+    category: 'Shops' as EssentialInfoCategory,
+    name: 'ParknShop - Sha Tin',
+    address: 'B2, New Town Plaza, Sha Tin',
+    countryCode: '+852',
+    phone: '',
+    note: 'Tuesday is senior discount day. Parking: L2.',
+  },
+];
+
+// ============================================================================
+// MOCK HOUSE ROUTINE (PRACTICE) - Family rules and routines
+// ============================================================================
+
+const createDemoHouseRoutineItems = (): HouseRoutine[] => [
+  // Home Rules
+  {
+    id: 'demo-routine-001',
+    householdId: 'demo-household',
+    category: 'Home Rules' as HouseRoutineCategory,
+    name: 'No shoes inside the house',
+    note: 'All family members and guests remove shoes at entrance. Slippers provided in shoe cabinet.',
+  },
+  {
+    id: 'demo-routine-002',
+    householdId: 'demo-household',
+    category: 'Home Rules' as HouseRoutineCategory,
+    name: 'Screen time limits for Ethan',
+    note: 'Weekdays: 30 mins after homework. Weekends: 1 hour max. No iPad after 7pm.',
+  },
+  // Routine
+  {
+    id: 'demo-routine-003',
+    householdId: 'demo-household',
+    category: 'Routine' as HouseRoutineCategory,
+    name: "Ethan's Morning Routine",
+    note: 'Wake 6:30am, breakfast 7am, leave for school 7:30am. Pack snack box night before.',
+  },
+  {
+    id: 'demo-routine-004',
+    householdId: 'demo-household',
+    category: 'Routine' as HouseRoutineCategory,
+    name: 'Grandma medicine schedule',
+    note: 'Morning: Blood pressure pill with breakfast. Evening: Vitamin D after dinner.',
+  },
+  // Cooking
+  {
+    id: 'demo-routine-005',
+    householdId: 'demo-household',
+    category: 'Cooking' as HouseRoutineCategory,
+    name: 'Ethan prefers no vegetables mixed in',
+    note: 'Serve veggies on the side. He will eat carrots and corn but not leafy greens.',
+  },
+  {
+    id: 'demo-routine-006',
+    householdId: 'demo-household',
+    category: 'Cooking' as HouseRoutineCategory,
+    name: 'Grandma diet restrictions',
+    note: 'Low sodium, no MSG. Congee must be soft. Avoid cold foods.',
+  },
+  {
+    id: 'demo-routine-007',
+    householdId: 'demo-household',
+    category: 'Cooking' as HouseRoutineCategory,
+    name: 'Michelle is allergic to peanuts',
+    note: 'Check all sauces and snacks for peanut ingredients. EpiPen in medicine cabinet.',
+  },
+  // Child Care
+  {
+    id: 'demo-routine-008',
+    householdId: 'demo-household',
+    category: 'Child Care' as HouseRoutineCategory,
+    name: 'Ethan bedtime routine',
+    note: 'Bath 7:30pm, story time 8pm, lights out 8:30pm. Nightlight on, door slightly open.',
+  },
+  {
+    id: 'demo-routine-009',
+    householdId: 'demo-household',
+    category: 'Child Care' as HouseRoutineCategory,
+    name: 'Ethan dairy allergy',
+    note: 'Use oat milk for cereal. No cheese or ice cream. Lactose-free yogurt OK.',
+  },
+  // Cleaning
+  {
+    id: 'demo-routine-010',
+    householdId: 'demo-household',
+    category: 'Cleaning' as HouseRoutineCategory,
+    name: 'Weekly deep clean schedule',
+    note: 'Mon: Bathrooms. Wed: Kitchen deep clean. Fri: All floors. Sat: Windows.',
+  },
+  // Laundry
+  {
+    id: 'demo-routine-011',
+    householdId: 'demo-household',
+    category: 'Laundry' as HouseRoutineCategory,
+    name: 'Delicate items handling',
+    note: "Michelle's silk blouses: hand wash only. David's suits: dry clean (Mr. Clean, Sha Tin Centre).",
+  },
+  // Safety
+  {
+    id: 'demo-routine-012',
+    householdId: 'demo-household',
+    category: 'Safety' as HouseRoutineCategory,
+    name: 'Emergency contacts',
+    note: 'David mobile: 9123 4567. Michelle mobile: 9234 5678. Emergency: 999.',
+  },
+  // Helper Care
+  {
+    id: 'demo-routine-013',
+    householdId: 'demo-household',
+    category: 'Helper Care' as HouseRoutineCategory,
+    name: 'Anna day off',
+    note: 'Every Sunday. Usually returns by 9pm. Contact if running late.',
+  },
+];
+
+// ============================================================================
 // DEMO MODE PROVIDER
 // ============================================================================
 
@@ -362,6 +564,8 @@ export const DemoModeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const demoTodoItems = useMemo(() => createDemoTodoItems(), []);
   const demoMeals = useMemo(() => createDemoMeals(), []);
   const demoExpenses = useMemo(() => createDemoExpenses(), []);
+  const demoEssentialItems = useMemo(() => createDemoEssentialItems(), []);
+  const demoHouseRoutineItems = useMemo(() => createDemoHouseRoutineItems(), []);
   
   const value = useMemo(() => ({
     isDemoMode,
@@ -373,7 +577,9 @@ export const DemoModeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     demoFamilyNotes: DEMO_FAMILY_NOTES,
     demoFamilyNotesLang: 'en',
     demoFamilyNotesTranslations: DEMO_FAMILY_NOTES_TRANSLATIONS,
-  }), [isDemoMode, toggleDemoMode, demoUsers, demoTodoItems, demoMeals, demoExpenses]);
+    demoEssentialItems,
+    demoHouseRoutineItems,
+  }), [isDemoMode, toggleDemoMode, demoUsers, demoTodoItems, demoMeals, demoExpenses, demoEssentialItems, demoHouseRoutineItems]);
   
   return (
     <DemoModeContext.Provider value={value}>

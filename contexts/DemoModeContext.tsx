@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useCallback, useMemo } from
 import { User, UserRole, ToDoItem, Meal, Expense, MealType, MealAudience, ShoppingCategory, TaskCategory } from '../types';
 import type { EssentialInfo, EssentialInfoCategory } from '@src/types/essentialInfo';
 import type { HouseRoutine, HouseRoutineCategory } from '@src/types/houseRoutine';
+import type { HelperPayslipConfirmation } from '@src/types/helperManagement';
 
 // ============================================================================
 // DEMO MODE CONTEXT
@@ -21,6 +22,7 @@ interface DemoModeContextType {
   demoFamilyNotesTranslations: Record<string, string>;
   demoEssentialItems: EssentialInfo[];
   demoHouseRoutineItems: HouseRoutine[];
+  demoPastPayslips: HelperPayslipConfirmation[];
 }
 
 const DemoModeContext = createContext<DemoModeContextType | null>(null);
@@ -446,6 +448,73 @@ const createDemoEssentialItems = (): EssentialInfo[] => [
 // MOCK HOUSE ROUTINE (PRACTICE) - Family rules and routines
 // ============================================================================
 
+// ============================================================================
+// DEMO PAST PAYSLIPS
+// ============================================================================
+
+const createDemoPastPayslips = (): HelperPayslipConfirmation[] => [
+  // September 2025 - with overtime
+  {
+    id: 'demo-payslip-001',
+    householdId: 'demo-household',
+    helperId: 'demo-helper-001',
+    month: 9,
+    year: 2025,
+    salaryAmount: 5100,
+    overtimeTotal: 400,  // Worked on Mid-Autumn Festival
+    employerSignedAt: '2025-09-30T10:00:00Z',
+    employerUserId: 'demo-user-dad',
+    helperSignedAt: '2025-09-30T11:30:00Z',
+    createdAt: '2025-09-30T10:00:00Z',
+  },
+  // October 2025 - regular
+  {
+    id: 'demo-payslip-002',
+    householdId: 'demo-household',
+    helperId: 'demo-helper-001',
+    month: 10,
+    year: 2025,
+    salaryAmount: 5100,
+    overtimeTotal: 0,
+    employerSignedAt: '2025-10-31T09:00:00Z',
+    employerUserId: 'demo-user-dad',
+    helperSignedAt: '2025-10-31T14:00:00Z',
+    createdAt: '2025-10-31T09:00:00Z',
+  },
+  // November 2025 - with overtime
+  {
+    id: 'demo-payslip-003',
+    householdId: 'demo-household',
+    helperId: 'demo-helper-001',
+    month: 11,
+    year: 2025,
+    salaryAmount: 5100,
+    overtimeTotal: 200,  // Worked on a Sunday
+    employerSignedAt: '2025-11-30T11:00:00Z',
+    employerUserId: 'demo-user-dad',
+    helperSignedAt: '2025-11-30T15:00:00Z',
+    createdAt: '2025-11-30T11:00:00Z',
+  },
+  // December 2025 - regular
+  {
+    id: 'demo-payslip-004',
+    householdId: 'demo-household',
+    helperId: 'demo-helper-001',
+    month: 12,
+    year: 2025,
+    salaryAmount: 5100,
+    overtimeTotal: 0,
+    employerSignedAt: '2025-12-31T10:00:00Z',
+    employerUserId: 'demo-user-dad',
+    helperSignedAt: '2025-12-31T12:00:00Z',
+    createdAt: '2025-12-31T10:00:00Z',
+  },
+];
+
+// ============================================================================
+// DEMO HOUSE ROUTINES (PRACTICE)
+// ============================================================================
+
 const createDemoHouseRoutineItems = (): HouseRoutine[] => [
   // Home Rules
   {
@@ -566,6 +635,7 @@ export const DemoModeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const demoExpenses = useMemo(() => createDemoExpenses(), []);
   const demoEssentialItems = useMemo(() => createDemoEssentialItems(), []);
   const demoHouseRoutineItems = useMemo(() => createDemoHouseRoutineItems(), []);
+  const demoPastPayslips = useMemo(() => createDemoPastPayslips(), []);
   
   const value = useMemo(() => ({
     isDemoMode,
@@ -579,7 +649,8 @@ export const DemoModeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     demoFamilyNotesTranslations: DEMO_FAMILY_NOTES_TRANSLATIONS,
     demoEssentialItems,
     demoHouseRoutineItems,
-  }), [isDemoMode, toggleDemoMode, demoUsers, demoTodoItems, demoMeals, demoExpenses, demoEssentialItems, demoHouseRoutineItems]);
+    demoPastPayslips,
+  }), [isDemoMode, toggleDemoMode, demoUsers, demoTodoItems, demoMeals, demoExpenses, demoEssentialItems, demoHouseRoutineItems, demoPastPayslips]);
   
   return (
     <DemoModeContext.Provider value={value}>

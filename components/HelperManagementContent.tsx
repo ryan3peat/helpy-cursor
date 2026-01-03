@@ -6,6 +6,7 @@ import ErrorBanner from './ui/ErrorBanner';
 import type { User, TranslationDictionary } from '@/types';
 import { UserRole } from '@/types';
 import type { HKStatutoryHoliday, HelperHolidayRecord, HelperPayslipConfirmation, CompensationType } from '@src/types/helperManagement';
+import { useDemoMode } from '../contexts/DemoModeContext';
 import {
   getUpcomingHolidays,
   getHelperHolidayRecord,
@@ -57,6 +58,8 @@ export const HelperManagementContent: React.FC<Props> = ({
   const [showChangeAmountModal, setShowChangeAmountModal] = useState(false);
   const [customAmount, setCustomAmount] = useState('');
   const [error, setError] = useState<string | null>(null);
+  
+  const { isDemoMode, demoPastPayslips } = useDemoMode();
   
   const isHelper = currentUser.role === UserRole.HELPER;
   const isAdmin = currentUser.role === UserRole.MASTER;
@@ -272,6 +275,13 @@ export const HelperManagementContent: React.FC<Props> = ({
 
   const loadPastPayslips = async () => {
     try {
+      // In demo mode, use demo payslips
+      if (isDemoMode) {
+        setPastPayslips(demoPastPayslips);
+        setShowPastPayslips(true);
+        return;
+      }
+      
       const past = await getPastPayslips(helperId, householdId);
       setPastPayslips(past);
       setShowPastPayslips(true);

@@ -1714,6 +1714,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                       <ZoomIn size={18} />
                     </div>
                   )}
+                </button>
               ) : (
                 <div className="w-full h-28 bg-secondary flex items-center justify-center text-muted-foreground">
                   {t['expenses.no_receipt_image'] || 'No receipt image'}

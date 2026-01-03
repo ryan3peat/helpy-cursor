@@ -770,7 +770,7 @@ const Meals: React.FC<MealsProps> = ({
                         shouldAutoScroll.current = true;
                         setView(v as 'day' | 'week');
                       }}
-                      className={`py-2 px-3 rounded-full text-body font-medium flex items-center gap-1.5 transition-colors ${
+                      className={`py-2 px-3 rounded-full text-body font-medium flex items-center gap-1.5 ${
                         isActive
                           ? 'bg-background text-primary shadow-sm'
                           : 'text-muted-foreground'
@@ -830,7 +830,7 @@ const Meals: React.FC<MealsProps> = ({
               <button
               onClick={goToTodayWithScroll}
               disabled={isCurrentWeek}
-              className={`px-4 rounded-xl font-semibold text-body transition-colors h-12 ${
+              className={`px-4 rounded-xl font-semibold text-body h-12 ${
                 isCurrentWeek
                   ? 'bg-muted text-muted-foreground cursor-default'
                   : 'bg-primary text-primary-foreground shadow-sm'

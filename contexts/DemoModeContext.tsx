@@ -457,13 +457,13 @@ const createDemoPastPayslips = (): HelperPayslipConfirmation[] => [
   {
     id: 'demo-payslip-001',
     householdId: 'demo-household',
-    helperId: 'demo-helper-001',
+    helperId: 'demo-helper-004',
     month: 9,
     year: 2025,
-    salaryAmount: 5100,
-    overtimeTotal: 400,  // Worked on Mid-Autumn Festival
+    salaryAmount: 6606,  // 6106 base + 500 overtime
+    overtimeTotal: 500,  // Worked on Mid-Autumn Festival
     employerSignedAt: '2025-09-30T10:00:00Z',
-    employerUserId: 'demo-user-dad',
+    employerUserId: 'demo-dad-001',
     helperSignedAt: '2025-09-30T11:30:00Z',
     createdAt: '2025-09-30T10:00:00Z',
   },
@@ -471,13 +471,13 @@ const createDemoPastPayslips = (): HelperPayslipConfirmation[] => [
   {
     id: 'demo-payslip-002',
     householdId: 'demo-household',
-    helperId: 'demo-helper-001',
+    helperId: 'demo-helper-004',
     month: 10,
     year: 2025,
-    salaryAmount: 5100,
+    salaryAmount: 6106,  // Base only
     overtimeTotal: 0,
     employerSignedAt: '2025-10-31T09:00:00Z',
-    employerUserId: 'demo-user-dad',
+    employerUserId: 'demo-dad-001',
     helperSignedAt: '2025-10-31T14:00:00Z',
     createdAt: '2025-10-31T09:00:00Z',
   },
@@ -485,13 +485,13 @@ const createDemoPastPayslips = (): HelperPayslipConfirmation[] => [
   {
     id: 'demo-payslip-003',
     householdId: 'demo-household',
-    helperId: 'demo-helper-001',
+    helperId: 'demo-helper-004',
     month: 11,
     year: 2025,
-    salaryAmount: 5100,
-    overtimeTotal: 200,  // Worked on a Sunday
+    salaryAmount: 6406,  // 6106 base + 300 overtime
+    overtimeTotal: 300,  // Worked on a Sunday
     employerSignedAt: '2025-11-30T11:00:00Z',
-    employerUserId: 'demo-user-dad',
+    employerUserId: 'demo-dad-001',
     helperSignedAt: '2025-11-30T15:00:00Z',
     createdAt: '2025-11-30T11:00:00Z',
   },
@@ -499,13 +499,13 @@ const createDemoPastPayslips = (): HelperPayslipConfirmation[] => [
   {
     id: 'demo-payslip-004',
     householdId: 'demo-household',
-    helperId: 'demo-helper-001',
+    helperId: 'demo-helper-004',
     month: 12,
     year: 2025,
-    salaryAmount: 5100,
+    salaryAmount: 6106,  // Base only
     overtimeTotal: 0,
     employerSignedAt: '2025-12-31T10:00:00Z',
-    employerUserId: 'demo-user-dad',
+    employerUserId: 'demo-dad-001',
     helperSignedAt: '2025-12-31T12:00:00Z',
     createdAt: '2025-12-31T10:00:00Z',
   },

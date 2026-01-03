@@ -413,10 +413,11 @@ export const HelperManagementContent: React.FC<Props> = ({
                     )}
                   </div>
                   <p className="text-caption text-muted-foreground">
-                    {new Date(holiday.holidayDate).toLocaleDateString('en-US', {
+                    {new Date(holiday.holidayDate).toLocaleDateString('en-GB', {
                       weekday: 'short',
-                      month: 'short',
                       day: 'numeric',
+                      month: 'short',
+                      year: 'numeric',
                     })}
                   </p>
                 </div>
@@ -1106,17 +1107,17 @@ const PastPayslipsSection: React.FC<{
       
       {/* Previous Years (collapsed by default) */}
       {previousYears.map(year => (
-        <div key={year}>
+        <div key={year} className="w-full">
           <button
             onClick={() => toggleYear(year)}
-            className="w-full flex items-center justify-between py-3"
+            className="w-full flex items-center justify-start gap-2 py-3"
           >
-            <span className="text-body font-bold text-primary">{year}</span>
             {expandedYears.has(year) ? (
               <ChevronDown size={18} className="text-primary" strokeWidth={2.5} />
             ) : (
               <ChevronRight size={18} className="text-primary" strokeWidth={2.5} />
             )}
+            <span className="text-body font-bold text-primary">{year}</span>
           </button>
           
           {expandedYears.has(year) && (
@@ -1263,7 +1264,12 @@ const PastHolidaysModal: React.FC<{
                     )}
                   </div>
                   <p className="text-caption text-muted-foreground">
-                    {new Date(record.holidayDate).toLocaleDateString()}
+                    {new Date(record.holidayDate).toLocaleDateString('en-GB', {
+                      weekday: 'short',
+                      day: 'numeric',
+                      month: 'short',
+                      year: 'numeric',
+                    })}
                   </p>
                 </div>
                 <div className="text-right">

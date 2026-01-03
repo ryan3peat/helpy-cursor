@@ -1153,7 +1153,7 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'common.ok': 'OK',
   'common.clear_all': 'Clear All',
   'common.keep_subscription': 'Keep Subscription',
-  'common.cancel_subscription': 'Cancel',
+  'common.cancel_btn': 'Cancel',
 
   // Alert Modal - ToDo
   'todo.clear_completed_title': 'Clear Completed Items',

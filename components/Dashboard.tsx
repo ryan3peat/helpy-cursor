@@ -149,7 +149,7 @@ const FamilyCardWithGlow: React.FC<{
   return (
     <div
       onClick={onSelect}
-      className="flex-shrink-0 w-[220px] relative snap-start"
+      className="flex-shrink-0 w-[220px] h-full relative snap-start"
     >
       {/* Photo Glow - Blurred copy positioned behind the card */}
       <div 
@@ -173,7 +173,7 @@ const FamilyCardWithGlow: React.FC<{
       
       {/* Actual Card - shadow-sm as fallback/base */}
       <div 
-        className="relative bg-card rounded-2xl shadow-sm overflow-hidden cursor-pointer"
+        className="relative h-full bg-card rounded-2xl shadow-sm overflow-hidden cursor-pointer flex flex-col"
         style={{ zIndex: 1 }}
       >
         {/* Avatar - Edge to Edge at Top */}
@@ -195,8 +195,8 @@ const FamilyCardWithGlow: React.FC<{
           </div>
         </div>
 
-        {/* Content Area - With padding */}
-        <div className="p-4">
+        {/* Content Area - With padding, grows to fill remaining space */}
+        <div className="p-4 flex-1 flex flex-col">
           {/* Name + Pending Status - Same row */}
           <div className="flex items-center justify-between mt-1">
             <h3 className="text-title font-bold text-foreground truncate">
@@ -849,7 +849,7 @@ const Dashboard: React.FC<DashboardProps> = ({
       <div 
         ref={carouselRef}
         onScroll={handleCarouselScroll}
-        className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide -mx-5 px-5 snap-x snap-mandatory scroll-px-5"
+        className="flex items-stretch gap-4 overflow-x-auto pb-2 scrollbar-hide -mx-5 px-5 snap-x snap-mandatory scroll-px-5"
       >
         {validUsers.map((user) => (
           <FamilyCardWithGlow
@@ -878,7 +878,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                 onOpenAddFamily();
               }
             }}
-            className="flex-shrink-0 w-[220px] bg-secondary/30 rounded-2xl flex flex-col items-center justify-center cursor-pointer border-2 border-dashed border-border snap-start"
+            className="flex-shrink-0 w-[220px] h-full bg-secondary/30 rounded-2xl flex flex-col items-center justify-center cursor-pointer border-2 border-dashed border-border snap-start"
           >
             <div className="w-16 h-16 rounded-full bg-card flex items-center justify-center shadow-sm">
               {isAtMemberLimit ? (

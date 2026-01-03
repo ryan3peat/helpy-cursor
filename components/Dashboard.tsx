@@ -30,7 +30,9 @@ import {
   SquarePlus,
   AlertCircle,
   Heart,
-  Crown
+  Crown,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import Avatar from './ui/Avatar';
 import ErrorBanner from './ui/ErrorBanner';
@@ -42,6 +44,7 @@ import { useSheetTheme } from '../hooks/useSheetTheme';
 import { SUPPORTED_LANGUAGES } from '../constants';
 import { useTranslatedContent } from '../hooks/useTranslatedContent';
 import { haptics } from '../utils/haptics';
+import { useDemoMode } from '../contexts/DemoModeContext';
 
 import type { ConnectionStatus } from '../hooks/useRealtimeStatus';
 
@@ -258,6 +261,10 @@ const Dashboard: React.FC<DashboardProps> = ({
   // Role-based permissions
   // ─────────────────────────────────────────────────────────────────
   const isHelper = currentUser.role === UserRole.HELPER;
+  const isSuperAdmin = currentUser.role === UserRole.SUPERADMIN;
+  
+  // Demo mode for marketing screenshots (SuperAdmin only)
+  const { isDemoMode, toggleDemoMode } = useDemoMode();
 
   // ─────────────────────────────────────────────────────────────────
   // Family Carousel Helpers
@@ -1167,6 +1174,49 @@ const Dashboard: React.FC<DashboardProps> = ({
                   : (t['dashboard.disconnected'] || 'Disconnected - tap to reconnect')
             }
           />
+          
+          {/* Demo Mode Toggle - SuperAdmin Only */}
+          {isSuperAdmin && (
+            <div className="mt-6 pt-4 border-t border-border/30">
+              <button
+                onClick={() => {
+                  haptics.light();
+                  toggleDemoMode();
+                }}
+                className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-colors ${
+                  isDemoMode 
+                    ? 'bg-primary/10 border border-primary/30' 
+                    : 'bg-secondary/50 border border-transparent'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  {isDemoMode ? (
+                    <Eye size={18} className="text-primary" />
+                  ) : (
+                    <EyeOff size={18} className="text-muted-foreground" />
+                  )}
+                  <div className="text-left">
+                    <span className="text-body font-medium text-foreground block">
+                      {t['demo.title'] || 'Demo Mode'}
+                    </span>
+                    <span className="text-caption text-muted-foreground">
+                      {t['demo.description'] || 'Show sample data for marketing screenshots'}
+                    </span>
+                  </div>
+                </div>
+                <div className={`w-12 h-7 rounded-full transition-colors flex items-center ${
+                  isDemoMode ? 'bg-primary justify-end' : 'bg-muted-foreground/30 justify-start'
+                }`}>
+                  <div className={`w-5 h-5 rounded-full bg-white shadow-sm mx-1 transition-transform`} />
+                </div>
+              </button>
+              {isDemoMode && (
+                <p className="text-caption text-primary mt-2 text-center">
+                  {t['demo.enabled'] || 'Demo Mode Enabled'} - {t['demo.superadmin_only'] || 'SuperAdmin Only'}
+                </p>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

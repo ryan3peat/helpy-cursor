@@ -1184,4 +1184,11 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'error.switch_household': 'Failed to switch household',
   'error.remove_user_title': 'Remove User Failed',
   'error.remove_user': 'Failed to remove user',
+
+  // Demo Mode (Marketing Screenshots)
+  'demo.title': 'Demo Mode',
+  'demo.description': 'Show sample data for marketing screenshots',
+  'demo.enabled': 'Demo Mode Enabled',
+  'demo.disabled': 'Demo Mode Disabled',
+  'demo.superadmin_only': 'SuperAdmin Only',
 };

@@ -18,6 +18,7 @@ import { BASE_TRANSLATIONS } from './constants';
 import { detectDeviceLanguage } from './services/languageDetectionService';
 import { getStaticTranslations } from './services/translationService';
 import { TranslationProvider, useTranslationContext } from './contexts/TranslationContext';
+import { DemoModeProvider, useDemoMode } from './contexts/DemoModeContext';
 import { supabase } from './services/supabase';
 import { useSupabaseReady } from './contexts/SupabaseContext';
 import {
@@ -64,6 +65,18 @@ const AppContent: React.FC = () => {
   const { user: clerkUser, isSignedIn, isLoaded: clerkLoaded } = useUser();
   const { setStaticTranslating, isAnyTranslating } = useTranslationContext();
   const isSupabaseReady = useSupabaseReady(); // Wait for authenticated Supabase client
+  
+  // Demo mode for marketing screenshots
+  const { 
+    isDemoMode, 
+    demoUsers, 
+    demoTodoItems, 
+    demoMeals, 
+    demoExpenses,
+    demoFamilyNotes,
+    demoFamilyNotesLang,
+    demoFamilyNotesTranslations,
+  } = useDemoMode();
   // App fade-in state (replaces old intro animation)
   const [appReady, setAppReady] = useState(false);
   
@@ -1022,17 +1035,17 @@ const AppContent: React.FC = () => {
       case 'dashboard':
         return (
           <Dashboard
-            todoItems={todoItems}
-            meals={meals}
-            users={users}
-            expenses={expenses}
+            todoItems={isDemoMode ? demoTodoItems : todoItems}
+            meals={isDemoMode ? demoMeals : meals}
+            users={isDemoMode ? demoUsers : users}
+            expenses={isDemoMode ? demoExpenses : expenses}
             onNavigate={handleNavigate}
-            familyNotes={familyNotes}
-            familyNotesLang={familyNotesLang}
-            familyNotesTranslations={familyNotesTranslations}
+            familyNotes={isDemoMode ? demoFamilyNotes : familyNotes}
+            familyNotesLang={isDemoMode ? demoFamilyNotesLang : familyNotesLang}
+            familyNotesTranslations={isDemoMode ? demoFamilyNotesTranslations : familyNotesTranslations}
             onUpdateNotes={handleSaveFamilyNotes}
             onUpdateNotesTranslations={handleUpdateNotesTranslations}
-            currentUser={currentUser!}
+            currentUser={isDemoMode ? demoUsers[0] : currentUser!}
             t={translations}
             currentLang={lang}
             onLanguageChange={handleLanguageChange}
@@ -1062,9 +1075,9 @@ const AppContent: React.FC = () => {
       case 'todo':
         return (
           <ToDo
-            items={todoItems}
-            users={users}
-            currentUser={currentUser!}
+            items={isDemoMode ? demoTodoItems : todoItems}
+            users={isDemoMode ? demoUsers : users}
+            currentUser={isDemoMode ? demoUsers[0] : currentUser!}
             onAdd={handleAddTodoItem}
             onUpdate={handleUpdateTodoItem}
             onDelete={handleDeleteTodoItem}
@@ -1078,9 +1091,9 @@ const AppContent: React.FC = () => {
       case 'meals':
         return (
           <Meals
-            meals={meals}
-            users={users}
-            currentUser={currentUser!}
+            meals={isDemoMode ? demoMeals : meals}
+            users={isDemoMode ? demoUsers : users}
+            currentUser={isDemoMode ? demoUsers[0] : currentUser!}
             onAdd={handleAddMeal}
             onUpdate={handleUpdateMeal}
             onDelete={handleDeleteMeal}
@@ -1092,9 +1105,9 @@ const AppContent: React.FC = () => {
       case 'expenses':
         return (
           <Expenses
-            expenses={expenses}
+            expenses={isDemoMode ? demoExpenses : expenses}
             householdId={hid}
-            currentUser={currentUser}
+            currentUser={isDemoMode ? demoUsers[0] : currentUser}
             onNavigateToPlan={() => handleNavigate('profile')}
             onAdd={handleAddExpense}
             onUpdate={handleUpdateExpense}
@@ -1332,11 +1345,13 @@ const AppContent: React.FC = () => {
   );
 };
 
-// Main App component that wraps everything with TranslationProvider
+// Main App component that wraps everything with providers
 const App: React.FC = () => {
   return (
     <TranslationProvider>
-      <AppContent />
+      <DemoModeProvider>
+        <AppContent />
+      </DemoModeProvider>
     </TranslationProvider>
   );
 };

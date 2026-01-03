@@ -481,104 +481,60 @@ const Meals: React.FC<MealsProps> = ({
   };
 
   // ─────────────────────────────────────────────────────────────────
-  // ⚠️  SCROLL TO TODAY - BULLETPROOF FIX
+  // AUTO-SCROLL TO TODAY - SINGLE ATTEMPT, NO RACE CONDITIONS
+  // Uses useLayoutEffect to scroll BEFORE browser paint (no flicker)
+  // Single requestAnimationFrame ensures DOM is ready without race conditions
   // ─────────────────────────────────────────────────────────────────
-  // Uses multiple timed attempts to ensure scroll works even when:
-  // - Data is loading asynchronously
-  // - Layout shifts occur after initial render
-  // - iOS Safari has rendering quirks
-  // The scroll is verified and retried until today card is visible.
-  // ─────────────────────────────────────────────────────────────────
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!shouldAutoScroll.current) return;
 
     if (view === 'day') {
       const headerOffset = 200;
+      const targetDateStr = formatDateStr(new Date(currentViewDate));
       
-      const scrollToToday = (): boolean => {
-        const targetDateStr = formatDateStr(new Date(currentViewDate));
+      // Use requestAnimationFrame to ensure DOM is ready
+      const frameId = requestAnimationFrame(() => {
         const targetEl = document.getElementById(`day-${targetDateStr}`);
-        
-        if (!targetEl) return false;
-        
-        const rect = targetEl.getBoundingClientRect();
-        
-        // Check if already in correct position (within acceptable range)
-        // Today card should be near the top, just below the header
-        if (rect.top >= headerOffset - 20 && rect.top <= headerOffset + 50) {
-          return true; // Already correctly positioned
+        if (!targetEl) {
+          shouldAutoScroll.current = false;
+          return;
         }
         
-        // Scroll to position
+        const rect = targetEl.getBoundingClientRect();
         const elementPosition = rect.top + window.scrollY;
         window.scrollTo({ top: elementPosition - headerOffset, behavior: 'auto' });
-        return true;
-      };
+        shouldAutoScroll.current = false;
+      });
 
-      // Multiple attempts with increasing delays to handle:
-      // - Immediate: catch fast renders
-      // - 50ms: after initial paint
-      // - 150ms: after async data might load
-      // - 300ms: final safety net
-      const timeouts: number[] = [];
+      return () => cancelAnimationFrame(frameId);
       
-      const attemptScroll = (delay: number, isFinal: boolean) => {
-        const id = window.setTimeout(() => {
-          scrollToToday();
-          if (isFinal) {
-            shouldAutoScroll.current = false;
-          }
-        }, delay);
-        timeouts.push(id);
-      };
-
-      attemptScroll(0, false);
-      attemptScroll(50, false);
-      attemptScroll(150, false);
-      attemptScroll(300, true);
-
-      return () => {
-        timeouts.forEach(id => clearTimeout(id));
-      };
     } else if (view === 'week') {
-      const scrollWeekView = () => {
+      const frameId = requestAnimationFrame(() => {
         const scrollContainer = weekScrollRef.current;
-        if (!scrollContainer) return;
+        if (!scrollContainer) {
+          shouldAutoScroll.current = false;
+          return;
+        }
         
-        // Scroll page to top
         window.scrollTo({ top: 0, behavior: 'auto' });
         
-        // Find today's column index (0-6)
         const todayIndex = weekDays.findIndex(d => 
           d.toDateString() === new Date().toDateString()
         );
         
-        if (todayIndex < 0) return;
+        if (todayIndex >= 0) {
+          const labelColumnWidth = 72;
+          const totalDayColumnsWidth = scrollContainer.scrollWidth - labelColumnWidth;
+          const columnWidth = totalDayColumnsWidth / 7;
+          const todayColumnStart = labelColumnWidth + (columnWidth * todayIndex);
+          const targetScroll = todayColumnStart - (scrollContainer.clientWidth / 2) + (columnWidth / 2);
+          scrollContainer.scrollTo({ left: Math.max(0, targetScroll), behavior: 'auto' });
+        }
         
-        const labelColumnWidth = 72;
-        const totalDayColumnsWidth = scrollContainer.scrollWidth - labelColumnWidth;
-        const columnWidth = totalDayColumnsWidth / 7;
-        const todayColumnStart = labelColumnWidth + (columnWidth * todayIndex);
-        const targetScroll = todayColumnStart - (scrollContainer.clientWidth / 2) + (columnWidth / 2);
-        
-        scrollContainer.scrollTo({ left: Math.max(0, targetScroll), behavior: 'auto' });
-      };
-
-      const timeouts: number[] = [];
-      
-      [0, 50, 150, 300].forEach((delay, i, arr) => {
-        const id = window.setTimeout(() => {
-          scrollWeekView();
-          if (i === arr.length - 1) {
-            shouldAutoScroll.current = false;
-          }
-        }, delay);
-        timeouts.push(id);
+        shouldAutoScroll.current = false;
       });
 
-      return () => {
-        timeouts.forEach(id => clearTimeout(id));
-      };
+      return () => cancelAnimationFrame(frameId);
     }
   }, [view, currentViewDate, weekDays]);
 
@@ -781,15 +737,6 @@ const Meals: React.FC<MealsProps> = ({
 
   return (
     <div className="min-h-screen bg-background pb-40">
-      {/* ⚠️ iOS FLICKER FIX: Fixed background shield ensures header area is never 
-          transparent during iOS Safari's initial paint or sticky positioning quirks.
-          This div is purely visual - it sits behind the sticky header. */}
-      <div 
-        className="fixed top-0 left-0 right-0 z-10 bg-background"
-        style={{ height: '120px' }}
-        aria-hidden="true"
-      />
-      
       <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
         {/* ─────────────────────────────────────────────────────────────── */}
         {/* STICKY HEADER - Push Up (No Shrink) - matches ToDo/Expenses */}

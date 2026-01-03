@@ -67,6 +67,7 @@ import { updateHouseRoutine } from "@/services/houseRoutineService";
 
 // Helper Management
 import HelperManagementContent from "./HelperManagementContent";
+import { useDemoMode } from "../contexts/DemoModeContext";
 
 interface HouseholdInfoProps extends BaseViewProps {
   householdId: string;
@@ -597,9 +598,10 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
   }, [householdId, supabase]);
   
   // Helper Management is only available to Core and Pro users (not Free)
-  // SuperAdmin bypasses all plan restrictions - can see all paid features
+  // SuperAdmin bypasses plan restrictions UNLESS simulating free user
   const isSuperAdmin = currentUser.role === UserRole.SUPERADMIN;
-  const hasHelperManagementAccess = subscriptionPlan === 'core' || subscriptionPlan === 'pro' || isSuperAdmin;
+  const { isSimulatingFreeUser } = useDemoMode();
+  const hasHelperManagementAccess = subscriptionPlan === 'core' || subscriptionPlan === 'pro' || (isSuperAdmin && !isSimulatingFreeUser);
   
   // Helper upgrade modal state
   const [showHelperUpgradeModal, setShowHelperUpgradeModal] = useState(false);

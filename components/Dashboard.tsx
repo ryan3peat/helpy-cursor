@@ -32,7 +32,8 @@ import {
   Heart,
   Crown,
   Eye,
-  EyeOff
+  EyeOff,
+  Lock
 } from 'lucide-react';
 import Avatar from './ui/Avatar';
 import ErrorBanner from './ui/ErrorBanner';
@@ -264,7 +265,8 @@ const Dashboard: React.FC<DashboardProps> = ({
   const isSuperAdmin = currentUser.role === UserRole.SUPERADMIN;
   
   // Demo mode for marketing screenshots (SuperAdmin only)
-  const { isDemoMode, toggleDemoMode } = useDemoMode();
+  // Simulate free user mode to test paid feature locks (SuperAdmin only)
+  const { isDemoMode, toggleDemoMode, isSimulatingFreeUser, toggleSimulateFreeUser } = useDemoMode();
 
   // ─────────────────────────────────────────────────────────────────
   // Family Carousel Helpers
@@ -1213,6 +1215,41 @@ const Dashboard: React.FC<DashboardProps> = ({
               {isDemoMode && (
                 <p className="text-caption text-primary mt-2 text-center">
                   {t['demo.enabled'] || 'Demo Mode Enabled'} - {t['demo.superadmin_only'] || 'SuperAdmin Only'}
+                </p>
+              )}
+              
+              {/* Simulate Free User Toggle - SuperAdmin Only */}
+              <button
+                onClick={() => {
+                  haptics.light();
+                  toggleSimulateFreeUser();
+                }}
+                className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-colors mt-3 ${
+                  isSimulatingFreeUser 
+                    ? 'bg-destructive/10 border border-destructive/30' 
+                    : 'bg-secondary/50 border border-transparent'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <Lock size={18} className={isSimulatingFreeUser ? 'text-destructive' : 'text-muted-foreground'} />
+                  <div className="text-left">
+                    <span className="text-body font-medium text-foreground block">
+                      {t['simulate_free.title'] || 'Lock Paid Features'}
+                    </span>
+                    <span className="text-caption text-muted-foreground">
+                      {t['simulate_free.description'] || 'Test experience as a free user'}
+                    </span>
+                  </div>
+                </div>
+                <div className={`w-12 h-7 rounded-full transition-colors flex items-center ${
+                  isSimulatingFreeUser ? 'bg-destructive justify-end' : 'bg-muted-foreground/30 justify-start'
+                }`}>
+                  <div className="w-5 h-5 rounded-full bg-white shadow-sm mx-1 transition-transform" />
+                </div>
+              </button>
+              {isSimulatingFreeUser && (
+                <p className="text-caption text-destructive mt-2 text-center">
+                  {t['simulate_free.enabled'] || 'Paid Features Locked'}
                 </p>
               )}
             </div>

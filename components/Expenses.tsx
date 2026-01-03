@@ -45,6 +45,7 @@ import {
 import { supabase } from '../services/supabase';
 import { processReceipt, ParsedReceipt } from '../services/visionService';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
+import { useDemoMode } from '../contexts/DemoModeContext';
 
 // Expense Category Config (colors and icons)
 type ExpenseCategoryConfig = {
@@ -258,10 +259,13 @@ const Expenses: React.FC<ExpensesProps> = ({
   // ─────────────────────────────────────────────────────────────────
   const isHelper = currentUser.role === UserRole.HELPER;
   const isSuperAdmin = currentUser.role === UserRole.SUPERADMIN;
+  
+  // Get simulate free user toggle (SuperAdmin only feature)
+  const { isSimulatingFreeUser } = useDemoMode();
 
   const planKey = (householdPlan?.plan || 'free') as 'free' | 'core' | 'pro' | 'test';
-  // SuperAdmin bypasses all plan restrictions - can see all paid features
-  const isFreePlan = planKey === 'free' && !isSuperAdmin;
+  // SuperAdmin bypasses plan restrictions UNLESS simulating free user
+  const isFreePlan = planKey === 'free' && (!isSuperAdmin || isSimulatingFreeUser);
   const planLabel =
     planKey === 'core' ? 'Core' : planKey === 'pro' ? 'Pro' : planKey === 'test' ? 'Test' : 'Free';
 

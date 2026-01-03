@@ -144,14 +144,14 @@ function openBadgeDB() {
 async function incrementBadge() {
   try {
     // Get actual pending notifications count from the OS
-    // This ensures badge matches what iOS/Android shows on lock screen
+    // Note: This runs AFTER showNotification(), so the new notification is already counted
     const notifications = await self.registration.getNotifications();
-    const count = notifications.length + 1; // +1 for the one we're about to show
+    const count = notifications.length; // No +1 needed - notification already shown
     
     // Also save to IndexedDB for persistence
     await saveBadgeCount(count);
     await setAppBadge(count);
-    console.log(`[SW] 🔴 Badge set to ${count} (${notifications.length} existing + 1 new)`);
+    console.log(`[SW] 🔴 Badge set to ${count} (actual notification count)`);
   } catch (error) {
     console.warn('[SW] Failed to get notification count, using IndexedDB fallback:', error);
     // Fallback to IndexedDB method

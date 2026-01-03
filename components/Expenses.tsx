@@ -1325,83 +1325,50 @@ const Expenses: React.FC<ExpensesProps> = ({
                   </p>
                 </div>
               ) : (
-                <div className="relative">
-                  {/* Expense List Card - sits above zigzag to hide top shadow */}
-                  <div className="bg-card rounded-t-xl shadow-sm overflow-hidden relative z-[2]">
-                    {filteredExpenses.map((expense, index) => {
-                      const config = getExpenseCategoryConfig(expense.category);
-                      return (
-                        <button
-                          key={expense.id}
-                          type="button"
-                          onClick={() => openExistingModal(expense)}
-                          className={`w-full p-4 flex items-start gap-4 text-left ${
-                            index !== filteredExpenses.length - 1 ? 'list-item-separator' : ''
-                          }`}
+                <div className="bg-card rounded-xl shadow-sm overflow-hidden">
+                  {filteredExpenses.map((expense, index) => {
+                    const config = getExpenseCategoryConfig(expense.category);
+                    return (
+                      <button
+                        key={expense.id}
+                        type="button"
+                        onClick={() => openExistingModal(expense)}
+                        className={`w-full p-4 flex items-start gap-4 text-left ${
+                          index !== filteredExpenses.length - 1 ? 'list-item-separator' : ''
+                        }`}
+                      >
+                        {/* Category Icon */}
+                        <div
+                          className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
+                          style={{ backgroundColor: config.bgColor, color: config.color }}
                         >
-                          {/* Category Icon */}
-                          <div
-                            className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
-                            style={{ backgroundColor: config.bgColor, color: config.color }}
-                          >
-                            {config.icon}
-                          </div>
-                          
-                          {/* Info - 3 Lines */}
-                          <div className="flex-1 min-w-0">
-                            <p className="text-title text-foreground truncate">
-                              <TranslatedMerchantName expense={expense} currentLang={currentLang} onUpdate={onUpdate} />
-                            </p>
-                            <p className="text-caption text-muted-foreground">{getCategoryLabel(expense.category)}</p>
-                            <p className="text-caption text-muted-foreground">
-                              {expense.date ? new Date(expense.date).toLocaleDateString(
-                                currentLang === 'en' ? 'en-GB' : currentLang,
-                                { day: 'numeric', month: 'short', year: 'numeric' }
-                              ) : '-'}
-                            </p>
-                          </div>
-                          
-                          {/* Right Side - Amount & Receipt Indicator */}
-                          <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                            <span className="text-title text-foreground">{formatCurrency(expense.amount, expense.currency)}</span>
-                            {expense.receiptUrl ? (
-                              <ReceiptText size={14} className="text-muted-foreground" />
-                            ) : null}
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                  {/* Torn receipt zigzag edge - tucked under card to hide top shadow */}
-                  <div 
-                    className="relative w-full"
-                    style={{ marginTop: '-4px' }}
-                  >
-                    {/* Shadow layer - offset down so only visible below triangle points */}
-                    <div 
-                      className="absolute w-full"
-                      style={{
-                        top: '6px',
-                        height: '12px',
-                        backgroundImage: `linear-gradient(to bottom right, rgba(0,0,0,0.12) 50%, transparent 50%),
-                                          linear-gradient(to bottom left, rgba(0,0,0,0.12) 50%, transparent 50%)`,
-                        backgroundSize: '12px 100%',
-                        backgroundRepeat: 'repeat-x',
-                        filter: 'blur(2px)',
-                      }}
-                    />
-                    {/* Main zigzag - sits on top of shadow */}
-                    <div 
-                      className="relative w-full"
-                      style={{
-                        height: '12px',
-                        backgroundImage: `linear-gradient(to bottom right, hsl(var(--card)) 50%, transparent 50%),
-                                          linear-gradient(to bottom left, hsl(var(--card)) 50%, transparent 50%)`,
-                        backgroundSize: '12px 100%',
-                        backgroundRepeat: 'repeat-x',
-                      }}
-                    />
-                  </div>
+                          {config.icon}
+                        </div>
+                        
+                        {/* Info - 3 Lines */}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-title text-foreground truncate">
+                            <TranslatedMerchantName expense={expense} currentLang={currentLang} onUpdate={onUpdate} />
+                          </p>
+                          <p className="text-caption text-muted-foreground">{getCategoryLabel(expense.category)}</p>
+                          <p className="text-caption text-muted-foreground">
+                            {expense.date ? new Date(expense.date).toLocaleDateString(
+                              currentLang === 'en' ? 'en-GB' : currentLang,
+                              { day: 'numeric', month: 'short', year: 'numeric' }
+                            ) : '-'}
+                          </p>
+                        </div>
+                        
+                        {/* Right Side - Amount & Receipt Indicator */}
+                        <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                          <span className="text-title text-foreground">{formatCurrency(expense.amount, expense.currency)}</span>
+                          {expense.receiptUrl ? (
+                            <ReceiptText size={14} className="text-muted-foreground" />
+                          ) : null}
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>

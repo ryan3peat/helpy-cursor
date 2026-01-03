@@ -1,7 +1,7 @@
 // components/HelperManagementContent.tsx
 
-import React, { useState, useEffect } from 'react';
-import { Calendar, FileText, Check, X, AlertTriangle } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Calendar, FileText, Check, X, AlertTriangle, ChevronDown, ChevronRight } from 'lucide-react';
 import ErrorBanner from './ui/ErrorBanner';
 import type { User, TranslationDictionary } from '@/types';
 import { UserRole } from '@/types';
@@ -325,6 +325,18 @@ export const HelperManagementContent: React.FC<Props> = ({
         title={t['common.error'] || 'Error'}
       />
       
+      {/* Helper Info Header */}
+      <div className="pb-2">
+        <p className="text-body font-medium text-foreground" style={{ fontSize: '16px' }}>
+          {helper.firstName || helper.name?.split(' ')[0] || 'Helper'}
+        </p>
+        {helper.helperStartDate && (
+          <p className="text-caption text-muted-foreground" style={{ fontSize: '14px' }}>
+            {t['helper.started'] || 'Started'}: {new Date(helper.helperStartDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+          </p>
+        )}
+      </div>
+      
       {/* ═══════════════════════════════════════════════════════════════ */}
       {/* TILE 1: Statutory Holidays */}
       {/* ═══════════════════════════════════════════════════════════════ */}
@@ -408,179 +420,90 @@ export const HelperManagementContent: React.FC<Props> = ({
       </div>
 
       {/* ═══════════════════════════════════════════════════════════════ */}
-      {/* TILE 2: Payslip Confirmation */}
+      {/* TILE 2: Payslip Section */}
       {/* ═══════════════════════════════════════════════════════════════ */}
-      <div className="bg-card rounded-xl p-4 shadow-sm">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <FileText size={20} className="text-primary" />
-            <h3 className="text-title font-semibold">
-              {t['helper.payslip_confirmation'] || 'Payslip Confirmation'}
-            </h3>
-          </div>
-          <button
-            onClick={loadPastPayslips}
-            className="text-caption text-primary hover:underline"
-          >
-            {t['common.past'] || 'Past'}
-          </button>
+      <div>
+        {/* Section Title */}
+        <div className="flex items-center gap-2 mb-4">
+          <FileText size={20} className="text-primary" />
+          <h3 className="text-title font-semibold">
+            {t['helper.payslip'] || 'Payslip'}
+          </h3>
         </div>
         
         {!salaryConfigured ? (
           /* Salary not configured - show Input button */
-          <div className="text-center py-6">
+          <div className="bg-card rounded-xl p-4 shadow-sm text-center py-6">
             <p className="text-body text-muted-foreground mb-4">
               {t['helper.salary_not_configured'] || 'Salary details not configured'}
             </p>
             {!isHelper && (
               <button
                 onClick={() => {
-                  // Use direct edit callback if available, otherwise fall back to profile navigation
                   if (onEditHelper) {
                     onEditHelper(helperId);
                   } else {
                     onNavigateToProfile();
                   }
                 }}
-                className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+                className="px-4 py-2 bg-primary text-primary-foreground rounded-lg transition-colors"
               >
                 {t['helper.input_salary'] || 'Input Salary Details'}
               </button>
             )}
           </div>
         ) : (
-          /* Salary configured - show payslip */
-          <div>
-            {/* Month header */}
-            <div className="text-caption text-muted-foreground mb-3">{currentMonth}</div>
+          /* Salary configured - show payslip cards */
+          <div className="space-y-3">
+            {/* Current Month Payslip Card */}
+            <PayslipCard
+              payslip={currentPayslip}
+              isCurrentMonth={true}
+              baseSalary={baseSalary}
+              otherAllowances={otherAllowances}
+              overtimeTotal={overtimeTotal}
+              totalSalary={totalSalary}
+              isAmountOverridden={isAmountOverridden || false}
+              isAdmin={isAdmin}
+              isHelper={isHelper}
+              helper={helper}
+              users={[]} // Will be passed from parent if needed
+              onSignClick={handleSignClick}
+              onChangeAmount={handleChangeAmount}
+              t={t}
+            />
             
-            {/* Calculated Amount Section */}
-            <div className="mb-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-caption font-medium text-muted-foreground">
-                  {t['helper.calculated_amount'] || 'Calculated Amount'}
-                </span>
-                {/* Change Amount button - only for Admin and only if no signatures */}
-                {isAdmin && !currentPayslip?.employerSignedAt && !currentPayslip?.helperSignedAt && (
-                  <button
-                    onClick={handleChangeAmount}
-                    className="text-caption text-primary hover:underline"
-                  >
-                    {t['helper.change_amount'] || 'Change Amount'}
-                  </button>
-                )}
-              </div>
-              
-              {/* Salary Display */}
-              <div className="bg-secondary/50 rounded-lg p-3 space-y-1">
-                {/* Only show breakdown if amount hasn't been overridden */}
-                {!isAmountOverridden && (
-                  <>
-                    <div className="flex justify-between text-caption">
-                      <span className="text-muted-foreground">{t['helper.base_salary'] || 'Base Salary'}</span>
-                      <span>${baseSalary.toLocaleString()}</span>
-                    </div>
-                    {otherAllowances > 0 && (
-                      <div className="flex justify-between text-caption">
-                        <span className="text-muted-foreground">{t['helper.other_allowances'] || 'Other Allowances'}</span>
-                        <span>${otherAllowances.toLocaleString()}</span>
-                      </div>
-                    )}
-                    {overtimeTotal > 0 && (
-                      <div className="flex justify-between text-caption">
-                        <span className="text-muted-foreground">{t['helper.overtime'] || 'Overtime'}</span>
-                        <span>${overtimeTotal.toLocaleString()}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between pt-2 border-t border-border">
-                      <span className="text-body font-semibold">{t['helper.total'] || 'Total'}</span>
-                      <span className="text-title font-bold text-primary">
-                        ${(currentPayslip?.salaryAmount || totalSalary).toLocaleString()}
-                      </span>
-                    </div>
-                  </>
-                )}
-                
-                {/* Show override notice when amount has been manually changed */}
-                {isAmountOverridden && (
-                  <>
-                    <div className="flex justify-between items-center">
-                      <span className="text-body font-semibold">{t['helper.manual_amount'] || 'Manual Amount'}</span>
-                      <span className="text-title font-bold text-primary">
-                        ${currentPayslip?.salaryAmount.toLocaleString()}
-                      </span>
-                    </div>
-                    <p className="text-caption text-muted-foreground mt-1">
-                      {t['helper.amount_overridden'] || 'Amount has been manually adjusted by Admin'}
-                    </p>
-                  </>
-                )}
-              </div>
-            </div>
+            {/* Past Salary Toggle Button */}
+            <button
+              onClick={() => {
+                if (showPastPayslips) {
+                  setShowPastPayslips(false);
+                } else {
+                  loadPastPayslips();
+                }
+              }}
+              className="w-full flex items-center justify-center gap-2 py-3 text-body font-medium text-primary"
+            >
+              {showPastPayslips ? (
+                <>
+                  <ChevronDown size={18} />
+                  {t['helper.hide_past_salary'] || 'Hide Past Salary'}
+                </>
+              ) : (
+                <>
+                  <ChevronRight size={18} />
+                  {t['helper.show_past_salary'] || 'Past Salary'}
+                </>
+              )}
+            </button>
             
-            {/* Sign Buttons Row */}
-            <div className="grid grid-cols-2 gap-4">
-              {/* Employer sign */}
-              <div className="text-center">
-                <div className="text-caption text-muted-foreground mb-2">
-                  {t['helper.employer'] || 'Employer'}
-                </div>
-                {currentPayslip?.employerSignedAt ? (
-                  <div className="flex flex-col items-center py-2">
-                    <Check size={24} className="text-green-500" />
-                    <span className="text-caption text-green-600">
-                      {t['helper.signed'] || 'Signed'}
-                    </span>
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => handleSignClick('employer')}
-                    disabled={!isAdmin}
-                    className={`w-full px-4 py-2 rounded-lg transition-colors ${
-                      !isAdmin 
-                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                        : 'bg-gray-400 text-white hover:bg-primary'
-                    }`}
-                  >
-                    {t['helper.sign'] || 'Sign'}
-                  </button>
-                )}
-              </div>
-              
-              {/* Helper sign */}
-              <div className="text-center">
-                <div className="text-caption text-muted-foreground mb-2">
-                  {t['helper.helper'] || 'Helper'}
-                </div>
-                {currentPayslip?.helperSignedAt ? (
-                  <div className="flex flex-col items-center py-2">
-                    <Check size={24} className="text-green-500" />
-                    <span className="text-caption text-green-600">
-                      {t['helper.signed'] || 'Signed'}
-                    </span>
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => handleSignClick('helper')}
-                    disabled={!isHelper}
-                    className={`w-full px-4 py-2 rounded-lg transition-colors ${
-                      !isHelper 
-                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                        : 'bg-gray-400 text-white hover:bg-primary'
-                    }`}
-                  >
-                    {t['helper.sign'] || 'Sign'}
-                  </button>
-                )}
-              </div>
-            </div>
-            
-            {/* Locked indicator when both signed */}
-            {currentPayslip?.employerSignedAt && currentPayslip?.helperSignedAt && (
-              <div className="mt-3 text-center text-caption text-green-600 flex items-center justify-center gap-1">
-                <Check size={14} />
-                <span>{t['helper.payslip_confirmed'] || 'Payslip confirmed and locked'}</span>
-              </div>
+            {/* Past Payslips (Expanded) */}
+            {showPastPayslips && (
+              <PastPayslipsSection
+                payslips={pastPayslips}
+                helper={helper}
+                t={t}
+              />
             )}
           </div>
         )}
@@ -885,17 +808,329 @@ export const HelperManagementContent: React.FC<Props> = ({
         />
       )}
 
-      {/* Past Payslips Modal */}
-      {showPastPayslips && (
-        <PastPayslipsModal
-          payslips={pastPayslips}
-          onClose={() => setShowPastPayslips(false)}
+      {/* Past Payslips are now shown inline, not in modal */}
+    </div>
+  );
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// NEW PAYSLIP COMPONENTS
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Helper function to format signed date
+const formatSignedDate = (dateString: string | null | undefined): string => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+};
+
+// Current Month Payslip Card Component
+const PayslipCard: React.FC<{
+  payslip: HelperPayslipConfirmation | null;
+  isCurrentMonth: boolean;
+  baseSalary: number;
+  otherAllowances: number;
+  overtimeTotal: number;
+  totalSalary: number;
+  isAmountOverridden: boolean;
+  isAdmin: boolean;
+  isHelper: boolean;
+  helper: User;
+  users: User[];
+  onSignClick: (role: 'employer' | 'helper') => void;
+  onChangeAmount: () => void;
+  t: TranslationDictionary;
+}> = ({
+  payslip,
+  isCurrentMonth,
+  baseSalary,
+  otherAllowances,
+  overtimeTotal,
+  totalSalary,
+  isAmountOverridden,
+  isAdmin,
+  isHelper,
+  helper,
+  onSignClick,
+  onChangeAmount,
+  t,
+}) => {
+  const isBothSigned = payslip?.employerSignedAt && payslip?.helperSignedAt;
+  const now = new Date();
+  const monthYear = payslip 
+    ? new Date(payslip.year, payslip.month - 1).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })
+    : now.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
+
+  return (
+    <div className="bg-card rounded-xl p-4 shadow-sm">
+      {/* Header: Month + Year with optional checkmark */}
+      <div className="flex items-center justify-between mb-1">
+        <h4 className="text-display text-foreground">{monthYear}</h4>
+        {isBothSigned && (
+          <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center">
+            <Check size={14} className="text-green-600" />
+          </div>
+        )}
+      </div>
+      <p className="text-caption text-muted-foreground mb-4">{t['helper.payslip'] || 'Payslip'}</p>
+      
+      {/* Total Amount */}
+      <div className="flex items-center justify-between mb-4">
+        <span className="text-body text-muted-foreground">{t['helper.total'] || 'Total'}</span>
+        <span className="text-title font-bold text-foreground">
+          HK${(payslip?.salaryAmount || totalSalary).toLocaleString()}
+        </span>
+      </div>
+      
+      {/* Change Amount button - only for Admin and only if no signatures */}
+      {isCurrentMonth && isAdmin && !payslip?.employerSignedAt && !payslip?.helperSignedAt && (
+        <button
+          onClick={onChangeAmount}
+          className="w-full text-caption text-primary mb-4"
+        >
+          {t['helper.change_amount'] || 'Change Amount'}
+        </button>
+      )}
+      
+      {/* Signature Section */}
+      <div className="grid grid-cols-2 gap-4">
+        {/* Employer */}
+        <div className="text-center">
+          <div className="text-caption text-muted-foreground mb-2">
+            {t['helper.employer'] || 'Employer'}
+          </div>
+          {payslip?.employerSignedAt ? (
+            <div className={`rounded-xl p-3 ${isCurrentMonth ? 'bg-green-50 dark:bg-green-900/20' : ''}`}>
+              <div className="flex items-center justify-center gap-1 text-green-600">
+                <Check size={16} />
+                <span className="text-caption font-medium">{t['helper.signed'] || 'Signed'}</span>
+              </div>
+              <p className="text-caption text-muted-foreground mt-1">David</p>
+              <p className="text-micro text-muted-foreground">{formatSignedDate(payslip.employerSignedAt)}</p>
+            </div>
+          ) : (
+            <button
+              onClick={() => onSignClick('employer')}
+              disabled={!isAdmin}
+              className={`w-full px-4 py-3 rounded-xl transition-colors ${
+                !isAdmin 
+                  ? 'bg-muted text-muted-foreground cursor-not-allowed'
+                  : 'bg-secondary text-foreground'
+              }`}
+            >
+              {t['helper.sign'] || 'Sign'}
+            </button>
+          )}
+        </div>
+        
+        {/* Helper */}
+        <div className="text-center">
+          <div className="text-caption text-muted-foreground mb-2">
+            {t['helper.helper'] || 'Helper'}
+          </div>
+          {payslip?.helperSignedAt ? (
+            <div className={`rounded-xl p-3 ${isCurrentMonth ? 'bg-green-50 dark:bg-green-900/20' : ''}`}>
+              <div className="flex items-center justify-center gap-1 text-green-600">
+                <Check size={16} />
+                <span className="text-caption font-medium">{t['helper.signed'] || 'Signed'}</span>
+              </div>
+              <p className="text-caption text-muted-foreground mt-1">{helper.firstName || helper.name?.split(' ')[0] || 'Helper'}</p>
+              <p className="text-micro text-muted-foreground">{formatSignedDate(payslip.helperSignedAt)}</p>
+            </div>
+          ) : (
+            <button
+              onClick={() => onSignClick('helper')}
+              disabled={!isHelper}
+              className={`w-full px-4 py-3 rounded-xl transition-colors ${
+                !isHelper 
+                  ? 'bg-muted text-muted-foreground cursor-not-allowed'
+                  : 'bg-secondary text-foreground'
+              }`}
+            >
+              {t['helper.sign'] || 'Sign'}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Past Payslips Section with Year Grouping
+const PastPayslipsSection: React.FC<{
+  payslips: HelperPayslipConfirmation[];
+  helper: User;
+  t: TranslationDictionary;
+}> = ({ payslips, helper, t }) => {
+  const [expandedYears, setExpandedYears] = useState<Set<number>>(new Set());
+  const [expandedPayslips, setExpandedPayslips] = useState<Set<string>>(new Set());
+  
+  // Group payslips by year
+  const currentYear = new Date().getFullYear();
+  const groupedByYear = useMemo(() => {
+    const groups: Record<number, HelperPayslipConfirmation[]> = {};
+    payslips.forEach(slip => {
+      if (!groups[slip.year]) groups[slip.year] = [];
+      groups[slip.year].push(slip);
+    });
+    // Sort each group by month descending
+    Object.keys(groups).forEach(year => {
+      groups[parseInt(year)].sort((a, b) => b.month - a.month);
+    });
+    return groups;
+  }, [payslips]);
+  
+  const years = Object.keys(groupedByYear).map(Number).sort((a, b) => b - a);
+  const currentYearPayslips = groupedByYear[currentYear] || [];
+  const previousYears = years.filter(y => y < currentYear);
+  
+  const toggleYear = (year: number) => {
+    setExpandedYears(prev => {
+      const next = new Set(prev);
+      if (next.has(year)) next.delete(year);
+      else next.add(year);
+      return next;
+    });
+  };
+  
+  const togglePayslip = (id: string) => {
+    setExpandedPayslips(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+  
+  if (payslips.length === 0) {
+    return (
+      <div className="text-center py-6 text-muted-foreground">
+        {t['helper.no_past_payslips'] || 'No past payslips'}
+      </div>
+    );
+  }
+  
+  return (
+    <div className="space-y-2">
+      {/* Current Year Payslips (shown directly) */}
+      {currentYearPayslips.map(slip => (
+        <PastPayslipCard
+          key={slip.id}
+          payslip={slip}
+          helper={helper}
+          isExpanded={expandedPayslips.has(slip.id)}
+          onToggle={() => togglePayslip(slip.id)}
           t={t}
         />
+      ))}
+      
+      {/* Previous Years (collapsed by default) */}
+      {previousYears.map(year => (
+        <div key={year}>
+          <button
+            onClick={() => toggleYear(year)}
+            className="w-full flex items-center justify-between py-3 px-4 bg-card rounded-xl shadow-sm"
+          >
+            <span className="text-body font-medium text-foreground">{year}</span>
+            {expandedYears.has(year) ? (
+              <ChevronDown size={18} className="text-muted-foreground" />
+            ) : (
+              <ChevronRight size={18} className="text-muted-foreground" />
+            )}
+          </button>
+          
+          {expandedYears.has(year) && (
+            <div className="mt-2 space-y-2 pl-2">
+              {groupedByYear[year].map(slip => (
+                <PastPayslipCard
+                  key={slip.id}
+                  payslip={slip}
+                  helper={helper}
+                  isExpanded={expandedPayslips.has(slip.id)}
+                  onToggle={() => togglePayslip(slip.id)}
+                  t={t}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+};
+
+// Individual Past Payslip Card (Expandable)
+const PastPayslipCard: React.FC<{
+  payslip: HelperPayslipConfirmation;
+  helper: User;
+  isExpanded: boolean;
+  onToggle: () => void;
+  t: TranslationDictionary;
+}> = ({ payslip, helper, isExpanded, onToggle, t }) => {
+  const isBothSigned = payslip.employerSignedAt && payslip.helperSignedAt;
+  const monthYear = new Date(payslip.year, payslip.month - 1).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
+  
+  return (
+    <div className="bg-card rounded-xl shadow-sm overflow-hidden">
+      {/* Collapsed View */}
+      <button
+        onClick={onToggle}
+        className="w-full flex items-center justify-between p-4"
+      >
+        <div className="flex items-center gap-3">
+          <span className="text-body font-medium text-foreground">{monthYear}</span>
+          {isBothSigned && (
+            <Check size={16} className="text-green-600" />
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-body font-semibold text-foreground">HK${payslip.salaryAmount.toLocaleString()}</span>
+          {isExpanded ? (
+            <ChevronDown size={18} className="text-muted-foreground" />
+          ) : (
+            <ChevronRight size={18} className="text-muted-foreground" />
+          )}
+        </div>
+      </button>
+      
+      {/* Expanded Details */}
+      {isExpanded && (
+        <div className="px-4 pb-4 pt-0 border-t border-border">
+          <div className="pt-3 space-y-2 text-caption">
+            {(payslip.overtimeTotal || 0) > 0 && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">{t['helper.overtime'] || 'Overtime'}</span>
+                <span>HK${payslip.overtimeTotal?.toLocaleString()}</span>
+              </div>
+            )}
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">{t['helper.employer'] || 'Employer'}</span>
+              <span className={payslip.employerSignedAt ? 'text-green-600' : 'text-muted-foreground'}>
+                {payslip.employerSignedAt 
+                  ? `Signed by David, ${formatSignedDate(payslip.employerSignedAt)}`
+                  : 'Not signed'
+                }
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">{t['helper.helper'] || 'Helper'}</span>
+              <span className={payslip.helperSignedAt ? 'text-green-600' : 'text-muted-foreground'}>
+                {payslip.helperSignedAt 
+                  ? `Signed by ${helper.firstName || helper.name?.split(' ')[0] || 'Helper'}, ${formatSignedDate(payslip.helperSignedAt)}`
+                  : 'Not signed'
+                }
+              </span>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
 };
+
+// ═══════════════════════════════════════════════════════════════════════════
+// OLD MODAL COMPONENTS (kept for holidays)
+// ═══════════════════════════════════════════════════════════════════════════
 
 // Sub-components for modals
 const PastHolidaysModal: React.FC<{
@@ -938,56 +1173,6 @@ const PastHolidaysModal: React.FC<{
                   <p className={`text-body ${record.isWorking ? 'text-orange-500' : 'text-green-500'}`}>
                     {record.isWorking ? 'Worked' : 'Off'}
                   </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  </div>
-);
-
-const PastPayslipsModal: React.FC<{
-  payslips: HelperPayslipConfirmation[];
-  onClose: () => void;
-  t: TranslationDictionary;
-}> = ({ payslips, onClose, t }) => (
-  <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50">
-    <div className="bg-card rounded-t-2xl w-full max-w-lg max-h-[70vh] overflow-hidden">
-      <div className="p-4 border-b border-border flex items-center justify-between">
-        <h3 className="text-title font-semibold">{t['helper.past_payslips'] || 'Past Payslips'}</h3>
-        <button onClick={onClose}><X size={20} /></button>
-      </div>
-      <div className="p-4 overflow-y-auto max-h-[60vh]">
-        {payslips.length === 0 ? (
-          <p className="text-center text-muted-foreground py-8">
-            {t['helper.no_past_payslips'] || 'No past payslips'}
-          </p>
-        ) : (
-          <div className="space-y-3">
-            {payslips.map(slip => (
-              <div key={slip.id} className="p-3 bg-secondary rounded-lg">
-                <div className="flex justify-between items-center">
-                  <span className="text-body font-medium">
-                    {new Date(slip.year, slip.month - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-                  </span>
-                  <div className="text-right">
-                    <span className="text-title font-bold">${slip.salaryAmount.toLocaleString()}</span>
-                    {(slip.overtimeTotal || 0) > 0 && (
-                      <div className="text-xs text-muted-foreground">
-                        (incl. OT ${slip.overtimeTotal})
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <div className="flex gap-4 mt-2 text-caption">
-                  <span className={slip.employerSignedAt ? 'text-green-600' : 'text-muted-foreground'}>
-                    Employer: {slip.employerSignedAt ? '✓' : '—'}
-                  </span>
-                  <span className={slip.helperSignedAt ? 'text-green-600' : 'text-muted-foreground'}>
-                    Helper: {slip.helperSignedAt ? '✓' : '—'}
-                  </span>
                 </div>
               </div>
             ))}

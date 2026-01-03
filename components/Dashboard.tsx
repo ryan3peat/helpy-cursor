@@ -330,7 +330,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   ) => {
     if (!items || items.length === 0) {
       return (
-        <span className="text-caption text-muted-foreground">
+        <span className="text-body text-muted-foreground">
           {t['profile.none'] || 'None listed'}
         </span>
       );
@@ -341,8 +341,8 @@ const Dashboard: React.FC<DashboardProps> = ({
     const remainingCount = items.length - maxVisible;
 
     const tagStyle = type === 'allergy'
-      ? 'px-2 py-1 bg-destructive/10 text-destructive rounded-full text-caption font-medium'
-      : 'px-2 py-1 bg-foreground/10 text-foreground rounded-full text-caption font-medium';
+      ? 'px-2 py-1 bg-destructive/10 text-destructive rounded-full text-body font-medium'
+      : 'px-2 py-1 bg-foreground/10 text-foreground rounded-full text-body font-medium';
 
     return (
       <>
@@ -765,7 +765,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                   {user.name.split(' ')[0]} {isCurrent ? `(${t['common.you'] || 'You'})` : ''}
                 </h3>
                 {user.status === 'pending' && (
-                  <span className="text-caption text-muted-foreground flex-shrink-0 ml-2">
+                  <span className="text-body text-muted-foreground flex-shrink-0 ml-2">
                     {t['common.pending'] || 'Pending'}
                   </span>
                 )}
@@ -786,7 +786,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                   <div className="mb-2.5">
                     <div className="flex items-center gap-1.5 mb-1.5">
                       <AlertCircle size={12} className="text-destructive flex-shrink-0" />
-                      <span className="text-caption font-bold text-foreground">
+                      <span className="text-body font-bold text-foreground">
                         {t['profile.allergies'] || 'Allergies'}
                       </span>
                     </div>
@@ -799,7 +799,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                   <div>
                     <div className="flex items-center gap-1.5 mb-1.5">
                       <Heart size={12} className="text-foreground flex-shrink-0" />
-                      <span className="text-caption font-bold text-foreground">
+                      <span className="text-body font-bold text-foreground">
                         {t['profile.preferences'] || 'Preferences'}
                       </span>
                     </div>
@@ -843,14 +843,14 @@ const Dashboard: React.FC<DashboardProps> = ({
               }
             </span>
             {isAtMemberLimit && (
-              <span className="text-caption text-muted-foreground">
+              <span className="text-body text-muted-foreground">
                 {t['common.to_add_more'] || 'to add more'}
               </span>
             )}
-            <span className="text-caption text-muted-foreground mt-2">
+            <span className="text-body text-muted-foreground mt-2">
               {totalMemberCount} {t['common.of'] || 'of'} {totalMaxSlots}
             </span>
-            <span className="text-caption text-muted-foreground">
+            <span className="text-body text-muted-foreground">
               {t['dashboard.member_slots_used'] || 'member slots used'}
             </span>
           </div>
@@ -1054,7 +1054,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                           {renderAudienceIcons(meal.forUserIds)}
                         </div>
                         {meal.description ? (
-                          <p className="text-title text-foreground leading-tight line-clamp-2">
+                          <p className="text-body text-foreground leading-tight line-clamp-2">
                             <TranslatedMealDescription 
                               meal={meal} 
                               currentLang={currentLang}
@@ -1287,7 +1287,7 @@ const Dashboard: React.FC<DashboardProps> = ({
             </div>
             
             {/* Language List */}
-            <div className="flex-1 overflow-y-auto p-5 space-y-2">
+            <div className="flex-1 overflow-y-auto p-5 pb-10 space-y-2">
               {SUPPORTED_LANGUAGES.map(lang => {
                 // Display names in native language with code - UI only, doesn't affect backend
                 const getDisplayName = (code: string) => {

@@ -1192,4 +1192,10 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'demo.enabled': 'Demo Mode Enabled',
   'demo.disabled': 'Demo Mode Disabled',
   'demo.superadmin_only': 'SuperAdmin Only',
+
+  // Helper Payslip (new UI)
+  'helper.payslip': 'Payslip',
+  'helper.show_past_salary': 'Past Salary',
+  'helper.hide_past_salary': 'Hide Past Salary',
+  'helper.started': 'Started',
 };

@@ -578,13 +578,13 @@ const Expenses: React.FC<ExpensesProps> = ({
       setTriedReceiptRefresh(false);
     }
     
-    setExAmount(selectedExpense.amount.toFixed(2));
+    setExAmount((selectedExpense.amount ?? 0).toFixed(2));
     setExMerchant(selectedExpense.merchant || '');
     setExCategory(selectedExpense.category || EXPENSE_CATEGORIES[0]);
     // Normalize date to YYYY-MM-DD format
     let iso: string;
     try {
-      if (/^\d{4}-\d{2}-\d{2}$/.test(selectedExpense.date)) {
+      if (selectedExpense.date && /^\d{4}-\d{2}-\d{2}$/.test(selectedExpense.date)) {
         iso = selectedExpense.date;
       } else {
         const parsed = new Date(selectedExpense.date);
@@ -1354,10 +1354,10 @@ const Expenses: React.FC<ExpensesProps> = ({
                             </p>
                             <p className="text-caption text-muted-foreground">{getCategoryLabel(expense.category)}</p>
                             <p className="text-caption text-muted-foreground">
-                              {new Date(expense.date).toLocaleDateString(
+                              {expense.date ? new Date(expense.date).toLocaleDateString(
                                 currentLang === 'en' ? 'en-GB' : currentLang,
                                 { day: 'numeric', month: 'short', year: 'numeric' }
-                              )}
+                              ) : '-'}
                             </p>
                           </div>
                           
@@ -1372,34 +1372,18 @@ const Expenses: React.FC<ExpensesProps> = ({
                       );
                     })}
                   </div>
-                  {/* Torn receipt zigzag edge - simple triangles with shadow */}
+                  {/* Torn receipt zigzag edge - clean triangles without shadow */}
                   <div 
-                    className="w-full relative"
-                    style={{ height: '12px' }}
-                  >
-                    {/* Shadow layer */}
-                    <div 
-                      className="absolute inset-0"
-                      style={{
-                        backgroundImage: `linear-gradient(135deg, rgba(0,0,0,0.08) 50%, transparent 50%),
-                                          linear-gradient(225deg, rgba(0,0,0,0.08) 50%, transparent 50%)`,
-                        backgroundSize: '16px 12px',
-                        backgroundRepeat: 'repeat-x',
-                        transform: 'translateY(2px)',
-                        filter: 'blur(2px)',
-                      }}
-                    />
-                    {/* Main zigzag */}
-                    <div 
-                      className="absolute inset-0"
-                      style={{
-                        backgroundImage: `linear-gradient(135deg, hsl(var(--card)) 50%, transparent 50%),
-                                          linear-gradient(225deg, hsl(var(--card)) 50%, transparent 50%)`,
-                        backgroundSize: '16px 12px',
-                        backgroundRepeat: 'repeat-x',
-                      }}
-                    />
-                  </div>
+                    className="w-full"
+                    style={{
+                      height: '12px',
+                      backgroundImage: `linear-gradient(to bottom right, hsl(var(--card)) 50%, transparent 50%),
+                                        linear-gradient(to bottom left, hsl(var(--card)) 50%, transparent 50%)`,
+                      backgroundSize: '12px 100%',
+                      backgroundRepeat: 'repeat-x',
+                      backgroundPosition: 'left top',
+                    }}
+                  />
                 </div>
               )}
             </div>
@@ -1827,10 +1811,10 @@ const Expenses: React.FC<ExpensesProps> = ({
               <h2 className="text-title text-foreground">{selectedExpense.merchant}</h2>
               <p className="text-caption text-muted-foreground">
                 {getCategoryLabel(selectedExpense.category || 'Miscellaneous')} ·{' '}
-                {new Date(selectedExpense.date).toLocaleDateString(
+                {selectedExpense.date ? new Date(selectedExpense.date).toLocaleDateString(
                   currentLang === 'en' ? 'en-GB' : currentLang,
                   { day: 'numeric', month: 'short', year: 'numeric' }
-                )}
+                ) : '-'}
               </p>
             </div>
 
@@ -2064,7 +2048,7 @@ const Expenses: React.FC<ExpensesProps> = ({
             </div>
           </div>
         </div>
-      )}
+      , document.body)}
 
       {/* ─────────────────────────────────────────────────────────────── */}
       {/* IMAGE ZOOM MODAL */}

@@ -785,7 +785,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                   {/* Allergies */}
                   <div className="mb-2.5">
                     <div className="flex items-center gap-1.5 mb-1.5">
-                      <AlertCircle size={12} className="text-destructive flex-shrink-0" />
+                      <AlertCircle size={14} className="text-destructive flex-shrink-0" />
                       <span className="text-body font-bold text-foreground">
                         {t['profile.allergies'] || 'Allergies'}
                       </span>
@@ -798,7 +798,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                   {/* Preferences */}
                   <div>
                     <div className="flex items-center gap-1.5 mb-1.5">
-                      <Heart size={12} className="text-foreground flex-shrink-0" />
+                      <Heart size={14} className="text-foreground flex-shrink-0" />
                       <span className="text-body font-bold text-foreground">
                         {t['profile.preferences'] || 'Preferences'}
                       </span>

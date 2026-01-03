@@ -41,7 +41,9 @@ export interface HelperPayslipConfirmation {
   month: number;        // 1-12
   year: number;
   salaryAmount: number;
-  overtimeTotal?: number;  // Total overtime added to this payslip
+  baseSalary?: number;           // Base salary component
+  otherAllowancesTotal?: number; // Other allowances component
+  overtimeTotal?: number;        // Total overtime added to this payslip
   employerSignedAt?: string | null;
   employerUserId?: string | null;
   helperSignedAt?: string | null;

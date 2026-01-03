@@ -457,27 +457,33 @@ const createDemoEssentialItems = (): EssentialInfo[] => [
 
 const createDemoPastPayslips = (): HelperPayslipConfirmation[] => [
   // September 2025 - with overtime
+  // Base: 4870, Other (food 1236 + transport 500): 1736, Overtime: 500 = Total: 7106
   {
     id: 'demo-payslip-001',
     householdId: 'demo-household',
     helperId: 'demo-helper-004',
     month: 9,
     year: 2025,
-    salaryAmount: 6606,  // 6106 base + 500 overtime
+    salaryAmount: 7106,
+    baseSalary: 4870,
+    otherAllowancesTotal: 1736,
     overtimeTotal: 500,  // Worked on Mid-Autumn Festival
     employerSignedAt: '2025-09-30T10:00:00Z',
     employerUserId: 'demo-dad-001',
     helperSignedAt: '2025-09-30T11:30:00Z',
     createdAt: '2025-09-30T10:00:00Z',
   },
-  // October 2025 - regular
+  // October 2025 - regular (no overtime)
+  // Base: 4870, Other: 1736, Overtime: 0 = Total: 6606
   {
     id: 'demo-payslip-002',
     householdId: 'demo-household',
     helperId: 'demo-helper-004',
     month: 10,
     year: 2025,
-    salaryAmount: 6106,  // Base only
+    salaryAmount: 6606,
+    baseSalary: 4870,
+    otherAllowancesTotal: 1736,
     overtimeTotal: 0,
     employerSignedAt: '2025-10-31T09:00:00Z',
     employerUserId: 'demo-dad-001',
@@ -485,32 +491,38 @@ const createDemoPastPayslips = (): HelperPayslipConfirmation[] => [
     createdAt: '2025-10-31T09:00:00Z',
   },
   // November 2025 - with overtime
+  // Base: 4870, Other: 1736, Overtime: 300 = Total: 6906
   {
     id: 'demo-payslip-003',
     householdId: 'demo-household',
     helperId: 'demo-helper-004',
     month: 11,
     year: 2025,
-    salaryAmount: 6406,  // 6106 base + 300 overtime
+    salaryAmount: 6906,
+    baseSalary: 4870,
+    otherAllowancesTotal: 1736,
     overtimeTotal: 300,  // Worked on a Sunday
     employerSignedAt: '2025-11-30T11:00:00Z',
     employerUserId: 'demo-dad-001',
     helperSignedAt: '2025-11-30T15:00:00Z',
     createdAt: '2025-11-30T11:00:00Z',
   },
-  // December 2025 - regular
+  // December 2025 - UNSIGNED (to demo the pending signature feature)
+  // Base: 4870, Other: 1736, Overtime: 0 = Total: 6606
   {
     id: 'demo-payslip-004',
     householdId: 'demo-household',
     helperId: 'demo-helper-004',
     month: 12,
     year: 2025,
-    salaryAmount: 6106,  // Base only
+    salaryAmount: 6606,
+    baseSalary: 4870,
+    otherAllowancesTotal: 1736,
     overtimeTotal: 0,
-    employerSignedAt: '2025-12-31T10:00:00Z',
-    employerUserId: 'demo-dad-001',
-    helperSignedAt: '2025-12-31T12:00:00Z',
-    createdAt: '2025-12-31T10:00:00Z',
+    employerSignedAt: null,  // Not signed yet!
+    employerUserId: null,
+    helperSignedAt: null,    // Not signed yet!
+    createdAt: '2025-12-01T10:00:00Z',
   },
 ];
 

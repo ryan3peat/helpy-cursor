@@ -501,6 +501,7 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'helper.base_salary': 'Base Salary',
   'helper.food_allowance': 'Food Allowance',
   'helper.other_allowances': 'Other Allowances',
+  'helper.other_allowance': 'Other Allowance',
   'helper.overtime': 'Overtime',
   'helper.total': 'Total',
   'helper.new_amount': 'New Total Amount (HK$)',
@@ -1197,5 +1198,8 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'helper.payslip': 'Payslip',
   'helper.show_past_salary': 'Past Salary',
   'helper.hide_past_salary': 'Hide Past Salary',
+  'helper.show_past_signed_salary': 'Past & Signed Salary',
+  'helper.hide_past_signed_salary': 'Hide Past & Signed Salary',
+  'helper.no_signed_payslips': 'No signed payslips yet',
   'helper.started': 'Started',
 };

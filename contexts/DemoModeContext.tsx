@@ -288,7 +288,6 @@ const createDemoExpenses = (): Expense[] => {
   // Common Hong Kong merchants
   const expenses: Expense[] = [
     // Housing & Utilities
-    { id: 'demo-exp-001', amount: 22500, currency: 'HKD', category: 'Housing & Utilities', date: '2026-01-01', merchant: 'MTR Corporation - Rent', createdBy: 'demo-dad-001' },
     { id: 'demo-exp-002', amount: 850, currency: 'HKD', category: 'Housing & Utilities', date: '2026-01-05', merchant: 'CLP Power', createdBy: 'demo-dad-001' },
     { id: 'demo-exp-003', amount: 380, currency: 'HKD', category: 'Housing & Utilities', date: '2026-01-05', merchant: 'Towngas', createdBy: 'demo-dad-001' },
     { id: 'demo-exp-004', amount: 298, currency: 'HKD', category: 'Housing & Utilities', date: '2026-01-10', merchant: 'PCCW Broadband', createdBy: 'demo-dad-001' },

@@ -1326,8 +1326,8 @@ const Expenses: React.FC<ExpensesProps> = ({
                 </div>
               ) : (
                 <div className="relative">
-                  {/* Expense List Card - rounded top only for torn effect */}
-                  <div className="bg-card rounded-t-xl shadow-sm overflow-hidden">
+                  {/* Expense List Card - sits above zigzag to hide top shadow */}
+                  <div className="bg-card rounded-t-xl shadow-sm overflow-hidden relative z-[2]">
                     {filteredExpenses.map((expense, index) => {
                       const config = getExpenseCategoryConfig(expense.category);
                       return (
@@ -1372,18 +1372,36 @@ const Expenses: React.FC<ExpensesProps> = ({
                       );
                     })}
                   </div>
-                  {/* Torn receipt zigzag edge - clean triangles without shadow */}
+                  {/* Torn receipt zigzag edge - tucked under card to hide top shadow */}
                   <div 
-                    className="w-full"
-                    style={{
-                      height: '12px',
-                      backgroundImage: `linear-gradient(to bottom right, hsl(var(--card)) 50%, transparent 50%),
-                                        linear-gradient(to bottom left, hsl(var(--card)) 50%, transparent 50%)`,
-                      backgroundSize: '12px 100%',
-                      backgroundRepeat: 'repeat-x',
-                      backgroundPosition: 'left top',
-                    }}
-                  />
+                    className="relative w-full"
+                    style={{ marginTop: '-4px' }}
+                  >
+                    {/* Shadow layer - offset down so only visible below triangle points */}
+                    <div 
+                      className="absolute w-full"
+                      style={{
+                        top: '6px',
+                        height: '12px',
+                        backgroundImage: `linear-gradient(to bottom right, rgba(0,0,0,0.12) 50%, transparent 50%),
+                                          linear-gradient(to bottom left, rgba(0,0,0,0.12) 50%, transparent 50%)`,
+                        backgroundSize: '12px 100%',
+                        backgroundRepeat: 'repeat-x',
+                        filter: 'blur(2px)',
+                      }}
+                    />
+                    {/* Main zigzag - sits on top of shadow */}
+                    <div 
+                      className="relative w-full"
+                      style={{
+                        height: '12px',
+                        backgroundImage: `linear-gradient(to bottom right, hsl(var(--card)) 50%, transparent 50%),
+                                          linear-gradient(to bottom left, hsl(var(--card)) 50%, transparent 50%)`,
+                        backgroundSize: '12px 100%',
+                        backgroundRepeat: 'repeat-x',
+                      }}
+                    />
+                  </div>
                 </div>
               )}
             </div>

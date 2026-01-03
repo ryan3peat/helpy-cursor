@@ -158,7 +158,9 @@ const FamilyCardWithGlow: React.FC<{
           transform: 'translateX(-50%) translateY(12px)',
           filter: 'blur(20px)',
           opacity: glowLoaded ? 0.45 : 0,
-          zIndex: 0
+          zIndex: 0,
+          willChange: 'transform',
+          contain: 'strict',
         }}
         aria-hidden="true"
       >

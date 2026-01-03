@@ -1,5 +1,6 @@
 // components/Auth.tsx
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { SignIn, useUser, useClerk } from '@clerk/clerk-react';
 import { useSupabase, useSupabaseReady, getAuthenticatedSupabaseClient } from '../contexts/SupabaseContext';
 import { supabase as defaultSupabase } from '../services/supabase';
@@ -70,8 +71,8 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
   // Alert Modal Component (renders on top of any screen)
   const AlertModal = () => {
     if (!alertModal.isOpen) return null;
-    return (
-      <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center">
+    return createPortal(
+      <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
         {/* Safe area bottom cover */}
         <div 
           className="absolute bottom-0 left-0 right-0 bg-card"
@@ -109,7 +110,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
           </div>
         </div>
       </div>
-    );
+    , document.body);
   };
   // Delay rendering the SignIn form to let Clerk component mount
   // This prevents the flash of the container without the form

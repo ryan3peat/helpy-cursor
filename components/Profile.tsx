@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   AlertCircle, AlertTriangle, Heart, Settings, Plus, Trash2, X, Save, Camera,
   Image as ImageIcon, LogOut, Copy, Check, ChevronLeft, ChevronRight,
@@ -25,7 +26,6 @@ import {
 } from '../services/pushNotificationService';
 import { compressImageForAvatar } from '../utils/imageCompression';
 import { getRoleConfig } from '../config/rolePermissions';
-import { clearAllCachesAndReload } from '../utils/clearCache';
 
 interface ProfileProps extends BaseViewProps {
   users: User[];
@@ -192,9 +192,6 @@ const Profile: React.FC<ProfileProps> = ({
 
   // Cancel subscription confirmation modal state
   const [showCancelSubConfirm, setShowCancelSubConfirm] = useState(false);
-  
-  // Clear cache confirmation modal state
-  const [showClearCacheConfirm, setShowClearCacheConfirm] = useState(false);
 
   // Generic alert modal state (replaces native alert())
   const [alertModal, setAlertModal] = useState<{
@@ -260,10 +257,10 @@ const Profile: React.FC<ProfileProps> = ({
   }, []);
 
   // Lock scroll when any modal is open
-  useScrollLock(isAddModalOpen || isEditModalOpen || deleteConfirmOpen || showPhotoOptions || subscriptionCanceled || isPlanConfirmOpen || showDowngradeModal || showCancelSubConfirm || showClearCacheConfirm || alertModal.isOpen);
+  useScrollLock(isAddModalOpen || isEditModalOpen || deleteConfirmOpen || showPhotoOptions || subscriptionCanceled || isPlanConfirmOpen || showDowngradeModal || showCancelSubConfirm || alertModal.isOpen);
   
   // Dim status bar when sheet is open (iOS)
-  useSheetTheme(isAddModalOpen || isEditModalOpen || deleteConfirmOpen || showPhotoOptions || subscriptionCanceled || isPlanConfirmOpen || isDeleteAccountModalOpen || isFinalDeleteConfirmOpen || showDowngradeModal || showCancelSubConfirm || showClearCacheConfirm || alertModal.isOpen);
+  useSheetTheme(isAddModalOpen || isEditModalOpen || deleteConfirmOpen || showPhotoOptions || subscriptionCanceled || isPlanConfirmOpen || isDeleteAccountModalOpen || isFinalDeleteConfirmOpen || showDowngradeModal || showCancelSubConfirm || alertModal.isOpen);
 
   // Track if we've handled the initial edit (to prevent re-opening on data refresh)
   const [initialEditHandled, setInitialEditHandled] = useState(false);
@@ -1577,7 +1574,7 @@ const Profile: React.FC<ProfileProps> = ({
         </div>
 
         {/* Add User Modal - Multi-step Flow */}
-          {isAddModalOpen && (
+          {isAddModalOpen && createPortal(
             <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
               {/* Safe area bottom cover */}
               <div 
@@ -1929,10 +1926,10 @@ const Profile: React.FC<ProfileProps> = ({
                 )}
               </div>
             </div>
-          )}
+          , document.body)}
 
           {/* Delete Confirmation Modal */}
-          {deleteConfirmOpen && (
+          {deleteConfirmOpen && createPortal(
             <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
               {/* Safe area bottom cover */}
               <div 
@@ -1972,10 +1969,10 @@ const Profile: React.FC<ProfileProps> = ({
                 </div>
               </div>
             </div>
-          )}
+          , document.body)}
 
           {/* Edit User Modal */}
-          {isEditModalOpen && (
+          {isEditModalOpen && createPortal(
             <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
               {/* Safe area bottom cover - fills the gap below the sheet */}
               <div 
@@ -2219,10 +2216,10 @@ const Profile: React.FC<ProfileProps> = ({
                 </div>
               </div>
             </div>
-          )}
+          , document.body)}
 
         {/* Photo Options Modal */}
-        {showPhotoOptions && (
+        {showPhotoOptions && createPortal(
           <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
             {/* Safe area bottom cover */}
             <div 
@@ -2273,7 +2270,7 @@ const Profile: React.FC<ProfileProps> = ({
               </div>
             </div>
           </div>
-        )}
+        , document.body)}
 
         {/* Hidden file inputs */}
         <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
@@ -3077,7 +3074,7 @@ const Profile: React.FC<ProfileProps> = ({
           </div>
 
           {/* Plan confirmation + promo code modal */}
-          {isPlanConfirmOpen && pendingPlan && (
+          {isPlanConfirmOpen && pendingPlan && createPortal(
             <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end md:items-center justify-center bottom-sheet-backdrop">
               {/* Safe area bottom cover */}
               <div 
@@ -3203,10 +3200,10 @@ const Profile: React.FC<ProfileProps> = ({
                 </div>
               </div>
             </div>
-          )}
+          , document.body)}
 
           {/* Downgrade Confirmation Modal - Bottom Sheet */}
-          {showDowngradeModal && pendingDowngrade && (
+          {showDowngradeModal && pendingDowngrade && createPortal(
             <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
               {/* Safe area bottom cover */}
               <div 
@@ -3265,7 +3262,7 @@ const Profile: React.FC<ProfileProps> = ({
                 </div>
               </div>
             </div>
-          )}
+          , document.body)}
 
           {/* Footer */}
           <div className="helpy-footer">
@@ -3492,7 +3489,7 @@ const Profile: React.FC<ProfileProps> = ({
         </div>
 
         {/* First Delete Confirmation Modal */}
-        {isDeleteAccountModalOpen && (
+        {isDeleteAccountModalOpen && createPortal(
           <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
             {/* Safe area bottom cover */}
             <div 
@@ -3529,10 +3526,10 @@ const Profile: React.FC<ProfileProps> = ({
               </div>
             </div>
           </div>
-        )}
+        , document.body)}
 
         {/* Final Delete Confirmation Modal */}
-        {isFinalDeleteConfirmOpen && (
+        {isFinalDeleteConfirmOpen && createPortal(
           <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
             {/* Safe area bottom cover */}
             <div 
@@ -3582,10 +3579,10 @@ const Profile: React.FC<ProfileProps> = ({
               </div>
             </div>
           </div>
-        )}
+        , document.body)}
 
         {/* Subscription Cancellation Confirmation Modal */}
-        {subscriptionCanceled && (
+        {subscriptionCanceled && createPortal(
           <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
             {/* Safe area bottom cover */}
             <div 
@@ -3642,7 +3639,7 @@ const Profile: React.FC<ProfileProps> = ({
               </div>
             </div>
           </div>
-        )}
+        , document.body)}
       </div>
     );
   }
@@ -3925,23 +3922,6 @@ const Profile: React.FC<ProfileProps> = ({
                 </div>
               )}
             </div>
-
-            {/* Clear Cache - Emergency fix for broken UI */}
-            <div className="bg-card rounded-2xl shadow-sm overflow-hidden mt-6">
-              <button
-                onClick={() => setShowClearCacheConfirm(true)}
-                className="w-full px-5 py-4 flex items-center justify-between"
-              >
-                <div className="flex items-center gap-3">
-                  <Trash2 size={18} className="text-muted-foreground" />
-                  <div>
-                    <p className="font-bold text-foreground text-title text-left">{t['settings.clear_cache'] || 'Clear Cache'}</p>
-                    <p className="text-caption text-muted-foreground text-left">{t['settings.clear_cache_description'] || 'Fix display issues by clearing cached data'}</p>
-                  </div>
-                </div>
-                <ChevronRight size={20} className="text-muted-foreground" />
-              </button>
-            </div>
           </div>
 
           {/* Footer */}
@@ -3951,7 +3931,7 @@ const Profile: React.FC<ProfileProps> = ({
         </div>
 
         {/* Cancel Subscription Confirmation Modal */}
-        {showCancelSubConfirm && (
+        {showCancelSubConfirm && createPortal(
           <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
             {/* Safe area bottom cover */}
             <div 
@@ -3988,53 +3968,10 @@ const Profile: React.FC<ProfileProps> = ({
               </div>
             </div>
           </div>
-        )}
-
-        {/* Clear Cache Confirmation Modal */}
-        {showClearCacheConfirm && (
-          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
-            {/* Safe area bottom cover */}
-            <div 
-              className="absolute bottom-0 left-0 right-0 bg-card"
-              style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
-            />
-            <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
-              {/* Header */}
-              <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
-                <h2 className="text-title text-foreground">{t['settings.clear_cache'] || 'Clear Cache'}</h2>
-              </div>
-
-              {/* Content */}
-              <div className="p-5">
-                <p className="text-body text-muted-foreground">
-                  {t['settings.clear_cache_confirm'] || 'This will clear all cached data and reload the app. Continue?'}
-                </p>
-              </div>
-
-              {/* Footer */}
-              <div className="p-5 pb-8 border-t border-border flex gap-3 shrink-0">
-                <button
-                  onClick={() => setShowClearCacheConfirm(false)}
-                  className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body"
-                >
-                  {t['common.cancel'] || 'Cancel'}
-                </button>
-                <button
-                  onClick={() => {
-                    setShowClearCacheConfirm(false);
-                    clearAllCachesAndReload();
-                  }}
-                  className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body"
-                >
-                  {t['settings.clear_cache_action'] || 'Clear Cache'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        , document.body)}
 
         {/* Generic Alert Modal (replaces native alert()) */}
-        {alertModal.isOpen && (
+        {alertModal.isOpen && createPortal(
           <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
             {/* Safe area bottom cover */}
             <div 
@@ -4073,7 +4010,7 @@ const Profile: React.FC<ProfileProps> = ({
               </div>
             </div>
           </div>
-        )}
+        , document.body)}
       </div>
     );
   }

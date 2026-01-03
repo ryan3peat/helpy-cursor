@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useLayoutEffect, useRef, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Sparkles,
   Plus,
@@ -1285,7 +1286,7 @@ const Meals: React.FC<MealsProps> = ({
       {/* ─────────────────────────────────────────────────────────────── */}
       {/* MEAL MODAL - Bottom Sheet Style */}
       {/* ─────────────────────────────────────────────────────────────── */}
-      {isModalOpen && (
+      {isModalOpen && createPortal(
         <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
           {/* Safe area bottom cover - fills the gap below the sheet */}
           <div 
@@ -1494,7 +1495,7 @@ const Meals: React.FC<MealsProps> = ({
             </div>
           </div>
         </div>
-      )}
+      , document.body)}
 
     </div>
   );

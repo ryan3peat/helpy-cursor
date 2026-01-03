@@ -1,6 +1,7 @@
 // components/HelperManagementContent.tsx
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { Calendar, FileText, Check, X, AlertTriangle, ChevronDown, ChevronRight } from 'lucide-react';
 import ErrorBanner from './ui/ErrorBanner';
 import type { User, TranslationDictionary } from '@/types';
@@ -572,7 +573,7 @@ export const HelperManagementContent: React.FC<Props> = ({
       {/* ═══════════════════════════════════════════════════════════════ */}
       
       {/* Compensation Type Modal - Bottom Sheet */}
-      {showCompensationModal && (
+      {showCompensationModal && createPortal(
         <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
           {/* Safe area bottom cover */}
           <div 
@@ -621,10 +622,10 @@ export const HelperManagementContent: React.FC<Props> = ({
             </div>
           </div>
         </div>
-      )}
+      , document.body)}
 
       {/* Overtime Amount Modal - Bottom Sheet */}
-      {showOvertimeModal && (
+      {showOvertimeModal && createPortal(
         <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
           {/* Safe area bottom cover */}
           <div 
@@ -710,10 +711,10 @@ export const HelperManagementContent: React.FC<Props> = ({
             </div>
           </div>
         </div>
-      )}
+      , document.body)}
 
       {/* Change Amount Modal - Bottom Sheet */}
-      {showChangeAmountModal && currentPayslip && (
+      {showChangeAmountModal && currentPayslip && createPortal(
         <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
           {/* Safe area bottom cover */}
           <div 
@@ -800,10 +801,10 @@ export const HelperManagementContent: React.FC<Props> = ({
             </div>
           </div>
         </div>
-      )}
+      , document.body)}
 
       {/* Sign Confirmation Modal - Bottom Sheet */}
-      {showSignConfirmModal && (
+      {showSignConfirmModal && createPortal(
         <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
           {/* Safe area bottom cover */}
           <div 
@@ -855,7 +856,7 @@ export const HelperManagementContent: React.FC<Props> = ({
             </div>
           </div>
         </div>
-      )}
+      , document.body)}
 
       {/* Past Holidays Modal */}
       {showPastHolidays && (
@@ -1235,14 +1236,30 @@ const PastHolidaysModal: React.FC<{
   records: HelperHolidayRecord[];
   onClose: () => void;
   t: TranslationDictionary;
-}> = ({ records, onClose, t }) => (
-  <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50">
-    <div className="bg-card rounded-t-2xl w-full max-w-lg max-h-[70vh] overflow-hidden">
-      <div className="p-4 border-b border-border flex items-center justify-between">
-        <h3 className="text-title font-semibold">{t['helper.past_holidays'] || 'Past Holidays'}</h3>
-        <button onClick={onClose}><X size={20} /></button>
+}> = ({ records, onClose, t }) => createPortal(
+  <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
+    {/* Safe area bottom cover */}
+    <div 
+      className="fixed bottom-0 left-0 right-0 bg-card"
+      style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
+    />
+    <div 
+      className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content"
+      style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)', maxHeight: '70vh' }}
+    >
+      {/* Header */}
+      <div className="relative pt-6 pb-4 px-5 border-b border-border" style={{ marginLeft: '1.25rem', marginRight: '1.25rem', paddingLeft: 0, paddingRight: 0, borderColor: 'var(--border)' }}>
+        <button 
+          onClick={onClose}
+          className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center right-0 -top-1 text-muted-foreground"
+          aria-label="Close"
+        >
+          <X size={20} />
+        </button>
+        <h2 className="text-title text-foreground">{t['helper.past_holidays'] || 'Past Holidays'}</h2>
       </div>
-      <div className="p-4 overflow-y-auto max-h-[60vh]">
+      {/* Body */}
+      <div className="p-5 overflow-y-auto" style={{ maxHeight: 'calc(70vh - 100px)' }}>
         {records.length === 0 ? (
           <p className="text-center text-muted-foreground py-8">
             {t['helper.no_past_records'] || 'No past records'}
@@ -1284,6 +1301,6 @@ const PastHolidaysModal: React.FC<{
       </div>
     </div>
   </div>
-);
+, document.body);
 
 export default HelperManagementContent;

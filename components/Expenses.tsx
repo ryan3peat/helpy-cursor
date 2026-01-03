@@ -1446,7 +1446,7 @@ const Expenses: React.FC<ExpensesProps> = ({
       {/* ─────────────────────────────────────────────────────────────── */}
       {/* TWO-STAGE PROGRESSIVE SHEET */}
       {/* ─────────────────────────────────────────────────────────────── */}
-      {addExpenseStage !== 'closed' && (
+      {addExpenseStage !== 'closed' && createPortal(
         <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
           {/* Safe area bottom cover - fills the gap below the sheet */}
           <div 
@@ -1797,12 +1797,12 @@ const Expenses: React.FC<ExpensesProps> = ({
             )}
           </div>
         </div>
-      )}
+      , document.body)}
 
       {/* ─────────────────────────────────────────────────────────────── */}
       {/* EXISTING EXPENSE BOTTOM SHEET */}
       {/* ─────────────────────────────────────────────────────────────── */}
-      {selectedExpense && (
+      {selectedExpense && createPortal(
         <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
           {/* Safe area bottom cover - fills the gap below the sheet */}
           <div 
@@ -2083,7 +2083,7 @@ const Expenses: React.FC<ExpensesProps> = ({
       {/* ─────────────────────────────────────────────────────────────── */}
       {/* MONTH PICKER BOTTOM SHEET */}
       {/* ─────────────────────────────────────────────────────────────── */}
-      {isMonthPickerOpen && (
+      {isMonthPickerOpen && createPortal(
         <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
           {/* Safe area bottom cover - fills the gap below the sheet */}
           <div 
@@ -2183,12 +2183,12 @@ const Expenses: React.FC<ExpensesProps> = ({
             </div>
           </div>
         </div>
-      )}
+      , document.body)}
 
       {/* ─────────────────────────────────────────────────────────────── */}
       {/* SUMMARY UPGRADE MODAL - Bottom Sheet */}
       {/* ─────────────────────────────────────────────────────────────── */}
-      {showSummaryUpgradeModal && (
+      {showSummaryUpgradeModal && createPortal(
         <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
           {/* Safe area bottom cover */}
           <div 
@@ -2239,7 +2239,7 @@ const Expenses: React.FC<ExpensesProps> = ({
             </div>
           </div>
         </div>
-      )}
+      , document.body)}
     </div>
   );
 };

@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Plus,
   Circle,
@@ -1454,7 +1455,7 @@ const ToDo: React.FC<ToDoProps> = ({
       </div>
 
       {/* Detailed Sheet Overlay */}
-      {isSheetOpen && (
+      {isSheetOpen && createPortal(
         <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
           {/* Safe area bottom cover - fills the gap below the sheet */}
           <div 
@@ -1783,10 +1784,10 @@ const ToDo: React.FC<ToDoProps> = ({
             </div>
           </div>
         </div>
-      )}
+      , document.body)}
 
       {/* Clear Completed Confirmation Modal */}
-      {showClearCompletedConfirm && (
+      {showClearCompletedConfirm && createPortal(
         <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
           {/* Safe area bottom cover */}
           <div 
@@ -1823,7 +1824,7 @@ const ToDo: React.FC<ToDoProps> = ({
             </div>
           </div>
         </div>
-      )}
+      , document.body)}
     </div>
   );
 };

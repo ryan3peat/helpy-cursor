@@ -2,6 +2,7 @@
 // Modal shown when user tries to join a new household but already belongs to another
 
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { Home, ArrowRight } from 'lucide-react';
 import { TranslationDictionary } from '../types';
 
@@ -22,7 +23,7 @@ const HouseholdSwitchModal: React.FC<HouseholdSwitchModalProps> = ({
   onSwitch,
   t = {}
 }) => {
-  return (
+  return createPortal(
     <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
       {/* Safe area bottom cover */}
       <div 
@@ -89,7 +90,7 @@ const HouseholdSwitchModal: React.FC<HouseholdSwitchModalProps> = ({
         </div>
       </div>
     </div>
-  );
+  , document.body);
 };
 
 export default HouseholdSwitchModal;

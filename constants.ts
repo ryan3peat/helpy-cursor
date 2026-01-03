@@ -1162,9 +1162,6 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'subscription.cancel_title': 'Cancel Subscription',
   'subscription.downgrade_success_title': 'Subscription Canceled',
 
-  // Alert Modal - Settings
-  'settings.clear_cache_action': 'Clear Cache',
-
   // Alert Modal - Maps (HouseholdInfo)
   'maps.open_in_maps': 'Open in Maps',
   'maps.open_apple_maps': 'Open Apple Maps',

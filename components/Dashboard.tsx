@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import {
   ShoppingCart,
   ClipboardList,
@@ -130,6 +131,126 @@ const TranslatedFamilyNotes: React.FC<{
   });
 
   return <>{translatedNotes}</>;
+};
+
+// Family Card component with Apple Wallet-style photo glow effect (Dashboard only)
+const FamilyCardWithGlow: React.FC<{
+  user: User;
+  isCurrent: boolean;
+  isScrolled: boolean;
+  getAvatarUrl: (user: User) => string;
+  getRoleBadgeColor: (role: UserRole) => string;
+  renderTruncatedTags: (items: string[] | undefined, type: 'allergy' | 'preference') => React.ReactNode;
+  onSelect?: () => void;
+  t: TranslationDictionary;
+}> = ({ user, isCurrent, isScrolled, getAvatarUrl, getRoleBadgeColor, renderTruncatedTags, onSelect, t }) => {
+  const [glowLoaded, setGlowLoaded] = useState(false);
+  
+  return (
+    <div
+      onClick={onSelect}
+      className="flex-shrink-0 w-[220px] relative snap-start"
+    >
+      {/* Photo Glow - Blurred copy positioned behind the card */}
+      <div 
+        className="absolute top-0 left-1/2 w-[92%] h-[200px] rounded-t-2xl overflow-hidden pointer-events-none transition-opacity duration-300"
+        style={{ 
+          transform: 'translateX(-50%) translateY(12px)',
+          filter: 'blur(20px)',
+          opacity: glowLoaded ? 0.45 : 0,
+          zIndex: 0
+        }}
+        aria-hidden="true"
+      >
+        <img 
+          src={getAvatarUrl(user)} 
+          alt="" 
+          className="w-full h-full object-cover"
+          onLoad={() => setGlowLoaded(true)}
+          onError={() => setGlowLoaded(false)}
+        />
+      </div>
+      
+      {/* Actual Card - shadow-sm as fallback/base */}
+      <div 
+        className="relative bg-card rounded-2xl shadow-sm overflow-hidden cursor-pointer"
+        style={{ zIndex: 1 }}
+      >
+        {/* Avatar - Edge to Edge at Top */}
+        <div className="relative w-full h-[200px]">
+          {/* Avatar Image - Rounded only at top (inherited from card overflow-hidden) */}
+          <div className="w-full h-full bg-secondary">
+            <img 
+              src={getAvatarUrl(user)} 
+              alt={user.name} 
+              className="w-full h-full object-cover" 
+            />
+          </div>
+          
+          {/* Role Badge - Bottom Left (inside avatar) */}
+          <div className="absolute bottom-3 left-3">
+            <span className={`inline-block px-3 py-1 rounded-full text-caption font-semibold ${getRoleBadgeColor(user.role)}`}>
+              {user.role}
+            </span>
+          </div>
+        </div>
+
+        {/* Content Area - With padding */}
+        <div className="p-4">
+          {/* Name + Pending Status - Same row */}
+          <div className="flex items-center justify-between mt-1">
+            <h3 className="text-title font-bold text-foreground truncate">
+              {user.name.split(' ')[0]} {isCurrent ? `(${t['common.you'] || 'You'})` : ''}
+            </h3>
+            {user.status === 'pending' && (
+              <span className="text-body text-muted-foreground flex-shrink-0 ml-2">
+                {t['common.pending'] || 'Pending'}
+              </span>
+            )}
+          </div>
+
+          {/* Collapsible Section - Allergies & Preferences */}
+          <div 
+            className="grid transition-[grid-template-rows] duration-300 ease-out"
+            style={{
+              gridTemplateRows: isScrolled ? '0fr' : '1fr'
+            }}
+          >
+            <div className={`overflow-hidden transition-opacity duration-300 ease-out ${isScrolled ? 'opacity-0' : 'opacity-100'}`}>
+              {/* Divider */}
+              <div className="h-px bg-border my-3" />
+
+              {/* Allergies */}
+              <div className="mb-2.5">
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <AlertCircle size={14} className="text-destructive flex-shrink-0" />
+                  <span className="text-body font-bold text-foreground">
+                    {t['profile.allergies'] || 'Allergies'}
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {renderTruncatedTags(user.allergies, 'allergy')}
+                </div>
+              </div>
+
+              {/* Preferences */}
+              <div>
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <Heart size={14} className="text-foreground flex-shrink-0" />
+                  <span className="text-body font-bold text-foreground">
+                    {t['profile.preferences'] || 'Preferences'}
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {renderTruncatedTags(user.preferences, 'preference')}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 type BeforeInstallPromptEvent = Event & {
@@ -730,89 +851,19 @@ const Dashboard: React.FC<DashboardProps> = ({
         onScroll={handleCarouselScroll}
         className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide -mx-5 px-5 snap-x snap-mandatory scroll-px-5"
       >
-        {validUsers.map((user) => {
-          const isCurrent = user.id === currentUser.id;
-          return (
-            <div
-              key={user.id}
-              onClick={() => onSelectFamilyMember?.(user.id)}
-              className="flex-shrink-0 w-[220px] bg-card rounded-2xl shadow-sm overflow-hidden cursor-pointer snap-start"
-            >
-              {/* Avatar - Edge to Edge at Top */}
-              <div className="relative w-full h-[200px]">
-                {/* Avatar Image - Rounded only at top (inherited from card overflow-hidden) */}
-                <div className="w-full h-full bg-secondary">
-                  <img 
-                    src={getAvatarUrl(user)} 
-                    alt={user.name} 
-                    className="w-full h-full object-cover" 
-                  />
-                </div>
-                
-                {/* Role Badge - Bottom Left (inside avatar) */}
-                <div className="absolute bottom-3 left-3">
-                  <span className={`inline-block px-3 py-1 rounded-full text-caption font-semibold ${getRoleBadgeColor(user.role)}`}>
-                    {user.role}
-                  </span>
-                </div>
-              </div>
-
-              {/* Content Area - With padding */}
-              <div className="p-4">
-                {/* Name + Pending Status - Same row */}
-              <div className="flex items-center justify-between mt-1">
-                <h3 className="text-title font-bold text-foreground truncate">
-                  {user.name.split(' ')[0]} {isCurrent ? `(${t['common.you'] || 'You'})` : ''}
-                </h3>
-                {user.status === 'pending' && (
-                  <span className="text-body text-muted-foreground flex-shrink-0 ml-2">
-                    {t['common.pending'] || 'Pending'}
-                  </span>
-                )}
-              </div>
-
-              {/* Collapsible Section - Allergies & Preferences */}
-              <div 
-                className="grid transition-[grid-template-rows] duration-300 ease-out"
-                style={{
-                  gridTemplateRows: isScrolled ? '0fr' : '1fr'
-                }}
-              >
-                <div className={`overflow-hidden transition-opacity duration-300 ease-out ${isScrolled ? 'opacity-0' : 'opacity-100'}`}>
-                  {/* Divider */}
-                  <div className="h-px bg-border my-3" />
-
-                  {/* Allergies */}
-                  <div className="mb-2.5">
-                    <div className="flex items-center gap-1.5 mb-1.5">
-                      <AlertCircle size={14} className="text-destructive flex-shrink-0" />
-                      <span className="text-body font-bold text-foreground">
-                        {t['profile.allergies'] || 'Allergies'}
-                      </span>
-                    </div>
-                    <div className="flex flex-wrap gap-1">
-                      {renderTruncatedTags(user.allergies, 'allergy')}
-                    </div>
-                  </div>
-
-                  {/* Preferences */}
-                  <div>
-                    <div className="flex items-center gap-1.5 mb-1.5">
-                      <Heart size={14} className="text-foreground flex-shrink-0" />
-                      <span className="text-body font-bold text-foreground">
-                        {t['profile.preferences'] || 'Preferences'}
-                      </span>
-                    </div>
-                    <div className="flex flex-wrap gap-1">
-                      {renderTruncatedTags(user.preferences, 'preference')}
-                    </div>
-                  </div>
-                </div>
-              </div>
-              </div>
-            </div>
-          );
-        })}
+        {validUsers.map((user) => (
+          <FamilyCardWithGlow
+            key={user.id}
+            user={user}
+            isCurrent={user.id === currentUser.id}
+            isScrolled={isScrolled}
+            getAvatarUrl={getAvatarUrl}
+            getRoleBadgeColor={getRoleBadgeColor}
+            renderTruncatedTags={renderTruncatedTags}
+            onSelect={() => onSelectFamilyMember?.(user.id)}
+            t={t}
+          />
+        ))}
 
         {/* Add Button at END - Hidden for Helper */}
         {!isHelper && onOpenAddFamily && (
@@ -959,7 +1010,7 @@ const Dashboard: React.FC<DashboardProps> = ({
       </div>
 
       {/* iOS Add to Home Screen Steps */}
-      {showIosInstallSteps && (
+      {showIosInstallSteps && createPortal(
         <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
           {/* Safe area bottom cover */}
           <div
@@ -1258,7 +1309,7 @@ const Dashboard: React.FC<DashboardProps> = ({
       </div>
 
       {/* Language Sheet */}
-      {showLangModal && (
+      {showLangModal && createPortal(
         <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
           {/* Safe area bottom cover */}
           <div 
@@ -1325,7 +1376,7 @@ const Dashboard: React.FC<DashboardProps> = ({
             </div>
           </div>
         </div>
-      )}
+      , document.body)}
   </div>
   );
   };

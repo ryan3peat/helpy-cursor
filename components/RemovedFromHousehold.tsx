@@ -1,5 +1,6 @@
 // components/RemovedFromHousehold.tsx
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useUser } from '@clerk/clerk-react';
 import { UserX, Home, Trash2, AlertTriangle } from 'lucide-react';
 import { TranslationDictionary } from '@/types';
@@ -143,7 +144,7 @@ const RemovedFromHousehold: React.FC<RemovedFromHouseholdProps> = ({
       </div>
 
       {/* Delete Confirmation Modal - Bottom Sheet */}
-      {showDeleteConfirm && (
+      {showDeleteConfirm && createPortal(
         <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
           {/* Safe area bottom cover */}
           <div 
@@ -197,7 +198,7 @@ const RemovedFromHousehold: React.FC<RemovedFromHouseholdProps> = ({
             </div>
           </div>
         </div>
-      )}
+      , document.body)}
     </div>
   );
 };

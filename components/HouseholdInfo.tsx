@@ -1,5 +1,6 @@
 // components/HouseholdInfo.tsx
 import React, { useEffect, useState, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useScrollHeader } from "@/hooks/useScrollHeader";
 import { useScrollLock } from "@/hooks/useScrollLock";
 import { useSheetTheme } from "@/hooks/useSheetTheme";
@@ -1380,7 +1381,7 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
       )}
 
       {/* Helper Upgrade Modal - Bottom Sheet */}
-      {showHelperUpgradeModal && (
+      {showHelperUpgradeModal && createPortal(
         <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
           {/* Safe area bottom cover */}
           <div 
@@ -1431,10 +1432,10 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
             </div>
           </div>
         </div>
-      )}
+      , document.body)}
 
       {/* Maps Choice Modal (iOS - when Google Maps not installed) */}
-      {showMapsChoiceModal && (
+      {showMapsChoiceModal && createPortal(
         <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
           {/* Safe area bottom cover */}
           <div 
@@ -1471,7 +1472,7 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
             </div>
           </div>
         </div>
-      )}
+      , document.body)}
     </div>
   );
 };
@@ -1747,7 +1748,7 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
     }
   }, [showCountryCodeDropdown]);
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
       {/* Safe area bottom cover - fills the gap below the sheet */}
       <div 
@@ -1955,7 +1956,7 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
         </div>
       </div>
     </div>
-  );
+  , document.body);
 };
 
 // ─────────────────────────────────────────────────────────────────
@@ -1980,7 +1981,7 @@ const HouseRoutineModal: React.FC<HouseRoutineModalProps> = ({
   onDelete,
   t,
 }) => {
-  return (
+  return createPortal(
     <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
       {/* Safe area bottom cover - fills the gap below the sheet */}
       <div 
@@ -2123,7 +2124,7 @@ const HouseRoutineModal: React.FC<HouseRoutineModalProps> = ({
         </div>
       </div>
     </div>
-  );
+  , document.body);
 };
 
 // ─────────────────────────────────────────────────────────────────
@@ -2168,7 +2169,7 @@ const HouseRoutineViewModal: React.FC<HouseRoutineViewModalProps> = ({
     ? item.customCategory
     : getRoutineCategoryLabel(item.category);
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
       {/* Safe area bottom cover - fills the gap below the sheet */}
       <div 
@@ -2230,7 +2231,7 @@ const HouseRoutineViewModal: React.FC<HouseRoutineViewModalProps> = ({
         </div>
       </div>
     </div>
-  );
+  , document.body);
 };
 
 export default HouseholdInfo;

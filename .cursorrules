@@ -2,6 +2,67 @@
 
 ## Critical Patterns - DO NOT MODIFY
 
+### Bottom Sheets - MUST BE ABOVE BOTTOM NAV
+
+**RULE: Every bottom sheet/modal MUST use `createPortal` to render to `document.body`.**
+
+This ensures bottom sheets ALWAYS appear above the bottom navigation bar, regardless of any CSS stacking contexts.
+
+#### Option 1: Use the BottomSheet Component (Preferred)
+
+```tsx
+import BottomSheet from '@/components/ui/BottomSheet';
+
+<BottomSheet isOpen={isOpen} onClose={() => setIsOpen(false)}>
+  <BottomSheet.Header>
+    <h2 className="text-title text-foreground">Title</h2>
+  </BottomSheet.Header>
+  <BottomSheet.Body>
+    <p>Content</p>
+  </BottomSheet.Body>
+  <BottomSheet.Footer>
+    <button>Action</button>
+  </BottomSheet.Footer>
+</BottomSheet>
+```
+
+#### Option 2: Manual createPortal (for custom modals)
+
+```tsx
+import { createPortal } from 'react-dom';
+
+{isOpen && createPortal(
+  <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
+    {/* Safe area cover */}
+    <div className="absolute bottom-0 left-0 right-0 bg-card" style={{ height: 'env(safe-area-inset-bottom, 34px)' }} />
+    <div className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
+      {/* Content */}
+    </div>
+  </div>
+, document.body)}
+```
+
+#### Why This Matters
+
+- CSS `animation` and `opacity` properties create stacking contexts
+- Elements inside a stacking context cannot escape it with z-index
+- The Layout component wraps page content, creating potential stacking issues
+- `createPortal` renders directly to `document.body`, bypassing all stacking contexts
+
+#### Z-Index Hierarchy
+
+| Element | Z-Index |
+|---------|---------|
+| Bottom Navigation | `z-10` |
+| Sticky Headers | `z-20` |
+| Dropdowns | `z-50` |
+| **Bottom Sheets/Modals** | `z-[60]` + `createPortal` |
+| `.bottom-sheet-backdrop` CSS | `z-index: 9999 !important` |
+
+**NEVER create a bottom sheet without `createPortal` or the `BottomSheet` component!**
+
+---
+
 ### Meals.tsx Structure
 
 The Meals page MUST use the exact same structure as ToDo and Expenses:

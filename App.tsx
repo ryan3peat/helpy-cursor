@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useClerk, useUser } from '@clerk/clerk-react';
 import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
@@ -1341,8 +1342,8 @@ const AppContent: React.FC = () => {
       </Layout>
 
       {/* Generic Alert Modal (replaces native alert()) */}
-      {alertModal.isOpen && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center">
+      {alertModal.isOpen && createPortal(
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
           {/* Safe area bottom cover */}
           <div 
             className="absolute bottom-0 left-0 right-0 bg-card"
@@ -1380,7 +1381,7 @@ const AppContent: React.FC = () => {
             </div>
           </div>
         </div>
-      )}
+      , document.body)}
     </div>
   );
 };

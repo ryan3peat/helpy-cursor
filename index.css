@@ -476,9 +476,10 @@ button:focus-visible {
 
 
 /* Bottom sheet wrapper - MUST be above bottom nav */
+/* NOTE: Do NOT add animation here - animations create stacking contexts
+   which trap z-index and prevent sheets from appearing above the nav */
 .bottom-sheet-backdrop,
 .bottom-sheet-backdrop[class*="z-"] {
-  animation: backdrop-fade-in 0.3s ease-out forwards;
   z-index: 9999 !important; /* Force above everything including nav */
 }
 

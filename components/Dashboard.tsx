@@ -541,8 +541,8 @@ const Dashboard: React.FC<DashboardProps> = ({
     }
   };
   
-  // Scroll header animation - expand cards earlier (at ~50% visibility)
-  const { isScrolled } = useScrollHeader({ collapseThreshold: 130, expandThreshold: 110 });
+  // Scroll header animation - shrink early (at ~25% of photo), expand later
+  const { isScrolled } = useScrollHeader({ collapseThreshold: 50, expandThreshold: 110 });
   
   // Lock body scroll when language modal is open
   useScrollLock(showLangModal);

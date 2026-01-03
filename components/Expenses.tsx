@@ -24,6 +24,7 @@ import {
   ChevronDown,
   Calendar,
   Lock,
+  ZoomIn,
 } from 'lucide-react';
 import { useScrollHeader } from '@/hooks/useScrollHeader';
 import { useTranslatedContent } from '@/hooks/useTranslatedContent';
@@ -67,18 +68,18 @@ const getExpenseCategoryConfig = (category: string): ExpenseCategoryConfig => {
   return EXPENSE_CATEGORY_CONFIG[category] || EXPENSE_CATEGORY_CONFIG['Miscellaneous'];
 };
 
-// Zoomable Image Component with touch gestures
+// Zoomable Image Component with touch gestures - zooms towards focal point
 const ZoomableImage: React.FC<{ imageSrc: string; onClose: () => void; t: Record<string, string> }> = ({ imageSrc, onClose, t }) => {
   const [scale, setScale] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
-  const [lastTouch, setLastTouch] = useState<{ distance: number; center: { x: number; y: number } } | null>(null);
+  const [lastTouch, setLastTouch] = useState<{ distance: number; center: { x: number; y: number }; scale: number; position: { x: number; y: number } } | null>(null);
   const imgRef = useRef<HTMLImageElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Use non-passive touch event listener to properly prevent browser default gestures
   useEffect(() => {
-    const img = imgRef.current;
-    if (!img) return;
+    const container = containerRef.current;
+    if (!container) return;
 
     const preventDefaultTouch = (e: TouchEvent) => {
       if (e.touches.length >= 1) {
@@ -87,10 +88,10 @@ const ZoomableImage: React.FC<{ imageSrc: string; onClose: () => void; t: Record
     };
 
     // Must use { passive: false } for preventDefault to work on touch events
-    img.addEventListener('touchmove', preventDefaultTouch, { passive: false });
+    container.addEventListener('touchmove', preventDefaultTouch, { passive: false });
 
     return () => {
-      img.removeEventListener('touchmove', preventDefaultTouch);
+      container.removeEventListener('touchmove', preventDefaultTouch);
     };
   }, []);
 
@@ -119,25 +120,49 @@ const ZoomableImage: React.FC<{ imageSrc: string; onClose: () => void; t: Record
     if (e.touches.length === 2) {
       const distance = getTouchDistance(e.touches);
       const center = getTouchCenter(e.touches);
-      setLastTouch({ distance, center });
+      setLastTouch({ distance, center, scale, position });
     } else if (e.touches.length === 1 && scale > 1) {
       const touch = e.touches[0];
       setLastTouch({
         distance: 0,
         center: { x: touch.clientX - position.x, y: touch.clientY - position.y },
+        scale,
+        position,
       });
     }
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    e.preventDefault();
-    if (e.touches.length === 2 && lastTouch) {
+    if (e.touches.length === 2 && lastTouch && lastTouch.distance > 0) {
       const distance = getTouchDistance(e.touches);
       const center = getTouchCenter(e.touches);
       const scaleChange = distance / lastTouch.distance;
-      const newScale = Math.max(1, Math.min(5, scale * scaleChange));
-      setScale(newScale);
-      setLastTouch({ distance, center });
+      const newScale = Math.max(1, Math.min(5, lastTouch.scale * scaleChange));
+      
+      // Zoom towards the focal point (center of pinch)
+      // Calculate how much the position needs to shift based on scale change
+      const img = imgRef.current;
+      if (img) {
+        const rect = img.getBoundingClientRect();
+        const imgCenterX = rect.left + rect.width / 2;
+        const imgCenterY = rect.top + rect.height / 2;
+        
+        // Distance from pinch center to image center
+        const dx = center.x - imgCenterX;
+        const dy = center.y - imgCenterY;
+        
+        // Adjust position to keep the pinch point stationary
+        const scaleDiff = newScale / lastTouch.scale;
+        const newX = lastTouch.position.x - dx * (scaleDiff - 1);
+        const newY = lastTouch.position.y - dy * (scaleDiff - 1);
+        
+        setScale(newScale);
+        setPosition({ x: newX, y: newY });
+      } else {
+        setScale(newScale);
+      }
+      
+      setLastTouch({ distance, center, scale: newScale, position });
     } else if (e.touches.length === 1 && scale > 1 && lastTouch) {
       const touch = e.touches[0];
       setPosition({
@@ -149,61 +174,83 @@ const ZoomableImage: React.FC<{ imageSrc: string; onClose: () => void; t: Record
 
   const handleTouchEnd = () => {
     setLastTouch(null);
-    if (scale < 1) setScale(1);
-    if (scale === 1) setPosition({ x: 0, y: 0 });
+    if (scale <= 1) {
+      setScale(1);
+      setPosition({ x: 0, y: 0 });
+    }
   };
 
-  const handleDoubleClick = () => {
+  const handleDoubleClick = (e: React.MouseEvent) => {
     if (scale > 1) {
       setScale(1);
       setPosition({ x: 0, y: 0 });
     } else {
-      setScale(2);
+      // Zoom towards the tap point
+      const img = imgRef.current;
+      if (img) {
+        const rect = img.getBoundingClientRect();
+        const imgCenterX = rect.left + rect.width / 2;
+        const imgCenterY = rect.top + rect.height / 2;
+        const dx = e.clientX - imgCenterX;
+        const dy = e.clientY - imgCenterY;
+        
+        // Zoom to 2x and adjust position to keep tap point visible
+        setScale(2);
+        setPosition({ x: -dx, y: -dy });
+      } else {
+        setScale(2);
+      }
     }
   };
 
   return (
     <div 
       ref={containerRef}
-      className="fixed inset-0 bg-black/90 z-[70] flex items-center justify-center p-4"
+      className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
       onClick={onClose}
+      style={{ touchAction: 'none' }}
     >
-      <div className="relative max-w-full max-h-full">
+      <div className="relative w-full max-w-lg flex flex-col items-center">
+        {/* Close button */}
         <button
-          onClick={onClose}
-          className="absolute -top-12 right-0 text-white z-10"
+          onClick={(e) => { e.stopPropagation(); onClose(); }}
+          className="absolute -top-2 -right-2 text-white z-10 w-10 h-10 rounded-full bg-black/60 flex items-center justify-center"
           aria-label={t['common.close'] || 'Close'}
         >
-          <X size={24} />
+          <X size={20} />
         </button>
+        
+        {/* Image container with rounded corners */}
         <div 
-          className="overflow-hidden max-h-[90vh] max-w-[90vw]"
-          style={{ touchAction: 'none' }}
+          className="overflow-hidden rounded-2xl bg-black w-full"
+          onClick={(e) => e.stopPropagation()}
         >
           <img 
             ref={imgRef}
             src={imageSrc} 
             alt="Receipt" 
-            className="max-w-full max-h-full object-contain select-none"
-            onClick={(e) => e.stopPropagation()}
+            className="w-full object-contain select-none"
+            style={{
+              maxHeight: '70vh',
+              transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
+              transformOrigin: 'center center',
+              transition: lastTouch ? 'none' : 'transform 0.15s ease-out',
+              touchAction: 'none',
+            }}
             onWheel={handleWheel}
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
             onDoubleClick={handleDoubleClick}
-            style={{
-              transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
-              transformOrigin: 'center center',
-              transition: lastTouch ? 'none' : 'transform 0.1s ease-out',
-              touchAction: 'none',
-            }}
             draggable={false}
           />
         </div>
-                <p className="text-caption text-white/70 mt-4 text-center">
+        
+        {/* Instructions */}
+        <p className="text-caption text-white/70 mt-4 text-center">
           {scale > 1 
-            ? `${t['expenses.double_tap_reset'] || 'Double tap to reset'} • ${t['expenses.drag_to_pan'] || 'Drag to pan'}` 
-            : `${t['expenses.pinch_to_zoom'] || 'Pinch to zoom'} • ${t['expenses.double_tap_zoom'] || 'Double tap to zoom'} • ${t['expenses.tap_outside_close'] || 'Tap outside to close'}`}
+            ? `${t['expenses.double_tap_reset'] || 'Double tap to reset'} · ${t['expenses.drag_to_pan'] || 'Drag to pan'}` 
+            : `${t['expenses.pinch_to_zoom'] || 'Pinch to zoom'} · ${t['expenses.double_tap_zoom'] || 'Double tap to zoom'}`}
         </p>
       </div>
     </div>
@@ -630,6 +677,7 @@ const Expenses: React.FC<ExpensesProps> = ({
       date: normalizedDate,
       receiptUrl: pendingReceipt?.imageUrl || undefined,
       createdBy: currentUser.id,
+      lineItems: pendingReceipt?.parsed.lineItems || [],
       merchantLang: detectInputLanguage(currentLang) || null,
       merchantTranslations: {},
     };
@@ -1555,12 +1603,12 @@ const Expenses: React.FC<ExpensesProps> = ({
 
             {/* Scrollable Content */}
             <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 p-5 space-y-4">
-            {/* Receipt Thumbnail */}
-            <div className="rounded-xl overflow-hidden border border-border">
+            {/* Receipt Thumbnail - Edge-to-edge with vertical scroll */}
+            <div className="rounded-xl overflow-hidden border border-border -mx-5 mx-0">
               {selectedExpense.receiptUrl ? (
                 <button
                   type="button"
-                  className="relative w-full group"
+                  className="relative w-full"
                   onClick={async () => {
                     const refreshed = await refreshReceiptUrl(selectedExpense.receiptUrl);
                     const urlToUse = refreshed || receiptPreviewUrl || selectedExpense.receiptUrl;
@@ -1570,23 +1618,25 @@ const Expenses: React.FC<ExpensesProps> = ({
                     setZoomImageSrc(urlToUse);
                   }}
                 >
-                  <img
-                    src={receiptPreviewUrl || selectedExpense.receiptUrl}
-                    alt="Receipt"
-                    className="w-full max-h-64 object-contain bg-secondary"
-                    onError={async () => {
-                      if (triedReceiptRefresh) return;
-                      setTriedReceiptRefresh(true);
-                      const refreshed = await refreshReceiptUrl(selectedExpense.receiptUrl);
-                      if (refreshed) {
-                        setReceiptPreviewUrl(refreshed);
-                      }
-                    }}
-                  />
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <span className="text-caption text-white opacity-0 bg-black/60 px-2 py-1 rounded">
-                      {t['expenses.tap_to_zoom'] || 'Tap to view'}
-                    </span>
+                  {/* Scrollable image container */}
+                  <div className="max-h-72 overflow-y-auto overflow-x-hidden bg-secondary">
+                    <img
+                      src={receiptPreviewUrl || selectedExpense.receiptUrl}
+                      alt="Receipt"
+                      className="w-full"
+                      onError={async () => {
+                        if (triedReceiptRefresh) return;
+                        setTriedReceiptRefresh(true);
+                        const refreshed = await refreshReceiptUrl(selectedExpense.receiptUrl);
+                        if (refreshed) {
+                          setReceiptPreviewUrl(refreshed);
+                        }
+                      }}
+                    />
+                  </div>
+                  {/* Zoom icon overlay */}
+                  <div className="absolute bottom-3 right-3 bg-black/60 text-white rounded-full p-2">
+                    <ZoomIn size={18} />
                   </div>
                 </button>
               ) : (
@@ -1598,9 +1648,24 @@ const Expenses: React.FC<ExpensesProps> = ({
 
               {/* Amount - only show when not editing */}
               {!isEditingExisting && (
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between py-2">
                   <span className="text-body text-muted-foreground">{t['expenses.amount'] || 'Amount'}</span>
-                  <span className="text-title text-foreground">{formatCurrency(selectedExpense.amount, selectedExpense.currency)}</span>
+                  <span className="text-title text-foreground font-semibold">{formatCurrency(selectedExpense.amount, selectedExpense.currency)}</span>
+                </div>
+              )}
+
+              {/* Line Items - only show when not editing and has items */}
+              {!isEditingExisting && selectedExpense.lineItems && selectedExpense.lineItems.length > 0 && (
+                <div className="border-t border-border pt-3">
+                  <p className="text-caption text-muted-foreground mb-2">{t['expenses.items'] || 'Items'}</p>
+                  <div className={`space-y-2 ${selectedExpense.lineItems.length > 7 ? 'max-h-56 overflow-y-auto' : ''}`}>
+                    {selectedExpense.lineItems.map((item, index) => (
+                      <div key={index} className="flex items-center justify-between text-body">
+                        <span className="text-foreground truncate flex-1 mr-3">{item.name}</span>
+                        <span className="text-muted-foreground shrink-0">{formatCurrency(item.price, selectedExpense.currency)}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 

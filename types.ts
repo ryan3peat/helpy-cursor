@@ -135,6 +135,11 @@ export interface Meal {
   descriptionTranslations?: Record<string, string>; // Translations: { "en": "original", "zh-CN": "translated", ... }
 }
 
+export interface ExpenseLineItem {
+  name: string;
+  price: number;
+}
+
 export interface Expense {
   id: string;
   amount: number;
@@ -144,6 +149,7 @@ export interface Expense {
   merchant: string;
   receiptUrl?: string;
   createdBy?: string; // User ID who created this expense
+  lineItems?: ExpenseLineItem[]; // Individual items extracted from receipt OCR
   // Translation fields
   merchantLang?: string | null; // Language code of the merchant field (null if undetectable)
   merchantTranslations?: Record<string, string>; // Translations: { "en": "original", "zh-CN": "translated", ... }

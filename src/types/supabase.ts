@@ -159,6 +159,7 @@ export interface Database {
           merchant: string
           date: string
           receipt_url: string | null
+          line_items: Array<{ name: string; price: number }> | null
           created_at: string
         }
         Insert: {
@@ -169,6 +170,7 @@ export interface Database {
           merchant: string
           date: string
           receipt_url?: string | null
+          line_items?: Array<{ name: string; price: number }> | null
           created_at?: string
         }
         Update: {
@@ -179,6 +181,7 @@ export interface Database {
           merchant?: string
           date?: string
           receipt_url?: string | null
+          line_items?: Array<{ name: string; price: number }> | null
           created_at?: string
         }
       }

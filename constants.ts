@@ -51,6 +51,7 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'dashboard.eating': 'eating',
   'dashboard.language': 'Language',
   'dashboard.need_help': 'Need Help Getting Started?',
+  'dashboard.slots': 'slots',
 
   // Filters & Common Tabs
   'filter.all': 'All',
@@ -285,6 +286,11 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'common.cancel': 'Cancel',
   'common.delete': 'Delete',
   'common.add': 'Add',
+  'common.add_and_invite': 'Add and Send Invite Link',
+  'common.of': 'of',
+  'common.upgrade_to_add_more': 'Upgrade to Add More',
+  'profile.family_slots_used': 'family slots used',
+  'profile.helper_slots_used': 'helper slots used',
   'common.remove': 'Remove',
   'common.confirm_clear': 'Are you sure you want to clear these items?',
   'common.close': 'Close',

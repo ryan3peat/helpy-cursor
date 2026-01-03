@@ -341,6 +341,9 @@ const AppContent: React.FC = () => {
   const [familyNotesTranslations, setFamilyNotesTranslations] = useState<Record<string, string>>({});
   const [essentialItems, setEssentialItems] = useState<EssentialInfo[]>([]);
   const [houseRoutineItems, setHouseRoutineItems] = useState<HouseRoutine[]>([]);
+  
+  // Household limits for family member quota (used by Dashboard)
+  const [householdLimits, setHouseholdLimits] = useState<{ maxFamily: number; maxHelpers: number }>({ maxFamily: 3, maxHelpers: 1 });
 
   // Sync function for periodic backup fetching
   const syncAllData = useCallback(async () => {
@@ -350,12 +353,13 @@ const AppContent: React.FC = () => {
     console.log('[App] Running periodic sync...');
     
     try {
-      // Fetch all collections in parallel
-      const [usersData, todoData, mealsData, expensesData] = await Promise.all([
+      // Fetch all collections in parallel (including household limits)
+      const [usersData, todoData, mealsData, expensesData, householdData] = await Promise.all([
         fetchCollection(hid, 'users'),
         fetchCollection(hid, 'todo_items'),
         fetchCollection(hid, 'meals'),
         fetchCollection(hid, 'expenses'),
+        supabase.from('households').select('max_family_members, max_helpers').eq('id', hid).maybeSingle(),
       ]);
       
       // Update state with fresh data
@@ -366,6 +370,14 @@ const AppContent: React.FC = () => {
       if (todoData) setTodoItems(todoData as ToDoItem[]);
       if (mealsData) setMeals(mealsData as Meal[]);
       if (expensesData) setExpenses(expensesData as Expense[]);
+      
+      // Update household limits
+      if (householdData.data) {
+        setHouseholdLimits({
+          maxFamily: householdData.data.max_family_members ?? 3,
+          maxHelpers: householdData.data.max_helpers ?? 1,
+        });
+      }
       
       console.log('[App] Periodic sync completed');
     } catch (error) {
@@ -965,6 +977,7 @@ const AppContent: React.FC = () => {
               localStorage.setItem('helpy_profile_edit_user_id', userId);
               setActiveView('profile');
             }}
+            householdLimits={householdLimits}
           />
         );
 

@@ -559,20 +559,30 @@ export const HelperManagementContent: React.FC<Props> = ({
       {/* MODALS */}
       {/* ═══════════════════════════════════════════════════════════════ */}
       
-      {/* Compensation Type Modal */}
+      {/* Compensation Type Modal - Bottom Sheet */}
       {showCompensationModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-card rounded-xl p-6 m-4 max-w-sm w-full">
-            <h3 className="text-title font-semibold mb-4">
-              {t['helper.select_compensation'] || 'Select Compensation Type'}
-            </h3>
-            <p className="text-body text-muted-foreground mb-4">
-              {showCompensationModal.holiday.holidayName}
-            </p>
-            <div className="space-y-3">
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
+          {/* Safe area bottom cover */}
+          <div 
+            className="absolute bottom-0 left-0 right-0 bg-card"
+            style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
+          />
+          <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
+            {/* Header */}
+            <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
+              <h2 className="text-title text-foreground">
+                {t['helper.select_compensation'] || 'Select Compensation Type'}
+              </h2>
+              <p className="text-body text-muted-foreground mt-1">
+                {showCompensationModal.holiday.holidayName}
+              </p>
+            </div>
+
+            {/* Content */}
+            <div className="p-5 space-y-3">
               <button
                 onClick={() => handleCompensationSelect('lieu')}
-                className="w-full py-3 px-4 bg-secondary rounded-lg text-left hover:bg-secondary/80 transition-colors"
+                className="w-full py-3 px-4 bg-secondary rounded-xl text-left transition-colors"
               >
                 <span className="text-body font-medium">
                   {t['helper.time_in_lieu'] || 'Time-in-lieu (1 day off)'}
@@ -580,92 +590,108 @@ export const HelperManagementContent: React.FC<Props> = ({
               </button>
               <button
                 onClick={() => handleCompensationSelect('overtime')}
-                className="w-full py-3 px-4 bg-secondary rounded-lg text-left hover:bg-secondary/80 transition-colors"
+                className="w-full py-3 px-4 bg-secondary rounded-xl text-left transition-colors"
               >
                 <span className="text-body font-medium">
                   {t['helper.overtime_pay'] || 'Overtime Pay'}
                 </span>
               </button>
             </div>
-            <button
-              onClick={() => setShowCompensationModal(null)}
-              className="w-full mt-4 py-2 text-muted-foreground hover:text-foreground transition-colors"
-            >
-              {t['common.cancel'] || 'Cancel'}
-            </button>
+
+            {/* Footer */}
+            <div className="p-5 pb-8 border-t border-border shrink-0">
+              <button
+                onClick={() => setShowCompensationModal(null)}
+                className="w-full py-3.5 rounded-xl bg-secondary text-foreground text-body"
+              >
+                {t['common.cancel'] || 'Cancel'}
+              </button>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Overtime Amount Modal */}
+      {/* Overtime Amount Modal - Bottom Sheet */}
       {showOvertimeModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-card rounded-xl p-6 m-4 max-w-sm w-full">
-            <h3 className="text-title font-semibold mb-4">
-              {t['helper.overtime_amount'] || 'Overtime Pay Amount'}
-            </h3>
-            <p className="text-body text-muted-foreground mb-4">
-              {showOvertimeModal.holiday.holidayName}
-            </p>
-            
-            {/* Amount input */}
-            <div className="mb-4">
-              <label className="block text-caption text-muted-foreground mb-2">
-                {t['helper.amount'] || 'Amount (HK$)'}
-              </label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
-                <input
-                  type="number"
-                  autoComplete="one-time-code"
-                  value={overtimeAmount}
-                  onChange={(e) => setOvertimeAmount(e.target.value)}
-                  placeholder="0"
-                  className="w-full pl-8 pr-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
-                />
-              </div>
-            </div>
-            
-            {/* Add to payslip question */}
-            <div className="mb-6 p-3 bg-secondary rounded-lg">
-              <p className="text-body mb-3">
-                {t['helper.add_to_payslip_question'] || "Add this amount to their monthly payslip?"}
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
+          {/* Safe area bottom cover */}
+          <div 
+            className="absolute bottom-0 left-0 right-0 bg-card"
+            style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
+          />
+          <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
+            {/* Header */}
+            <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
+              <h2 className="text-title text-foreground">
+                {t['helper.overtime_amount'] || 'Overtime Pay Amount'}
+              </h2>
+              <p className="text-body text-muted-foreground mt-1">
+                {showOvertimeModal.holiday.holidayName}
               </p>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setAddToPayslip(true)}
-                  className={`flex-1 py-2 rounded-lg transition-colors ${
-                    addToPayslip 
-                      ? 'bg-primary text-primary-foreground' 
-                      : 'bg-muted text-muted-foreground'
-                  }`}
-                >
-                  {t['common.yes'] || 'Yes'}
-                </button>
-                <button
-                  onClick={() => setAddToPayslip(false)}
-                  className={`flex-1 py-2 rounded-lg transition-colors ${
-                    !addToPayslip 
-                      ? 'bg-primary text-primary-foreground' 
-                      : 'bg-muted text-muted-foreground'
-                  }`}
-                >
-                  {t['common.no'] || 'No'}
-                </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-5">
+              {/* Amount input */}
+              <div className="mb-4">
+                <label className="block text-caption text-muted-foreground mb-2">
+                  {t['helper.amount'] || 'Amount (HK$)'}
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                  <input
+                    type="number"
+                    autoComplete="one-time-code"
+                    value={overtimeAmount}
+                    onChange={(e) => setOvertimeAmount(e.target.value)}
+                    placeholder="0"
+                    className="w-full pl-8 pr-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
+                  />
+                </div>
+              </div>
+              
+              {/* Add to payslip question */}
+              <div className="p-3 bg-secondary rounded-lg">
+                <p className="text-body mb-3">
+                  {t['helper.add_to_payslip_question'] || "Add this amount to their monthly payslip?"}
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setAddToPayslip(true)}
+                    className={`flex-1 py-2 rounded-xl transition-colors ${
+                      addToPayslip 
+                        ? 'bg-primary text-primary-foreground' 
+                        : 'bg-muted text-muted-foreground'
+                    }`}
+                  >
+                    {t['common.yes'] || 'Yes'}
+                  </button>
+                  <button
+                    onClick={() => setAddToPayslip(false)}
+                    className={`flex-1 py-2 rounded-xl transition-colors ${
+                      !addToPayslip 
+                        ? 'bg-primary text-primary-foreground' 
+                        : 'bg-muted text-muted-foreground'
+                    }`}
+                  >
+                    {t['common.no'] || 'No'}
+                  </button>
+                </div>
               </div>
             </div>
-            
-            <div className="flex gap-3">
+
+            {/* Footer */}
+            <div className="p-5 pb-8 border-t border-border shrink-0 flex gap-3">
               <button
                 onClick={() => setShowOvertimeModal(null)}
-                className="flex-1 py-3 bg-secondary text-foreground rounded-lg hover:bg-secondary/80 transition-colors"
+                className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body"
               >
                 {t['common.cancel'] || 'Cancel'}
               </button>
               <button
                 onClick={handleOvertimeSave}
                 disabled={isLoading}
-                className="flex-1 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
+                className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body disabled:opacity-50"
               >
                 {isLoading ? '...' : (t['common.save'] || 'Save')}
               </button>
@@ -674,76 +700,88 @@ export const HelperManagementContent: React.FC<Props> = ({
         </div>
       )}
 
-      {/* Change Amount Modal */}
+      {/* Change Amount Modal - Bottom Sheet */}
       {showChangeAmountModal && currentPayslip && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-card rounded-xl p-6 m-4 max-w-sm w-full">
-            <h3 className="text-title font-semibold mb-4">
-              {t['helper.change_amount'] || 'Change Amount'}
-            </h3>
-            
-            {/* Current breakdown (read-only) */}
-            <div className="bg-secondary/50 rounded-lg p-3 mb-4 space-y-1 text-caption">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">{t['helper.breakdown_base_salary'] || 'Base Salary'}</span>
-                <span>${baseSalary.toLocaleString()}</span>
-              </div>
-              {otherAllowances > 0 && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">{t['helper.breakdown_other_allowances'] || 'Other Allowances'}</span>
-                  <span>${otherAllowances.toLocaleString()}</span>
-                </div>
-              )}
-              {overtimeTotal > 0 && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">{t['helper.breakdown_overtime'] || 'Overtime'}</span>
-                  <span>${overtimeTotal.toLocaleString()}</span>
-                </div>
-              )}
-              <div className="flex justify-between pt-2 border-t border-border text-body">
-                <span className="text-muted-foreground">{t['helper.breakdown_calculated_total'] || 'Calculated Total'}</span>
-                <span className="font-medium">${totalSalary.toLocaleString()}</span>
-              </div>
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
+          {/* Safe area bottom cover */}
+          <div 
+            className="absolute bottom-0 left-0 right-0 bg-card"
+            style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
+          />
+          <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
+            {/* Header */}
+            <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
+              <h2 className="text-title text-foreground">
+                {t['helper.change_amount'] || 'Change Amount'}
+              </h2>
             </div>
-            
-            {/* New amount input */}
-            <div className="mb-4">
-              <label className="block text-caption text-muted-foreground mb-2">
-                {t['helper.new_amount'] || 'New Total Amount (HK$)'}
-              </label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
-                <input
-                  type="number"
-                  autoComplete="one-time-code"
-                  value={customAmount}
-                  onChange={(e) => setCustomAmount(e.target.value)}
-                  className="w-full pl-8 pr-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
-                />
+
+            {/* Content */}
+            <div className="p-5">
+              {/* Current breakdown (read-only) */}
+              <div className="bg-secondary/50 rounded-lg p-3 mb-4 space-y-1 text-caption">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">{t['helper.breakdown_base_salary'] || 'Base Salary'}</span>
+                  <span>${baseSalary.toLocaleString()}</span>
+                </div>
+                {otherAllowances > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">{t['helper.breakdown_other_allowances'] || 'Other Allowances'}</span>
+                    <span>${otherAllowances.toLocaleString()}</span>
+                  </div>
+                )}
+                {overtimeTotal > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">{t['helper.breakdown_overtime'] || 'Overtime'}</span>
+                    <span>${overtimeTotal.toLocaleString()}</span>
+                  </div>
+                )}
+                <div className="flex justify-between pt-2 border-t border-border text-body">
+                  <span className="text-muted-foreground">{t['helper.breakdown_calculated_total'] || 'Calculated Total'}</span>
+                  <span className="font-medium">${totalSalary.toLocaleString()}</span>
+                </div>
               </div>
+              
+              {/* New amount input */}
+              <div className="mb-4">
+                <label className="block text-caption text-muted-foreground mb-2">
+                  {t['helper.new_amount'] || 'New Total Amount (HK$)'}
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                  <input
+                    type="number"
+                    autoComplete="one-time-code"
+                    value={customAmount}
+                    onChange={(e) => setCustomAmount(e.target.value)}
+                    className="w-full pl-8 pr-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
+                  />
+                </div>
+              </div>
+              
+              {/* Revert button - show only if amount differs from calculated */}
+              {parseInt(customAmount) !== calculatedTotal && (
+                <button
+                  onClick={() => setCustomAmount(calculatedTotal.toString())}
+                  className="w-full py-2 text-caption text-primary"
+                >
+                  {t['helper.revert_to_calculated'] || 'Revert to Calculated Amount'} (${calculatedTotal.toLocaleString()})
+                </button>
+              )}
             </div>
-            
-            {/* Revert button - show only if amount differs from calculated */}
-            {parseInt(customAmount) !== calculatedTotal && (
-              <button
-                onClick={() => setCustomAmount(calculatedTotal.toString())}
-                className="w-full mb-4 py-2 text-caption text-primary hover:underline"
-              >
-                {t['helper.revert_to_calculated'] || 'Revert to Calculated Amount'} (${calculatedTotal.toLocaleString()})
-              </button>
-            )}
-            
-            <div className="flex gap-3">
+
+            {/* Footer */}
+            <div className="p-5 pb-8 border-t border-border shrink-0 flex gap-3">
               <button
                 onClick={() => setShowChangeAmountModal(false)}
-                className="flex-1 py-3 bg-secondary text-foreground rounded-lg hover:bg-secondary/80 transition-colors"
+                className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body"
               >
                 {t['common.cancel'] || 'Cancel'}
               </button>
               <button
                 onClick={handleSaveCustomAmount}
                 disabled={isLoading}
-                className="flex-1 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
+                className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body disabled:opacity-50"
               >
                 {isLoading ? '...' : (t['common.save'] || 'Save')}
               </button>
@@ -752,41 +790,53 @@ export const HelperManagementContent: React.FC<Props> = ({
         </div>
       )}
 
-      {/* Sign Confirmation Modal */}
+      {/* Sign Confirmation Modal - Bottom Sheet */}
       {showSignConfirmModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-card rounded-xl p-6 m-4 max-w-sm w-full">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
-                <AlertTriangle size={20} className="text-amber-600" />
-              </div>
-              <h3 className="text-title font-semibold">
-                {t['helper.confirm_signature'] || 'Confirm Signature'}
-              </h3>
-            </div>
-            
-            <p className="text-body text-muted-foreground mb-6">
-              {t['helper.sign_warning'] || "Press to confirm this month's salary. This action CANNOT be reversed."}
-            </p>
-            
-            <div className="p-3 bg-secondary rounded-lg mb-6">
-              <div className="flex justify-between items-center">
-                <span className="text-caption text-muted-foreground">{currentMonth}</span>
-                <span className="text-title font-bold text-primary">${totalSalary.toLocaleString()}</span>
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
+          {/* Safe area bottom cover */}
+          <div 
+            className="absolute bottom-0 left-0 right-0 bg-card"
+            style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
+          />
+          <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
+            {/* Header */}
+            <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
+                  <AlertTriangle size={20} className="text-amber-600" />
+                </div>
+                <h2 className="text-title text-foreground">
+                  {t['helper.confirm_signature'] || 'Confirm Signature'}
+                </h2>
               </div>
             </div>
-            
-            <div className="flex gap-3">
+
+            {/* Content */}
+            <div className="p-5">
+              <p className="text-body text-muted-foreground mb-4">
+                {t['helper.sign_warning'] || "Press to confirm this month's salary. This action CANNOT be reversed."}
+              </p>
+              
+              <div className="p-3 bg-secondary rounded-lg">
+                <div className="flex justify-between items-center">
+                  <span className="text-caption text-muted-foreground">{currentMonth}</span>
+                  <span className="text-title font-bold text-primary">${totalSalary.toLocaleString()}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-5 pb-8 border-t border-border shrink-0 flex gap-3">
               <button
                 onClick={() => setShowSignConfirmModal(null)}
-                className="flex-1 py-3 bg-secondary text-foreground rounded-lg hover:bg-secondary/80 transition-colors"
+                className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body"
               >
                 {t['common.cancel'] || 'Cancel'}
               </button>
               <button
                 onClick={handleSignConfirm}
                 disabled={isLoading}
-                className="flex-1 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
+                className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body disabled:opacity-50"
               >
                 {isLoading ? '...' : (t['helper.confirm_sign'] || 'Confirm & Sign')}
               </button>

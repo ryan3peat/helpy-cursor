@@ -29,7 +29,8 @@ import {
   LayoutGrid,
   SquarePlus,
   AlertCircle,
-  Heart
+  Heart,
+  Crown
 } from 'lucide-react';
 import Avatar from './ui/Avatar';
 import ErrorBanner from './ui/ErrorBanner';
@@ -71,6 +72,8 @@ interface DashboardProps {
   onOpenAddFamily?: () => void;
   /** Navigate to Profile and select a specific family member */
   onSelectFamilyMember?: (userId: string) => void;
+  /** Household limits for family member quota display */
+  householdLimits?: { maxFamily: number; maxHelpers: number };
 }
 
 // Component for displaying translated meal description
@@ -234,6 +237,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   onOpenUserGuide,
   onOpenAddFamily,
   onSelectFamilyMember,
+  householdLimits = { maxFamily: 3, maxHelpers: 1 },
 }) => {
   // ─────────────────────────────────────────────────────────────────
   // Safety check for currentUser
@@ -349,6 +353,15 @@ const Dashboard: React.FC<DashboardProps> = ({
 
   const shoppingCount = todoItems.filter(i => i.type === 'shopping' && !i.completed).length;
   const activeTaskCount = todoItems.filter(i => i.type === 'task' && !i.completed).length;
+  
+  // Calculate family member count for quota display (excluding helpers for now - showing total family slots)
+  const familyCount = useMemo(() => {
+    return users.filter(u => u && u.id && u.status === 'active' && u.role !== UserRole.HELPER).length;
+  }, [users]);
+  
+  // Check if at family member limit
+  const isAtFamilyLimit = familyCount >= householdLimits.maxFamily;
+  
   const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [tempNotes, setTempNotes] = useState(familyNotes);
   const [isSavingNotes, setIsSavingNotes] = useState(false);
@@ -792,16 +805,32 @@ const Dashboard: React.FC<DashboardProps> = ({
         {!isHelper && onOpenAddFamily && (
           <div
             onClick={() => {
-              haptics.light(); // Haptic feedback on (+) button press
-            onOpenAddFamily();
-          }}
-          className="flex-shrink-0 w-[220px] bg-secondary/30 rounded-2xl flex flex-col items-center justify-center cursor-pointer border-2 border-dashed border-border snap-start"
-        >
-          <div className="w-16 h-16 rounded-full bg-card flex items-center justify-center shadow-sm">
-              <Plus size={28} className="text-primary" />
+              haptics.light();
+              if (isAtFamilyLimit) {
+                // Navigate to plan section for upgrade
+                localStorage.setItem('helpy_profile_target_section', 'plan');
+                onNavigate('profile');
+              } else {
+                onOpenAddFamily();
+              }
+            }}
+            className="flex-shrink-0 w-[220px] bg-secondary/30 rounded-2xl flex flex-col items-center justify-center cursor-pointer border-2 border-dashed border-border snap-start"
+          >
+            <div className="w-16 h-16 rounded-full bg-card flex items-center justify-center shadow-sm">
+              {isAtFamilyLimit ? (
+                <Crown size={28} className="text-primary" />
+              ) : (
+                <Plus size={28} className="text-primary" />
+              )}
             </div>
             <span className="text-body font-semibold text-foreground mt-3">
-              {t['common.add'] || 'Add'}
+              {isAtFamilyLimit 
+                ? (t['common.upgrade'] || 'Upgrade')
+                : (t['common.add'] || 'Add')
+              }
+            </span>
+            <span className={`text-caption mt-1 ${isAtFamilyLimit ? 'text-destructive' : 'text-muted-foreground'}`}>
+              {familyCount} {t['common.of'] || 'of'} {householdLimits.maxFamily} {t['dashboard.slots'] || 'slots'}
             </span>
           </div>
         )}
@@ -1094,20 +1123,6 @@ const Dashboard: React.FC<DashboardProps> = ({
               <BookOpen size={24} className="text-primary" />
               <span className="text-body font-medium text-foreground">{t['guide.title'] || 'User Guide'}</span>
             </button>
-          )}
-          {/* Add Family - Hidden for Helper */}
-          {onOpenAddFamily && currentUser.role !== UserRole.HELPER && (
-            <>
-              {/* Vertical Divider */}
-              <div className="h-12 w-px bg-border mx-4"></div>
-              <button onClick={() => {
-                haptics.light(); // Haptic feedback on Add Family button
-                onOpenAddFamily();
-              }} className="flex-1 flex flex-col items-center gap-1.5">
-                <UserPlus size={24} className="text-primary" />
-                <span className="text-body font-medium text-foreground">{t['profile.add_family'] || 'Add Family'}</span>
-              </button>
-            </>
           )}
         </div>
       </div>

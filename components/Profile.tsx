@@ -167,6 +167,12 @@ const Profile: React.FC<ProfileProps> = ({
     periodEnd?: string;
     period?: string;
   } | null>(null);
+  
+  // Household limits for family member quota
+  const [householdLimits, setHouseholdLimits] = useState<{
+    maxFamily: number;
+    maxHelpers: number;
+  }>({ maxFamily: 3, maxHelpers: 1 }); // Default to free plan limits
   const [isLoadingSubscription, setIsLoadingSubscription] = useState(true);
   const hasLoadedSubscriptionRef = useRef(false); // Track if we've loaded subscription info at least once
   const [isDeleteAccountModalOpen, setIsDeleteAccountModalOpen] = useState(false);
@@ -316,7 +322,7 @@ const Profile: React.FC<ProfileProps> = ({
       }
       const { data, error } = await supabase
         .from('households')
-        .select('name, subscription_plan, subscription_status, subscription_current_period_end, subscription_period')
+        .select('name, subscription_plan, subscription_status, subscription_current_period_end, subscription_period, max_family_members, max_helpers')
         .eq('id', currentUser.householdId)
         .maybeSingle();
 
@@ -355,6 +361,12 @@ const Profile: React.FC<ProfileProps> = ({
         setSubscriptionInfo(newSubscriptionInfo);
         setSelectedPlan((data.subscription_plan || 'free') as 'free' | 'core' | 'pro');
         setBillingPeriod((data.subscription_period || 'monthly') as 'monthly' | 'yearly');
+        
+        // Update household limits
+        setHouseholdLimits({
+          maxFamily: data.max_family_members ?? 3,
+          maxHelpers: data.max_helpers ?? 1
+        });
         
         console.log('[Profile] State updated - subscriptionInfo should now be:', newSubscriptionInfo);
         
@@ -583,6 +595,15 @@ const Profile: React.FC<ProfileProps> = ({
         if (roleDiff !== 0) return roleDiff;
         return a.name.localeCompare(b.name);
       });
+  }, [users]);
+
+  // Calculate family and helper counts for quota display
+  const { familyCount, helperCount } = React.useMemo(() => {
+    const activeUsers = users.filter(u => u && u.id && u.status === 'active');
+    return {
+      familyCount: activeUsers.filter(u => u.role !== UserRole.HELPER).length,
+      helperCount: activeUsers.filter(u => u.role === UserRole.HELPER).length
+    };
   }, [users]);
 
   // Find selected user, fallback to current user if not found
@@ -1572,6 +1593,19 @@ const Profile: React.FC<ProfileProps> = ({
                 {/* Header - consistent across all steps */}
                 <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
                   <h2 className="text-title text-foreground">{t['profile.addMember'] || 'Add Family Member'}</h2>
+                  {/* Show slot usage for form step */}
+                  {addUserStep === 'form' && (
+                    <p className={`text-caption mt-1 ${
+                      (newRole === UserRole.HELPER ? helperCount >= householdLimits.maxHelpers : familyCount >= householdLimits.maxFamily)
+                        ? 'text-destructive'
+                        : 'text-muted-foreground'
+                    }`}>
+                      {newRole === UserRole.HELPER
+                        ? `${helperCount} ${t['common.of'] || 'of'} ${householdLimits.maxHelpers} ${t['profile.helper_slots_used'] || 'helper slots used'}`
+                        : `${familyCount} ${t['common.of'] || 'of'} ${householdLimits.maxFamily} ${t['profile.family_slots_used'] || 'family slots used'}`
+                      }
+                    </p>
+                  )}
                   {/* Show name subtitle for invite step */}
                   {addUserStep === 'invite' && addedUserName && (
                     <p className="text-body text-muted-foreground mt-1">
@@ -1746,13 +1780,43 @@ const Profile: React.FC<ProfileProps> = ({
 
                     {/* Footer */}
                     <div className="p-5 pb-8 border-t border-border shrink-0">
-                      <button
-                        onClick={handleAddUser}
-                        disabled={isAddingUser || !newName.trim()}
-                        className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground text-body shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {t['common.add']}
-                      </button>
+                      {/* Check if at limit based on selected role */}
+                      {(() => {
+                        const isAtLimit = newRole === UserRole.HELPER 
+                          ? helperCount >= householdLimits.maxHelpers 
+                          : familyCount >= householdLimits.maxFamily;
+                        
+                        if (isAtLimit) {
+                          return (
+                            <button
+                              onClick={() => {
+                                closeAddUserModal();
+                                // Navigate to plan section
+                                setTimeout(() => {
+                                  setActiveSection('settings');
+                                  setTimeout(() => setActiveSection('plan'), 100);
+                                }, 300);
+                              }}
+                              className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground text-body font-semibold shadow-sm flex items-center justify-center gap-2"
+                            >
+                              <Crown size={18} />
+                              {t['common.upgrade_to_add_more'] || 'Upgrade to Add More'}
+                            </button>
+                          );
+                        }
+                        
+                        return (
+                          <button
+                            onClick={handleAddUser}
+                            disabled={isAddingUser || !newName.trim()}
+                            className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground text-body shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {newRole === UserRole.CHILD 
+                              ? t['common.add'] 
+                              : (t['common.add_and_invite'] || 'Add and Send Invite Link')}
+                          </button>
+                        );
+                      })()}
                     </div>
                   </>
                 )}
@@ -3155,57 +3219,63 @@ const Profile: React.FC<ProfileProps> = ({
             </div>
           )}
 
-          {/* Downgrade Confirmation Modal */}
+          {/* Downgrade Confirmation Modal - Bottom Sheet */}
           {showDowngradeModal && pendingDowngrade && (
-            <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
-              <div className="bg-card w-full max-w-sm rounded-2xl overflow-hidden relative shadow-lg">
+            <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
+              {/* Safe area bottom cover */}
+              <div 
+                className="absolute bottom-0 left-0 right-0 bg-card"
+                style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
+              />
+              <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
                 {/* Close Button */}
                 <button 
                   onClick={handleCancelDowngrade} 
-                  className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center right-3 top-3 text-muted-foreground"
+                  className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center right-4 top-4 text-muted-foreground"
                   aria-label={t['common.close'] || 'Close'}
                 >
                   <X size={20} />
                 </button>
 
-                {/* Content */}
-                <div className="p-6 pt-8">
-                  {/* Icon */}
-                  <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-destructive/10 flex items-center justify-center">
-                    <AlertTriangle size={32} className="text-destructive" />
+                {/* Header */}
+                <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-destructive/10 flex items-center justify-center">
+                      <AlertTriangle size={20} className="text-destructive" />
+                    </div>
+                    <h2 className="text-title text-destructive">
+                      {pendingDowngrade.type === 'paid_to_free' 
+                        ? (t['subscription.downgrade_to_free_title'] || 'Cancel Subscription')
+                        : (t['subscription.downgrade_plan_title'] || 'Downgrade Plan')
+                      }
+                    </h2>
                   </div>
-                  
-                  {/* Title */}
-                  <h2 className="text-title text-foreground text-center mb-3">
-                    {pendingDowngrade.type === 'paid_to_free' 
-                      ? (t['subscription.downgrade_to_free_title'] || 'Cancel Subscription')
-                      : (t['subscription.downgrade_plan_title'] || 'Downgrade Plan')
-                    }
-                  </h2>
-                  
-                  {/* Description */}
-                  <p className="text-body text-muted-foreground text-center mb-6">
+                </div>
+
+                {/* Content */}
+                <div className="p-5">
+                  <p className="text-body text-muted-foreground">
                     {pendingDowngrade.type === 'paid_to_free' 
                       ? (t['subscription.downgrade_to_free_desc'] || 'This is immediate and you will NOT receive a refund for your remaining paid period. You will lose access to premium features.')
                       : (t['subscription.downgrade_plan_desc'] || 'Your unused time will be credited toward your next invoice. This change takes effect immediately.')
                     }
                   </p>
-                  
-                  {/* Buttons */}
-                  <div className="flex gap-3">
-                    <button
-                      onClick={handleCancelDowngrade}
-                      className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body"
-                    >
-                      {t['common.cancel'] || 'Cancel'}
-                    </button>
-                    <button
-                      onClick={handleConfirmDowngrade}
-                      className="flex-1 py-3.5 rounded-xl bg-destructive/10 text-destructive text-body font-semibold"
-                    >
-                      {t['common.confirm'] || 'Confirm'}
-                    </button>
-                  </div>
+                </div>
+
+                {/* Footer */}
+                <div className="p-5 pb-8 border-t border-border shrink-0 flex gap-3">
+                  <button
+                    onClick={handleCancelDowngrade}
+                    className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body"
+                  >
+                    {t['common.cancel'] || 'Cancel'}
+                  </button>
+                  <button
+                    onClick={handleConfirmDowngrade}
+                    className="flex-1 py-3.5 rounded-xl bg-destructive/10 text-destructive text-body font-semibold"
+                  >
+                    {t['common.confirm'] || 'Confirm'}
+                  </button>
                 </div>
               </div>
             </div>

@@ -1852,38 +1852,46 @@ const Expenses: React.FC<ExpensesProps> = ({
       )}
 
       {/* ─────────────────────────────────────────────────────────────── */}
-      {/* SUMMARY UPGRADE MODAL */}
+      {/* SUMMARY UPGRADE MODAL - Bottom Sheet */}
       {/* ─────────────────────────────────────────────────────────────── */}
       {showSummaryUpgradeModal && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
-          <div className="bg-card w-full max-w-sm rounded-2xl overflow-hidden relative shadow-lg">
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
+          {/* Safe area bottom cover */}
+          <div 
+            className="absolute bottom-0 left-0 right-0 bg-card"
+            style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
+          />
+          <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
             {/* Close Button */}
             <button 
               onClick={() => setShowSummaryUpgradeModal(false)} 
-              className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center right-3 top-3 text-muted-foreground"
+              className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center right-4 top-4 text-muted-foreground"
               aria-label={t['common.close'] || 'Close'}
             >
               <X size={20} />
             </button>
 
-            {/* Content */}
-            <div className="p-6 pt-8">
-              {/* Icon */}
-              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center">
-                <PieIcon size={32} className="text-primary" />
+            {/* Header */}
+            <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                  <PieIcon size={24} className="text-primary" />
+                </div>
+                <h2 className="text-title text-foreground">
+                  {t['expenses.summary_title'] || 'Monthly Summary'}
+                </h2>
               </div>
-              
-              {/* Title */}
-              <h2 className="text-title text-foreground text-center mb-3">
-                {t['expenses.summary_title'] || 'Monthly Summary'}
-              </h2>
-              
-              {/* Description */}
-              <p className="text-body text-muted-foreground text-center mb-6">
+            </div>
+
+            {/* Content */}
+            <div className="p-5">
+              <p className="text-body text-muted-foreground">
                 {t['expenses.summary_upgrade_desc'] || "Get insights into your spending habits. View your expenses broken down by category with visual charts, and track your monthly totals at a glance."}
               </p>
-              
-              {/* Upgrade Button */}
+            </div>
+
+            {/* Footer */}
+            <div className="p-5 pb-8 border-t border-border shrink-0">
               <button
                 onClick={() => {
                   setShowSummaryUpgradeModal(false);

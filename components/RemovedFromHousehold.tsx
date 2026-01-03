@@ -142,40 +142,52 @@ const RemovedFromHousehold: React.FC<RemovedFromHouseholdProps> = ({
         </div>
       </div>
 
-      {/* Delete Confirmation Modal */}
+      {/* Delete Confirmation Modal - Bottom Sheet */}
       {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-card rounded-2xl p-6 max-w-sm w-full shadow-xl">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center">
-                <AlertTriangle size={24} className="text-destructive" />
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
+          {/* Safe area bottom cover */}
+          <div 
+            className="absolute bottom-0 left-0 right-0 bg-card"
+            style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
+          />
+          <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
+            {/* Header */}
+            <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-destructive/10 flex items-center justify-center">
+                  <AlertTriangle size={20} className="text-destructive" />
+                </div>
+                <h2 className="text-title text-destructive">
+                  {t['removed.delete_confirm_title'] || 'Delete Account?'}
+                </h2>
               </div>
-              <h3 className="text-title font-semibold text-foreground">
-                {t['removed.delete_confirm_title'] || 'Delete Account?'}
-              </h3>
             </div>
-            
-            <p className="text-body text-muted-foreground mb-6">
-              {t['removed.delete_confirm_message'] || 
-                'This action cannot be undone. Your account and all associated data will be permanently deleted.'}
-            </p>
-            
-            <div className="flex gap-3">
+
+            {/* Content */}
+            <div className="p-5">
+              <p className="text-body text-muted-foreground">
+                {t['removed.delete_confirm_message'] || 
+                  'This action cannot be undone. Your account and all associated data will be permanently deleted.'}
+              </p>
+            </div>
+
+            {/* Footer */}
+            <div className="p-5 pb-8 border-t border-border shrink-0 flex gap-3">
               <button
                 onClick={() => setShowDeleteConfirm(false)}
                 disabled={isDeleting}
-                className="flex-1 py-3 px-4 rounded-xl bg-muted text-foreground disabled:opacity-50"
+                className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body disabled:opacity-50"
               >
                 {t['common.cancel'] || 'Cancel'}
               </button>
               <button
                 onClick={handleDeleteAccount}
                 disabled={isDeleting}
-                className="flex-1 py-3 px-4 rounded-xl bg-destructive text-destructive-foreground disabled:opacity-50 flex items-center justify-center gap-2"
+                className="flex-1 py-3.5 rounded-xl bg-destructive/10 text-destructive text-body disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {isDeleting ? (
                   <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <div className="w-4 h-4 border-2 border-destructive border-t-transparent rounded-full animate-spin" />
                     {t['common.deleting'] || 'Deleting...'}
                   </>
                 ) : (

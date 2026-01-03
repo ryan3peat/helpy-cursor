@@ -23,41 +23,57 @@ const HouseholdSwitchModal: React.FC<HouseholdSwitchModalProps> = ({
   t = {}
 }) => {
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 relative">
-        <div className="text-center mb-6">
-          <div className="w-16 h-16 bg-[#FFF3E0] rounded-full flex items-center justify-center mx-auto mb-4">
-            <Home className="w-8 h-8 text-[#FF9800]" />
-          </div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">
-            {t['household.already_member'] || 'Already a Member'}
-          </h2>
-          <p className="text-gray-600 text-sm">
-            {t['household.already_member_of'] || 'You are already a member of'} <span className="font-semibold">{currentHouseholdName}</span>
-            {adminName && ` (${adminName}${t['household.possessive_household'] || "'s household"})`}.
-          </p>
-        </div>
-
-        <div className="bg-gray-50 rounded-xl p-4 mb-6">
-          <p className="text-sm text-gray-700 mb-3">
-            {t['household.invited_to_join'] || "You've been invited to join:"}
-          </p>
-          <div className="flex items-center gap-2">
-            <div className="flex-1">
-              <p className="font-semibold text-gray-800">{newHouseholdName}</p>
-              {adminName && (
-                <p className="text-xs text-gray-500">{adminName}{t['household.possessive_household'] || "'s household"}</p>
-              )}
+    <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
+      {/* Safe area bottom cover */}
+      <div 
+        className="absolute bottom-0 left-0 right-0 bg-card"
+        style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
+      />
+      <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
+        {/* Header */}
+        <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-[#FFF3E0] rounded-full flex items-center justify-center">
+              <Home className="w-6 h-6 text-[#FF9800]" />
             </div>
-            <ArrowRight className="w-5 h-5 text-gray-400" />
+            <div>
+              <h2 className="text-title text-foreground">
+                {t['household.already_member'] || 'Already a Member'}
+              </h2>
+              <p className="text-caption text-muted-foreground">
+                {t['household.already_member_of'] || 'You are already a member of'} <span className="font-semibold">{currentHouseholdName}</span>
+              </p>
+            </div>
           </div>
         </div>
 
-        <div className="space-y-3">
+        {/* Content */}
+        <div className="p-5">
+          <div className="bg-secondary rounded-xl p-4 mb-4">
+            <p className="text-caption text-muted-foreground mb-3">
+              {t['household.invited_to_join'] || "You've been invited to join:"}
+            </p>
+            <div className="flex items-center gap-2">
+              <div className="flex-1">
+                <p className="text-body font-semibold text-foreground">{newHouseholdName}</p>
+                {adminName && (
+                  <p className="text-caption text-muted-foreground">{adminName}{t['household.possessive_household'] || "'s household"}</p>
+                )}
+              </div>
+              <ArrowRight className="w-5 h-5 text-muted-foreground" />
+            </div>
+          </div>
+          
+          <p className="text-caption text-muted-foreground text-center">
+            {t['household.only_one_at_time'] || 'You can only belong to one household at a time'}
+          </p>
+        </div>
+
+        {/* Footer */}
+        <div className="p-5 pb-8 border-t border-border shrink-0 space-y-3">
           <button
             onClick={onSwitch}
-            style={{ backgroundColor: '#3EAFD2' }}
-            className="w-full rounded-xl font-semibold py-3 text-white flex items-center justify-center gap-2"
+            className="w-full rounded-xl py-3.5 bg-primary text-primary-foreground text-body font-semibold flex items-center justify-center gap-2"
           >
             <ArrowRight size={18} />
             {t['household.switch_to_this'] || 'Switch to This Household'}
@@ -65,16 +81,12 @@ const HouseholdSwitchModal: React.FC<HouseholdSwitchModalProps> = ({
           
           <button
             onClick={onStay}
-            className="w-full border-2 border-gray-200 rounded-xl font-semibold py-3 text-gray-700 flex items-center justify-center gap-2"
+            className="w-full rounded-xl py-3.5 bg-secondary text-foreground text-body flex items-center justify-center gap-2"
           >
             <Home size={18} />
             {t['household.stay_in_current'] || 'Stay in Current Household'}
           </button>
         </div>
-
-        <p className="text-xs text-gray-400 text-center mt-4">
-          {t['household.only_one_at_time'] || 'You can only belong to one household at a time'}
-        </p>
       </div>
     </div>
   );

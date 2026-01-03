@@ -363,11 +363,15 @@ export function parseReceiptText(rawText: string, options?: ProcessReceiptOption
       const itemName = itemMatch[1].trim();
       const itemPrice = parseFloat(itemMatch[2]);
       
+      console.log('[OCR Item Match]', { itemName, itemPrice, total, passesFilter: itemName.length > 2 && itemName.length < 50 && itemPrice < total });
+      
       // Filter out likely non-items
       if (itemName.length > 2 && itemName.length < 50 && itemPrice < total) {
         lineItems.push({ name: itemName, price: itemPrice });
       }
     }
+    
+    console.log('[OCR] Extracted line items:', lineItems.length, lineItems);
   
     return {
       rawText,

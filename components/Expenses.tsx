@@ -201,7 +201,6 @@ const ZoomableImage: React.FC<{ imageSrc: string; onClose: () => void; t: Record
           onClick={(e) => e.stopPropagation()}
         >
           <img 
-            ref={imgRef}
             src={imageSrc} 
             alt="Receipt" 
             className="w-full object-contain select-none"
@@ -344,6 +343,7 @@ const Expenses: React.FC<ExpensesProps> = ({
   const [savingExisting, setSavingExisting] = useState(false);
   const [receiptPreviewUrl, setReceiptPreviewUrl] = useState<string | null>(null);
   const [triedReceiptRefresh, setTriedReceiptRefresh] = useState(false);
+  const [receiptImageLoaded, setReceiptImageLoaded] = useState(false);
 
   const [exAmount, setExAmount] = useState<string>('');
   const [exMerchant, setExMerchant] = useState<string>('');
@@ -367,17 +367,70 @@ const Expenses: React.FC<ExpensesProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const amountInputRef = useRef<HTMLInputElement>(null);
+  
+  // Cache for preloaded receipt URLs - maps expense ID to signed URL
+  const preloadedReceiptUrls = useRef<Map<string, string>>(new Map());
 
   useEffect(() => {
     setLocalExpenses([...expenses]);
   }, [expenses]);
+  
+  // Preload receipt images in background when expenses load
+  useEffect(() => {
+    const preloadReceipts = async () => {
+      // Only preload expenses with receipts that aren't already cached
+      const expensesWithReceipts = localExpenses.filter(
+        (e) => e.receiptUrl && !preloadedReceiptUrls.current.has(e.id)
+      );
+      
+      // Limit to recent 10 expenses to avoid too many requests
+      const toPreload = expensesWithReceipts.slice(0, 10);
+      
+      for (const expense of toPreload) {
+        if (!expense.receiptUrl) continue;
+        
+        try {
+          // Get fresh signed URL
+          let path = expense.receiptUrl;
+          if (path.startsWith('http')) {
+            const parsed = new URL(path);
+            const marker = '/receipts/';
+            const idx = parsed.pathname.indexOf(marker);
+            if (idx !== -1) {
+              path = decodeURIComponent(parsed.pathname.slice(idx + marker.length));
+            }
+          }
+          
+          const { data, error } = await supabase.storage
+            .from('receipts')
+            .createSignedUrl(path, 60 * 60 * 24 * 7); // 7 days
+          
+          if (!error && data?.signedUrl) {
+            // Cache the signed URL
+            preloadedReceiptUrls.current.set(expense.id, data.signedUrl);
+            
+            // Preload the actual image into browser cache
+            const img = new Image();
+            img.src = data.signedUrl;
+          }
+        } catch (err) {
+          // Silently fail - this is just preloading
+        }
+      }
+    };
+    
+    preloadReceipts();
+  }, [localExpenses]);
 
   useEffect(() => {
     if (!selectedExpense) {
       setReceiptPreviewUrl(null);
       setTriedReceiptRefresh(false);
+      setReceiptImageLoaded(false);
       return;
     }
+    // Reset loading state for new expense
+    setReceiptImageLoaded(false);
     setExAmount(selectedExpense.amount.toFixed(2));
     setExMerchant(selectedExpense.merchant || '');
     setExCategory(selectedExpense.category || EXPENSE_CATEGORIES[0]);
@@ -398,8 +451,18 @@ const Expenses: React.FC<ExpensesProps> = ({
       iso = new Date().toISOString().slice(0, 10);
     }
     setExDate(iso);
-    setReceiptPreviewUrl(selectedExpense.receiptUrl || null);
     setTriedReceiptRefresh(false);
+
+    // Check if we have a preloaded URL - use it instantly!
+    const preloadedUrl = preloadedReceiptUrls.current.get(selectedExpense.id);
+    if (preloadedUrl) {
+      setReceiptPreviewUrl(preloadedUrl);
+      // Image should already be in browser cache, so it will load instantly
+      return;
+    }
+
+    // Fallback: use the stored URL and refresh in background
+    setReceiptPreviewUrl(selectedExpense.receiptUrl || null);
 
     // Proactively refresh signed receipt URLs so images remain viewable even when cached links expire
     let cancelled = false;
@@ -408,6 +471,8 @@ const Expenses: React.FC<ExpensesProps> = ({
       const refreshed = await refreshReceiptUrl(selectedExpense.receiptUrl);
       if (!cancelled && refreshed) {
         setReceiptPreviewUrl(refreshed);
+        // Also cache for future use
+        preloadedReceiptUrls.current.set(selectedExpense.id, refreshed);
       }
     })();
 
@@ -599,6 +664,12 @@ const Expenses: React.FC<ExpensesProps> = ({
       const parsed = await processReceipt(base64Data, { knownMerchants });
       await updateReceiptWithOCR(receiptId, parsed);
 
+      console.log('[OCR] Parsed receipt:', {
+        total: parsed.total,
+        merchant: parsed.merchant,
+        lineItemsCount: parsed.lineItems?.length || 0,
+        lineItems: parsed.lineItems,
+      });
       setPendingReceipt({ receiptId, imageUrl: url, thumbnailBase64, parsed });
       setEditAmount(parsed.total.toFixed(2));
       setEditMerchant(parsed.merchant);
@@ -643,6 +714,13 @@ const Expenses: React.FC<ExpensesProps> = ({
       }
     }
 
+    const extractedLineItems = pendingReceipt?.parsed.lineItems || [];
+    console.log('[Save] Line items being saved:', {
+      hasPendingReceipt: !!pendingReceipt,
+      lineItemsCount: extractedLineItems.length,
+      lineItems: extractedLineItems,
+    });
+
     const newExpense: Expense = {
       id: Date.now().toString(),
       amount: amount,
@@ -652,7 +730,7 @@ const Expenses: React.FC<ExpensesProps> = ({
       date: normalizedDate,
       receiptUrl: pendingReceipt?.imageUrl || undefined,
       createdBy: currentUser.id,
-      lineItems: pendingReceipt?.parsed.lineItems || [],
+      lineItems: extractedLineItems,
       merchantLang: detectInputLanguage(currentLang) || null,
       merchantTranslations: {},
     };
@@ -1145,16 +1223,15 @@ const Expenses: React.FC<ExpensesProps> = ({
                       );
                     })}
                   </div>
-                  {/* Torn receipt zigzag edge */}
+                  {/* Torn receipt zigzag edge - simple triangles */}
                   <div 
-                    className="h-3 w-full"
+                    className="w-full"
                     style={{
-                      background: `linear-gradient(135deg, hsl(var(--card)) 25%, transparent 25%) -10px 0,
-                                   linear-gradient(225deg, hsl(var(--card)) 25%, transparent 25%) -10px 0,
-                                   linear-gradient(315deg, hsl(var(--card)) 25%, transparent 25%),
-                                   linear-gradient(45deg, hsl(var(--card)) 25%, transparent 25%)`,
-                      backgroundSize: '20px 12px',
-                      backgroundPosition: 'top',
+                      height: '12px',
+                      backgroundImage: `linear-gradient(135deg, hsl(var(--card)) 50%, transparent 50%),
+                                        linear-gradient(225deg, hsl(var(--card)) 50%, transparent 50%)`,
+                      backgroundSize: '16px 12px',
+                      backgroundRepeat: 'repeat-x',
                     }}
                   />
                 </div>
@@ -1605,27 +1682,38 @@ const Expenses: React.FC<ExpensesProps> = ({
                     setZoomImageSrc(urlToUse);
                   }}
                 >
-                  {/* Scrollable image container */}
-                  <div className="max-h-72 overflow-y-auto overflow-x-hidden">
-                    <img
-                      src={receiptPreviewUrl || selectedExpense.receiptUrl}
-                      alt="Receipt"
-                      className="w-full block"
-                      onError={async () => {
-                        if (triedReceiptRefresh) return;
-                        setTriedReceiptRefresh(true);
-                        const refreshed = await refreshReceiptUrl(selectedExpense.receiptUrl);
-                        if (refreshed) {
-                          setReceiptPreviewUrl(refreshed);
-                        }
-                      }}
-                    />
+                  {/* Fixed height container to prevent layout shift */}
+                  <div className="relative" style={{ minHeight: '200px' }}>
+                    {/* Loading skeleton - shown while image loads */}
+                    {!receiptImageLoaded && (
+                      <div className="absolute inset-0 bg-secondary animate-pulse flex items-center justify-center rounded-xl">
+                        <Receipt size={32} className="text-muted-foreground/30" />
+                      </div>
+                    )}
+                    {/* Image - positioned on top of skeleton */}
+                    <div className="max-h-72 overflow-y-auto overflow-x-hidden">
+                      <img
+                        src={receiptPreviewUrl || selectedExpense.receiptUrl}
+                        alt="Receipt"
+                        className={`w-full block transition-opacity duration-300 ${receiptImageLoaded ? 'opacity-100' : 'opacity-0'}`}
+                        onLoad={() => setReceiptImageLoaded(true)}
+                        onError={async () => {
+                          if (triedReceiptRefresh) return;
+                          setTriedReceiptRefresh(true);
+                          const refreshed = await refreshReceiptUrl(selectedExpense.receiptUrl);
+                          if (refreshed) {
+                            setReceiptPreviewUrl(refreshed);
+                          }
+                        }}
+                      />
+                    </div>
                   </div>
-                  {/* Zoom icon overlay */}
-                  <div className="absolute bottom-3 right-3 bg-black/60 text-white rounded-full p-2">
-                    <ZoomIn size={18} />
-                  </div>
-                </button>
+                  {/* Zoom icon overlay - only show when image is loaded */}
+                  {receiptImageLoaded && (
+                    <div className="absolute bottom-3 right-3 bg-black/60 text-white rounded-full p-2">
+                      <ZoomIn size={18} />
+                    </div>
+                  )}
               ) : (
                 <div className="w-full h-28 bg-secondary flex items-center justify-center text-muted-foreground">
                   {t['expenses.no_receipt_image'] || 'No receipt image'}

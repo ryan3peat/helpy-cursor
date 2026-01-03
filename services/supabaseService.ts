@@ -631,12 +631,19 @@ export async function addItem(
       }
     }
     
+    // Ensure line_items is a valid array (not undefined)
+    if (finalData.line_items === undefined) {
+      finalData.line_items = [];
+    }
+    
     // Debug: Log expense data being sent
     console.log('[DB Save] Expense data being sent:', {
       currency: finalData.currency,
       hasReceiptUrl: !!finalData.receipt_url,
       receiptUrl: finalData.receipt_url,
       receiptUrlType: typeof finalData.receipt_url,
+      lineItemsCount: Array.isArray(finalData.line_items) ? finalData.line_items.length : 0,
+      lineItems: finalData.line_items,
     });
   }
 

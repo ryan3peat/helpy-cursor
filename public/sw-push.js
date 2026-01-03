@@ -28,6 +28,135 @@ const DEFAULT_NOTIFICATION_OPTIONS = {
   renotify: true, // Alert user even if notification with same tag exists
 };
 
+// Badge count key for IndexedDB
+const BADGE_DB_NAME = 'helpy-badge-db';
+const BADGE_STORE_NAME = 'badge-count';
+
+// ============================================================================
+// APP BADGE FUNCTIONS
+// ============================================================================
+// Uses the Badging API to show notification count on the app icon
+// ============================================================================
+
+/**
+ * Check if Badging API is supported
+ */
+function isBadgeSupported() {
+  return 'setAppBadge' in navigator;
+}
+
+/**
+ * Set the app badge count
+ */
+async function setAppBadge(count) {
+  if (!isBadgeSupported()) {
+    console.log('[SW] Badging API not supported');
+    return;
+  }
+  
+  try {
+    if (count <= 0) {
+      await navigator.clearAppBadge();
+      console.log('[SW] 🔴 Badge cleared');
+    } else {
+      await navigator.setAppBadge(count);
+      console.log(`[SW] 🔴 Badge set to ${count}`);
+    }
+  } catch (error) {
+    console.warn('[SW] Failed to set badge:', error);
+  }
+}
+
+/**
+ * Get current badge count from IndexedDB
+ */
+async function getBadgeCount() {
+  try {
+    const db = await openBadgeDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(BADGE_STORE_NAME, 'readonly');
+      const store = tx.objectStore(BADGE_STORE_NAME);
+      const request = store.get('count');
+      
+      request.onsuccess = () => {
+        db.close();
+        resolve(request.result?.value || 0);
+      };
+      request.onerror = () => {
+        db.close();
+        resolve(0);
+      };
+    });
+  } catch (error) {
+    console.warn('[SW] Failed to get badge count:', error);
+    return 0;
+  }
+}
+
+/**
+ * Set badge count in IndexedDB
+ */
+async function saveBadgeCount(count) {
+  try {
+    const db = await openBadgeDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(BADGE_STORE_NAME, 'readwrite');
+      const store = tx.objectStore(BADGE_STORE_NAME);
+      store.put({ id: 'count', value: count });
+      
+      tx.oncomplete = () => {
+        db.close();
+        resolve();
+      };
+      tx.onerror = () => {
+        db.close();
+        resolve();
+      };
+    });
+  } catch (error) {
+    console.warn('[SW] Failed to save badge count:', error);
+  }
+}
+
+/**
+ * Open IndexedDB for badge storage
+ */
+function openBadgeDB() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(BADGE_DB_NAME, 1);
+    
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => resolve(request.result);
+    
+    request.onupgradeneeded = (event) => {
+      const db = event.target.result;
+      if (!db.objectStoreNames.contains(BADGE_STORE_NAME)) {
+        db.createObjectStore(BADGE_STORE_NAME, { keyPath: 'id' });
+      }
+    };
+  });
+}
+
+/**
+ * Increment badge count and update app icon
+ */
+async function incrementBadge() {
+  const currentCount = await getBadgeCount();
+  const newCount = currentCount + 1;
+  await saveBadgeCount(newCount);
+  await setAppBadge(newCount);
+  console.log(`[SW] 🔴 Badge incremented: ${currentCount} → ${newCount}`);
+}
+
+/**
+ * Clear badge count
+ */
+async function clearBadge() {
+  await saveBadgeCount(0);
+  await setAppBadge(0);
+  console.log('[SW] 🔴 Badge cleared');
+}
+
 // ============================================================================
 // PUSH EVENT HANDLER
 // ============================================================================
@@ -188,6 +317,9 @@ self.addEventListener('push', (event) => {
         tag: options.tag,
         timestamp: new Date().toISOString()
       });
+      
+      // Increment app badge count
+      await incrementBadge();
     } catch (error) {
       console.error('[SW] ❌ Failed to show notification:', {
         error: error.message || String(error),
@@ -311,6 +443,22 @@ self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
     return; // No response needed
+  }
+  
+  // Clear badge when app opens
+  if (event.data && event.data.type === 'CLEAR_BADGE') {
+    console.log('[SW] 🔴 Clear badge requested from app');
+    clearBadge().then(() => {
+      if (event.ports && event.ports[0]) {
+        event.ports[0].postMessage({ success: true, message: 'Badge cleared' });
+      }
+    }).catch(error => {
+      console.error('[SW] Failed to clear badge:', error);
+      if (event.ports && event.ports[0]) {
+        event.ports[0].postMessage({ success: false, error: error.message });
+      }
+    });
+    return;
   }
   
   // Emergency cache clear - triggered from app settings

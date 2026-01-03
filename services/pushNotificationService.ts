@@ -223,6 +223,187 @@ export async function requestNotificationPermission(): Promise<NotificationPermi
   return permission;
 }
 
+// ============================================================================
+// NOTIFICATION CAPABILITY CHECK - Single Source of Truth
+// ============================================================================
+// This is the definitive check for whether notifications will ACTUALLY work.
+// Used to determine bell icon color and validate toggle state.
+// ============================================================================
+
+export type NotificationCapabilityResult = {
+  capable: boolean;
+  reason?: 
+    | 'unsupported'           // Browser doesn't support push
+    | 'permission_denied'     // User blocked notifications
+    | 'permission_not_asked'  // Permission never requested
+    | 'no_service_worker'     // Service worker not registered
+    | 'no_browser_subscription' // Browser has no push subscription
+    | 'no_database_subscription' // Subscription not in database
+    | 'subscription_mismatch';   // Browser and database don't match
+};
+
+/**
+ * Check if notifications will ACTUALLY work right now.
+ * 
+ * This is the SINGLE SOURCE OF TRUTH for notification status.
+ * The bell icon should reflect THIS result, not just database flags.
+ * 
+ * @returns { capable: true } if notifications will work
+ * @returns { capable: false, reason: '...' } if something is broken
+ */
+export async function checkNotificationCapability(
+  userId: string, 
+  householdId: string
+): Promise<NotificationCapabilityResult> {
+  console.log('[Push] 🔍 Checking notification capability...');
+  
+  // 1. Check if push is supported in this browser
+  if (!isPushSupported()) {
+    console.log('[Push] ❌ Capability: Push not supported');
+    return { capable: false, reason: 'unsupported' };
+  }
+  
+  // 2. Check browser permission
+  const permission = getNotificationPermission();
+  if (permission === 'denied') {
+    console.log('[Push] ❌ Capability: Permission denied by user');
+    return { capable: false, reason: 'permission_denied' };
+  }
+  if (permission === 'default') {
+    console.log('[Push] ⚠️ Capability: Permission not yet requested');
+    return { capable: false, reason: 'permission_not_asked' };
+  }
+  
+  // 3. Check service worker is registered
+  const registration = await getServiceWorkerRegistration();
+  if (!registration) {
+    console.log('[Push] ❌ Capability: No service worker');
+    return { capable: false, reason: 'no_service_worker' };
+  }
+  
+  // 4. Check browser has a push subscription
+  let browserSub: PushSubscription | null = null;
+  try {
+    browserSub = await registration.pushManager.getSubscription();
+  } catch (err) {
+    console.warn('[Push] Error getting browser subscription:', err);
+  }
+  
+  if (!browserSub) {
+    console.log('[Push] ❌ Capability: No browser subscription');
+    return { capable: false, reason: 'no_browser_subscription' };
+  }
+  
+  // 5. Check subscription exists in database (and matches)
+  try {
+    const supabaseUserId = await resolveSupabaseUserId(userId, householdId);
+    if (!supabaseUserId) {
+      console.log('[Push] ⚠️ Could not resolve user ID, assuming capable');
+      // Can't verify database, assume it's okay if browser side is good
+      return { capable: true };
+    }
+    
+    const { data, error } = await getSupabaseClient()
+      .from('push_subscriptions')
+      .select('id, endpoint')
+      .eq('user_id', supabaseUserId)
+      .limit(5);
+    
+    if (error) {
+      console.warn('[Push] Error checking database subscription:', error);
+      // Can't verify, assume okay if browser side is good
+      return { capable: true };
+    }
+    
+    if (!data || data.length === 0) {
+      console.log('[Push] ❌ Capability: No subscription in database');
+      return { capable: false, reason: 'no_database_subscription' };
+    }
+    
+    // Check if browser endpoint matches any database endpoint
+    const browserEndpoint = browserSub.endpoint;
+    const hasMatchingEndpoint = data.some(sub => sub.endpoint === browserEndpoint);
+    
+    if (!hasMatchingEndpoint) {
+      console.log('[Push] ⚠️ Capability: Browser subscription not in database (mismatch)');
+      return { capable: false, reason: 'subscription_mismatch' };
+    }
+    
+    console.log('[Push] ✅ Capability: All checks passed - notifications will work');
+    return { capable: true };
+    
+  } catch (err) {
+    console.warn('[Push] Error during database check:', err);
+    // Browser side is good, assume okay
+    return { capable: true };
+  }
+}
+
+/**
+ * Auto-fix notification issues if possible.
+ * 
+ * Attempts to silently fix common problems:
+ * - Missing database subscription → re-save it
+ * - Subscription mismatch → update database with current browser subscription
+ * 
+ * @returns true if fixed successfully, false if manual action needed
+ */
+export async function autoFixNotificationIssues(
+  userId: string,
+  householdId: string
+): Promise<boolean> {
+  console.log('[Push] 🔧 Attempting auto-fix...');
+  
+  const capability = await checkNotificationCapability(userId, householdId);
+  
+  if (capability.capable) {
+    console.log('[Push] ✅ No issues to fix');
+    return true;
+  }
+  
+  // Can't auto-fix these - require user action
+  if (capability.reason === 'unsupported' || 
+      capability.reason === 'permission_denied' || 
+      capability.reason === 'permission_not_asked') {
+    console.log('[Push] ❌ Cannot auto-fix:', capability.reason);
+    return false;
+  }
+  
+  // Try to fix service worker issues
+  if (capability.reason === 'no_service_worker') {
+    console.log('[Push] 🔧 Attempting to register service worker...');
+    const registration = await registerServiceWorker();
+    if (!registration) {
+      console.log('[Push] ❌ Failed to register service worker');
+      return false;
+    }
+  }
+  
+  // Try to fix subscription issues by re-subscribing
+  if (capability.reason === 'no_browser_subscription' || 
+      capability.reason === 'no_database_subscription' ||
+      capability.reason === 'subscription_mismatch') {
+    console.log('[Push] 🔧 Attempting to re-establish subscription...');
+    
+    try {
+      // Re-subscribe (this will create browser subscription and save to database)
+      const subscription = await subscribeToPush(userId, householdId);
+      if (subscription) {
+        console.log('[Push] ✅ Auto-fix successful - subscription re-established');
+        return true;
+      } else {
+        console.log('[Push] ❌ Auto-fix failed - could not create subscription');
+        return false;
+      }
+    } catch (err) {
+      console.error('[Push] ❌ Auto-fix error:', err);
+      return false;
+    }
+  }
+  
+  return false;
+}
+
 /**
  * Register the service worker for push notifications
  */
@@ -640,6 +821,157 @@ export async function hasActiveSubscription(userId: string, householdId?: string
 }
 
 /**
+ * Generate a simple device fingerprint based on browser/device characteristics
+ * This helps identify the same device across sessions
+ */
+function generateDeviceFingerprint(): string {
+  const components = [
+    navigator.userAgent,
+    navigator.language,
+    screen.width + 'x' + screen.height,
+    screen.colorDepth,
+    new Date().getTimezoneOffset(),
+    navigator.hardwareConcurrency || 'unknown'
+  ];
+  
+  // Simple hash function
+  const str = components.join('|');
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  
+  return 'fp_' + Math.abs(hash).toString(36);
+}
+
+/**
+ * Validate and sync subscription on app load
+ * 
+ * This ensures the browser subscription matches what's in the database.
+ * If there's a mismatch, it re-saves the subscription.
+ * 
+ * Call this when the app loads to ensure notifications work properly.
+ * 
+ * @returns true if subscription is valid and synced, false otherwise
+ */
+export async function validateAndSyncSubscription(
+  userId: string,
+  householdId: string,
+  notificationsEnabled: boolean
+): Promise<{ valid: boolean; action: 'none' | 'synced' | 'cleaned' | 'disabled' }> {
+  console.log('[Push] Validating subscription...', { userId, notificationsEnabled });
+  
+  // If notifications are disabled, no need to validate
+  if (!notificationsEnabled) {
+    return { valid: true, action: 'disabled' };
+  }
+  
+  // Check if push is supported
+  if (!isPushSupported()) {
+    console.log('[Push] Push not supported, skipping validation');
+    return { valid: false, action: 'none' };
+  }
+  
+  try {
+    const registration = await getServiceWorkerRegistration();
+    if (!registration) {
+      console.log('[Push] No service worker registration');
+      return { valid: false, action: 'none' };
+    }
+    
+    const browserSub = await registration.pushManager.getSubscription();
+    
+    // Resolve user ID to Supabase UUID
+    const supabaseUserId = await resolveSupabaseUserId(userId, householdId);
+    if (!supabaseUserId) {
+      console.log('[Push] Could not resolve user ID');
+      return { valid: false, action: 'none' };
+    }
+    
+    if (!browserSub) {
+      // No browser subscription - check if we have stale ones in database
+      const { data: staleSubscriptions } = await getSupabaseClient()
+        .from('push_subscriptions')
+        .select('id')
+        .eq('user_id', supabaseUserId);
+      
+      if (staleSubscriptions && staleSubscriptions.length > 0) {
+        // Clean up stale database entries
+        console.log(`[Push] Cleaning up ${staleSubscriptions.length} stale subscription(s)`);
+        await getSupabaseClient()
+          .from('push_subscriptions')
+          .delete()
+          .eq('user_id', supabaseUserId);
+        return { valid: false, action: 'cleaned' };
+      }
+      
+      return { valid: false, action: 'none' };
+    }
+    
+    // Browser has subscription - verify it's in database
+    const { data } = await getSupabaseClient()
+      .from('push_subscriptions')
+      .select('id, endpoint')
+      .eq('user_id', supabaseUserId)
+      .eq('endpoint', browserSub.endpoint)
+      .limit(1);
+    
+    if (data && data.length > 0) {
+      console.log('[Push] Subscription is valid and in sync');
+      return { valid: true, action: 'none' };
+    }
+    
+    // Browser has subscription but it's not in database - sync it
+    console.log('[Push] Browser subscription not in database, syncing...');
+    
+    const subscriptionJson = browserSub.toJSON();
+    if (!subscriptionJson.endpoint || !subscriptionJson.keys) {
+      console.log('[Push] Invalid subscription data');
+      return { valid: false, action: 'none' };
+    }
+    
+    const deviceFingerprint = generateDeviceFingerprint();
+    
+    // Delete old subscriptions for this device before inserting
+    await getSupabaseClient()
+      .from('push_subscriptions')
+      .delete()
+      .eq('user_id', supabaseUserId)
+      .neq('endpoint', subscriptionJson.endpoint);
+    
+    // Upsert the current subscription
+    const { error } = await getSupabaseClient()
+      .from('push_subscriptions')
+      .upsert({
+        user_id: supabaseUserId,
+        household_id: householdId,
+        endpoint: subscriptionJson.endpoint,
+        p256dh_key: subscriptionJson.keys.p256dh,
+        auth_key: subscriptionJson.keys.auth,
+        user_agent: navigator.userAgent,
+        device_fingerprint: deviceFingerprint,
+        updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'user_id,endpoint'
+      });
+    
+    if (error) {
+      console.error('[Push] Failed to sync subscription:', error);
+      return { valid: false, action: 'none' };
+    }
+    
+    console.log('[Push] Subscription synced successfully');
+    return { valid: true, action: 'synced' };
+    
+  } catch (error) {
+    console.error('[Push] Error validating subscription:', error);
+    return { valid: false, action: 'none' };
+  }
+}
+
+/**
  * Initialize push notifications on app load
  * This registers the service worker but doesn't subscribe until user enables notifications
  */
@@ -861,5 +1193,73 @@ if (typeof window !== 'undefined') {
   (window as any).helpyDebugPush = debugPushNotifications;
 }
 
+/**
+ * Trigger batch processing on the server
+ * This is a backup mechanism in case pg_cron is not available.
+ * Call this periodically (e.g., every 5 minutes) to ensure batches are processed.
+ */
+export async function triggerBatchProcessing(): Promise<boolean> {
+  try {
+    const client = getSupabaseClient();
+    const { data, error } = await client.rpc('trigger_notification_batches');
+    
+    if (error) {
+      // Function might not exist yet - that's OK
+      if (error.code === '42883') {
+        console.log('[Push] Batch processing RPC not available (migration not run yet)');
+        return false;
+      }
+      console.error('[Push] Batch processing error:', error);
+      return false;
+    }
+    
+    if (data?.processed > 0) {
+      console.log(`[Push] Batch processing: ${data.processed} notification(s) sent`);
+    }
+    
+    return data?.success ?? false;
+  } catch (err) {
+    console.error('[Push] Batch processing failed:', err);
+    return false;
+  }
+}
+
+// Interval ID for periodic batch processing
+let batchProcessingInterval: NodeJS.Timeout | null = null;
+
+/**
+ * Start periodic batch processing (every 5 minutes)
+ * This ensures notification batches are processed even if no new items are added.
+ */
+export function startPeriodicBatchProcessing(): void {
+  // Don't start if already running
+  if (batchProcessingInterval) {
+    return;
+  }
+  
+  const INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+  
+  console.log('[Push] Starting periodic batch processing (every 5 minutes)');
+  
+  batchProcessingInterval = setInterval(() => {
+    triggerBatchProcessing().catch(err => {
+      console.warn('[Push] Periodic batch processing failed:', err);
+    });
+  }, INTERVAL_MS);
+  
+  // Also trigger immediately on start
+  triggerBatchProcessing().catch(() => {});
+}
+
+/**
+ * Stop periodic batch processing
+ */
+export function stopPeriodicBatchProcessing(): void {
+  if (batchProcessingInterval) {
+    clearInterval(batchProcessingInterval);
+    batchProcessingInterval = null;
+    console.log('[Push] Stopped periodic batch processing');
+  }
+}
 
 

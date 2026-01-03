@@ -45,6 +45,44 @@ export const setAppBadge = async (count: number): Promise<void> => {
  */
 export const clearAppBadge = async (): Promise<void> => {
   await setAppBadge(0);
+  
+  // Also tell the service worker to clear its badge count storage
+  await clearServiceWorkerBadge();
+};
+
+/**
+ * Tell the service worker to clear its badge count from IndexedDB
+ */
+const clearServiceWorkerBadge = async (): Promise<void> => {
+  try {
+    const registration = await navigator.serviceWorker?.ready;
+    if (!registration?.active) {
+      console.log('[Badge] No active service worker');
+      return;
+    }
+
+    const messageChannel = new MessageChannel();
+    
+    return new Promise((resolve) => {
+      const timeout = setTimeout(() => {
+        console.log('[Badge] Service worker badge clear timed out');
+        resolve();
+      }, 1000);
+      
+      messageChannel.port1.onmessage = (event) => {
+        clearTimeout(timeout);
+        console.log('[Badge] Service worker badge clear response:', event.data);
+        resolve();
+      };
+
+      registration.active.postMessage(
+        { type: 'CLEAR_BADGE' },
+        [messageChannel.port2]
+      );
+    });
+  } catch (error) {
+    console.warn('[Badge] Failed to clear service worker badge:', error);
+  }
 };
 
 /**

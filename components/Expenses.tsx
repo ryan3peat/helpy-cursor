@@ -75,6 +75,25 @@ const ZoomableImage: React.FC<{ imageSrc: string; onClose: () => void; t: Record
   const imgRef = useRef<HTMLImageElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // Use non-passive touch event listener to properly prevent browser default gestures
+  useEffect(() => {
+    const img = imgRef.current;
+    if (!img) return;
+
+    const preventDefaultTouch = (e: TouchEvent) => {
+      if (e.touches.length >= 1) {
+        e.preventDefault();
+      }
+    };
+
+    // Must use { passive: false } for preventDefault to work on touch events
+    img.addEventListener('touchmove', preventDefaultTouch, { passive: false });
+
+    return () => {
+      img.removeEventListener('touchmove', preventDefaultTouch);
+    };
+  }, []);
+
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
     const delta = e.deltaY > 0 ? 0.9 : 1.1;
@@ -176,6 +195,7 @@ const ZoomableImage: React.FC<{ imageSrc: string; onClose: () => void; t: Record
               transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
               transformOrigin: 'center center',
               transition: lastTouch ? 'none' : 'transform 0.1s ease-out',
+              touchAction: 'none',
             }}
             draggable={false}
           />

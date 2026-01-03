@@ -30,7 +30,7 @@ import {
   subscribeToNotes,
   fetchCollection,
 } from './services/supabaseService';
-import { initializePushNotifications, autoSubscribeIfNeeded } from './services/pushNotificationService';
+import { initializePushNotifications, autoSubscribeIfNeeded, validateAndSyncSubscription, startPeriodicBatchProcessing, stopPeriodicBatchProcessing, checkNotificationCapability, autoFixNotificationIssues } from './services/pushNotificationService';
 import type { EssentialInfo } from '@src/types/essentialInfo';
 import type { HouseRoutine } from '@src/types/houseRoutine';
 import { 
@@ -260,21 +260,8 @@ const AppContent: React.FC = () => {
     markAppAsSeen();
     console.log('✅ [App] handleLogin completed, currentUser should be set');
     
-    // Trigger auto-subscribe immediately after login
-    console.log('[App] Triggering auto-subscribe after login...');
-    autoSubscribeIfNeeded(
-      user.id,
-      user.householdId,
-      user.notificationsEnabled === true  // Only if EXPLICITLY true, not undefined/null
-    ).then(success => {
-      if (success) {
-        console.log('[App] Push notifications auto-subscribed successfully (from handleLogin)');
-      } else {
-        console.log('[App] Auto-subscribe returned false (check push service logs)');
-      }
-    }).catch(err => {
-      console.warn('[App] Failed to auto-subscribe to push notifications (from handleLogin):', err);
-    });
+    // Note: Notification capability check is handled by the useEffect that watches currentUser
+    // No need to duplicate the check here - the useEffect will run when currentUser is set
     setTimeout(() => {
       loginProcessedRef.current = false;
       console.log('✅ [App] loginProcessedRef reset');
@@ -522,11 +509,19 @@ const AppContent: React.FC = () => {
     }
   }, [currentUser, users]);
 
-  // Initialize push notifications service worker
+  // Initialize push notifications service worker and batch processing
   useEffect(() => {
     initializePushNotifications().catch(err => {
       console.warn('[App] Failed to initialize push notifications:', err);
     });
+    
+    // Start periodic batch processing as a backup mechanism
+    // This ensures notification batches are sent even if pg_cron isn't available
+    startPeriodicBatchProcessing();
+    
+    return () => {
+      stopPeriodicBatchProcessing();
+    };
   }, []);
 
   // Initialize app badge tracking (for PWA icon badge)
@@ -566,22 +561,65 @@ const AppContent: React.FC = () => {
       return;
     }
     
-    console.log('[App] Calling autoSubscribeIfNeeded...');
+    console.log('[App] Checking notification capability...');
     
-    // Check if user has notifications enabled and auto-subscribe
-    autoSubscribeIfNeeded(
-      currentUser.id,
-      currentUser.householdId,
-      currentUser.notificationsEnabled === true  // Only if EXPLICITLY true, not undefined/null
-    ).then(success => {
-      if (success) {
-        console.log('[App] Push notifications auto-subscribed successfully');
-      } else {
-        console.log('[App] Auto-subscribe returned false (check push service logs)');
+    // Check REAL notification capability and update UI state accordingly
+    // This ensures the bell icon reflects ACTUAL status, not just database flags
+    const checkAndUpdateCapability = async () => {
+      try {
+        // If user disabled notifications, no need to check capability
+        if (currentUser.notificationsEnabled !== true) {
+          console.log('[App] Notifications disabled by user preference');
+          // Ensure hasPushSubscription is false when notifications are disabled
+          if (currentUser.hasPushSubscription) {
+            setCurrentUser(prev => prev ? { ...prev, hasPushSubscription: false } : prev);
+          }
+          return;
+        }
+        
+        // Check actual capability
+        const capability = await checkNotificationCapability(
+          currentUser.id,
+          currentUser.householdId
+        );
+        
+        console.log('[App] Notification capability:', capability);
+        
+        // Update UI state to reflect REALITY
+        const isActuallyCapable = capability.capable;
+        
+        if (isActuallyCapable !== currentUser.hasPushSubscription) {
+          console.log(`[App] Updating hasPushSubscription: ${currentUser.hasPushSubscription} → ${isActuallyCapable}`);
+          setCurrentUser(prev => prev ? { ...prev, hasPushSubscription: isActuallyCapable } : prev);
+        }
+        
+        // If not capable but should be, try to auto-fix
+        if (!isActuallyCapable) {
+          // Only auto-fix if the reason is something we can fix silently
+          if (capability.reason === 'no_browser_subscription' || 
+              capability.reason === 'no_database_subscription' ||
+              capability.reason === 'subscription_mismatch' ||
+              capability.reason === 'no_service_worker') {
+            console.log('[App] Attempting auto-fix...');
+            const fixed = await autoFixNotificationIssues(currentUser.id, currentUser.householdId);
+            if (fixed) {
+              console.log('[App] ✅ Auto-fix successful');
+              setCurrentUser(prev => prev ? { ...prev, hasPushSubscription: true } : prev);
+            } else {
+              console.log('[App] ⚠️ Auto-fix failed - user may need to re-toggle');
+            }
+          } else {
+            console.log('[App] ❌ Cannot auto-fix:', capability.reason);
+          }
+        } else {
+          console.log('[App] ✅ Notifications working correctly');
+        }
+      } catch (err) {
+        console.warn('[App] Error checking notification capability:', err);
       }
-    }).catch(err => {
-      console.warn('[App] Failed to auto-subscribe to push notifications:', err);
-    });
+    };
+    
+    checkAndUpdateCapability();
   }, [currentUser]); // Changed to depend on entire currentUser object instead of individual properties
 
   // Supabase Subscriptions - wait for authenticated client

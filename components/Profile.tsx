@@ -20,7 +20,8 @@ import {
   getNotificationPermission,
   subscribeToPush,
   unsubscribeFromPush,
-  hasActiveSubscription
+  hasActiveSubscription,
+  checkNotificationCapability
 } from '../services/pushNotificationService';
 import { compressImageForAvatar } from '../utils/imageCompression';
 import { getRoleConfig } from '../config/rolePermissions';
@@ -3804,39 +3805,78 @@ const Profile: React.FC<ProfileProps> = ({
                     
                     try {
                       if (newValue) {
+                        // TURNING ON - Must verify everything works before showing success
                         setAccountData({ ...accountData, notificationsEnabled: true });
                         
-                        let subscriptionSuccess = false;
                         try {
+                          // Step 1: Subscribe (this requests permission if needed)
                           const subscription = await subscribeToPush(
                             currentUser.id,
                             currentUser.householdId
                           );
                           
-                          if (subscription) {
-                            console.log('[Profile] Successfully subscribed to push notifications');
-                            subscriptionSuccess = true;
-                          } else {
-                            console.warn('[Profile] Failed to subscribe to push notifications');
-                          }
                           setPushPermission(getNotificationPermission());
+                          
+                          // Step 2: Verify it ACTUALLY works
+                          const capability = await checkNotificationCapability(
+                            currentUser.id,
+                            currentUser.householdId
+                          );
+                          
+                          if (subscription && capability.capable) {
+                            // SUCCESS - Everything is working, update BOTH flags
+                            console.log('[Profile] ✅ Notifications fully enabled and verified');
+                            await onUpdate(currentUser.id, { 
+                              notificationsEnabled: true,
+                              hasPushSubscription: true  // This makes the bell icon blue IMMEDIATELY
+                            });
+                          } else {
+                            // FAILED - Revert the toggle
+                            console.warn('[Profile] ❌ Subscription failed:', capability.reason);
+                            setAccountData({ ...accountData, notificationsEnabled: false });
+                            
+                            // Show user why it failed (using Helpy modal, not browser alert)
+                            if (capability.reason === 'permission_denied') {
+                              showAlert(
+                                t['notifications.blocked_title'] || 'Notifications Blocked',
+                                t['notifications.blocked'] || 'Notifications are blocked. Please enable them in your browser settings (tap the lock icon in the address bar).',
+                                'error'
+                              );
+                            } else if (capability.reason === 'permission_not_asked') {
+                              showAlert(
+                                t['notifications.try_again_title'] || 'Permission Required',
+                                t['notifications.try_again'] || 'Please try again and tap "Allow" when prompted.',
+                                'info'
+                              );
+                            } else {
+                              showAlert(
+                                t['notifications.setup_failed_title'] || 'Setup Failed',
+                                t['notifications.setup_failed'] || 'Failed to enable notifications. Please try again.',
+                                'error'
+                              );
+                            }
+                          }
                         } catch (subError) {
                           console.error('[Profile] Error subscribing to push:', subError);
                           setPushPermission(getNotificationPermission());
-                        }
-                        
-                        await onUpdate(currentUser.id, { notificationsEnabled: true });
-                        
-                        if (!subscriptionSuccess) {
-                          console.warn('[Profile] notifications_enabled is set to true but push subscription failed');
+                          setAccountData({ ...accountData, notificationsEnabled: false });
+                          showAlert(
+                            t['notifications.setup_failed_title'] || 'Setup Failed',
+                            t['notifications.setup_failed'] || 'Failed to enable notifications. Please try again.',
+                            'error'
+                          );
                         }
                       } else {
+                        // TURNING OFF - Simple, just disable
                         setAccountData({ ...accountData, notificationsEnabled: false });
-                        await onUpdate(currentUser.id, { notificationsEnabled: false });
+                        await onUpdate(currentUser.id, { 
+                          notificationsEnabled: false,
+                          hasPushSubscription: false  // Update immediately
+                        });
                         
                         try {
                           await unsubscribeFromPush(currentUser.id, currentUser.householdId);
-                          console.log('[Profile] Successfully unsubscribed from push notifications');
+                          console.log('[Profile] ✅ Successfully unsubscribed from push notifications');
                         } catch (unsubError) {
                           console.error('[Profile] Error unsubscribing from push:', unsubError);
                         }

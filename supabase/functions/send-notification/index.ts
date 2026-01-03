@@ -637,7 +637,7 @@ async function sendWebPushNotification(
   vapidPublicKey: string,
   vapidPrivateKey: string,
   vapidSubject: string
-): Promise<{ success: boolean; expired: boolean }> {
+): Promise<{ success: boolean; expired: boolean; shouldRetry?: boolean; errorMessage?: string }> {
   try {
     const endpoint = subscription.endpoint;
     const audience = new URL(endpoint).origin;
@@ -767,7 +767,10 @@ async function sendWebPushNotification(
       errorBodyLength: errorText.length,
       timestamp: new Date().toISOString()
     });
-    return { success: false, expired: false };
+    
+    // Return retry info for 5xx server errors
+    const shouldRetry = response.status >= 500 && response.status < 600;
+    return { success: false, expired: false, shouldRetry, errorMessage: `${response.status}: ${errorText.substring(0, 100)}` };
     
   } catch (error) {
     console.error('[Push] ❌ Exception during send:', {
@@ -776,7 +779,7 @@ async function sendWebPushNotification(
       endpoint: subscription.endpoint?.substring(0, 50) + '...',
       timestamp: new Date().toISOString()
     });
-    return { success: false, expired: false };
+    return { success: false, expired: false, shouldRetry: true, errorMessage: error instanceof Error ? error.message : String(error) };
   }
 }
 
@@ -834,7 +837,7 @@ serve(async (req: Request) => {
     // Get all users in the household who should receive notifications
     const { data: users, error: usersError } = await supabase
       .from('users')
-      .select('id, name, role, notifications_enabled, clerk_id')
+      .select('id, name, role, notifications_enabled, clerk_id, email')
       .eq('household_id', household_id)
       .neq('role', 'Child')
       .eq('notifications_enabled', true);
@@ -898,26 +901,29 @@ serve(async (req: Request) => {
       console.log(`[Push] No creator ID provided (created_by_user_id is null/undefined)`);
     }
 
-    // Filter out the creator from recipients (except for testing - Liko gets self-notifications)
-    const LIKO_TEST_MODE = true; // TODO: Set to false in production
-    const LIKO_EMAIL = 'julianoliko@gmail.com';
+    // Filter out the creator from recipients
+    // Rule: Users don't receive notifications for their own actions
+    // Exception: Liko (julianoliko@gmail.com) receives his own notifications for testing
+    const LIKO_TEST_EMAIL = 'julianoliko@gmail.com';
+
     const recipients = users.filter(u => {
-      // In test mode, don't filter out Liko so he can test by adding items himself
-      if (LIKO_TEST_MODE && u.email === LIKO_EMAIL) {
-        return true;
-      }
+      // Check if this is Liko (test mode - receives own notifications)
+      const isLikoTestMode = u.email === LIKO_TEST_EMAIL;
       
-      // Exclude self-actions
+      // Exclude self-actions UNLESS it's Liko in test mode
       if (u.id === creatorId || u.clerk_id === creatorId) {
-        return false;
+        if (isLikoTestMode) {
+          console.log(`[Push] 🧪 LIKO TEST MODE: Including ${u.name} in own notifications`);
+          // Continue to other checks, don't return false
+        } else {
+          console.log(`[Push] Excluding creator ${u.name} from recipients`);
+          return false;
+        }
       }
       
       // HELPER ROLE RESTRICTION: Helpers only see their own expenses
       // If this is an expense notification and user is a Helper, skip them
-      // (unless they created it themselves, which is already filtered above)
       if (table === 'expenses' && u.role === 'Helper') {
-        // Helper should only get notified for their own expenses
-        // Since we already excluded self-actions, this means Helpers don't get others' expense notifications
         console.log(`[Push] Skipping Helper ${u.name} for expense notification (not their expense)`);
         return false;
       }
@@ -1057,6 +1063,26 @@ serve(async (req: Request) => {
       console.log(`[Push] Removed ${expiredIds.length} expired subscriptions`);
     }
 
+    // Queue failed pushes for retry (5xx errors)
+    const retryableSubs = subscriptions.filter((_, i) => results[i].shouldRetry);
+    if (retryableSubs.length > 0) {
+      console.log(`[Push] Queuing ${retryableSubs.length} failed push(es) for retry`);
+      for (let i = 0; i < subscriptions.length; i++) {
+        if (results[i].shouldRetry) {
+          try {
+            await supabase.rpc('queue_push_for_retry', {
+              p_subscription_id: subscriptions[i].id,
+              p_payload: { ...message, referenceId },
+              p_error_message: results[i].errorMessage || 'Unknown error'
+            });
+          } catch (retryErr) {
+            // Ignore if retry queue doesn't exist yet (migration not run)
+            console.warn('[Push] Could not queue for retry:', retryErr);
+          }
+        }
+      }
+    }
+
     // Save to notifications table
     const notificationRecords = recipients.map(user => ({
       household_id,
@@ -1081,12 +1107,14 @@ serve(async (req: Request) => {
 
     const successCount = results.filter(r => r.success).length;
     const expiredCount = results.filter(r => r.expired).length;
-    const failedCount = results.filter(r => !r.success && !r.expired).length;
+    const retriedCount = results.filter(r => r.shouldRetry).length;
+    const failedCount = results.filter(r => !r.success && !r.expired && !r.shouldRetry).length;
     
     console.log(`[Push] 📊 Final results:`, {
       total: subscriptions.length,
       successful: successCount,
       expired: expiredCount,
+      queued_for_retry: retriedCount,
       failed: failedCount,
       successRate: `${Math.round((successCount / subscriptions.length) * 100)}%`
     });

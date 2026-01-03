@@ -778,6 +778,14 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'notifications.step_add_home': 'Add to Home Screen (iPhone/Android)',
   'notifications.step_enable': 'Enable Notification in',
   'notifications.ready': 'Notifications active.',
+  
+  // Notification Error Messages (for modal alerts)
+  'notifications.blocked_title': 'Notifications Blocked',
+  'notifications.blocked': 'Notifications are blocked. Please enable them in your browser settings (tap the lock icon in the address bar).',
+  'notifications.try_again_title': 'Permission Required',
+  'notifications.try_again': 'Please try again and tap "Allow" when prompted.',
+  'notifications.setup_failed_title': 'Setup Failed',
+  'notifications.setup_failed': 'Failed to enable notifications. Please try again.',
 
   // Plan Features - Unified feature matrix
   // Plan Section Titles

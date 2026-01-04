@@ -107,9 +107,38 @@ const DebugPanel: React.FC<{ currentUser: User | null }> = ({ currentUser }) => 
     try {
       const { ensureCurrentSubscriptionSaved } = await import('../services/pushNotificationService');
       const result = await ensureCurrentSubscriptionSaved(currentUser.id, currentUser.householdId);
-      setSyncResult(result ? '✅ SUCCESS' : '❌ FAILED');
+      setSyncResult(result ? '✅ SUCCESS' : '❌ FAILED (check logs)');
     } catch (e: any) {
-      setSyncResult(`❌ ${e.message}`);
+      setSyncResult(`❌ ${e.message?.substring(0, 100) || 'Unknown error'}`);
+    }
+    setIsSyncing(false);
+  };
+
+  // Direct API test
+  const handleDirectApiTest = async () => {
+    if (!currentUser?.id || !currentUser?.householdId) {
+      setSyncResult('No user/household');
+      return;
+    }
+    setIsSyncing(true);
+    setSyncResult('testing API...');
+    try {
+      const appUrl = 'https://app.helpyfam.com';
+      const response = await fetch(`${appUrl}/api/save-push-subscription-v2`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: currentUser.id,
+          household_id: currentUser.householdId,
+          endpoint: 'test-endpoint',
+          p256dh_key: 'test-key',
+          auth_key: 'test-auth'
+        }),
+      });
+      const data = await response.json();
+      setSyncResult(response.ok ? `✅ API OK: ${JSON.stringify(data).substring(0, 50)}` : `❌ ${response.status}: ${data.error || 'Failed'}`);
+    } catch (e: any) {
+      setSyncResult(`❌ API: ${e.message?.substring(0, 80) || 'Network error'}`);
     }
     setIsSyncing(false);
   };
@@ -129,16 +158,23 @@ const DebugPanel: React.FC<{ currentUser: User | null }> = ({ currentUser }) => 
         <div>SW: {swStatus}</div>
         <div>Browser Sub: {subStatus}</div>
       </div>
-      <div className="mt-2 pt-2 border-t border-muted-foreground/20">
+      <div className="mt-2 pt-2 border-t border-muted-foreground/20 flex gap-2 flex-wrap">
         <button 
           onClick={handleManualSync}
           disabled={isSyncing}
           className="bg-primary text-primary-foreground px-3 py-1.5 rounded-lg text-caption font-semibold"
         >
-          {isSyncing ? 'Syncing...' : 'Manual Sync'}
+          {isSyncing ? '...' : 'Sync'}
         </button>
-        {syncResult && <div className="mt-1 font-bold">{syncResult}</div>}
+        <button 
+          onClick={handleDirectApiTest}
+          disabled={isSyncing}
+          className="bg-secondary text-foreground px-3 py-1.5 rounded-lg text-caption font-semibold"
+        >
+          Test API
+        </button>
       </div>
+      {syncResult && <div className="mt-2 text-micro font-bold break-all">{syncResult}</div>}
     </div>
   );
 };
@@ -1660,7 +1696,7 @@ const Profile: React.FC<ProfileProps> = ({
           {/* Footer */}
           <div className="helpy-footer">
             <span className="helpy-logo">helpy</span>
-            <span className="text-micro text-muted-foreground/50 block mt-1">v2026.01.05.5</span>
+            <span className="text-micro text-muted-foreground/50 block mt-1">v2026.01.05.6</span>
           </div>
         </div>
 

@@ -607,6 +607,17 @@ const AppContent: React.FC = () => {
     
     console.log('[App] Checking notification capability...');
     
+    // EARLY SYNC CHECK: If browser permission doesn't allow notifications but database
+    // says hasPushSubscription=true, this is stale data. Fix it immediately to prevent
+    // showing blue bell before the async check completes.
+    if (typeof Notification !== 'undefined' && currentHasPushSubscription) {
+      const browserPermission = Notification.permission;
+      if (browserPermission === 'default' || browserPermission === 'denied') {
+        console.log(`[App] 🔧 Early fix: Permission is '${browserPermission}' but hasPushSubscription=true. Correcting stale data.`);
+        setCurrentUser(prev => prev ? { ...prev, hasPushSubscription: false } : prev);
+      }
+    }
+    
     // Check REAL notification capability and update UI state accordingly
     // This ensures the bell icon reflects ACTUAL status, not just database flags
     const checkAndUpdateCapability = async () => {

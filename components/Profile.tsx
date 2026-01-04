@@ -21,7 +21,6 @@ import {
   isPushSupported,
   getNotificationPermission,
   subscribeToPush,
-  unsubscribeFromPush,
   hasActiveSubscription,
   checkNotificationCapability
 } from '../services/pushNotificationService';
@@ -3900,7 +3899,9 @@ const Profile: React.FC<ProfileProps> = ({
                             </p>
                           </div>
                         </div>
-                        {/* Mute toggle - allows user to mute without going to OS settings */}
+                        {/* Mute toggle - allows user to mute without going to OS settings.
+                            We just disable in database, keeping the browser subscription intact.
+                            This makes re-enabling fast and reliable. */}
                         <button
                           disabled={isTogglingNotifications}
                           onClick={async () => {
@@ -3909,11 +3910,10 @@ const Profile: React.FC<ProfileProps> = ({
                             try {
                               setAccountData({ ...accountData, notificationsEnabled: false });
                               await onUpdate(currentUser.id, { 
-                                notificationsEnabled: false,
-                                hasPushSubscription: false
+                                notificationsEnabled: false
+                                // Keep hasPushSubscription: true - subscription still exists
                               });
-                              await unsubscribeFromPush(currentUser.id, currentUser.householdId);
-                              console.log('[Profile] Notifications muted');
+                              console.log('[Profile] Notifications muted (subscription preserved)');
                             } catch (error) {
                               console.error('[Profile] Error muting notifications:', error);
                               setAccountData({ ...accountData, notificationsEnabled: true });
@@ -3968,39 +3968,51 @@ const Profile: React.FC<ProfileProps> = ({
                             // Optimistically update UI
                             setAccountData({ ...accountData, notificationsEnabled: true });
                             
-                            // Subscribe (this will request permission if needed)
-                            const subscription = await subscribeToPush(
-                              currentUser.id,
-                              currentUser.householdId
-                            );
-                            
-                            setPushPermission(getNotificationPermission());
-                            
-                            // Verify capability
+                            // Check if we already have a valid subscription
                             const capability = await checkNotificationCapability(
                               currentUser.id,
                               currentUser.householdId
                             );
                             
-                            if (subscription && capability.capable) {
-                              console.log('[Profile] Notifications enabled successfully');
+                            if (capability.capable) {
+                              // Subscription already exists, just enable in database
+                              console.log('[Profile] Re-enabling existing subscription');
                               await onUpdate(currentUser.id, { 
                                 notificationsEnabled: true,
                                 hasPushSubscription: true
                               });
                             } else {
-                              // Revert on failure
-                              console.warn('[Profile] Subscription failed:', capability.reason);
-                              setAccountData({ ...accountData, notificationsEnabled: false });
+                              // Need to set up subscription (first time or was fully unsubscribed)
+                              console.log('[Profile] Setting up new subscription, reason:', capability.reason);
                               
-                              if (capability.reason === 'permission_denied') {
-                                setPushPermission('denied');
+                              const subscription = await subscribeToPush(
+                                currentUser.id,
+                                currentUser.householdId
+                              );
+                              
+                              setPushPermission(getNotificationPermission());
+                              
+                              if (subscription) {
+                                console.log('[Profile] Notifications enabled successfully');
+                                await onUpdate(currentUser.id, { 
+                                  notificationsEnabled: true,
+                                  hasPushSubscription: true
+                                });
                               } else {
-                                showAlert(
-                                  t['notifications.setup_failed_title'] || 'Setup Failed',
-                                  t['notifications.setup_failed'] || 'Failed to enable notifications. Please try again.',
-                                  'error'
-                                );
+                                // Revert on failure
+                                const newPermission = getNotificationPermission();
+                                console.warn('[Profile] Subscription failed');
+                                setAccountData({ ...accountData, notificationsEnabled: false });
+                                
+                                if (newPermission === 'denied') {
+                                  setPushPermission('denied');
+                                } else {
+                                  showAlert(
+                                    t['notifications.setup_failed_title'] || 'Setup Failed',
+                                    t['notifications.setup_failed'] || 'Failed to enable notifications. Please try again.',
+                                    'error'
+                                  );
+                                }
                               }
                             }
                           } catch (error) {

@@ -677,8 +677,8 @@ const Dashboard: React.FC<DashboardProps> = ({
   // Scroll header animation - shrink early (at ~25% of photo), expand later
   const { isScrolled } = useScrollHeader({ collapseThreshold: 50, expandThreshold: 110 });
   
-  // Lock body scroll when language modal is open
-  useScrollLock(showLangModal);
+  // Lock body scroll when any modal is open
+  useScrollLock(showLangModal || showPwaModal);
   
   // Dim status bar when sheet is open (iOS)
   useSheetTheme(showLangModal || showPwaModal);
@@ -1333,28 +1333,34 @@ const Dashboard: React.FC<DashboardProps> = ({
       {/* How to use Helpy */}
       <div className="bg-card rounded-2xl p-6 shadow-sm">
         <p className="text-title font-bold text-foreground mb-6">{t['dashboard.need_help'] || 'Need Help Getting Started?'}</p>
-        <div className="flex items-center justify-center">
+        <div className="flex items-stretch justify-center">
           {onRestartTutorial && (
-            <button onClick={onRestartTutorial} className="flex-1 flex flex-col items-center gap-1.5">
-              <GraduationCap size={24} className="text-primary" />
-              <span className="text-body font-medium text-foreground">{t['common.tutorial'] || 'Tutorial'}</span>
+            <button onClick={onRestartTutorial} className="flex-1 flex flex-col items-center">
+              <div className="h-8 flex items-center justify-center">
+                <GraduationCap size={24} className="text-primary" />
+              </div>
+              <span className="text-body font-medium text-foreground mt-2">{t['common.tutorial'] || 'Tutorial'}</span>
             </button>
           )}
           {/* Vertical Divider */}
-          <div className="h-12 w-px bg-border mx-4"></div>
+          <div className="w-px bg-border mx-4 self-stretch"></div>
           {onOpenUserGuide && (
-            <button onClick={onOpenUserGuide} className="flex-1 flex flex-col items-center gap-1.5">
-              <BookOpen size={24} className="text-primary" />
-              <span className="text-body font-medium text-foreground">{t['guide.title'] || 'User Guide'}</span>
+            <button onClick={onOpenUserGuide} className="flex-1 flex flex-col items-center">
+              <div className="h-8 flex items-center justify-center">
+                <BookOpen size={24} className="text-primary" />
+              </div>
+              <span className="text-body font-medium text-foreground mt-2">{t['guide.title'] || 'User Guide'}</span>
             </button>
           )}
           {/* Add to Homescreen - Only show on mobile when not installed */}
           {isMobile && !isPwaInstalled && (
             <>
-              <div className="h-12 w-px bg-border mx-4"></div>
-              <button onClick={openPwaModal} className="flex-1 flex flex-col items-center gap-1.5">
-                <Smartphone size={24} className="text-primary" />
-                <span className="text-body font-medium text-foreground">{t['pwa.add_to_homescreen'] || 'Add to Homescreen'}</span>
+              <div className="w-px bg-border mx-4 self-stretch"></div>
+              <button onClick={openPwaModal} className="flex-1 flex flex-col items-center">
+                <div className="h-8 flex items-center justify-center">
+                  <Smartphone size={24} className="text-primary" />
+                </div>
+                <span className="text-body font-medium text-foreground mt-2 text-center">{t['pwa.add_to_homescreen'] || 'Add to Homescreen'}</span>
               </button>
             </>
           )}

@@ -31,7 +31,7 @@ import {
   subscribeToNotes,
   fetchCollection,
 } from './services/supabaseService';
-import { initializePushNotifications, autoSubscribeIfNeeded, validateAndSyncSubscription, startPeriodicBatchProcessing, stopPeriodicBatchProcessing, checkNotificationCapability, autoFixNotificationIssues } from './services/pushNotificationService';
+import { initializePushNotifications, autoSubscribeIfNeeded, validateAndSyncSubscription, startPeriodicBatchProcessing, stopPeriodicBatchProcessing, checkNotificationCapability, autoFixNotificationIssues, ensureCurrentSubscriptionSaved } from './services/pushNotificationService';
 import type { EssentialInfo } from '@src/types/essentialInfo';
 import type { HouseRoutine } from '@src/types/houseRoutine';
 import { 
@@ -633,6 +633,21 @@ const AppContent: React.FC = () => {
             setCurrentUser(prev => prev ? { ...prev, hasPushSubscription: false } : prev);
           }
           return;
+        }
+        
+        // CRITICAL FIX: If permission is granted, ALWAYS ensure current subscription is saved
+        // This fixes the "stale subscription" problem where user clears cache
+        // and the database has old endpoints that don't work
+        if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+          console.log('[App] 🔄 Ensuring current browser subscription is synced to database...');
+          const synced = await ensureCurrentSubscriptionSaved(userId, householdId);
+          if (synced) {
+            console.log('[App] ✅ Subscription synced successfully');
+            setCurrentUser(prev => prev ? { ...prev, hasPushSubscription: true } : prev);
+            return; // No need for further checks, we just synced
+          } else {
+            console.log('[App] ⚠️ Subscription sync failed, continuing with capability check...');
+          }
         }
         
         // Check actual capability

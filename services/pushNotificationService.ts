@@ -341,6 +341,86 @@ export async function checkNotificationCapability(
 }
 
 /**
+ * CRITICAL: Ensure the current browser subscription is saved to database.
+ * 
+ * This function is the SINGLE source of truth for subscription sync.
+ * It should be called on every app load when:
+ * - notificationsEnabled is true
+ * - Notification.permission is 'granted'
+ * 
+ * It will:
+ * 1. Get the current browser subscription (create if needed)
+ * 2. ALWAYS save it to database (upsert)
+ * 3. Return true if successful
+ * 
+ * This fixes the "stale subscription" problem where user clears cache
+ * and the database has old endpoints that don't match the new browser.
+ */
+export async function ensureCurrentSubscriptionSaved(
+  userId: string,
+  householdId: string
+): Promise<boolean> {
+  console.log('[Push] 🔄 Ensuring current subscription is saved...');
+  
+  if (!isPushSupported()) {
+    console.log('[Push] ❌ Push not supported');
+    return false;
+  }
+  
+  const permission = getNotificationPermission();
+  if (permission !== 'granted') {
+    console.log('[Push] ❌ Permission not granted:', permission);
+    return false;
+  }
+  
+  try {
+    // Get or register service worker
+    let registration = await getServiceWorkerRegistration();
+    if (!registration) {
+      console.log('[Push] Registering service worker...');
+      registration = await registerServiceWorker();
+    }
+    
+    if (!registration) {
+      console.error('[Push] ❌ No service worker registration');
+      return false;
+    }
+    
+    // Wait for service worker to be ready
+    await navigator.serviceWorker.ready;
+    
+    // Get current browser subscription
+    let subscription = await registration.pushManager.getSubscription();
+    
+    // If no subscription exists, create one
+    if (!subscription) {
+      console.log('[Push] Creating new browser subscription...');
+      if (!VAPID_PUBLIC_KEY) {
+        console.error('[Push] ❌ VAPID_PUBLIC_KEY not configured');
+        return false;
+      }
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+      });
+      console.log('[Push] ✅ New subscription created:', subscription.endpoint.substring(0, 50) + '...');
+    } else {
+      console.log('[Push] Using existing browser subscription:', subscription.endpoint.substring(0, 50) + '...');
+    }
+    
+    // ALWAYS save to database (this is the critical fix)
+    console.log('[Push] Saving subscription to database...');
+    await saveSubscriptionToDatabase(subscription, userId, householdId);
+    console.log('[Push] ✅ Subscription saved successfully');
+    
+    return true;
+  } catch (error) {
+    console.error('[Push] ❌ Failed to ensure subscription:', error);
+    return false;
+  }
+}
+
+/**
  * Auto-fix notification issues if possible.
  * 
  * Attempts to silently fix common problems:

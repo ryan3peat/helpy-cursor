@@ -1128,12 +1128,29 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
 
   // PWA Install (Translation Audit)
   'pwa.add_to_home': 'Add Helpy to Home Screen',
+  'pwa.install_helpy': 'Install Helpy',
   'pwa.looks_like_app': 'It will look and feel like an app.',
+  'pwa.ios_description': 'Helpy works best as an app. On iPhone, adding to Home Screen helps with notifications.',
+  'pwa.android_description': 'Helpy works best as an app. Add to Home Screen for full screen experience and notifications.',
+  'pwa.install_description': 'Open faster, full screen, and get a smoother notification setup.',
+  'pwa.show_steps': 'Show steps',
+  'pwa.install_app': 'Install app',
+  // iOS steps
   'pwa.step_tap_share': 'Tap Share',
   'pwa.step_add_home': 'Add to Home Screen',
   'pwa.step_open_as_webapp': 'Switch on "Open as Web App" if available',
   'pwa.step_tap_add': 'Tap Add',
   'pwa.step_done': 'Done and open Helpy from your homescreen',
+  // Android steps
+  'pwa.step_tap_menu': 'Tap the menu',
+  'pwa.step_menu_location': '(three dots in the top right corner)',
+  'pwa.step_or_install': 'Or look for "Install app" option',
+  'pwa.step_confirm_add': 'Confirm by tapping Add or Install',
+  'pwa.add_to_homescreen': 'Add to Homescreen',
+  'pwa.add_to_homescreen_now': 'Add to Homescreen now',
+  'pwa.or_follow_steps': 'Or follow these steps:',
+  'pwa.follow_steps': 'Follow these steps:',
+  'pwa.desktop_instructions': 'Look for the install icon in your browser\'s address bar or menu to add Helpy to your desktop.',
 
   // Error - Additional (Translation Audit)
   'error.account_setup_incomplete': 'Account Setup Incomplete',

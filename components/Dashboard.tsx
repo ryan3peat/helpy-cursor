@@ -21,7 +21,6 @@ import {
   Trash2,
   Bell,
   BellOff,
-  BellDot,
   GraduationCap,
   BookOpen,
   UserPlus,
@@ -30,11 +29,13 @@ import {
   LayoutGrid,
   SquarePlus,
   AlertCircle,
+  MoreVertical,
   Heart,
   Crown,
   Eye,
   EyeOff,
-  Lock
+  Lock,
+  Smartphone
 } from 'lucide-react';
 import Avatar from './ui/Avatar';
 import ErrorBanner from './ui/ErrorBanner';
@@ -47,6 +48,9 @@ import { SUPPORTED_LANGUAGES } from '../constants';
 import { useTranslatedContent } from '../hooks/useTranslatedContent';
 import { haptics } from '../utils/haptics';
 import { useDemoMode } from '../contexts/DemoModeContext';
+import { isRunningAsPwa, isIosDevice, isAndroidDevice } from '../utils/pwaUtils';
+import { isDevicePwaInstalled, recordPwaInstallation } from '../services/pwaService';
+import NotificationPrompt from './NotificationPrompt';
 
 import type { ConnectionStatus } from '../hooks/useRealtimeStatus';
 
@@ -79,6 +83,12 @@ interface DashboardProps {
   onSelectFamilyMember?: (userId: string) => void;
   /** Household limits for family member quota display */
   householdLimits?: { maxFamily: number; maxHelpers: number };
+  /** Update user data (e.g., after enabling notifications) */
+  onUpdateUser?: (id: string, data: Partial<User>) => Promise<void>;
+  /** Whether onboarding is currently active (to prevent PWA modal during onboarding) */
+  isOnboardingActive?: boolean;
+  /** Callback when PWA modal is dismissed (to start onboarding after) */
+  onPwaModalDismissed?: () => void;
 }
 
 // Component for displaying translated meal description
@@ -268,16 +278,7 @@ type BeforeInstallPromptEvent = Event & {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
 };
 
-function isRunningAsPwa(): boolean {
-  const isStandalone = window.matchMedia?.('(display-mode: standalone)')?.matches;
-  const isIosStandalone = (window.navigator as any).standalone === true;
-  return Boolean(isStandalone || isIosStandalone);
-}
-
-function isIosDevice(): boolean {
-  const ua = navigator.userAgent.toLowerCase();
-  return /iphone|ipad|ipod/.test(ua);
-}
+// isRunningAsPwa, isIosDevice, isAndroidDevice are imported from utils/pwaUtils
 
 function isMobileDevice(): boolean {
   const uaDataMobile = (navigator as any).userAgentData?.mobile;
@@ -287,20 +288,70 @@ function isMobileDevice(): boolean {
   return /iphone|ipad|ipod|android/.test(ua);
 }
 
-function usePwaInstallNudge() {
-  const DISMISS_HOURS = 72;
-  const DISMISS_KEY = 'helpy_pwa_nudge_dismissed_until';
+/**
+ * Hook to manage PWA installation nudge
+ * 
+ * Features:
+ * - Checks database to see if PWA was already installed on this device
+ * - Progressive dismissal: 72h → 7d → 14d → never
+ * - Returns whether to show modal and device type for correct instructions
+ * 
+ * @param userId - Supabase UUID of the current user (optional)
+ * @param householdId - Household ID (optional)
+ */
+function usePwaInstallNudge(userId?: string, householdId?: string) {
+  // Progressive dismissal delays: 72h, 7d, 14d, then never
+  const DISMISS_DELAYS = [
+    72 * 60 * 60 * 1000,      // 1st dismissal: 72 hours
+    7 * 24 * 60 * 60 * 1000,  // 2nd dismissal: 7 days
+    14 * 24 * 60 * 60 * 1000, // 3rd dismissal: 14 days
+    Infinity                   // 4th+ dismissal: never again
+  ];
+  const DISMISS_COUNT_KEY = 'helpy_pwa_dismiss_count';
+  const DISMISS_UNTIL_KEY = 'helpy_pwa_dismissed_until';
 
   const [isInstalled, setIsInstalled] = useState<boolean>(() => isRunningAsPwa());
+  const [isInstalledOnDevice, setIsInstalledOnDevice] = useState<boolean>(false);
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
-  const [dismissedUntil, setDismissedUntil] = useState<number>(() => {
-    const raw = localStorage.getItem(DISMISS_KEY);
+  const [showModal, setShowModal] = useState(false);
+  const [dismissedUntil, setDismissedUntil] = useState<number | 'never'>(() => {
+    const raw = localStorage.getItem(DISMISS_UNTIL_KEY);
+    if (raw === 'never') return 'never';
     return raw ? Number(raw) : 0;
   });
 
+  // Check database for existing installation on this device
   useEffect(() => {
-    // If we're currently running as PWA, ensure we never show the banner.
-    if (isRunningAsPwa()) setIsInstalled(true);
+    if (!userId) return;
+    
+    const checkInstallation = async () => {
+      const installed = await isDevicePwaInstalled(userId);
+      if (installed) {
+        console.log('[PWA Nudge] Device already has PWA installed');
+        setIsInstalledOnDevice(true);
+      }
+    };
+    
+    checkInstallation();
+  }, [userId]);
+
+  // Record installation to database when running as PWA
+  const doRecordInstallation = async () => {
+    if (!userId || !householdId) return;
+    
+    const success = await recordPwaInstallation(userId, householdId);
+    if (success) {
+      setIsInstalledOnDevice(true);
+    }
+  };
+
+  useEffect(() => {
+    // If we're currently running as PWA, ensure we never show the modal
+    // and record the installation to the database
+    if (isRunningAsPwa()) {
+      setIsInstalled(true);
+      doRecordInstallation();
+    }
 
     const onBeforeInstallPrompt = (e: Event) => {
       e.preventDefault(); // required to trigger prompt from our custom button
@@ -310,6 +361,9 @@ function usePwaInstallNudge() {
     const onInstalled = () => {
       setIsInstalled(true);
       setDeferredPrompt(null);
+      setShowModal(false);
+      // Record installation to database
+      doRecordInstallation();
     };
 
     window.addEventListener('beforeinstallprompt', onBeforeInstallPrompt);
@@ -317,7 +371,14 @@ function usePwaInstallNudge() {
 
     // Keep state in sync if display-mode changes
     const mm = window.matchMedia?.('(display-mode: standalone)');
-    const onChange = () => setIsInstalled(isRunningAsPwa());
+    const onChange = () => {
+      const isPwa = isRunningAsPwa();
+      setIsInstalled(isPwa);
+      if (isPwa) {
+        setShowModal(false);
+        doRecordInstallation();
+      }
+    };
     mm?.addEventListener?.('change', onChange);
 
     return () => {
@@ -325,29 +386,62 @@ function usePwaInstallNudge() {
       window.removeEventListener('appinstalled', onInstalled);
       mm?.removeEventListener?.('change', onChange);
     };
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, householdId]);
 
-  const isDismissed = dismissedUntil > Date.now();
+  const isDismissed = dismissedUntil === 'never' || (typeof dismissedUntil === 'number' && dismissedUntil > Date.now());
   const isMobile = isMobileDevice();
 
+  // Progressive dismiss: 72h → 7d → 14d → never
   const dismiss = () => {
-    const until = Date.now() + DISMISS_HOURS * 60 * 60 * 1000;
-    localStorage.setItem(DISMISS_KEY, String(until));
-    setDismissedUntil(until);
+    const count = Number(localStorage.getItem(DISMISS_COUNT_KEY) || 0);
+    const delay = DISMISS_DELAYS[Math.min(count, DISMISS_DELAYS.length - 1)];
+    
+    localStorage.setItem(DISMISS_COUNT_KEY, String(count + 1));
+    
+    if (delay === Infinity) {
+      localStorage.setItem(DISMISS_UNTIL_KEY, 'never');
+      setDismissedUntil('never');
+    } else {
+      const until = Date.now() + delay;
+      localStorage.setItem(DISMISS_UNTIL_KEY, String(until));
+      setDismissedUntil(until);
+    }
+    setShowModal(false);
   };
 
-  const canPromptInstall = isMobile && !isInstalled && !!deferredPrompt && !isDismissed;
-  const shouldShowIosSteps = isMobile && !isInstalled && isIosDevice() && !isDismissed;
+  // Determine if we should auto-show the modal (on page load)
+  const shouldAutoShow = isMobile && !isInstalled && !isInstalledOnDevice && !isDismissed;
+  
+  // Can we use Chrome's native install prompt?
+  const canUseNativePrompt = !!deferredPrompt;
 
   const promptInstall = async () => {
     if (!deferredPrompt) return;
     await deferredPrompt.prompt();
     const choice = await deferredPrompt.userChoice;
     setDeferredPrompt(null); // one-shot
-    if (choice.outcome !== 'accepted') dismiss();
+    if (choice.outcome === 'accepted') {
+      setShowModal(false);
+    } else {
+      dismiss();
+    }
   };
 
-  return { canPromptInstall, shouldShowIosSteps, dismiss, promptInstall };
+  const openModal = () => setShowModal(true);
+  const closeModal = () => setShowModal(false);
+
+  return { 
+    shouldAutoShow,
+    showModal,
+    openModal,
+    closeModal,
+    dismiss, 
+    promptInstall,
+    canUseNativePrompt,
+    isMobile,
+    isInstalled: isInstalled || isInstalledOnDevice
+  };
 }
 
 const Dashboard: React.FC<DashboardProps> = ({
@@ -373,6 +467,9 @@ const Dashboard: React.FC<DashboardProps> = ({
   onOpenAddFamily,
   onSelectFamilyMember,
   householdLimits = { maxFamily: 3, maxHelpers: 1 },
+  onUpdateUser,
+  isOnboardingActive = false,
+  onPwaModalDismissed,
 }) => {
   // ─────────────────────────────────────────────────────────────────
   // Safety check for currentUser
@@ -513,8 +610,44 @@ const Dashboard: React.FC<DashboardProps> = ({
   const [timeOfDay, setTimeOfDay] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [showLangModal, setShowLangModal] = useState(false);
-  const [showIosInstallSteps, setShowIosInstallSteps] = useState(false);
-  const { canPromptInstall, shouldShowIosSteps, dismiss, promptInstall } = usePwaInstallNudge();
+  const { 
+    shouldAutoShow: shouldAutoShowPwaModal,
+    showModal: showPwaModal,
+    openModal: openPwaModal,
+    closeModal: closePwaModalInternal,
+    dismiss: dismissPwaModalInternal,
+    promptInstall,
+    canUseNativePrompt,
+    isMobile,
+    isInstalled: isPwaInstalled
+  } = usePwaInstallNudge(
+    currentUser?.id,
+    currentUser?.householdId
+  );
+  
+  // Wrap close/dismiss to also notify parent (for onboarding flow)
+  const closePwaModal = () => {
+    closePwaModalInternal();
+    onPwaModalDismissed?.();
+  };
+  
+  const dismissPwaModal = () => {
+    dismissPwaModalInternal();
+    onPwaModalDismissed?.();
+  };
+  
+  // Auto-show PWA install modal on page load for mobile users who haven't installed
+  useEffect(() => {
+    if (shouldAutoShowPwaModal && !showPwaModal) {
+      // Small delay to let the page load first
+      const timer = setTimeout(() => openPwaModal(), 500);
+      return () => clearTimeout(timer);
+    } else if (!shouldAutoShowPwaModal && !showPwaModal) {
+      // If PWA modal not needed (desktop, already installed, dismissed), notify parent immediately
+      // so onboarding can start
+      onPwaModalDismissed?.();
+    }
+  }, [shouldAutoShowPwaModal]);
   
   // Carousel tracking
   const [activeCarouselIndex, setActiveCarouselIndex] = useState(0);
@@ -548,7 +681,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   useScrollLock(showLangModal);
   
   // Dim status bar when sheet is open (iOS)
-  useSheetTheme(showLangModal || showIosInstallSteps);
+  useSheetTheme(showLangModal || showPwaModal);
 
   // Only sync tempNotes with familyNotes when NOT editing (prevents overwriting user input)
   useEffect(() => {
@@ -720,6 +853,20 @@ const Dashboard: React.FC<DashboardProps> = ({
 
   return (
     <div className="min-h-screen bg-background pb-16 page-content">
+      {/* First-launch notification prompt (only shows in PWA mode, once per device, AFTER onboarding) */}
+      <NotificationPrompt 
+        currentUser={currentUser} 
+        t={t}
+        isOnboardingActive={isOnboardingActive}
+        onNotificationEnabled={async () => {
+          console.log('[Dashboard] Notifications enabled via prompt');
+          // Immediately update the user state to reflect the new subscription
+          if (onUpdateUser) {
+            await onUpdateUser(currentUser.id, { hasPushSubscription: true });
+          }
+        }}
+      />
+
       {/* Sticky Header - Push Up (No Shrink) */}
       <header 
         className="sticky top-0 z-20 bg-background px-5 pb-3 flex items-end transition-shadow duration-200"
@@ -790,7 +937,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                 {(() => {
                   if (currentUser.role === UserRole.CHILD) return <BellOff size={12} className="text-muted-foreground" />;
                   if (!currentUser.notificationsEnabled) return <BellOff size={12} className="text-destructive" />;
-                  if (!currentUser.hasPushSubscription) return <BellDot size={12} className="text-orange-500" />;
+                  if (!currentUser.hasPushSubscription) return <BellOff size={12} className="text-orange-500" />;
                   return <Bell size={12} className="text-primary" />;
                 })()}
               </div>
@@ -808,52 +955,6 @@ const Dashboard: React.FC<DashboardProps> = ({
         onDismiss={() => setError(null)} 
         title={t['common.error'] || 'Error'}
       />
-
-      {/* PWA Install Nudge (Mobile Only) */}
-      {(canPromptInstall || shouldShowIosSteps) && (
-        <div className="rounded-2xl p-5 shadow-sm border bg-[#EAF7FB] border-[#BFE7F3] dark:bg-primary/10 dark:border-primary/20">
-          {/* Title row (icon + text inline) */}
-          <div className="flex items-center gap-2">
-            <LayoutGrid size={20} className="text-primary" />
-            <p className="text-title font-bold text-primary">
-              {shouldShowIosSteps ? 'Add Helpy to Home Screen' : 'Install Helpy'}
-            </p>
-          </div>
-
-          {/* Body */}
-          <p className="text-body text-primary/80 mt-2">
-            {shouldShowIosSteps
-              ? 'Helpy works best as an app. On iPhone, adding to Home Screen helps with notifications.'
-              : 'Open faster, full screen, and get a smoother notification setup.'}
-          </p>
-
-          {/* Buttons - 50/50 width */}
-          <div className="flex items-center gap-3 mt-4">
-            {shouldShowIosSteps ? (
-              <button
-                onClick={() => setShowIosInstallSteps(true)}
-                className="w-1/2 py-3.5 rounded-xl bg-primary text-primary-foreground text-body font-semibold shadow-sm"
-              >
-                Show steps
-              </button>
-            ) : (
-              <button
-                onClick={promptInstall}
-                className="w-1/2 py-3.5 rounded-xl bg-primary text-primary-foreground text-body font-semibold shadow-sm"
-              >
-                Install app
-              </button>
-            )}
-
-            <button
-              onClick={dismiss}
-              className="w-1/2 py-[13px] rounded-xl bg-transparent border border-primary text-primary text-body font-semibold"
-            >
-              Not now
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Family Carousel */}
       <div 
@@ -1019,8 +1120,8 @@ const Dashboard: React.FC<DashboardProps> = ({
         </div>
       </div>
 
-      {/* iOS Add to Home Screen Steps */}
-      {showIosInstallSteps && createPortal(
+      {/* Unified PWA Install Modal - Device-specific instructions */}
+      {showPwaModal && createPortal(
         <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
           {/* Safe area bottom cover */}
           <div
@@ -1034,7 +1135,7 @@ const Dashboard: React.FC<DashboardProps> = ({
           >
             {/* Close Button */}
             <button
-              onClick={() => setShowIosInstallSteps(false)}
+              onClick={closePwaModal}
               className="absolute z-10 right-4 top-4 w-10 h-10 rounded-full flex items-center justify-center text-muted-foreground"
               aria-label="Close"
             >
@@ -1049,33 +1150,74 @@ const Dashboard: React.FC<DashboardProps> = ({
               </p>
             </div>
 
-            {/* Body */}
+            {/* Body - Device-specific instructions */}
             <div className="p-5">
-              <ol className="list-decimal pl-5 space-y-2">
-                <li className="text-body text-foreground">{t['pwa.step_tap_share'] || 'Tap Share'} <Share size={16} className="inline-block text-muted-foreground ml-1" /></li>
-                <li className="text-body text-foreground">
-                  {t['pwa.step_add_home'] || 'Add to Home Screen'} <SquarePlus size={16} className="inline-block text-muted-foreground ml-1" />
-                  <p className="text-caption text-muted-foreground mt-1">{t['pwa.step_open_as_webapp'] || 'Switch on "Open as Web App" if available'}</p>
-                </li>
-                <li className="text-body text-foreground">{t['pwa.step_tap_add'] || 'Tap Add'}</li>
-                <li className="text-body text-foreground">{t['pwa.step_done'] || 'Done and open Helpy from your homescreen'}</li>
-              </ol>
+              {isIosDevice() ? (
+                // iOS Instructions - Manual steps only (no native install on iOS)
+                <ol className="list-decimal pl-5 space-y-2">
+                  <li className="text-body text-foreground">
+                    {t['pwa.step_tap_share'] || 'Tap Share'} <Share size={16} className="inline-block text-muted-foreground ml-1" />
+                  </li>
+                  <li className="text-body text-foreground">
+                    {t['pwa.step_add_home'] || 'Add to Home Screen'} <SquarePlus size={16} className="inline-block text-muted-foreground ml-1" />
+                    <p className="text-caption text-muted-foreground mt-1">{t['pwa.step_open_as_webapp'] || 'Switch on "Open as Web App" if available'}</p>
+                  </li>
+                  <li className="text-body text-foreground">{t['pwa.step_tap_add'] || 'Tap Add'}</li>
+                  <li className="text-body text-foreground">{t['pwa.step_done'] || 'Done and open Helpy from your homescreen'}</li>
+                </ol>
+              ) : isAndroidDevice() ? (
+                // Android Instructions - Install button (if available) + manual steps
+                <>
+                  {/* One-click install button (if Chrome is ready) */}
+                  {canUseNativePrompt && (
+                    <button
+                      onClick={() => promptInstall()}
+                      className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground text-body font-semibold shadow-sm mb-4 flex items-center justify-center gap-2"
+                    >
+                      <Smartphone size={18} />
+                      {t['pwa.add_to_homescreen_now'] || 'Add to Homescreen now'}
+                    </button>
+                  )}
+                  
+                  {/* Manual steps - always shown as fallback */}
+                  <p className="text-body text-muted-foreground mb-3">
+                    {canUseNativePrompt 
+                      ? (t['pwa.or_follow_steps'] || 'Or follow these steps:')
+                      : (t['pwa.follow_steps'] || 'Follow these steps:')}
+                  </p>
+                  <ol className="list-decimal pl-5 space-y-2">
+                    <li className="text-body text-foreground">
+                      {t['pwa.step_tap_menu'] || 'Tap the menu'} <MoreVertical size={16} className="inline-block text-muted-foreground ml-1" />
+                      <p className="text-caption text-muted-foreground mt-1">{t['pwa.step_menu_location'] || '(three dots in the top right corner)'}</p>
+                    </li>
+                    <li className="text-body text-foreground">
+                      {t['pwa.step_add_home'] || 'Add to Home Screen'} <SquarePlus size={16} className="inline-block text-muted-foreground ml-1" />
+                      <p className="text-caption text-muted-foreground mt-1">{t['pwa.step_or_install'] || 'Or look for "Install app" option'}</p>
+                    </li>
+                    <li className="text-body text-foreground">{t['pwa.step_confirm_add'] || 'Confirm by tapping Add or Install'}</li>
+                    <li className="text-body text-foreground">{t['pwa.step_done'] || 'Done and open Helpy from your homescreen'}</li>
+                  </ol>
+                </>
+              ) : (
+                // Desktop/Other - Generic instructions
+                <p className="text-body text-foreground">
+                  {t['pwa.desktop_instructions'] || 'Look for the install icon in your browser\'s address bar or menu to add Helpy to your desktop.'}
+                </p>
+              )}
             </div>
 
             {/* Footer */}
-            <div className="p-5 pb-8 border-t border-border flex gap-3">
+            <div className="p-5 pb-8 border-t border-border">
               <button
-                onClick={() => {
-                  setShowIosInstallSteps(false);
-                  dismiss();
-                }}
-                className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body font-semibold shadow-sm"
+                onClick={dismissPwaModal}
+                className="w-full py-3.5 rounded-xl bg-secondary text-foreground text-body font-semibold"
               >
-                {t['common.got_it'] || 'Got it'}
+                {t['common.not_now'] || 'Not now'}
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Today's Menu */}
@@ -1205,6 +1347,16 @@ const Dashboard: React.FC<DashboardProps> = ({
               <BookOpen size={24} className="text-primary" />
               <span className="text-body font-medium text-foreground">{t['guide.title'] || 'User Guide'}</span>
             </button>
+          )}
+          {/* Add to Homescreen - Only show on mobile when not installed */}
+          {isMobile && !isPwaInstalled && (
+            <>
+              <div className="h-12 w-px bg-border mx-4"></div>
+              <button onClick={openPwaModal} className="flex-1 flex flex-col items-center gap-1.5">
+                <Smartphone size={24} className="text-primary" />
+                <span className="text-body font-medium text-foreground">{t['pwa.add_to_homescreen'] || 'Add to Homescreen'}</span>
+              </button>
+            </>
           )}
         </div>
       </div>

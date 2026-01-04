@@ -183,6 +183,13 @@ html {
   background-color: #fafafa !important;
   /* Tell the browser/UI we are light unless .dark is present */
   color-scheme: light;
+  /* Hide scrollbar globally for PWA native feel */
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;     /* Firefox */
+}
+
+html::-webkit-scrollbar {
+  display: none;             /* Chrome, Safari, Opera */
 }
 
 html.dark {

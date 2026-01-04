@@ -313,9 +313,9 @@ const OnboardingOverlay: React.FC<OnboardingOverlayProps> = ({
         if (currentStep.targetElement === 'onboarding-family-board') {
           const rect = element.getBoundingClientRect();
           const currentScrollY = window.scrollY;
-          // We want the Family Board to be at ~480px from viewport top
-          // (tooltip is at 270px + ~200px height = arrow at ~470px pointing down)
-          const targetViewportY = 480;
+          // We want the Family Board to be at ~520px from viewport top
+          // (tooltip is at 320px + ~200px height = arrow at ~520px pointing down)
+          const targetViewportY = 520;
           const scrollTo = currentScrollY + rect.top - targetViewportY;
           // Ensure we scroll at least 140px to collapse the family cards
           const minScroll = 140;
@@ -359,7 +359,7 @@ const OnboardingOverlay: React.FC<OnboardingOverlayProps> = ({
       case 'bottom-center':
         return 'bottom-44 right-4 flex items-end justify-end';
       case 'center-near-family-board':
-        return 'top-[270px] inset-x-0 flex items-start justify-center';
+        return 'top-[320px] inset-x-0 flex items-start justify-center';
       default:
         return 'inset-0 flex items-center justify-center';
     }
@@ -379,8 +379,8 @@ const OnboardingOverlay: React.FC<OnboardingOverlayProps> = ({
       case 'bottom-center':
         return 'absolute w-4 h-4 bg-card transform rotate-45 -bottom-2 right-8 border-r border-b border-border';
       case 'center-near-family-board':
-        // Arrow points DOWN toward family board (below the tooltip)
-        return 'absolute w-4 h-4 bg-card transform rotate-45 -bottom-2 left-1/2 -ml-2 border-r border-b border-border';
+        // Arrow points UP toward family board (above the tooltip)
+        return 'absolute w-4 h-4 bg-card transform rotate-45 -top-2 left-1/2 -ml-2 border-l border-t border-border';
       default:
         return 'hidden';
     }

@@ -15,6 +15,7 @@
 import { supabase } from './supabase';
 import { getCachedSupabaseUuid, isUserCachePopulated, getUserCacheStats } from './supabaseService';
 import { getAuthenticatedSupabaseClient } from '../contexts/SupabaseContext';
+import { getDeviceId } from '../utils/pwaUtils';
 
 // ============================================================================
 // HELPER: Get authenticated Supabase client (for RLS) or fallback to default
@@ -605,6 +606,7 @@ async function saveSubscriptionToDatabase(
     p256dh_key: subscriptionJson.keys.p256dh,
     auth_key: subscriptionJson.keys.auth,
     user_agent: navigator.userAgent,
+    device_fingerprint: getDeviceId(),  // Persistent device ID from localStorage
     updated_at: new Date().toISOString()
   };
 
@@ -820,31 +822,9 @@ export async function hasActiveSubscription(userId: string, householdId?: string
   }
 }
 
-/**
- * Generate a simple device fingerprint based on browser/device characteristics
- * This helps identify the same device across sessions
- */
-function generateDeviceFingerprint(): string {
-  const components = [
-    navigator.userAgent,
-    navigator.language,
-    screen.width + 'x' + screen.height,
-    screen.colorDepth,
-    new Date().getTimezoneOffset(),
-    navigator.hardwareConcurrency || 'unknown'
-  ];
-  
-  // Simple hash function
-  const str = components.join('|');
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Convert to 32bit integer
-  }
-  
-  return 'fp_' + Math.abs(hash).toString(36);
-}
+// Device ID is now managed by utils/pwaUtils.ts using localStorage
+// The old generateDeviceFingerprint() has been replaced with getDeviceId()
+// which provides a persistent UUID per device instead of a weak hash
 
 /**
  * Validate and sync subscription on app load
@@ -932,7 +912,7 @@ export async function validateAndSyncSubscription(
       return { valid: false, action: 'none' };
     }
     
-    const deviceFingerprint = generateDeviceFingerprint();
+    const deviceId = getDeviceId();  // Use persistent device ID
     
     // Delete old subscriptions for this device before inserting
     await getSupabaseClient()
@@ -951,7 +931,7 @@ export async function validateAndSyncSubscription(
         p256dh_key: subscriptionJson.keys.p256dh,
         auth_key: subscriptionJson.keys.auth,
         user_agent: navigator.userAgent,
-        device_fingerprint: deviceFingerprint,
+        device_fingerprint: deviceId,  // Persistent device ID
         updated_at: new Date().toISOString()
       }, {
         onConflict: 'user_id,endpoint'

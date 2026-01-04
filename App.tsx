@@ -189,6 +189,10 @@ const AppContent: React.FC = () => {
   const [inviteParams, setInviteParams] = useState<{ hid: string; uid: string } | null>(null);
 
   const loginProcessedRef = useRef(false);
+  
+  // Refs to prevent notification check infinite loops
+  const notificationCheckInProgressRef = useRef(false);
+  const lastNotificationCheckKeyRef = useRef<string | null>(null);
 
   // Authentication State
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
@@ -201,6 +205,25 @@ const AppContent: React.FC = () => {
     const saved = localStorage.getItem('helpy_onboarding_step');
     return saved ? parseInt(saved, 10) : 1;
   });
+  
+  // PWA Modal + Onboarding coordination
+  // Onboarding should only start AFTER PWA modal is dismissed
+  const [pwaModalHandled, setPwaModalHandled] = useState<boolean>(() => {
+    // If user has ever dismissed the PWA modal, it's been "handled"
+    const dismissCount = localStorage.getItem('helpy_pwa_dismiss_count');
+    if (dismissCount && parseInt(dismissCount, 10) > 0) return true;
+    // If onboarding is already complete (step 0), no need to wait for PWA modal
+    const savedStep = localStorage.getItem('helpy_onboarding_step');
+    if (savedStep === '0') return true;
+    // Otherwise, wait for Dashboard to signal PWA modal is handled
+    return false;
+  });
+  
+  const handlePwaModalDismissed = useCallback(() => {
+    if (!pwaModalHandled) {
+      setPwaModalHandled(true);
+    }
+  }, [pwaModalHandled]);
 
   useEffect(() => {
     localStorage.setItem('helpy_onboarding_step', String(onboardingStep));
@@ -548,17 +571,37 @@ const AppContent: React.FC = () => {
 
   // Auto-subscribe to push notifications if user has them enabled
   // This ensures users with notificationsEnabled=true get subscribed automatically
+  // FIX: Use specific dependencies to prevent infinite loops caused by hasPushSubscription updates
   useEffect(() => {
+    const userId = currentUser?.id;
+    const householdId = currentUser?.householdId;
+    const notificationsEnabled = currentUser?.notificationsEnabled;
+    const currentHasPushSubscription = currentUser?.hasPushSubscription;
+    
     console.log('[App] Auto-subscribe useEffect triggered', {
       hasCurrentUser: !!currentUser,
-      userId: currentUser?.id,
-      householdId: currentUser?.householdId,
-      notificationsEnabled: currentUser?.notificationsEnabled,
-      fullCurrentUser: currentUser
+      userId,
+      householdId,
+      notificationsEnabled
     });
     
-    if (!currentUser || !currentUser.householdId) {
+    if (!userId || !householdId) {
       console.log('[App] Auto-subscribe skipped: missing currentUser or householdId');
+      return;
+    }
+    
+    // Create a unique key for this check to prevent duplicate runs
+    const checkKey = `${userId}-${householdId}-${notificationsEnabled}`;
+    
+    // Skip if we already checked with the same parameters
+    if (lastNotificationCheckKeyRef.current === checkKey) {
+      console.log('[App] Skipping duplicate notification check (same parameters)');
+      return;
+    }
+    
+    // Skip if a check is already in progress
+    if (notificationCheckInProgressRef.current) {
+      console.log('[App] Notification check already in progress, skipping');
       return;
     }
     
@@ -567,30 +610,31 @@ const AppContent: React.FC = () => {
     // Check REAL notification capability and update UI state accordingly
     // This ensures the bell icon reflects ACTUAL status, not just database flags
     const checkAndUpdateCapability = async () => {
+      notificationCheckInProgressRef.current = true;
+      lastNotificationCheckKeyRef.current = checkKey;
+      
       try {
         // If user disabled notifications, no need to check capability
-        if (currentUser.notificationsEnabled !== true) {
+        if (notificationsEnabled !== true) {
           console.log('[App] Notifications disabled by user preference');
           // Ensure hasPushSubscription is false when notifications are disabled
-          if (currentUser.hasPushSubscription) {
+          if (currentHasPushSubscription) {
             setCurrentUser(prev => prev ? { ...prev, hasPushSubscription: false } : prev);
           }
           return;
         }
         
         // Check actual capability
-        const capability = await checkNotificationCapability(
-          currentUser.id,
-          currentUser.householdId
-        );
+        const capability = await checkNotificationCapability(userId, householdId);
         
         console.log('[App] Notification capability:', capability);
         
         // Update UI state to reflect REALITY
         const isActuallyCapable = capability.capable;
         
-        if (isActuallyCapable !== currentUser.hasPushSubscription) {
-          console.log(`[App] Updating hasPushSubscription: ${currentUser.hasPushSubscription} → ${isActuallyCapable}`);
+        // Only update if the value actually changed
+        if (isActuallyCapable !== currentHasPushSubscription) {
+          console.log(`[App] Updating hasPushSubscription: ${currentHasPushSubscription} → ${isActuallyCapable}`);
           setCurrentUser(prev => prev ? { ...prev, hasPushSubscription: isActuallyCapable } : prev);
         }
         
@@ -602,7 +646,7 @@ const AppContent: React.FC = () => {
               capability.reason === 'subscription_mismatch' ||
               capability.reason === 'no_service_worker') {
             console.log('[App] Attempting auto-fix...');
-            const fixed = await autoFixNotificationIssues(currentUser.id, currentUser.householdId);
+            const fixed = await autoFixNotificationIssues(userId, householdId);
             if (fixed) {
               console.log('[App] ✅ Auto-fix successful');
               setCurrentUser(prev => prev ? { ...prev, hasPushSubscription: true } : prev);
@@ -617,11 +661,15 @@ const AppContent: React.FC = () => {
         }
       } catch (err) {
         console.warn('[App] Error checking notification capability:', err);
+      } finally {
+        notificationCheckInProgressRef.current = false;
       }
     };
     
     checkAndUpdateCapability();
-  }, [currentUser]); // Changed to depend on entire currentUser object instead of individual properties
+    // FIX: Only depend on specific properties that matter for notifications, NOT the whole object
+    // This prevents infinite loops when hasPushSubscription is updated by this very effect
+  }, [currentUser?.id, currentUser?.householdId, currentUser?.notificationsEnabled]);
 
   // Supabase Subscriptions - wait for authenticated client
   useEffect(() => {
@@ -1110,6 +1158,9 @@ const AppContent: React.FC = () => {
               setActiveView('profile');
             }}
             householdLimits={householdLimits}
+            onUpdateUser={handleUpdateUser}
+            isOnboardingActive={onboardingStep > 0 && pwaModalHandled}
+            onPwaModalDismissed={handlePwaModalDismissed}
           />
         );
 
@@ -1326,7 +1377,8 @@ const AppContent: React.FC = () => {
     <div 
       className={`transition-opacity duration-300 ${appReady ? 'opacity-100' : 'opacity-0'}`}
     >
-      {onboardingStep > 0 && (
+      {/* Only show onboarding AFTER PWA modal has been handled */}
+      {onboardingStep > 0 && pwaModalHandled && (
         <OnboardingOverlay
           stepIndex={onboardingStep - 1}
           userRole={currentUser.role as UserRole}

@@ -3,8 +3,9 @@ import { createPortal } from 'react-dom';
 import {
   AlertCircle, AlertTriangle, Heart, Settings, Plus, Trash2, X, Save, Camera,
   Image as ImageIcon, LogOut, Copy, Check, ChevronLeft, ChevronRight,
-  Shield, Lock, Crown, Mail, Share2, Bell, BellOff, BellDot, Phone, CheckCircle, Loader2, GraduationCap,
-  MessageCircleQuestionMark, Palette, Sun, Moon, Monitor, BookOpen, Pencil, CalendarCheck, HandCoins, CircleStar
+  Shield, Lock, Crown, Mail, Share2, Bell, BellOff, Phone, CheckCircle, Loader2, GraduationCap,
+  MessageCircleQuestionMark, Palette, Sun, Moon, Monitor, BookOpen, Pencil, CalendarCheck, HandCoins, CircleStar,
+  MoreVertical
 } from 'lucide-react';
 import FeedbackSection from './FeedbackSection';
 import UserGuide from './UserGuide';
@@ -26,6 +27,7 @@ import {
 } from '../services/pushNotificationService';
 import { compressImageForAvatar } from '../utils/imageCompression';
 import { getRoleConfig } from '../config/rolePermissions';
+import { isRunningAsPwa, isIosDevice, isAndroidDevice } from '../utils/pwaUtils';
 
 interface ProfileProps extends BaseViewProps {
   users: User[];
@@ -1289,7 +1291,7 @@ const Profile: React.FC<ProfileProps> = ({
                           {(() => {
                             if (user.role === 'Child') return <BellOff size={12} className="text-muted-foreground" />;
                             if (!user.notificationsEnabled) return <BellOff size={12} className="text-destructive" />;
-                            if (!user.hasPushSubscription) return <BellDot size={12} className="text-orange-500" />;
+                            if (!user.hasPushSubscription) return <BellOff size={12} className="text-orange-500" />;
                             return <Bell size={12} className="text-primary" />;
                           })()}
                         </div>
@@ -1390,7 +1392,7 @@ const Profile: React.FC<ProfileProps> = ({
                     if (!selectedUser.hasPushSubscription) {
                       return (
                         <>
-                          <BellDot size={16} className="text-orange-500 shrink-0 mt-0.5" />
+                          <BellOff size={16} className="text-orange-500 shrink-0 mt-0.5" />
                           <div className="text-body text-muted-foreground">
                              <p className="font-bold text-foreground mb-1">{t['notifications.incomplete'] || 'Notification setup is incomplete.'} <span className="font-normal">{(t['notifications.ask_to'] || 'Ask {name} to:').replace('{name}', selectedUser.name.split(' ')[0])}</span></p>
                              <ol className="list-decimal pl-4 space-y-1">
@@ -3771,156 +3773,274 @@ const Profile: React.FC<ProfileProps> = ({
               ))}
             </div>
 
-            {/* Notifications Toggle */}
+            {/* Notifications Section - State-based UI */}
             <div className="bg-card rounded-2xl shadow-sm overflow-hidden mt-6">
-              <div className="px-5 py-4 flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <Bell size={18} className="text-primary shrink-0" />
-                  <div className="min-w-0">
-                    <p className="font-bold text-foreground text-title">{t['profile.notifications'] || 'Notifications'}</p>
-                    {!pushSupported ? (
-                      <p className="text-caption text-muted-foreground">
-                        {t['settings.push_not_supported'] || 'Not supported in this browser'}
-                      </p>
-                    ) : pushPermission === 'denied' ? (
-                      <p className="text-caption text-muted-foreground">
-                        {t['settings.push_blocked'] || 'Blocked - enable in browser settings'}
-                      </p>
-                    ) : (
-                      <p className="text-caption text-muted-foreground">{t['settings.push_description_full'] || 'Get notified about family activity: Shopping, Tasks, Meals, Expenses, Family Board'}</p>
-                    )}
-                  </div>
-                </div>
-                <button
-                  disabled={!pushSupported || pushPermission === 'denied' || isTogglingNotifications}
-                  onClick={async () => {
-                    if (!pushSupported || pushPermission === 'denied') return;
-                    
-                    setIsTogglingNotifications(true);
-                    isTogglingRef.current = true;
-                    const newValue = !accountData.notificationsEnabled;
-                    
-                    try {
-                      if (newValue) {
-                        // TURNING ON - Must verify everything works before showing success
-                        setAccountData({ ...accountData, notificationsEnabled: true });
-                        
-                        try {
-                          // Step 1: Subscribe (this requests permission if needed)
-                          const subscription = await subscribeToPush(
-                            currentUser.id,
-                            currentUser.householdId
-                          );
-                          
-                          setPushPermission(getNotificationPermission());
-                          
-                          // Step 2: Verify it ACTUALLY works
-                          const capability = await checkNotificationCapability(
-                            currentUser.id,
-                            currentUser.householdId
-                          );
-                          
-                          if (subscription && capability.capable) {
-                            // SUCCESS - Everything is working, update BOTH flags
-                            console.log('[Profile] ✅ Notifications fully enabled and verified');
-                            await onUpdate(currentUser.id, { 
-                              notificationsEnabled: true,
-                              hasPushSubscription: true  // This makes the bell icon blue IMMEDIATELY
-                            });
-                          } else {
-                            // FAILED - Revert the toggle
-                            console.warn('[Profile] ❌ Subscription failed:', capability.reason);
-                            setAccountData({ ...accountData, notificationsEnabled: false });
-                            
-                            // Show user why it failed (using Helpy modal, not browser alert)
-                            if (capability.reason === 'permission_denied') {
-                              showAlert(
-                                t['notifications.blocked_title'] || 'Notifications Blocked',
-                                t['notifications.blocked'] || 'Notifications are blocked. Please enable them in your browser settings (tap the lock icon in the address bar).',
-                                'error'
-                              );
-                            } else if (capability.reason === 'permission_not_asked') {
-                              showAlert(
-                                t['notifications.try_again_title'] || 'Permission Required',
-                                t['notifications.try_again'] || 'Please try again and tap "Allow" when prompted.',
-                                'info'
-                              );
-                            } else {
-                              showAlert(
-                                t['notifications.setup_failed_title'] || 'Setup Failed',
-                                t['notifications.setup_failed'] || 'Failed to enable notifications. Please try again.',
-                                'error'
-                              );
+              {(() => {
+                const isPwa = isRunningAsPwa();
+                const isWorking = pushSupported && pushPermission === 'granted' && accountData.notificationsEnabled && currentUser.hasPushSubscription;
+                const isBlocked = pushPermission === 'denied';
+                const isOff = !accountData.notificationsEnabled;
+                
+                // STATE 1: Not running as PWA (browser mode)
+                if (!isPwa) {
+                  return (
+                    <div className="px-5 py-4">
+                      <div className="flex items-center gap-3 mb-3">
+                        <BellOff size={18} className="text-muted-foreground shrink-0" />
+                        <div>
+                          <p className="font-bold text-foreground text-title">{t['profile.notifications'] || 'Notifications'}</p>
+                          <p className="text-caption text-muted-foreground">
+                            {t['pwa.add_to_home'] || 'Add Helpy to Home Screen'}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="bg-secondary/50 rounded-xl p-4">
+                        {isIosDevice() ? (
+                          <>
+                            <p className="text-body text-muted-foreground mb-3">
+                              {t['pwa.notification_requires_install'] || 'To receive notifications, add Helpy to your home screen:'}
+                            </p>
+                            <ol className="text-body text-muted-foreground space-y-2 list-decimal pl-4">
+                              <li>
+                                {t['pwa.ios_step1_tap_share'] || 'Tap the'} <strong>{t['pwa.share'] || 'Share'}</strong> {t['pwa.ios_step1_button'] || 'button'} <Share2 size={14} className="inline text-primary" />
+                                <p className="text-caption text-muted-foreground mt-0.5">{t['pwa.ios_share_location'] || '(at the bottom of the screen)'}</p>
+                              </li>
+                              <li>
+                                {t['pwa.ios_step2_scroll'] || 'Scroll down and tap'} <strong>"{t['pwa.add_to_home_screen'] || 'Add to Home Screen'}"</strong>
+                              </li>
+                              <li>
+                                {t['pwa.ios_step3_tap'] || 'Tap'} <strong>"{t['pwa.add'] || 'Add'}"</strong> {t['pwa.ios_step3_location'] || 'in the top right corner'}
+                              </li>
+                            </ol>
+                          </>
+                        ) : isAndroidDevice() ? (
+                          <>
+                            <p className="text-body text-muted-foreground mb-3">
+                              {t['pwa.notification_requires_install'] || 'To receive notifications, add Helpy to your home screen:'}
+                            </p>
+                            <ol className="text-body text-muted-foreground space-y-2 list-decimal pl-4">
+                              <li>
+                                {t['pwa.android_step1_tap'] || 'Tap the'} <strong>{t['pwa.menu'] || 'menu'}</strong> <MoreVertical size={14} className="inline text-primary" />
+                                <p className="text-caption text-muted-foreground mt-0.5">{t['pwa.android_menu_location'] || '(three dots in the top right corner)'}</p>
+                              </li>
+                              <li>
+                                {t['pwa.android_step2_tap'] || 'Tap'} <strong>"{t['pwa.add_to_home_screen'] || 'Add to Home Screen'}"</strong> {t['pwa.or'] || 'or'} <strong>"{t['pwa.install_app'] || 'Install app'}"</strong>
+                              </li>
+                              <li>
+                                {t['pwa.android_step3_tap'] || 'Tap'} <strong>"{t['pwa.add'] || 'Add'}"</strong> {t['pwa.or'] || 'or'} <strong>"{t['pwa.install'] || 'Install'}"</strong> {t['pwa.to_confirm'] || 'to confirm'}
+                              </li>
+                            </ol>
+                          </>
+                        ) : (
+                          <>
+                            <p className="text-body text-muted-foreground mb-2">
+                              <strong>{t['pwa.desktop_mobile_best'] || 'Notifications work best on mobile.'}</strong>
+                            </p>
+                            <p className="text-body text-muted-foreground">
+                              {t['pwa.desktop_install_mobile'] || 'Install Helpy on your iPhone or Android to receive notifications on the go.'}
+                            </p>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  );
+                }
+
+                // STATE 2: Permission blocked
+                if (isBlocked) {
+                  return (
+                    <div className="px-5 py-4">
+                      <div className="flex items-center gap-3 mb-3">
+                        <BellOff size={18} className="text-destructive shrink-0" />
+                        <div>
+                          <p className="font-bold text-foreground text-title">{t['profile.notifications'] || 'Notifications'}</p>
+                          <p className="text-caption text-destructive">
+                            {t['notifications.blocked_status'] || 'Blocked'}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="bg-destructive/10 rounded-xl p-4">
+                        <p className="text-body text-destructive mb-3">
+                          {t['notifications.blocked_explanation'] || 'Notifications are blocked. To enable them:'}
+                        </p>
+                        {isIosDevice() ? (
+                          <ol className="text-body text-destructive space-y-2 list-decimal pl-4">
+                            <li>{t['notifications.ios_unblock_1'] || 'Open Settings on your iPhone'}</li>
+                            <li>{t['notifications.ios_unblock_2'] || 'Scroll down and tap "Helpy"'}</li>
+                            <li>{t['notifications.ios_unblock_3'] || 'Tap "Notifications" and enable "Allow Notifications"'}</li>
+                          </ol>
+                        ) : isAndroidDevice() ? (
+                          <ol className="text-body text-destructive space-y-2 list-decimal pl-4">
+                            <li>{t['notifications.android_unblock_1'] || 'Open Settings on your phone'}</li>
+                            <li>{t['notifications.android_unblock_2'] || 'Tap "Apps" then find "Helpy"'}</li>
+                            <li>{t['notifications.android_unblock_3'] || 'Tap "Notifications" and enable them'}</li>
+                          </ol>
+                        ) : (
+                          <ol className="text-body text-destructive space-y-2 list-decimal pl-4">
+                            <li>{t['notifications.desktop_unblock_1'] || 'Click the lock icon in the address bar'}</li>
+                            <li>{t['notifications.desktop_unblock_2'] || 'Find "Notifications" and change to "Allow"'}</li>
+                          </ol>
+                        )}
+                      </div>
+                    </div>
+                  );
+                }
+
+                // STATE 3: Working (permission granted + subscription active)
+                if (isWorking) {
+                  return (
+                    <div className="px-5 py-4">
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          <Bell size={18} className="text-primary shrink-0" />
+                          <div className="min-w-0">
+                            <p className="font-bold text-foreground text-title">{t['profile.notifications'] || 'Notifications'}</p>
+                            <p className="text-caption text-primary font-medium">
+                              {t['settings.enabled'] || 'Enabled'}
+                            </p>
+                          </div>
+                        </div>
+                        {/* Mute toggle - allows user to mute without going to OS settings */}
+                        <button
+                          disabled={isTogglingNotifications}
+                          onClick={async () => {
+                            setIsTogglingNotifications(true);
+                            isTogglingRef.current = true;
+                            try {
+                              setAccountData({ ...accountData, notificationsEnabled: false });
+                              await onUpdate(currentUser.id, { 
+                                notificationsEnabled: false,
+                                hasPushSubscription: false
+                              });
+                              await unsubscribeFromPush(currentUser.id, currentUser.householdId);
+                              console.log('[Profile] Notifications muted');
+                            } catch (error) {
+                              console.error('[Profile] Error muting notifications:', error);
+                              setAccountData({ ...accountData, notificationsEnabled: true });
+                            } finally {
+                              setTimeout(() => {
+                                isTogglingRef.current = false;
+                                setIsTogglingNotifications(false);
+                              }, 300);
                             }
+                          }}
+                          className="shrink-0 relative inline-flex h-6 w-11 items-center rounded-full transition-colors bg-primary"
+                        >
+                          {isTogglingNotifications ? (
+                            <span className="absolute inset-0 flex items-center justify-center">
+                              <Loader2 size={14} className="animate-spin text-white" />
+                            </span>
+                          ) : (
+                            <span className="inline-block h-4 w-4 transform rounded-full bg-white translate-x-6" />
+                          )}
+                        </button>
+                      </div>
+                      <p className="text-caption text-muted-foreground mt-2 ml-8">
+                        {t['settings.manage_in_phone'] || 'Manage notification settings in your phone Settings.'}
+                      </p>
+                    </div>
+                  );
+                }
+
+                // STATE 4: Off (user disabled) or needs setup
+                return (
+                  <div className="px-5 py-4">
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <BellOff size={18} className={isOff ? "text-muted-foreground shrink-0" : "text-orange-500 shrink-0"} />
+                        <div className="min-w-0">
+                          <p className="font-bold text-foreground text-title">{t['profile.notifications'] || 'Notifications'}</p>
+                          <p className="text-caption text-muted-foreground">
+                            {isOff 
+                              ? (t['settings.off'] || 'Off')
+                              : (t['settings.setup_incomplete'] || 'Setup incomplete')
+                            }
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        disabled={isTogglingNotifications}
+                        onClick={async () => {
+                          setIsTogglingNotifications(true);
+                          isTogglingRef.current = true;
+                          
+                          try {
+                            // Optimistically update UI
+                            setAccountData({ ...accountData, notificationsEnabled: true });
+                            
+                            // Subscribe (this will request permission if needed)
+                            const subscription = await subscribeToPush(
+                              currentUser.id,
+                              currentUser.householdId
+                            );
+                            
+                            setPushPermission(getNotificationPermission());
+                            
+                            // Verify capability
+                            const capability = await checkNotificationCapability(
+                              currentUser.id,
+                              currentUser.householdId
+                            );
+                            
+                            if (subscription && capability.capable) {
+                              console.log('[Profile] Notifications enabled successfully');
+                              await onUpdate(currentUser.id, { 
+                                notificationsEnabled: true,
+                                hasPushSubscription: true
+                              });
+                            } else {
+                              // Revert on failure
+                              console.warn('[Profile] Subscription failed:', capability.reason);
+                              setAccountData({ ...accountData, notificationsEnabled: false });
+                              
+                              if (capability.reason === 'permission_denied') {
+                                setPushPermission('denied');
+                              } else {
+                                showAlert(
+                                  t['notifications.setup_failed_title'] || 'Setup Failed',
+                                  t['notifications.setup_failed'] || 'Failed to enable notifications. Please try again.',
+                                  'error'
+                                );
+                              }
+                            }
+                          } catch (error) {
+                            console.error('[Profile] Error enabling notifications:', error);
+                            setAccountData({ ...accountData, notificationsEnabled: false });
+                            showAlert(
+                              t['notifications.setup_failed_title'] || 'Setup Failed',
+                              t['notifications.setup_failed'] || 'Failed to enable notifications. Please try again.',
+                              'error'
+                            );
+                          } finally {
+                            setTimeout(() => {
+                              isTogglingRef.current = false;
+                              setIsTogglingNotifications(false);
+                            }, 300);
                           }
-                        } catch (subError) {
-                          console.error('[Profile] Error subscribing to push:', subError);
-                          setPushPermission(getNotificationPermission());
-                          setAccountData({ ...accountData, notificationsEnabled: false });
-                          showAlert(
-                            t['notifications.setup_failed_title'] || 'Setup Failed',
-                            t['notifications.setup_failed'] || 'Failed to enable notifications. Please try again.',
-                            'error'
-                          );
-                        }
-                      } else {
-                        // TURNING OFF - Simple, just disable
-                        setAccountData({ ...accountData, notificationsEnabled: false });
-                        await onUpdate(currentUser.id, { 
-                          notificationsEnabled: false,
-                          hasPushSubscription: false  // Update immediately
-                        });
-                        
-                        try {
-                          await unsubscribeFromPush(currentUser.id, currentUser.householdId);
-                          console.log('[Profile] ✅ Successfully unsubscribed from push notifications');
-                        } catch (unsubError) {
-                          console.error('[Profile] Error unsubscribing from push:', unsubError);
-                        }
-                      }
-                    } catch (error) {
-                      console.error('[Profile] Error toggling notifications:', error);
-                      setAccountData({ ...accountData, notificationsEnabled: !newValue });
-                      setIsTogglingNotifications(false);
-                      isTogglingRef.current = false;
-                      return;
-                    }
-                    setTimeout(() => {
-                      isTogglingRef.current = false;
-                      setIsTogglingNotifications(false);
-                    }, 800);
-                  }}
-                  className={`shrink-0 relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                    !pushSupported || pushPermission === 'denied'
-                      ? 'bg-muted-foreground/20 cursor-not-allowed'
-                      : accountData.notificationsEnabled 
-                      ? 'bg-primary' 
-                      : 'bg-muted-foreground/30'
-                  }`}
-                >
-                  {isTogglingNotifications ? (
-                    <span className="absolute inset-0 flex items-center justify-center">
-                      <Loader2 size={14} className="animate-spin text-muted-foreground" />
-                    </span>
-                  ) : (
-                    <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        accountData.notificationsEnabled ? 'translate-x-6' : 'translate-x-1'
-                      }`}
-                    />
-                  )}
-                </button>
-              </div>
-              {/* Permission blocked message */}
-              {pushSupported && pushPermission === 'denied' && (
-                <div className="mx-5 mb-4">
-                  <div className="bg-destructive/10 border border-destructive/20 rounded-xl p-3">
-                    <p className="text-caption text-destructive">
-                      {t['settings.notifications_blocked'] || 'Notifications are blocked. To enable them, go to your browser settings and allow notifications for this site.'}
+                        }}
+                        className={`shrink-0 relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                          accountData.notificationsEnabled ? 'bg-primary' : 'bg-muted-foreground/30'
+                        }`}
+                      >
+                        {isTogglingNotifications ? (
+                          <span className="absolute inset-0 flex items-center justify-center">
+                            <Loader2 size={14} className="animate-spin text-muted-foreground" />
+                          </span>
+                        ) : (
+                          <span
+                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                              accountData.notificationsEnabled ? 'translate-x-6' : 'translate-x-1'
+                            }`}
+                          />
+                        )}
+                      </button>
+                    </div>
+                    <p className="text-caption text-muted-foreground mt-2 ml-8">
+                      {t['settings.push_description_short'] || 'Get notified about family activity.'}
                     </p>
                   </div>
-                </div>
-              )}
+                );
+              })()}
             </div>
           </div>
 

@@ -1696,7 +1696,7 @@ const Profile: React.FC<ProfileProps> = ({
           {/* Footer */}
           <div className="helpy-footer">
             <span className="helpy-logo">helpy</span>
-            <span className="text-micro text-muted-foreground/50 block mt-1">v2026.01.05.6</span>
+            <span className="text-micro text-muted-foreground/50 block mt-1">v2026.01.05.7</span>
           </div>
         </div>
 

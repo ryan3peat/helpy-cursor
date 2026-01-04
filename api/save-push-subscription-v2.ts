@@ -117,7 +117,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         p256dh_key,
         auth_key,
         user_agent: user_agent || null,
-        device_fingerprint: device_fingerprint || null,
         updated_at: new Date().toISOString()
       }, {
         onConflict: 'user_id,endpoint',

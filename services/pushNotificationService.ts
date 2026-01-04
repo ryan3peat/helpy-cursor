@@ -446,10 +446,43 @@ export async function ensureCurrentSubscriptionSaved(
       console.log('[Push] Using existing browser subscription');
     }
     
-    // ALWAYS save to database (this is the critical fix)
-    console.log('[Push] Saving subscription to database for user:', userId);
-    await saveSubscriptionToDatabase(subscription, userId, householdId);
-    console.log('[Push] ✅ Subscription saved to database successfully');
+    // ALWAYS save to database using API route (bypasses RLS issues)
+    console.log('[Push] Saving subscription via API for user:', userId);
+    
+    const subscriptionJson = subscription.toJSON();
+    if (!subscriptionJson.endpoint || !subscriptionJson.keys) {
+      console.error('[Push] ❌ Invalid subscription data');
+      return false;
+    }
+    
+    // Use API route which handles Clerk ID to UUID resolution server-side
+    const appUrl = import.meta.env.VITE_APP_URL || 'https://app.helpyfam.com';
+    const apiUrl = `${appUrl}/api/save-push-subscription-v2`;
+    
+    console.log('[Push] Calling API:', apiUrl);
+    
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user_id: userId,  // Can be Clerk ID or UUID - API will resolve
+        household_id: householdId,
+        endpoint: subscriptionJson.endpoint,
+        p256dh_key: subscriptionJson.keys.p256dh,
+        auth_key: subscriptionJson.keys.auth,
+        user_agent: navigator.userAgent,
+        device_fingerprint: getDeviceId()
+      }),
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+      console.error('[Push] ❌ API error:', errorData);
+      throw new Error(errorData.error || `API failed: ${response.status}`);
+    }
+    
+    const result = await response.json();
+    console.log('[Push] ✅ Subscription saved via API:', result);
     
     return true;
   } catch (error) {

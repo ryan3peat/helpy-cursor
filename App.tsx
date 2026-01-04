@@ -83,6 +83,11 @@ const AppContent: React.FC = () => {
   // App fade-in state (replaces old intro animation)
   const [appReady, setAppReady] = useState(false);
   
+  // VERSION INDICATOR - Change this to verify new code is deployed
+  useEffect(() => {
+    console.log('[App] 📦 CODE VERSION: 2026-01-05-sync-fix-v2');
+  }, []);
+  
   // Trigger fade-in after a brief moment (allows splash screen to show)
   useEffect(() => {
     const timer = setTimeout(() => setAppReady(true), 100);
@@ -640,13 +645,31 @@ const AppContent: React.FC = () => {
         // and the database has old endpoints that don't work
         if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
           console.log('[App] 🔄 Ensuring current browser subscription is synced to database...');
+          console.log('[App] 🔍 Debug: userId =', userId, 'householdId =', householdId);
           const synced = await ensureCurrentSubscriptionSaved(userId, householdId);
           if (synced) {
             console.log('[App] ✅ Subscription synced successfully');
             setCurrentUser(prev => prev ? { ...prev, hasPushSubscription: true } : prev);
             return; // No need for further checks, we just synced
           } else {
-            console.log('[App] ⚠️ Subscription sync failed, continuing with capability check...');
+            console.log('[App] ⚠️ Subscription sync failed on initial attempt');
+            // Schedule a delayed retry as a fallback (gives more time for service worker)
+            console.log('[App] 📅 Scheduling delayed retry in 5 seconds...');
+            setTimeout(async () => {
+              console.log('[App] ⏰ Delayed retry: Attempting subscription sync again...');
+              const delayedSync = await ensureCurrentSubscriptionSaved(userId, householdId);
+              if (delayedSync) {
+                console.log('[App] ✅ Delayed sync succeeded!');
+                setCurrentUser(prev => prev ? { ...prev, hasPushSubscription: true } : prev);
+              } else {
+                console.log('[App] ❌ Delayed sync also failed');
+              }
+            }, 5000);
+          }
+        } else {
+          console.log('[App] ⏭️ Skipping sync: Notification not defined or permission not granted');
+          if (typeof Notification !== 'undefined') {
+            console.log('[App] Current permission:', Notification.permission);
           }
         }
         

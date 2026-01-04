@@ -358,16 +358,27 @@ export async function checkNotificationCapability(
  */
 export async function ensureCurrentSubscriptionSaved(
   userId: string,
-  householdId: string
+  householdId: string,
+  retryCount: number = 0
 ): Promise<boolean> {
-  console.log('[Push] 🔄 Ensuring current subscription is saved...');
+  const MAX_RETRIES = 3;
+  const RETRY_DELAYS = [0, 1000, 2000]; // No delay first, then 1s, then 2s
+  
+  console.log(`[Push] 🔄 Ensuring current subscription is saved... (attempt ${retryCount + 1}/${MAX_RETRIES})`);
+  
+  // Add delay for retries to give service worker time to initialize
+  if (retryCount > 0 && RETRY_DELAYS[retryCount]) {
+    console.log(`[Push] Waiting ${RETRY_DELAYS[retryCount]}ms before retry...`);
+    await new Promise(resolve => setTimeout(resolve, RETRY_DELAYS[retryCount]));
+  }
   
   if (!isPushSupported()) {
-    console.log('[Push] ❌ Push not supported');
+    console.log('[Push] ❌ Push not supported in this browser');
     return false;
   }
   
   const permission = getNotificationPermission();
+  console.log('[Push] Current permission:', permission);
   if (permission !== 'granted') {
     console.log('[Push] ❌ Permission not granted:', permission);
     return false;
@@ -375,22 +386,49 @@ export async function ensureCurrentSubscriptionSaved(
   
   try {
     // Get or register service worker
+    console.log('[Push] Getting service worker registration...');
     let registration = await getServiceWorkerRegistration();
+    console.log('[Push] Existing registration:', registration ? 'found' : 'not found');
+    
     if (!registration) {
       console.log('[Push] Registering service worker...');
       registration = await registerServiceWorker();
+      console.log('[Push] New registration:', registration ? 'created' : 'failed');
     }
     
     if (!registration) {
       console.error('[Push] ❌ No service worker registration');
+      // Retry if we haven't exceeded max retries
+      if (retryCount < MAX_RETRIES - 1) {
+        console.log('[Push] Will retry...');
+        return ensureCurrentSubscriptionSaved(userId, householdId, retryCount + 1);
+      }
       return false;
     }
     
-    // Wait for service worker to be ready
-    await navigator.serviceWorker.ready;
+    // Wait for service worker to be ready with timeout
+    console.log('[Push] Waiting for service worker to be ready...');
+    const readyPromise = navigator.serviceWorker.ready;
+    const timeoutPromise = new Promise<never>((_, reject) => 
+      setTimeout(() => reject(new Error('Service worker ready timeout')), 10000)
+    );
+    
+    try {
+      await Promise.race([readyPromise, timeoutPromise]);
+      console.log('[Push] ✅ Service worker is ready');
+    } catch (timeoutError) {
+      console.error('[Push] ⚠️ Service worker ready timed out');
+      if (retryCount < MAX_RETRIES - 1) {
+        console.log('[Push] Will retry...');
+        return ensureCurrentSubscriptionSaved(userId, householdId, retryCount + 1);
+      }
+      return false;
+    }
     
     // Get current browser subscription
+    console.log('[Push] Getting existing browser subscription...');
     let subscription = await registration.pushManager.getSubscription();
+    console.log('[Push] Existing subscription:', subscription ? subscription.endpoint.substring(0, 50) + '...' : 'none');
     
     // If no subscription exists, create one
     if (!subscription) {
@@ -405,17 +443,22 @@ export async function ensureCurrentSubscriptionSaved(
       });
       console.log('[Push] ✅ New subscription created:', subscription.endpoint.substring(0, 50) + '...');
     } else {
-      console.log('[Push] Using existing browser subscription:', subscription.endpoint.substring(0, 50) + '...');
+      console.log('[Push] Using existing browser subscription');
     }
     
     // ALWAYS save to database (this is the critical fix)
-    console.log('[Push] Saving subscription to database...');
+    console.log('[Push] Saving subscription to database for user:', userId);
     await saveSubscriptionToDatabase(subscription, userId, householdId);
-    console.log('[Push] ✅ Subscription saved successfully');
+    console.log('[Push] ✅ Subscription saved to database successfully');
     
     return true;
   } catch (error) {
     console.error('[Push] ❌ Failed to ensure subscription:', error);
+    // Retry on failure
+    if (retryCount < MAX_RETRIES - 1) {
+      console.log('[Push] Will retry after error...');
+      return ensureCurrentSubscriptionSaved(userId, householdId, retryCount + 1);
+    }
     return false;
   }
 }

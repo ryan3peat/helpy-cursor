@@ -83,11 +83,6 @@ const AppContent: React.FC = () => {
   // App fade-in state (replaces old intro animation)
   const [appReady, setAppReady] = useState(false);
   
-  // VERSION INDICATOR - Change this to verify new code is deployed
-  useEffect(() => {
-    console.log('[App] 📦 CODE VERSION: 2026-01-05-sync-fix-v2');
-  }, []);
-  
   // Trigger fade-in after a brief moment (allows splash screen to show)
   useEffect(() => {
     const timer = setTimeout(() => setAppReady(true), 100);
@@ -346,6 +341,54 @@ const AppContent: React.FC = () => {
       window.scrollTo(0, 0);
     }
   };
+
+  // Listen for service worker NAVIGATE messages (from notification clicks)
+  // This allows in-app navigation without full page reload, preventing Clerk auth flash
+  useEffect(() => {
+    const handleServiceWorkerMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'NAVIGATE' && event.data?.url) {
+        const url = event.data.url as string;
+        console.log('[App] Received NAVIGATE message from service worker:', url);
+        
+        // Parse the hash URL and navigate in-app
+        if (url.includes('#todo') || url.includes('todo')) {
+          // Extract section if present (e.g., ?section=shopping or ?section=task)
+          const sectionMatch = url.match(/section=(\w+)/);
+          const section = sectionMatch ? sectionMatch[1] : undefined;
+          setActiveView('todo');
+          setNavData(section ? { section } : null);
+          console.log('[App] Navigating to ToDo', section ? `(section: ${section})` : '');
+        } else if (url.includes('#meals') || url.includes('meals')) {
+          setActiveView('meals');
+          setNavData(null);
+          console.log('[App] Navigating to Meals');
+        } else if (url.includes('#expenses') || url.includes('expenses')) {
+          setActiveView('expenses');
+          setNavData(null);
+          console.log('[App] Navigating to Expenses');
+        } else if (url.includes('#profile') || url.includes('profile')) {
+          setActiveView('profile');
+          setNavData(null);
+          console.log('[App] Navigating to Profile');
+        } else {
+          // Default to dashboard
+          setActiveView('dashboard');
+          setNavData(null);
+          console.log('[App] Navigating to Dashboard (default)');
+        }
+        
+        // Mark app as seen for badge tracking
+        markAppAsSeen();
+      }
+    };
+    
+    // Add listener for service worker messages
+    navigator.serviceWorker?.addEventListener('message', handleServiceWorkerMessage);
+    
+    return () => {
+      navigator.serviceWorker?.removeEventListener('message', handleServiceWorkerMessage);
+    };
+  }, []);
   
   // Handle edit helper from Helper Management - navigates to Profile and opens edit modal
   const handleEditHelper = (helperId: string) => {

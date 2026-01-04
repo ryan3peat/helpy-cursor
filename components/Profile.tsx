@@ -59,126 +59,6 @@ const getRolePriority = (role: string): number => {
 // localStorage key for caching household name
 const HOUSEHOLD_NAME_CACHE_KEY = 'helpy_household_name';
 
-// DEBUG PANEL - Remove after fixing notifications
-const DebugPanel: React.FC<{ currentUser: User | null }> = ({ currentUser }) => {
-  const [swStatus, setSwStatus] = useState<string>('checking...');
-  const [subStatus, setSubStatus] = useState<string>('checking...');
-  const [syncResult, setSyncResult] = useState<string>('');
-  const [isSyncing, setIsSyncing] = useState(false);
-
-  useEffect(() => {
-    const checkStatus = async () => {
-      // Check service worker
-      if ('serviceWorker' in navigator) {
-        try {
-          const regs = await navigator.serviceWorker.getRegistrations();
-          if (regs.length > 0) {
-            const reg = regs[0];
-            setSwStatus(`active: ${reg.active ? 'yes' : 'no'}, scope: ${reg.scope.substring(0, 30)}`);
-            
-            // Check subscription
-            const sub = await reg.pushManager.getSubscription();
-            if (sub) {
-              setSubStatus(`exists: ${sub.endpoint.substring(0, 40)}...`);
-            } else {
-              setSubStatus('none');
-            }
-          } else {
-            setSwStatus('no registrations');
-            setSubStatus('N/A');
-          }
-        } catch (e: any) {
-          setSwStatus(`error: ${e.message}`);
-        }
-      } else {
-        setSwStatus('not supported');
-      }
-    };
-    checkStatus();
-  }, []);
-
-  const handleManualSync = async () => {
-    if (!currentUser?.id || !currentUser?.householdId) {
-      setSyncResult('No user/household');
-      return;
-    }
-    setIsSyncing(true);
-    setSyncResult('syncing...');
-    try {
-      const { ensureCurrentSubscriptionSaved } = await import('../services/pushNotificationService');
-      const result = await ensureCurrentSubscriptionSaved(currentUser.id, currentUser.householdId);
-      setSyncResult(result ? '✅ SUCCESS' : '❌ FAILED (check logs)');
-    } catch (e: any) {
-      setSyncResult(`❌ ${e.message?.substring(0, 100) || 'Unknown error'}`);
-    }
-    setIsSyncing(false);
-  };
-
-  // Direct API test
-  const handleDirectApiTest = async () => {
-    if (!currentUser?.id || !currentUser?.householdId) {
-      setSyncResult('No user/household');
-      return;
-    }
-    setIsSyncing(true);
-    setSyncResult('testing API...');
-    try {
-      const appUrl = 'https://app.helpyfam.com';
-      const response = await fetch(`${appUrl}/api/save-push-subscription-v2`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user_id: currentUser.id,
-          household_id: currentUser.householdId,
-          endpoint: 'test-endpoint',
-          p256dh_key: 'test-key',
-          auth_key: 'test-auth'
-        }),
-      });
-      const data = await response.json();
-      setSyncResult(response.ok ? `✅ API OK: ${JSON.stringify(data).substring(0, 50)}` : `❌ ${response.status}: ${data.error || 'Failed'}`);
-    } catch (e: any) {
-      setSyncResult(`❌ API: ${e.message?.substring(0, 80) || 'Network error'}`);
-    }
-    setIsSyncing(false);
-  };
-
-  return (
-    <div className="bg-muted/50 rounded-lg p-4 text-micro text-muted-foreground space-y-1 mt-6">
-      <div className="font-bold text-foreground mb-2">Debug Info:</div>
-      <div>Permission: {typeof Notification !== 'undefined' ? Notification.permission : 'N/A'}</div>
-      <div>notificationsEnabled: {String(currentUser?.notificationsEnabled)}</div>
-      <div>hasPushSubscription: {String(currentUser?.hasPushSubscription)}</div>
-      <div>isPWA: {String(isRunningAsPwa())}</div>
-      <div className="mt-2 pt-2 border-t border-muted-foreground/20">
-        <div>user.id: {currentUser?.id?.substring(0, 20)}...</div>
-        <div>isUUID: {String(currentUser?.id?.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i) !== null)}</div>
-      </div>
-      <div className="mt-2 pt-2 border-t border-muted-foreground/20">
-        <div>SW: {swStatus}</div>
-        <div>Browser Sub: {subStatus}</div>
-      </div>
-      <div className="mt-2 pt-2 border-t border-muted-foreground/20 flex gap-2 flex-wrap">
-        <button 
-          onClick={handleManualSync}
-          disabled={isSyncing}
-          className="bg-primary text-primary-foreground px-3 py-1.5 rounded-lg text-caption font-semibold"
-        >
-          {isSyncing ? '...' : 'Sync'}
-        </button>
-        <button 
-          onClick={handleDirectApiTest}
-          disabled={isSyncing}
-          className="bg-secondary text-foreground px-3 py-1.5 rounded-lg text-caption font-semibold"
-        >
-          Test API
-        </button>
-      </div>
-      {syncResult && <div className="mt-2 text-micro font-bold break-all">{syncResult}</div>}
-    </div>
-  );
-};
-
 const Profile: React.FC<ProfileProps> = ({
   users, onAdd, onUpdate, onDelete, onBack, currentUser, onLogout, t, currentLang, initialEditUserId, onRestartTutorial
 }) => {
@@ -1690,13 +1570,9 @@ const Profile: React.FC<ProfileProps> = ({
             </div>
           </div>
 
-          {/* DEBUG PANEL - Remove after fixing */}
-          <DebugPanel currentUser={currentUser} />
-
           {/* Footer */}
           <div className="helpy-footer">
             <span className="helpy-logo">helpy</span>
-            <span className="text-micro text-muted-foreground/50 block mt-1">v2026.01.05.7</span>
           </div>
         </div>
 

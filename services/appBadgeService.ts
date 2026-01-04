@@ -210,18 +210,18 @@ export const updateBadgeFromData = (
 };
 
 /**
- * Mark app as seen and sync badge with actual notifications
+ * Mark app as seen and clear badge
  * Call this when the app becomes visible/active
  * 
- * Note: We sync instead of clear because the user may still have
- * pending notifications they haven't dismissed yet. The badge should
- * reflect the actual notification count, not 0.
+ * Note: We clear the badge when the app opens because:
+ * - Opening the app = user has seen the new content
+ * - Notifications remain in the OS notification center for review
+ * - This matches typical app behavior (Instagram, WhatsApp, Slack, etc.)
  */
 export const markAppAsSeen = async (): Promise<void> => {
   updateLastSeenAt();
-  // Sync badge with actual notification count instead of blindly clearing
-  // This ensures consistency between app icon badge and OS notification count
-  await syncBadgeWithServiceWorker();
+  // Clear badge when app opens (typical app behavior)
+  await clearAppBadge();
 };
 
 /**

@@ -416,12 +416,22 @@ self.addEventListener('notificationclick', (event) => {
         for (const client of windowClients) {
           console.log('[SW] Checking client:', client.url);
           if (client.url.startsWith(APP_BASE_URL)) {
-            console.log('[SW] Found existing app window, navigating and focusing...');
-            // Navigate to the target URL
+            console.log('[SW] Found existing app window, using postMessage for in-app navigation...');
+            // Use postMessage instead of navigate() to avoid full page reload
+            // This prevents the Clerk auth screen from flashing
             try {
-              await client.navigate(fullUrl);
-            } catch (navError) {
-              console.log('[SW] Navigate failed (may already be on page):', navError.message);
+              client.postMessage({
+                type: 'NAVIGATE',
+                url: urlToOpen  // e.g., '/#todo?section=shopping'
+              });
+              console.log('[SW] ✅ Sent NAVIGATE message:', urlToOpen);
+            } catch (msgError) {
+              console.log('[SW] postMessage failed, falling back to navigate:', msgError.message);
+              try {
+                await client.navigate(fullUrl);
+              } catch (navError) {
+                console.log('[SW] Navigate also failed:', navError.message);
+              }
             }
             // Focus the window
             await client.focus();

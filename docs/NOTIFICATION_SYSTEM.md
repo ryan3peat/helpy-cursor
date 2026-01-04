@@ -275,10 +275,27 @@ Handles:
 
 ### App Badge
 
-The app icon shows a badge count:
-- Incremented when notification received (service worker)
-- Cleared when app opens (via `markAppAsSeen()`)
+The app icon shows a red badge count indicating new activity since last app open.
+
+**Behavior:**
+| Event | Badge Action |
+|-------|--------------|
+| Push notification arrives | Badge increments (+1) |
+| User opens the app | Badge clears to 0 |
+| User backgrounds the app | Badge stays at 0 |
+| New notification while backgrounded | Badge starts counting again |
+
+**Key Design Decision:** Badge clears when the app opens (not when notifications are dismissed). This matches typical app behavior (Instagram, WhatsApp, Slack) where opening the app is considered "seeing" the new content.
+
+**Technical Details:**
+- Incremented in service worker (`sw-push.js` → `incrementBadge()`)
+- Cleared when app becomes visible (`appBadgeService.ts` → `markAppAsSeen()`)
+- Persisted in IndexedDB for consistency across app restarts
 - Uses Badging API (Chrome 81+, Safari 17.4+)
+
+**Files:**
+- `services/appBadgeService.ts` - Client-side badge management
+- `public/sw-push.js` - Service worker badge increment on push receive
 
 ---
 
@@ -400,6 +417,7 @@ vercel deploy --prod
 
 | Date | Change |
 |------|--------|
+| Jan 5, 2026 | Badge now clears when app opens (typical app behavior) |
 | Jan 3, 2026 | Added capability check, auto-fix, reliable toggle |
 | Jan 3, 2026 | Added Liko test mode |
 | Jan 3, 2026 | Replaced alert() with Helpy modal |

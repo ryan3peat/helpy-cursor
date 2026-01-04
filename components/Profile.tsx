@@ -1289,6 +1289,8 @@ const Profile: React.FC<ProfileProps> = ({
                         <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-white shadow-sm flex items-center justify-center">
                           {(() => {
                             if (user.role === 'Child') return <BellOff size={12} className="text-muted-foreground" />;
+                            // For current user, check if OS blocked notifications
+                            if (user.id === currentUser.id && typeof Notification !== 'undefined' && Notification.permission === 'denied') return <BellOff size={12} className="text-destructive" />;
                             if (!user.notificationsEnabled) return <BellOff size={12} className="text-destructive" />;
                             if (!user.hasPushSubscription) return <BellOff size={12} className="text-orange-500" />;
                             return <Bell size={12} className="text-primary" />;

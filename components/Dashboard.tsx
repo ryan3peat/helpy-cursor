@@ -860,9 +860,12 @@ const Dashboard: React.FC<DashboardProps> = ({
         isOnboardingActive={isOnboardingActive}
         onNotificationEnabled={async () => {
           console.log('[Dashboard] Notifications enabled via prompt');
-          // Immediately update the user state to reflect the new subscription
+          // Immediately update the user state to reflect the new subscription AND enabled status
           if (onUpdateUser) {
-            await onUpdateUser(currentUser.id, { hasPushSubscription: true });
+            await onUpdateUser(currentUser.id, { 
+              notificationsEnabled: true,
+              hasPushSubscription: true 
+            });
           }
         }}
       />
@@ -936,6 +939,8 @@ const Dashboard: React.FC<DashboardProps> = ({
               <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-white shadow-sm flex items-center justify-center">
                 {(() => {
                   if (currentUser.role === UserRole.CHILD) return <BellOff size={12} className="text-muted-foreground" />;
+                  // Check if OS blocked notifications (pink = blocked, not orange = incomplete)
+                  if (typeof Notification !== 'undefined' && Notification.permission === 'denied') return <BellOff size={12} className="text-destructive" />;
                   if (!currentUser.notificationsEnabled) return <BellOff size={12} className="text-destructive" />;
                   if (!currentUser.hasPushSubscription) return <BellOff size={12} className="text-orange-500" />;
                   return <Bell size={12} className="text-primary" />;

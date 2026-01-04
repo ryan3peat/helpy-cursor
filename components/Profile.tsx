@@ -1570,10 +1570,21 @@ const Profile: React.FC<ProfileProps> = ({
             </div>
           </div>
 
+          {/* DEBUG PANEL - Remove after fixing */}
+          <div className="bg-muted/50 rounded-lg p-4 text-micro text-muted-foreground space-y-1 mt-6">
+            <div className="font-bold text-foreground mb-2">Debug Info:</div>
+            <div>Permission: {typeof Notification !== 'undefined' ? Notification.permission : 'N/A'}</div>
+            <div>notificationsEnabled: {String(currentUser?.notificationsEnabled)}</div>
+            <div>hasPushSubscription: {String(currentUser?.hasPushSubscription)}</div>
+            <div>isPWA: {String(isRunningAsPwa())}</div>
+            <div>SW supported: {String('serviceWorker' in navigator)}</div>
+            <div>Push supported: {String('PushManager' in window)}</div>
+          </div>
+
           {/* Footer */}
           <div className="helpy-footer">
             <span className="helpy-logo">helpy</span>
-            <span className="text-micro text-muted-foreground/50 block mt-1">v2026.01.05.2</span>
+            <span className="text-micro text-muted-foreground/50 block mt-1">v2026.01.05.3</span>
           </div>
         </div>
 

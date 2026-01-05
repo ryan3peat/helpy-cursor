@@ -194,6 +194,22 @@ const getSuggestionPillStyle = (category: string): string => {
   }
 };
 
+// Returns just the text color for category icons (used in suggestion cards)
+const getCategoryIconColor = (category: string): string => {
+  switch (category) {
+    case ShoppingCategory.SUPERMARKET:
+      return 'text-[#3EAFD2]'; // Primary cyan
+    case ShoppingCategory.WET_MARKET:
+      return 'text-[#4CAF50]'; // Green
+    case TaskCategory.HOME_CARE:
+      return 'text-[#FF9800]'; // Orange
+    case TaskCategory.FAMILY_CARE:
+      return 'text-[#F06292]'; // Magenta
+    default:
+      return 'text-[#757575]'; // Gray
+  }
+};
+
 const formatRecurrence = (recurrence?: { frequency: RecurrenceFrequency; dayOfWeek?: number; dayOfMonth?: number }): string => {
   if (!recurrence || recurrence.frequency === 'NONE') return '';
   
@@ -505,20 +521,26 @@ const ToDo: React.FC<ToDoProps> = ({
     const sectionItems = items.filter(i => i.type === activeSection);
     const activeNames = new Set(sectionItems.filter(i => !i.completed).map(i => i.name.toLowerCase()));
     
-    const counts: Record<string, { name: string; category: string; count: number }> = {};
-    sectionItems.forEach(item => {
+    // Get completed items that aren't currently in the active list
+    const completedSuggestions = sectionItems
+      .filter(item => item.completed && !activeNames.has(item.name.toLowerCase()))
+      // Sort by createdAt ascending (oldest first)
+      .sort((a, b) => {
+        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return dateA - dateB;
+      });
+    
+    // Keep only unique names (first occurrence = oldest completed)
+    const uniqueByName: Record<string, ToDoItem> = {};
+    completedSuggestions.forEach(item => {
       const key = item.name.toLowerCase();
-      if (!activeNames.has(key)) {
-        if (!counts[key]) {
-          counts[key] = { name: item.name, category: item.category, count: 0 };
-        }
-        counts[key].count++;
+      if (!uniqueByName[key]) {
+        uniqueByName[key] = item;
       }
     });
     
-    return Object.values(counts)
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 5);
+    return Object.values(uniqueByName).slice(0, 8);
   }, [items, activeSection]);
 
   // ─────────────────────────────────────────────────────────────────
@@ -570,7 +592,7 @@ const ToDo: React.FC<ToDoProps> = ({
     }
   };
   
-  const handleSuggestionClick = async (suggestion: { name: string; category: string }) => {
+  const handleSuggestionClick = async (suggestion: ToDoItem) => {
     const today = new Date().toISOString().split('T')[0];
     
     // Detect language for the new item
@@ -582,12 +604,18 @@ const ToDo: React.FC<ToDoProps> = ({
       name: suggestion.name,
       category: suggestion.category,
       completed: false,
-      assigneeId: getDefaultAssignee(users, currentUser),
+      // Use suggestion's assignee if available, otherwise default
+      assigneeId: suggestion.assigneeId || getDefaultAssignee(users, currentUser),
       createdBy: currentUser.id, // Track who created this item for notifications
       createdAt: new Date().toISOString(),
       nameLang: detectedLang || null,
       nameTranslations: {},
-      ...(activeSection === 'shopping' ? { quantity: '1' } : { dueDate: today }),
+      // For shopping: use suggestion's brand/quantity/unit if available
+      quantity: suggestion.quantity || '1',
+      unit: suggestion.unit,
+      brand: suggestion.brand,
+      // For tasks: use today's date
+      ...(activeSection === 'task' ? { dueDate: today } : {}),
     };
     
     setOptimisticItems(prev => [...prev, newItem]);
@@ -1135,35 +1163,73 @@ const ToDo: React.FC<ToDoProps> = ({
           </div>
         </div>
 
-        {/* Suggestions - Collapsible */}
+        {/* Suggestions - Collapsible Carousel */}
         {suggestions.length > 0 && (
           <div className="mt-4 mb-2">
             <button
               onClick={() => setShowSuggested(!showSuggested)}
-              className="flex items-center gap-2 mb-2"
+              className="flex items-center gap-2 mb-3"
             >
               {showSuggested ? (
                 <ChevronDown size={16} className="text-muted-foreground" />
               ) : (
                 <ChevronRight size={16} className="text-muted-foreground" />
               )}
-              <span className="text-caption text-muted-foreground tracking-wide">
-                {t['todo.suggested'] || 'Suggested'} ({suggestions.length})
+              <span className="text-body text-muted-foreground">
+                {activeSection === 'task' 
+                  ? (t['todo.previous_completed_tasks'] || 'Previous Completed Tasks')
+                  : (t['todo.previous_purchased_items'] || 'Previous Purchased Items')
+                } ({suggestions.length})
               </span>
             </button>
             
             {showSuggested && (
-              <div className="flex flex-wrap gap-2">
-                {suggestions.map((s, i) => (
-                  <button
-                    key={i}
-                    onClick={() => handleSuggestionClick(s)}
-                    className={`px-3 py-1.5 rounded-full text-body font-medium transition-all flex items-center gap-1 border ${getSuggestionPillStyle(s.category)}`}
-                  >
-                    <Plus size={14} />
-                    {s.name}
-                  </button>
-                ))}
+              <div className="overflow-x-auto scrollbar-hide -mx-4 px-4 sm:-mx-6 sm:px-6 pb-2">
+                <div className="flex gap-3" style={{ paddingRight: '1rem' }}>
+                  {suggestions.map((s) => (
+                    <button
+                      key={s.id}
+                      onClick={() => handleSuggestionClick(s)}
+                      className="relative flex-shrink-0 bg-card rounded-xl px-3 py-2 shadow-sm text-left flex"
+                      style={{ width: '144px', height: '72px' }}
+                    >
+                      {/* Left: Text content */}
+                      <div className="flex-1 flex flex-col justify-between min-w-0">
+                        {/* Row 1: Name */}
+                        <p className="text-body text-foreground font-medium truncate">
+                          {s.name}
+                        </p>
+                        
+                        {/* Row 2: Brand (shopping) / Assignee (task) */}
+                        <p className="text-caption text-muted-foreground truncate">
+                          {activeSection === 'shopping' 
+                            ? (s.brand || '-')
+                            : (getUserName(s.assigneeId) || '-')
+                          }
+                        </p>
+                        
+                        {/* Row 3: Quantity (shopping) */}
+                        <p className="text-caption text-muted-foreground truncate">
+                          {activeSection === 'shopping' 
+                            ? (s.quantity && s.unit ? `${s.quantity} ${s.unit}` : (s.quantity !== '1' ? s.quantity : '-'))
+                            : ''
+                          }
+                        </p>
+                      </div>
+                      
+                      {/* Right: Icons column (vertically aligned) */}
+                      <div className="flex flex-col justify-between items-center shrink-0 ml-2">
+                        <div className={`mt-0.5 ${getCategoryIconColor(s.category)}`}>
+                          {activeSection === 'shopping' 
+                            ? getShoppingCategoryIcon(s.category)
+                            : getTaskCategoryIcon(s.category)
+                          }
+                        </div>
+                        <Plus size={18} className="text-foreground" />
+                      </div>
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
           </div>

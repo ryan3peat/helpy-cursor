@@ -652,6 +652,9 @@ const Dashboard: React.FC<DashboardProps> = ({
   // Carousel tracking
   const [activeCarouselIndex, setActiveCarouselIndex] = useState(0);
   const carouselRef = useRef<HTMLDivElement>(null);
+  
+  // Carousel visibility for expand/collapse (default: collapsed)
+  const [isCarouselVisible, setIsCarouselVisible] = useState(false);
 
   // Carousel scroll handler
   const handleCarouselScroll = () => {
@@ -674,7 +677,30 @@ const Dashboard: React.FC<DashboardProps> = ({
     }
   };
   
-  // Scroll header animation - shrink early (at ~25% of photo), expand later
+  // Track carousel visibility for expand/collapse animation
+  useEffect(() => {
+    if (!carouselRef.current) return;
+    
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (entry.isIntersecting && entry.intersectionRatio > 0.35) {
+          // ~35% visible → expand (user sees the animation happen)
+          setIsCarouselVisible(true);
+        } else if (!entry.isIntersecting) {
+          // 100% out of view → collapse
+          setIsCarouselVisible(false);
+        }
+      },
+      { threshold: [0, 0.35], rootMargin: '-50px 0px' }
+    );
+    
+    observer.observe(carouselRef.current);
+    
+    return () => observer.disconnect();
+  }, []);
+  
+  // Scroll header animation - for sticky header shadow
   const { isScrolled } = useScrollHeader({ collapseThreshold: 50, expandThreshold: 110 });
   
   // Lock body scroll when any modal is open
@@ -960,90 +986,6 @@ const Dashboard: React.FC<DashboardProps> = ({
         onDismiss={() => setError(null)} 
         title={t['common.error'] || 'Error'}
       />
-
-      {/* Family Carousel */}
-      <div 
-        ref={carouselRef}
-        onScroll={handleCarouselScroll}
-        className="grid grid-flow-col auto-cols-[220px] gap-4 overflow-x-auto pb-2 scrollbar-hide -mx-5 px-5 snap-x snap-mandatory scroll-px-5"
-      >
-        {validUsers.map((user) => (
-          <FamilyCardWithGlow
-            key={user.id}
-            user={user}
-            isCurrent={user.id === currentUser.id}
-            isScrolled={isScrolled}
-            getAvatarUrl={getAvatarUrl}
-            getRoleBadgeColor={getRoleBadgeColor}
-            renderTruncatedTags={renderTruncatedTags}
-            onSelect={() => onSelectFamilyMember?.(user.id)}
-            t={t}
-          />
-        ))}
-
-        {/* Add Button at END - Hidden for Helper */}
-        {!isHelper && onOpenAddFamily && (
-          <div
-            onClick={() => {
-              haptics.light();
-              if (isAtMemberLimit) {
-                // Navigate to plan section for upgrade
-                localStorage.setItem('helpy_profile_target_section', 'plan');
-                onNavigate('profile');
-              } else {
-                onOpenAddFamily();
-              }
-            }}
-            className="h-full bg-secondary/30 rounded-2xl flex flex-col items-center justify-center cursor-pointer border-2 border-dashed border-border snap-start"
-          >
-            <div className="w-16 h-16 rounded-full bg-card flex items-center justify-center shadow-sm">
-              {isAtMemberLimit ? (
-                <Crown size={28} className="text-primary" />
-              ) : (
-                <Plus size={28} className="text-primary" />
-              )}
-            </div>
-            <span className="text-body font-semibold text-foreground mt-3">
-              {isAtMemberLimit 
-                ? (t['common.upgrade'] || 'Upgrade')
-                : (t['common.add'] || 'Add')
-              }
-            </span>
-            {isAtMemberLimit && (
-              <span className="text-body text-muted-foreground">
-                {t['common.to_add_more'] || 'to add more'}
-              </span>
-            )}
-            <span className="text-body text-muted-foreground mt-2">
-              {totalMemberCount} {t['common.of'] || 'of'} {totalMaxSlots}
-            </span>
-            <span className="text-body text-muted-foreground">
-              {t['dashboard.member_slots_used'] || 'member slots used'}
-            </span>
-          </div>
-        )}
-      </div>
-
-      {/* Carousel Dots */}
-      {validUsers.length > 1 && (
-        <div className="flex justify-center gap-1.5 pt-1">
-          {validUsers.map((_, index) => (
-            <button
-              key={index}
-              onClick={() => scrollToCarouselIndex(index)}
-              className="transition-all duration-300 rounded-full"
-              style={{
-                width: index === activeCarouselIndex ? '20px' : '8px',
-                height: '8px',
-                backgroundColor: index === activeCarouselIndex 
-                  ? 'hsl(var(--primary))' 
-                  : 'hsl(var(--muted-foreground) / 0.25)',
-              }}
-              aria-label={`Go to item ${index + 1}`}
-            />
-          ))}
-        </div>
-      )}
 
       {/* Family Notes */}
       <div id="onboarding-family-board" className="relative group">
@@ -1333,6 +1275,90 @@ const Dashboard: React.FC<DashboardProps> = ({
         showAddButton={true}
         onAddClick={() => onNavigate('expenses', { openAddSheet: true })}
       />
+      )}
+
+      {/* Family Carousel */}
+      <div 
+        ref={carouselRef}
+        onScroll={handleCarouselScroll}
+        className="grid grid-flow-col auto-cols-[220px] gap-4 overflow-x-auto pb-2 scrollbar-hide -mx-5 px-5 snap-x snap-mandatory scroll-px-5"
+      >
+        {validUsers.map((user) => (
+          <FamilyCardWithGlow
+            key={user.id}
+            user={user}
+            isCurrent={user.id === currentUser.id}
+            isScrolled={!isCarouselVisible}
+            getAvatarUrl={getAvatarUrl}
+            getRoleBadgeColor={getRoleBadgeColor}
+            renderTruncatedTags={renderTruncatedTags}
+            onSelect={() => onSelectFamilyMember?.(user.id)}
+            t={t}
+          />
+        ))}
+
+        {/* Add Button at END - Hidden for Helper */}
+        {!isHelper && onOpenAddFamily && (
+          <div
+            onClick={() => {
+              haptics.light();
+              if (isAtMemberLimit) {
+                // Navigate to plan section for upgrade
+                localStorage.setItem('helpy_profile_target_section', 'plan');
+                onNavigate('profile');
+              } else {
+                onOpenAddFamily();
+              }
+            }}
+            className="h-full bg-secondary/30 rounded-2xl flex flex-col items-center justify-center cursor-pointer border-2 border-dashed border-border snap-start"
+          >
+            <div className="w-16 h-16 rounded-full bg-card flex items-center justify-center shadow-sm">
+              {isAtMemberLimit ? (
+                <Crown size={28} className="text-primary" />
+              ) : (
+                <Plus size={28} className="text-primary" />
+              )}
+            </div>
+            <span className="text-body font-semibold text-foreground mt-3">
+              {isAtMemberLimit 
+                ? (t['common.upgrade'] || 'Upgrade')
+                : (t['common.add'] || 'Add')
+              }
+            </span>
+            {isAtMemberLimit && (
+              <span className="text-body text-muted-foreground">
+                {t['common.to_add_more'] || 'to add more'}
+              </span>
+            )}
+            <span className="text-body text-muted-foreground mt-2">
+              {totalMemberCount} {t['common.of'] || 'of'} {totalMaxSlots}
+            </span>
+            <span className="text-body text-muted-foreground">
+              {t['dashboard.member_slots_used'] || 'member slots used'}
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Carousel Dots */}
+      {validUsers.length > 1 && (
+        <div className="flex justify-center gap-1.5 pt-1">
+          {validUsers.map((_, index) => (
+            <button
+              key={index}
+              onClick={() => scrollToCarouselIndex(index)}
+              className="transition-all duration-300 rounded-full"
+              style={{
+                width: index === activeCarouselIndex ? '20px' : '8px',
+                height: '8px',
+                backgroundColor: index === activeCarouselIndex 
+                  ? 'hsl(var(--primary))' 
+                  : 'hsl(var(--muted-foreground) / 0.25)',
+              }}
+              aria-label={`Go to item ${index + 1}`}
+            />
+          ))}
+        </div>
       )}
 
       {/* How to use Helpy */}

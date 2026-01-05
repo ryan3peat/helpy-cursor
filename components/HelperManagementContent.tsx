@@ -465,8 +465,13 @@ export const HelperManagementContent: React.FC<Props> = ({
         {!salaryConfigured ? (
           /* Salary not configured - show Input button */
           <div className="bg-card rounded-xl p-4 shadow-sm text-center py-6">
-            <p className="text-body text-muted-foreground mb-4">
-              {t['helper.salary_not_configured'] || 'Salary details not configured'}
+            <p className="text-body text-muted-foreground mb-3">
+              {!helper.helperStartDate && !helper.helperBaseSalary
+                ? (t['helper.missing_start_and_salary'] || 'Set the start date and salary to generate payslips')
+                : !helper.helperStartDate
+                ? (t['helper.missing_start_date'] || 'Set the start date to generate payslips')
+                : (t['helper.missing_salary'] || 'Set the salary to generate payslips')
+              }
             </p>
             {!isHelper && (
               <button
@@ -479,7 +484,7 @@ export const HelperManagementContent: React.FC<Props> = ({
                 }}
                 className="px-4 py-2 bg-primary text-primary-foreground rounded-lg transition-colors"
               >
-                {t['helper.input_salary'] || 'Input Salary Details'}
+                {t['helper.input_salary'] || 'Set Up'}
               </button>
             )}
           </div>

@@ -22,6 +22,7 @@ import { SUBSCRIPTION_PLANS } from '../services/stripeService';
 import { SUPPORTED_LANGUAGES } from '../constants';
 import { NAV_ITEMS, FEATURE_ICONS } from '../config/navConfig';
 import { getGuideRoles, getRoleConfig, RoleConfig } from '../config/rolePermissions';
+import { useDemoMode } from '../contexts/DemoModeContext';
 
 interface UserGuideProps {
   currentUser: User;
@@ -183,9 +184,13 @@ const TipCard: React.FC<{ title: string; description: string }> = ({ title, desc
 );
 
 const UserGuide: React.FC<UserGuideProps> = ({ currentUser, t, onNavigateToPlan, onNavigateToFeedback }) => {
+  const isSuperAdmin = currentUser.role === UserRole.SUPERADMIN;
+  const { isViewingAsHelper } = useDemoMode();
+  
   const isAdmin = currentUser.role === UserRole.MASTER;
   const isSpouse = currentUser.role === UserRole.SPOUSE;
-  const isHelper = currentUser.role === UserRole.HELPER;
+  // isHelper: true if actual Helper OR SuperAdmin viewing as Helper
+  const isHelper = currentUser.role === UserRole.HELPER || (isSuperAdmin && isViewingAsHelper);
   const isChild = currentUser.role === UserRole.CHILD;
 
   // Get plans from existing constants

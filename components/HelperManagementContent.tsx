@@ -60,9 +60,11 @@ export const HelperManagementContent: React.FC<Props> = ({
   const [customAmount, setCustomAmount] = useState('');
   const [error, setError] = useState<string | null>(null);
   
-  const { isDemoMode, demoPastPayslips } = useDemoMode();
+  const { isDemoMode, demoPastPayslips, isViewingAsHelper } = useDemoMode();
   
-  const isHelper = currentUser.role === UserRole.HELPER;
+  const isSuperAdmin = currentUser.role === UserRole.SUPERADMIN;
+  // isHelper: true if actual Helper OR SuperAdmin viewing as Helper
+  const isHelper = currentUser.role === UserRole.HELPER || (isSuperAdmin && isViewingAsHelper);
   const isAdmin = currentUser.role === UserRole.MASTER;
   const salaryConfigured = isHelperSalaryConfigured(helper);
   

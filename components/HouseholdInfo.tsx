@@ -42,6 +42,7 @@ import { BaseViewProps, User, UserRole, TranslationDictionary } from "@/types";
 import { useTranslatedContent } from "@/hooks/useTranslatedContent";
 import { detectInputLanguage } from "@/services/languageDetectionService";
 import { useSupabase } from "@/contexts/SupabaseContext";
+import { useDemoMode } from "@/contexts/DemoModeContext";
 
 // Essential Info Types & Services
 import type {
@@ -562,7 +563,12 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
       setActiveSection(initialSection);
     }
   }, [initialSection]);
-  const isHelper = currentUser.role === UserRole.HELPER;
+  
+  // Role-based permissions
+  const isSuperAdmin = currentUser.role === UserRole.SUPERADMIN;
+  const { isViewingAsHelper } = useDemoMode();
+  // isHelper: true if actual Helper OR SuperAdmin viewing as Helper
+  const isHelper = currentUser.role === UserRole.HELPER || (isSuperAdmin && isViewingAsHelper);
 
   // ─────────────────────────────────────────────────────────────────
   // Subscription Plan State (for Helper Management access control)

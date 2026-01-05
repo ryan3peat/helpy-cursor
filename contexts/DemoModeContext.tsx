@@ -16,6 +16,9 @@ interface DemoModeContextType {
   // Simulate being a free (non-paid) user - locks paid features for testing
   isSimulatingFreeUser: boolean;
   toggleSimulateFreeUser: () => void;
+  // View the app as if you were a Helper - for testing Helper experience
+  isViewingAsHelper: boolean;
+  toggleViewingAsHelper: () => void;
   demoUsers: User[];
   demoTodoItems: ToDoItem[];
   demoMeals: Meal[];
@@ -639,6 +642,7 @@ const createDemoHouseRoutineItems = (): HouseRoutine[] => [
 export const DemoModeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isDemoMode, setIsDemoMode] = useState(false);
   const [isSimulatingFreeUser, setIsSimulatingFreeUser] = useState(false);
+  const [isViewingAsHelper, setIsViewingAsHelper] = useState(false);
   
   const toggleDemoMode = useCallback(() => {
     setIsDemoMode(prev => !prev);
@@ -646,6 +650,10 @@ export const DemoModeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   
   const toggleSimulateFreeUser = useCallback(() => {
     setIsSimulatingFreeUser(prev => !prev);
+  }, []);
+  
+  const toggleViewingAsHelper = useCallback(() => {
+    setIsViewingAsHelper(prev => !prev);
   }, []);
   
   // Memoize demo data so it doesn't recreate on every render
@@ -662,6 +670,8 @@ export const DemoModeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     toggleDemoMode,
     isSimulatingFreeUser,
     toggleSimulateFreeUser,
+    isViewingAsHelper,
+    toggleViewingAsHelper,
     demoUsers,
     demoTodoItems,
     demoMeals,
@@ -672,7 +682,7 @@ export const DemoModeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     demoEssentialItems,
     demoHouseRoutineItems,
     demoPastPayslips,
-  }), [isDemoMode, toggleDemoMode, isSimulatingFreeUser, toggleSimulateFreeUser, demoUsers, demoTodoItems, demoMeals, demoExpenses, demoEssentialItems, demoHouseRoutineItems, demoPastPayslips]);
+  }), [isDemoMode, toggleDemoMode, isSimulatingFreeUser, toggleSimulateFreeUser, isViewingAsHelper, toggleViewingAsHelper, demoUsers, demoTodoItems, demoMeals, demoExpenses, demoEssentialItems, demoHouseRoutineItems, demoPastPayslips]);
   
   return (
     <DemoModeContext.Provider value={value}>

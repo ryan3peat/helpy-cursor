@@ -35,7 +35,8 @@ import {
   Eye,
   EyeOff,
   Lock,
-  Smartphone
+  Smartphone,
+  UserCog
 } from 'lucide-react';
 import Avatar from './ui/Avatar';
 import ErrorBanner from './ui/ErrorBanner';
@@ -489,12 +490,15 @@ const Dashboard: React.FC<DashboardProps> = ({
   // ─────────────────────────────────────────────────────────────────
   // Role-based permissions
   // ─────────────────────────────────────────────────────────────────
-  const isHelper = currentUser.role === UserRole.HELPER;
   const isSuperAdmin = currentUser.role === UserRole.SUPERADMIN;
   
   // Demo mode for marketing screenshots (SuperAdmin only)
   // Simulate free user mode to test paid feature locks (SuperAdmin only)
-  const { isDemoMode, toggleDemoMode, isSimulatingFreeUser, toggleSimulateFreeUser } = useDemoMode();
+  // View as Helper to test Helper experience (SuperAdmin only)
+  const { isDemoMode, toggleDemoMode, isSimulatingFreeUser, toggleSimulateFreeUser, isViewingAsHelper, toggleViewingAsHelper } = useDemoMode();
+  
+  // isHelper: true if actual Helper OR SuperAdmin viewing as Helper
+  const isHelper = currentUser.role === UserRole.HELPER || (isSuperAdmin && isViewingAsHelper);
 
   // ─────────────────────────────────────────────────────────────────
   // Family Carousel Helpers
@@ -652,9 +656,6 @@ const Dashboard: React.FC<DashboardProps> = ({
   // Carousel tracking
   const [activeCarouselIndex, setActiveCarouselIndex] = useState(0);
   const carouselRef = useRef<HTMLDivElement>(null);
-  
-  // Carousel visibility for expand/collapse (default: collapsed)
-  const [isCarouselVisible, setIsCarouselVisible] = useState(false);
 
   // Carousel scroll handler
   const handleCarouselScroll = () => {
@@ -676,29 +677,6 @@ const Dashboard: React.FC<DashboardProps> = ({
       setActiveCarouselIndex(index);
     }
   };
-  
-  // Track carousel visibility for expand/collapse animation
-  useEffect(() => {
-    if (!carouselRef.current) return;
-    
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const entry = entries[0];
-        if (entry.isIntersecting && entry.intersectionRatio > 0.35) {
-          // ~35% visible → expand (user sees the animation happen)
-          setIsCarouselVisible(true);
-        } else if (!entry.isIntersecting) {
-          // 100% out of view → collapse
-          setIsCarouselVisible(false);
-        }
-      },
-      { threshold: [0, 0.35], rootMargin: '-50px 0px' }
-    );
-    
-    observer.observe(carouselRef.current);
-    
-    return () => observer.disconnect();
-  }, []);
   
   // Scroll header animation - for sticky header shadow
   const { isScrolled } = useScrollHeader({ collapseThreshold: 50, expandThreshold: 110 });
@@ -1288,7 +1266,7 @@ const Dashboard: React.FC<DashboardProps> = ({
             key={user.id}
             user={user}
             isCurrent={user.id === currentUser.id}
-            isScrolled={!isCarouselVisible}
+            isScrolled={false}
             getAvatarUrl={getAvatarUrl}
             getRoleBadgeColor={getRoleBadgeColor}
             renderTruncatedTags={renderTruncatedTags}
@@ -1500,6 +1478,41 @@ const Dashboard: React.FC<DashboardProps> = ({
               {isSimulatingFreeUser && (
                 <p className="text-caption text-destructive mt-2 text-center">
                   {t['simulate_free.enabled'] || 'Paid Features Locked'}
+                </p>
+              )}
+              
+              {/* View as Helper Toggle - SuperAdmin Only */}
+              <button
+                onClick={() => {
+                  haptics.light();
+                  toggleViewingAsHelper();
+                }}
+                className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-colors mt-3 ${
+                  isViewingAsHelper 
+                    ? 'bg-[#FF9800]/10 border border-[#FF9800]/30' 
+                    : 'bg-secondary/50 border border-transparent'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <UserCog size={18} className={isViewingAsHelper ? 'text-[#FF9800]' : 'text-muted-foreground'} />
+                  <div className="text-left">
+                    <span className="text-body font-medium text-foreground block">
+                      {t['view_as_helper.title'] || 'View as Helper'}
+                    </span>
+                    <span className="text-caption text-muted-foreground">
+                      {t['view_as_helper.description'] || 'Experience the app as a Helper user'}
+                    </span>
+                  </div>
+                </div>
+                <div className={`w-12 h-7 rounded-full transition-colors flex items-center ${
+                  isViewingAsHelper ? 'bg-[#FF9800] justify-end' : 'bg-muted-foreground/30 justify-start'
+                }`}>
+                  <div className="w-5 h-5 rounded-full bg-white shadow-sm mx-1 transition-transform" />
+                </div>
+              </button>
+              {isViewingAsHelper && (
+                <p className="text-caption text-[#FF9800] mt-2 text-center">
+                  {t['view_as_helper.enabled'] || 'Viewing as Helper'}
                 </p>
               )}
             </div>

@@ -27,6 +27,7 @@ import {
 import { compressImageForAvatar } from '../utils/imageCompression';
 import { getRoleConfig } from '../config/rolePermissions';
 import { isRunningAsPwa, isIosDevice, isAndroidDevice } from '../utils/pwaUtils';
+import { useDemoMode } from '../contexts/DemoModeContext';
 
 interface ProfileProps extends BaseViewProps {
   users: User[];
@@ -65,7 +66,10 @@ const Profile: React.FC<ProfileProps> = ({
   // ─────────────────────────────────────────────────────────────────
   // Role-based permissions
   // ─────────────────────────────────────────────────────────────────
-  const isHelper = currentUser.role === UserRole.HELPER;
+  const isSuperAdmin = currentUser.role === UserRole.SUPERADMIN;
+  const { isViewingAsHelper } = useDemoMode();
+  // isHelper: true if actual Helper OR SuperAdmin viewing as Helper
+  const isHelper = currentUser.role === UserRole.HELPER || (isSuperAdmin && isViewingAsHelper);
   
   // Get authenticated Supabase client (with JWT for RLS)
   const supabase = useSupabase();

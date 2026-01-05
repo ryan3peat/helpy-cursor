@@ -29,6 +29,7 @@ import { useSheetTheme } from '@/hooks/useSheetTheme';
 import { ToDoItem, ToDoType, ShoppingCategory, TaskCategory, RecurrenceFrequency, User, UserRole, BaseViewProps } from '../types';
 import { detectInputLanguage } from '../services/languageDetectionService';
 import { haptics } from '../utils/haptics';
+import { useDemoMode } from '../contexts/DemoModeContext';
 
 // ─────────────────────────────────────────────────────────────────
 // Types & Constants
@@ -316,7 +317,10 @@ const ToDo: React.FC<ToDoProps> = ({
   // ─────────────────────────────────────────────────────────────────
   // Role-based permissions
   // ─────────────────────────────────────────────────────────────────
-  const isHelper = currentUser.role === UserRole.HELPER;
+  const isSuperAdmin = currentUser.role === UserRole.SUPERADMIN;
+  const { isViewingAsHelper } = useDemoMode();
+  // isHelper: true if actual Helper OR SuperAdmin viewing as Helper
+  const isHelper = currentUser.role === UserRole.HELPER || (isSuperAdmin && isViewingAsHelper);
 
   // ─────────────────────────────────────────────────────────────────
   // Scroll Header Hook
@@ -1195,26 +1199,41 @@ const ToDo: React.FC<ToDoProps> = ({
                     >
                       {/* Left: Text content */}
                       <div className="flex-1 flex flex-col justify-between min-w-0">
-                        {/* Row 1: Name */}
-                        <p className="text-body text-foreground font-medium truncate">
-                          {s.name}
-                        </p>
-                        
-                        {/* Row 2: Brand (shopping) / Assignee (task) */}
-                        <p className="text-caption text-muted-foreground truncate">
-                          {activeSection === 'shopping' 
-                            ? (s.brand || '-')
-                            : (getUserName(s.assigneeId) || '-')
-                          }
-                        </p>
-                        
-                        {/* Row 3: Quantity (shopping) */}
-                        <p className="text-caption text-muted-foreground truncate">
-                          {activeSection === 'shopping' 
-                            ? (s.quantity && s.unit ? `${s.quantity} ${s.unit}` : (s.quantity !== '1' ? s.quantity : '-'))
-                            : ''
-                          }
-                        </p>
+                        {activeSection === 'shopping' ? (
+                          <>
+                            {/* Shopping: Line 1 - Name */}
+                            <p className="text-body text-foreground font-medium truncate">
+                              {s.name}
+                            </p>
+                            {/* Shopping: Line 2 - Brand */}
+                            <p className="text-caption text-muted-foreground truncate">
+                              {s.brand || '-'}
+                            </p>
+                            {/* Shopping: Line 3 - Quantity */}
+                            <p className="text-caption text-muted-foreground truncate">
+                              {s.quantity && s.unit ? `${s.quantity} ${s.unit}` : (s.quantity !== '1' ? s.quantity : '-')}
+                            </p>
+                          </>
+                        ) : (
+                          <>
+                            {/* Tasks: Lines 1-2 - Name (2-line clamp) */}
+                            <p 
+                              className="text-body text-foreground font-medium leading-tight"
+                              style={{ 
+                                display: '-webkit-box',
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: 'vertical',
+                                overflow: 'hidden'
+                              }}
+                            >
+                              {s.name}
+                            </p>
+                            {/* Tasks: Line 3 - Assignee */}
+                            <p className="text-caption text-muted-foreground truncate">
+                              {getUserName(s.assigneeId) || '-'}
+                            </p>
+                          </>
+                        )}
                       </div>
                       
                       {/* Right: Icons column (vertically aligned) */}

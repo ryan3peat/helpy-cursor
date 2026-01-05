@@ -432,11 +432,13 @@ const Expenses: React.FC<ExpensesProps> = ({
   // ─────────────────────────────────────────────────────────────────
   // Role-based permissions
   // ─────────────────────────────────────────────────────────────────
-  const isHelper = currentUser.role === UserRole.HELPER;
   const isSuperAdmin = currentUser.role === UserRole.SUPERADMIN;
   
-  // Get simulate free user toggle (SuperAdmin only feature)
-  const { isSimulatingFreeUser } = useDemoMode();
+  // Get demo mode toggles (SuperAdmin only feature)
+  const { isSimulatingFreeUser, isViewingAsHelper } = useDemoMode();
+  
+  // isHelper: true if actual Helper OR SuperAdmin viewing as Helper
+  const isHelper = currentUser.role === UserRole.HELPER || (isSuperAdmin && isViewingAsHelper);
 
   const planKey = (householdPlan?.plan || 'free') as 'free' | 'core' | 'pro' | 'test';
   // SuperAdmin bypasses plan restrictions UNLESS simulating free user

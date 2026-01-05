@@ -33,6 +33,7 @@ import { Meal, MealType, MealAudience, User, UserRole, BaseViewProps } from '../
 import { suggestMeal } from '../services/geminiService';
 import { detectInputLanguage } from '../services/languageDetectionService';
 import { haptics } from '../utils/haptics';
+import { useDemoMode } from '../contexts/DemoModeContext';
 
 interface MealsProps extends BaseViewProps {
   meals: Meal[];
@@ -82,7 +83,10 @@ const Meals: React.FC<MealsProps> = ({
   // ─────────────────────────────────────────────────────────────────
   // Role-based permissions
   // ─────────────────────────────────────────────────────────────────
-  const isHelper = currentUser.role === UserRole.HELPER;
+  const isSuperAdmin = currentUser.role === UserRole.SUPERADMIN;
+  const { isViewingAsHelper } = useDemoMode();
+  // isHelper: true if actual Helper OR SuperAdmin viewing as Helper
+  const isHelper = currentUser.role === UserRole.HELPER || (isSuperAdmin && isViewingAsHelper);
 
   const [view, setView] = useState<'day' | 'week'>('day');
   const [loadingAi, setLoadingAi] = useState(false);

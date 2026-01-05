@@ -1055,7 +1055,7 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
         <div 
           className="sticky z-10 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 py-3 transition-shadow duration-200"
           style={{ 
-            top: '116px',
+            top: '118px',
             boxShadow: isScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none'
           }}
         >

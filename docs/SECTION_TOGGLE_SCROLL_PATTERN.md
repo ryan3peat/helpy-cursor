@@ -63,13 +63,13 @@ All pages use the same wrapper structure:
 
 ### Sticky Tab Nav
 
-All pages have sticky tab navigation at `top: 116px`:
+All pages have sticky tab navigation at `top: 118px`:
 
 ```tsx
 <div 
   className="sticky z-10 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 py-3 transition-shadow duration-200"
   style={{ 
-    top: '116px',
+    top: '118px',
     boxShadow: isScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none'
   }}
 >
@@ -97,7 +97,7 @@ All pages have sticky tab navigation at `top: 116px`:
 - Cards scroll up toward the header
 - The `boxShadow: '0 10px 0 0 hsl(var(--background))'` creates a 10px background-colored shadow below the header
 - This visually covers the cards as they scroll behind the header
-- Tab nav sticks at `top: 116px` (4px gap from header bottom)
+- Tab nav sticks at `top: 118px` (2px gap from header bottom, prevents pill cut-off)
 
 ## Critical Rules
 

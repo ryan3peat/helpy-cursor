@@ -178,7 +178,7 @@ Meals doesn't have section toggle cards - it goes directly from header to **fixe
 | Property | Other Pages | Meals | Reason |
 |----------|-------------|-------|--------|
 | Position | `sticky` | `fixed` | Prevents ANY movement during scroll |
-| `top` | `116px` | `120px` | Flush below header |
+| `top` | `118px` | `120px` | Flush below header |
 | `z-index` | `z-10` | `z-20` | Must be above iOS Safari shield at z-[19] |
 | Inner wrapper | None | `max-w-2xl mx-auto px-4 sm:px-6` | Centers content (since fixed breaks page-content flow) |
 | Spacer | None | `<div style={{ height: '72px' }} />` | Prevents content from hiding behind fixed nav |
@@ -202,7 +202,7 @@ Meals has a **fixed background shield at z-[19]** to prevent iOS Safari scroll f
 <div 
   className="sticky z-10 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 py-3 transition-shadow duration-200"
   style={{ 
-    top: '116px',
+    top: '118px',
     boxShadow: isScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none'
   }}
 >
@@ -223,7 +223,7 @@ Meals has a **fixed background shield at z-[19]** to prevent iOS Safari scroll f
 ```
 
 ### Key Rules:
-- `top: '116px'` - Positions below the 120px header (with 4px gap)
+- `top: '118px'` - Positions below the 120px header (with 2px gap, prevents pill cut-off)
 - `z-10` - Below header's `z-20`
 - Dynamic shadow on scroll: `isScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none'`
 - Pill container background: `hsl(var(--muted))`
@@ -264,7 +264,7 @@ Meals has a **fixed background shield at z-[19]** to prevent iOS Safari scroll f
 | Card active | `bg-primary text-primary-foreground shadow-md` |
 | Card inactive | `bg-card text-foreground shadow-sm` |
 | Tab nav outer | `sticky z-10 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 py-3 transition-shadow duration-200` |
-| Tab nav style | `top: '116px', boxShadow: isScrolled ? '...' : 'none'` |
+| Tab nav style | `top: '118px', boxShadow: isScrolled ? '...' : 'none'` |
 | Tab pills container | `relative rounded-full overflow-hidden` + `backgroundColor: 'hsl(var(--muted))'` |
 | Tab pills scroll | `flex p-1 overflow-x-auto scrollbar-hide` |
 | Tab button | `px-4 py-2 rounded-full text-body whitespace-nowrap transition-all` |
@@ -289,7 +289,7 @@ Meals has a **fixed background shield at z-[19]** to prevent iOS Safari scroll f
 | Gap | Value |
 |-----|-------|
 | Header height | 120px |
-| Tab nav top position | 116px |
+| Tab nav top position | 118px |
 | Cards margin top/bottom | mt-4 mb-4 (16px) |
 | Cards gap | gap-3 (12px) |
 | Tab nav padding | py-3 (12px) |

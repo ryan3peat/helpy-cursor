@@ -857,11 +857,22 @@ const AppContent: React.FC = () => {
   // ToDo CRUD Handlers
   const handleAddTodoItem = async (item: ToDoItem) => {
     if (!hid) return item;
-    const newItem = { ...item, id: `todo-${Date.now()}` };
+    const tempId = `todo-${Date.now()}`;
+    const newItem = { ...item, id: tempId };
     setTodoItems(prev => [newItem, ...prev]);
+    
     // Include createdBy for notifications - use currentUser's id
-    await addItem(hid, 'todo_items', { ...item, createdBy: currentUser?.id });
-    return newItem;
+    const savedItem = await addItem(hid, 'todo_items', { ...item, createdBy: currentUser?.id });
+    
+    // Immediately replace temp ID with real ID from database
+    // This ensures any subsequent edits use the real ID and get saved properly
+    if (savedItem?.id && savedItem.id !== tempId) {
+      setTodoItems(prev => prev.map(i => 
+        i.id === tempId ? { ...i, id: savedItem.id } : i
+      ));
+    }
+    
+    return savedItem || newItem;
   };
 
   const handleUpdateTodoItem = async (id: string, data: Partial<ToDoItem>) => {

@@ -362,7 +362,6 @@ const ToDo: React.FC<ToDoProps> = ({
   const unitInputRef = useRef<HTMLInputElement>(null);
   const sheetContentRef = useRef<HTMLDivElement>(null);
   const [showCompleted, setShowCompleted] = useState(false);
-  const [showSuggested, setShowSuggested] = useState(true);
   const [optimisticItems, setOptimisticItems] = useState<ToDoItem[]>([]);
   const [optimisticCompleted, setOptimisticCompleted] = useState<Record<string, boolean>>({});
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
@@ -1111,7 +1110,7 @@ const ToDo: React.FC<ToDoProps> = ({
         <div 
           className="sticky z-10 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 py-3 transition-shadow duration-200"
           style={{ 
-            top: '116px',
+            top: '118px',
             boxShadow: isScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none'
           }}
         >
@@ -1169,33 +1168,15 @@ const ToDo: React.FC<ToDoProps> = ({
         {/* Suggestions - Collapsible Carousel */}
         {suggestions.length > 0 && (
           <div className="mt-4 mb-2">
-            <button
-              onClick={() => setShowSuggested(!showSuggested)}
-              className="flex items-center gap-2 mb-3"
-            >
-              {showSuggested ? (
-                <ChevronDown size={16} className="text-muted-foreground" />
-              ) : (
-                <ChevronRight size={16} className="text-muted-foreground" />
-              )}
-              <span className="text-body text-muted-foreground">
-                {activeSection === 'task' 
-                  ? (t['todo.previous_completed_tasks'] || 'Previous Completed Tasks')
-                  : (t['todo.previous_purchased_items'] || 'Previous Purchased Items')
-                } ({suggestions.length})
-              </span>
-            </button>
-            
-            {showSuggested && (
-              <div className="overflow-x-auto scrollbar-hide -mx-4 px-4 sm:-mx-6 sm:px-6 pb-2">
-                <div className="flex gap-3" style={{ paddingRight: '1rem' }}>
-                  {suggestions.map((s) => (
-                    <button
-                      key={s.id}
-                      onClick={() => handleSuggestionClick(s)}
-                      className="relative flex-shrink-0 bg-card rounded-xl px-3 py-2 shadow-sm text-left flex"
-                      style={{ width: '144px', height: '72px' }}
-                    >
+            <div className="overflow-x-auto scrollbar-hide -mx-4 px-4 sm:-mx-6 sm:px-6 pb-2">
+              <div className="flex gap-3" style={{ paddingRight: '1rem' }}>
+                {suggestions.map((s) => (
+                  <button
+                    key={s.id}
+                    onClick={() => handleSuggestionClick(s)}
+                    className="relative flex-shrink-0 bg-card rounded-lg px-3 py-2 shadow-sm text-left flex"
+                    style={{ width: '144px', height: '72px' }}
+                  >
                       {/* Left: Text content */}
                       <div className="flex-1 flex flex-col justify-between min-w-0">
                         {activeSection === 'shopping' ? (
@@ -1244,12 +1225,11 @@ const ToDo: React.FC<ToDoProps> = ({
                           }
                         </div>
                         <Plus size={18} className="text-foreground" />
-                      </div>
-                    </button>
-                  ))}
-                </div>
+                    </div>
+                  </button>
+                ))}
               </div>
-            )}
+            </div>
           </div>
         )}
 

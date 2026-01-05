@@ -2,118 +2,127 @@
 
 ## Overview
 
-This document explains the pattern used in `HouseholdInfo.tsx` (Family Info) and `ToDo.tsx` to handle Section Toggle Cards with proper shadow visibility and scroll hiding behavior.
+This document explains the pattern used in `HouseholdInfo.tsx` (Family Info), `ToDo.tsx`, and `Expenses.tsx` to handle Section Toggle Cards with proper shadow visibility and scroll hiding behavior.
+
+**Family Info is the anchor** - always match other pages to it.
 
 ## The Problem
 
-Both pages have:
-1. **Section Toggle Cards** - Buttons like Places/Practice/Helper or Tasks/Shopping
-2. **Sticky Tab Navigation** - The pill-shaped category tabs (All/Home/School etc.)
+These pages have:
+1. **Section Toggle Cards** - Buttons like Places/Practice/Helper, Tasks/Shopping, or Summary Card
+2. **Sticky Tab Navigation** - The pill-shaped category tabs (All/Home/School, List/Summary, etc.)
 
 When scrolling, the Section Toggle Cards should:
 - Show button shadows when **not scrolled** (unscrolled state)
 - Be **fully hidden** when scrolled up (no peeking through)
 
-## The Solution
+## Current Solution (January 2026)
 
-### Family Info (`HouseholdInfo.tsx`)
+All pages now use `boxShadow` on the header instead of pseudo-elements:
 
-Family Info uses **horizontal scrolling** for its Section Toggle Cards, which creates a CSS overflow context that clips content (including shadows) on both axes.
+### Standard Header
 
-**Header (lines ~952-955):**
 ```tsx
 <header 
-  className="sticky top-0 z-20 relative bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 pb-3 flex items-end after:content-[''] after:absolute after:inset-x-0 after:top-full after:h-2 after:bg-background after:pointer-events-none" 
-  style={{ height: '120px' }}
+  className="sticky top-0 z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 pb-3 flex items-end" 
+  style={{ height: '120px', boxShadow: '0 10px 0 0 hsl(var(--background))' }}
 >
 ```
 
-**Section Toggle Cards (line ~974):**
+**Key elements:**
+| Property | Value | Purpose |
+|----------|-------|---------|
+| `height` | 120px | Fixed header height |
+| `boxShadow` | `0 10px 0 0 hsl(var(--background))` | Creates 10px visual extension below header to cover scrolling content |
+
+### Section Toggle Cards
+
+All pages use the same wrapper structure:
+
 ```tsx
-<div className="mt-4 mb-2 -mx-4 px-4 pb-2 overflow-x-auto scrollbar-hide">
+<div className="mt-4 mb-4 -mx-4 px-4 sm:-mx-6 sm:px-6 overflow-x-auto scrollbar-hide">
+  <div className="flex gap-3">
+    {/* Card buttons */}
+  </div>
+</div>
 ```
 
-**Key elements:**
-| Class | Value | Purpose |
-|-------|-------|---------|
-| `pb-2` | 8px | Internal padding for shadow visibility within scroll container |
-| `mb-2` | 8px | External margin (reduced from mb-4 to compensate for pb-2) |
-| `after:h-2` | 8px | Header pseudo-element extending coverage below header |
-| `overflow-x-auto` | - | Enables horizontal scrolling |
+| Class | Purpose |
+|-------|---------|
+| `mt-4 mb-4` | 16px top/bottom margin |
+| `-mx-4 px-4 sm:-mx-6 sm:px-6` | Edge-to-edge layout |
+| `overflow-x-auto scrollbar-hide` | Horizontal scroll for 3+ cards |
 
-**Total bottom space:** `mb-2` (8px) + `pb-2` (8px) = 16px
+### Card Variations
 
-### ToDo (`ToDo.tsx`)
+| Page | # Cards | Card Classes |
+|------|---------|--------------|
+| ToDo | 2 | `flex-1 px-3 py-2.5 rounded-xl...` |
+| Family Info | 3 | `flex-shrink-0 min-w-[130px] px-3 py-2.5 rounded-xl...` |
+| Expenses | 1 | `flex-shrink-0 w-full px-3 py-1 rounded-xl text-left bg-card shadow-sm` (no icon, larger font) |
 
-ToDo uses a **grid layout** (no overflow context), so it doesn't need internal padding for shadows.
+### Sticky Tab Nav
 
-**Header (lines ~953-956):**
+All pages have sticky tab navigation at `top: 116px`:
+
 ```tsx
-<header 
-  className="sticky top-0 z-20 relative bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 pb-3 flex items-end after:content-[''] after:absolute after:inset-x-0 after:top-full after:h-2 after:bg-background after:pointer-events-none" 
-  style={{ height: '120px' }}
+<div 
+  className="sticky z-10 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 py-3 transition-shadow duration-200"
+  style={{ 
+    top: '116px',
+    boxShadow: isScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none'
+  }}
 >
 ```
 
-**Section Toggle Cards (line ~1067):**
+### Main Content Area
+
+**CRITICAL:** Do NOT add `min-height` to main content:
+
 ```tsx
-<div className="mt-4 mb-4 -mx-4 px-4">
+// CORRECT
+<div className="pt-4">
+
+// WRONG - causes scroll alignment issues
+<div className="pt-4 min-h-[350px]">
 ```
-
-**Key elements:**
-| Class | Value | Purpose |
-|-------|-------|---------|
-| `mb-4` | 16px | External margin (no pb needed since no overflow clipping) |
-| `after:h-2` | 8px | Header pseudo-element extending coverage below header |
-
-**Total bottom space:** `mb-4` (16px) = 16px
 
 ## How It Works
 
 ### Unscrolled State
 - Cards display normally with shadows visible
-- In Family Info, `pb-2` provides internal space for shadows within the `overflow-x-auto` container
-- In ToDo, shadows naturally extend beyond the container (no overflow clipping)
+- `overflow-x-auto` enables horizontal scroll for 3+ cards
 
 ### Scrolled State
 - Cards scroll up toward the header
-- The `after:h-2` pseudo-element on the header creates an 8px invisible background extension below the header (120px to 128px)
-- This extension **covers/hides** the cards as they scroll, preventing them from peeking through
-
-### Sticky Tab Nav
-Both pages have sticky tab navigation at `top: 116px`:
-```tsx
-<div 
-  className="sticky z-10 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 py-3 transition-shadow duration-200"
-  style={{ top: '116px', ... }}
->
-```
+- The `boxShadow: '0 10px 0 0 hsl(var(--background))'` creates a 10px background-colored shadow below the header
+- This visually covers the cards as they scroll behind the header
+- Tab nav sticks at `top: 116px` (4px gap from header bottom)
 
 ## Critical Rules
 
-1. **DO NOT remove `pb-2`** from Family Info Section Toggle Cards - it prevents shadow clipping in the overflow context
+1. **Family Info is the anchor** - never modify it to match other pages
 
-2. **DO NOT remove `after:h-2`** from headers - it covers scrolling content
+2. **Use `boxShadow` not pseudo-elements** - the `0 10px 0 0` shadow provides cleaner coverage
 
-3. **Keep total bottom space at 16px** for visual consistency between pages:
-   - Family Info: `mb-2` + `pb-2` = 16px
-   - ToDo: `mb-4` = 16px
+3. **Keep `mt-4 mb-4`** on all section card wrappers - this ensures 16px consistent spacing
 
-4. **`overflow-y-visible` does NOT work** with `overflow-x-auto` due to CSS specs - browsers compute it to `auto`
+4. **Always include `overflow-x-auto scrollbar-hide`** on section card wrappers - even for single cards, for structural consistency
+
+5. **NO `min-height` on main content** - this was a legacy fix for tall hero cards that caused scroll misalignment
 
 ## Troubleshooting
 
 | Issue | Cause | Fix |
 |-------|-------|-----|
-| Shadows cut off (Family Info) | Missing `pb-2` | Add `pb-2` to scroll container |
-| Buttons peek through when scrolled | Missing header pseudo-element | Add `after:h-2 after:bg-background` etc. to header |
-| Gap too wide between cards and tab nav | Extra padding without margin adjustment | Reduce `mb-*` to compensate for `pb-*` |
-| Buttons cut off at top | Header pseudo-element too tall | Keep `after:h-2` (8px), not larger |
+| Cards/Tab nav scroll too far up | `min-h-[...]` on main content | Remove min-height |
+| Cards peek through when scrolled | Missing or wrong boxShadow | Add `boxShadow: '0 10px 0 0 hsl(var(--background))'` |
+| Horizontal scroll not working | Missing overflow classes | Add `overflow-x-auto scrollbar-hide` |
+| Scroll position different between pages | Different margin/padding | Match all values to Family Info |
 
-## Summary
+## History
 
-The pattern balances three requirements:
-1. Shadow visibility (unscrolled) → `pb-2` internal padding
-2. Full hiding (scrolled) → `after:h-2` header extension  
-3. Consistent spacing → Total 16px bottom space
+- **Jan 2026:** Migrated from `after:` pseudo-elements to `boxShadow` approach
+- **Jan 2026:** Added Expenses to unified structure
+- **Jan 2026:** Removed redundant `min-h-[350px]` from Expenses (legacy hero card fix)
 

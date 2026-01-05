@@ -800,7 +800,7 @@ const Meals: React.FC<MealsProps> = ({
         {/* ─────────────────────────────────────────────────────────────── */}
         <header 
           className="sticky top-0 z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 pb-3 flex items-end" 
-          style={{ height: '120px' }}
+          style={{ height: '120px', boxShadow: '0 10px 0 0 hsl(var(--background))' }}
         >
           <div className="flex items-center justify-between w-full">
             <h1 className="text-display text-foreground">
@@ -849,9 +849,10 @@ const Meals: React.FC<MealsProps> = ({
         {/* WEEK NAVIGATION */}
         {/* ─────────────────────────────────────────────────────────────── */}
         <div 
-          className="sticky z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 py-3"
+          className="fixed left-0 right-0 z-20 bg-background py-3"
           style={{ top: '120px' }}
         >
+          <div className="max-w-2xl mx-auto px-4 sm:px-6">
           <div className="flex items-center gap-3">
             {/* Week Selector */}
             <div className="relative flex-1 flex items-center justify-between px-2 rounded-xl h-12 overflow-hidden bg-muted">
@@ -884,8 +885,12 @@ const Meals: React.FC<MealsProps> = ({
             >
               {t['meals.today'] ?? 'Today'}
               </button>
+          </div>
         </div>
       </div>
+        
+        {/* Spacer for fixed week navigation */}
+        <div style={{ height: '72px' }} />
 
         {/* ─────────────────────────────────────────────────────────────── */}
         {/* MAIN CONTENT - Hidden until scroll completes to prevent flicker */}

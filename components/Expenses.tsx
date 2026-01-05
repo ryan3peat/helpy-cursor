@@ -1110,8 +1110,8 @@ const Expenses: React.FC<ExpensesProps> = ({
         {/* STICKY HEADER - Push Up (No Shrink) */}
         {/* ─────────────────────────────────────────────────────────────── */}
         <header 
-          className="sticky top-0 z-20 relative bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 pb-3 flex items-end after:content-[''] after:absolute after:inset-x-0 after:top-full after:-mt-1 after:h-3 after:bg-background after:pointer-events-none" 
-          style={{ height: '120px' }}
+          className="sticky top-0 z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 pb-3 flex items-end" 
+          style={{ height: '120px', boxShadow: '0 10px 0 0 hsl(var(--background))' }}
         >
           <div className="flex items-center justify-between w-full">
             <h1 className="text-display text-foreground">
@@ -1132,14 +1132,16 @@ const Expenses: React.FC<ExpensesProps> = ({
           </div>
         </header>
 
-        {/* Summary Card - Hidden for Helper */}
+        {/* Summary Card - Same structure as section cards */}
         {!isHelper && (
-        <div className="mt-4 mb-6">
-          <div className="bg-primary text-primary-foreground p-6 rounded-xl shadow-md">
-            <p className="text-body opacity-80 mb-1">
-              {selectedMonth === null ? t['common.total_for_all'] : `${t['common.total_for_month']} ${MONTH_NAMES_FULL[selectedMonth]} ${selectedYear}`}
-            </p>
-            <h2 className="text-display">{formatCurrency(totalAmount)}</h2>
+        <div className="mt-4 mb-2 pb-2 -mx-4 px-4 sm:-mx-6 sm:px-6 overflow-x-auto scrollbar-hide">
+          <div className="flex gap-3">
+            <div className="flex-shrink-0 w-full px-3 py-2 rounded-xl text-left bg-transparent">
+              <span className="text-title font-bold text-foreground" style={{ fontSize: '1.25rem' }}>{formatCurrency(totalAmount)}</span>
+              <div className="text-caption mt-0.5 text-muted-foreground">
+                {selectedMonth === null ? (t['common.total'] || 'Total') : `${MONTH_NAMES[selectedMonth]} ${selectedYear} ${t['common.total'] || 'Total'}`}
+              </div>
+            </div>
           </div>
         </div>
         )}
@@ -1159,9 +1161,9 @@ const Expenses: React.FC<ExpensesProps> = ({
             className="relative rounded-full overflow-hidden"
             style={{ backgroundColor: 'hsl(var(--muted))' }}
           >
-            <div className="flex p-1">
-          <button
-            onClick={() => setView('list')}
+            <div className="flex p-1 overflow-x-auto scrollbar-hide">
+              <button
+                onClick={() => setView('list')}
                 className={`flex-1 px-4 py-2 rounded-full text-body whitespace-nowrap transition-all flex items-center justify-center gap-2 ${
                   view === 'list'
                     ? 'bg-card text-primary shadow-sm'
@@ -1200,7 +1202,7 @@ const Expenses: React.FC<ExpensesProps> = ({
         {/* ─────────────────────────────────────────────────────────────── */}
         {/* MAIN CONTENT */}
         {/* ─────────────────────────────────────────────────────────────── */}
-        <div className="pt-4 min-h-[350px]">
+        <div className="pt-4">
           {/* Error Alert */}
       {error && (
             <div className="mb-4 p-4 bg-destructive/10 border border-destructive/20 rounded-xl flex items-start gap-3">

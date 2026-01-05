@@ -970,8 +970,8 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
         />
 
         {/* Section Toggle Cards - Scrollable Horizontal Layout */}
-        <div className="mt-4 mb-4 -mx-4 px-4 pb-1 overflow-x-auto scrollbar-hide">
-          <div className="flex gap-3" style={{ minWidth: 'min-content' }}>
+        <div className="mt-4 mb-2 pb-2 -mx-4 px-4 sm:-mx-6 sm:px-6 overflow-x-auto scrollbar-hide">
+          <div className="flex gap-3">
             {/* Places Card */}
             <button
               onClick={() => setActiveSection("essentialInfo")}

@@ -17,8 +17,7 @@ import {
   Home,
   Users,
   MoreHorizontal,
-  SlidersHorizontal,
-  ArrowUpDown,
+  ArrowDownUp,
 } from 'lucide-react';
 import Avatar from './ui/Avatar';
 import ErrorBanner from './ui/ErrorBanner';
@@ -956,7 +955,7 @@ const ToDo: React.FC<ToDoProps> = ({
           style={{ height: '120px', boxShadow: '0 10px 0 0 hsl(var(--background))' }}
         >
           <div className="flex items-center justify-between w-full">
-            <h1>
+            <h1 className="w-full">
               <span className="text-primary font-bold" style={{ fontSize: '20px' }}>{t['todo.title'] || 'To Do'}</span><br />
               <span className="text-display text-foreground">{activeSection === 'shopping' ? (t['todo.shopping'] || 'Shopping') : (t['todo.tasks'] || 'Tasks')}</span>
             </h1>
@@ -969,7 +968,7 @@ const ToDo: React.FC<ToDoProps> = ({
                   isFilterDropdownOpen ? 'bg-muted' : ''
                 }`}
               >
-                <SlidersHorizontal size={20} className="text-muted-foreground" />
+                <ArrowDownUp size={20} className="text-muted-foreground" />
                 {/* Active indicator dot */}
                 {(sortBy !== 'addedDate-desc' || showOnlyMine) && (
                   <span className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full" />
@@ -1068,12 +1067,12 @@ const ToDo: React.FC<ToDoProps> = ({
         />
 
         {/* Section Toggle Cards */}
-        <div className="mt-4 mb-4 -mx-4 px-4 sm:-mx-6 sm:px-6">
-          <div className="grid grid-cols-2 gap-3">
+        <div className="mt-4 mb-2 pb-2 -mx-4 px-4 sm:-mx-6 sm:px-6">
+          <div className="flex gap-3">
             {/* Tasks Card */}
             <button
               onClick={() => setActiveSection('task')}
-              className={`px-3 py-2.5 rounded-xl text-left transition-all ${
+              className={`flex-1 px-3 py-2.5 rounded-xl text-left transition-all ${
                 activeSection === 'task'
                   ? 'bg-primary text-primary-foreground shadow-md'
                   : 'bg-card text-foreground shadow-sm'
@@ -1091,7 +1090,7 @@ const ToDo: React.FC<ToDoProps> = ({
             {/* Shopping Card */}
             <button
               onClick={() => setActiveSection('shopping')}
-              className={`px-3 py-2.5 rounded-xl text-left transition-all ${
+              className={`flex-1 px-3 py-2.5 rounded-xl text-left transition-all ${
                 activeSection === 'shopping'
                   ? 'bg-primary text-primary-foreground shadow-md'
                   : 'bg-card text-foreground shadow-sm'

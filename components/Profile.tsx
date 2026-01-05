@@ -1619,9 +1619,9 @@ const Profile: React.FC<ProfileProps> = ({
                 {addUserStep === 'form' && (
                   <>
                     {/* Form */}
-                    <div className="p-5 space-y-4 flex-1 overflow-y-auto">
+                    <div className="p-5 space-y-3 flex-1 overflow-y-auto">
                       <div>
-                        <label className="block text-caption text-muted-foreground mb-2 tracking-wide">{t['common.name']}</label>
+                        <label className="block text-caption text-muted-foreground mb-1.5 tracking-wide">{t['common.name']}</label>
                         <input
                           type="text"
                           autoComplete="one-time-code"
@@ -1632,7 +1632,7 @@ const Profile: React.FC<ProfileProps> = ({
                         />
                       </div>
                       <div>
-                        <label className="block text-caption text-muted-foreground mb-2 tracking-wide">{t['profile.role']}</label>
+                        <label className="block text-caption text-muted-foreground mb-1.5 tracking-wide">{t['profile.role']}</label>
                         <div className="flex gap-2">
                           <button
                             type="button"
@@ -2002,10 +2002,10 @@ const Profile: React.FC<ProfileProps> = ({
                 </div>
 
                 {/* Form */}
-                <div className="p-5 space-y-4 flex-1 overflow-y-auto">
+                <div className="p-5 space-y-3 flex-1 overflow-y-auto">
                   {/* Name */}
                   <div>
-                    <label className="block text-caption text-muted-foreground mb-2 tracking-wide">{t['profile.name_label'] || 'Name'}</label>
+                    <label className="block text-caption text-muted-foreground mb-1.5 tracking-wide">{t['profile.name_label'] || 'Name'}</label>
                     <input
                       type="text"
                       autoComplete="one-time-code"
@@ -2018,7 +2018,7 @@ const Profile: React.FC<ProfileProps> = ({
                   {/* Role - Hidden when Admin/Helper edits their own profile (prevent self-demotion/escalation) */}
                   {!((isHelper || currentUser.role === UserRole.MASTER) && selectedUser.id === currentUser.id) && (
                   <div>
-                    <label className="block text-caption text-muted-foreground mb-2 tracking-wide">{t['profile.role'] || 'Role'}</label>
+                    <label className="block text-caption text-muted-foreground mb-1.5 tracking-wide">{t['profile.role'] || 'Role'}</label>
                     <select
                       value={editRole}
                       onChange={(e) => setEditRole(e.target.value as UserRole)}
@@ -2035,7 +2035,7 @@ const Profile: React.FC<ProfileProps> = ({
 
                   {/* Allergies */}
                   <div>
-                    <label className="block text-caption text-muted-foreground mb-2 tracking-wide">{t['profile.allergies']}</label>
+                    <label className="block text-caption text-muted-foreground mb-1.5 tracking-wide">{t['profile.allergies']}</label>
                     <div className="flex gap-2 mb-2">
                       <input
                         type="text"
@@ -2064,7 +2064,7 @@ const Profile: React.FC<ProfileProps> = ({
 
                   {/* Preferences */}
                   <div>
-                    <label className="block text-caption text-muted-foreground mb-2 tracking-wide">{t['profile.preferences']}</label>
+                    <label className="block text-caption text-muted-foreground mb-1.5 tracking-wide">{t['profile.preferences']}</label>
                     <div className="flex gap-2 mb-2">
                       <input
                         type="text"
@@ -2093,14 +2093,14 @@ const Profile: React.FC<ProfileProps> = ({
 
                 {/* Helper Salary Fields - Only show when editing a Helper */}
                 {selectedUser?.role === UserRole.HELPER && (
-                  <div className="space-y-4 pt-4 border-t border-border">
+                  <div className="space-y-3 pt-4 border-t border-border">
                     <h4 className="text-body font-semibold text-foreground">
                       {t['profile.helper_salary_info'] || 'Salary Information'}
                     </h4>
                     
                     {/* Start Date */}
                     <div>
-                      <label className="block text-caption text-muted-foreground mb-2">
+                      <label className="block text-caption text-muted-foreground mb-1.5">
                         {t['profile.helper_start_date'] || 'Start Date'}
                       </label>
                       <input
@@ -2113,7 +2113,7 @@ const Profile: React.FC<ProfileProps> = ({
                     
                     {/* Base Salary */}
                     <div>
-                      <label className="block text-caption text-muted-foreground mb-2">
+                      <label className="block text-caption text-muted-foreground mb-1.5">
                         {t['profile.helper_base_salary'] || 'Base Salary (HK$/month)'}
                       </label>
                       <input
@@ -2132,7 +2132,7 @@ const Profile: React.FC<ProfileProps> = ({
                     
                     {/* Other Allowances */}
                     <div>
-                      <label className="block text-caption text-muted-foreground mb-2">
+                      <label className="block text-caption text-muted-foreground mb-1.5">
                         {t['profile.helper_other_allowances'] || 'Other Allowances'}
                       </label>
                       {editHelperOtherAllowances.map((allowance, index) => (
@@ -3096,7 +3096,7 @@ const Profile: React.FC<ProfileProps> = ({
 
                 {/* Scrollable Content */}
                 <div className="flex-1 overflow-y-auto max-h-[60vh]">
-                <div className="p-5 space-y-4">
+                <div className="p-5 space-y-3">
                   <p className="text-body text-foreground">
                     {(t['subscription.upgrade_to'] || 'You are about to upgrade to the {plan} plan.').replace('{plan}', pendingPlan.plan === 'core' ? 'Core' : pendingPlan.plan === 'pro' ? 'Pro' : 'Test')}
                   </p>
@@ -3294,7 +3294,7 @@ const Profile: React.FC<ProfileProps> = ({
               {/* Profile Information Section */}
               <div className="bg-card p-6 rounded-2xl shadow-sm border border-border">
                 <h3 className="text-title font-bold text-foreground mb-4">{t['profile.profile_information'] || 'Profile Information'}</h3>
-                <div className="space-y-4">
+                <div className="space-y-3">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1">
                       <label className="text-caption font-bold text-muted-foreground ml-1">{t['profile.first_name'] || 'First Name'}</label>
@@ -3386,7 +3386,7 @@ const Profile: React.FC<ProfileProps> = ({
               {/* Email & Password Section */}
               <div className="bg-card p-6 rounded-2xl shadow-sm border border-border">
                 <h3 className="text-title font-bold text-foreground mb-4">{t['profile.email_password'] || 'Email & Password'}</h3>
-                <div className="space-y-4">
+                <div className="space-y-3">
                   <div className="space-y-1">
                     <label className="text-caption font-bold text-muted-foreground ml-1">{t['profile.email_address'] || 'Email Address'}</label>
                     <div className="relative">
@@ -3448,7 +3448,7 @@ const Profile: React.FC<ProfileProps> = ({
               </div>
             </div>
 
-            <div className="mt-6 pt-4 space-y-4">
+            <div className="mt-6 pt-4 space-y-3">
               <button 
                 onClick={() => {
                   // Save account data

@@ -382,7 +382,7 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
               title="Error"
             />
 
-            <form onSubmit={handleVerify} className="space-y-4">
+            <form onSubmit={handleVerify} className="space-y-3">
               <div>
                 <label className="text-[#474747] text-body mb-1.5 block">
                   Verification Code
@@ -553,7 +553,7 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
                   title="Error"
                 />
 
-                <form onSubmit={handleSignUp} className="space-y-4">
+                <form onSubmit={handleSignUp} className="space-y-3">
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="text-[#474747] text-body mb-1.5 block">

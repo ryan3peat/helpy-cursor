@@ -1110,7 +1110,7 @@ const Expenses: React.FC<ExpensesProps> = ({
         {/* STICKY HEADER - Push Up (No Shrink) */}
         {/* ─────────────────────────────────────────────────────────────── */}
         <header 
-          className="sticky top-0 z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 pb-3 flex items-end" 
+          className="sticky top-0 z-20 relative bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 pb-3 flex items-end after:content-[''] after:absolute after:inset-x-0 after:top-full after:-mt-1 after:h-3 after:bg-background after:pointer-events-none" 
           style={{ height: '120px' }}
         >
           <div className="flex items-center justify-between w-full">
@@ -1151,7 +1151,7 @@ const Expenses: React.FC<ExpensesProps> = ({
         <div
           className="sticky z-10 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 py-3 transition-shadow duration-200"
           style={{
-            top: '120px',
+            top: '116px',
             boxShadow: isScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none',
           }}
         >
@@ -1200,7 +1200,7 @@ const Expenses: React.FC<ExpensesProps> = ({
         {/* ─────────────────────────────────────────────────────────────── */}
         {/* MAIN CONTENT */}
         {/* ─────────────────────────────────────────────────────────────── */}
-        <div className="pt-4">
+        <div className="pt-4 min-h-[350px]">
           {/* Error Alert */}
       {error && (
             <div className="mb-4 p-4 bg-destructive/10 border border-destructive/20 rounded-xl flex items-start gap-3">

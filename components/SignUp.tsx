@@ -378,7 +378,7 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
               title="Error"
             />
 
-            <form onSubmit={handleVerify} className="space-y-4">
+            <form onSubmit={handleVerify} className="space-y-3">
               <div>
                 <label className="text-[#474747] text-body mb-1.5 block">
                   Verification Code
@@ -499,7 +499,7 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
             </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-[#474747] text-body mb-1.5 block">

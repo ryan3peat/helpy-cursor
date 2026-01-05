@@ -956,7 +956,7 @@ const Dashboard: React.FC<DashboardProps> = ({
       </header>
 
       {/* Content */}
-      <div className="px-5 pt-5 space-y-4">
+      <div className="px-5 pt-4 space-y-4">
 
       {/* Error Banner */}
       <ErrorBanner 
@@ -1165,7 +1165,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         </div>
         <div className="p-4">
           {todaysMenu.length > 0 ? (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {todaysMenu.map((meal, idx) => {
                 return (
                   <div key={meal.id} className="relative">

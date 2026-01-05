@@ -790,7 +790,7 @@ const Meals: React.FC<MealsProps> = ({
           to prevent any flicker during iOS Safari scroll operations */}
       <div 
         className="fixed top-0 left-0 right-0 z-[19] bg-background"
-        style={{ height: '120px' }}
+        style={{ height: '200px' }}
         aria-hidden="true"
       />
       
@@ -849,11 +849,8 @@ const Meals: React.FC<MealsProps> = ({
         {/* WEEK NAVIGATION */}
         {/* ─────────────────────────────────────────────────────────────── */}
         <div 
-          className="sticky z-10 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 py-3 transition-shadow duration-200"
-          style={{ 
-            top: '120px',
-            boxShadow: isScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none'
-          }}
+          className="sticky z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 py-3"
+          style={{ top: '120px' }}
         >
           <div className="flex items-center gap-3">
             {/* Week Selector */}

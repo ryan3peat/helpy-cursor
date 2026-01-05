@@ -654,7 +654,7 @@ export const HelperManagementContent: React.FC<Props> = ({
             <div className="p-5">
               {/* Amount input */}
               <div className="mb-4">
-                <label className="block text-caption text-muted-foreground mb-2">
+                <label className="block text-caption text-muted-foreground mb-1.5">
                   {t['helper.amount'] || 'Amount (HK$)'}
                 </label>
                 <div className="relative">
@@ -764,7 +764,7 @@ export const HelperManagementContent: React.FC<Props> = ({
               
               {/* New amount input */}
               <div className="mb-4">
-                <label className="block text-caption text-muted-foreground mb-2">
+                <label className="block text-caption text-muted-foreground mb-1.5">
                   {t['helper.new_amount'] || 'New Total Amount (HK$)'}
                 </label>
                 <div className="relative">

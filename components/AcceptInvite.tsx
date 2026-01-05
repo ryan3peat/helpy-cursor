@@ -258,7 +258,7 @@ const AcceptInvite: React.FC<AcceptInviteProps> = ({ onComplete }) => {
             </div>
           )}
 
-          <form onSubmit={handleVerify} className="space-y-4">
+          <form onSubmit={handleVerify} className="space-y-3">
             <div>
               <label className="block text-caption text-gray-500 mb-1">Verification Code</label>
               <input
@@ -322,7 +322,7 @@ const AcceptInvite: React.FC<AcceptInviteProps> = ({ onComplete }) => {
         )}
 
         {/* Signup Form */}
-        <form onSubmit={handleSignUp} className="space-y-4">
+        <form onSubmit={handleSignUp} className="space-y-3">
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-caption text-gray-500 mb-1">First Name</label>

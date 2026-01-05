@@ -69,7 +69,6 @@ import { updateHouseRoutine } from "@/services/houseRoutineService";
 
 // Helper Management
 import HelperManagementContent from "./HelperManagementContent";
-import { useDemoMode } from "../contexts/DemoModeContext";
 
 interface HouseholdInfoProps extends BaseViewProps {
   householdId: string;
@@ -566,7 +565,7 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
   
   // Role-based permissions
   const isSuperAdmin = currentUser.role === UserRole.SUPERADMIN;
-  const { isViewingAsHelper } = useDemoMode();
+  const { isViewingAsHelper, isSimulatingFreeUser } = useDemoMode();
   // isHelper: true if actual Helper OR SuperAdmin viewing as Helper
   const isHelper = currentUser.role === UserRole.HELPER || (isSuperAdmin && isViewingAsHelper);
 
@@ -606,7 +605,6 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
   
   // Helper Management is only available to Core and Pro users (not Free)
   // SuperAdmin bypasses plan restrictions UNLESS simulating free user
-  const { isSimulatingFreeUser } = useDemoMode();
   const hasHelperManagementAccess = subscriptionPlan === 'core' || subscriptionPlan === 'pro' || (isSuperAdmin && !isSimulatingFreeUser);
   
   // Helper upgrade modal state
@@ -952,7 +950,7 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
         {/* ─────────────────────────────────────────────────────────────── */}
         <header 
           className="sticky top-0 z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 pb-3 flex items-end" 
-          style={{ height: '120px' }}
+          style={{ height: '120px', boxShadow: '0 10px 0 0 hsl(var(--background))' }}
         >
           <h1 className="w-full">
             <span className="text-primary font-bold" style={{ fontSize: '20px' }}>{t['info.title'] || 'Family Info'}</span><br />
@@ -972,7 +970,7 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
         />
 
         {/* Section Toggle Cards - Scrollable Horizontal Layout */}
-        <div className="mt-4 mb-6 -mx-4 px-4 pb-1 overflow-x-auto scrollbar-hide">
+        <div className="mt-4 mb-4 -mx-4 px-4 pb-1 overflow-x-auto scrollbar-hide">
           <div className="flex gap-3" style={{ minWidth: 'min-content' }}>
             {/* Places Card */}
             <button

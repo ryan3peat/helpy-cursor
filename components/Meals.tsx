@@ -94,10 +94,8 @@ const Meals: React.FC<MealsProps> = ({
   const [contentReady, setContentReady] = useState(false);
   
   
-  // Scroll header hook for animation
-  // - cooldown: 300ms to handle elastic bounce
-  // - expandThreshold: 40px so header expands sooner when scrolling back up
-  const { isScrolled } = useScrollHeader({ cooldown: 300, expandThreshold: 40 });
+  // Scroll header hook for animation (using defaults like other pages)
+  const { isScrolled } = useScrollHeader();
 
   // Date Navigation State
   const [currentViewDate, setCurrentViewDate] = useState(new Date());
@@ -534,7 +532,7 @@ const Meals: React.FC<MealsProps> = ({
     }
 
     if (view === 'day') {
-      const headerOffset = 200;
+      const headerOffset = 230;
       const targetDateStr = formatDateStr(new Date(currentViewDate));
       
       // Use requestAnimationFrame to ensure DOM is ready
@@ -846,16 +844,15 @@ const Meals: React.FC<MealsProps> = ({
           title={t['common.error'] || 'Error'}
         />
         {/* ─────────────────────────────────────────────────────────────── */}
-        {/* WEEK NAVIGATION */}
+        {/* WEEK NAVIGATION - Same structure as Family Info tab nav */}
         {/* ─────────────────────────────────────────────────────────────── */}
         <div 
-          className="fixed left-0 right-0 z-20 bg-background py-3 transition-shadow duration-200"
+          className="sticky z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 py-5 transition-shadow duration-200"
           style={{ 
             top: '120px',
             boxShadow: isScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none'
           }}
         >
-          <div className="max-w-2xl mx-auto px-4 sm:px-6">
           <div className="flex items-center gap-3">
             {/* Week Selector */}
             <div className="relative flex-1 flex items-center justify-between px-2 rounded-xl h-12 overflow-hidden bg-muted">
@@ -876,8 +873,8 @@ const Meals: React.FC<MealsProps> = ({
               <div className="absolute inset-0 rounded-xl pointer-events-none shadow-[inset_0_2px_4px_rgba(0,0,0,0.06)]" />
             </div>
 
-            {/* Today Button - Always visible */}
-              <button
+            {/* Today Button */}
+            <button
               onClick={goToTodayWithScroll}
               disabled={isCurrentWeek}
               className={`px-4 rounded-xl font-semibold text-body h-12 ${
@@ -887,18 +884,14 @@ const Meals: React.FC<MealsProps> = ({
               }`}
             >
               {t['meals.today'] ?? 'Today'}
-              </button>
+            </button>
           </div>
         </div>
-      </div>
-        
-        {/* Spacer for fixed week navigation */}
-        <div style={{ height: '72px' }} />
 
         {/* ─────────────────────────────────────────────────────────────── */}
         {/* MAIN CONTENT - Hidden until scroll completes to prevent flicker */}
         {/* ─────────────────────────────────────────────────────────────── */}
-        <div className="pt-4" style={{ opacity: contentReady ? 1 : 0 }}>
+        <div className="pt-1" style={{ opacity: contentReady ? 1 : 0 }}>
 
       {/* Day View */}
       {view === 'day' ? (

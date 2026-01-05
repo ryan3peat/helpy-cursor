@@ -94,8 +94,8 @@ const Meals: React.FC<MealsProps> = ({
   const [contentReady, setContentReady] = useState(false);
   
   
-  // Scroll header hook for animation (using defaults like other pages)
-  const { isScrolled } = useScrollHeader();
+  // Scroll header hook for animation - lower threshold so shadow appears when card date gets covered
+  const { isScrolled } = useScrollHeader({ collapseThreshold: 20 });
 
   // Date Navigation State
   const [currentViewDate, setCurrentViewDate] = useState(new Date());

@@ -93,6 +93,8 @@ export interface ToDoItem {
   // Translation fields
   nameLang?: string | null; // Language code of the name field (null if undetectable)
   nameTranslations?: Record<string, string>; // Translations: { "en": "original", "zh-CN": "translated", ... }
+  // Soft delete
+  deletedAt?: string; // Timestamp when item was soft-deleted (null = active)
 }
 
 // Legacy types for backwards compatibility

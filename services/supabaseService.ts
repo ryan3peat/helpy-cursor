@@ -243,10 +243,17 @@ export function subscribeToCollection(
   // Helper function to fetch data - always get fresh client to pick up auth
   const fetchData = () => {
     const client = getSupabaseClient();
-    return client
+    let query = client
       .from(tableName)
       .select(selectQuery)
       .eq('household_id', householdId);
+    
+    // Filter out soft-deleted items for todo_items
+    if (collection === 'todo_items') {
+      query = query.is('deleted_at', null);
+    }
+    
+    return query;
   };
   
   // Initial fetch with JWT expiration handling
@@ -268,10 +275,17 @@ export function subscribeToCollection(
             ? '*, push_subscriptions(id)'
             : '*';
           
-          const { data: retryData, error: retryError } = await refreshedClient
+          let retryQueryBuilder = refreshedClient
             .from(tableName)
             .select(retryQuery)
             .eq('household_id', householdId);
+          
+          // Filter out soft-deleted items for todo_items
+          if (collection === 'todo_items') {
+            retryQueryBuilder = retryQueryBuilder.is('deleted_at', null);
+          }
+          
+          const { data: retryData, error: retryError } = await retryQueryBuilder;
           
           if (retryError) {
             console.error(`❌ Retry failed for ${tableName}:`, retryError);
@@ -826,6 +840,7 @@ export async function updateItem(
 /**
  * Delete an item
  * Why: Remove records (e.g., delete completed task)
+ * Note: todo_items uses soft delete (sets deleted_at), other tables use hard delete
  */
 export async function deleteItem(
   householdId: string,
@@ -852,6 +867,29 @@ export async function deleteItem(
   // Use authenticated client for RLS
   const client = getSupabaseClient();
   
+  // Soft delete for todo_items (preserve shopping/task history)
+  if (collection === 'todo_items') {
+    const { error, count } = await client
+      .from(tableName)
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', actualId)
+      .eq('household_id', householdId)
+      .select();
+
+    if (error) {
+      console.error('❌ Soft delete error:', error);
+      throw error;
+    }
+    
+    if (!count || count === 0) {
+      console.warn('⚠️ No rows soft-deleted - item may not exist');
+    } else {
+      console.log('✅ Soft delete successful (deleted_at set)');
+    }
+    return;
+  }
+  
+  // Hard delete for other tables
   const { error, count } = await client
     .from(tableName)
     .delete({ count: 'exact' })
@@ -1388,10 +1426,17 @@ export async function fetchCollection(
     ? '*, push_subscriptions(id)'
     : '*';
   
-  const { data, error } = await client
+  let queryBuilder = client
     .from(tableName)
     .select(selectQuery)
     .eq('household_id', householdId);
+  
+  // Filter out soft-deleted items for todo_items
+  if (collection === 'todo_items') {
+    queryBuilder = queryBuilder.is('deleted_at', null);
+  }
+  
+  const { data, error } = await queryBuilder;
 
   if (error) {
     console.error(`❌ [Sync] Fetch error for ${tableName}:`, error);
@@ -1405,10 +1450,17 @@ export async function fetchCollection(
         
         // Get fresh client and retry
         const refreshedClient = getSupabaseClient();
-        const { data: retryData, error: retryError } = await refreshedClient
+        let retryQueryBuilder = refreshedClient
           .from(tableName)
           .select(selectQuery)
           .eq('household_id', householdId);
+        
+        // Filter out soft-deleted items for todo_items
+        if (collection === 'todo_items') {
+          retryQueryBuilder = retryQueryBuilder.is('deleted_at', null);
+        }
+        
+        const { data: retryData, error: retryError } = await retryQueryBuilder;
         
         if (retryError) {
           console.error(`❌ [Sync] Retry failed for ${tableName}:`, retryError);

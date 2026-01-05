@@ -79,6 +79,7 @@ export interface ToDoItem {
   category: string; // ShoppingCategory or TaskCategory value
   completed: boolean;
   assigneeId?: string; // Single assignee user ID
+  createdBy?: string; // User ID who created this item (for notifications)
   createdAt?: string;
   // Shopping-specific
   quantity?: string;

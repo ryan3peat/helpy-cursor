@@ -33,7 +33,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, onNavigate, t }) 
       {/* Bottom Navigation - iOS Style */}
       <nav
         className="fixed bottom-0 left-0 w-full z-10 
-          bg-background
+          bg-background/90 backdrop-blur-xl
           border-t border-black/5 dark:border-white/5"
         style={{ 
           paddingBottom: 'env(safe-area-inset-bottom)',

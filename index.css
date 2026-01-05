@@ -101,6 +101,15 @@
 }
 
 /* ─────────────────────────────────────────────────────────────────
+   BACKGROUND GRADIENT EXPERIMENT (Light Mode)
+   ───────────────────────────────────────────────────────────────── */
+body {
+  background-image: linear-gradient(to right bottom, #fafafa, #f9f9fa, #f8f8fa, #f6f8f9, #f4f7f9, #f3f7f9, #f1f6f8, #f0f6f8, #f0f6f8, #eff6f8, #eff6f8, #eef6f8);
+  background-attachment: fixed;
+  min-height: 100vh;
+}
+
+/* ─────────────────────────────────────────────────────────────────
    DARK MODE
    ───────────────────────────────────────────────────────────────── */
 .dark {
@@ -158,6 +167,11 @@
   --shadow-lg: 0 6px 16px rgba(0,0,0,0.35);
   --shadow-xl: 0 8px 28px rgba(0,0,0,0.4);
   --shadow-2xl: 0 12px 40px rgba(0,0,0,0.5);
+}
+
+/* Disable gradient in dark mode */
+.dark body {
+  background-image: none;
 }
 
 /* ─────────────────────────────────────────────────────────────────

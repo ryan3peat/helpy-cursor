@@ -606,7 +606,6 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
   
   // Helper Management is only available to Core and Pro users (not Free)
   // SuperAdmin bypasses plan restrictions UNLESS simulating free user
-  const isSuperAdmin = currentUser.role === UserRole.SUPERADMIN;
   const { isSimulatingFreeUser } = useDemoMode();
   const hasHelperManagementAccess = subscriptionPlan === 'core' || subscriptionPlan === 'pro' || (isSuperAdmin && !isSimulatingFreeUser);
   

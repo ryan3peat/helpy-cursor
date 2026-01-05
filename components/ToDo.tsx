@@ -466,12 +466,21 @@ const ToDo: React.FC<ToDoProps> = ({
   const mergedItems = useMemo(() => {
     const sectionItems = items.filter(i => i.type === activeSection);
     
+    // Build key for dedup matching - must match suggestions logic
+    // Shopping: name + brand + quantity + unit + category
+    // Tasks: name + category
+    const getItemKey = (item: ToDoItem): string => {
+      if (item.type === 'shopping') {
+        return `${item.name.trim().toLowerCase()}|${(item.brand || '').toLowerCase()}|${item.quantity || ''}|${(item.unit || '').toLowerCase()}|${item.category}`;
+      } else {
+        return `${item.name.trim().toLowerCase()}|${item.category}`;
+      }
+    };
+    
+    // Filter out optimistic items that already exist in real items (by full key)
+    const realKeys = new Set(sectionItems.map(getItemKey));
     const optimisticFiltered = optimisticItems.filter(opt =>
-      opt.type === activeSection &&
-      !sectionItems.some(real =>
-        real.name.trim().toLowerCase() === opt.name.trim().toLowerCase() &&
-        real.category === opt.category
-      )
+      opt.type === activeSection && !realKeys.has(getItemKey(opt))
     );
     
     const merged = [...sectionItems, ...optimisticFiltered].map(item => ({
@@ -521,28 +530,51 @@ const ToDo: React.FC<ToDoProps> = ({
   
   const suggestions = useMemo(() => {
     const sectionItems = items.filter(i => i.type === activeSection);
-    const activeNames = new Set(sectionItems.filter(i => !i.completed).map(i => i.name.toLowerCase()));
+    
+    // Build a set of active item keys to exclude from suggestions
+    // Shopping: name + brand + quantity + unit + category
+    // Tasks: name + category
+    const getItemKey = (item: ToDoItem): string => {
+      if (item.type === 'shopping') {
+        return `${item.name.toLowerCase()}|${(item.brand || '').toLowerCase()}|${item.quantity || ''}|${(item.unit || '').toLowerCase()}|${item.category}`;
+      } else {
+        return `${item.name.toLowerCase()}|${item.category}`;
+      }
+    };
+    
+    const activeKeys = new Set(
+      sectionItems.filter(i => !i.completed).map(getItemKey)
+    );
     
     // Get completed items that aren't currently in the active list
     const completedSuggestions = sectionItems
-      .filter(item => item.completed && !activeNames.has(item.name.toLowerCase()))
-      // Sort by createdAt ascending (oldest first)
+      .filter(item => item.completed && !activeKeys.has(getItemKey(item)))
+      // Sort by completedAt DESCENDING (newest first) for deduplication
       .sort((a, b) => {
-        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-        return dateA - dateB;
+        const dateA = a.completedAt ? new Date(a.completedAt).getTime() : (a.createdAt ? new Date(a.createdAt).getTime() : 0);
+        const dateB = b.completedAt ? new Date(b.completedAt).getTime() : (b.createdAt ? new Date(b.createdAt).getTime() : 0);
+        return dateB - dateA; // Descending: newest completed first
       });
     
-    // Keep only unique names (first occurrence = oldest completed)
-    const uniqueByName: Record<string, ToDoItem> = {};
+    // Keep only unique items (first occurrence = NEWEST completed)
+    // Shopping: dedup by name + brand + quantity + unit + category
+    // Tasks: dedup by name + category
+    const uniqueByKey: Record<string, ToDoItem> = {};
     completedSuggestions.forEach(item => {
-      const key = item.name.toLowerCase();
-      if (!uniqueByName[key]) {
-        uniqueByName[key] = item;
+      const key = getItemKey(item);
+      if (!uniqueByKey[key]) {
+        uniqueByKey[key] = item;
       }
     });
     
-    return Object.values(uniqueByName).slice(0, 8);
+    // Sort final results by completedAt ASCENDING for display (oldest left, newest right)
+    return Object.values(uniqueByKey)
+      .sort((a, b) => {
+        const dateA = a.completedAt ? new Date(a.completedAt).getTime() : (a.createdAt ? new Date(a.createdAt).getTime() : 0);
+        const dateB = b.completedAt ? new Date(b.completedAt).getTime() : (b.createdAt ? new Date(b.createdAt).getTime() : 0);
+        return dateA - dateB; // Ascending: oldest completed first for display
+      })
+      .slice(0, 8);
   }, [items, activeSection]);
 
   // ─────────────────────────────────────────────────────────────────

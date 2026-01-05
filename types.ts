@@ -78,6 +78,7 @@ export interface ToDoItem {
   name: string; // Item name or task title
   category: string; // ShoppingCategory or TaskCategory value
   completed: boolean;
+  completedAt?: string; // When item was marked complete (for sorting suggestions)
   assigneeId?: string; // Single assignee user ID
   createdBy?: string; // User ID who created this item (for notifications)
   createdAt?: string;

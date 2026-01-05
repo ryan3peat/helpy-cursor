@@ -877,16 +877,25 @@ const AppContent: React.FC = () => {
 
   const handleUpdateTodoItem = async (id: string, data: Partial<ToDoItem>) => {
     if (!hid) return;
+    
+    // Auto-set completedAt when marking item complete/incomplete
+    const enhancedData = { ...data };
+    if (data.completed === true) {
+      enhancedData.completedAt = new Date().toISOString();
+    } else if (data.completed === false) {
+      enhancedData.completedAt = null; // Clear when uncompleting (null explicitly clears in DB)
+    }
+    
     // Optimistically update UI
     setTodoItems(prev => prev.map(item => 
-      item.id === id ? { ...item, ...data } : item
+      item.id === id ? { ...item, ...enhancedData } : item
     ));
     // Skip database call for temp IDs - real-time sync will handle it
     if (isTempId(id)) {
       console.warn('⚠️ Skipping update for temp item - waiting for real ID:', id);
       return;
     }
-    await updateItem(hid, 'todo_items', id, data);
+    await updateItem(hid, 'todo_items', id, enhancedData);
   };
 
   const handleDeleteTodoItem = async (id: string) => {

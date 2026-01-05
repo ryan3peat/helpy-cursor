@@ -1137,9 +1137,11 @@ const Expenses: React.FC<ExpensesProps> = ({
         <div className="mt-4 mb-2 pb-2 -mx-4 px-4 sm:-mx-6 sm:px-6 overflow-x-auto scrollbar-hide">
           <div className="flex gap-3">
             <div className="flex-shrink-0 w-full px-3 py-2 rounded-xl text-left bg-transparent">
-              <span className="text-title font-bold text-foreground" style={{ fontSize: '1.25rem' }}>{formatCurrency(totalAmount)}</span>
-              <div className="text-caption mt-0.5 text-muted-foreground">
-                {selectedMonth === null ? (t['common.total'] || 'Total') : `${MONTH_NAMES[selectedMonth]} ${selectedYear} ${t['common.total'] || 'Total'}`}
+              <div className="flex items-center justify-between" style={{ height: '47px' }}>
+                <span className="font-bold text-foreground" style={{ fontSize: '1.25rem' }}>
+                  {selectedMonth === null ? (t['common.all_expenses'] || 'All Expenses') : `${MONTH_NAMES[selectedMonth]} ${selectedYear}`}
+                </span>
+                <span className="font-bold text-foreground" style={{ fontSize: '1.25rem' }}>{formatCurrency(totalAmount)}</span>
               </div>
             </div>
           </div>

@@ -849,8 +849,11 @@ const Meals: React.FC<MealsProps> = ({
         {/* WEEK NAVIGATION */}
         {/* ─────────────────────────────────────────────────────────────── */}
         <div 
-          className="fixed left-0 right-0 z-20 bg-background py-3"
-          style={{ top: '120px' }}
+          className="fixed left-0 right-0 z-20 bg-background py-3 transition-shadow duration-200"
+          style={{ 
+            top: '120px',
+            boxShadow: isScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none'
+          }}
         >
           <div className="max-w-2xl mx-auto px-4 sm:px-6">
           <div className="flex items-center gap-3">

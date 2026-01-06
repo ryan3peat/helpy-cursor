@@ -349,7 +349,7 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
 
   if (verificationStep) {
     return (
-      <div className="min-h-screen w-full flex flex-col p-6 pt-16" style={AUTH_GRADIENT_STYLE}>
+      <div className="min-h-screen w-full flex flex-col p-6 pt-16 page-fade-in" style={AUTH_GRADIENT_STYLE}>
         <div className="w-full max-w-md mx-auto">
           {/* Logo */}
           <div className="mb-10">
@@ -422,7 +422,7 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
   }
 
   return (
-    <div className="min-h-screen w-full flex flex-col p-6 pt-16" style={AUTH_GRADIENT_STYLE}>
+    <div className="min-h-screen w-full flex flex-col p-6 pt-16 page-fade-in" style={AUTH_GRADIENT_STYLE}>
       <div className="w-full max-w-md mx-auto">
         {/* Logo */}
         <div className="mb-10">

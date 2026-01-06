@@ -51,7 +51,7 @@ const RemovedFromHousehold: React.FC<RemovedFromHouseholdProps> = ({
   };
 
   return (
-    <div className="min-h-screen flex flex-col p-6 pt-16" style={AUTH_GRADIENT_STYLE}>
+    <div className="min-h-screen flex flex-col p-6 pt-16 page-fade-in" style={AUTH_GRADIENT_STYLE}>
       <div className="max-w-md w-full mx-auto">
         {/* Logo */}
         <div className="mb-10">

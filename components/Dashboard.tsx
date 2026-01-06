@@ -1069,12 +1069,14 @@ const Dashboard: React.FC<DashboardProps> = ({
             </button>
 
             {/* Header with Logo */}
-            <div className="pt-6 pb-4 px-5 border-b border-border flex-shrink-0">
+            <div className="pt-6 pb-4 px-5 flex-shrink-0 relative">
               <div className="helpy-logo text-primary mb-3" style={{ fontSize: '32px' }}>helpy</div>
-              <h2 className="text-title text-foreground font-bold">{t['pwa.welcome'] || 'Welcome!'}</h2>
-              <p className="text-body text-muted-foreground mt-1">
+              <h2 className="text-foreground font-bold" style={{ fontSize: '20px' }}>{t['pwa.welcome'] || 'Welcome!'}</h2>
+              <p className="text-muted-foreground mt-1" style={{ fontSize: '20px' }}>
                 {t['pwa.please_add_to_home'] || 'Please add Helpy to your home screen'}
               </p>
+              {/* Separator with inset margins */}
+              <div className="absolute bottom-0 left-5 right-5 border-t border-border"></div>
             </div>
 
             {/* Body - Device-specific instructions */}

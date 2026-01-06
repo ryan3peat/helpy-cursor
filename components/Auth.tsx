@@ -17,7 +17,7 @@ const AUTH_GRADIENT_STYLE = {
 
 // Loading component for auth states
 const AuthLoading = ({ message }: { message: string }) => (
-  <div className="min-h-screen w-full flex flex-col items-center justify-center p-6" style={AUTH_GRADIENT_STYLE}>
+  <div className="min-h-screen w-full flex flex-col items-center justify-center p-6 page-fade-in" style={AUTH_GRADIENT_STYLE}>
     <div className="text-center">
       {/* Logo */}
       <img 
@@ -1058,7 +1058,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
             border: 1px solid #E5E7EB !important;
           }
         `}</style>
-        <div className="min-h-screen w-full flex flex-col p-6 pt-16" style={AUTH_GRADIENT_STYLE}>
+        <div className="min-h-screen w-full flex flex-col p-6 pt-16 page-fade-in" style={AUTH_GRADIENT_STYLE}>
           <div className="w-full max-w-md mx-auto">
             {/* Logo */}
             <div className="mb-10">

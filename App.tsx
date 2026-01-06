@@ -58,7 +58,7 @@ const AUTH_GRADIENT_STYLE = {
 
 // Loading component for app states
 const AppLoading = ({ message, subMessage }: { message: string; subMessage?: string }) => (
-  <div className="min-h-screen w-full flex flex-col items-center justify-center p-6" style={AUTH_GRADIENT_STYLE}>
+  <div className="min-h-screen w-full flex flex-col items-center justify-center p-6 page-fade-in" style={AUTH_GRADIENT_STYLE}>
     <div className="text-center">
       <img 
         src="/helpy-logo-blue.png" 
@@ -1542,7 +1542,7 @@ const AppContent: React.FC = () => {
     // If timeout occurred, show error message
     if (clerkLoadTimeout) {
       return (
-        <div className="min-h-screen flex flex-col justify-center items-center p-4" style={AUTH_GRADIENT_STYLE}>
+        <div className="min-h-screen flex flex-col justify-center items-center p-4 page-fade-in" style={AUTH_GRADIENT_STYLE}>
           <div className="text-center max-w-md">
             <img 
               src="/helpy-logo-blue.png" 

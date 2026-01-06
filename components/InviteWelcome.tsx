@@ -15,7 +15,7 @@ const AUTH_GRADIENT_STYLE = {
 
 // Loading component for auth states  
 const AuthLoading = ({ message }: { message: string }) => (
-  <div className="min-h-screen w-full flex flex-col items-center justify-center p-6" style={AUTH_GRADIENT_STYLE}>
+  <div className="min-h-screen w-full flex flex-col items-center justify-center p-6 page-fade-in" style={AUTH_GRADIENT_STYLE}>
     <div className="text-center">
       <img 
         src="/helpy-logo-blue.png" 
@@ -357,7 +357,7 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
   // Error state
   if (!inviteInfo?.isValid || error) {
     return (
-      <div className="min-h-screen w-full flex flex-col p-6 pt-16" style={AUTH_GRADIENT_STYLE}>
+      <div className="min-h-screen w-full flex flex-col p-6 pt-16 page-fade-in" style={AUTH_GRADIENT_STYLE}>
         <div className="w-full max-w-md mx-auto">
           <div className="mb-10">
             <img 
@@ -384,7 +384,7 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
   // Verification step
   if (verificationStep === 'email') {
     return (
-      <div className="min-h-screen w-full flex flex-col p-6 pt-16" style={AUTH_GRADIENT_STYLE}>
+      <div className="min-h-screen w-full flex flex-col p-6 pt-16 page-fade-in" style={AUTH_GRADIENT_STYLE}>
         <div className="w-full max-w-md mx-auto">
           <div className="mb-10">
             <img 
@@ -456,7 +456,7 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
     : `You've been invited to join ${inviteInfo.householdName}`;
 
   return (
-    <div className="min-h-screen w-full flex flex-col p-6 pt-16" style={AUTH_GRADIENT_STYLE}>
+    <div className="min-h-screen w-full flex flex-col p-6 pt-16 page-fade-in" style={AUTH_GRADIENT_STYLE}>
       <div className="w-full max-w-md mx-auto">
         {/* Logo */}
         <div className="mb-10">

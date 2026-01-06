@@ -1045,40 +1045,39 @@ const Dashboard: React.FC<DashboardProps> = ({
         </div>
       </div>
 
-      {/* Unified PWA Install Modal - Device-specific instructions */}
+      {/* PWA Install Modal - Centered modal for mobile only */}
       {showPwaModal && createPortal(
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
-          {/* Safe area bottom cover */}
-          <div
-            className="absolute bottom-0 left-0 right-0 bg-card"
-            style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
-          />
-
-          <div
-            className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content relative"
-            style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}
+        <div 
+          className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center p-4"
+          style={{ zIndex: 99999 }}
+        >
+          {/* Modal content */}
+          <div 
+            className="relative overflow-hidden rounded-2xl bg-card w-full max-w-lg shadow-xl"
+            style={{ maxHeight: 'calc(100dvh - 120px)' }}
           >
-            {/* Close Button */}
+            {/* Close Button - inside, top right */}
             <button
-              onClick={closePwaModal}
+              onClick={dismissPwaModal}
               className="absolute z-10 right-4 top-4 w-10 h-10 rounded-full flex items-center justify-center text-muted-foreground"
               aria-label="Close"
             >
               <X size={20} />
             </button>
 
-            {/* Header */}
+            {/* Header with Logo */}
             <div className="pt-6 pb-4 px-5 border-b border-border">
-              <h2 className="text-title text-foreground">{t['pwa.add_to_home'] || 'Add Helpy to Home Screen'}</h2>
+              <div className="helpy-logo text-primary mb-3" style={{ fontSize: '32px' }}>helpy</div>
+              <h2 className="text-title text-foreground font-bold">{t['pwa.welcome'] || 'Welcome!'}</h2>
               <p className="text-body text-muted-foreground mt-1">
-                {t['pwa.looks_like_app'] || 'It will look and feel like an app.'}
+                {t['pwa.please_add_to_home'] || 'Please add Helpy to your home screen'}
               </p>
             </div>
 
             {/* Body - Device-specific instructions */}
             <div className="p-5">
               {isIosDevice() ? (
-                // iOS Instructions - Manual steps only (no native install on iOS)
+                // iOS Instructions
                 <ol className="list-decimal pl-5 space-y-2">
                   <li className="text-body text-foreground">
                     {t['pwa.step_tap_share'] || 'Tap Share'} <Share size={16} className="inline-block text-muted-foreground ml-1" />
@@ -1091,7 +1090,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                   <li className="text-body text-foreground">{t['pwa.step_done'] || 'Done and open Helpy from your homescreen'}</li>
                 </ol>
               ) : isAndroidDevice() ? (
-                // Android Instructions - Install button (if available) + manual steps
+                // Android Instructions
                 <>
                   {/* One-click install button (if Chrome is ready) */}
                   {canUseNativePrompt && (
@@ -1104,10 +1103,10 @@ const Dashboard: React.FC<DashboardProps> = ({
                     </button>
                   )}
                   
-                  {/* Manual steps - always shown as fallback */}
-                  <p className="text-body text-muted-foreground mb-3">
+                  {/* Manual steps */}
+                  <p className="text-body text-muted-foreground mb-3 font-semibold">
                     {canUseNativePrompt 
-                      ? (t['pwa.or_follow_steps'] || 'Or follow these steps:')
+                      ? (t['pwa.or_follow_steps'] || 'Or follow the below steps:')
                       : (t['pwa.follow_steps'] || 'Follow these steps:')}
                   </p>
                   <ol className="list-decimal pl-5 space-y-2">
@@ -1123,22 +1122,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                     <li className="text-body text-foreground">{t['pwa.step_done'] || 'Done and open Helpy from your homescreen'}</li>
                   </ol>
                 </>
-              ) : (
-                // Desktop/Other - Generic instructions
-                <p className="text-body text-foreground">
-                  {t['pwa.desktop_instructions'] || 'Look for the install icon in your browser\'s address bar or menu to add Helpy to your desktop.'}
-                </p>
-              )}
-            </div>
-
-            {/* Footer */}
-            <div className="p-5 pb-8 border-t border-border">
-              <button
-                onClick={dismissPwaModal}
-                className="w-full py-3.5 rounded-xl bg-secondary text-foreground text-body font-semibold"
-              >
-                {t['common.not_now'] || 'Not now'}
-              </button>
+              ) : null}
             </div>
           </div>
         </div>,

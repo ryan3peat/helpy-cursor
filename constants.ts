@@ -1156,6 +1156,8 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'pwa.or_follow_steps': 'Or follow these steps:',
   'pwa.follow_steps': 'Follow these steps:',
   'pwa.desktop_instructions': 'Look for the install icon in your browser\'s address bar or menu to add Helpy to your desktop.',
+  'pwa.welcome': 'Welcome!',
+  'pwa.please_add_to_home': 'Please add Helpy to your home screen',
 
   // Error - Additional (Translation Audit)
   'error.account_setup_incomplete': 'Account Setup Incomplete',

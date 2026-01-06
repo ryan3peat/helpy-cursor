@@ -857,6 +857,13 @@ const AppContent: React.FC = () => {
   // ToDo CRUD Handlers
   const handleAddTodoItem = async (item: ToDoItem) => {
     if (!hid) return item;
+    
+    // Demo mode: skip database, just return the item for UI display
+    if (isDemoMode) {
+      console.log('📷 Demo mode: skipping todo add to database');
+      return item;
+    }
+    
     const tempId = `todo-${Date.now()}`;
     const newItem = { ...item, id: tempId };
     setTodoItems(prev => [newItem, ...prev]);
@@ -877,6 +884,12 @@ const AppContent: React.FC = () => {
 
   const handleUpdateTodoItem = async (id: string, data: Partial<ToDoItem>) => {
     if (!hid) return;
+    
+    // Demo mode: skip database operation
+    if (isDemoMode) {
+      console.log('📷 Demo mode: skipping todo update to database');
+      return;
+    }
     
     // Auto-set completedAt when marking item complete/incomplete
     const enhancedData = { ...data };
@@ -900,6 +913,13 @@ const AppContent: React.FC = () => {
 
   const handleDeleteTodoItem = async (id: string) => {
     if (!hid) return;
+    
+    // Demo mode: skip database operation
+    if (isDemoMode) {
+      console.log('📷 Demo mode: skipping todo delete from database');
+      return;
+    }
+    
     // Optimistically remove from UI
     setTodoItems(prev => prev.filter(item => item.id !== id));
     // Skip database call for temp IDs - item not in database yet
@@ -913,6 +933,13 @@ const AppContent: React.FC = () => {
   // Meal CRUD Handlers (with optimistic updates for instant UI)
   const handleAddMeal = async (meal: Meal) => {
     if (!hid) return;
+    
+    // Demo mode: skip database operation
+    if (isDemoMode) {
+      console.log('📷 Demo mode: skipping meal add to database');
+      return;
+    }
+    
     const tempId = `temp-${Date.now()}`;
     const newMeal = { ...meal, id: tempId };
     setMeals(prev => [...prev, newMeal]);  // Optimistic: update UI immediately
@@ -922,6 +949,13 @@ const AppContent: React.FC = () => {
 
   const handleUpdateMeal = async (id: string, data: Partial<Meal>) => {
     if (!hid) return;
+    
+    // Demo mode: skip database operation
+    if (isDemoMode) {
+      console.log('📷 Demo mode: skipping meal update to database');
+      return;
+    }
+    
     setMeals(prev => prev.map(m => m.id === id ? { ...m, ...data } : m));  // Optimistic
     // Skip database call for temp IDs - real-time sync will handle it
     if (isTempId(id)) {
@@ -933,6 +967,13 @@ const AppContent: React.FC = () => {
 
   const handleDeleteMeal = async (id: string) => {
     if (!hid) return;
+    
+    // Demo mode: skip database operation
+    if (isDemoMode) {
+      console.log('📷 Demo mode: skipping meal delete from database');
+      return;
+    }
+    
     setMeals(prev => prev.filter(m => m.id !== id));  // Optimistic
     // Skip database call for temp IDs - item not in database yet
     if (isTempId(id)) {
@@ -945,6 +986,13 @@ const AppContent: React.FC = () => {
   // Expense CRUD Handlers (with optimistic updates for instant UI)
   const handleAddExpense = async (expense: Expense): Promise<Expense> => {
     if (!hid) return expense;
+    
+    // Demo mode: skip database, just return the expense for UI display
+    if (isDemoMode) {
+      console.log('📷 Demo mode: skipping expense add to database');
+      return expense;
+    }
+    
     const tempId = `temp-${Date.now()}`;
     const newExpense = { ...expense, id: tempId };
     setExpenses(prev => [...prev, newExpense]);  // Optimistic
@@ -963,6 +1011,13 @@ const AppContent: React.FC = () => {
 
   const handleUpdateExpense = async (expense: Expense) => {
     if (!hid) return;
+    
+    // Demo mode: skip database operation
+    if (isDemoMode) {
+      console.log('📷 Demo mode: skipping expense update to database');
+      return;
+    }
+    
     // Exclude createdBy from update - it's a Clerk ID in the app but needs to be UUID in DB
     // The created_by field shouldn't change after creation anyway
     const { id, createdBy, ...data } = expense;
@@ -977,6 +1032,13 @@ const AppContent: React.FC = () => {
 
   const handleDeleteExpense = async (id: string) => {
     if (!hid) return;
+    
+    // Demo mode: skip database operation
+    if (isDemoMode) {
+      console.log('📷 Demo mode: skipping expense delete from database');
+      return;
+    }
+    
     setExpenses(prev => prev.filter(e => e.id !== id));  // Optimistic
     // Skip database call for temp IDs - item not in database yet
     if (isTempId(id)) {
@@ -989,6 +1051,12 @@ const AppContent: React.FC = () => {
   // User CRUD Handlers (with optimistic updates for instant UI)
   const handleAddUser = async (user: Omit<User, 'id'>): Promise<User | undefined> => {
     if (!hid) return;
+    
+    // Demo mode: skip database operation
+    if (isDemoMode) {
+      console.log('📷 Demo mode: skipping user add to database');
+      return undefined;
+    }
     
     // Create temporary ID to prevent duplicates during subscription updates
     const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -1020,6 +1088,13 @@ const AppContent: React.FC = () => {
 
   const handleUpdateUser = async (id: string, data: Partial<User>) => {
     if (!hid) return;
+    
+    // Demo mode: skip database operation
+    if (isDemoMode) {
+      console.log('📷 Demo mode: skipping user update to database');
+      return;
+    }
+    
     setUsers(prev => prev.map(u => u.id === id ? { ...u, ...data } : u));  // Optimistic
     // Skip database call for temp IDs - real-time sync will handle it
     if (isTempId(id)) {
@@ -1031,6 +1106,12 @@ const AppContent: React.FC = () => {
 
   const handleDeleteUser = async (id: string) => {
     if (!hid || !currentUser) return;
+
+    // Demo mode: skip database operation
+    if (isDemoMode) {
+      console.log('📷 Demo mode: skipping user delete from database');
+      return;
+    }
 
     // Skip for temp IDs - user not in database yet
     if (isTempId(id)) {
@@ -1081,6 +1162,13 @@ const AppContent: React.FC = () => {
   // Notes Handler
   const handleSaveFamilyNotes = async (notes: string): Promise<void> => {
     if (!hid) return;
+    
+    // Demo mode: skip database operation
+    if (isDemoMode) {
+      console.log('📷 Demo mode: skipping family notes save to database');
+      return;
+    }
+    
     const previousNotes = familyNotes; // Store previous value
     const previousLang = familyNotesLang; // Store previous language
     setFamilyNotes(notes); // Optimistic update
@@ -1104,6 +1192,13 @@ const AppContent: React.FC = () => {
   // Update notes translations handler
   const handleUpdateNotesTranslations = async (translations: Record<string, string>): Promise<void> => {
     if (!hid) return;
+    
+    // Demo mode: skip database operation
+    if (isDemoMode) {
+      console.log('📷 Demo mode: skipping notes translations save to database');
+      return;
+    }
+    
     setFamilyNotesTranslations(translations);
     try {
       const { error } = await supabase
@@ -1120,6 +1215,13 @@ const AppContent: React.FC = () => {
   // Essential Info CRUD Handlers (with optimistic updates for instant UI)
   const handleAddEssentialInfo = async (info: CreateEssentialInfo) => {
     if (!hid) return;
+    
+    // Demo mode: skip database operation
+    if (isDemoMode) {
+      console.log('📷 Demo mode: skipping essential info add to database');
+      return;
+    }
+    
     const tempId = `temp-${Date.now()}`;
     const tempItem: EssentialInfo = {
       ...info,
@@ -1138,6 +1240,13 @@ const AppContent: React.FC = () => {
 
   const handleUpdateEssentialInfo = async (id: string, data: Partial<CreateEssentialInfo>) => {
     if (!hid) return;
+    
+    // Demo mode: skip database operation
+    if (isDemoMode) {
+      console.log('📷 Demo mode: skipping essential info update to database');
+      return;
+    }
+    
     const previousItems = essentialItems;
     setEssentialItems(prev => prev.map(item => 
       item.id === id ? { ...item, ...data } : item
@@ -1157,6 +1266,13 @@ const AppContent: React.FC = () => {
 
   const handleDeleteEssentialInfo = async (id: string) => {
     if (!hid) return;
+    
+    // Demo mode: skip database operation
+    if (isDemoMode) {
+      console.log('📷 Demo mode: skipping essential info delete from database');
+      return;
+    }
+    
     const previousItems = essentialItems;
     setEssentialItems(prev => prev.filter(item => item.id !== id));  // Optimistic
     // Skip database call for temp IDs - item not in database yet
@@ -1175,6 +1291,13 @@ const AppContent: React.FC = () => {
   // House Routine CRUD Handlers (with optimistic updates for instant UI)
   const handleAddHouseRoutine = async (item: CreateHouseRoutine) => {
     if (!hid) return;
+    
+    // Demo mode: skip database operation
+    if (isDemoMode) {
+      console.log('📷 Demo mode: skipping house routine add to database');
+      return;
+    }
+    
     const tempId = `temp-${Date.now()}`;
     const tempItem: HouseRoutine = {
       ...item,
@@ -1195,6 +1318,13 @@ const AppContent: React.FC = () => {
 
   const handleUpdateHouseRoutine = async (id: string, data: Partial<CreateHouseRoutine>) => {
     if (!hid) return;
+    
+    // Demo mode: skip database operation
+    if (isDemoMode) {
+      console.log('📷 Demo mode: skipping house routine update to database');
+      return;
+    }
+    
     const previousItems = houseRoutineItems;
     setHouseRoutineItems(prev => prev.map(i => 
       i.id === id ? { ...i, ...data } : i
@@ -1216,6 +1346,13 @@ const AppContent: React.FC = () => {
 
   const handleDeleteHouseRoutine = async (id: string) => {
     if (!hid) return;
+    
+    // Demo mode: skip database operation
+    if (isDemoMode) {
+      console.log('📷 Demo mode: skipping house routine delete from database');
+      return;
+    }
+    
     const previousItems = houseRoutineItems;
     setHouseRoutineItems(prev => prev.filter(i => i.id !== id));  // Optimistic
     // Skip database call for temp IDs - item not in database yet

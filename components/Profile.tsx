@@ -139,7 +139,7 @@ const Profile: React.FC<ProfileProps> = ({
 
   // Add User Form State
   const [newName, setNewName] = useState('');
-  const [newRole, setNewRole] = useState<UserRole>(UserRole.CHILD);
+  const [newRole, setNewRole] = useState<UserRole>(UserRole.SPOUSE);
   const [addUserStep, setAddUserStep] = useState<'form' | 'loading' | 'success' | 'invite' | 'limit_error'>('form');
   const [addedUserName, setAddedUserName] = useState('');
   const [limitErrorMessage, setLimitErrorMessage] = useState('');
@@ -660,7 +660,7 @@ const Profile: React.FC<ProfileProps> = ({
 
   const resetForm = () => {
     setNewName('');
-    setNewRole(UserRole.CHILD);
+    setNewRole(UserRole.SPOUSE);
   };
 
   // Referral Code Validation

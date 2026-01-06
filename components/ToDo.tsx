@@ -116,7 +116,7 @@ const getTaskCategoryIcon = (category: string, isSelected = false) => {
 };
 
 // ─────────────────────────────────────────────────────────────────
-// Helper Functions
+// Helper Functions`
 // ─────────────────────────────────────────────────────────────────
 
 const getDefaultAssignee = (users: User[], currentUser: User): string => {
@@ -1214,7 +1214,7 @@ const ToDo: React.FC<ToDoProps> = ({
                         {activeSection === 'shopping' ? (
                           <>
                             {/* Shopping: Line 1 - Name */}
-                            <p className="text-body text-foreground font-medium truncate">
+                            <p className="text-body text-foreground font-semibold truncate">
                               {s.name}
                             </p>
                             {/* Shopping: Line 2 - Brand */}
@@ -1230,7 +1230,7 @@ const ToDo: React.FC<ToDoProps> = ({
                           <>
                             {/* Tasks: Lines 1-2 - Name (2-line clamp) */}
                             <p 
-                              className="text-body text-foreground font-medium leading-tight"
+                              className="text-body text-foreground font-semibold leading-tight"
                               style={{ 
                                 display: '-webkit-box',
                                 WebkitLineClamp: 2,

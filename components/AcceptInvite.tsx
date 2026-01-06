@@ -6,6 +6,29 @@ import React, { useEffect, useState } from 'react';
 import { useSignUp, useSignIn, useUser } from '@clerk/clerk-react';
 import { Loader2, CheckCircle, XCircle } from 'lucide-react';
 
+// Shared gradient background style for auth pages
+const AUTH_GRADIENT_STYLE = {
+  backgroundImage: 'linear-gradient(to right bottom, #fafafa, #f9f9fa, #f8f8fa, #f6f8f9, #f4f7f9, #f3f7f9, #f1f6f8, #f0f6f8, #f0f6f8, #eff6f8, #eff6f8, #eef6f8)',
+  backgroundAttachment: 'fixed' as const
+};
+
+// Loading component for auth states  
+const AuthLoading = ({ message }: { message: string }) => (
+  <div className="min-h-screen w-full flex flex-col items-center justify-center p-6" style={AUTH_GRADIENT_STYLE}>
+    <div className="text-center">
+      <img 
+        src="/helpy-logo-blue.png" 
+        alt="Helpy" 
+        className="h-14 w-auto mx-auto mb-8"
+      />
+      <div className="auth-loading-bar mx-auto mb-4">
+        <div className="auth-loading-bar-fill" />
+      </div>
+      <p className="text-body text-muted-foreground">{message}</p>
+    </div>
+  </div>
+);
+
 interface AcceptInviteProps {
   onComplete: () => void;
 }
@@ -194,30 +217,31 @@ const AcceptInvite: React.FC<AcceptInviteProps> = ({ onComplete }) => {
 
   // Loading state
   if (status === 'loading' || status === 'signin') {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-brand-primary to-brand-secondary">
-        <div className="bg-white rounded-2xl p-8 shadow-2xl text-center max-w-md">
-          <Loader2 className="w-12 h-12 animate-spin text-brand-primary mx-auto mb-4" />
-          <h2 className="text-title text-gray-800">
-            {status === 'signin' ? 'Signing you in...' : 'Loading invitation...'}
-          </h2>
-          <p className="text-gray-500 mt-2">Please wait a moment</p>
-        </div>
-      </div>
-    );
+    return <AuthLoading message={status === 'signin' ? 'Signing you in...' : 'Loading invitation...'} />;
   }
 
   // Error state
   if (status === 'error') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-brand-primary to-brand-secondary">
-        <div className="bg-white rounded-2xl p-8 shadow-2xl text-center max-w-md">
-          <XCircle className="w-12 h-12 text-[#F06292] mx-auto mb-4" />
-          <h2 className="text-title text-gray-800">Invitation Error</h2>
-          <p className="text-gray-500 mt-2">{errorMessage || 'This invitation is invalid or has expired.'}</p>
+      <div className="min-h-screen w-full flex flex-col p-6 pt-16" style={AUTH_GRADIENT_STYLE}>
+        <div className="w-full max-w-md mx-auto">
+          <div className="mb-10">
+            <img 
+              src="/helpy-logo-blue.png" 
+              alt="Helpy" 
+              className="h-12 w-auto"
+            />
+          </div>
+          <div className="flex items-center gap-3 mb-4">
+            <XCircle className="w-8 h-8 text-destructive" />
+            <h1 className="text-display font-bold text-foreground">Invitation Error</h1>
+          </div>
+          <p className="text-body text-muted-foreground mb-8">
+            {errorMessage || 'This invitation is invalid or has expired.'}
+          </p>
           <button
             onClick={() => window.location.href = '/'}
-            className="mt-6 px-6 py-3 bg-brand-primary text-white rounded-xl font-bold"
+            className="w-full py-3.5 bg-primary text-primary-foreground rounded-xl text-body font-semibold shadow-sm"
           >
             Go to Home
           </button>
@@ -229,11 +253,16 @@ const AcceptInvite: React.FC<AcceptInviteProps> = ({ onComplete }) => {
   // Complete state
   if (status === 'complete') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-brand-primary to-brand-secondary">
-        <div className="bg-white rounded-2xl p-8 shadow-2xl text-center max-w-md">
-          <CheckCircle className="w-12 h-12 text-[#4CAF50] mx-auto mb-4" />
-          <h2 className="text-title text-gray-800">Welcome to Helpy!</h2>
-          <p className="text-gray-500 mt-2">Your account is ready. Redirecting...</p>
+      <div className="min-h-screen w-full flex flex-col items-center justify-center p-6" style={AUTH_GRADIENT_STYLE}>
+        <div className="text-center">
+          <img 
+            src="/helpy-logo-blue.png" 
+            alt="Helpy" 
+            className="h-14 w-auto mx-auto mb-8"
+          />
+          <CheckCircle className="w-16 h-16 text-[#4CAF50] mx-auto mb-4" />
+          <h1 className="text-display font-bold text-foreground mb-2">Welcome to Helpy!</h1>
+          <p className="text-body text-muted-foreground">Your account is ready. Redirecting...</p>
         </div>
       </div>
     );
@@ -241,26 +270,38 @@ const AcceptInvite: React.FC<AcceptInviteProps> = ({ onComplete }) => {
 
   // Verification form
   if (status === 'verify-email' || status === 'verify-phone') {
-    const verifyType = verificationType === 'email' ? 'Email' : 'Phone';
     const verifyTarget = verificationType === 'email' ? email : phoneNumber;
     
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-brand-primary to-brand-secondary p-6">
-        <div className="bg-white rounded-2xl p-8 shadow-2xl w-full max-w-md">
-          <div className="text-center mb-8">
-            <h1 className="text-display text-gray-800">Verify Your {verifyType}</h1>
-            <p className="text-gray-500 mt-2">We sent a code to {verifyTarget}</p>
+      <div className="min-h-screen w-full flex flex-col p-6 pt-16" style={AUTH_GRADIENT_STYLE}>
+        <div className="w-full max-w-md mx-auto">
+          <div className="mb-10">
+            <img 
+              src="/helpy-logo-blue.png" 
+              alt="Helpy" 
+              className="h-12 w-auto"
+            />
+          </div>
+
+          <div className="mb-8">
+            <h1 className="text-display font-bold text-foreground mb-2">
+              Check your {verificationType === 'email' ? 'email' : 'phone'}
+            </h1>
+            <p className="text-body text-muted-foreground">
+              We sent a verification code to<br />
+              <span className="text-foreground font-medium">{verifyTarget}</span>
+            </p>
           </div>
 
           {errorMessage && (
-            <div className="mb-6 p-4 bg-[#F06292]/10 border border-[#F06292]/20 rounded-xl text-[#F06292] text-body">
+            <div className="mb-6 p-4 bg-destructive/10 border border-destructive/20 rounded-xl text-destructive text-body">
               {errorMessage}
             </div>
           )}
 
-          <form onSubmit={handleVerify} className="space-y-3">
+          <form onSubmit={handleVerify} className="space-y-5">
             <div>
-              <label className="block text-caption text-gray-500 mb-1">Verification Code</label>
+              <label className="text-caption text-muted-foreground mb-2 block">Verification Code</label>
               <input
                 type="text"
                 autoComplete="one-time-code"
@@ -273,7 +314,7 @@ const AcceptInvite: React.FC<AcceptInviteProps> = ({ onComplete }) => {
                 }}
                 required
                 maxLength={6}
-                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-body focus:ring-2 focus:ring-brand-primary outline-none text-center text-title tracking-widest"
+                className="w-full px-4 py-3.5 rounded-xl bg-white border border-border text-foreground placeholder:text-muted-foreground focus:border-primary outline-none transition-all text-body tracking-widest text-center"
                 placeholder="Enter 6-digit code"
               />
             </div>
@@ -281,15 +322,15 @@ const AcceptInvite: React.FC<AcceptInviteProps> = ({ onComplete }) => {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full bg-brand-primary text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 disabled:opacity-50"
+              className="w-full py-3.5 bg-primary text-primary-foreground rounded-xl text-body font-semibold shadow-sm disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {isSubmitting ? (
                 <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <Loader2 className="animate-spin" size={18} />
                   Verifying...
                 </>
               ) : (
-                `Verify ${verifyType}`
+                'Continue'
               )}
             </button>
           </form>
@@ -300,73 +341,76 @@ const AcceptInvite: React.FC<AcceptInviteProps> = ({ onComplete }) => {
 
   // Signup form
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-brand-primary to-brand-secondary p-6">
-      <div className="bg-white rounded-2xl p-8 shadow-2xl w-full max-w-md">
+    <div className="min-h-screen w-full flex flex-col p-6 pt-16" style={AUTH_GRADIENT_STYLE}>
+      <div className="w-full max-w-md mx-auto">
+        {/* Logo */}
+        <div className="mb-10">
+          <img 
+            src="/helpy-logo-blue.png" 
+            alt="Helpy" 
+            className="h-12 w-auto"
+          />
+        </div>
+
         {/* Header */}
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-brand-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-brand-primary">
-              <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-              <path d="M2 17l10 5 10-5M2 12l10 5 10-5"/>
-            </svg>
-          </div>
-          <h1 className="text-display text-gray-800">Join Your Household</h1>
-          <p className="text-gray-500 mt-2">Complete your account setup</p>
+        <div className="mb-8">
+          <h1 className="text-display font-bold text-foreground mb-2">Join Your Household</h1>
+          <p className="text-body text-muted-foreground">Complete your account setup</p>
         </div>
 
         {/* Error message */}
         {errorMessage && (
-          <div className="mb-6 p-4 bg-[#F06292]/10 border border-[#F06292]/20 rounded-xl text-[#F06292] text-body">
+          <div className="mb-6 p-4 bg-destructive/10 border border-destructive/20 rounded-xl text-destructive text-body">
             {errorMessage}
           </div>
         )}
 
         {/* Signup Form */}
-        <form onSubmit={handleSignUp} className="space-y-3">
-          <div className="grid grid-cols-2 gap-4">
+        <form onSubmit={handleSignUp} className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-caption text-gray-500 mb-1">First Name</label>
+              <label className="text-caption text-muted-foreground mb-2 block">First Name</label>
               <input
                 type="text"
                 autoComplete="given-name"
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
                 required
-                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-body focus:ring-2 focus:ring-brand-primary outline-none"
+                className="w-full px-4 py-3.5 rounded-xl bg-white border border-border text-foreground placeholder:text-muted-foreground focus:border-primary outline-none transition-all text-body"
                 placeholder="John"
               />
             </div>
             <div>
-              <label className="block text-caption text-gray-500 mb-1">Last Name</label>
+              <label className="text-caption text-muted-foreground mb-2 block">Last Name</label>
               <input
                 type="text"
                 autoComplete="family-name"
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
                 required
-                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-body focus:ring-2 focus:ring-brand-primary outline-none"
+                className="w-full px-4 py-3.5 rounded-xl bg-white border border-border text-foreground placeholder:text-muted-foreground focus:border-primary outline-none transition-all text-body"
                 placeholder="Doe"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-caption text-gray-500 mb-1">
-              Email <span className="text-gray-400 font-normal">(Optional if phone provided)</span>
+            <label className="text-caption text-muted-foreground mb-2 block">
+              Email <span className="opacity-60">(Optional if phone provided)</span>
             </label>
             <input
               type="email"
               autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-body focus:ring-2 focus:ring-brand-primary outline-none"
+              className="w-full px-4 py-3.5 rounded-xl bg-white border border-border text-foreground placeholder:text-muted-foreground focus:border-primary outline-none transition-all text-body"
               placeholder="john@example.com"
             />
           </div>
 
           <div>
-            <label className="block text-caption text-gray-500 mb-1">
-              Phone Number <span className="text-gray-400 font-normal">(Optional if email provided)</span>
+            <label className="text-caption text-muted-foreground mb-2 block">
+              Phone Number <span className="opacity-60">(Optional if email provided)</span>
             </label>
             <input
               type="tel"
@@ -377,14 +421,14 @@ const AcceptInvite: React.FC<AcceptInviteProps> = ({ onComplete }) => {
                 const value = e.target.value.replace(/[^\d\s\-()+ ]/g, '');
                 setPhoneNumber(value);
               }}
-              className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-body focus:ring-2 focus:ring-brand-primary outline-none"
+              className="w-full px-4 py-3.5 rounded-xl bg-white border border-border text-foreground placeholder:text-muted-foreground focus:border-primary outline-none transition-all text-body"
               placeholder="+1 (555) 123-4567"
             />
-            <p className="text-caption text-gray-400 mt-1">Provide at least one: email or phone number</p>
+            <p className="text-caption text-muted-foreground mt-1.5">Provide at least one: email or phone number</p>
           </div>
 
           <div>
-            <label className="block text-caption text-gray-500 mb-1">Password</label>
+            <label className="text-caption text-muted-foreground mb-2 block">Password</label>
             <input
               type="password"
               autoComplete="new-password"
@@ -392,19 +436,19 @@ const AcceptInvite: React.FC<AcceptInviteProps> = ({ onComplete }) => {
               onChange={(e) => setPassword(e.target.value)}
               required
               minLength={8}
-              className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-body focus:ring-2 focus:ring-brand-primary outline-none"
-              placeholder="At least 8 characters"
+              className="w-full px-4 py-3.5 rounded-xl bg-white border border-border text-foreground placeholder:text-muted-foreground focus:border-primary outline-none transition-all text-body"
+              placeholder="Min. 8 characters"
             />
           </div>
 
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full bg-brand-primary text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 disabled:opacity-50"
+            className="w-full py-3.5 bg-primary text-primary-foreground rounded-xl text-body font-semibold shadow-sm disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {isSubmitting ? (
               <>
-                <Loader2 className="w-5 h-5 animate-spin" />
+                <Loader2 className="animate-spin" size={18} />
                 Creating Account...
               </>
             ) : (
@@ -413,7 +457,7 @@ const AcceptInvite: React.FC<AcceptInviteProps> = ({ onComplete }) => {
           </button>
         </form>
 
-        <p className="text-center text-caption text-gray-400 mt-6">
+        <p className="text-caption text-muted-foreground mt-6">
           By joining, you agree to the household's shared access to tasks, meals, and shopping lists.
         </p>
       </div>

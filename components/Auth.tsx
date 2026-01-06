@@ -9,14 +9,29 @@ import SignUp from './SignUp';
 import HouseholdSwitchModal from './HouseholdSwitchModal';
 import RemovedFromHousehold from './RemovedFromHousehold';
 
-// Broom icon component for loading animation (matching flaticon clean_9755169)
-const BroomIcon = ({ className }: { className?: string }) => (
-  <img 
-    src="https://cdn-icons-png.flaticon.com/512/9755/9755169.png" 
-    alt="" 
-    className={className}
-    style={{ width: 28, height: 28, filter: 'brightness(0) invert(1)' }}
-  />
+// Shared gradient background style for auth pages
+const AUTH_GRADIENT_STYLE = {
+  backgroundImage: 'linear-gradient(to right bottom, #fafafa, #f9f9fa, #f8f8fa, #f6f8f9, #f4f7f9, #f3f7f9, #f1f6f8, #f0f6f8, #f0f6f8, #eff6f8, #eff6f8, #eef6f8)',
+  backgroundAttachment: 'fixed' as const
+};
+
+// Loading component for auth states
+const AuthLoading = ({ message }: { message: string }) => (
+  <div className="min-h-screen w-full flex flex-col items-center justify-center p-6" style={AUTH_GRADIENT_STYLE}>
+    <div className="text-center">
+      {/* Logo */}
+      <img 
+        src="/helpy-logo-blue.png" 
+        alt="Helpy" 
+        className="h-14 w-auto mx-auto mb-8"
+      />
+      {/* Loading bar */}
+      <div className="auth-loading-bar mx-auto mb-4">
+        <div className="auth-loading-bar-fill" />
+      </div>
+      <p className="text-body text-muted-foreground">{message}</p>
+    </div>
+  </div>
 );
 
 /**
@@ -965,41 +980,15 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
   // Don't render SignIn until we know if user is authenticated or not
   if (!isLoaded) {
     console.log('🟣 [Auth] Clerk not loaded yet, showing loading state');
-    return (
-      <div className="min-h-screen flex flex-col justify-end pb-24" style={{ backgroundColor: '#3EAFD2' }}>
-        <div className="text-white text-center">
-          <div className="broom-loader-wrapper">
-            <div className="broom-loader mb-4">
-              <BroomIcon className="broom-icon-svg" />
-              <div className="broom-track"></div>
-              <div className="broom-trail"></div>
-            </div>
-            <p className="text-body whitespace-nowrap">Tidying things up...</p>
-          </div>
-          <p className="text-caption text-white/60 mt-2">Please wait a moment</p>
-        </div>
-      </div>
-    );
+    return <AuthLoading message="Please wait a moment" />;
   }
 
   // Loading state while creating user OR while user is authenticated but being processed
   if (isCreatingUser || (isLoaded && user && !hasCheckedUser.current)) {
     return (
       <>
-      <AlertModal />
-      <div className="min-h-screen flex flex-col justify-end pb-24" style={{ backgroundColor: '#3EAFD2' }}>
-        <div className="text-white text-center">
-          <div className="broom-loader-wrapper">
-            <div className="broom-loader mb-4">
-              <BroomIcon className="broom-icon-svg" />
-              <div className="broom-track"></div>
-              <div className="broom-trail"></div>
-            </div>
-            <p className="text-body whitespace-nowrap">Tidying things up...</p>
-          </div>
-          <p className="text-caption text-white/60 mt-2">Setting up your account</p>
-        </div>
-      </div>
+        <AlertModal />
+        <AuthLoading message="Setting up your account" />
       </>
     );
   }
@@ -1010,21 +999,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
   if (isLoaded && user && hasCheckedUser.current) {
     console.log('🟡 [Auth] Rendering loading state - user authenticated, hasCheckedUser is true');
     console.log('🟡 [Auth] State:', { isCreatingUser, hasCheckedUser: hasCheckedUser.current });
-    return (
-      <div className="min-h-screen flex flex-col justify-end pb-24" style={{ backgroundColor: '#3EAFD2' }}>
-        <div className="text-white text-center">
-          <div className="broom-loader-wrapper">
-            <div className="broom-loader mb-4">
-              <BroomIcon className="broom-icon-svg" />
-              <div className="broom-track"></div>
-              <div className="broom-trail"></div>
-            </div>
-            <p className="text-body whitespace-nowrap">Tidying things up...</p>
-          </div>
-          <p className="text-caption text-white/60 mt-2">Almost ready</p>
-        </div>
-      </div>
-    );
+    return <AuthLoading message="Almost ready" />;
   }
 
   // Only show SignIn component if Clerk is loaded AND user is not authenticated
@@ -1061,130 +1036,126 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
     // Wait for SignIn component to be ready (prevents flash of container without form)
     if (!signInReady) {
       console.log('🔴 [Auth] Waiting for SignIn component to be ready...');
-      return (
-        <div className="min-h-screen flex flex-col justify-end pb-24" style={{ backgroundColor: '#3EAFD2' }}>
-          <div className="text-white text-center">
-            <div className="broom-loader-wrapper">
-              <div className="broom-loader mb-4">
-                <BroomIcon className="broom-icon-svg" />
-                <div className="broom-track"></div>
-                <div className="broom-trail"></div>
-              </div>
-              <p className="text-body whitespace-nowrap">Tidying things up...</p>
-            </div>
-            <p className="text-caption text-white/60 mt-2">Please wait a moment</p>
-          </div>
-        </div>
-      );
+      return <AuthLoading message="Please wait a moment" />;
     }
     
     console.log('🔴 [Auth] Rendering SignIn component - Clerk loaded but no authenticated user');
     console.log('🔴 [Auth] State:', { isLoaded, hasUser: !!user });
     return (
       <>
-      <AlertModal />
-      <div className="min-h-screen w-full flex flex-col items-center justify-center p-6" style={{ backgroundColor: '#3EAFD2' }}>
-        
-        {/* Single container for logo + auth to ensure alignment */}
-        <div className="w-full max-w-md">
-          {/* Logo Area */}
-          <div className="mb-8 text-center">
-            <h1 
-              className="text-5xl text-white mb-3"
-              style={{ fontFamily: "'Peanut Butter', var(--font-sans)" }}
-            >
-              helpy
-            </h1>
-            <p className="text-white/90 text-body">
-              "I just want you to know<br />I'm real grateful you're here"
-            </p>
-            <p className="text-white/70 text-caption mt-1">
-              Aibileen Clark, The Help
-            </p>
-          </div>
+        <AlertModal />
+        {/* Override Clerk "Last Used" badge styles only */}
+        <style>{`
+          /* Target Clerk badge by appearance - positioned element with small text */
+          [class*="cl-badge"],
+          [class*="cl-"][class*="badge"],
+          [class*="Badge"],
+          /* Target by structure - element containing "Last used" text */
+          [class*="cl-socialButtonsBlockButton"] + [class*="cl-"],
+          [class*="cl-socialButtons"] > div > [class*="cl-"]:not(button):not(form) {
+            background-color: white !important;
+            background: white !important;
+            border: 1px solid #E5E7EB !important;
+          }
+        `}</style>
+        <div className="min-h-screen w-full flex flex-col p-6 pt-16" style={AUTH_GRADIENT_STYLE}>
+          <div className="w-full max-w-md mx-auto">
+            {/* Logo */}
+            <div className="mb-10">
+              <img 
+                src="/helpy-logo-blue.png" 
+                alt="Helpy" 
+                className="h-12 w-auto"
+              />
+            </div>
 
-          {/* Clerk Auth Component */}
-          <div className="w-full">
-            <SignIn 
-            appearance={{
-              variables: {
-                colorPrimary: '#3EAFD2',
-                colorText: '#474747',
-                colorTextSecondary: '#757575',
-                colorInputBackground: '#FFFFFF',
-                colorInputText: '#474747',
-                colorBackground: '#FFFFFF',
-                fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif',
-                borderRadius: '0.75rem',
-                fontSize: '0.875rem',
-                spacingUnit: '0.9rem',
-              },
-              elements: {
-                rootBox: "w-full",
-                cardBox: "w-full shadow-sm rounded-2xl overflow-hidden",
-                card: "bg-white rounded-2xl border-0 shadow-none p-6",
-                headerTitle: "text-xl font-bold text-[#474747]",
-                headerSubtitle: "text-sm text-gray-500",
-                socialButtonsBlockButton: "border border-gray-200 rounded-xl font-medium py-3",
-                socialButtonsBlockButtonText: "font-medium text-sm",
-                formButtonPrimary: "!bg-[#3EAFD2] !bg-none !shadow-none rounded-xl font-semibold py-3",
-                formFieldInput: "bg-white border border-gray-200 rounded-xl px-4 py-3 text-[#474747] placeholder-gray-400 focus:border-[#3EAFD2] focus:ring-1 focus:ring-[#3EAFD2]",
-                formFieldLabel: "font-medium text-sm text-[#474747] mb-1.5",
-                dividerLine: "bg-gray-200",
-                dividerText: "text-gray-400 text-sm",
-                identityPreviewEditButtonIcon: "text-[#3EAFD2]",
-                formFieldInputShowPasswordButton: "text-gray-400",
-                footer: "hidden"
-              }
-            }}
-            routing="hash"
-            signUpUrl={null}
-          />
-          
-          {/* Custom Sign Up Button */}
-          <div className="mt-4 text-center">
-            <p className="text-body text-white/80">
-              Don't have an account?{' '}
-              <button
-                onClick={() => setShowSignUp(true)}
-                className="font-bold text-white"
+            {/* Spacer to align with SignUp page (matches back button + mb-6) */}
+            <div className="h-[44px]"></div>
+
+            {/* Header - left aligned */}
+            <div className="mb-8">
+              <h1 className="text-display font-bold text-foreground mb-2">Welcome back</h1>
+              <p className="text-body text-muted-foreground">Sign in to continue to Helpy</p>
+            </div>
+
+            {/* Clerk Auth Component */}
+            <div className="w-full">
+              <SignIn 
+                appearance={{
+                  variables: {
+                    colorPrimary: '#3EAFD2',
+                    colorText: '#474747',
+                    colorTextSecondary: '#757575',
+                    colorInputBackground: '#FFB6C1',
+                    colorInputText: '#474747',
+                    colorBackground: 'transparent',
+                    fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif',
+                    borderRadius: '12px',
+                    fontSize: '0.875rem',
+                    spacingUnit: '1rem',
+                  },
+                  elements: {
+                    rootBox: "w-full",
+                    cardBox: "w-full shadow-none rounded-none overflow-visible",
+                    card: "bg-transparent rounded-none border-0 shadow-none p-0",
+                    headerTitle: "hidden",
+                    headerSubtitle: "hidden",
+                    socialButtonsBlockButton: "!bg-white !border !border-[#E5E7EB] !rounded-2xl !font-medium !shadow-none !py-[14px]",
+                    socialButtonsBlockButtonText: "!font-medium !text-sm !text-[#474747]",
+                    formButtonPrimary: "!bg-[#3EAFD2] !border-0 !shadow-sm !rounded-2xl !font-semibold !py-[14px]",
+                    formFieldInput: "!bg-white !border-[1px] !border-solid !border-[#E5E7EB] !rounded-2xl !px-[16px] !py-[14px] !text-[14px] !text-[#474747] !placeholder-[#9CA3AF] focus:!border-[#3EAFD2] !ring-0 !outline-none !shadow-none !leading-[1.5] !box-border !h-[52px] !min-h-[52px]",
+                    formFieldInputGroup: "!h-[52px] !min-h-[52px] !rounded-2xl !overflow-hidden",
+                    formField: "!rounded-2xl",
+                    formFieldRow: "!min-h-0 !rounded-2xl",
+                    formFieldLabel: "!font-normal !text-xs !text-[#757575] !mb-2",
+                    dividerLine: "!bg-[#E5E7EB]",
+                    dividerText: "!text-[#757575] !text-xs",
+                    identityPreviewEditButtonIcon: "!text-[#3EAFD2]",
+                    formFieldInputShowPasswordButton: "!text-[#9CA3AF]",
+                    footer: "hidden",
+                    // Badge styling for "Last Used" indicator
+                    badge: {
+                      backgroundColor: 'white',
+                      background: 'white',
+                      border: '1px solid #E5E7EB'
+                    }
+                  }
+                }}
+                routing="hash"
+                signUpUrl={null}
+              />
+            
+              {/* Custom Sign Up Button */}
+              <div className="mt-6">
+                <p className="text-body text-muted-foreground">
+                  Don't have an account?{' '}
+                  <button
+                    onClick={() => setShowSignUp(true)}
+                    className="font-semibold text-primary"
+                  >
+                    Sign up
+                  </button>
+                </p>
+              </div>
+            </div>
+
+            {/* Features Link */}
+            <div className="mt-8">
+              <a
+                href="https://helpyfam.com"
+                className="text-primary text-body"
               >
-                Sign up
-              </button>
-            </p>
-          </div>
+                See Helpyfam Features
+              </a>
+            </div>
           </div>
         </div>
-
-        {/* Features Link */}
-        <div className="mt-6 text-center">
-          <a
-            href="https://helpyfam.com"
-            className="text-white/90 text-body underline"
-          >
-            See Helpyfam Features
-          </a>
-        </div>
-      </div>
       </>
     );
   }
 
   // Fallback - should never reach here
-  return (
-    <div className="min-h-screen flex flex-col justify-end pb-24" style={{ backgroundColor: '#3EAFD2' }}>
-      <div className="text-white text-center">
-        <div className="broom-loader-wrapper">
-          <div className="broom-loader mb-4">
-            <BroomIcon className="broom-icon-svg" />
-            <div className="broom-track"></div>
-            <div className="broom-trail"></div>
-          </div>
-          <p className="text-body whitespace-nowrap">Tidying things up...</p>
-        </div>
-      </div>
-    </div>
-  );
+  return <AuthLoading message="Loading..." />;
 };
 
 export default Auth;

@@ -1045,16 +1045,19 @@ const Dashboard: React.FC<DashboardProps> = ({
         </div>
       </div>
 
-      {/* PWA Install Modal - Centered modal for mobile only */}
+      {/* PWA Install Modal - Nearly full screen for mobile */}
       {showPwaModal && createPortal(
         <div 
-          className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center p-4"
+          className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center p-3"
           style={{ zIndex: 99999 }}
         >
-          {/* Modal content */}
+          {/* Modal content - nearly full screen */}
           <div 
-            className="relative overflow-hidden rounded-2xl bg-card w-full max-w-lg shadow-xl"
-            style={{ maxHeight: 'calc(100dvh - 120px)' }}
+            className="relative overflow-hidden rounded-2xl bg-card w-full shadow-xl flex flex-col"
+            style={{ 
+              maxHeight: 'calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom))',
+              height: 'calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom))'
+            }}
           >
             {/* Close Button - inside, top right */}
             <button
@@ -1066,7 +1069,7 @@ const Dashboard: React.FC<DashboardProps> = ({
             </button>
 
             {/* Header with Logo */}
-            <div className="pt-6 pb-4 px-5 border-b border-border">
+            <div className="pt-6 pb-4 px-5 border-b border-border flex-shrink-0">
               <div className="helpy-logo text-primary mb-3" style={{ fontSize: '32px' }}>helpy</div>
               <h2 className="text-title text-foreground font-bold">{t['pwa.welcome'] || 'Welcome!'}</h2>
               <p className="text-body text-muted-foreground mt-1">
@@ -1075,10 +1078,10 @@ const Dashboard: React.FC<DashboardProps> = ({
             </div>
 
             {/* Body - Device-specific instructions */}
-            <div className="p-5">
+            <div className="p-5 flex-1">
               {isIosDevice() ? (
                 // iOS Instructions
-                <ol className="list-decimal pl-5 space-y-2">
+                <ol className="list-decimal pl-5 space-y-3">
                   <li className="text-body text-foreground">
                     {t['pwa.step_tap_share'] || 'Tap Share'} <Share size={16} className="inline-block text-muted-foreground ml-1" />
                   </li>
@@ -1109,7 +1112,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                       ? (t['pwa.or_follow_steps'] || 'Or follow the below steps:')
                       : (t['pwa.follow_steps'] || 'Follow these steps:')}
                   </p>
-                  <ol className="list-decimal pl-5 space-y-2">
+                  <ol className="list-decimal pl-5 space-y-3">
                     <li className="text-body text-foreground">
                       {t['pwa.step_tap_menu'] || 'Tap the menu'} <MoreVertical size={16} className="inline-block text-muted-foreground ml-1" />
                       <p className="text-caption text-muted-foreground mt-1">{t['pwa.step_menu_location'] || '(three dots in the top right corner)'}</p>

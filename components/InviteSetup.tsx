@@ -7,6 +7,29 @@ import { getUser, completeInviteRegistration } from "@/services/userService";
 
 console.log('🔄 InviteSetup rendered');
 
+// Shared gradient background style for auth pages
+const AUTH_GRADIENT_STYLE = {
+  backgroundImage: 'linear-gradient(to right bottom, #fafafa, #f9f9fa, #f8f8fa, #f6f8f9, #f4f7f9, #f3f7f9, #f1f6f8, #f0f6f8, #f0f6f8, #eff6f8, #eff6f8, #eef6f8)',
+  backgroundAttachment: 'fixed' as const
+};
+
+// Loading component for auth states  
+const AuthLoading = ({ message }: { message: string }) => (
+  <div className="min-h-screen w-full flex flex-col items-center justify-center p-6" style={AUTH_GRADIENT_STYLE}>
+    <div className="text-center">
+      <img 
+        src="/helpy-logo-blue.png" 
+        alt="Helpy" 
+        className="h-14 w-auto mx-auto mb-8"
+      />
+      <div className="auth-loading-bar mx-auto mb-4">
+        <div className="auth-loading-bar-fill" />
+      </div>
+      <p className="text-body text-muted-foreground">{message}</p>
+    </div>
+  </div>
+);
+
 interface InviteSetupProps {
   householdId: string;
   userId: string;
@@ -107,50 +130,78 @@ const InviteSetup: React.FC<InviteSetupProps> = ({ householdId, userId, onComple
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <Loader2 className="animate-spin text-gray-500" size={32} />
-        <span className="ml-2 text-gray-600">Loading invitation...</span>
-      </div>
-    );
+    return <AuthLoading message="Loading invitation..." />;
   }
 
   if (!invitedUser) {
     return (
-      <div className="p-6 text-center">
-        <h3 className="text-xl font-bold text-[#F06292]">Invitation Error</h3>
-        <p className="text-gray-600 mt-2">{error || "Invitation invalid or expired."}</p>
+      <div className="min-h-screen w-full flex flex-col p-6 pt-16" style={AUTH_GRADIENT_STYLE}>
+        <div className="w-full max-w-md mx-auto">
+          <div className="mb-10">
+            <img 
+              src="/helpy-logo-blue.png" 
+              alt="Helpy" 
+              className="h-12 w-auto"
+            />
+          </div>
+          <h1 className="text-display font-bold text-destructive mb-4">Invitation Error</h1>
+          <p className="text-body text-muted-foreground mb-8">
+            {error || "Invitation invalid or expired."}
+          </p>
+          <button
+            onClick={() => window.location.href = '/'}
+            className="w-full py-3.5 bg-primary text-primary-foreground rounded-xl text-body font-semibold shadow-sm"
+          >
+            Go to Home
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="p-6 text-center">
-      <h3 className="text-2xl font-bold text-gray-800">Welcome, {invitedUser.name ?? "Guest"}!</h3>
-      <p className="text-gray-500 mt-2">
-        Accept invitation for {invitedUser.email ?? "your account"}.
-      </p>
-      <ErrorBanner 
-        error={error} 
-        onDismiss={() => setError('')} 
-        title="Error"
-        className="mt-2"
-      />
-      <button
-        onClick={handleAcceptInvite}
-        disabled={isSubmitting}
-        className="mt-6 w-full bg-brand-primary text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 disabled:opacity-50"
-      >
-        {isSubmitting ? (
-          <>
-            <Loader2 className="animate-spin" size={18} /> Completing…
-          </>
-        ) : (
-          <>
-            Accept Invitation <ChevronRight size={18} />
-          </>
-        )}
-      </button>
+    <div className="min-h-screen w-full flex flex-col p-6 pt-16" style={AUTH_GRADIENT_STYLE}>
+      <div className="w-full max-w-md mx-auto">
+        <div className="mb-10">
+          <img 
+            src="/helpy-logo-blue.png" 
+            alt="Helpy" 
+            className="h-12 w-auto"
+          />
+        </div>
+        
+        <div className="mb-8">
+          <h1 className="text-display font-bold text-foreground mb-2">
+            Welcome, {invitedUser.name ?? "Guest"}!
+          </h1>
+          <p className="text-body text-muted-foreground">
+            Accept invitation for {invitedUser.email ?? "your account"}.
+          </p>
+        </div>
+
+        <ErrorBanner 
+          error={error} 
+          onDismiss={() => setError('')} 
+          title="Error"
+          className="mb-6"
+        />
+
+        <button
+          onClick={handleAcceptInvite}
+          disabled={isSubmitting}
+          className="w-full py-3.5 bg-primary text-primary-foreground rounded-xl text-body font-semibold shadow-sm disabled:opacity-50 flex items-center justify-center gap-2"
+        >
+          {isSubmitting ? (
+            <>
+              <Loader2 className="animate-spin" size={18} /> Completing...
+            </>
+          ) : (
+            <>
+              Accept Invitation <ChevronRight size={18} />
+            </>
+          )}
+        </button>
+      </div>
     </div>
   );
 };

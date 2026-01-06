@@ -7,6 +7,29 @@ import { useSignUp, useSignIn, useClerk, useUser, SignUp } from '@clerk/clerk-re
 import { Loader2, Mail, ArrowRight } from 'lucide-react';
 import ErrorBanner from './ui/ErrorBanner';
 
+// Shared gradient background style for auth pages
+const AUTH_GRADIENT_STYLE = {
+  backgroundImage: 'linear-gradient(to right bottom, #fafafa, #f9f9fa, #f8f8fa, #f6f8f9, #f4f7f9, #f3f7f9, #f1f6f8, #f0f6f8, #f0f6f8, #eff6f8, #eff6f8, #eef6f8)',
+  backgroundAttachment: 'fixed' as const
+};
+
+// Loading component for auth states  
+const AuthLoading = ({ message }: { message: string }) => (
+  <div className="min-h-screen w-full flex flex-col items-center justify-center p-6" style={AUTH_GRADIENT_STYLE}>
+    <div className="text-center">
+      <img 
+        src="/helpy-logo-blue.png" 
+        alt="Helpy" 
+        className="h-14 w-auto mx-auto mb-8"
+      />
+      <div className="auth-loading-bar mx-auto mb-4">
+        <div className="auth-loading-bar-fill" />
+      </div>
+      <p className="text-body text-muted-foreground">{message}</p>
+    </div>
+  </div>
+);
+
 interface InviteWelcomeProps {
   householdId: string;
   userId: string;
@@ -323,40 +346,33 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
 
   // Loading state - also show loading if checking user status
   if (loading || !userLoaded) {
-    return (
-      <div className="min-h-screen w-full flex flex-col items-center justify-center p-6" style={{ backgroundColor: '#3EAFD2' }}>
-        <div className="text-white text-center">
-          <Loader2 className="w-12 h-12 animate-spin mx-auto mb-4" />
-          <p className="text-title">Loading invitation...</p>
-        </div>
-      </div>
-    );
+    return <AuthLoading message="Loading invitation..." />;
   }
 
   // If user is signed in, show loading while redirecting
   if (isSignedIn && user) {
-    return (
-      <div className="min-h-screen w-full flex flex-col items-center justify-center p-6" style={{ backgroundColor: '#3EAFD2' }}>
-        <div className="text-white text-center">
-          <Loader2 className="w-12 h-12 animate-spin mx-auto mb-4" />
-          <p className="text-title">Completing invitation...</p>
-        </div>
-      </div>
-    );
+    return <AuthLoading message="Completing invitation..." />;
   }
 
   // Error state
   if (!inviteInfo?.isValid || error) {
     return (
-      <div className="min-h-screen w-full flex flex-col items-center justify-center p-6" style={{ backgroundColor: '#3EAFD2' }}>
-        <div className="bg-white shadow-lg rounded-2xl p-8 max-w-md text-center">
-          <h2 className="text-display text-red-500 mb-4">Invitation Error</h2>
-          <p className="text-gray-600 mb-6">
+      <div className="min-h-screen w-full flex flex-col p-6 pt-16" style={AUTH_GRADIENT_STYLE}>
+        <div className="w-full max-w-md mx-auto">
+          <div className="mb-10">
+            <img 
+              src="/helpy-logo-blue.png" 
+              alt="Helpy" 
+              className="h-12 w-auto"
+            />
+          </div>
+          <h1 className="text-display font-bold text-destructive mb-4">Invitation Error</h1>
+          <p className="text-body text-muted-foreground mb-8">
             {error || inviteInfo?.error || 'This invitation is invalid or has expired.'}
           </p>
           <button
             onClick={() => window.location.href = '/'}
-            className="px-6 py-3 bg-[#3EAFD2] text-white rounded-xl font-semibold"
+            className="w-full py-3.5 bg-primary text-primary-foreground rounded-xl text-body font-semibold shadow-sm"
           >
             Go to Home
           </button>
@@ -368,13 +384,183 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
   // Verification step
   if (verificationStep === 'email') {
     return (
-      <div className="min-h-screen w-full flex flex-col items-center justify-center p-6" style={{ backgroundColor: '#3EAFD2' }}>
-        <div className="w-full max-w-md">
-          <div className="bg-white shadow-lg rounded-2xl p-6">
-            <h2 className="text-title text-[#474747] text-center mb-2">Verify Your Email</h2>
-            <p className="text-gray-500 text-body text-center mb-5">
-              We sent a code to {formData.email}
+      <div className="min-h-screen w-full flex flex-col p-6 pt-16" style={AUTH_GRADIENT_STYLE}>
+        <div className="w-full max-w-md mx-auto">
+          <div className="mb-10">
+            <img 
+              src="/helpy-logo-blue.png" 
+              alt="Helpy" 
+              className="h-12 w-auto"
+            />
+          </div>
+
+          <div className="mb-8">
+            <h1 className="text-display font-bold text-foreground mb-2">Check your email</h1>
+            <p className="text-body text-muted-foreground">
+              We sent a verification code to<br />
+              <span className="text-foreground font-medium">{formData.email}</span>
             </p>
+          </div>
+
+          <ErrorBanner 
+            error={error} 
+            onDismiss={() => setError('')} 
+            title="Error"
+          />
+
+          <form onSubmit={handleVerify} className="space-y-5">
+            <div>
+              <label className="text-caption text-muted-foreground mb-2 block">
+                Verification Code
+              </label>
+              <input
+                type="text"
+                autoComplete="one-time-code"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                value={code}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/\D/g, '');
+                  setCode(value);
+                }}
+                placeholder="Enter 6-digit code"
+                required
+                maxLength={6}
+                className="w-full px-4 py-3.5 rounded-xl bg-white border border-border text-foreground placeholder:text-muted-foreground focus:border-primary outline-none transition-all text-body tracking-widest text-center"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full py-3.5 bg-primary text-primary-foreground rounded-xl text-body font-semibold shadow-sm disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="animate-spin" size={18} />
+                  Verifying...
+                </>
+              ) : (
+                'Continue'
+              )}
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  // Welcome page
+  const welcomeText = inviteInfo.adminName 
+    ? `You've been invited to join ${inviteInfo.adminName}'s household`
+    : `You've been invited to join ${inviteInfo.householdName}`;
+
+  return (
+    <div className="min-h-screen w-full flex flex-col p-6 pt-16" style={AUTH_GRADIENT_STYLE}>
+      <div className="w-full max-w-md mx-auto">
+        {/* Logo */}
+        <div className="mb-10">
+          <img 
+            src="/helpy-logo-blue.png" 
+            alt="Helpy" 
+            className="h-12 w-auto"
+          />
+        </div>
+
+        {showGoogleOAuth ? (
+          <>
+            {/* Clerk SignUp Component for OAuth */}
+            <button
+              onClick={() => setShowGoogleOAuth(false)}
+              className="flex items-center gap-2 text-muted-foreground mb-6 text-body"
+            >
+              <ArrowRight size={16} className="rotate-180" />
+              <span>Back</span>
+            </button>
+            <div ref={signUpRef}>
+              <SignUp
+                routing="hash"
+                redirectUrl={`${getProductionUrl()}?invite=true&hid=${householdId}&uid=${userId}`}
+                fallbackRedirectUrl={`${getProductionUrl()}?invite=true&hid=${householdId}&uid=${userId}`}
+                appearance={{
+                  elements: {
+                    rootBox: "w-full",
+                    cardBox: "w-full shadow-none rounded-none overflow-visible",
+                    card: "bg-transparent rounded-none border-0 shadow-none p-0",
+                    socialButtonsBlockButton: "bg-white border border-border rounded-xl font-medium py-3.5",
+                    formButtonPrimary: "!bg-[#3EAFD2] !bg-none !shadow-sm rounded-xl font-semibold py-3.5",
+                    formField: "hidden",
+                    formFieldInput: "hidden",
+                    formFieldLabel: "hidden",
+                    dividerLine: "hidden",
+                    dividerText: "hidden",
+                  }
+                }}
+              />
+            </div>
+          </>
+        ) : !showSignUp ? (
+          <>
+            {/* Welcome Header */}
+            <div className="mb-8">
+              <h1 className="text-display font-bold text-foreground mb-2">Welcome!</h1>
+              <p className="text-body text-muted-foreground">{welcomeText}</p>
+              {inviteInfo.pendingUserName && (
+                <p className="text-caption text-muted-foreground mt-2">
+                  You'll be added as: <span className="font-semibold text-foreground">{inviteInfo.pendingUserName}</span>
+                  {inviteInfo.pendingUserRole && ` (${inviteInfo.pendingUserRole})`}
+                </p>
+              )}
+            </div>
+
+            {/* Sign Up Options */}
+            <div className="space-y-3">
+              <button
+                onClick={handleGoogleSignIn}
+                className="w-full py-3.5 bg-white border border-border rounded-xl text-body font-medium text-foreground flex items-center justify-center gap-3"
+              >
+                <svg className="w-5 h-5" viewBox="0 0 24 24">
+                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                </svg>
+                Continue with Google
+              </button>
+              <button
+                onClick={() => setShowSignUp(true)}
+                className="w-full py-3.5 bg-primary text-primary-foreground rounded-xl text-body font-semibold shadow-sm flex items-center justify-center gap-2"
+              >
+                <Mail size={18} />
+                Continue with Email
+              </button>
+            </div>
+
+            {/* Sign In Link */}
+            <p className="mt-8 text-body text-muted-foreground">
+              Already have an account?{' '}
+              <button
+                onClick={handleEmailSignIn}
+                className="text-primary font-semibold"
+              >
+                Sign In
+              </button>
+            </p>
+          </>
+        ) : (
+          <>
+            {/* Sign Up Form */}
+            <button
+              onClick={() => setShowSignUp(false)}
+              className="flex items-center gap-2 text-muted-foreground mb-6 text-body"
+            >
+              <ArrowRight size={16} className="rotate-180" />
+              <span>Back</span>
+            </button>
+
+            <div className="mb-8">
+              <h1 className="text-display font-bold text-foreground">Create Account</h1>
+            </div>
 
             <ErrorBanner 
               error={error} 
@@ -382,264 +568,89 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
               title="Error"
             />
 
-            <form onSubmit={handleVerify} className="space-y-3">
+            <form onSubmit={handleSignUp} className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-caption text-muted-foreground mb-2 block">
+                    First Name
+                  </label>
+                  <input
+                    type="text"
+                    autoComplete="given-name"
+                    value={formData.firstName}
+                    onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                    placeholder="John"
+                    required
+                    className="w-full px-4 py-3.5 rounded-xl bg-white border border-border text-foreground placeholder:text-muted-foreground focus:border-primary outline-none transition-all text-body"
+                  />
+                </div>
+                <div>
+                  <label className="text-caption text-muted-foreground mb-2 block">
+                    Last Name
+                  </label>
+                  <input
+                    type="text"
+                    autoComplete="family-name"
+                    value={formData.lastName}
+                    onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                    placeholder="Doe"
+                    required
+                    className="w-full px-4 py-3.5 rounded-xl bg-white border border-border text-foreground placeholder:text-muted-foreground focus:border-primary outline-none transition-all text-body"
+                  />
+                </div>
+              </div>
+
               <div>
-                <label className="text-[#474747] text-body mb-1.5 block">
-                  Verification Code
+                <label className="text-caption text-muted-foreground mb-2 block">
+                  Email
                 </label>
                 <input
-                  type="text"
-                  autoComplete="one-time-code"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  value={code}
-                  onChange={(e) => {
-                    const value = e.target.value.replace(/\D/g, '');
-                    setCode(value);
-                  }}
-                  placeholder="Enter 6-digit code"
+                  type="email"
+                  autoComplete="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  placeholder="john@example.com"
                   required
-                  maxLength={6}
-                  className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-[#474747] placeholder-gray-400 focus:outline-none focus:border-[#3EAFD2] focus:ring-1 focus:ring-[#3EAFD2] transition-colors text-center text-lg tracking-widest"
+                  className="w-full px-4 py-3.5 rounded-xl bg-white border border-border text-foreground placeholder:text-muted-foreground focus:border-primary outline-none transition-all text-body"
                 />
               </div>
+
+              <div>
+                <label className="text-caption text-muted-foreground mb-2 block">
+                  Password
+                </label>
+                <input
+                  type="password"
+                  autoComplete="new-password"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  placeholder="Min. 8 characters"
+                  required
+                  minLength={8}
+                  className="w-full px-4 py-3.5 rounded-xl bg-white border border-border text-foreground placeholder:text-muted-foreground focus:border-primary outline-none transition-all text-body"
+                />
+              </div>
+
+              {/* Clerk CAPTCHA widget container */}
+              <div id="clerk-captcha"></div>
 
               <button
                 type="submit"
                 disabled={isSubmitting}
-                style={{ backgroundColor: '#3EAFD2' }}
-                className="w-full rounded-xl font-semibold py-3 text-white disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full py-3.5 bg-primary text-primary-foreground rounded-xl text-body font-semibold shadow-sm disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {isSubmitting ? (
                   <>
                     <Loader2 className="animate-spin" size={18} />
-                    Verifying...
+                    Creating Account...
                   </>
                 ) : (
-                  'Verify Email'
+                  'Create Account'
                 )}
               </button>
             </form>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Welcome page
-  const welcomeName = inviteInfo.adminName || inviteInfo.householdName;
-  const welcomeText = inviteInfo.adminName 
-    ? `You've been invited to join ${inviteInfo.adminName}'s household`
-    : `You've been invited to join ${inviteInfo.householdName}`;
-
-  return (
-    <div className="min-h-screen w-full flex flex-col items-center justify-center p-6" style={{ backgroundColor: '#3EAFD2' }}>
-      <div className="w-full max-w-md flex flex-col items-center">
-        {/* Logo Area */}
-        <div className="mb-8 text-center w-full">
-          <h1 
-            className="text-5xl text-white mb-3"
-            style={{ fontFamily: "'Peanut Butter', var(--font-sans)" }}
-          >
-            helpy
-          </h1>
-        </div>
-
-        {/* Welcome Card */}
-        <div className="w-full">
-          <div className="bg-white shadow-lg rounded-2xl p-6">
-            <div className="text-center mb-6">
-              <h2 className="text-display text-[#474747] mb-2">Welcome!</h2>
-              <p className="text-gray-600 text-body">
-                {welcomeText}
-              </p>
-              {inviteInfo.pendingUserName && (
-                <p className="text-gray-500 text-caption mt-2">
-                  You'll be added as: <span className="font-semibold">{inviteInfo.pendingUserName}</span>
-                  {inviteInfo.pendingUserRole && ` (${inviteInfo.pendingUserRole})`}
-                </p>
-              )}
-            </div>
-
-            {showGoogleOAuth ? (
-              <>
-                {/* Clerk SignUp Component for OAuth - auto-clicks Google button */}
-                <div className="mb-4">
-                  <button
-                    onClick={() => setShowGoogleOAuth(false)}
-                    className="flex items-center gap-2 text-gray-500 mb-4 text-body"
-                  >
-                    <ArrowRight size={16} className="rotate-180" />
-                    <span>Back</span>
-                  </button>
-                </div>
-                <div ref={signUpRef}>
-                  <SignUp
-                    routing="hash"
-                    redirectUrl={`${getProductionUrl()}?invite=true&hid=${householdId}&uid=${userId}`}
-                    fallbackRedirectUrl={`${getProductionUrl()}?invite=true&hid=${householdId}&uid=${userId}`}
-                    appearance={{
-                      elements: {
-                        rootBox: "w-full",
-                        cardBox: "w-full shadow-none rounded-2xl overflow-hidden",
-                        card: "bg-white rounded-2xl border-0 shadow-none p-0",
-                        socialButtonsBlockButton: "border border-gray-200 rounded-xl font-medium py-3",
-                        formButtonPrimary: "!bg-[#3EAFD2] !bg-none !shadow-none rounded-xl font-semibold py-3",
-                        formField: "hidden", // Hide email/password form fields
-                        formFieldInput: "hidden",
-                        formFieldLabel: "hidden",
-                        dividerLine: "hidden",
-                        dividerText: "hidden",
-                      }
-                    }}
-                  />
-                </div>
-              </>
-            ) : !showSignUp ? (
-              <>
-                {/* Sign Up Options - Google first (fastest) */}
-                <div className="space-y-3">
-                  <button
-                    onClick={handleGoogleSignIn}
-                    style={{ backgroundColor: '#3EAFD2' }}
-                    className="w-full rounded-xl font-semibold py-3 text-white flex items-center justify-center gap-2"
-                  >
-                    <svg className="w-5 h-5" viewBox="0 0 24 24">
-                      <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                      <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                      <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                      <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                    </svg>
-                    Sign Up with Google
-                  </button>
-                  <button
-                    onClick={() => setShowSignUp(true)}
-                    className="w-full border-2 border-gray-200 rounded-xl font-semibold py-3 text-gray-700 flex items-center justify-center gap-2"
-                  >
-                    <Mail size={18} />
-                    Sign Up with Email
-                  </button>
-                </div>
-
-                {/* Sign In Link */}
-                <div className="mt-6 pt-6 border-t border-gray-200">
-                  <div className="text-center">
-                    <p className="text-body text-gray-500">
-                      Already have an account?{' '}
-                      <button
-                        onClick={handleEmailSignIn}
-                        className="text-[#3EAFD2] font-semibold"
-                      >
-                        Sign In
-                      </button>
-                    </p>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <>
-                {/* Sign Up Form */}
-                <button
-                  onClick={() => setShowSignUp(false)}
-                  className="flex items-center gap-2 text-gray-500 mb-4 text-body"
-                >
-                  <ArrowRight size={16} className="rotate-180" />
-                  <span>Back</span>
-                </button>
-
-                <ErrorBanner 
-                  error={error} 
-                  onDismiss={() => setError('')} 
-                  title="Error"
-                />
-
-                <form onSubmit={handleSignUp} className="space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-[#474747] text-body mb-1.5 block">
-                        First Name
-                      </label>
-                      <input
-                        type="text"
-                        autoComplete="given-name"
-                        value={formData.firstName}
-                        onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                        placeholder="John"
-                        required
-                        className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-[#474747] placeholder-gray-400 focus:outline-none focus:border-[#3EAFD2] focus:ring-1 focus:ring-[#3EAFD2] transition-colors"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[#474747] text-body mb-1.5 block">
-                        Last Name
-                      </label>
-                      <input
-                        type="text"
-                        autoComplete="family-name"
-                        value={formData.lastName}
-                        onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                        placeholder="Doe"
-                        required
-                        className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-[#474747] placeholder-gray-400 focus:outline-none focus:border-[#3EAFD2] focus:ring-1 focus:ring-[#3EAFD2] transition-colors"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-[#474747] text-body mb-1.5 block">
-                      Email
-                    </label>
-                    <input
-                      type="email"
-                      autoComplete="email"
-                      value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      placeholder="john@example.com"
-                      required
-                      className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-[#474747] placeholder-gray-400 focus:outline-none focus:border-[#3EAFD2] focus:ring-1 focus:ring-[#3EAFD2] transition-colors"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-[#474747] text-body mb-1.5 block">
-                      Password
-                    </label>
-                    <input
-                      type="password"
-                      autoComplete="new-password"
-                      value={formData.password}
-                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                      placeholder="Enter password"
-                      required
-                      minLength={8}
-                      className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-[#474747] placeholder-gray-400 focus:outline-none focus:border-[#3EAFD2] focus:ring-1 focus:ring-[#3EAFD2] transition-colors"
-                    />
-                    <p className="text-caption text-gray-400 mt-1.5">Must be at least 8 characters</p>
-                  </div>
-
-                  {/* Clerk CAPTCHA widget container */}
-                  <div id="clerk-captcha" className="mb-4"></div>
-
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    style={{ backgroundColor: '#3EAFD2' }}
-                    className="w-full rounded-xl font-semibold py-3 text-white disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <Loader2 className="animate-spin" size={18} />
-                        Creating Account...
-                      </>
-                    ) : (
-                      'Create Account'
-                    )}
-                  </button>
-                </form>
-              </>
-            )}
-          </div>
-        </div>
+          </>
+        )}
       </div>
     </div>
   );

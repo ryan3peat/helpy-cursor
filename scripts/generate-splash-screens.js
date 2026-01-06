@@ -4,6 +4,8 @@
  * Generates Apple launch images for all iOS device sizes.
  * These appear instantly when the app launches, before any JS loads.
  * 
+ * NEW THEME: White gradient background with blue Helpy logo
+ * 
  * Usage: node scripts/generate-splash-screens.js
  * 
  * Note: This script uses canvas to generate the images.
@@ -13,9 +15,6 @@
 const { createCanvas, loadImage, registerFont } = require('canvas');
 const fs = require('fs');
 const path = require('path');
-
-// Helpy brand colors
-const BACKGROUND_COLOR = '#3EAFD2';
 
 // All iOS device splash screen sizes
 // Format: [width, height, scale, deviceName]
@@ -61,23 +60,42 @@ const SPLASH_SIZES = [
 
 const OUTPUT_DIR = path.join(__dirname, '../public/splash');
 
+/**
+ * Draw gradient background (new Helpy theme)
+ * Mimics: linear-gradient(to right bottom, #fafafa, #eef6f8)
+ */
+function drawGradientBackground(ctx, width, height) {
+  const gradient = ctx.createLinearGradient(0, 0, width, height);
+  gradient.addColorStop(0, '#fafafa');
+  gradient.addColorStop(0.3, '#f8f8fa');
+  gradient.addColorStop(0.5, '#f4f7f9');
+  gradient.addColorStop(0.7, '#f1f6f8');
+  gradient.addColorStop(1, '#eef6f8');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, width, height);
+}
+
 async function generateSplashScreens() {
-  console.log('🎨 Generating iOS splash screens...');
+  console.log('🎨 Generating iOS splash screens (new Helpy theme)...');
+  console.log('   Background: White gradient');
+  console.log('   Logo: Blue Helpy logo');
+  console.log('');
   
   // Create output directory
   if (!fs.existsSync(OUTPUT_DIR)) {
     fs.mkdirSync(OUTPUT_DIR, { recursive: true });
   }
   
-  // Load the Helpy logo
-  const logoPath = path.join(__dirname, '../public/helpy-logo.PNG');
+  // Load the blue Helpy logo (for new white background theme)
+  const logoPath = path.join(__dirname, '../public/helpy-logo-blue.png');
   let logo;
   try {
     logo = await loadImage(logoPath);
-    console.log(`✅ Loaded logo: ${logo.width}x${logo.height}`);
+    console.log(`✅ Loaded blue logo: ${logo.width}x${logo.height}`);
   } catch (error) {
-    console.error('❌ Failed to load logo:', error.message);
+    console.error('❌ Failed to load helpy-logo-blue.png:', error.message);
     console.log('📝 Creating text-based splash screens instead...');
+    console.log('   (Add helpy-logo-blue.png to public/ folder for proper splash screens)');
     logo = null;
   }
   
@@ -90,13 +108,12 @@ async function generateSplashScreens() {
     const canvas = createCanvas(width, height);
     const ctx = canvas.getContext('2d');
     
-    // Fill background
-    ctx.fillStyle = BACKGROUND_COLOR;
-    ctx.fillRect(0, 0, width, height);
+    // Draw gradient background (new Helpy theme)
+    drawGradientBackground(ctx, width, height);
     
     if (logo) {
       // Calculate logo size (should be readable but not too large)
-      // Target: logo is about 20% of screen width
+      // Target: logo is about 35% of screen width
       const targetWidth = width * 0.35;
       const logoScale = targetWidth / logo.width;
       const logoWidth = logo.width * logoScale;
@@ -109,10 +126,10 @@ async function generateSplashScreens() {
       // Draw the logo
       ctx.drawImage(logo, x, y, logoWidth, logoHeight);
     } else {
-      // Fallback: draw "helpy" text
+      // Fallback: draw "helpy" text in Helpy blue
       const fontSize = Math.floor(width * 0.12);
-      ctx.font = `${fontSize}px sans-serif`;
-      ctx.fillStyle = '#FFFFFF';
+      ctx.font = `bold ${fontSize}px sans-serif`;
+      ctx.fillStyle = '#3EAFD2'; // Helpy blue
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText('helpy', width / 2, height / 2);
@@ -144,4 +161,3 @@ async function generateSplashScreens() {
 
 // Run the generator
 generateSplashScreens().catch(console.error);
-

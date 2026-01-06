@@ -636,11 +636,17 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
 /**
  * Subscribe to push notifications
  * Returns the subscription or null if failed
+ * 
+ * BULLETPROOF VERSION: Uses API endpoint as the ONLY save path.
+ * The API has service role access and handles Clerk ID → UUID resolution server-side.
+ * Returns null if ANYTHING fails - no more silent failures.
  */
 export async function subscribeToPush(
   userId: string,
   householdId: string
 ): Promise<PushSubscription | null> {
+  console.log('[Push] subscribeToPush called:', { userId, householdId });
+  
   if (!isPushSupported()) {
     console.warn('[Push] Push not supported');
     return null;
@@ -652,19 +658,22 @@ export async function subscribeToPush(
   }
 
   try {
-    // Request permission only if not already granted
+    // Step 1: Request permission only if not already granted
     let permission = getNotificationPermission();
     if (permission === 'default') {
+      console.log('[Push] Requesting permission...');
       permission = await requestNotificationPermission();
     }
     if (permission !== 'granted') {
       console.warn('[Push] Permission not granted:', permission);
       return null;
     }
+    console.log('[Push] Permission granted');
 
-    // Get or register service worker
+    // Step 2: Get or register service worker
     let registration = await getServiceWorkerRegistration();
     if (!registration) {
+      console.log('[Push] Registering service worker...');
       registration = await registerServiceWorker();
     }
 
@@ -672,42 +681,73 @@ export async function subscribeToPush(
       console.error('[Push] No service worker registration');
       return null;
     }
+    console.log('[Push] Service worker ready');
 
-    // Wait for service worker to be ready
+    // Step 3: Wait for service worker to be ready
     await navigator.serviceWorker.ready;
 
-    // Check for existing subscription
+    // Step 4: Get or create browser subscription
     let subscription = await registration.pushManager.getSubscription();
 
-    // If no subscription, create one
     if (!subscription) {
-      console.log('[Push] Creating new subscription...');
+      console.log('[Push] Creating new browser subscription...');
       subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
       });
-      console.log('[Push] New subscription created:', subscription.endpoint);
+      console.log('[Push] New subscription created');
     } else {
-      console.log('[Push] Using existing subscription:', subscription.endpoint);
+      console.log('[Push] Using existing browser subscription');
     }
 
-    // Save subscription to Supabase
-    try {
-      await saveSubscriptionToDatabase(subscription, userId, householdId);
-      console.log('[Push] Subscription successfully saved to database');
-    } catch (saveError) {
-      console.error('[Push] Failed to save subscription to database:', saveError);
-      // Still return the subscription even if save fails (user can retry)
-      // But log the error so we know what went wrong
+    // Step 5: CRITICAL - Save via API endpoint (ONLY path, not fallback)
+    // The API uses service role and handles Clerk ID → UUID resolution server-side
+    // This is 100% reliable, unlike client-side resolution which fails for new users
+    const subscriptionJson = subscription.toJSON();
+    if (!subscriptionJson.endpoint || !subscriptionJson.keys) {
+      console.error('[Push] Invalid subscription data');
+      return null;
+    }
+    
+    const appUrl = import.meta.env.VITE_APP_URL || 'https://app.helpyfam.com';
+    const apiUrl = `${appUrl}/api/save-push-subscription-v2`;
+    
+    console.log('[Push] Saving subscription via API...');
+    
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user_id: userId,  // Clerk ID or UUID - API handles resolution
+        household_id: householdId,
+        endpoint: subscriptionJson.endpoint,
+        p256dh_key: subscriptionJson.keys.p256dh,
+        auth_key: subscriptionJson.keys.auth,
+        user_agent: navigator.userAgent,
+        device_fingerprint: getDeviceId()
+      }),
+    });
+
+    // Step 6: ONLY return success if API confirmed save
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+      console.error('[Push] API save failed:', response.status, errorData);
+      // BE HONEST - return null, don't pretend it worked
+      return null;
     }
 
+    const result = await response.json();
+    console.log('[Push] Subscription saved successfully via API:', result);
+    
     return subscription;
+    
   } catch (error) {
-    console.error('[Push] Failed to subscribe:', error);
+    console.error('[Push] subscribeToPush failed:', error);
     console.error('[Push] Error details:', {
       message: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined
     });
+    // BE HONEST - return null on any failure
     return null;
   }
 }

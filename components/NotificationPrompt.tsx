@@ -14,7 +14,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Bell, X } from 'lucide-react';
+import { Bell, X, AlertCircle } from 'lucide-react';
 import { 
   isRunningAsPwa, 
   hasBeenPromptedForNotifications, 
@@ -45,6 +45,7 @@ const NotificationPrompt: React.FC<NotificationPromptProps> = ({
 }) => {
   const [isVisible, setIsVisible] = useState(false);
   const [isEnabling, setIsEnabling] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     // Don't show during onboarding - wait until it's complete
@@ -116,9 +117,11 @@ const NotificationPrompt: React.FC<NotificationPromptProps> = ({
 
   /**
    * Handle Enable button click
+   * BULLETPROOF: Only closes prompt on SUCCESS. Shows error and allows retry on failure.
    */
   async function handleEnable() {
     setIsEnabling(true);
+    setError(null);
     
     try {
       // Mark as prompted (even if they cancel the OS dialog)
@@ -131,16 +134,28 @@ const NotificationPrompt: React.FC<NotificationPromptProps> = ({
       );
       
       if (subscription) {
+        // SUCCESS - subscription saved to database
         console.log('[NotifPrompt] Successfully enabled notifications');
         onNotificationEnabled?.();
+        setIsVisible(false); // Only close on success
       } else {
-        console.log('[NotifPrompt] Subscription failed or was denied');
+        // FAILURE - check why
+        const permission = getNotificationPermission();
+        if (permission === 'denied') {
+          // User blocked in OS - they know why, close the prompt
+          console.log('[NotifPrompt] User denied permission in OS dialog');
+          setIsVisible(false);
+        } else {
+          // Something else failed - show error and allow retry
+          console.error('[NotifPrompt] Subscription save failed');
+          setError(t['notifications.setup_failed'] || 'Failed to enable notifications. Please try again.');
+        }
       }
-    } catch (error) {
-      console.error('[NotifPrompt] Error enabling notifications:', error);
+    } catch (err) {
+      console.error('[NotifPrompt] Error enabling notifications:', err);
+      setError(t['notifications.setup_failed'] || 'Failed to enable notifications. Please try again.');
     } finally {
       setIsEnabling(false);
-      setIsVisible(false);
     }
   }
 
@@ -201,6 +216,14 @@ const NotificationPrompt: React.FC<NotificationPromptProps> = ({
             {t['notifications.prompt_description'] || 'Get notified when family members add items, complete tasks, or plan meals.'}
           </p>
 
+          {/* Error Message */}
+          {error && (
+            <div className="flex items-center gap-2 p-3 mb-4 bg-destructive/10 text-destructive rounded-lg">
+              <AlertCircle size={18} className="shrink-0" />
+              <p className="text-body text-left">{error}</p>
+            </div>
+          )}
+
           {/* Buttons */}
           <div className="flex flex-col gap-3">
             <button
@@ -210,7 +233,9 @@ const NotificationPrompt: React.FC<NotificationPromptProps> = ({
             >
               {isEnabling 
                 ? (t['common.enabling'] || 'Enabling...') 
-                : (t['notifications.enable'] || 'Enable Notifications')
+                : error 
+                  ? (t['common.try_again'] || 'Try Again')
+                  : (t['notifications.enable'] || 'Enable Notifications')
               }
             </button>
             

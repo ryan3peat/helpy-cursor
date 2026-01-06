@@ -175,6 +175,9 @@ function removeSubscriptionStatus(channelName: string) {
  * UPDATED: Now handles both:
  * 1. Active users: looks up by clerk_id
  * 2. Pending users: the ID IS already the Supabase UUID (no clerk_id yet)
+ * 
+ * FIXED: Uses authenticated client (getSupabaseClient) for RLS compliance.
+ * The default supabase client doesn't have JWT tokens, causing RLS failures.
  */
 async function getSupabaseUserId(id: string, householdId: string): Promise<string | null> {
   // Check cache first
@@ -185,14 +188,18 @@ async function getSupabaseUserId(id: string, householdId: string): Promise<strin
   
   console.log(`🔍 Looking up Supabase UUID for id: ${id}`);
   
+  // Use authenticated client for RLS compliance
+  const client = getSupabaseClient();
+  
   // Query all users in household
-  const { data, error } = await supabase
+  const { data, error } = await client
     .from('users')
     .select('id, clerk_id, status')
     .eq('household_id', householdId);
   
   if (error) {
     console.error('❌ Error querying users:', error);
+    console.error('❌ Error details:', { code: error.code, message: error.message, hint: error.hint });
     return null;
   }
   

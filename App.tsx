@@ -50,14 +50,28 @@ import type { CreateEssentialInfo } from '@src/types/essentialInfo';
 import type { CreateHouseRoutine } from '@src/types/houseRoutine';
 import { useRealtimeStatus } from './hooks/useRealtimeStatus';
 
-// Broom icon component for loading animation (matching flaticon clean_9755169)
-const BroomIcon = ({ className }: { className?: string }) => (
-  <img 
-    src="https://cdn-icons-png.flaticon.com/512/9755/9755169.png" 
-    alt="" 
-    className={className}
-    style={{ width: 28, height: 28, filter: 'brightness(0) invert(1)' }}
-  />
+// Shared gradient background style for loading screens
+const AUTH_GRADIENT_STYLE = {
+  backgroundImage: 'linear-gradient(to right bottom, #fafafa, #f9f9fa, #f8f8fa, #f6f8f9, #f4f7f9, #f3f7f9, #f1f6f8, #f0f6f8, #f0f6f8, #eff6f8, #eff6f8, #eef6f8)',
+  backgroundAttachment: 'fixed' as const
+};
+
+// Loading component for app states
+const AppLoading = ({ message, subMessage }: { message: string; subMessage?: string }) => (
+  <div className="min-h-screen w-full flex flex-col items-center justify-center p-6" style={AUTH_GRADIENT_STYLE}>
+    <div className="text-center">
+      <img 
+        src="/helpy-logo-blue.png" 
+        alt="Helpy" 
+        className="h-14 w-auto mx-auto mb-8"
+      />
+      <div className="auth-loading-bar mx-auto mb-4">
+        <div className="auth-loading-bar-fill" />
+      </div>
+      <p className="text-body text-muted-foreground">{message}</p>
+      {subMessage && <p className="text-caption text-muted-foreground/60 mt-2">{subMessage}</p>}
+    </div>
+  </div>
 );
 
 // Inner App component that uses the translation context
@@ -1511,21 +1525,7 @@ const AppContent: React.FC = () => {
   };
 
   if (loginProcessedRef.current && !currentUser) {
-    return (
-      <div className="min-h-screen flex flex-col justify-end pb-24" style={{ backgroundColor: '#3EAFD2' }}>
-        <div className="text-white text-center">
-          <div className="broom-loader-wrapper">
-            <div className="broom-loader mb-4">
-              <BroomIcon className="broom-icon-svg" />
-              <div className="broom-track"></div>
-              <div className="broom-trail"></div>
-            </div>
-            <p className="text-sm font-bold whitespace-nowrap">Tidying things up...</p>
-          </div>
-          <p className="text-xs text-white/60 mt-2">Almost ready</p>
-        </div>
-      </div>
-    );
+    return <AppLoading message="Tidying things up..." subMessage="Almost ready" />;
   }
 
   // CRITICAL: Show loading while Clerk is initializing (after OAuth redirect)
@@ -1542,38 +1542,30 @@ const AppContent: React.FC = () => {
     // If timeout occurred, show error message
     if (clerkLoadTimeout) {
       return (
-        <div className="min-h-screen flex flex-col justify-center items-center p-4" style={{ backgroundColor: '#3EAFD2' }}>
-          <div className="text-white text-center max-w-md">
-            <p className="text-lg font-bold mb-2">Clerk Loading Timeout</p>
+        <div className="min-h-screen flex flex-col justify-center items-center p-4" style={AUTH_GRADIENT_STYLE}>
+          <div className="text-center max-w-md">
+            <img 
+              src="/helpy-logo-blue.png" 
+              alt="Helpy" 
+              className="h-14 w-auto mx-auto mb-8"
+            />
+            <p className="text-lg font-bold mb-2 text-foreground">Loading Timeout</p>
             {clerkError && (
-              <p className="text-sm mb-4 text-red-200">{clerkError}</p>
+              <p className="text-sm mb-4 text-destructive">{clerkError}</p>
             )}
-            <p className="text-sm mb-4">Clerk is taking longer than expected to initialize.</p>
-            <p className="text-xs text-white/80 mb-4">Please check:</p>
-            <ul className="text-xs text-white/80 text-left list-disc list-inside mb-4 space-y-1">
-              <li>Browser console for errors (F12 → Console tab)</li>
-              <li>Network tab (F12 → Network) - look for failed requests to clerk.accounts.dev</li>
-              <li>That your Clerk publishable key is correct in .env.local</li>
-              <li>That you're using test keys (pk_test_...) for local development</li>
-              <li>Firewall/antivirus blocking Clerk API requests</li>
+            <p className="text-sm mb-4 text-muted-foreground">Taking longer than expected to initialize.</p>
+            <p className="text-xs text-muted-foreground mb-4">Please check:</p>
+            <ul className="text-xs text-muted-foreground text-left list-disc list-inside mb-4 space-y-1">
+              <li>Browser console for errors (F12)</li>
+              <li>Network connectivity</li>
+              <li>Try refreshing the page</li>
             </ul>
             <div className="flex gap-2 justify-center">
               <button 
                 onClick={() => window.location.reload()} 
-                className="px-4 py-2 bg-white text-[#3EAFD2] rounded font-semibold"
+                className="px-4 py-2 bg-primary text-white rounded-xl font-semibold"
               >
                 Reload Page
-              </button>
-              <button 
-                onClick={() => {
-                  console.log('🔍 [Debug] Clerk Key:', import.meta.env.VITE_CLERK_PUBLISHABLE_KEY ? 'Present' : 'MISSING');
-                  console.log('🔍 [Debug] Key preview:', import.meta.env.VITE_CLERK_PUBLISHABLE_KEY?.substring(0, 20));
-                  console.log('🔍 [Debug] Hostname:', window.location.hostname);
-                  console.log('🔍 [Debug] Full URL:', window.location.href);
-                }} 
-                className="px-4 py-2 bg-white/20 text-white rounded font-semibold"
-              >
-                Debug Info
               </button>
             </div>
           </div>
@@ -1581,21 +1573,7 @@ const AppContent: React.FC = () => {
       );
     }
     
-    return (
-      <div className="min-h-screen flex flex-col justify-end pb-24" style={{ backgroundColor: '#3EAFD2' }}>
-        <div className="text-white text-center">
-          <div className="broom-loader-wrapper">
-            <div className="broom-loader mb-4">
-              <BroomIcon className="broom-icon-svg" />
-              <div className="broom-track"></div>
-              <div className="broom-trail"></div>
-            </div>
-            <p className="text-sm font-bold whitespace-nowrap">Tidying things up...</p>
-          </div>
-          <p className="text-xs text-white/60 mt-2">Please wait a moment</p>
-        </div>
-      </div>
-    );
+    return <AppLoading message="Please wait a moment" />;
   }
 
   // OPTION 2: Skip InviteWelcome - go directly to Auth/SignUp for faster flow

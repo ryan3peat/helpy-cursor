@@ -4,6 +4,12 @@ import { useSignUp, useSignIn } from '@clerk/clerk-react';
 import { Loader2, ArrowLeft } from 'lucide-react';
 import ErrorBanner from './ui/ErrorBanner';
 
+// Shared gradient background style for auth pages
+const AUTH_GRADIENT_STYLE = {
+  backgroundImage: 'linear-gradient(to right bottom, #fafafa, #f9f9fa, #f8f8fa, #f6f8f9, #f4f7f9, #f3f7f9, #f1f6f8, #f0f6f8, #f0f6f8, #eff6f8, #eff6f8, #eef6f8)',
+  backgroundAttachment: 'fixed' as const
+};
+
 interface SignUpProps {
   onBackToSignIn: () => void;
 }
@@ -342,120 +348,26 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
   };
 
   if (verificationStep) {
-    const verificationType = 'Email';
-    const verificationTarget = formData.email;
-    
     return (
-      <div className="min-h-screen w-full flex flex-col items-center justify-center p-6" style={{ backgroundColor: '#3EAFD2' }}>
-        {/* Single container for logo + form to ensure alignment */}
-        <div className="w-full max-w-md flex flex-col items-center">
-          {/* Logo Area */}
-          <div className="mb-8 text-center w-full">
-            <h1 
-              className="text-5xl text-white mb-3"
-              style={{ fontFamily: "'Peanut Butter', var(--font-sans)" }}
-            >
-              helpy
-            </h1>
-            <p className="text-white/90 text-body">
-              "I just want you to know<br />I'm real grateful you're here"
-            </p>
-            <p className="text-white/70 text-caption mt-1">
-              Aibileen Clark, The Help
-            </p>
-          </div>
-
-          <div className="w-full">
-            <div className="bg-white shadow-lg rounded-2xl p-6">
-            <h2 className="text-title text-[#474747] text-center mb-2">Verify Your {verificationType}</h2>
-            <p className="text-gray-500 text-body text-center mb-5">
-              We sent a code to {verificationTarget}
-            </p>
-
-            <ErrorBanner 
-              error={error} 
-              onDismiss={() => setError('')} 
-              title="Error"
+      <div className="min-h-screen w-full flex flex-col p-6 pt-16" style={AUTH_GRADIENT_STYLE}>
+        <div className="w-full max-w-md mx-auto">
+          {/* Logo */}
+          <div className="mb-10">
+            <img 
+              src="/helpy-logo-blue.png" 
+              alt="Helpy" 
+              className="h-12 w-auto"
             />
-
-            <form onSubmit={handleVerify} className="space-y-3">
-              <div>
-                <label className="text-[#474747] text-body mb-1.5 block">
-                  Verification Code
-                </label>
-                <input
-                  type="text"
-                  autoComplete="one-time-code"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  value={code}
-                  onChange={(e) => {
-                    // Only allow digits for verification code
-                    const value = e.target.value.replace(/\D/g, '');
-                    setCode(value);
-                  }}
-                  placeholder="Enter 6-digit code"
-                  required
-                  maxLength={6}
-                  className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-[#474747] placeholder-gray-400 focus:outline-none focus:border-[#3EAFD2] focus:ring-1 focus:ring-[#3EAFD2] transition-colors text-center text-lg tracking-widest"
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                style={{ backgroundColor: '#3EAFD2' }}
-                className="w-full rounded-xl font-semibold py-3 text-white disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="animate-spin" size={18} />
-                    Verifying...
-                  </>
-                ) : (
-                  `Verify ${verificationType}`
-                )}
-              </button>
-            </form>
           </div>
+
+          {/* Header */}
+          <div className="mb-8">
+            <h1 className="text-display font-bold text-foreground mb-2">Check your email</h1>
+            <p className="text-body text-muted-foreground">
+              We sent a verification code to<br />
+              <span className="text-foreground font-medium">{formData.email}</span>
+            </p>
           </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen w-full flex flex-col items-center justify-center p-6" style={{ backgroundColor: '#3EAFD2' }}>
-      {/* Single container for logo + form to ensure alignment */}
-      <div className="w-full max-w-md flex flex-col items-center">
-        {/* Logo Area */}
-        <div className="mb-8 text-center w-full">
-          <h1 
-            className="text-5xl text-white mb-3"
-            style={{ fontFamily: "'Peanut Butter', var(--font-sans)" }}
-          >
-            helpy
-          </h1>
-          <p className="text-white/90 text-body">
-            "I just want you to know<br />I'm real grateful you're here"
-          </p>
-          <p className="text-white/70 text-caption mt-1">
-            Aibileen Clark, The Help
-          </p>
-        </div>
-
-        {/* Sign Up Form */}
-        <div className="w-full">
-          <div className="bg-white shadow-lg rounded-2xl p-6">
-          <button
-            onClick={onBackToSignIn}
-            className="flex items-center gap-2 text-gray-500 mb-4"
-          >
-            <ArrowLeft size={18} />
-            <span className="text-body">Back to Sign In</span>
-          </button>
-
-          <h2 className="text-title text-[#474747] mb-5">Sign Up</h2>
 
           <ErrorBanner 
             error={error} 
@@ -463,151 +375,217 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
             title="Error"
           />
 
-          {/* Google Sign Up Button */}
-          <div className="mb-4">
-            <button
-              type="button"
-              onClick={handleGoogleSignUp}
-              disabled={!isLoaded || isOAuthProcessing}
-              className="w-full border-2 border-gray-200 rounded-xl font-semibold py-3 text-gray-700 flex items-center justify-center gap-2 mb-4 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isOAuthProcessing ? (
-                <>
-                  <Loader2 className="animate-spin w-5 h-5" />
-                  Processing...
-                </>
-              ) : (
-                <>
-                  <svg className="w-5 h-5" viewBox="0 0 24 24">
-                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                  </svg>
-                  Sign Up with Google
-                </>
-              )}
-            </button>
-          </div>
-
-          <div className="relative mb-4">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-200"></div>
-            </div>
-            <div className="relative flex justify-center text-body">
-              <span className="px-2 bg-white text-gray-500">Or continue with email</span>
-            </div>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-[#474747] text-body mb-1.5 block">
-                  First Name
-                </label>
-                <input
-                  type="text"
-                  autoComplete="given-name"
-                  value={formData.firstName}
-                  onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                  placeholder="John"
-                  required
-                  className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-[#474747] placeholder-gray-400 focus:outline-none focus:border-[#3EAFD2] focus:ring-1 focus:ring-[#3EAFD2] transition-colors"
-                />
-              </div>
-              <div>
-                <label className="text-[#474747] text-body mb-1.5 block">
-                  Last Name
-                </label>
-                <input
-                  type="text"
-                  autoComplete="family-name"
-                  value={formData.lastName}
-                  onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                  placeholder="Doe"
-                  required
-                  className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-[#474747] placeholder-gray-400 focus:outline-none focus:border-[#3EAFD2] focus:ring-1 focus:ring-[#3EAFD2] transition-colors"
-                />
-              </div>
-            </div>
-
+          <form onSubmit={handleVerify} className="space-y-5">
             <div>
-              <label className="text-[#474747] text-body mb-1.5 block">
-                Email
+              <label className="text-caption text-muted-foreground mb-2 block">
+                Verification Code
               </label>
               <input
-                type="email"
-                autoComplete="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                placeholder="john@example.com"
+                type="text"
+                autoComplete="one-time-code"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                value={code}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/\D/g, '');
+                  setCode(value);
+                }}
+                placeholder="Enter 6-digit code"
                 required
-                className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-[#474747] placeholder-gray-400 focus:outline-none focus:border-[#3EAFD2] focus:ring-1 focus:ring-[#3EAFD2] transition-colors"
+                maxLength={6}
+                className="w-full px-4 py-3.5 rounded-xl bg-white border border-border text-foreground placeholder:text-muted-foreground focus:border-primary outline-none transition-all text-body tracking-widest text-center"
               />
             </div>
-
-            <div>
-              <label className="text-[#474747] text-body mb-1.5 block">
-                Password
-              </label>
-              <input
-                type="password"
-                autoComplete="new-password"
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                placeholder="Enter password"
-                required
-                minLength={8}
-                className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-[#474747] placeholder-gray-400 focus:outline-none focus:border-[#3EAFD2] focus:ring-1 focus:ring-[#3EAFD2] transition-colors"
-              />
-              <p className="text-caption text-gray-400 mt-1.5">Must be at least 8 characters</p>
-            </div>
-
-            {/* Clerk CAPTCHA widget container - required for bot protection */}
-            <div id="clerk-captcha" className="mb-4"></div>
 
             <button
               type="submit"
               disabled={isSubmitting}
-              style={{ backgroundColor: '#3EAFD2' }}
-              className="w-full rounded-xl font-semibold py-3 text-white disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full py-3.5 bg-primary text-primary-foreground rounded-xl text-body font-semibold shadow-sm disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {isSubmitting ? (
                 <>
                   <Loader2 className="animate-spin" size={18} />
-                  Creating Account...
+                  Verifying...
                 </>
               ) : (
-                'Create Account'
+                'Continue'
               )}
             </button>
           </form>
 
-          <div className="mt-5 text-center">
-            <p className="text-body text-gray-500">
-              Already have an account?{' '}
-              <button
-                onClick={onBackToSignIn}
-                className="text-[#3EAFD2] font-semibold"
-              >
-                Sign In
-              </button>
-            </p>
-          </div>
+          <button className="mt-6 text-body text-primary font-medium">
+            Didn't receive a code? Resend
+          </button>
         </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen w-full flex flex-col p-6 pt-16" style={AUTH_GRADIENT_STYLE}>
+      <div className="w-full max-w-md mx-auto">
+        {/* Logo */}
+        <div className="mb-10">
+          <img 
+            src="/helpy-logo-blue.png" 
+            alt="Helpy" 
+            className="h-12 w-auto"
+          />
         </div>
 
+        {/* Back button */}
+        <button
+          onClick={onBackToSignIn}
+          className="flex items-center gap-2 text-muted-foreground mb-6"
+        >
+          <ArrowLeft size={18} />
+          <span className="text-body">Back to Sign In</span>
+        </button>
+
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-display font-bold text-foreground">Create Account</h1>
+        </div>
+
+        <ErrorBanner 
+          error={error} 
+          onDismiss={() => setError('')} 
+          title="Error"
+        />
+
+        {/* Google Sign Up Button */}
+        <button
+          type="button"
+          onClick={handleGoogleSignUp}
+          disabled={!isLoaded || isOAuthProcessing}
+          className="w-full py-3.5 bg-white border border-border rounded-2xl text-body font-medium text-foreground flex items-center justify-center gap-3 disabled:opacity-50 mb-5"
+        >
+          {isOAuthProcessing ? (
+            <>
+              <Loader2 className="animate-spin" size={18} />
+              Processing...
+            </>
+          ) : (
+            <>
+              <svg className="w-5 h-5" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+              </svg>
+              Continue with Google
+            </>
+          )}
+        </button>
+
+        {/* Divider */}
+        <div className="flex items-center gap-4 mb-5">
+          <div className="flex-1 h-px bg-border"></div>
+          <span className="text-caption text-muted-foreground">or</span>
+          <div className="flex-1 h-px bg-border"></div>
+        </div>
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-caption text-muted-foreground mb-2 block">
+                First Name
+              </label>
+              <input
+                type="text"
+                autoComplete="given-name"
+                value={formData.firstName}
+                onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                placeholder="John"
+                required
+                className="w-full px-4 py-3.5 rounded-2xl bg-white border border-border text-foreground placeholder:text-muted-foreground focus:border-primary outline-none transition-all text-body"
+              />
+            </div>
+            <div>
+              <label className="text-caption text-muted-foreground mb-2 block">
+                Last Name
+              </label>
+              <input
+                type="text"
+                autoComplete="family-name"
+                value={formData.lastName}
+                onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                placeholder="Doe"
+                required
+                className="w-full px-4 py-3.5 rounded-2xl bg-white border border-border text-foreground placeholder:text-muted-foreground focus:border-primary outline-none transition-all text-body"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-caption text-muted-foreground mb-2 block">
+              Email
+            </label>
+            <input
+              type="email"
+              autoComplete="email"
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              placeholder="john@example.com"
+              required
+              className="w-full px-4 py-3.5 rounded-2xl bg-white border border-border text-foreground placeholder:text-muted-foreground focus:border-primary outline-none transition-all text-body"
+            />
+          </div>
+
+          <div>
+            <label className="text-caption text-muted-foreground mb-2 block">
+              Password
+            </label>
+            <input
+              type="password"
+              autoComplete="new-password"
+              value={formData.password}
+              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+              placeholder="Min. 8 characters"
+              required
+              minLength={8}
+              className="w-full px-4 py-3.5 rounded-2xl bg-white border border-border text-foreground placeholder:text-muted-foreground focus:border-primary outline-none transition-all text-body"
+            />
+          </div>
+
+          {/* Clerk CAPTCHA widget container */}
+          <div id="clerk-captcha"></div>
+
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="w-full py-3.5 bg-primary text-primary-foreground rounded-2xl text-body font-semibold shadow-sm disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="animate-spin" size={18} />
+                Creating Account...
+              </>
+            ) : (
+              'Create Account'
+            )}
+          </button>
+        </form>
+
+        {/* Footer */}
+        <p className="mt-6 text-body text-muted-foreground">
+          Already have an account?{' '}
+          <button onClick={onBackToSignIn} className="text-primary font-semibold">
+            Sign In
+          </button>
+        </p>
+
         {/* Features Link */}
-        <div className="mt-6 text-center">
+        <div className="mt-8">
           <a
             href="https://helpyfam.com"
-            className="text-white/90 text-body underline"
+            className="text-primary text-body"
           >
             See Helpyfam Features
           </a>
         </div>
       </div>
-
     </div>
   );
 };

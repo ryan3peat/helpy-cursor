@@ -272,6 +272,12 @@ const isOverdue = (dueDate?: string): boolean => {
   return due < today;
 };
 
+// Get today's date as YYYY-MM-DD string in LOCAL timezone (not UTC)
+// Using toISOString() would convert to UTC which causes date to be wrong after midnight in timezones ahead of UTC
+const getLocalDateString = (date: Date = new Date()): string => {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+};
+
 // ─────────────────────────────────────────────────────────────────
 // Component for displaying translated item name
 // ─────────────────────────────────────────────────────────────────
@@ -1202,7 +1208,7 @@ const ToDo: React.FC<ToDoProps> = ({
     if (!name) return;
     
     const category = selectedCategory !== 'All' ? selectedCategory : defaultCategory;
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDateString();
     
     // Detect language for the new item
     const detectedLang = detectInputLanguage(currentLang);
@@ -1239,7 +1245,7 @@ const ToDo: React.FC<ToDoProps> = ({
   };
   
   const handleSuggestionClick = async (suggestion: ToDoItem) => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDateString();
     
     // Detect language for the new item
     const detectedLang = detectInputLanguage(currentLang);
@@ -1407,7 +1413,7 @@ const ToDo: React.FC<ToDoProps> = ({
   };
   
   const openDetailedSheet = () => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDateString();
     // If user is in "All" view, don't pre-select any category
     const category = selectedCategory !== 'All' ? selectedCategory : undefined;
     

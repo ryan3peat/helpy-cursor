@@ -31,7 +31,7 @@ const ErrorBanner: React.FC<ErrorBannerProps> = ({
   if (!error) return null;
 
   return (
-    <div className={`mb-4 p-4 bg-destructive/10 border border-destructive/20 rounded-xl flex items-start gap-3 ${className}`}>
+    <div className={`mt-4 mb-4 p-4 bg-destructive/10 border border-destructive/20 rounded-xl flex items-start gap-3 ${className}`}>
       <AlertCircle className="text-destructive flex-shrink-0 mt-0.5" size={20} />
       <div className="flex-1 min-w-0">
         <p className="text-title text-destructive">{title}</p>

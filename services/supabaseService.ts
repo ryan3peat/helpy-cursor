@@ -537,7 +537,7 @@ export async function addItem(
   // Convert empty strings to null ONLY for specific field types
   // PostgreSQL doesn't accept empty strings for DATE, TIME, UUID columns
   // But text fields like 'description' should keep empty strings (NOT NULL constraint)
-  const fieldsToConvertToNull = ['due_date', 'due_time', 'assignee_id', 'created_by', 'completed_at'];
+  const fieldsToConvertToNull = ['due_date', 'due_time', 'assignee_id', 'created_by', 'completed_at', 'start_date', 'end_date'];
   for (const key of fieldsToConvertToNull) {
     if (finalData[key] === '') {
       finalData[key] = null;
@@ -567,10 +567,10 @@ export async function addItem(
     console.log('✅ Converted for_user_ids:', finalData.for_user_ids);
   }
   
-  // For todo_items: convert assignee_id and created_by IN PARALLEL for better performance
+  // For todo_items and recurring_series: convert assignee_id and created_by IN PARALLEL
   // Both conversions are independent, so we can await them together
-  if (collection === 'todo_items') {
-    console.log('🔍 [DEBUG] todo_items created_by before conversion:', {
+  if (collection === 'todo_items' || collection === 'recurring_series') {
+    console.log(`🔍 [DEBUG] ${collection} created_by before conversion:`, {
       created_by: finalData.created_by,
       has_created_by: 'created_by' in finalData,
       all_keys: Object.keys(finalData)
@@ -736,7 +736,7 @@ export async function updateItem(
   // Convert empty strings to null ONLY for specific field types
   // PostgreSQL doesn't accept empty strings for DATE, TIME, UUID columns
   // But text fields like 'description' should keep empty strings (NOT NULL constraint)
-  const fieldsToConvertToNull = ['due_date', 'due_time', 'assignee_id', 'created_by', 'completed_at'];
+  const fieldsToConvertToNull = ['due_date', 'due_time', 'assignee_id', 'created_by', 'completed_at', 'start_date', 'end_date'];
   for (const key of fieldsToConvertToNull) {
     if (snakeCaseUpdates[key] === '') {
       snakeCaseUpdates[key] = null;

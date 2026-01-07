@@ -793,36 +793,16 @@ const Meals: React.FC<MealsProps> = ({
               {t['meals.title']}
             </h1>
             
-            {/* Day/Week Toggle - Matches Expenses month selector style */}
-            <div className="relative rounded-full overflow-hidden shrink-0 bg-secondary">
-              <div className="flex p-0.5">
-                {['day', 'week'].map(v => {
-                  const isActive = view === v;
-                  return (
-                    <button
-                      key={v}
-                      onClick={() => {
-                        shouldAutoScroll.current = true;
-                        setView(v as 'day' | 'week');
-                      }}
-                      className={`py-2 px-3 rounded-full text-body font-medium flex items-center gap-1.5 ${
-                        isActive
-                          ? 'bg-background text-primary shadow-sm'
-                          : 'text-muted-foreground'
-                      }`}
-                    >
-                      {v === 'day' ? (
-                        <><Rows3 size={16} /> {t['meals.view_day'] ?? 'Day'}</>
-                      ) : (
-                        <><Sheet size={16} /> {t['meals.view_week'] ?? 'Week'}</>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-              {/* Inset shadow overlay */}
-              <div className="absolute inset-0 rounded-full pointer-events-none shadow-[inset_0_1px_2px_rgba(0,0,0,0.06)]" />
-            </div>
+            {/* Day/Week Toggle - Single icon button (matches ToDo calendar/list toggle) */}
+            <button
+              onClick={() => {
+                shouldAutoScroll.current = true;
+                setView(view === 'day' ? 'week' : 'day');
+              }}
+              className="p-2 rounded-full text-muted-foreground transition-colors"
+            >
+              {view === 'day' ? <Sheet size={20} /> : <Rows3 size={20} />}
+            </button>
           </div>
         </header>
         {/* Error Banner */}
@@ -1151,8 +1131,8 @@ const Meals: React.FC<MealsProps> = ({
             >
               {/* CSS Grid - 1 meal label column + 7 day columns */}
               <div 
-                className="grid min-w-[640px]"
-                style={{ gridTemplateColumns: '72px repeat(7, minmax(80px, 1fr))' }}
+                className="grid min-w-[900px]"
+                style={{ gridTemplateColumns: '72px repeat(7, minmax(120px, 1fr))' }}
               >
                 {/* ===== HEADER ROW: Corner + Day Headers ===== */}
                 {/* Corner cell (empty) - sticky left but low z-index */}
@@ -1182,9 +1162,10 @@ const Meals: React.FC<MealsProps> = ({
                   const isLastRow = typeIndex === mealTypes.length - 1;
                   return (
                     <React.Fragment key={type}>
-                      {/* Meal type label cell - sticky left */}
+                      {/* Meal type label cell - sticky left with continuous border lines */}
                       <div 
                         className={`sticky left-0 z-[1] bg-card p-2 flex flex-col items-center justify-center gap-0.5 border-r border-border ${!isLastRow ? 'border-b border-border' : ''}`}
+                        style={!isLastRow ? { boxShadow: 'inset 0 -1px 0 0 hsl(var(--border))' } : undefined}
                       >
                         {getMealIcon(type)}
                         <span className="text-micro font-semibold text-muted-foreground text-center leading-tight">

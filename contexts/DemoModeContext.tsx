@@ -4,6 +4,12 @@ import type { EssentialInfo, EssentialInfoCategory } from '@src/types/essentialI
 import type { HouseRoutine, HouseRoutineCategory } from '@src/types/houseRoutine';
 import type { HelperPayslipConfirmation } from '@src/types/helperManagement';
 
+// Get a date as YYYY-MM-DD string in LOCAL timezone (not UTC)
+// Using toISOString() would convert to UTC which causes date to be wrong after midnight in timezones ahead of UTC
+const getLocalDateString = (date: Date = new Date()): string => {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+};
+
 // ============================================================================
 // DEMO MODE CONTEXT
 // Provides mock data for marketing screenshots
@@ -133,7 +139,7 @@ const createDemoTodoItems = (): ToDoItem[] => {
   const dateOffset = (days: number): string => {
     const d = new Date(today);
     d.setDate(d.getDate() + days);
-    return d.toISOString().split('T')[0];
+    return getLocalDateString(d);
   };
   
   // Shopping Items
@@ -301,7 +307,7 @@ const createDemoMeals = (): Meal[] => {
     
     meals.push({
       id: `demo-meal-${index + 1}`,
-      date: today.toISOString().split('T')[0],
+      date: getLocalDateString(today),
       type: meal.type,
       description: meal.desc,
       forUserIds,
@@ -323,7 +329,7 @@ const createDemoMeals = (): Meal[] => {
   tomorrowMeals.forEach((meal, index) => {
     meals.push({
       id: `demo-meal-tomorrow-${index + 1}`,
-      date: tomorrow.toISOString().split('T')[0],
+      date: getLocalDateString(tomorrow),
       type: meal.type,
       description: meal.desc,
       forUserIds: allUserIds,

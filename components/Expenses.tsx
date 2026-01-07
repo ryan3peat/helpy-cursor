@@ -69,6 +69,12 @@ const getExpenseCategoryConfig = (category: string): ExpenseCategoryConfig => {
   return EXPENSE_CATEGORY_CONFIG[category] || EXPENSE_CATEGORY_CONFIG['Miscellaneous'];
 };
 
+// Get today's date as YYYY-MM-DD string in LOCAL timezone (not UTC)
+// Using toISOString() would convert to UTC which causes date to be wrong after midnight in timezones ahead of UTC
+const getLocalDateString = (date: Date = new Date()): string => {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+};
+
 // Zoomable Image Component - optimized for smooth, jitter-free gestures with bounds
 const ZoomableImage: React.FC<{ imageSrc: string; onClose: () => void; t: Record<string, string> }> = ({ imageSrc, onClose, t }) => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -469,7 +475,7 @@ const Expenses: React.FC<ExpensesProps> = ({
   const [editAmount, setEditAmount] = useState<string>('');
   const [editMerchant, setEditMerchant] = useState<string>('');
   const [editCategory, setEditCategory] = useState<string>(EXPENSE_CATEGORIES[0]);
-  const [editDate, setEditDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [editDate, setEditDate] = useState<string>(getLocalDateString());
   const [isSaving, setIsSaving] = useState(false);
 
   // Existing Expense Modal State
@@ -745,7 +751,7 @@ const Expenses: React.FC<ExpensesProps> = ({
     setEditAmount('');
     setEditMerchant('');
     setEditCategory(EXPENSE_CATEGORIES[0]);
-    setEditDate(new Date().toISOString().split('T')[0]);
+    setEditDate(getLocalDateString());
     setPendingReceipt(null);
     setError(null); // Clear any previous errors
     setShowFreeUpgradeBanner(isFreePlan);
@@ -765,7 +771,7 @@ const Expenses: React.FC<ExpensesProps> = ({
     setEditAmount('');
     setEditMerchant('');
     setEditCategory(EXPENSE_CATEGORIES[0]);
-    setEditDate(new Date().toISOString().split('T')[0]);
+    setEditDate(getLocalDateString());
     setShowFreeUpgradeBanner(false);
   };
 
@@ -825,7 +831,7 @@ const Expenses: React.FC<ExpensesProps> = ({
       setEditAmount(parsed.total.toFixed(2));
       setEditMerchant(parsed.merchant);
       setEditCategory(parsed.category || EXPENSE_CATEGORIES[0]);
-      setEditDate(parsed.date || new Date().toISOString().split('T')[0]);
+      setEditDate(parsed.date || getLocalDateString());
       setAddExpenseStage('ocr'); // Show OCR confirmation
     } catch (err) {
       console.error('Receipt processing failed:', err);
@@ -851,17 +857,17 @@ const Expenses: React.FC<ExpensesProps> = ({
     setError(null); // Clear any previous errors
     
     // Normalize date to YYYY-MM-DD format
-    let normalizedDate = editDate || new Date().toISOString().split('T')[0];
+    let normalizedDate = editDate || getLocalDateString();
     if (normalizedDate && !/^\d{4}-\d{2}-\d{2}$/.test(normalizedDate)) {
       try {
         const parsed = new Date(normalizedDate);
         if (!isNaN(parsed.getTime())) {
-          normalizedDate = parsed.toISOString().split('T')[0];
+          normalizedDate = getLocalDateString(parsed);
         } else {
-          normalizedDate = new Date().toISOString().split('T')[0];
+          normalizedDate = getLocalDateString();
         }
       } catch {
-        normalizedDate = new Date().toISOString().split('T')[0];
+        normalizedDate = getLocalDateString();
       }
     }
 
@@ -1017,7 +1023,7 @@ const Expenses: React.FC<ExpensesProps> = ({
         try {
           const parsed = new Date(normalizedDate);
           if (!isNaN(parsed.getTime())) {
-            normalizedDate = parsed.toISOString().split('T')[0];
+            normalizedDate = getLocalDateString(parsed);
           } else {
             normalizedDate = selectedExpense.date; // Fallback to original date
           }
@@ -1207,7 +1213,7 @@ const Expenses: React.FC<ExpensesProps> = ({
         <div className="pt-4">
           {/* Error Alert */}
       {error && (
-            <div className="mb-4 p-4 bg-destructive/10 border border-destructive/20 rounded-xl flex items-start gap-3">
+            <div className="mt-4 mb-4 p-4 bg-destructive/10 border border-destructive/20 rounded-xl flex items-start gap-3">
               <AlertCircle className="text-destructive flex-shrink-0 mt-0.5" size={20} />
           <div className="flex-1">
                 <p className="text-title text-destructive">{t['expenses.error'] || 'Error'}</p>

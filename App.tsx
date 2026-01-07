@@ -62,6 +62,12 @@ const AppLoading = () => (
   </div>
 );
 
+// Get a date as YYYY-MM-DD string in LOCAL timezone (not UTC)
+// Using toISOString() would convert to UTC which causes date to be wrong after midnight in timezones ahead of UTC
+const getLocalDateString = (date: Date = new Date()): string => {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+};
+
 // Inner App component that uses the translation context
 const AppContent: React.FC = () => {
   const { signOut } = useClerk();
@@ -986,7 +992,7 @@ const AppContent: React.FC = () => {
         frequency: item.recurrence.frequency,
         dayOfWeek: item.recurrence.dayOfWeek,
         dayOfMonth: item.recurrence.dayOfMonth,
-        startDate: item.dueDate || new Date().toISOString().split('T')[0],
+        startDate: item.dueDate || getLocalDateString(),
         createdBy: currentUser?.id,
       };
       
@@ -1157,7 +1163,7 @@ const AppContent: React.FC = () => {
         const prevDate = new Date(effectiveDate + 'T00:00:00');
         prevDate.setDate(prevDate.getDate() - 1);
         await updateItem(hid, 'recurring_series', seriesId, { 
-          endDate: prevDate.toISOString().split('T')[0]
+          endDate: getLocalDateString(prevDate)
         });
         
         // Create a new series starting from this date with updated data
@@ -1255,7 +1261,7 @@ const AppContent: React.FC = () => {
         const prevDate = new Date(effectiveDate + 'T00:00:00');
         prevDate.setDate(prevDate.getDate() - 1);
         await updateItem(hid, 'recurring_series', seriesId, { 
-          endDate: prevDate.toISOString().split('T')[0]
+          endDate: getLocalDateString(prevDate)
         });
         
         // Delete this instance if it exists
@@ -1309,6 +1315,8 @@ const AppContent: React.FC = () => {
     }
     
     // Create a new real instance that's already completed
+    // NOTE: Do NOT include recurrence here - that would trigger series creation!
+    // The seriesId links this instance to the existing series
     const newInstanceData: Partial<ToDoItem> = {
       type: 'task',
       name: virtualTask.name,
@@ -1320,7 +1328,7 @@ const AppContent: React.FC = () => {
       isException: true,
       originalDueDate: virtualDate,
       completed: true, // Already completed!
-      recurrence: virtualTask.recurrence,
+      // recurrence intentionally omitted - we're creating an instance, not a new series
     };
     
     await handleAddTodoItem(newInstanceData as ToDoItem);

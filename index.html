@@ -1,7 +1,16 @@
 <!DOCTYPE html>
-<html lang="en" class="light">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <!-- CRITICAL: Set background color IMMEDIATELY before any other parsing -->
+    <script>
+      (function(){
+        var d=document.documentElement;
+        var isDark=window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches;
+        d.style.backgroundColor=isDark?'#121212':'#fafafa';
+        d.classList.add(isDark?'dark':'light');
+      })();
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <!-- color-scheme: light dark tells iOS we support both; JS will override theme-color dynamically -->
     <meta name="color-scheme" content="light dark" />
@@ -247,14 +256,18 @@
     </script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
+      /* 
+        CRITICAL: These styles must load and apply BEFORE any bundled CSS.
+        Using !important to ensure they're not overridden by index.css
+      */
       /* Light mode default */
       html, body, #root {
-        background-color: var(--initial-bg, #fafafa);
+        background-color: #fafafa !important;
       }
       /* Dark mode CSS fallback - applies immediately before JS runs */
       @media (prefers-color-scheme: dark) {
         html, body, #root {
-          background-color: var(--initial-bg, #121212);
+          background-color: #121212 !important;
         }
       }
       /* JS-controlled dark mode (after theme is applied) */

@@ -47,7 +47,7 @@ export default function FeaturesContent() {
   ];
 
   return (
-    <div className="bg-background px-4 py-10 sm:px-6 lg:px-8">
+    <div className="px-4 py-10 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-6xl space-y-20">
         {/* Split Hero Section */}
         <section className="grid gap-12 lg:grid-cols-2 lg:items-start">

@@ -7,7 +7,7 @@ import { Users, HeartHandshake } from "lucide-react";
 
 export default function HomeContent() {
   return (
-    <div className="px-4 py-10 sm:px-6 lg:px-8 bg-background">
+    <div className="px-4 py-10 sm:px-6 lg:px-8">
       <section className="mx-auto flex max-w-6xl flex-col items-center gap-10 lg:flex-row lg:items-start">
         <motion.div
           className="flex-1 space-y-8"

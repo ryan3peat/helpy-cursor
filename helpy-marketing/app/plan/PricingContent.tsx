@@ -148,7 +148,7 @@ export default function PricingContent() {
   ];
 
   return (
-    <div className="px-4 py-10 sm:px-6 lg:px-8 bg-background">
+    <div className="px-4 py-10 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-5xl space-y-12">
         <motion.section
           initial={{ opacity: 0, y: 12 }}

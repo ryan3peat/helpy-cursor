@@ -6,7 +6,7 @@ import { useState } from "react";
 
 export default function FAQContent() {
   return (
-    <div className="bg-background px-4 py-16 sm:px-6 lg:px-8">
+    <div className="px-4 py-16 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-3xl">
         <motion.div
           initial={{ opacity: 0, y: 12 }}

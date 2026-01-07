@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS recurring_series (
   end_date DATE,  -- NULL = repeats forever
   
   -- Metadata
-  created_by TEXT,
+  created_by UUID REFERENCES users(id),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   

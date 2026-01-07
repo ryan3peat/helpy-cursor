@@ -776,7 +776,7 @@ const Meals: React.FC<MealsProps> = ({
           to prevent any flicker during iOS Safari scroll operations */}
       <div 
         className="fixed top-0 left-0 right-0 z-[19] bg-background"
-        style={{ height: '200px' }}
+        style={{ height: '200px', transform: 'translateZ(0)', backfaceVisibility: 'hidden' }}
         aria-hidden="true"
       />
       
@@ -786,7 +786,7 @@ const Meals: React.FC<MealsProps> = ({
         {/* ─────────────────────────────────────────────────────────────── */}
         <header 
           className="sticky top-0 z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 pb-3 flex items-end" 
-          style={{ height: '120px', boxShadow: '0 10px 0 0 hsl(var(--background))' }}
+          style={{ height: '120px', boxShadow: '0 10px 0 0 hsl(var(--background))', transform: 'translateZ(0)', backfaceVisibility: 'hidden' }}
         >
           <div className="flex items-center justify-between w-full">
             <h1 className="text-display text-foreground">
@@ -818,7 +818,9 @@ const Meals: React.FC<MealsProps> = ({
           className="sticky z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 py-5 transition-shadow duration-200"
           style={{ 
             top: '120px',
-            boxShadow: isScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none'
+            boxShadow: isScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none',
+            transform: 'translateZ(0)',
+            backfaceVisibility: 'hidden'
           }}
         >
           <div className="flex items-center gap-3">
@@ -859,7 +861,7 @@ const Meals: React.FC<MealsProps> = ({
         {/* ─────────────────────────────────────────────────────────────── */}
         {/* MAIN CONTENT - Hidden until scroll completes to prevent flicker */}
         {/* ─────────────────────────────────────────────────────────────── */}
-        <div className="pt-1" style={{ opacity: contentReady ? 1 : 0 }}>
+        <div className="pt-1" style={{ visibility: contentReady ? 'visible' : 'hidden' }}>
 
       {/* Day View */}
       {view === 'day' ? (

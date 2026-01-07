@@ -134,16 +134,33 @@ function buildNotificationMessage(
     
     case 'meals': {
       const mealType = record.type as string || 'meal';
-      const mealDate = record.date as string; // "2026-01-08" format
+      const mealDate = record.date as string || ''; // "2026-01-08" format
       
       // Format date as "8 Jan 2026" using string parsing (timezone-safe)
-      const [year, month, day] = mealDate.split('-');
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      const formattedDate = `${parseInt(day)} ${months[parseInt(month) - 1]} ${year}`;
+      let formattedDate = 'unknown date';
+      if (mealDate && mealDate.includes('-')) {
+        const [year, month, day] = mealDate.split('-');
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        formattedDate = `${parseInt(day)} ${months[parseInt(month) - 1]} ${year}`;
+      }
       
       const mealLabel = `${mealType} on ${formattedDate}`;
       
       if (event === 'DELETE') {
+        // Check if this was a "leave" action (empty meal slot, user was the only one)
+        const description = record.description as string || '';
+        const forUserIds = (record.for_user_ids as string[]) || [];
+        const wasLeaveAction = !description.trim() && forUserIds.length <= 1;
+        
+        if (wasLeaveAction) {
+          return {
+            title: '🍽️ Meals',
+            body: `${mealLabel}\n${creatorName} left`,
+            type: 'meal'
+          };
+        }
+        
+        // Otherwise it's a real meal removal
         return {
           title: '🍽️ Meals',
           body: `${mealLabel}\nremoved by ${creatorName}`,
@@ -374,15 +391,55 @@ function buildBatchedNotificationMessage(
     }
     
     case 'meals': {
-      // Meals are instant (no batching), but handle just in case
-      const mealType = items[0].record.type as string || 'meal';
-      const mealDate = items[0].record.date as string; // "2026-01-08" format
-      const actionWord = event === 'DELETE' ? 'removed' : event === 'UPDATE' ? 'changed' : 'added';
+      // If only 1 item, use single notification logic which has proper RSVP detection
+      if (count === 1) {
+        return buildNotificationMessage(table, items[0].record, creatorName, event, items[0].old_record);
+      }
       
-      // Format date as "8 Jan 2026" using string parsing (timezone-safe)
-      const [year, month, day] = mealDate.split('-');
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      const formattedDate = `${parseInt(day)} ${months[parseInt(month) - 1]} ${year}`;
+      // For multiple meals, check if this is a batch of quick RSVPs (joining empty meal slots)
+      const allQuickRsvps = event === 'INSERT' && items.every(item => {
+        const description = item.record.description as string || '';
+        const forUserIds = (item.record.for_user_ids as string[]) || [];
+        return !description.trim() && forUserIds.length === 1;
+      });
+      
+      // Check if all items are "leave" actions (DELETE of empty meal slots)
+      const allLeaveActions = event === 'DELETE' && items.every(item => {
+        const description = item.record.description as string || '';
+        const forUserIds = (item.record.for_user_ids as string[]) || [];
+        return !description.trim() && forUserIds.length <= 1;
+      });
+      
+      // Format date from first item
+      const mealDate = items[0].record.date as string || '';
+      let formattedDate = 'unknown date';
+      if (mealDate && mealDate.includes('-')) {
+        const [year, month, day] = mealDate.split('-');
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        formattedDate = `${parseInt(day)} ${months[parseInt(month) - 1]} ${year}`;
+      }
+      
+      if (allQuickRsvps) {
+        // All items are quick RSVPs - user is joining multiple empty meal slots
+        return {
+          title: '🍽️ Meals',
+          body: `${count} meals on ${formattedDate}\n${creatorName} is joining`,
+          type: 'meal'
+        };
+      }
+      
+      if (allLeaveActions) {
+        // All items are leave actions - user is leaving multiple empty meal slots
+        return {
+          title: '🍽️ Meals',
+          body: `${count} meals on ${formattedDate}\n${creatorName} left`,
+          type: 'meal'
+        };
+      }
+      
+      // Multiple meals changed at once - use generic message
+      const mealType = items[0].record.type as string || 'meal';
+      const actionWord = event === 'DELETE' ? 'removed' : event === 'UPDATE' ? 'changed' : 'added';
       
       const mealLabel = `${mealType} on ${formattedDate}`;
       

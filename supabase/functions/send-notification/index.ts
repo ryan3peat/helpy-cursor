@@ -191,12 +191,11 @@ function buildNotificationMessage(
       } else {
         // INSERT
         // Check if this is a "quick RSVP" scenario (user joining empty meal slot)
-        // Indicators: empty description AND creator is in forUserIds
+        // Indicators: empty description AND exactly 1 person in the meal (self-join)
         const description = record.description as string || '';
         const forUserIds = (record.for_user_ids as string[]) || [];
-        const creatorId = record.created_by as string;
         
-        const isQuickRsvp = !description.trim() && forUserIds.includes(creatorId);
+        const isQuickRsvp = !description.trim() && forUserIds.length === 1;
         
         if (isQuickRsvp) {
           return {

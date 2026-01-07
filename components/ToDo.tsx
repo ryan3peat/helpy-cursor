@@ -1104,7 +1104,49 @@ const ToDo: React.FC<ToDoProps> = ({
       completed: optimisticCompleted[item.id] ?? item.completed,
     }));
     
-    let filtered = merged;
+    // For LIST VIEW: Deduplicate recurring task instances - show only ONE per series
+    // Keep the NEXT upcoming instance (earliest dueDate that's not completed)
+    const deduplicatedMerged = (() => {
+      const seriesMap = new Map<string, ToDoItem[]>();
+      const nonSeriesItems: ToDoItem[] = [];
+      
+      merged.forEach(item => {
+        if (item.seriesId) {
+          if (!seriesMap.has(item.seriesId)) {
+            seriesMap.set(item.seriesId, []);
+          }
+          seriesMap.get(item.seriesId)!.push(item);
+        } else {
+          nonSeriesItems.push(item);
+        }
+      });
+      
+      // For each series, keep only the next upcoming instance
+      const dedupedSeriesItems: ToDoItem[] = [];
+      seriesMap.forEach((seriesItems) => {
+        // Sort by dueDate ascending, then pick the first non-completed one
+        const sorted = seriesItems.sort((a, b) => {
+          const dateA = a.dueDate ? new Date(a.dueDate + 'T00:00:00').getTime() : Infinity;
+          const dateB = b.dueDate ? new Date(b.dueDate + 'T00:00:00').getTime() : Infinity;
+          return dateA - dateB;
+        });
+        
+        // Find the next upcoming non-completed instance
+        const nextUpcoming = sorted.find(item => !item.completed);
+        if (nextUpcoming) {
+          dedupedSeriesItems.push(nextUpcoming);
+        }
+        
+        // Also include all completed instances (they show in completed section)
+        sorted.filter(item => item.completed).forEach(item => {
+          dedupedSeriesItems.push(item);
+        });
+      });
+      
+      return [...nonSeriesItems, ...dedupedSeriesItems];
+    })();
+    
+    let filtered = deduplicatedMerged;
     
     // Category filter
     if (selectedCategory !== 'All') {

@@ -4,12 +4,6 @@ import { useSignUp, useSignIn } from '@clerk/clerk-react';
 import { Loader2, ArrowLeft } from 'lucide-react';
 import ErrorBanner from './ui/ErrorBanner';
 
-// Shared gradient background style for auth pages
-const AUTH_GRADIENT_STYLE = {
-  backgroundImage: 'linear-gradient(to right bottom, #fafafa, #f9f9fa, #f8f8fa, #f6f8f9, #f4f7f9, #f3f7f9, #f1f6f8, #f0f6f8, #f0f6f8, #eff6f8, #eff6f8, #eef6f8)',
-  backgroundAttachment: 'fixed' as const
-};
-
 interface SignUpProps {
   onBackToSignIn: () => void;
 }
@@ -349,7 +343,7 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
 
   if (verificationStep) {
     return (
-      <div className="min-h-screen w-full flex flex-col p-6 pt-16 page-fade-in" style={AUTH_GRADIENT_STYLE}>
+      <div className="min-h-screen w-full flex flex-col p-6 pt-16 page-fade-in auth-gradient-bg">
         <div className="w-full max-w-md mx-auto">
           {/* Logo */}
           <div className="mb-10">
@@ -422,7 +416,7 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
   }
 
   return (
-    <div className="min-h-screen w-full flex flex-col p-6 pt-16 page-fade-in" style={AUTH_GRADIENT_STYLE}>
+    <div className="min-h-screen w-full flex flex-col p-6 pt-16 page-fade-in auth-gradient-bg">
       <div className="w-full max-w-md mx-auto">
         {/* Logo */}
         <div className="mb-10">

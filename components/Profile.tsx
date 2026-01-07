@@ -4,7 +4,7 @@ import {
   AlertCircle, AlertTriangle, Heart, Settings, Plus, Trash2, X, Save, Camera,
   Image as ImageIcon, LogOut, Copy, Check, ChevronLeft, ChevronRight,
   Shield, Lock, Crown, Mail, Share2, Bell, BellOff, Phone, CheckCircle, Loader2, GraduationCap,
-  MessageCircleQuestionMark, Palette, Sun, Moon, Monitor, BookOpen, Pencil, CalendarCheck, HandCoins, CircleStar,
+  MessageCircleQuestionMark, Palette, Monitor, BookOpen, Pencil, CalendarCheck, HandCoins, CircleStar,
   MoreVertical
 } from 'lucide-react';
 import FeedbackSection from './FeedbackSection';
@@ -149,13 +149,6 @@ const Profile: React.FC<ProfileProps> = ({
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
   const [isLoading, setIsLoading] = useState(false);
   const [loadingPlan, setLoadingPlan] = useState<'free' | 'core' | 'pro' | 'test' | null>(null);
-  
-  // Appearance State
-  const [currentTheme, setCurrentTheme] = useState<'light' | 'dark' | 'system'>(() => {
-    const saved = localStorage.getItem('helpy_theme');
-    if (saved === 'light' || saved === 'dark' || saved === 'system') return saved;
-    return 'light'; // Default to light (matches index.html behavior)
-  });
   
   // Plan confirmation modal state (for promo/referral codes)
   const [isPlanConfirmOpen, setIsPlanConfirmOpen] = useState(false);
@@ -2324,27 +2317,6 @@ const Profile: React.FC<ProfileProps> = ({
     }
   };
 
-  // Handle Theme Change
-  const handleThemeChange = (theme: 'light' | 'dark' | 'system') => {
-    setCurrentTheme(theme);
-    localStorage.setItem('helpy_theme', theme);
-
-    // Single authority: index.html controller also updates theme-color + color-scheme for iOS status bar.
-    const w = window as any;
-    if (typeof w.__helpyApplyTheme === 'function') {
-      w.__helpyApplyTheme();
-      return;
-    }
-
-    // Fallback (shouldn't happen): keep class-only behavior
-    const html = document.documentElement;
-    let isDark = false;
-    if (theme === 'dark') isDark = true;
-    else if (theme === 'system') isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    html.classList.toggle('dark', isDark);
-    html.classList.toggle('light', !isDark);
-  };
-
   // Handle Delete Account
   const handleDeleteAccountClick = () => {
     setIsDeleteAccountModalOpen(true);
@@ -3655,41 +3627,24 @@ const Profile: React.FC<ProfileProps> = ({
   // APPEARANCE VIEW
   // =====================================================
   if (activeSection === 'appearance') {
-    const themeOptions: Array<{ id: 'light' | 'dark' | 'system'; label: string; description: string; icon: React.ElementType }> = [
-      { id: 'light', label: t['settings.light'] || 'Light', description: t['settings.light_description'] || 'Always light', icon: Sun },
-      { id: 'dark', label: t['settings.dark'] || 'Dark', description: t['settings.dark_description'] || 'Always dark', icon: Moon },
-      { id: 'system', label: t['settings.system'] || 'System', description: t['settings.system_description'] || 'Follows your device', icon: Monitor },
-    ];
-
     return (
       <div className="min-h-screen bg-background pb-40 animate-fade-in">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
           {renderSettingsHeader(t['settings.appearance'] || 'Appearance', () => setActiveSection('settings'))}
           <div className="pt-6">
             <div className="bg-card rounded-2xl shadow-sm overflow-hidden">
-              {themeOptions.map((option, index) => (
-                <div key={option.id}>
-                  <button
-                    onClick={() => handleThemeChange(option.id)}
-                    className="w-full px-5 py-4 flex items-center justify-between "
-                  >
-                    <div className="flex items-center gap-3">
-                      <option.icon size={18} className="text-primary" />
-                      <div className="text-left">
-                        <p className="font-bold text-foreground text-title">{option.label}</p>
-                        <p className="text-caption text-muted-foreground">{option.description}</p>
-                      </div>
-                    </div>
-                    {currentTheme === option.id && (
-                      <Check size={20} className="text-primary" />
-                    )}
-                  </button>
-                  {index < themeOptions.length - 1 && (
-                    <div className="mx-5 border-t border-border" />
-                  )}
+              <div className="px-5 py-4 flex items-center gap-3">
+                <Monitor size={18} className="text-primary" />
+                <div className="text-left">
+                  <p className="font-bold text-foreground text-title">{t['settings.theme'] || 'Theme'}</p>
+                  <p className="text-caption text-muted-foreground">{t['settings.follows_device'] || 'Follows your device setting'}</p>
                 </div>
-              ))}
+              </div>
             </div>
+            
+            <p className="text-caption text-muted-foreground mt-4 px-1">
+              {t['settings.theme_info'] || 'Helpy automatically matches your device appearance. Change your device settings to switch between light and dark mode.'}
+            </p>
           </div>
 
           {/* Footer */}

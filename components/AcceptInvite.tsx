@@ -6,15 +6,9 @@ import React, { useEffect, useState } from 'react';
 import { useSignUp, useSignIn, useUser } from '@clerk/clerk-react';
 import { Loader2, CheckCircle, XCircle } from 'lucide-react';
 
-// Shared gradient background style for auth pages
-const AUTH_GRADIENT_STYLE = {
-  backgroundImage: 'linear-gradient(to right bottom, #fafafa, #f9f9fa, #f8f8fa, #f6f8f9, #f4f7f9, #f3f7f9, #f1f6f8, #f0f6f8, #f0f6f8, #eff6f8, #eff6f8, #eef6f8)',
-  backgroundAttachment: 'fixed' as const
-};
-
 // Loading component for auth states  
 const AuthLoading = () => (
-  <div className="min-h-screen w-full flex flex-col items-center justify-center p-6 page-fade-in" style={AUTH_GRADIENT_STYLE}>
+  <div className="min-h-screen w-full flex flex-col items-center justify-center p-6 page-fade-in auth-gradient-bg">
     {/* Loading bar only - no logo/text to avoid jarring transition from iOS splash */}
     <div className="auth-loading-bar mx-auto">
       <div className="auth-loading-bar-fill" />
@@ -216,7 +210,7 @@ const AcceptInvite: React.FC<AcceptInviteProps> = ({ onComplete }) => {
   // Error state
   if (status === 'error') {
     return (
-      <div className="min-h-screen w-full flex flex-col p-6 pt-16 page-fade-in" style={AUTH_GRADIENT_STYLE}>
+      <div className="min-h-screen w-full flex flex-col p-6 pt-16 page-fade-in auth-gradient-bg">
         <div className="w-full max-w-md mx-auto">
           <div className="mb-10">
             <img 
@@ -246,7 +240,7 @@ const AcceptInvite: React.FC<AcceptInviteProps> = ({ onComplete }) => {
   // Complete state
   if (status === 'complete') {
     return (
-      <div className="min-h-screen w-full flex flex-col items-center justify-center p-6 page-fade-in" style={AUTH_GRADIENT_STYLE}>
+      <div className="min-h-screen w-full flex flex-col items-center justify-center p-6 page-fade-in auth-gradient-bg">
         <div className="text-center">
           <img 
             src="/helpy-logo-blue.png" 
@@ -266,7 +260,7 @@ const AcceptInvite: React.FC<AcceptInviteProps> = ({ onComplete }) => {
     const verifyTarget = verificationType === 'email' ? email : phoneNumber;
     
     return (
-      <div className="min-h-screen w-full flex flex-col p-6 pt-16 page-fade-in" style={AUTH_GRADIENT_STYLE}>
+      <div className="min-h-screen w-full flex flex-col p-6 pt-16 page-fade-in auth-gradient-bg">
         <div className="w-full max-w-md mx-auto">
           <div className="mb-10">
             <img 
@@ -334,7 +328,7 @@ const AcceptInvite: React.FC<AcceptInviteProps> = ({ onComplete }) => {
 
   // Signup form
   return (
-    <div className="min-h-screen w-full flex flex-col p-6 pt-16 page-fade-in" style={AUTH_GRADIENT_STYLE}>
+    <div className="min-h-screen w-full flex flex-col p-6 pt-16 page-fade-in auth-gradient-bg">
       <div className="w-full max-w-md mx-auto">
         {/* Logo */}
         <div className="mb-10">

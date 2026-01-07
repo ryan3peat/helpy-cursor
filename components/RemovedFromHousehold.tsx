@@ -5,12 +5,6 @@ import { useUser } from '@clerk/clerk-react';
 import { UserX, Home, Trash2, AlertTriangle } from 'lucide-react';
 import { TranslationDictionary } from '@/types';
 
-// Shared gradient background style for auth pages
-const AUTH_GRADIENT_STYLE = {
-  backgroundImage: 'linear-gradient(to right bottom, #fafafa, #f9f9fa, #f8f8fa, #f6f8f9, #f4f7f9, #f3f7f9, #f1f6f8, #f0f6f8, #f0f6f8, #eff6f8, #eff6f8, #eef6f8)',
-  backgroundAttachment: 'fixed' as const
-};
-
 interface RemovedFromHouseholdProps {
   t: TranslationDictionary;
   onDeleteAccount: () => Promise<void>;
@@ -51,7 +45,7 @@ const RemovedFromHousehold: React.FC<RemovedFromHouseholdProps> = ({
   };
 
   return (
-    <div className="min-h-screen flex flex-col p-6 pt-16 page-fade-in" style={AUTH_GRADIENT_STYLE}>
+    <div className="min-h-screen flex flex-col p-6 pt-16 page-fade-in auth-gradient-bg">
       <div className="max-w-md w-full mx-auto">
         {/* Logo */}
         <div className="mb-10">

@@ -297,6 +297,15 @@ const TranslatedItemName: React.FC<{
 };
 
 // ─────────────────────────────────────────────────────────────────
+// Unique ID Generator (prevents collisions on rapid adds)
+// ─────────────────────────────────────────────────────────────────
+let optimisticIdCounter = 0;
+const generateOptimisticId = (): string => {
+  optimisticIdCounter += 1;
+  return `temp-${Date.now()}-${optimisticIdCounter}`;
+};
+
+// ─────────────────────────────────────────────────────────────────
 // Main Component
 // ─────────────────────────────────────────────────────────────────
 
@@ -597,8 +606,9 @@ const ToDo: React.FC<ToDoProps> = ({
     // Detect language for the new item
     const detectedLang = detectInputLanguage(currentLang);
     
+    const optimisticId = generateOptimisticId();
     const newItem: ToDoItem = {
-      id: `temp-${Date.now()}`,
+      id: optimisticId,
       type: activeSection,
       name,
       category,
@@ -618,10 +628,11 @@ const ToDo: React.FC<ToDoProps> = ({
     try {
       await onAdd(newItem);
       // Success: clear optimistic item, real item comes from App state
-      setOptimisticItems(prev => prev.filter(i => i.id !== newItem.id));
+      // Use functional update with the captured optimisticId to ensure we remove the correct item
+      setOptimisticItems(prev => prev.filter(i => i.id !== optimisticId));
     } catch (err) {
       console.error('Failed to add item:', err);
-      setOptimisticItems(prev => prev.filter(i => i.id !== newItem.id));
+      setOptimisticItems(prev => prev.filter(i => i.id !== optimisticId));
       setError(t['error.add_item'] || 'Failed to add item. Please try again.');
     }
   };
@@ -632,8 +643,9 @@ const ToDo: React.FC<ToDoProps> = ({
     // Detect language for the new item
     const detectedLang = detectInputLanguage(currentLang);
     
+    const optimisticId = generateOptimisticId();
     const newItem: ToDoItem = {
-      id: `temp-${Date.now()}`,
+      id: optimisticId,
       type: activeSection,
       name: suggestion.name,
       category: suggestion.category,
@@ -657,10 +669,10 @@ const ToDo: React.FC<ToDoProps> = ({
     try {
       await onAdd(newItem);
       // Success: clear optimistic item, real item comes from App state
-      setOptimisticItems(prev => prev.filter(i => i.id !== newItem.id));
+      setOptimisticItems(prev => prev.filter(i => i.id !== optimisticId));
     } catch (err) {
       console.error('Failed to add item:', err);
-      setOptimisticItems(prev => prev.filter(i => i.id !== newItem.id));
+      setOptimisticItems(prev => prev.filter(i => i.id !== optimisticId));
       setError(t['error.add_item'] || 'Failed to add item. Please try again.');
     }
   };
@@ -741,6 +753,15 @@ const ToDo: React.FC<ToDoProps> = ({
     
     try {
       await onDelete(id);
+      // Success: Keep in deletingIds briefly to prevent "ghost returns" from real-time sync
+      // Real-time subscription might fire before delete propagates to DB
+      setTimeout(() => {
+        setDeletingIds(prev => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
+      }, 1000); // Keep filtered for 1 second after delete completes
     } catch (err) {
       console.error('Failed to delete item:', err);
       setDeletingIds(prev => {
@@ -891,8 +912,9 @@ const ToDo: React.FC<ToDoProps> = ({
       // Detect language for the new item
       const detectedLang = detectInputLanguage(currentLang);
       
+      const optimisticId = generateOptimisticId();
       const newItem: ToDoItem = {
-        id: `temp-${Date.now()}`,
+        id: optimisticId,
         type: activeSection,
         name: sheetForm.name!,
         category: sheetForm.category || defaultCategory,
@@ -916,10 +938,10 @@ const ToDo: React.FC<ToDoProps> = ({
       try {
         await onAdd(newItem);
         // Success: clear optimistic item, real item comes from App state
-        setOptimisticItems(prev => prev.filter(i => i.id !== newItem.id));
+        setOptimisticItems(prev => prev.filter(i => i.id !== optimisticId));
       } catch (err) {
         console.error('Failed to add item:', err);
-        setOptimisticItems(prev => prev.filter(i => i.id !== newItem.id));
+        setOptimisticItems(prev => prev.filter(i => i.id !== optimisticId));
         setError(t['error.add_item'] || 'Failed to add item. Please try again.');
       }
     }

@@ -7,15 +7,9 @@ import { useSignUp, useSignIn, useClerk, useUser, SignUp } from '@clerk/clerk-re
 import { Loader2, Mail, ArrowRight } from 'lucide-react';
 import ErrorBanner from './ui/ErrorBanner';
 
-// Shared gradient background style for auth pages
-const AUTH_GRADIENT_STYLE = {
-  backgroundImage: 'linear-gradient(to right bottom, #fafafa, #f9f9fa, #f8f8fa, #f6f8f9, #f4f7f9, #f3f7f9, #f1f6f8, #f0f6f8, #f0f6f8, #eff6f8, #eff6f8, #eef6f8)',
-  backgroundAttachment: 'fixed' as const
-};
-
 // Loading component for auth states  
 const AuthLoading = () => (
-  <div className="min-h-screen w-full flex flex-col items-center justify-center p-6 page-fade-in" style={AUTH_GRADIENT_STYLE}>
+  <div className="min-h-screen w-full flex flex-col items-center justify-center p-6 page-fade-in auth-gradient-bg">
     {/* Loading bar only - no logo/text to avoid jarring transition from iOS splash */}
     <div className="auth-loading-bar mx-auto">
       <div className="auth-loading-bar-fill" />
@@ -350,7 +344,7 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
   // Error state
   if (!inviteInfo?.isValid || error) {
     return (
-      <div className="min-h-screen w-full flex flex-col p-6 pt-16 page-fade-in" style={AUTH_GRADIENT_STYLE}>
+      <div className="min-h-screen w-full flex flex-col p-6 pt-16 page-fade-in auth-gradient-bg">
         <div className="w-full max-w-md mx-auto">
           <div className="mb-10">
             <img 
@@ -377,7 +371,7 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
   // Verification step
   if (verificationStep === 'email') {
     return (
-      <div className="min-h-screen w-full flex flex-col p-6 pt-16 page-fade-in" style={AUTH_GRADIENT_STYLE}>
+      <div className="min-h-screen w-full flex flex-col p-6 pt-16 page-fade-in auth-gradient-bg">
         <div className="w-full max-w-md mx-auto">
           <div className="mb-10">
             <img 
@@ -449,7 +443,7 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
     : `You've been invited to join ${inviteInfo.householdName}`;
 
   return (
-    <div className="min-h-screen w-full flex flex-col p-6 pt-16 page-fade-in" style={AUTH_GRADIENT_STYLE}>
+    <div className="min-h-screen w-full flex flex-col p-6 pt-16 page-fade-in auth-gradient-bg">
       <div className="w-full max-w-md mx-auto">
         {/* Logo */}
         <div className="mb-10">

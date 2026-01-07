@@ -71,6 +71,20 @@ function buildNotificationMessage(
       const isCompleted = record.completed as boolean;
       const wasCompleted = oldRecord?.completed as boolean;
       
+      // SOFT DELETE DETECTION: Check if deleted_at was set (null → timestamp)
+      const isDeleted = record.deleted_at !== null && record.deleted_at !== undefined;
+      const wasDeleted = oldRecord?.deleted_at !== null && oldRecord?.deleted_at !== undefined;
+      const isSoftDelete = event === 'UPDATE' && isDeleted && !wasDeleted;
+      
+      // If this is a soft delete of an ALREADY COMPLETED item, skip notification
+      if (isSoftDelete && wasCompleted) {
+        return {
+          title: '',
+          body: '',
+          type: 'skip' // Special type to indicate no notification should be sent
+        };
+      }
+      
       if (itemType === 'shopping') {
         // Shopping List notifications
         if (event === 'UPDATE' && isCompleted && !wasCompleted) {
@@ -80,10 +94,11 @@ function buildNotificationMessage(
             body: `${itemName}\nbought by ${creatorName}`,
             type: 'shopping'
           };
-        } else if (event === 'DELETE') {
+        } else if (event === 'DELETE' || isSoftDelete) {
+          // Real delete OR soft delete of non-completed item
           return {
             title: '🛒 Shopping',
-            body: `${itemName}\nremoved by ${creatorName}`,
+            body: `${itemName}\ndeleted by ${creatorName}`,
             type: 'shopping'
           };
         } else if (event === 'UPDATE') {
@@ -109,10 +124,11 @@ function buildNotificationMessage(
             body: `${itemName}\ndone by ${creatorName}`,
             type: 'task'
           };
-        } else if (event === 'DELETE') {
+        } else if (event === 'DELETE' || isSoftDelete) {
+          // Real delete OR soft delete of non-completed item
           return {
             title: '📝 Tasks',
-            body: `${itemName}\nremoved by ${creatorName}`,
+            body: `${itemName}\ndeleted by ${creatorName}`,
             type: 'task'
           };
         } else if (event === 'UPDATE') {
@@ -347,10 +363,38 @@ function buildBatchedNotificationMessage(
     return isCompleted && !wasCompleted;
   });
   
+  // SOFT DELETE DETECTION for batches
+  const isSoftDeleteBatch = event === 'UPDATE' && items.some(item => {
+    const isDeleted = item.record.deleted_at !== null && item.record.deleted_at !== undefined;
+    const wasDeleted = item.old_record?.deleted_at !== null && item.old_record?.deleted_at !== undefined;
+    return isDeleted && !wasDeleted;
+  });
+  
+  // Check if ALL soft-deleted items were already completed (skip notification)
+  const allSoftDeletedWereCompleted = isSoftDeleteBatch && items.every(item => {
+    const isDeleted = item.record.deleted_at !== null && item.record.deleted_at !== undefined;
+    const wasDeleted = item.old_record?.deleted_at !== null && item.old_record?.deleted_at !== undefined;
+    const wasCompleted = item.old_record?.completed as boolean;
+    // If this item was soft deleted, check if it was completed
+    if (isDeleted && !wasDeleted) {
+      return wasCompleted;
+    }
+    return true; // Non-deleted items don't affect this check
+  });
+  
   // Build message based on table type
   switch (table) {
     case 'todo_items': {
       const isShopping = itemType === 'shopping';
+      
+      // Skip notification if all soft-deleted items were already completed
+      if (allSoftDeletedWereCompleted && isSoftDeleteBatch) {
+        return {
+          title: '',
+          body: '',
+          type: 'skip'
+        };
+      }
       
       if (isCompletionBatch) {
         // Bought/Done batch
@@ -361,7 +405,16 @@ function buildBatchedNotificationMessage(
         };
       }
       
-      const actionWord = event === 'DELETE' ? 'removed' : event === 'UPDATE' ? 'changed' : 'added';
+      // Soft delete batch of non-completed items
+      if (isSoftDeleteBatch) {
+        return {
+          title: isShopping ? '🛒 Shopping' : '📝 Tasks',
+          body: `${formatItemsList()}\ndeleted by ${creatorName}`,
+          type: isShopping ? 'shopping' : 'task'
+        };
+      }
+      
+      const actionWord = event === 'DELETE' ? 'deleted' : event === 'UPDATE' ? 'changed' : 'added';
       
       return {
         title: isShopping ? '🛒 Shopping' : '📝 Tasks',
@@ -1089,6 +1142,15 @@ serve(async (req: Request) => {
         refId = record.id as string;
       }
       
+      // Skip notification if type is 'skip' (completed item deleted)
+      if (msgForHistory.type === 'skip') {
+        console.log('[Push] Skipping notification (completed item deleted)');
+        return new Response(
+          JSON.stringify({ success: true, message: 'Skipped (completed item deleted)' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
       const notificationRecords = recipients.map(user => ({
         household_id,
         recipient_user_id: user.id,
@@ -1123,6 +1185,15 @@ serve(async (req: Request) => {
       // Single item notification (backwards compatible)
       message = buildNotificationMessage(table, record, creatorName, event, old_record);
       referenceId = record.id as string;
+    }
+
+    // Skip notification if type is 'skip' (completed item deleted)
+    if (message.type === 'skip') {
+      console.log('[Push] Skipping notification (completed item deleted)');
+      return new Response(
+        JSON.stringify({ success: true, message: 'Skipped (completed item deleted)' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     console.log(`[Push] 📤 Sending to ${subscriptions.length} subscription(s)...`);

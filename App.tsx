@@ -52,15 +52,9 @@ import type { CreateEssentialInfo } from '@src/types/essentialInfo';
 import type { CreateHouseRoutine } from '@src/types/houseRoutine';
 import { useRealtimeStatus } from './hooks/useRealtimeStatus';
 
-// Shared gradient background style for loading screens
-const AUTH_GRADIENT_STYLE = {
-  backgroundImage: 'linear-gradient(to right bottom, #fafafa, #f9f9fa, #f8f8fa, #f6f8f9, #f4f7f9, #f3f7f9, #f1f6f8, #f0f6f8, #f0f6f8, #eff6f8, #eff6f8, #eef6f8)',
-  backgroundAttachment: 'fixed' as const
-};
-
 // Loading component for app states
 const AppLoading = () => (
-  <div className="min-h-screen w-full flex flex-col items-center justify-center p-6 page-fade-in" style={AUTH_GRADIENT_STYLE}>
+  <div className="min-h-screen w-full flex flex-col items-center justify-center p-6 page-fade-in auth-gradient-bg">
     {/* Loading bar only - no logo/text to avoid jarring transition from iOS splash */}
     <div className="auth-loading-bar mx-auto">
       <div className="auth-loading-bar-fill" />
@@ -534,6 +528,10 @@ const AppContent: React.FC = () => {
   
   // Household limits for family member quota (used by Dashboard)
   const [householdLimits, setHouseholdLimits] = useState<{ maxFamily: number; maxHelpers: number }>({ maxFamily: 3, maxHelpers: 1 });
+  
+  // Track pending deletions to prevent "ghost returns" from real-time sync
+  // Using a ref so it persists across renders without causing re-renders
+  const pendingTodoDeletions = useRef<Set<string>>(new Set());
 
   // ─────────────────────────────────────────────────────────────────
   // Cache Updates - Save to localStorage when data changes
@@ -883,7 +881,28 @@ const AppContent: React.FC = () => {
       
       setUsers(finalUsers as User[]);
     });
-    const unsubTodoItems = subscribeToCollection(hid, 'todo_items', (data) => setTodoItems(data as ToDoItem[]));
+    const unsubTodoItems = subscribeToCollection(hid, 'todo_items', (data) => {
+      // Filter out items that are pending deletion to prevent "ghost returns"
+      // This handles the race condition where real-time fires before delete propagates
+      const filteredData = (data as ToDoItem[]).filter(item => !pendingTodoDeletions.current.has(item.id));
+      
+      // Also merge with any temp items that haven't been saved yet
+      setTodoItems(prev => {
+        const tempItems = prev.filter(item => item.id.startsWith('temp-') || item.id.startsWith('todo-'));
+        // Create a map of real items by their content key for deduplication
+        const realItemKeys = new Set(filteredData.map(item => {
+          const name = (item.name || '').trim().toLowerCase();
+          const category = item.category || '';
+          return `${name}|${category}`;
+        }));
+        // Keep temp items that don't have a corresponding real item yet
+        const uniqueTempItems = tempItems.filter(tempItem => {
+          const key = `${(tempItem.name || '').trim().toLowerCase()}|${tempItem.category || ''}`;
+          return !realItemKeys.has(key);
+        });
+        return [...filteredData, ...uniqueTempItems];
+      });
+    });
     const unsubMeals = subscribeToCollection(hid, 'meals', (data) => setMeals(data as Meal[]));
     const unsubExpenses = subscribeToCollection(hid, 'expenses', (data) => setExpenses(data as Expense[]));
     const unsubNotes = subscribeToNotes(hid, (notesData) => {
@@ -1003,14 +1022,30 @@ const AppContent: React.FC = () => {
       return;
     }
     
+    // Track this deletion to prevent "ghost returns" from real-time sync
+    pendingTodoDeletions.current.add(id);
+    
     // Optimistically remove from UI
     setTodoItems(prev => prev.filter(item => item.id !== id));
+    
     // Skip database call for temp IDs - item not in database yet
     if (isTempId(id)) {
       console.warn('⚠️ Skipping delete for temp item - not yet saved:', id);
+      // Still clear from pending deletions after a brief delay
+      setTimeout(() => pendingTodoDeletions.current.delete(id), 500);
       return;
     }
-    await deleteItem(hid, 'todo_items', id);
+    
+    try {
+      await deleteItem(hid, 'todo_items', id);
+      // Clear from pending deletions after the delete succeeds + brief buffer for real-time
+      setTimeout(() => pendingTodoDeletions.current.delete(id), 2000);
+    } catch (error) {
+      console.error('Failed to delete todo item:', error);
+      // On error, clear from pending and restore the item
+      pendingTodoDeletions.current.delete(id);
+      // Note: Real-time sync will bring the item back automatically
+    }
   };
 
   // Meal CRUD Handlers (with optimistic updates for instant UI)
@@ -1611,7 +1646,7 @@ const AppContent: React.FC = () => {
     // If timeout occurred, show error message
     if (clerkLoadTimeout) {
       return (
-        <div className="min-h-screen flex flex-col justify-center items-center p-4 page-fade-in" style={AUTH_GRADIENT_STYLE}>
+        <div className="min-h-screen flex flex-col justify-center items-center p-4 page-fade-in auth-gradient-bg">
           <div className="text-center max-w-md">
             <img 
               src="/helpy-logo-blue.png" 

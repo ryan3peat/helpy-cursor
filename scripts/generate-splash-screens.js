@@ -4,7 +4,8 @@
  * Generates Apple launch images for all iOS device sizes.
  * These appear instantly when the app launches, before any JS loads.
  * 
- * NEW THEME: White gradient background with blue Helpy logo
+ * Generates BOTH light mode (gradient) and dark mode (solid #121212) variants.
+ * Dark mode variants are stored in /splash/dark/ subdirectory.
  * 
  * Usage: node scripts/generate-splash-screens.js
  * 
@@ -12,9 +13,13 @@
  * Install dependency: npm install canvas
  */
 
-const { createCanvas, loadImage, registerFont } = require('canvas');
-const fs = require('fs');
-const path = require('path');
+import { createCanvas, loadImage } from 'canvas';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // All iOS device splash screen sizes
 // Format: [width, height, scale, deviceName]
@@ -59,9 +64,10 @@ const SPLASH_SIZES = [
 ];
 
 const OUTPUT_DIR = path.join(__dirname, '../public/splash');
+const OUTPUT_DIR_DARK = path.join(__dirname, '../public/splash/dark');
 
 /**
- * Draw gradient background (new Helpy theme)
+ * Draw gradient background (Light Mode)
  * Mimics: linear-gradient(to right bottom, #fafafa, #eef6f8)
  */
 function drawGradientBackground(ctx, width, height) {
@@ -75,18 +81,69 @@ function drawGradientBackground(ctx, width, height) {
   ctx.fillRect(0, 0, width, height);
 }
 
+/**
+ * Draw solid dark background (Dark Mode)
+ * Matches app dark mode background: #121212
+ */
+function drawDarkBackground(ctx, width, height) {
+  ctx.fillStyle = '#121212';
+  ctx.fillRect(0, 0, width, height);
+}
+
+/**
+ * Generate a single splash screen image
+ */
+function generateSplashImage(logo, width, height, isDark) {
+  const canvas = createCanvas(width, height);
+  const ctx = canvas.getContext('2d');
+  
+  // Draw background
+  if (isDark) {
+    drawDarkBackground(ctx, width, height);
+  } else {
+    drawGradientBackground(ctx, width, height);
+  }
+  
+  if (logo) {
+    // Calculate logo size (should be readable but not too large)
+    // Target: logo is about 35% of screen width
+    const targetWidth = width * 0.35;
+    const logoScale = targetWidth / logo.width;
+    const logoWidth = logo.width * logoScale;
+    const logoHeight = logo.height * logoScale;
+    
+    // Center the logo
+    const x = (width - logoWidth) / 2;
+    const y = (height - logoHeight) / 2;
+    
+    // Draw the logo
+    ctx.drawImage(logo, x, y, logoWidth, logoHeight);
+  } else {
+    // Fallback: draw "helpy" text in Helpy blue
+    const fontSize = Math.floor(width * 0.12);
+    ctx.font = `bold ${fontSize}px sans-serif`;
+    ctx.fillStyle = '#3EAFD2'; // Helpy blue
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('helpy', width / 2, height / 2);
+  }
+  
+  return canvas.toBuffer('image/png');
+}
+
 async function generateSplashScreens() {
-  console.log('🎨 Generating iOS splash screens (new Helpy theme)...');
-  console.log('   Background: White gradient');
-  console.log('   Logo: Blue Helpy logo');
+  console.log('🎨 Generating iOS splash screens...');
   console.log('');
   
-  // Create output directory
+  // Create output directories
   if (!fs.existsSync(OUTPUT_DIR)) {
     fs.mkdirSync(OUTPUT_DIR, { recursive: true });
   }
+  if (!fs.existsSync(OUTPUT_DIR_DARK)) {
+    fs.mkdirSync(OUTPUT_DIR_DARK, { recursive: true });
+  }
   
-  // Load the blue Helpy logo (for new white background theme)
+  // Load the blue Helpy logo
   const logoPath = path.join(__dirname, '../public/helpy-logo-blue.png');
   let logo;
   try {
@@ -99,63 +156,62 @@ async function generateSplashScreens() {
     logo = null;
   }
   
-  // Generate each splash screen
+  console.log('');
+  console.log('☀️  Generating LIGHT mode splash screens...');
+  console.log('   Background: White gradient (#fafafa → #eef6f8)');
+  console.log('');
+  
+  // Generate light mode splash screens
   for (const [width, height, scale, deviceName] of SPLASH_SIZES) {
     const filename = `splash-${width}x${height}.png`;
     const filepath = path.join(OUTPUT_DIR, filename);
     
-    // Create canvas
-    const canvas = createCanvas(width, height);
-    const ctx = canvas.getContext('2d');
-    
-    // Draw gradient background (new Helpy theme)
-    drawGradientBackground(ctx, width, height);
-    
-    if (logo) {
-      // Calculate logo size (should be readable but not too large)
-      // Target: logo is about 35% of screen width
-      const targetWidth = width * 0.35;
-      const logoScale = targetWidth / logo.width;
-      const logoWidth = logo.width * logoScale;
-      const logoHeight = logo.height * logoScale;
-      
-      // Center the logo
-      const x = (width - logoWidth) / 2;
-      const y = (height - logoHeight) / 2;
-      
-      // Draw the logo
-      ctx.drawImage(logo, x, y, logoWidth, logoHeight);
-    } else {
-      // Fallback: draw "helpy" text in Helpy blue
-      const fontSize = Math.floor(width * 0.12);
-      ctx.font = `bold ${fontSize}px sans-serif`;
-      ctx.fillStyle = '#3EAFD2'; // Helpy blue
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('helpy', width / 2, height / 2);
-    }
-    
-    // Save to file
-    const buffer = canvas.toBuffer('image/png');
+    const buffer = generateSplashImage(logo, width, height, false);
     fs.writeFileSync(filepath, buffer);
     
-    console.log(`✅ Generated: ${filename} (${deviceName})`);
+    console.log(`   ✅ ${filename} (${deviceName})`);
+  }
+  
+  console.log('');
+  console.log('🌙 Generating DARK mode splash screens...');
+  console.log('   Background: Solid dark (#121212)');
+  console.log('');
+  
+  // Generate dark mode splash screens
+  for (const [width, height, scale, deviceName] of SPLASH_SIZES) {
+    const filename = `splash-${width}x${height}.png`;
+    const filepath = path.join(OUTPUT_DIR_DARK, filename);
+    
+    const buffer = generateSplashImage(logo, width, height, true);
+    fs.writeFileSync(filepath, buffer);
+    
+    console.log(`   ✅ dark/${filename} (${deviceName})`);
   }
   
   console.log('');
   console.log('🎉 All splash screens generated!');
-  console.log(`📁 Output directory: ${OUTPUT_DIR}`);
+  console.log(`📁 Light mode: ${OUTPUT_DIR}`);
+  console.log(`📁 Dark mode:  ${OUTPUT_DIR_DARK}`);
   console.log('');
-  console.log('📋 Add these link tags to index.html:');
+  console.log('📋 HTML link tags for index.html:');
   console.log('');
+  console.log('<!-- Light mode splash screens -->');
   
-  // Generate the HTML link tags
+  // Generate the HTML link tags for light mode
   for (const [width, height, scale, deviceName] of SPLASH_SIZES) {
-    // Calculate device dimensions (width/scale, height/scale)
     const deviceWidth = width / scale;
     const deviceHeight = height / scale;
-    
-    console.log(`<link rel="apple-touch-startup-image" href="/splash/splash-${width}x${height}.png" media="(device-width: ${deviceWidth}px) and (device-height: ${deviceHeight}px) and (-webkit-device-pixel-ratio: ${scale})">`);
+    console.log(`<link rel="apple-touch-startup-image" href="/splash/splash-${width}x${height}.png" media="(device-width: ${deviceWidth}px) and (device-height: ${deviceHeight}px) and (-webkit-device-pixel-ratio: ${scale}) and (prefers-color-scheme: light)">`);
+  }
+  
+  console.log('');
+  console.log('<!-- Dark mode splash screens -->');
+  
+  // Generate the HTML link tags for dark mode
+  for (const [width, height, scale, deviceName] of SPLASH_SIZES) {
+    const deviceWidth = width / scale;
+    const deviceHeight = height / scale;
+    console.log(`<link rel="apple-touch-startup-image" href="/splash/dark/splash-${width}x${height}.png" media="(device-width: ${deviceWidth}px) and (device-height: ${deviceHeight}px) and (-webkit-device-pixel-ratio: ${scale}) and (prefers-color-scheme: dark)">`);
   }
 }
 

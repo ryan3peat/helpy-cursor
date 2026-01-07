@@ -23,6 +23,7 @@ type DataItem = User | ShoppingItem | Task | Meal | Expense | Section | ToDoItem
 const COLLECTION_MAP: Record<string, string> = {
   'users': 'users',
   'todo_items': 'todo_items',
+  'recurring_series': 'recurring_series',
   'meals': 'meals',
   'expenses': 'expenses',
   'sections': 'sections',

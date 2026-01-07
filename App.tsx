@@ -970,8 +970,84 @@ const AppContent: React.FC = () => {
     const newItem = { ...item, id: tempId };
     setTodoItems(prev => [newItem, ...prev]);
     
-    // Include createdBy for notifications - use currentUser's id
-    const savedItem = await addItem(hid, 'todo_items', { ...item, createdBy: currentUser?.id });
+    // Check if this is a recurring task (has recurrence and frequency is not NONE)
+    const isRecurring = item.type === 'task' && 
+      item.recurrence && 
+      item.recurrence.frequency !== 'NONE';
+    
+    // If recurring, ONLY create the series - trigger will create instances automatically
+    if (isRecurring && item.recurrence) {
+      const seriesData = {
+        householdId: hid,
+        name: item.name,
+        category: item.category,
+        assigneeId: item.assigneeId,
+        dueTime: item.dueTime,
+        frequency: item.recurrence.frequency,
+        dayOfWeek: item.recurrence.dayOfWeek,
+        dayOfMonth: item.recurrence.dayOfMonth,
+        startDate: item.dueDate || new Date().toISOString().split('T')[0],
+        createdBy: currentUser?.id,
+      };
+      
+      const savedSeries = await addItem(hid, 'recurring_series', seriesData);
+      console.log('🔄 Created recurring series:', savedSeries?.id);
+      
+      // The database trigger automatically creates current + next instances
+      // Fetch the created instances to update UI
+      if (savedSeries?.id) {
+        const createdInstances = await supabase
+          .from('todo_items')
+          .select('*')
+          .eq('series_id', savedSeries.id)
+          .order('due_date', { ascending: true });
+        
+        if (createdInstances.data && createdInstances.data.length > 0) {
+          // Transform snake_case to camelCase and replace temp item with real instances
+          const transformedInstances = createdInstances.data.map(dbItem => ({
+            id: dbItem.id,
+            householdId: dbItem.household_id,
+            type: dbItem.type,
+            name: dbItem.name,
+            category: dbItem.category,
+            completed: dbItem.completed,
+            completedAt: dbItem.completed_at,
+            assigneeId: dbItem.assignee_id,
+            quantity: dbItem.quantity,
+            unit: dbItem.unit,
+            brand: dbItem.brand,
+            dueDate: dbItem.due_date,
+            dueTime: dbItem.due_time,
+            seriesId: dbItem.series_id,
+            isException: dbItem.is_exception,
+            originalDueDate: dbItem.original_due_date,
+            createdAt: dbItem.created_at,
+            createdBy: dbItem.created_by,
+            recurrence: item.recurrence, // Keep the recurrence info from original item
+            nameLang: dbItem.name_lang,
+            nameTranslations: dbItem.name_translations,
+          })) as ToDoItem[];
+          
+          // Remove temp item and add real instances
+          setTodoItems(prev => [
+            ...transformedInstances,
+            ...prev.filter(i => i.id !== tempId)
+          ]);
+          
+          return transformedInstances[0]; // Return first instance
+        }
+      }
+      
+      return newItem; // Fallback
+    }
+    
+    // Non-recurring: create the todo item directly
+    const itemData = {
+      ...item,
+      createdBy: currentUser?.id,
+    };
+    
+    const savedItem = await addItem(hid, 'todo_items', itemData);
     
     // Immediately replace temp ID with real ID from database
     // This ensures any subsequent edits use the real ID and get saved properly
@@ -1011,6 +1087,137 @@ const AppContent: React.FC = () => {
       return;
     }
     await updateItem(hid, 'todo_items', id, enhancedData);
+  };
+
+  // Update a recurring task with scope options
+  // scope: 'this' = only this instance, 'future' = this and all future, 'all' = entire series
+  const handleUpdateRecurringTask = async (
+    id: string, 
+    data: Partial<ToDoItem>, 
+    scope: 'this' | 'future' | 'all'
+  ) => {
+    if (!hid) return;
+    
+    const item = todoItems.find(i => i.id === id);
+    if (!item?.seriesId) {
+      // Not a recurring task, just do normal update
+      return handleUpdateTodoItem(id, data);
+    }
+    
+    console.log(`🔄 Updating recurring task with scope: ${scope}`, { id, data });
+    
+    switch (scope) {
+      case 'this':
+        // Mark this instance as an exception and update just this one
+        await handleUpdateTodoItem(id, { ...data, isException: true });
+        break;
+        
+      case 'future':
+        // Update this instance
+        await handleUpdateTodoItem(id, { ...data, isException: true });
+        // End the series at this date (soft delete future instances would need a new migration)
+        // For now, update the series end_date
+        await updateItem(hid, 'recurring_series', item.seriesId, { 
+          endDate: item.dueDate 
+        });
+        // If updating recurrence rules, create a new series starting from this date
+        if (data.recurrence || data.dueDate || data.dueTime || data.name || data.category || data.assigneeId) {
+          const newSeriesData = {
+            householdId: hid,
+            name: data.name || item.name,
+            category: data.category || item.category,
+            assigneeId: data.assigneeId || item.assigneeId,
+            dueTime: data.dueTime || item.dueTime,
+            frequency: data.recurrence?.frequency || item.recurrence?.frequency || 'WEEKLY',
+            dayOfWeek: data.recurrence?.dayOfWeek ?? item.recurrence?.dayOfWeek,
+            dayOfMonth: data.recurrence?.dayOfMonth ?? item.recurrence?.dayOfMonth,
+            startDate: data.dueDate || item.dueDate || new Date().toISOString().split('T')[0],
+            createdBy: currentUser?.id,
+          };
+          const newSeries = await addItem(hid, 'recurring_series', newSeriesData);
+          // Update this instance to point to new series
+          if (newSeries?.id) {
+            await handleUpdateTodoItem(id, { seriesId: newSeries.id, isException: false });
+          }
+        }
+        break;
+        
+      case 'all':
+        // Update the series template
+        const seriesUpdates: Record<string, any> = {};
+        if (data.name) seriesUpdates.name = data.name;
+        if (data.category) seriesUpdates.category = data.category;
+        if (data.assigneeId !== undefined) seriesUpdates.assigneeId = data.assigneeId;
+        if (data.dueTime !== undefined) seriesUpdates.dueTime = data.dueTime;
+        if (data.recurrence?.frequency) seriesUpdates.frequency = data.recurrence.frequency;
+        if (data.recurrence?.dayOfWeek !== undefined) seriesUpdates.dayOfWeek = data.recurrence.dayOfWeek;
+        if (data.recurrence?.dayOfMonth !== undefined) seriesUpdates.dayOfMonth = data.recurrence.dayOfMonth;
+        
+        if (Object.keys(seriesUpdates).length > 0) {
+          await updateItem(hid, 'recurring_series', item.seriesId, seriesUpdates);
+        }
+        
+        // Update all non-exception instances in this series
+        const seriesTodo = todoItems.filter(t => t.seriesId === item.seriesId && !t.isException);
+        for (const t of seriesTodo) {
+          await handleUpdateTodoItem(t.id, data);
+        }
+        break;
+    }
+  };
+  
+  // Delete a recurring task with scope options
+  const handleDeleteRecurringTask = async (id: string, scope: 'this' | 'future' | 'all') => {
+    if (!hid) return;
+    
+    const item = todoItems.find(i => i.id === id);
+    if (!item?.seriesId) {
+      // Not a recurring task, just do normal delete
+      return handleDeleteTodoItem(id);
+    }
+    
+    console.log(`🗑️ Deleting recurring task with scope: ${scope}`, { id });
+    
+    switch (scope) {
+      case 'this':
+        // Just delete this one instance
+        await handleDeleteTodoItem(id);
+        break;
+        
+      case 'future':
+        // Delete this instance and end the series
+        await handleDeleteTodoItem(id);
+        // Set series end_date to exclude this and future
+        const prevDate = new Date(item.dueDate + 'T00:00:00');
+        prevDate.setDate(prevDate.getDate() - 1);
+        await updateItem(hid, 'recurring_series', item.seriesId, { 
+          endDate: prevDate.toISOString().split('T')[0]
+        });
+        // Delete future instances
+        const futureInstances = todoItems.filter(t => 
+          t.seriesId === item.seriesId && 
+          t.dueDate && 
+          t.dueDate >= item.dueDate! &&
+          t.id !== id
+        );
+        for (const t of futureInstances) {
+          await handleDeleteTodoItem(t.id);
+        }
+        break;
+        
+      case 'all':
+        // Delete entire series and all instances
+        // Soft delete the series
+        await updateItem(hid, 'recurring_series', item.seriesId, { 
+          deletedAt: new Date().toISOString()
+        });
+        // Delete all instances
+        const allInstances = todoItems.filter(t => t.seriesId === item.seriesId);
+        for (const t of allInstances) {
+          await handleDeleteTodoItem(t.id);
+        }
+        break;
+    }
   };
 
   const handleDeleteTodoItem = async (id: string) => {
@@ -1528,6 +1735,7 @@ const AppContent: React.FC = () => {
             onUpdateUser={handleUpdateUser}
             isOnboardingActive={onboardingStep > 0 && pwaModalHandled}
             onPwaModalDismissed={handlePwaModalDismissed}
+            onTriggerUpdateToast={() => setShowUpdateToast(true)}
           />
         );
 
@@ -1540,6 +1748,8 @@ const AppContent: React.FC = () => {
             onAdd={handleAddTodoItem}
             onUpdate={handleUpdateTodoItem}
             onDelete={handleDeleteTodoItem}
+            onUpdateRecurring={handleUpdateRecurringTask}
+            onDeleteRecurring={handleDeleteRecurringTask}
             t={translations}
             currentLang={lang}
             initialSection={navData?.section as 'shopping' | 'task' | undefined}

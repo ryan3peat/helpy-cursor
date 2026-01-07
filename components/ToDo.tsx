@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useLayoutEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Plus,
@@ -27,7 +27,7 @@ import { useScrollHeader } from '@/hooks/useScrollHeader';
 import { useTranslatedContent } from '@/hooks/useTranslatedContent';
 import { useScrollLock } from '@/hooks/useScrollLock';
 import { useSheetTheme } from '@/hooks/useSheetTheme';
-import { ToDoItem, ToDoType, ShoppingCategory, TaskCategory, RecurrenceFrequency, User, UserRole, BaseViewProps } from '../types';
+import { ToDoItem, ToDoType, ShoppingCategory, TaskCategory, RecurrenceFrequency, RecurringActionScope, User, UserRole, BaseViewProps } from '../types';
 import { detectInputLanguage } from '../services/languageDetectionService';
 import { haptics } from '../utils/haptics';
 import { useDemoMode } from '../contexts/DemoModeContext';
@@ -43,6 +43,8 @@ interface ToDoProps extends BaseViewProps {
   onAdd: (item: ToDoItem) => Promise<void>;
   onUpdate: (id: string, data: Partial<ToDoItem>) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
+  onUpdateRecurring?: (id: string, data: Partial<ToDoItem>, scope: RecurringActionScope) => Promise<void>;
+  onDeleteRecurring?: (id: string, scope: RecurringActionScope) => Promise<void>;
   initialSection?: 'shopping' | 'task';
   onSectionChange?: (section: string) => void;
   autoOpenSheet?: boolean; // Auto-open add sheet when navigating from Dashboard (+) button
@@ -360,42 +362,165 @@ const CalendarAgendaView: React.FC<CalendarAgendaViewProps> = ({
     return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
   };
 
-  // Format date range for week header: "1 Jan - 7 Jan 2026"
+  // Format date as local YYYY-MM-DD string (avoids UTC timezone issues)
+  const formatLocalDateKey = (d: Date) => 
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+  // Format date range for week header: "Mon 1 Jan 2025 - Sun 7 Jan 2025"
   const formatWeekRange = (weekStart: Date): string => {
     const weekEnd = new Date(weekStart);
     weekEnd.setDate(weekEnd.getDate() + 6);
     
     const langCode = currentLang === 'en' ? 'en-GB' : currentLang;
-    const startDay = weekStart.getDate();
-    const endDay = weekEnd.getDate();
-    const startMonth = weekStart.toLocaleDateString(langCode, { month: 'short' });
-    const endMonth = weekEnd.toLocaleDateString(langCode, { month: 'short' });
-    const year = weekEnd.getFullYear();
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     
-    if (startMonth === endMonth) {
-      return `${startDay} - ${endDay} ${startMonth} ${year}`;
+    const startDayName = dayNames[weekStart.getDay()];
+    const startDay = weekStart.getDate();
+    const startMonth = weekStart.toLocaleDateString(langCode, { month: 'short' });
+    const startYear = weekStart.getFullYear();
+    
+    const endDayName = dayNames[weekEnd.getDay()];
+    const endDay = weekEnd.getDate();
+    const endMonth = weekEnd.toLocaleDateString(langCode, { month: 'short' });
+    const endYear = weekEnd.getFullYear();
+    
+    // Format: "Mon 1 Jan 2025 - Sun 7 Jan 2025"
+    if (startYear === endYear) {
+      return `${startDayName} ${startDay} ${startMonth} - ${endDayName} ${endDay} ${endMonth} ${endYear}`;
     }
-    return `${startDay} ${startMonth} - ${endDay} ${endMonth} ${year}`;
+    // Different years (e.g., Dec 30 2024 - Jan 5 2025)
+    return `${startDayName} ${startDay} ${startMonth} ${startYear} - ${endDayName} ${endDay} ${endMonth} ${endYear}`;
+  };
+
+  // Helper: Generate next occurrence date for recurring tasks
+  const getNextOccurrenceDate = (
+    frequency: string,
+    dayOfWeek: number | undefined,
+    dayOfMonth: number | undefined,
+    fromDate: Date
+  ): Date | null => {
+    const nextDate = new Date(fromDate);
+    nextDate.setDate(nextDate.getDate() + 1); // Start from day after
+    
+    switch (frequency) {
+      case 'DAILY':
+        return nextDate;
+        
+      case 'WEEKLY':
+        if (dayOfWeek === undefined) return null;
+        while (nextDate.getDay() !== dayOfWeek) {
+          nextDate.setDate(nextDate.getDate() + 1);
+        }
+        return nextDate;
+        
+      case 'MONTHLY':
+        if (dayOfMonth === undefined) return null;
+        // Move to next month if we've passed the day
+        if (nextDate.getDate() > dayOfMonth) {
+          nextDate.setMonth(nextDate.getMonth() + 1);
+        }
+        nextDate.setDate(Math.min(dayOfMonth, new Date(nextDate.getFullYear(), nextDate.getMonth() + 1, 0).getDate()));
+        return nextDate;
+        
+      default:
+        return null;
+    }
   };
 
   // Group tasks by week, then by day (include completed tasks - they show crossed out)
+  // Also generate virtual instances for recurring tasks
   const groupedTasks = useMemo(() => {
-    // Include ALL tasks with due dates (completed show crossed out)
-    const tasksWithDates = items
-      .filter(item => item.dueDate)
-      .sort((a, b) => {
-        const dateA = new Date(a.dueDate! + 'T' + (a.dueTime || '00:00'));
-        const dateB = new Date(b.dueDate! + 'T' + (b.dueTime || '00:00'));
-        return dateA.getTime() - dateB.getTime();
-      });
+    // Start with all real tasks that have due dates
+    const allTasks: ToDoItem[] = [...items.filter(item => item.dueDate)];
+    
+    // Generate virtual future instances for recurring tasks
+    const WEEKS_AHEAD = 8; // Generate 8 weeks of future instances
+    const endDate = new Date(today);
+    endDate.setDate(endDate.getDate() + WEEKS_AHEAD * 7);
+    
+    // Find recurring tasks (those with seriesId or recurrence rules)
+    const recurringTasks = items.filter(item => 
+      item.dueDate && 
+      item.recurrence && 
+      item.recurrence.frequency !== 'NONE' &&
+      !item.completed
+    );
+    
+    // Track existing dates per series to avoid duplicates
+    const existingDatesPerSeries = new Map<string, Set<string>>();
+    items.forEach(item => {
+      if (item.seriesId && item.dueDate) {
+        if (!existingDatesPerSeries.has(item.seriesId)) {
+          existingDatesPerSeries.set(item.seriesId, new Set());
+        }
+        existingDatesPerSeries.get(item.seriesId)!.add(item.dueDate);
+      }
+    });
+    
+    // Generate future instances
+    recurringTasks.forEach(task => {
+      const seriesKey = task.seriesId || task.id; // Use seriesId if available, else task id
+      const existingDates = existingDatesPerSeries.get(seriesKey) || new Set();
+      
+      let currentDate = new Date(task.dueDate! + 'T00:00:00');
+      let instanceCount = 0;
+      const maxInstances = WEEKS_AHEAD * (task.recurrence!.frequency === 'DAILY' ? 7 : 1);
+      
+      while (instanceCount < maxInstances) {
+        const nextDate = getNextOccurrenceDate(
+          task.recurrence!.frequency,
+          task.recurrence!.dayOfWeek,
+          task.recurrence!.dayOfMonth,
+          currentDate
+        );
+        
+        if (!nextDate || nextDate > endDate) break;
+        
+        // Use local date format (not toISOString which converts to UTC)
+        const dateStr = `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, '0')}-${String(nextDate.getDate()).padStart(2, '0')}`;
+        
+        // Only add if we don't already have a real instance for this date
+        if (!existingDates.has(dateStr)) {
+          // Create virtual instance (not in database)
+          allTasks.push({
+            ...task,
+            id: `virtual-${task.id}-${dateStr}`, // Virtual ID
+            dueDate: dateStr,
+            completed: false,
+            // Keep seriesId to link back to the series
+          });
+          existingDates.add(dateStr);
+        }
+        
+        currentDate = nextDate;
+        instanceCount++;
+      }
+    });
+    
+    // Sort all tasks by date
+    const tasksWithDates = allTasks.sort((a, b) => {
+      const dateA = new Date(a.dueDate! + 'T' + (a.dueTime || '00:00'));
+      const dateB = new Date(b.dueDate! + 'T' + (b.dueTime || '00:00'));
+      return dateA.getTime() - dateB.getTime();
+    });
 
     // Group by week
     const weeks: Map<string, { weekStart: Date; weekNumber: number; days: Map<string, ToDoItem[]> }> = new Map();
 
+    // ALWAYS include today's date in the calendar, even if no tasks
+    // Use local date format (not toISOString which converts to UTC)
+    const todayKey = formatLocalDateKey(today);
+    const todayWeekStart = getWeekStart(today);
+    const todayWeekKey = formatLocalDateKey(todayWeekStart);
+    const todayWeekNumber = getWeekNumber(today);
+    
+    weeks.set(todayWeekKey, { weekStart: todayWeekStart, weekNumber: todayWeekNumber, days: new Map() });
+    weeks.get(todayWeekKey)!.days.set(todayKey, []);
+
     tasksWithDates.forEach(task => {
       const taskDate = new Date(task.dueDate! + 'T00:00:00');
       const weekStart = getWeekStart(taskDate);
-      const weekKey = weekStart.toISOString();
+      const weekKey = formatLocalDateKey(weekStart);
       const weekNumber = getWeekNumber(taskDate);
 
       if (!weeks.has(weekKey)) {
@@ -410,8 +535,9 @@ const CalendarAgendaView: React.FC<CalendarAgendaViewProps> = ({
       week.days.get(dayKey)!.push(task);
     });
 
-    return Array.from(weeks.values());
-  }, [items]);
+    // Sort weeks by date and return
+    return Array.from(weeks.values()).sort((a, b) => a.weekStart.getTime() - b.weekStart.getTime());
+  }, [items, today]);
 
   // Format day header (no uppercase per global rules)
   const formatDayHeader = (dateStr: string): { dayName: string; dayNumber: number; isToday: boolean } => {
@@ -439,7 +565,9 @@ const CalendarAgendaView: React.FC<CalendarAgendaViewProps> = ({
   if (groupedTasks.length === 0 && tasksWithoutDates.length === 0) {
     return (
       <div className="mt-8 text-center py-12">
-        <CalendarDays size={48} className="mx-auto text-muted-foreground/30 mb-4" />
+        <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-secondary flex items-center justify-center">
+          <CalendarDays size={28} className="text-muted-foreground" />
+        </div>
         <p className="text-body text-foreground">{t['todo.no_tasks'] || 'No tasks yet'}</p>
         <p className="text-caption text-muted-foreground mt-1">
           {t['todo.tap_fab_to_add'] || 'Tap + to add a task'}
@@ -448,55 +576,105 @@ const CalendarAgendaView: React.FC<CalendarAgendaViewProps> = ({
     );
   }
 
+  // Track last rendered month for separators
+  let lastRenderedMonth: string | null = null;
+  
+  // Helper to get month-year key from date string
+  const getMonthYearKey = (dateStr: string): string => {
+    const date = new Date(dateStr + 'T00:00:00');
+    return `${date.getFullYear()}-${date.getMonth()}`;
+  };
+  
+  // Helper to format month separator: "January 2025"
+  const formatMonthSeparator = (dateStr: string): string => {
+    const date = new Date(dateStr + 'T00:00:00');
+    const langCode = currentLang === 'en' ? 'en-GB' : currentLang;
+    const monthName = date.toLocaleDateString(langCode, { month: 'long' });
+    const year = date.getFullYear();
+    return `${monthName} ${year}`;
+  };
+
   return (
     <div className="mt-4 space-y-6">
-      {groupedTasks.map(({ weekStart, weekNumber, days }) => (
-        <div key={weekStart.toISOString()}>
-          {/* Week Header */}
-          <div className="text-caption text-muted-foreground mb-3 px-1">
-            Week {weekNumber}, {formatWeekRange(weekStart)}
-          </div>
+      {groupedTasks.map(({ weekStart, weekNumber, days }) => {
+        // Sort days once for reuse
+        const sortedDays = Array.from(days.entries()).sort(([a], [b]) => a.localeCompare(b));
+        
+        // Check if first day of week starts a new month (for separator placement BEFORE week header)
+        const firstDayOfWeek = sortedDays[0]?.[0];
+        const firstDayMonthKey = firstDayOfWeek ? getMonthYearKey(firstDayOfWeek) : null;
+        const showMonthBeforeWeek = firstDayMonthKey && lastRenderedMonth !== firstDayMonthKey;
+        
+        if (showMonthBeforeWeek) {
+          lastRenderedMonth = firstDayMonthKey;
+        }
+        
+        return (
+          <div key={formatLocalDateKey(weekStart)}>
+            {/* Month Separator - appears BEFORE week header when week starts in new month */}
+            {showMonthBeforeWeek && firstDayOfWeek && (
+              <div className="pb-2">
+                <h2 className="text-xl font-bold text-foreground">
+                  {formatMonthSeparator(firstDayOfWeek)}
+                </h2>
+              </div>
+            )}
+            
+            {/* Week Header */}
+            <div className="text-caption text-muted-foreground mb-3 px-1">
+              Week {weekNumber} | {formatWeekRange(weekStart)}
+            </div>
 
-          {/* Days in this week */}
-          <div className="space-y-2">
-            {Array.from(days.entries()).map(([dateStr, dayTasks]) => {
-              const { dayName, dayNumber, isToday } = formatDayHeader(dateStr);
+            {/* Days in this week */}
+            <div className="space-y-2">
+              {sortedDays.map(([dateStr, dayTasks]) => {
+                const { dayName, dayNumber, isToday } = formatDayHeader(dateStr);
+                
+                // Check for mid-week month change (e.g., week spans Jan 28 - Feb 3)
+                const monthYearKey = getMonthYearKey(dateStr);
+                const showMidWeekMonthSeparator = lastRenderedMonth !== monthYearKey;
+                if (showMidWeekMonthSeparator) {
+                  lastRenderedMonth = monthYearKey;
+                }
 
-              return (
-                <div key={dateStr} className="flex gap-3">
-                  {/* Day Column */}
-                  <div className="w-12 shrink-0 text-center pt-2">
-                    <div className="text-micro text-muted-foreground">{dayName}</div>
-                    <div 
-                      className={`text-title font-bold mt-0.5 ${
-                        isToday 
-                          ? 'w-9 h-9 mx-auto rounded-full bg-primary text-primary-foreground flex items-center justify-center' 
-                          : 'text-foreground'
-                      }`}
-                    >
-                      {dayNumber}
-                    </div>
-                  </div>
-
-                  {/* Tasks Column */}
-                  <div className="flex-1 space-y-2 relative">
-                    {/* Today indicator line */}
-                    {isToday && (
-                      <div className="absolute left-0 right-0 top-6 flex items-center z-10 pointer-events-none">
-                        <div className="w-2 h-2 rounded-full bg-primary" />
-                        <div className="flex-1 h-0.5 bg-primary/30" />
+                return (
+                  <React.Fragment key={dateStr}>
+                    {/* Month Separator - for mid-week month changes only */}
+                    {showMidWeekMonthSeparator && (
+                      <div className="pt-4 pb-2">
+                        <h2 className="text-xl font-bold text-foreground">
+                          {formatMonthSeparator(dateStr)}
+                        </h2>
                       </div>
                     )}
+                    
+                    <div className="flex gap-3 items-start" data-today={isToday ? 'true' : undefined}>
+                    {/* Day Column */}
+                    <div className="w-12 shrink-0 text-center pt-2">
+                      <div className="text-micro text-muted-foreground">{dayName}</div>
+                      <div 
+                        className={`text-title font-bold mt-0.5 w-9 h-9 mx-auto flex items-center justify-center ${
+                          isToday 
+                            ? 'rounded-full bg-primary text-primary-foreground' 
+                            : 'text-foreground'
+                        }`}
+                      >
+                        {dayNumber}
+                      </div>
+                    </div>
 
+                  {/* Tasks Column */}
+                  <div className="flex-1 space-y-2">
                     {dayTasks.map(task => {
-                      const isCompleting = completingIds.has(task.id);
+                      const isVirtual = task.id.startsWith('virtual-');
+                      const isCompleting = !isVirtual && completingIds.has(task.id);
                       const isCompleted = task.completed || isCompleting;
                       const assignee = getUser(task.assigneeId);
 
                       return (
                         <div
                           key={task.id}
-                          className={`w-full text-left rounded-lg px-3 py-2.5 shadow-sm flex items-center gap-3 transition-opacity ${
+                          className={`w-full text-left rounded-lg px-3 py-2.5 shadow-sm flex items-center gap-3 transition-opacity min-h-[60px] ${
                             isCompleted 
                               ? 'bg-muted/50' 
                               : 'bg-card'
@@ -506,6 +684,12 @@ const CalendarAgendaView: React.FC<CalendarAgendaViewProps> = ({
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
+                              // Virtual instances can't be completed directly
+                              // User must tap to create a real instance first
+                              if (isVirtual) {
+                                onItemClick(task); // Open edit sheet to create real instance
+                                return;
+                              }
                               if (!isCompleting) {
                                 onToggleComplete(task.id, !task.completed);
                               }
@@ -517,7 +701,7 @@ const CalendarAgendaView: React.FC<CalendarAgendaViewProps> = ({
                                 <Check size={12} className="text-primary-foreground" strokeWidth={3} />
                               </div>
                             ) : (
-                              <Circle size={20} className="text-muted-foreground/50" />
+                              <Circle size={20} className={`${isVirtual ? 'text-muted-foreground/30' : 'text-muted-foreground/50'}`} />
                             )}
                           </button>
                           
@@ -568,11 +752,13 @@ const CalendarAgendaView: React.FC<CalendarAgendaViewProps> = ({
                     })}
                   </div>
                 </div>
+                </React.Fragment>
               );
-            })}
+              })}
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
 
       {/* Tasks without due dates */}
       {tasksWithoutDates.length > 0 && (
@@ -657,6 +843,8 @@ const ToDo: React.FC<ToDoProps> = ({
   onAdd,
   onUpdate,
   onDelete,
+  onUpdateRecurring,
+  onDeleteRecurring,
   t,
   currentLang,
   initialSection,
@@ -694,6 +882,58 @@ const ToDo: React.FC<ToDoProps> = ({
       setActiveSection(initialSection);
     }
   }, [initialSection]);
+  
+  // Auto-scroll to today when switching to calendar view (instant, no animation)
+  const hasScrolledToToday = useRef(false);
+  const [isTodayVisible, setIsTodayVisible] = useState(true);
+  
+  useLayoutEffect(() => {
+    if (viewMode === 'calendar' && activeSection === 'task') {
+      // Small delay to ensure DOM is ready, but use requestAnimationFrame for no jitter
+      requestAnimationFrame(() => {
+        const todayElement = document.querySelector('[data-today="true"]');
+        if (todayElement && !hasScrolledToToday.current) {
+          todayElement.scrollIntoView({ behavior: 'instant', block: 'start' });
+          hasScrolledToToday.current = true;
+        }
+      });
+    }
+    // Reset flag when switching away from calendar
+    if (viewMode !== 'calendar') {
+      hasScrolledToToday.current = false;
+    }
+  }, [viewMode, activeSection]);
+  
+  // Track if today element is visible on screen (for Today button styling)
+  useEffect(() => {
+    if (viewMode !== 'calendar' || activeSection !== 'task') {
+      setIsTodayVisible(true); // Reset when not in calendar view
+      return;
+    }
+    
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach(entry => {
+          setIsTodayVisible(entry.isIntersecting);
+        });
+      },
+      { threshold: 0.1 } // Consider visible if 10% is showing
+    );
+    
+    // Observe the today element after a short delay to ensure it exists
+    const timeoutId = setTimeout(() => {
+      const todayElement = document.querySelector('[data-today="true"]');
+      if (todayElement) {
+        observer.observe(todayElement);
+      }
+    }, 100);
+    
+    return () => {
+      clearTimeout(timeoutId);
+      observer.disconnect();
+    };
+  }, [viewMode, activeSection]);
+  
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [isAddingInline, setIsAddingInline] = useState(false);
   const [inlineInputValue, setInlineInputValue] = useState('');
@@ -701,11 +941,19 @@ const ToDo: React.FC<ToDoProps> = ({
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [showClearCompletedConfirm, setShowClearCompletedConfirm] = useState(false);
   
+  // Recurring task action dialog state
+  const [recurringActionDialog, setRecurringActionDialog] = useState<{
+    isOpen: boolean;
+    type: 'update' | 'delete';
+    itemId: string | null;
+    pendingData?: Partial<ToDoItem>;
+  }>({ isOpen: false, type: 'update', itemId: null });
+  
   // Lock body scroll when sheet is open
-  useScrollLock(isSheetOpen || showClearCompletedConfirm);
+  useScrollLock(isSheetOpen || showClearCompletedConfirm || recurringActionDialog.isOpen);
   
   // Dim status bar when sheet is open (iOS)
-  useSheetTheme(isSheetOpen || showClearCompletedConfirm);
+  useSheetTheme(isSheetOpen || showClearCompletedConfirm || recurringActionDialog.isOpen);
   
   const [sheetForm, setSheetForm] = useState<Partial<ToDoItem>>({});
   const [editingItemId, setEditingItemId] = useState<string | null>(null); // Track if editing existing item
@@ -1186,7 +1434,11 @@ const ToDo: React.FC<ToDoProps> = ({
   }, [autoOpenSheet]);
   
   const openEditSheet = (item: ToDoItem) => {
-    setEditingItemId(item.id);
+    const isVirtual = item.id.startsWith('virtual-');
+    
+    // For virtual instances, we set editingItemId to null so it creates a new instance
+    // but we keep the seriesId to maintain the link
+    setEditingItemId(isVirtual ? null : item.id);
     setSheetForm({
       type: item.type,
       name: item.name,
@@ -1197,7 +1449,7 @@ const ToDo: React.FC<ToDoProps> = ({
       brand: item.brand,
       dueDate: item.dueDate,
       dueTime: item.dueTime,
-      recurrence: item.recurrence,
+      recurrence: item.recurrence, // Keep recurrence info for all instances (virtual and real)
     });
     setIsSheetOpen(true);
   };
@@ -1240,6 +1492,20 @@ const ToDo: React.FC<ToDoProps> = ({
       };
       
       const itemId = editingItemId; // Capture before clearing
+      
+      // Check if this is a recurring task - show scope dialog
+      if (existingItem?.seriesId && onUpdateRecurring) {
+        setIsSheetOpen(false);
+        setEditingItemId(null);
+        setRecurringActionDialog({
+          isOpen: true,
+          type: 'update',
+          itemId,
+          pendingData: updates,
+        });
+        return;
+      }
+      
       setIsSheetOpen(false);
       setEditingItemId(null);
       
@@ -1298,6 +1564,29 @@ const ToDo: React.FC<ToDoProps> = ({
   };
 
   // ─────────────────────────────────────────────────────────────────
+  // Recurring Action Handler
+  // ─────────────────────────────────────────────────────────────────
+  
+  const handleRecurringAction = async (scope: RecurringActionScope) => {
+    const { type, itemId, pendingData } = recurringActionDialog;
+    
+    if (!itemId) return;
+    
+    setRecurringActionDialog({ isOpen: false, type: 'update', itemId: null });
+    
+    try {
+      if (type === 'update' && pendingData && onUpdateRecurring) {
+        await onUpdateRecurring(itemId, pendingData, scope);
+      } else if (type === 'delete' && onDeleteRecurring) {
+        await onDeleteRecurring(itemId, scope);
+      }
+    } catch (err) {
+      console.error(`Failed to ${type} recurring task:`, err);
+      setError(t[`error.${type}_item`] || `Failed to ${type} item. Please try again.`);
+    }
+  };
+
+  // ─────────────────────────────────────────────────────────────────
   // Swipe Gesture Handlers
   // ─────────────────────────────────────────────────────────────────
 
@@ -1350,25 +1639,64 @@ const ToDo: React.FC<ToDoProps> = ({
           style={{ height: '120px', boxShadow: '0 10px 0 0 hsl(var(--background))' }}
         >
           <div className="flex items-center justify-between w-full">
-            <h1 className="w-full">
+            <h1>
               <span className="text-primary font-bold" style={{ fontSize: '20px' }}>{t['todo.title'] || 'To Do'}</span><br />
               <span className="text-display text-foreground">{activeSection === 'shopping' ? (t['todo.shopping'] || 'Shopping') : (t['todo.tasks'] || 'Tasks')}</span>
             </h1>
             
-            {/* Filter/Sort Button */}
-            <div className="relative" ref={filterDropdownRef}>
-              <button
-                onClick={() => setIsFilterDropdownOpen(!isFilterDropdownOpen)}
-                className={`p-2 rounded-full transition-colors relative ${
-                  isFilterDropdownOpen ? 'bg-muted' : ''
-                }`}
-              >
-                <ArrowDownUp size={20} className="text-muted-foreground" />
-                {/* Active indicator dot */}
-                {(sortBy !== 'addedDate-desc' || showOnlyMine) && (
-                  <span className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full" />
-                )}
-              </button>
+            {/* Header Actions - Fixed positions to prevent jumping */}
+            <div className="flex items-center gap-1 shrink-0">
+              {/* Today Button - invisible in list view, "Today" text in calendar view */}
+              {activeSection === 'task' && (
+                <button
+                  onClick={() => {
+                    const todayElement = document.querySelector('[data-today="true"]');
+                    todayElement?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }}
+                  className={`px-3 py-2 rounded-full text-body font-medium transition-colors ${
+                    viewMode === 'calendar' 
+                      ? isTodayVisible
+                        ? 'text-muted-foreground hover:bg-muted'
+                        : 'bg-primary text-primary-foreground'
+                      : 'invisible'
+                  }`}
+                >
+                  {t['meals.today'] ?? 'Today'}
+                </button>
+              )}
+              
+              {/* View Switcher - shows icon for the OTHER view (tap to switch) */}
+              {activeSection === 'task' && (
+                <button
+                  onClick={() => setViewMode(viewMode === 'list' ? 'calendar' : 'list')}
+                  className="p-2 rounded-full text-muted-foreground hover:bg-muted transition-colors"
+                >
+                  {viewMode === 'list' ? <Calendar size={20} /> : <List size={20} />}
+                </button>
+              )}
+              
+              {/* Filter/Sort Button - greyed out in calendar view */}
+              <div className="relative" ref={filterDropdownRef}>
+                <button
+                  onClick={() => {
+                    // Disabled in calendar view
+                    if (activeSection === 'task' && viewMode === 'calendar') return;
+                    setIsFilterDropdownOpen(!isFilterDropdownOpen);
+                  }}
+                  className={`p-2 rounded-full transition-colors relative ${
+                    isFilterDropdownOpen ? 'bg-muted' : ''
+                  } ${
+                    activeSection === 'task' && viewMode === 'calendar' 
+                      ? 'opacity-30 cursor-default' 
+                      : ''
+                  }`}
+                >
+                  <ArrowDownUp size={20} className="text-muted-foreground" />
+                  {/* Active indicator dot - hide in calendar view */}
+                  {(sortBy !== 'addedDate-desc' || showOnlyMine) && !(activeSection === 'task' && viewMode === 'calendar') && (
+                    <span className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full" />
+                  )}
+                </button>
               
               {/* Dropdown */}
               {isFilterDropdownOpen && (
@@ -1450,6 +1778,7 @@ const ToDo: React.FC<ToDoProps> = ({
                   )}
                 </div>
               )}
+              </div>
             </div>
           </div>
         </header>
@@ -1501,45 +1830,6 @@ const ToDo: React.FC<ToDoProps> = ({
             </button>
           </div>
         </div>
-
-        {/* View Mode Toggle (Tasks only) */}
-        {activeSection === 'task' && (
-          <div className="mt-3 mb-1 -mx-4 px-4 sm:-mx-6 sm:px-6">
-            <div 
-              className="relative rounded-full overflow-hidden inline-flex"
-              style={{ backgroundColor: 'hsl(var(--muted))' }}
-            >
-              <div className="flex p-1">
-                <button
-                  onClick={() => setViewMode('list')}
-                  className={`px-4 py-2 rounded-full text-body whitespace-nowrap transition-all flex items-center gap-1.5 ${
-                    viewMode === 'list'
-                      ? 'bg-card text-primary shadow-sm'
-                      : 'text-muted-foreground'
-                  }`}
-                >
-                  <List size={16} />
-                  {t['todo.list_view'] || 'List'}
-                </button>
-                <button
-                  onClick={() => setViewMode('calendar')}
-                  className={`px-4 py-2 rounded-full text-body whitespace-nowrap transition-all flex items-center gap-1.5 ${
-                    viewMode === 'calendar'
-                      ? 'bg-card text-primary shadow-sm'
-                      : 'text-muted-foreground'
-                  }`}
-                >
-                  <CalendarDays size={16} />
-                  {t['todo.calendar_view'] || 'Calendar'}
-                </button>
-              </div>
-              <div 
-                className="absolute inset-0 rounded-full pointer-events-none"
-                style={{ boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.06)' }}
-              />
-            </div>
-          </div>
-        )}
 
         {/* Sticky Tab Navigation - List View Only */}
         {(activeSection === 'shopping' || viewMode === 'list') && (
@@ -2145,10 +2435,21 @@ const ToDo: React.FC<ToDoProps> = ({
                     <label className="block text-caption text-muted-foreground tracking-wide mb-2">
                       {t['todo.due_date_time'] || 'Due Date & Time'}
                     </label>
-                    {/* Date/time picker with transparent native input overlay for iOS compatibility */}
+                    {/* Date/time picker with clickable visual layer for full touch area */}
                     <div className="relative">
-                      {/* Visual display layer */}
-                      <div className="w-full px-4 py-3 bg-muted rounded-xl text-body border border-transparent flex items-center justify-between pointer-events-none">
+                      {/* Visual display layer - clickable to trigger picker */}
+                      <div 
+                        className="w-full px-4 py-3 bg-muted rounded-xl text-body border border-transparent flex items-center justify-between cursor-pointer"
+                        onClick={() => {
+                          const input = document.getElementById('due-date-picker') as HTMLInputElement;
+                          if (input?.showPicker) {
+                            input.showPicker();
+                          } else {
+                            input?.focus();
+                            input?.click();
+                          }
+                        }}
+                      >
                         <span className={sheetForm.dueDate ? 'text-foreground' : 'text-muted-foreground'}>
                           {sheetForm.dueDate 
                             ? formatDateTime(sheetForm.dueDate, sheetForm.dueTime || '09:00')
@@ -2157,8 +2458,9 @@ const ToDo: React.FC<ToDoProps> = ({
                         </span>
                         <Calendar size={18} className="text-muted-foreground" />
                       </div>
-                      {/* Transparent native input overlay - captures taps on iOS */}
+                      {/* Hidden native input for value handling */}
                       <input
+                        id="due-date-picker"
                         type="datetime-local"
                         value={sheetForm.dueDate && sheetForm.dueTime 
                           ? `${sheetForm.dueDate}T${sheetForm.dueTime}`
@@ -2170,7 +2472,7 @@ const ToDo: React.FC<ToDoProps> = ({
                           const [date, time] = e.target.value.split('T');
                           setSheetForm(prev => ({ ...prev, dueDate: date, dueTime: time }));
                         }}
-                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                        className="absolute inset-0 w-full h-full opacity-0 pointer-events-none"
                         style={{ WebkitAppearance: 'none' }}
                       />
                     </div>
@@ -2290,6 +2592,20 @@ const ToDo: React.FC<ToDoProps> = ({
                 <button
                   onClick={async () => {
                     const itemId = editingItemId;
+                    const existingItem = items.find(i => i.id === itemId);
+                    
+                    // Check if this is a recurring task - show scope dialog
+                    if (existingItem?.seriesId && onDeleteRecurring) {
+                      setIsSheetOpen(false);
+                      setEditingItemId(null);
+                      setRecurringActionDialog({
+                        isOpen: true,
+                        type: 'delete',
+                        itemId,
+                      });
+                      return;
+                    }
+                    
                     setIsSheetOpen(false);
                     setEditingItemId(null);
                     await handleDelete(itemId);
@@ -2349,6 +2665,89 @@ const ToDo: React.FC<ToDoProps> = ({
                 className="flex-1 py-3.5 rounded-xl bg-destructive/10 text-destructive text-body"
               >
                 {t['common.clear_all'] || 'Clear All'}
+              </button>
+            </div>
+          </div>
+        </div>
+      , document.body)}
+
+      {/* Recurring Action Scope Dialog */}
+      {recurringActionDialog.isOpen && createPortal(
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
+          {/* Safe area bottom cover */}
+          <div 
+            className="absolute bottom-0 left-0 right-0 bg-card"
+            style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
+          />
+          <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
+            {/* Header */}
+            <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
+              <h2 className="text-title text-foreground">
+                {recurringActionDialog.type === 'delete' 
+                  ? (t['todo.delete_recurring_title'] || 'Delete Recurring Task')
+                  : (t['todo.update_recurring_title'] || 'Update Recurring Task')
+                }
+              </h2>
+              <p className="text-body text-muted-foreground mt-1">
+                {t['todo.recurring_scope_message'] || 'This is a recurring task. What would you like to change?'}
+              </p>
+            </div>
+
+            {/* Options */}
+            <div className="p-5 space-y-3">
+              <button
+                onClick={() => handleRecurringAction('this')}
+                className="w-full p-4 rounded-xl bg-secondary text-left"
+              >
+                <p className="text-body text-foreground font-medium">
+                  {t['todo.scope_this_only'] || 'This task only'}
+                </p>
+                <p className="text-caption text-muted-foreground mt-0.5">
+                  {recurringActionDialog.type === 'delete'
+                    ? (t['todo.scope_this_only_delete_desc'] || 'Only delete this occurrence')
+                    : (t['todo.scope_this_only_update_desc'] || 'Only change this occurrence')
+                  }
+                </p>
+              </button>
+              
+              <button
+                onClick={() => handleRecurringAction('future')}
+                className="w-full p-4 rounded-xl bg-secondary text-left"
+              >
+                <p className="text-body text-foreground font-medium">
+                  {t['todo.scope_this_and_future'] || 'This and future tasks'}
+                </p>
+                <p className="text-caption text-muted-foreground mt-0.5">
+                  {recurringActionDialog.type === 'delete'
+                    ? (t['todo.scope_future_delete_desc'] || 'Delete this and all future occurrences')
+                    : (t['todo.scope_future_update_desc'] || 'Change this and all future occurrences')
+                  }
+                </p>
+              </button>
+              
+              <button
+                onClick={() => handleRecurringAction('all')}
+                className="w-full p-4 rounded-xl bg-secondary text-left"
+              >
+                <p className="text-body text-foreground font-medium">
+                  {t['todo.scope_all_tasks'] || 'All tasks'}
+                </p>
+                <p className="text-caption text-muted-foreground mt-0.5">
+                  {recurringActionDialog.type === 'delete'
+                    ? (t['todo.scope_all_delete_desc'] || 'Delete all occurrences (past and future)')
+                    : (t['todo.scope_all_update_desc'] || 'Change all occurrences (past and future)')
+                  }
+                </p>
+              </button>
+            </div>
+
+            {/* Cancel Button */}
+            <div className="p-5 pb-8 border-t border-border shrink-0">
+              <button
+                onClick={() => setRecurringActionDialog({ isOpen: false, type: 'update', itemId: null })}
+                className="w-full py-3.5 rounded-xl bg-muted text-foreground text-body"
+              >
+                {t['common.cancel'] || 'Cancel'}
               </button>
             </div>
           </div>

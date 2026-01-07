@@ -89,6 +89,8 @@ interface DashboardProps {
   isOnboardingActive?: boolean;
   /** Callback when PWA modal is dismissed (to start onboarding after) */
   onPwaModalDismissed?: () => void;
+  /** Test trigger for UpdateToast (SuperAdmin only) */
+  onTriggerUpdateToast?: () => void;
 }
 
 // Component for displaying translated meal description
@@ -479,6 +481,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   onUpdateUser,
   isOnboardingActive = false,
   onPwaModalDismissed,
+  onTriggerUpdateToast,
 }) => {
   // ─────────────────────────────────────────────────────────────────
   // Safety check for currentUser
@@ -1496,6 +1499,24 @@ const Dashboard: React.FC<DashboardProps> = ({
                 <p className="text-caption text-[#FF9800] mt-2 text-center">
                   {t['view_as_helper.enabled'] || 'Viewing as Helper'}
                 </p>
+              )}
+              
+              {/* Test UpdateToast Button - SuperAdmin Only */}
+              {onTriggerUpdateToast && (
+                <button
+                  onClick={() => {
+                    haptics.light();
+                    onTriggerUpdateToast();
+                  }}
+                  className="w-full mt-3 px-4 py-3 rounded-xl bg-secondary/50 border border-transparent text-left"
+                >
+                  <span className="text-body font-medium text-foreground block">
+                    Test Update Toast
+                  </span>
+                  <span className="text-caption text-muted-foreground">
+                    Manually trigger the app update notification
+                  </span>
+                </button>
               )}
             </div>
           )}

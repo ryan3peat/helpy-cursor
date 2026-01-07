@@ -70,6 +70,60 @@ export interface Database {
           created_at?: string
         }
       }
+      // Recurring task series (templates for recurring tasks)
+      recurring_series: {
+        Row: {
+          id: string
+          household_id: string
+          name: string
+          category: string
+          assignee_id: string | null
+          due_time: string | null
+          frequency: string // 'DAILY' | 'WEEKLY' | 'MONTHLY'
+          day_of_week: number | null
+          day_of_month: number | null
+          start_date: string
+          end_date: string | null
+          created_by: string | null
+          created_at: string
+          updated_at: string
+          deleted_at: string | null
+        }
+        Insert: {
+          id?: string
+          household_id: string
+          name: string
+          category?: string
+          assignee_id?: string | null
+          due_time?: string | null
+          frequency: string
+          day_of_week?: number | null
+          day_of_month?: number | null
+          start_date: string
+          end_date?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+          deleted_at?: string | null
+        }
+        Update: {
+          id?: string
+          household_id?: string
+          name?: string
+          category?: string
+          assignee_id?: string | null
+          due_time?: string | null
+          frequency?: string
+          day_of_week?: number | null
+          day_of_month?: number | null
+          start_date?: string
+          end_date?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+          deleted_at?: string | null
+        }
+      }
       // NOTE: 'shopping' and 'tasks' tables are OBSOLETE - replaced by unified 'todo_items' table
       todo_items: {
         Row: {
@@ -87,6 +141,10 @@ export interface Database {
           due_date: string | null
           due_time: string | null
           recurrence: Json | null
+          // Recurring series fields
+          series_id: string | null
+          is_exception: boolean | null
+          original_due_date: string | null
         }
         Insert: {
           id?: string
@@ -103,6 +161,10 @@ export interface Database {
           due_date?: string | null
           due_time?: string | null
           recurrence?: Json | null
+          // Recurring series fields
+          series_id?: string | null
+          is_exception?: boolean | null
+          original_due_date?: string | null
         }
         Update: {
           id?: string
@@ -119,6 +181,10 @@ export interface Database {
           due_date?: string | null
           due_time?: string | null
           recurrence?: Json | null
+          // Recurring series fields
+          series_id?: string | null
+          is_exception?: boolean | null
+          original_due_date?: string | null
         }
       }
       meals: {

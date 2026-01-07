@@ -71,6 +71,32 @@ export interface RecurrenceRule {
   dayOfMonth?: number; // 1-31 (for MONTHLY)
 }
 
+// Recurring Series - Template for recurring tasks (Google Calendar style)
+export interface RecurringSeries {
+  id: string;
+  householdId: string;
+  // Task template (copied to each instance)
+  name: string;
+  category: string;
+  assigneeId?: string;
+  dueTime?: string;
+  // Recurrence rules
+  frequency: RecurrenceFrequency;
+  dayOfWeek?: number;
+  dayOfMonth?: number;
+  // Series bounds
+  startDate: string; // YYYY-MM-DD
+  endDate?: string; // YYYY-MM-DD (null = forever)
+  // Metadata
+  createdBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  deletedAt?: string;
+}
+
+// Edit/Delete action scope for recurring tasks
+export type RecurringActionScope = 'this' | 'future' | 'all';
+
 // Unified ToDo Item
 export interface ToDoItem {
   id: string;
@@ -89,7 +115,11 @@ export interface ToDoItem {
   // Task-specific
   dueDate?: string; // YYYY-MM-DD
   dueTime?: string; // HH:mm
-  recurrence?: RecurrenceRule;
+  recurrence?: RecurrenceRule; // Legacy field (still used for display)
+  // Recurring series (new instance-based model)
+  seriesId?: string; // Links to recurring_series table (null = one-off task)
+  isException?: boolean; // True if this instance was modified from series template
+  originalDueDate?: string; // Original date if instance was moved
   // Translation fields
   nameLang?: string | null; // Language code of the name field (null if undetectable)
   nameTranslations?: Record<string, string>; // Translations: { "en": "original", "zh-CN": "translated", ... }

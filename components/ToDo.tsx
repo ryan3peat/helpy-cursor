@@ -731,7 +731,8 @@ const CalendarAgendaView: React.FC<CalendarAgendaViewProps> = ({
                             }`}>
                               <TranslatedItemName item={task} currentLang={currentLang} onUpdate={onUpdate} />
                             </p>
-                            {task.dueTime && (
+                            {/* Time and/or Recurrence info */}
+                            {(task.dueTime || (task.recurrence && task.recurrence.frequency !== 'NONE')) && (
                               <p className={`text-caption mt-0.5 ${
                                 isCompleted 
                                   ? 'text-muted-foreground/70' 
@@ -739,18 +740,20 @@ const CalendarAgendaView: React.FC<CalendarAgendaViewProps> = ({
                               }`}>
                                 {task.dueTime}
                                 {task.recurrence && task.recurrence.frequency !== 'NONE' && (
-                                  <span className="ml-2 inline-flex items-center gap-1">
-                                    <Repeat size={10} />
-                                    {task.recurrence.frequency === 'DAILY' ? 'Daily' :
-                                     task.recurrence.frequency === 'WEEKLY' ? 'Weekly' : 'Monthly'}
+                                  <span className={task.dueTime ? 'ml-2' : ''}>
+                                    <span className="inline-flex items-center gap-1">
+                                      <Repeat size={10} />
+                                      {task.recurrence.frequency === 'DAILY' ? 'Daily' :
+                                       task.recurrence.frequency === 'WEEKLY' ? 'Weekly' : 'Monthly'}
+                                    </span>
                                   </span>
                                 )}
                               </p>
                             )}
                           </button>
                           
-                          {/* Assignee Avatar */}
-                          {assignee && assignee.id !== currentUser.id && (
+                          {/* Assignee Avatar - show for all assigned users including yourself */}
+                          {assignee && (
                             <Avatar
                               user={assignee}
                               size="xs"
@@ -829,8 +832,8 @@ const CalendarAgendaView: React.FC<CalendarAgendaViewProps> = ({
                     </p>
                   </button>
                   
-                  {/* Assignee Avatar */}
-                  {assignee && assignee.id !== currentUser.id && (
+                  {/* Assignee Avatar - show for all assigned users including yourself */}
+                  {assignee && (
                     <Avatar
                       user={assignee}
                       size="xs"

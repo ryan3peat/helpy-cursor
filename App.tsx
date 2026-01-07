@@ -1166,6 +1166,18 @@ const AppContent: React.FC = () => {
           endDate: getLocalDateString(prevDate)
         });
         
+        // Delete future instances from the old series (on or after effectiveDate)
+        // This prevents duplicates when new series creates its instances
+        const futureInstances = todoItems.filter(t => 
+          t.seriesId === seriesId && 
+          t.dueDate && 
+          t.dueDate >= effectiveDate &&
+          !t.isException
+        );
+        for (const instance of futureInstances) {
+          await handleDeleteTodoItem(instance.id);
+        }
+        
         // Create a new series starting from this date with updated data
         const newSeriesData = {
           householdId: hid,
@@ -1180,11 +1192,6 @@ const AppContent: React.FC = () => {
           createdBy: currentUser?.id,
         };
         await addItem(hid, 'recurring_series', newSeriesData);
-        
-        // If there was a real instance, update it to be an exception
-        if (item) {
-          await handleUpdateTodoItem(id, { ...data, isException: true });
-        }
         break;
       }
         

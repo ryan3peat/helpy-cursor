@@ -16,20 +16,11 @@ const AUTH_GRADIENT_STYLE = {
 };
 
 // Loading component for auth states
-const AuthLoading = ({ message }: { message: string }) => (
+const AuthLoading = () => (
   <div className="min-h-screen w-full flex flex-col items-center justify-center p-6 page-fade-in" style={AUTH_GRADIENT_STYLE}>
-    <div className="text-center">
-      {/* Logo */}
-      <img 
-        src="/helpy-logo-blue.png" 
-        alt="Helpy" 
-        className="h-14 w-auto mx-auto mb-8"
-      />
-      {/* Loading bar */}
-      <div className="auth-loading-bar mx-auto mb-4">
-        <div className="auth-loading-bar-fill" />
-      </div>
-      <p className="text-body text-muted-foreground">{message}</p>
+    {/* Loading bar only - no logo/text to avoid jarring transition from iOS splash */}
+    <div className="auth-loading-bar mx-auto">
+      <div className="auth-loading-bar-fill" />
     </div>
   </div>
 );
@@ -980,7 +971,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
   // Don't render SignIn until we know if user is authenticated or not
   if (!isLoaded) {
     console.log('🟣 [Auth] Clerk not loaded yet, showing loading state');
-    return <AuthLoading message="Please wait a moment" />;
+    return <AuthLoading />;
   }
 
   // Loading state while creating user OR while user is authenticated but being processed
@@ -988,7 +979,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
     return (
       <>
         <AlertModal />
-        <AuthLoading message="Setting up your account" />
+        <AuthLoading />
       </>
     );
   }
@@ -999,7 +990,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
   if (isLoaded && user && hasCheckedUser.current) {
     console.log('🟡 [Auth] Rendering loading state - user authenticated, hasCheckedUser is true');
     console.log('🟡 [Auth] State:', { isCreatingUser, hasCheckedUser: hasCheckedUser.current });
-    return <AuthLoading message="Almost ready" />;
+    return <AuthLoading />;
   }
 
   // Only show SignIn component if Clerk is loaded AND user is not authenticated
@@ -1036,7 +1027,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
     // Wait for SignIn component to be ready (prevents flash of container without form)
     if (!signInReady) {
       console.log('🔴 [Auth] Waiting for SignIn component to be ready...');
-      return <AuthLoading message="Please wait a moment" />;
+      return <AuthLoading />;
     }
     
     console.log('🔴 [Auth] Rendering SignIn component - Clerk loaded but no authenticated user');
@@ -1155,7 +1146,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
   }
 
   // Fallback - should never reach here
-  return <AuthLoading message="Loading..." />;
+  return <AuthLoading />;
 };
 
 export default Auth;

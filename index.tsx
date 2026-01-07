@@ -5,6 +5,14 @@ import './index.css';
 import App from './App';
 import { SupabaseProvider } from './contexts/SupabaseContext';
 
+// Capture PWA install prompt IMMEDIATELY before React loads
+// This ensures we never miss Chrome's beforeinstallprompt event
+(window as any).deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  (window as any).deferredInstallPrompt = e;
+});
+
 // Log URL immediately on script load (before React)
 console.log('[Index] App starting. URL:', window.location.href);
 console.log('[Index] Hash:', window.location.hash);

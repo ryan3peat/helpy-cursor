@@ -652,7 +652,7 @@ select {
 }
 
 .auth-loading-bar {
-  width: 200px;
+  width: 160px;
   height: 4px;
   background: hsl(var(--border));
   border-radius: 9999px;

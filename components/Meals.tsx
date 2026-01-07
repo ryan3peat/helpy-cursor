@@ -288,31 +288,23 @@ const Meals: React.FC<MealsProps> = ({
       case 'KIDS': filtered = activeUsers.filter(u => u.role === UserRole.CHILD); break;
     }
     
-    // Sort users for selection:
-    // If helper exists: Helper → Myself → Spouse → Others → Child
-    // If no helper: Myself → Spouse → Others → Child
-    const hasHelper = activeUsers.some(u => u.role === UserRole.HELPER);
-    
+    // Sort users: SuperAdmin → Admin → Spouse → Child → Others → Helpers
     const getRolePriority = (user: User): number => {
-      // Myself always gets special priority
-      if (user.id === currentUser.id) {
-        return hasHelper ? 1 : 0; // After helper if helper exists, first if no helper
-      }
-      
       switch (user.role) {
-        case UserRole.HELPER:
-          return 0; // Helper first (only if hasHelper)
-        case UserRole.MASTER:
         case UserRole.SUPERADMIN:
-          return 1; // Admin roles (but currentUser check above takes precedence)
+          return 0;
+        case UserRole.MASTER:
+          return 1;
         case UserRole.SPOUSE:
           return 2;
-        case UserRole.OTHER:
-          return 3;
         case UserRole.CHILD:
+          return 3;
+        case UserRole.OTHER:
           return 4;
-        default:
+        case UserRole.HELPER:
           return 5;
+        default:
+          return 6;
       }
     };
     
@@ -410,8 +402,8 @@ const Meals: React.FC<MealsProps> = ({
     setModalType(type);
     setModalAudience('ALL');
     setDescription('');
-    // Auto-select all non-helper active users
-    setSelectedUserIds(users.filter(u => u.role !== UserRole.HELPER && u.status === 'active').map(u => u.id));
+    // Auto-select all active users (including helpers)
+    setSelectedUserIds(users.filter(u => u.status === 'active').map(u => u.id));
     setIsModalOpen(true);
   };
 
@@ -429,12 +421,8 @@ const Meals: React.FC<MealsProps> = ({
   const handleAudienceChange = (newAudience: MealAudience) => {
     setModalAudience(newAudience);
     const eligibleUsers = getUsersForAudience(newAudience);
-    // Auto-select all eligible users (except helper by default for ALL)
-    if (newAudience === 'ALL') {
-      setSelectedUserIds(eligibleUsers.filter(u => u.role !== UserRole.HELPER).map(u => u.id));
-    } else {
-      setSelectedUserIds(eligibleUsers.map(u => u.id));
-    }
+    // Auto-select all eligible users (including helpers)
+    setSelectedUserIds(eligibleUsers.map(u => u.id));
   };
 
   const handleSave = () => {

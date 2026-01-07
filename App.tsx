@@ -519,13 +519,13 @@ const AppContent: React.FC = () => {
     console.log('[App] Running periodic sync...');
     
     try {
-      // Fetch all collections in parallel (including household limits)
+      // Fetch all collections in parallel (including household limits AND family notes)
       const [usersData, todoData, mealsData, expensesData, householdData] = await Promise.all([
         fetchCollection(hid, 'users'),
         fetchCollection(hid, 'todo_items'),
         fetchCollection(hid, 'meals'),
         fetchCollection(hid, 'expenses'),
-        supabase.from('households').select('max_family_members, max_helpers').eq('id', hid).maybeSingle(),
+        supabase.from('households').select('max_family_members, max_helpers, family_notes, family_notes_lang, family_notes_translations').eq('id', hid).maybeSingle(),
       ]);
       
       // Update state with fresh data
@@ -537,12 +537,16 @@ const AppContent: React.FC = () => {
       if (mealsData) setMeals(mealsData as Meal[]);
       if (expensesData) setExpenses(expensesData as Expense[]);
       
-      // Update household limits
+      // Update household limits AND family notes (Family Board)
       if (householdData.data) {
         setHouseholdLimits({
           maxFamily: householdData.data.max_family_members ?? 3,
           maxHelpers: householdData.data.max_helpers ?? 1,
         });
+        // Sync family notes - fixes Android PWA delay issue where real-time updates were missed
+        setFamilyNotes(householdData.data.family_notes || '');
+        setFamilyNotesLang(householdData.data.family_notes_lang || null);
+        setFamilyNotesTranslations(householdData.data.family_notes_translations || {});
       }
       
       console.log('[App] Periodic sync completed');

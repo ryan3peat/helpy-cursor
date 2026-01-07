@@ -354,14 +354,23 @@ function usePwaInstallNudge(userId?: string, householdId?: string) {
       doRecordInstallation();
     }
 
+    // Check for globally captured prompt (captured in index.tsx before React mounted)
+    const globalPrompt = (window as any).deferredInstallPrompt;
+    if (globalPrompt && !deferredPrompt) {
+      setDeferredPrompt(globalPrompt);
+    }
+
     const onBeforeInstallPrompt = (e: Event) => {
       e.preventDefault(); // required to trigger prompt from our custom button
       setDeferredPrompt(e as BeforeInstallPromptEvent);
+      // Also update global reference
+      (window as any).deferredInstallPrompt = e;
     };
 
     const onInstalled = () => {
       setIsInstalled(true);
       setDeferredPrompt(null);
+      (window as any).deferredInstallPrompt = null;
       setShowModal(false);
       // Record installation to database
       doRecordInstallation();
@@ -1069,18 +1078,16 @@ const Dashboard: React.FC<DashboardProps> = ({
             </button>
 
             {/* Header with Logo */}
-            <div className="p-6 flex-shrink-0 relative">
+            <div className="pt-6 pb-4 px-5 border-b border-border flex-shrink-0">
               <div className="helpy-logo text-primary mb-3" style={{ fontSize: '32px' }}>helpy</div>
-              <h2 className="text-display text-foreground font-bold">{t['pwa.welcome'] || 'Welcome!'}</h2>
-              <p className="text-muted-foreground mt-1 font-bold" style={{ fontSize: '20px' }}>
+              <h2 className="text-title text-foreground font-bold">{t['pwa.welcome'] || 'Welcome!'}</h2>
+              <p className="text-body text-muted-foreground mt-1">
                 {t['pwa.please_add_to_home'] || 'Please add Helpy to your home screen'}
               </p>
-              {/* Separator with inset margins */}
-              <div className="absolute bottom-0 left-6 right-6 border-t border-border"></div>
             </div>
 
             {/* Body - Device-specific instructions */}
-            <div className="p-6 flex-1">
+            <div className="p-5 flex-1">
               {isIosDevice() ? (
                 // iOS Instructions
                 <ol className="list-decimal pl-5 space-y-3">

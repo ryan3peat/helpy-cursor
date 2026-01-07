@@ -2,7 +2,14 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <!-- CRITICAL: Set background color IMMEDIATELY before any other parsing -->
+    <!-- CRITICAL: CSS applies INSTANTLY as browser parses - no JS execution delay -->
+    <style>
+      html { background-color: #fafafa; }
+      @media (prefers-color-scheme: dark) {
+        html { background-color: #121212 !important; }
+      }
+    </style>
+    <!-- Set class for Tailwind dark mode (JS runs after CSS is already applied) -->
     <script>
       (function(){
         var d=document.documentElement;

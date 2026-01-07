@@ -109,13 +109,7 @@ body {
   min-height: 100vh;
 }
 
-/* Dark mode - disable gradient immediately (before JS adds .dark class) */
-@media (prefers-color-scheme: dark) {
-  body {
-    background-image: none;
-    background-color: #121212;
-  }
-}
+/* Dark mode - handled by .dark class after auth */
 
 /* ─────────────────────────────────────────────────────────────────
    DARK MODE
@@ -184,18 +178,11 @@ body {
 
 /* ─────────────────────────────────────────────────────────────────
    AUTH PAGES GRADIENT BACKGROUND
-   Used for auth/loading screens - follows system color preference
+   Always light - ensures consistent splash → auth → app transition
    ───────────────────────────────────────────────────────────────── */
 .auth-gradient-bg {
   background-image: linear-gradient(to right bottom, #fafafa, #f9f9fa, #f8f8fa, #f6f8f9, #f4f7f9, #f3f7f9, #f1f6f8, #f0f6f8, #f0f6f8, #eff6f8, #eff6f8, #eef6f8);
   background-attachment: fixed;
-}
-
-@media (prefers-color-scheme: dark) {
-  .auth-gradient-bg {
-    background-image: none;
-    background-color: #121212;
-  }
 }
 
 /* ─────────────────────────────────────────────────────────────────
@@ -226,13 +213,7 @@ html {
   scrollbar-width: none;     /* Firefox */
 }
 
-/* Dark mode - set immediately before JS adds .dark class */
-@media (prefers-color-scheme: dark) {
-  html {
-    background-color: #121212 !important;
-    color-scheme: dark;
-  }
-}
+/* Dark mode handled by .dark class after auth - no prefers-color-scheme needed */
 
 html::-webkit-scrollbar {
   display: none;             /* Chrome, Safari, Opera */

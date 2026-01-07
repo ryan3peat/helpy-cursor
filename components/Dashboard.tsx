@@ -51,7 +51,6 @@ import { haptics } from '../utils/haptics';
 import { useDemoMode } from '../contexts/DemoModeContext';
 import { isRunningAsPwa, isIosDevice, isAndroidDevice } from '../utils/pwaUtils';
 import { isDevicePwaInstalled, recordPwaInstallation } from '../services/pwaService';
-import NotificationPrompt from './NotificationPrompt';
 
 import type { ConnectionStatus } from '../hooks/useRealtimeStatus';
 
@@ -866,22 +865,6 @@ const Dashboard: React.FC<DashboardProps> = ({
 
   return (
     <div className="min-h-screen bg-background pb-16 page-content">
-      {/* First-launch notification prompt (only shows in PWA mode, once per device, AFTER onboarding) */}
-      <NotificationPrompt 
-        currentUser={currentUser} 
-        t={t}
-        isOnboardingActive={isOnboardingActive}
-        onNotificationEnabled={async () => {
-          console.log('[Dashboard] Notifications enabled via prompt');
-          // Immediately update the user state to reflect the new subscription AND enabled status
-          if (onUpdateUser) {
-            await onUpdateUser(currentUser.id, { 
-              notificationsEnabled: true,
-              hasPushSubscription: true 
-            });
-          }
-        }}
-      />
 
       {/* Sticky Header - Push Up (No Shrink) */}
       <header 
@@ -1078,16 +1061,19 @@ const Dashboard: React.FC<DashboardProps> = ({
             </button>
 
             {/* Header with Logo */}
-            <div className="pt-6 pb-4 px-5 border-b border-border flex-shrink-0">
-              <div className="helpy-logo text-primary mb-3" style={{ fontSize: '32px' }}>helpy</div>
-              <h2 className="text-title text-foreground font-bold">{t['pwa.welcome'] || 'Welcome!'}</h2>
-              <p className="text-body text-muted-foreground mt-1">
-                {t['pwa.please_add_to_home'] || 'Please add Helpy to your home screen'}
+            <div className="p-6 flex-shrink-0 relative">
+              {/* Separator */}
+              <div className="absolute left-6 right-6 bottom-0 border-b border-border"></div>
+              <img src="/helpy-logo-blue.png" alt="Helpy" className="h-8 mb-3" />
+              <h2 className="text-display text-foreground font-bold">{t['pwa.welcome'] || 'Welcome!'}</h2>
+              <p className="text-muted-foreground mt-1 font-bold" style={{ fontSize: '20px' }}>
+                {t['pwa.please_add_to_home_line1'] || 'Please add Helpy'}<br />
+                {t['pwa.please_add_to_home_line2'] || 'to your home screen'}
               </p>
             </div>
 
             {/* Body - Device-specific instructions */}
-            <div className="p-5 flex-1">
+            <div className="p-6 flex-1">
               {isIosDevice() ? (
                 // iOS Instructions
                 <ol className="list-decimal pl-5 space-y-3">

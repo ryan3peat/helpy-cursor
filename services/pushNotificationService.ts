@@ -563,6 +563,7 @@ export async function autoFixNotificationIssues(
 
 /**
  * Register the service worker for push notifications
+ * Also sets up update detection to notify users when a new version is available
  */
 export async function registerServiceWorker(): Promise<ServiceWorkerRegistration | null> {
   if (!('serviceWorker' in navigator)) {
@@ -575,10 +576,83 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
       scope: '/'
     });
     console.log('[Push] Service worker registered:', registration);
+    
+    // Set up update detection
+    setupUpdateDetection(registration);
+    
     return registration;
   } catch (error) {
     console.error('[Push] Service worker registration failed:', error);
     return null;
+  }
+}
+
+/**
+ * Set up listeners to detect when a new service worker version is available
+ */
+function setupUpdateDetection(registration: ServiceWorkerRegistration): void {
+  // Check if there's already a waiting worker (update available)
+  if (registration.waiting) {
+    console.log('[SW Update] New version already waiting');
+    dispatchUpdateAvailable(registration);
+  }
+  
+  // Listen for new service worker installations
+  registration.addEventListener('updatefound', () => {
+    const newWorker = registration.installing;
+    if (!newWorker) return;
+    
+    console.log('[SW Update] New version being installed...');
+    
+    newWorker.addEventListener('statechange', () => {
+      // When the new worker is installed and waiting
+      if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+        console.log('[SW Update] New version ready - dispatching event');
+        dispatchUpdateAvailable(registration);
+      }
+    });
+  });
+}
+
+/**
+ * Dispatch custom event to notify the app that an update is available
+ */
+function dispatchUpdateAvailable(registration: ServiceWorkerRegistration): void {
+  window.dispatchEvent(new CustomEvent('swUpdateAvailable', {
+    detail: { registration }
+  }));
+}
+
+/**
+ * Apply a pending service worker update
+ * Call this when user clicks "Update" button
+ */
+export function applyServiceWorkerUpdate(registration: ServiceWorkerRegistration): void {
+  if (registration.waiting) {
+    // Tell the waiting SW to activate immediately
+    registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+  }
+  // Reload after a brief delay to allow SW to activate
+  setTimeout(() => {
+    window.location.reload();
+  }, 100);
+}
+
+/**
+ * Check for service worker updates
+ * Call this periodically or on visibility change
+ */
+export async function checkForUpdates(): Promise<void> {
+  if (!('serviceWorker' in navigator)) return;
+  
+  try {
+    const registration = await navigator.serviceWorker.getRegistration('/');
+    if (registration) {
+      console.log('[SW Update] Checking for updates...');
+      await registration.update();
+    }
+  } catch (error) {
+    console.warn('[SW Update] Update check failed:', error);
   }
 }
 

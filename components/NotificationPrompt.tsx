@@ -35,15 +35,23 @@ interface NotificationPromptProps {
   onNotificationEnabled?: () => void;
   /** Whether onboarding is active - if true, don't show the notification prompt */
   isOnboardingActive?: boolean;
+  /** Callback when visibility changes - used by App.tsx to coordinate with other popups */
+  onVisibilityChange?: (isVisible: boolean) => void;
 }
 
 const NotificationPrompt: React.FC<NotificationPromptProps> = ({
   currentUser,
   t,
   onNotificationEnabled,
-  isOnboardingActive = false
+  isOnboardingActive = false,
+  onVisibilityChange
 }) => {
   const [isVisible, setIsVisible] = useState(false);
+  
+  // Notify parent when visibility changes
+  useEffect(() => {
+    onVisibilityChange?.(isVisible);
+  }, [isVisible, onVisibilityChange]);
   const [isEnabling, setIsEnabling] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

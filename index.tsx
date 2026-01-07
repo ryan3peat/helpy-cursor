@@ -13,6 +13,14 @@ window.addEventListener('beforeinstallprompt', (e) => {
   (window as any).deferredInstallPrompt = e;
 });
 
+// Disable iOS shake-to-undo - prevents confusing undo dialog in PWA
+// This intercepts the undo/redo input events triggered by shake gesture
+document.addEventListener('beforeinput', (e: InputEvent) => {
+  if (e.inputType === 'historyUndo' || e.inputType === 'historyRedo') {
+    e.preventDefault();
+  }
+});
+
 // Log URL immediately on script load (before React)
 console.log('[Index] App starting. URL:', window.location.href);
 console.log('[Index] Hash:', window.location.hash);

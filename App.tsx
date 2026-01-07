@@ -31,7 +31,9 @@ import {
   subscribeToNotes,
   fetchCollection,
 } from './services/supabaseService';
-import { initializePushNotifications, autoSubscribeIfNeeded, validateAndSyncSubscription, startPeriodicBatchProcessing, stopPeriodicBatchProcessing, checkNotificationCapability, autoFixNotificationIssues, ensureCurrentSubscriptionSaved } from './services/pushNotificationService';
+import { initializePushNotifications, autoSubscribeIfNeeded, validateAndSyncSubscription, startPeriodicBatchProcessing, stopPeriodicBatchProcessing, checkNotificationCapability, autoFixNotificationIssues, ensureCurrentSubscriptionSaved, checkForUpdates, applyServiceWorkerUpdate } from './services/pushNotificationService';
+import UpdateToast from './components/ui/UpdateToast';
+import NotificationPrompt from './components/NotificationPrompt';
 import type { EssentialInfo } from '@src/types/essentialInfo';
 import type { HouseRoutine } from '@src/types/houseRoutine';
 import { 
@@ -109,6 +111,77 @@ const AppContent: React.FC = () => {
   
   const showAlert = useCallback((title: string, message: string, type: 'error' | 'success' | 'info' = 'info') => {
     setAlertModal({ isOpen: true, title, message, type });
+  }, []);
+
+  // PWA Update Toast state
+  const [showUpdateToast, setShowUpdateToast] = useState(false);
+  const [swRegistration, setSwRegistration] = useState<ServiceWorkerRegistration | null>(null);
+  const updateToastDismissedRef = useRef(false);
+  
+  // NotificationPrompt visibility state (for coordinating with UpdateToast)
+  const [isNotifPromptVisible, setNotifPromptVisible] = useState(false);
+
+  // Listen for service worker update events
+  useEffect(() => {
+    const handleUpdateAvailable = (e: CustomEvent<{ registration: ServiceWorkerRegistration }>) => {
+      console.log('[App] Service worker update available!');
+      setSwRegistration(e.detail.registration);
+      // Only show toast if user hasn't dismissed it this session
+      if (!updateToastDismissedRef.current) {
+        setShowUpdateToast(true);
+      }
+    };
+
+    window.addEventListener('swUpdateAvailable', handleUpdateAvailable as EventListener);
+    return () => {
+      window.removeEventListener('swUpdateAvailable', handleUpdateAvailable as EventListener);
+    };
+  }, []);
+
+  // Periodic update checks: on visibility change + every 60 minutes
+  useEffect(() => {
+    // Check for updates when app comes to foreground
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('[App] App visible - checking for updates...');
+        checkForUpdates();
+      }
+    };
+
+    // Check immediately on mount
+    checkForUpdates();
+
+    // Check every 60 minutes while app is open
+    const intervalId = setInterval(() => {
+      console.log('[App] Periodic update check (60 min)...');
+      checkForUpdates();
+    }, 60 * 60 * 1000);
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      clearInterval(intervalId);
+    };
+  }, []);
+
+  // Handle Update button click
+  const handleUpdateApp = useCallback(() => {
+    console.log('[App] User clicked Update - applying service worker update...');
+    if (swRegistration) {
+      applyServiceWorkerUpdate(swRegistration);
+    } else {
+      // Fallback: just reload if no registration available
+      window.location.reload();
+    }
+  }, [swRegistration]);
+
+  // Handle Dismiss button click
+  const handleDismissUpdate = useCallback(() => {
+    console.log('[App] User dismissed update toast');
+    setShowUpdateToast(false);
+    updateToastDismissedRef.current = true;
+    // Toast will reappear on next app open (ref resets on page load)
   }, []);
 
   // debugTheme overlay removed
@@ -1615,6 +1688,35 @@ const AppContent: React.FC = () => {
       <Layout activeView={activeView} onNavigate={handleNavigate} t={translations}>
         {renderView()}
       </Layout>
+
+      {/* NotificationPrompt - shows for first-time PWA users after onboarding */}
+      {/* Hidden during onboarding */}
+      {currentUser && !(onboardingStep > 0 && pwaModalHandled) && (
+        <NotificationPrompt
+          currentUser={currentUser}
+          t={translations}
+          isOnboardingActive={onboardingStep > 0 && pwaModalHandled}
+          onVisibilityChange={setNotifPromptVisible}
+          onNotificationEnabled={async () => {
+            console.log('[App] Notifications enabled via prompt');
+            if (currentUser) {
+              await handleUpdateUser(currentUser.id, {
+                notificationsEnabled: true,
+                hasPushSubscription: true
+              });
+            }
+          }}
+        />
+      )}
+
+      {/* PWA Update Toast - shows when new version is available */}
+      {/* Hidden during onboarding AND when NotificationPrompt is visible */}
+      <UpdateToast
+        isVisible={showUpdateToast && !(onboardingStep > 0 && pwaModalHandled) && !isNotifPromptVisible}
+        onUpdate={handleUpdateApp}
+        onDismiss={handleDismissUpdate}
+        t={translations}
+      />
 
       {/* Generic Alert Modal (replaces native alert()) */}
       {alertModal.isOpen && createPortal(

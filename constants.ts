@@ -1158,6 +1158,8 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'pwa.desktop_instructions': 'Look for the install icon in your browser\'s address bar or menu to add Helpy to your desktop.',
   'pwa.welcome': 'Welcome!',
   'pwa.please_add_to_home': 'Please add Helpy to your home screen',
+  'pwa.please_add_to_home_line1': 'Please add Helpy',
+  'pwa.please_add_to_home_line2': 'to your home screen',
 
   // Error - Additional (Translation Audit)
   'error.account_setup_incomplete': 'Account Setup Incomplete',
@@ -1215,6 +1217,12 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'error.switch_household': 'Failed to switch household',
   'error.remove_user_title': 'Remove User Failed',
   'error.remove_user': 'Failed to remove user',
+
+  // PWA Update Toast
+  'update.new_version_title': 'New App Update',
+  'update.available': 'Available',
+  'update.update_button': 'Update',
+  'common.dismiss': 'Dismiss',
 
   // Demo Mode (Marketing Screenshots)
   'demo.title': 'Demo Mode',

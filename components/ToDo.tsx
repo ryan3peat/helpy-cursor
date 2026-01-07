@@ -1567,7 +1567,10 @@ const ToDo: React.FC<ToDoProps> = ({
       const itemId = editingItemId; // Capture before clearing
       
       // Check if this is a recurring task - show scope dialog
-      if (existingItem?.seriesId && onUpdateRecurring) {
+      // Check both seriesId AND recurrence to handle latency (seriesId may not be populated yet)
+      const isRecurringTask = existingItem?.seriesId || 
+        (existingItem?.recurrence && existingItem.recurrence.frequency !== 'NONE');
+      if (isRecurringTask && onUpdateRecurring) {
         setIsSheetOpen(false);
         setEditingItemId(null);
         setEditingVirtualTask(null);
@@ -2354,7 +2357,10 @@ const ToDo: React.FC<ToDoProps> = ({
                       <button
                         onClick={() => {
                           // Check if this is a recurring task - show scope dialog
-                          if (item.seriesId && onDeleteRecurring) {
+                          // Check both seriesId AND recurrence to handle latency
+                          const isRecurring = item.seriesId || 
+                            (item.recurrence && item.recurrence.frequency !== 'NONE');
+                          if (isRecurring && onDeleteRecurring) {
                             setRecurringActionDialog({
                               isOpen: true,
                               type: 'delete',
@@ -2739,7 +2745,10 @@ const ToDo: React.FC<ToDoProps> = ({
                     const existingItem = items.find(i => i.id === itemId);
                     
                     // Check if this is a recurring task - show scope dialog
-                    if (existingItem?.seriesId && onDeleteRecurring) {
+                    // Check both seriesId AND recurrence to handle latency
+                    const isRecurringItem = existingItem?.seriesId || 
+                      (existingItem?.recurrence && existingItem.recurrence.frequency !== 'NONE');
+                    if (isRecurringItem && onDeleteRecurring) {
                       setIsSheetOpen(false);
                       setEditingItemId(null);
                       setEditingVirtualTask(null);

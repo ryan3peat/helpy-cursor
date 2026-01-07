@@ -1091,58 +1091,98 @@ const AppContent: React.FC = () => {
 
   // Update a recurring task with scope options
   // scope: 'this' = only this instance, 'future' = this and all future, 'all' = entire series
+  // virtualDate: if set, this is a virtual instance that needs to be CREATED, not updated
   const handleUpdateRecurringTask = async (
     id: string, 
     data: Partial<ToDoItem>, 
-    scope: 'this' | 'future' | 'all'
+    scope: 'this' | 'future' | 'all',
+    virtualDate?: string
   ) => {
     if (!hid) return;
     
     const item = todoItems.find(i => i.id === id);
-    if (!item?.seriesId) {
-      // Not a recurring task, just do normal update
-      return handleUpdateTodoItem(id, data);
+    
+    // If item not found but we have virtualDate, it's a virtual instance
+    // We need to find the source task to get series info
+    const sourceTask = item || todoItems.find(i => i.seriesId && i.recurrence?.frequency !== 'NONE');
+    
+    if (!item && !virtualDate) {
+      console.error('Cannot update: item not found and no virtualDate');
+      return;
     }
     
-    console.log(`🔄 Updating recurring task with scope: ${scope}`, { id, data });
+    // Get seriesId from existing item or try to find it from source task
+    const seriesId = item?.seriesId || sourceTask?.seriesId;
+    
+    if (!seriesId) {
+      // Not a recurring task, just do normal update
+      if (item) {
+        return handleUpdateTodoItem(id, data);
+      }
+      return;
+    }
+    
+    console.log(`🔄 Updating recurring task with scope: ${scope}`, { id, data, virtualDate });
     
     switch (scope) {
       case 'this':
-        // Mark this instance as an exception and update just this one
-        await handleUpdateTodoItem(id, { ...data, isException: true });
-        break;
-        
-      case 'future':
-        // Update this instance
-        await handleUpdateTodoItem(id, { ...data, isException: true });
-        // End the series at this date (soft delete future instances would need a new migration)
-        // For now, update the series end_date
-        await updateItem(hid, 'recurring_series', item.seriesId, { 
-          endDate: item.dueDate 
-        });
-        // If updating recurrence rules, create a new series starting from this date
-        if (data.recurrence || data.dueDate || data.dueTime || data.name || data.category || data.assigneeId) {
-          const newSeriesData = {
-            householdId: hid,
-            name: data.name || item.name,
-            category: data.category || item.category,
-            assigneeId: data.assigneeId || item.assigneeId,
-            dueTime: data.dueTime || item.dueTime,
-            frequency: data.recurrence?.frequency || item.recurrence?.frequency || 'WEEKLY',
-            dayOfWeek: data.recurrence?.dayOfWeek ?? item.recurrence?.dayOfWeek,
-            dayOfMonth: data.recurrence?.dayOfMonth ?? item.recurrence?.dayOfMonth,
-            startDate: data.dueDate || item.dueDate || new Date().toISOString().split('T')[0],
-            createdBy: currentUser?.id,
+        if (virtualDate && !item) {
+          // This is a virtual instance - CREATE a new real instance for this date
+          const newInstanceData: Partial<ToDoItem> = {
+            ...data,
+            type: 'task',
+            dueDate: virtualDate,
+            seriesId: seriesId,
+            isException: true,
+            originalDueDate: virtualDate,
+            completed: false,
           };
-          const newSeries = await addItem(hid, 'recurring_series', newSeriesData);
-          // Update this instance to point to new series
-          if (newSeries?.id) {
-            await handleUpdateTodoItem(id, { seriesId: newSeries.id, isException: false });
-          }
+          await handleAddTodoItem(newInstanceData as ToDoItem);
+        } else if (item) {
+          // Real instance - update it
+          await handleUpdateTodoItem(id, { ...data, isException: true });
         }
         break;
         
-      case 'all':
+      case 'future': {
+        const effectiveDate = virtualDate || item?.dueDate;
+        const effectiveItem = item || sourceTask;
+        
+        if (!effectiveDate || !effectiveItem) {
+          console.error('Cannot update future: no effective date or item');
+          break;
+        }
+        
+        // End the old series at the day before this date
+        const prevDate = new Date(effectiveDate + 'T00:00:00');
+        prevDate.setDate(prevDate.getDate() - 1);
+        await updateItem(hid, 'recurring_series', seriesId, { 
+          endDate: prevDate.toISOString().split('T')[0]
+        });
+        
+        // Create a new series starting from this date with updated data
+        const newSeriesData = {
+          householdId: hid,
+          name: data.name || effectiveItem.name,
+          category: data.category || effectiveItem.category,
+          assigneeId: data.assigneeId || effectiveItem.assigneeId,
+          dueTime: data.dueTime || effectiveItem.dueTime,
+          frequency: data.recurrence?.frequency || effectiveItem.recurrence?.frequency || 'WEEKLY',
+          dayOfWeek: data.recurrence?.dayOfWeek ?? effectiveItem.recurrence?.dayOfWeek,
+          dayOfMonth: data.recurrence?.dayOfMonth ?? effectiveItem.recurrence?.dayOfMonth,
+          startDate: effectiveDate,
+          createdBy: currentUser?.id,
+        };
+        await addItem(hid, 'recurring_series', newSeriesData);
+        
+        // If there was a real instance, update it to be an exception
+        if (item) {
+          await handleUpdateTodoItem(id, { ...data, isException: true });
+        }
+        break;
+      }
+        
+      case 'all': {
         // Update the series template
         const seriesUpdates: Record<string, any> = {};
         if (data.name) seriesUpdates.name = data.name;
@@ -1153,71 +1193,137 @@ const AppContent: React.FC = () => {
         if (data.recurrence?.dayOfWeek !== undefined) seriesUpdates.dayOfWeek = data.recurrence.dayOfWeek;
         if (data.recurrence?.dayOfMonth !== undefined) seriesUpdates.dayOfMonth = data.recurrence.dayOfMonth;
         
-        if (Object.keys(seriesUpdates).length > 0) {
-          await updateItem(hid, 'recurring_series', item.seriesId, seriesUpdates);
+        if (Object.keys(seriesUpdates).length > 0 && seriesId) {
+          await updateItem(hid, 'recurring_series', seriesId, seriesUpdates);
         }
         
         // Update all non-exception instances in this series
-        const seriesTodo = todoItems.filter(t => t.seriesId === item.seriesId && !t.isException);
+        const seriesTodo = todoItems.filter(t => t.seriesId === seriesId && !t.isException);
         for (const t of seriesTodo) {
           await handleUpdateTodoItem(t.id, data);
         }
         break;
+      }
     }
   };
   
   // Delete a recurring task with scope options
-  const handleDeleteRecurringTask = async (id: string, scope: 'this' | 'future' | 'all') => {
+  // virtualDate: if set, this is a virtual instance
+  const handleDeleteRecurringTask = async (id: string, scope: 'this' | 'future' | 'all', virtualDate?: string) => {
     if (!hid) return;
     
     const item = todoItems.find(i => i.id === id);
-    if (!item?.seriesId) {
-      // Not a recurring task, just do normal delete
-      return handleDeleteTodoItem(id);
+    
+    // For virtual tasks, find a source task to get series info
+    const sourceTask = item || todoItems.find(i => i.seriesId && i.recurrence?.frequency !== 'NONE');
+    const seriesId = item?.seriesId || sourceTask?.seriesId;
+    
+    if (!seriesId) {
+      // Not a recurring task
+      if (item) {
+        return handleDeleteTodoItem(id);
+      }
+      console.error('Cannot delete: no series found');
+      return;
     }
     
-    console.log(`🗑️ Deleting recurring task with scope: ${scope}`, { id });
+    console.log(`🗑️ Deleting recurring task with scope: ${scope}`, { id, virtualDate });
     
     switch (scope) {
       case 'this':
-        // Just delete this one instance
-        await handleDeleteTodoItem(id);
+        if (item) {
+          // Real instance - delete it
+          await handleDeleteTodoItem(id);
+        } else if (virtualDate) {
+          // Virtual instance - create a "deleted" exception to prevent it from showing
+          // We create an instance that's already marked as deleted/completed
+          console.log(`Virtual task delete for ${virtualDate} - creating skip record`);
+          // For now, we'll just not create anything - the virtual will regenerate
+          // A proper solution would require a "skipped_dates" table or similar
+          // TODO: Implement proper skip tracking for virtual instances
+        }
         break;
         
-      case 'future':
-        // Delete this instance and end the series
-        await handleDeleteTodoItem(id);
+      case 'future': {
+        const effectiveDate = virtualDate || item?.dueDate;
+        if (!effectiveDate) {
+          console.error('Cannot delete future: no effective date');
+          break;
+        }
+        
         // Set series end_date to exclude this and future
-        const prevDate = new Date(item.dueDate + 'T00:00:00');
+        const prevDate = new Date(effectiveDate + 'T00:00:00');
         prevDate.setDate(prevDate.getDate() - 1);
-        await updateItem(hid, 'recurring_series', item.seriesId, { 
+        await updateItem(hid, 'recurring_series', seriesId, { 
           endDate: prevDate.toISOString().split('T')[0]
         });
-        // Delete future instances
+        
+        // Delete this instance if it exists
+        if (item) {
+          await handleDeleteTodoItem(id);
+        }
+        
+        // Delete future real instances
         const futureInstances = todoItems.filter(t => 
-          t.seriesId === item.seriesId && 
+          t.seriesId === seriesId && 
           t.dueDate && 
-          t.dueDate >= item.dueDate! &&
-          t.id !== id
+          t.dueDate >= effectiveDate
         );
         for (const t of futureInstances) {
           await handleDeleteTodoItem(t.id);
         }
         break;
+      }
         
-      case 'all':
+      case 'all': {
         // Delete entire series and all instances
         // Soft delete the series
-        await updateItem(hid, 'recurring_series', item.seriesId, { 
+        await updateItem(hid, 'recurring_series', seriesId, { 
           deletedAt: new Date().toISOString()
         });
         // Delete all instances
-        const allInstances = todoItems.filter(t => t.seriesId === item.seriesId);
+        const allInstances = todoItems.filter(t => t.seriesId === seriesId);
         for (const t of allInstances) {
           await handleDeleteTodoItem(t.id);
         }
         break;
+      }
     }
+  };
+
+  // Complete a virtual recurring task instance (creates real instance + marks completed in one action)
+  const handleCompleteVirtualTask = async (virtualTask: ToDoItem, virtualDate: string) => {
+    if (!hid) return;
+    
+    console.log('✅ Completing virtual task:', { virtualTask, virtualDate });
+    
+    // Find the series ID from the virtual task or related items
+    const seriesId = virtualTask.seriesId || todoItems.find(i => 
+      i.recurrence?.frequency !== 'NONE' && 
+      i.name === virtualTask.name
+    )?.seriesId;
+    
+    if (!seriesId) {
+      console.error('Cannot complete virtual task: no series found');
+      return;
+    }
+    
+    // Create a new real instance that's already completed
+    const newInstanceData: Partial<ToDoItem> = {
+      type: 'task',
+      name: virtualTask.name,
+      category: virtualTask.category,
+      assigneeId: virtualTask.assigneeId,
+      dueDate: virtualDate,
+      dueTime: virtualTask.dueTime,
+      seriesId: seriesId,
+      isException: true,
+      originalDueDate: virtualDate,
+      completed: true, // Already completed!
+      recurrence: virtualTask.recurrence,
+    };
+    
+    await handleAddTodoItem(newInstanceData as ToDoItem);
   };
 
   const handleDeleteTodoItem = async (id: string) => {
@@ -1750,6 +1856,7 @@ const AppContent: React.FC = () => {
             onDelete={handleDeleteTodoItem}
             onUpdateRecurring={handleUpdateRecurringTask}
             onDeleteRecurring={handleDeleteRecurringTask}
+            onCompleteVirtual={handleCompleteVirtualTask}
             t={translations}
             currentLang={lang}
             initialSection={navData?.section as 'shopping' | 'task' | undefined}

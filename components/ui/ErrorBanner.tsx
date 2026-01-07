@@ -39,7 +39,7 @@ const ErrorBanner: React.FC<ErrorBannerProps> = ({
       </div>
       <button 
         onClick={onDismiss} 
-        className="text-destructive/60 hover:text-destructive transition-colors flex-shrink-0"
+        className="text-destructive/60 transition-colors flex-shrink-0"
         aria-label="Dismiss error"
       >
         <X size={16} />

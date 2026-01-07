@@ -298,13 +298,28 @@ input[type="datetime-local"]::-webkit-date-and-time-value {
 
 /* Ensure iOS inner controls don't cause layout shifts */
 input[type="date"]::-webkit-inner-spin-button,
-input[type="date"]::-webkit-calendar-picker-indicator,
 input[type="time"]::-webkit-inner-spin-button,
-input[type="time"]::-webkit-calendar-picker-indicator,
-input[type="datetime-local"]::-webkit-inner-spin-button,
-input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+input[type="datetime-local"]::-webkit-inner-spin-button {
   margin: 0;
   padding: 0;
+}
+
+/* Make calendar picker indicator fill the entire input for full-width tap target */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: auto;
+  height: auto;
+  margin: 0;
+  padding: 0;
+  color: transparent;
+  background: transparent;
+  cursor: pointer;
 }
 
 /* Select elements need explicit height on iOS */

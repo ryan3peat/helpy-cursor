@@ -43,8 +43,9 @@ interface ToDoProps extends BaseViewProps {
   onAdd: (item: ToDoItem) => Promise<void>;
   onUpdate: (id: string, data: Partial<ToDoItem>) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
-  onUpdateRecurring?: (id: string, data: Partial<ToDoItem>, scope: RecurringActionScope) => Promise<void>;
-  onDeleteRecurring?: (id: string, scope: RecurringActionScope) => Promise<void>;
+  onUpdateRecurring?: (id: string, data: Partial<ToDoItem>, scope: RecurringActionScope, virtualDate?: string) => Promise<void>;
+  onDeleteRecurring?: (id: string, scope: RecurringActionScope, virtualDate?: string) => Promise<void>;
+  onCompleteVirtual?: (virtualTask: ToDoItem, virtualDate: string) => Promise<void>;
   initialSection?: 'shopping' | 'task';
   onSectionChange?: (section: string) => void;
   autoOpenSheet?: boolean; // Auto-open add sheet when navigating from Dashboard (+) button
@@ -322,6 +323,7 @@ interface CalendarAgendaViewProps {
   onUpdate: (id: string, data: Partial<ToDoItem>) => Promise<void>;
   onItemClick: (item: ToDoItem) => void;
   onToggleComplete: (id: string, completed: boolean) => void;
+  onCompleteVirtual?: (virtualTask: ToDoItem, virtualDate: string) => Promise<void>;
   completingIds: Set<string>;
 }
 
@@ -334,6 +336,7 @@ const CalendarAgendaView: React.FC<CalendarAgendaViewProps> = ({
   onUpdate,
   onItemClick,
   onToggleComplete,
+  onCompleteVirtual,
   completingIds,
 }) => {
   // Get today's date at midnight for comparison
@@ -648,7 +651,11 @@ const CalendarAgendaView: React.FC<CalendarAgendaViewProps> = ({
                       </div>
                     )}
                     
-                    <div className="flex gap-3 items-start" data-today={isToday ? 'true' : undefined}>
+                    <div 
+                      className="flex gap-3 items-start" 
+                      data-today={isToday ? 'true' : undefined}
+                      style={isToday ? { scrollMarginTop: '320px' } : undefined}
+                    >
                     {/* Day Column */}
                     <div className="w-12 shrink-0 text-center pt-2">
                       <div className="text-micro text-muted-foreground">{dayName}</div>
@@ -684,15 +691,16 @@ const CalendarAgendaView: React.FC<CalendarAgendaViewProps> = ({
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              // Virtual instances can't be completed directly
-                              // User must tap to create a real instance first
-                              if (isVirtual) {
-                                onItemClick(task); // Open edit sheet to create real instance
+                              if (isCompleting) return;
+                              
+                              // Virtual instances: complete directly (creates real + marks done)
+                              if (isVirtual && onCompleteVirtual) {
+                                onCompleteVirtual(task, dateStr);
                                 return;
                               }
-                              if (!isCompleting) {
-                                onToggleComplete(task.id, !task.completed);
-                              }
+                              
+                              // Real instances: toggle completion
+                              onToggleComplete(task.id, !task.completed);
                             }}
                             className="shrink-0"
                           >
@@ -701,7 +709,7 @@ const CalendarAgendaView: React.FC<CalendarAgendaViewProps> = ({
                                 <Check size={12} className="text-primary-foreground" strokeWidth={3} />
                               </div>
                             ) : (
-                              <Circle size={20} className={`${isVirtual ? 'text-muted-foreground/30' : 'text-muted-foreground/50'}`} />
+                              <Circle size={20} className="text-muted-foreground/50" />
                             )}
                           </button>
                           
@@ -845,6 +853,7 @@ const ToDo: React.FC<ToDoProps> = ({
   onDelete,
   onUpdateRecurring,
   onDeleteRecurring,
+  onCompleteVirtual,
   t,
   currentLang,
   initialSection,
@@ -947,6 +956,7 @@ const ToDo: React.FC<ToDoProps> = ({
     type: 'update' | 'delete';
     itemId: string | null;
     pendingData?: Partial<ToDoItem>;
+    virtualDate?: string; // For virtual task operations - tracks which date instance
   }>({ isOpen: false, type: 'update', itemId: null });
   
   // Lock body scroll when sheet is open
@@ -957,6 +967,7 @@ const ToDo: React.FC<ToDoProps> = ({
   
   const [sheetForm, setSheetForm] = useState<Partial<ToDoItem>>({});
   const [editingItemId, setEditingItemId] = useState<string | null>(null); // Track if editing existing item
+  const [editingVirtualTask, setEditingVirtualTask] = useState<ToDoItem | null>(null); // Track if editing a virtual instance
   const [showUnitSuggestions, setShowUnitSuggestions] = useState(false);
   const unitInputRef = useRef<HTMLInputElement>(null);
   const sheetContentRef = useRef<HTMLDivElement>(null);
@@ -1436,6 +1447,9 @@ const ToDo: React.FC<ToDoProps> = ({
   const openEditSheet = (item: ToDoItem) => {
     const isVirtual = item.id.startsWith('virtual-');
     
+    // For virtual instances, track the virtual task for special handling
+    setEditingVirtualTask(isVirtual ? item : null);
+    
     // For virtual instances, we set editingItemId to null so it creates a new instance
     // but we keep the seriesId to maintain the link
     setEditingItemId(isVirtual ? null : item.id);
@@ -1497,6 +1511,7 @@ const ToDo: React.FC<ToDoProps> = ({
       if (existingItem?.seriesId && onUpdateRecurring) {
         setIsSheetOpen(false);
         setEditingItemId(null);
+        setEditingVirtualTask(null);
         setRecurringActionDialog({
           isOpen: true,
           type: 'update',
@@ -1508,6 +1523,7 @@ const ToDo: React.FC<ToDoProps> = ({
       
       setIsSheetOpen(false);
       setEditingItemId(null);
+      setEditingVirtualTask(null);
       
       try {
         await onUpdate(itemId, updates);
@@ -1515,6 +1531,49 @@ const ToDo: React.FC<ToDoProps> = ({
         console.error('Failed to update item:', err);
         setError(t['error.update_item'] || 'Failed to update item. Please try again.');
       }
+    } else if (editingVirtualTask) {
+      // Editing virtual task - show recurring action dialog
+      // Extract the original task ID from virtual ID (virtual-{originalId}-{date})
+      const originalId = editingVirtualTask.id.replace(/^virtual-/, '').replace(/-\d{4}-\d{2}-\d{2}$/, '');
+      
+      const dueDate = sheetForm.dueDate ? new Date(sheetForm.dueDate + 'T00:00:00') : new Date();
+      
+      let recurrence = undefined;
+      if (sheetForm.recurrence?.frequency && sheetForm.recurrence.frequency !== 'NONE') {
+        recurrence = {
+          frequency: sheetForm.recurrence.frequency,
+          dayOfWeek: sheetForm.recurrence.frequency === 'WEEKLY' ? dueDate.getDay() : undefined,
+          dayOfMonth: sheetForm.recurrence.frequency === 'MONTHLY' ? dueDate.getDate() : undefined,
+        };
+      }
+      
+      const detectedLang = detectInputLanguage(currentLang);
+      
+      const updates: Partial<ToDoItem> = {
+        name: sheetForm.name!,
+        category: sheetForm.category,
+        assigneeId: sheetForm.assigneeId,
+        quantity: sheetForm.quantity || '1',
+        unit: sheetForm.unit,
+        brand: sheetForm.brand,
+        dueDate: sheetForm.dueDate,
+        dueTime: sheetForm.dueTime,
+        recurrence,
+        nameLang: detectedLang || null,
+        nameTranslations: {},
+      };
+      
+      setIsSheetOpen(false);
+      setEditingItemId(null);
+      setEditingVirtualTask(null);
+      setRecurringActionDialog({
+        isOpen: true,
+        type: 'update',
+        itemId: originalId,
+        pendingData: updates,
+        virtualDate: editingVirtualTask.dueDate,
+      });
+      return;
     } else {
       // Adding new item
       // Detect language for the new item
@@ -1542,6 +1601,7 @@ const ToDo: React.FC<ToDoProps> = ({
       
       setOptimisticItems(prev => [...prev, newItem]);
       setIsSheetOpen(false);
+      setEditingVirtualTask(null);
       
       try {
         await onAdd(newItem);
@@ -1568,7 +1628,7 @@ const ToDo: React.FC<ToDoProps> = ({
   // ─────────────────────────────────────────────────────────────────
   
   const handleRecurringAction = async (scope: RecurringActionScope) => {
-    const { type, itemId, pendingData } = recurringActionDialog;
+    const { type, itemId, pendingData, virtualDate } = recurringActionDialog;
     
     if (!itemId) return;
     
@@ -1576,9 +1636,9 @@ const ToDo: React.FC<ToDoProps> = ({
     
     try {
       if (type === 'update' && pendingData && onUpdateRecurring) {
-        await onUpdateRecurring(itemId, pendingData, scope);
+        await onUpdateRecurring(itemId, pendingData, scope, virtualDate);
       } else if (type === 'delete' && onDeleteRecurring) {
-        await onDeleteRecurring(itemId, scope);
+        await onDeleteRecurring(itemId, scope, virtualDate);
       }
     } catch (err) {
       console.error(`Failed to ${type} recurring task:`, err);
@@ -1636,7 +1696,12 @@ const ToDo: React.FC<ToDoProps> = ({
         {/* ─────────────────────────────────────────────────────────────── */}
         <header 
           className="sticky top-0 z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 pb-3 flex items-end" 
-          style={{ height: '120px', boxShadow: '0 10px 0 0 hsl(var(--background))' }}
+          style={{ 
+            height: '120px', 
+            boxShadow: (activeSection === 'task' && viewMode === 'calendar')
+              ? (isScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none')
+              : '0 10px 0 0 hsl(var(--background))' 
+          }}
         >
           <div className="flex items-center justify-between w-full">
             <h1>
@@ -1656,8 +1721,8 @@ const ToDo: React.FC<ToDoProps> = ({
                   className={`px-3 py-2 rounded-full text-body font-medium transition-colors ${
                     viewMode === 'calendar' 
                       ? isTodayVisible
-                        ? 'text-muted-foreground hover:bg-muted'
-                        : 'bg-primary text-primary-foreground'
+                        ? 'bg-muted text-muted-foreground cursor-default'
+                        : 'bg-primary text-primary-foreground shadow-sm'
                       : 'invisible'
                   }`}
                 >
@@ -1669,7 +1734,7 @@ const ToDo: React.FC<ToDoProps> = ({
               {activeSection === 'task' && (
                 <button
                   onClick={() => setViewMode(viewMode === 'list' ? 'calendar' : 'list')}
-                  className="p-2 rounded-full text-muted-foreground hover:bg-muted transition-colors"
+                  className="p-2 rounded-full text-muted-foreground transition-colors"
                 >
                   {viewMode === 'list' ? <Calendar size={20} /> : <List size={20} />}
                 </button>
@@ -2228,7 +2293,18 @@ const ToDo: React.FC<ToDoProps> = ({
                     {/* Delete button - Hidden for Helper */}
                     {!isHelper && (
                       <button
-                        onClick={() => handleDelete(item.id)}
+                        onClick={() => {
+                          // Check if this is a recurring task - show scope dialog
+                          if (item.seriesId && onDeleteRecurring) {
+                            setRecurringActionDialog({
+                              isOpen: true,
+                              type: 'delete',
+                              itemId: item.id,
+                            });
+                          } else {
+                            handleDelete(item.id);
+                          }
+                        }}
                         className="text-muted-foreground shrink-0"
                       >
                         <Trash2 size={18} />
@@ -2252,6 +2328,7 @@ const ToDo: React.FC<ToDoProps> = ({
             onUpdate={onUpdate}
             onItemClick={openEditSheet}
             onToggleComplete={handleToggleComplete}
+            onCompleteVirtual={onCompleteVirtual}
             completingIds={completingIds}
           />
         )}
@@ -2290,6 +2367,7 @@ const ToDo: React.FC<ToDoProps> = ({
               onClick={() => {
                 setIsSheetOpen(false);
                 setEditingItemId(null);
+                setEditingVirtualTask(null);
               }}
               className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center right-4 top-4 text-muted-foreground"
               aria-label={t['common.close'] || 'Close'}
@@ -2300,7 +2378,7 @@ const ToDo: React.FC<ToDoProps> = ({
             {/* Header */}
             <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
               <h2 className="text-title text-foreground">
-                {editingItemId 
+                {(editingItemId || editingVirtualTask)
                   ? (sheetForm.type === 'shopping' 
                       ? (t['todo.edit_shopping_item'] || 'Edit Shopping Item') 
                       : (t['todo.edit_task'] || 'Edit Task'))
@@ -2435,20 +2513,11 @@ const ToDo: React.FC<ToDoProps> = ({
                     <label className="block text-caption text-muted-foreground tracking-wide mb-2">
                       {t['todo.due_date_time'] || 'Due Date & Time'}
                     </label>
-                    {/* Date/time picker with clickable visual layer for full touch area */}
+                    {/* Date/time picker - native input as clickable overlay */}
                     <div className="relative">
-                      {/* Visual display layer - clickable to trigger picker */}
+                      {/* Visual display layer (underneath, for display only) */}
                       <div 
-                        className="w-full px-4 py-3 bg-muted rounded-xl text-body border border-transparent flex items-center justify-between cursor-pointer"
-                        onClick={() => {
-                          const input = document.getElementById('due-date-picker') as HTMLInputElement;
-                          if (input?.showPicker) {
-                            input.showPicker();
-                          } else {
-                            input?.focus();
-                            input?.click();
-                          }
-                        }}
+                        className="w-full px-4 py-3 bg-muted rounded-xl text-body border border-transparent flex items-center justify-between"
                       >
                         <span className={sheetForm.dueDate ? 'text-foreground' : 'text-muted-foreground'}>
                           {sheetForm.dueDate 
@@ -2458,7 +2527,7 @@ const ToDo: React.FC<ToDoProps> = ({
                         </span>
                         <Calendar size={18} className="text-muted-foreground" />
                       </div>
-                      {/* Hidden native input for value handling */}
+                      {/* Native input as clickable overlay - taps go directly to this */}
                       <input
                         id="due-date-picker"
                         type="datetime-local"
@@ -2472,7 +2541,7 @@ const ToDo: React.FC<ToDoProps> = ({
                           const [date, time] = e.target.value.split('T');
                           setSheetForm(prev => ({ ...prev, dueDate: date, dueTime: time }));
                         }}
-                        className="absolute inset-0 w-full h-full opacity-0 pointer-events-none"
+                        className="absolute inset-0 w-full h-full opacity-0"
                         style={{ WebkitAppearance: 'none' }}
                       />
                     </div>
@@ -2587,17 +2656,34 @@ const ToDo: React.FC<ToDoProps> = ({
             
             {/* Fixed Footer with Delete + Save */}
             <div className="shrink-0 p-5 pb-8 border-t border-border flex gap-3">
-              {/* Delete button - Hidden for Helper */}
-              {editingItemId && !isHelper && (
+              {/* Delete button - Hidden for Helper, shown for real items AND virtual recurring tasks */}
+              {(editingItemId || editingVirtualTask) && !isHelper && (
                 <button
                   onClick={async () => {
-                    const itemId = editingItemId;
+                    // For virtual tasks, always show recurring action dialog
+                    if (editingVirtualTask) {
+                      // Extract the original task ID from virtual ID (virtual-{originalId}-{date})
+                      const originalId = editingVirtualTask.id.replace(/^virtual-/, '').replace(/-\d{4}-\d{2}-\d{2}$/, '');
+                      setIsSheetOpen(false);
+                      setEditingItemId(null);
+                      setEditingVirtualTask(null);
+                      setRecurringActionDialog({
+                        isOpen: true,
+                        type: 'delete',
+                        itemId: originalId,
+                        virtualDate: editingVirtualTask.dueDate, // Track which date was selected
+                      });
+                      return;
+                    }
+                    
+                    const itemId = editingItemId!;
                     const existingItem = items.find(i => i.id === itemId);
                     
                     // Check if this is a recurring task - show scope dialog
                     if (existingItem?.seriesId && onDeleteRecurring) {
                       setIsSheetOpen(false);
                       setEditingItemId(null);
+                      setEditingVirtualTask(null);
                       setRecurringActionDialog({
                         isOpen: true,
                         type: 'delete',
@@ -2608,6 +2694,7 @@ const ToDo: React.FC<ToDoProps> = ({
                     
                     setIsSheetOpen(false);
                     setEditingItemId(null);
+                    setEditingVirtualTask(null);
                     await handleDelete(itemId);
                   }}
                   className="p-3 rounded-xl bg-destructive/10 text-destructive"
@@ -2621,7 +2708,7 @@ const ToDo: React.FC<ToDoProps> = ({
                 className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 <Check size={18} />
-                {editingItemId 
+                {(editingItemId || editingVirtualTask)
                   ? (t['common.update'] || 'Update')
                   : (activeSection === 'shopping' ? (t['common.add_item'] || 'Add Item') : (t['common.add_task'] || 'Add Task'))
                 }

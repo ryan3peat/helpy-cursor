@@ -1313,7 +1313,7 @@ const Profile: React.FC<ProfileProps> = ({
                 {(!isHelper || selectedUser.id === currentUser.id) && (
                   <button
                     onClick={handleOpenEdit}
-                    className="absolute top-4 right-4 p-2.5 text-muted-foreground hover:text-foreground rounded-xl transition-colors"
+                    className="absolute top-4 right-4 p-2.5 text-muted-foreground rounded-xl transition-colors"
                     aria-label={t['common.edit'] || 'Edit'}
                   >
                     <Pencil size={18} />
@@ -2187,7 +2187,7 @@ const Profile: React.FC<ProfileProps> = ({
                         setIsEditModalOpen(false);
                         handleDeleteUser(selectedUser.id);
                       }}
-                      className="w-full flex items-center justify-center gap-2 py-3 bg-destructive/10 text-destructive rounded-xl hover:bg-destructive/20 transition-colors"
+                      className="w-full flex items-center justify-center gap-2 py-3 bg-destructive/10 text-destructive rounded-xl transition-colors"
                     >
                       <Trash2 size={16} />
                       <span className="text-body font-medium">{t['profile.remove_member'] || 'Remove from Family'}</span>

@@ -38,3 +38,4 @@ nul
 # App Store preview (WIP - remove when ready to deploy)
 public/app-store-preview.html
 public/screenshots/
+.env.vercel-dev

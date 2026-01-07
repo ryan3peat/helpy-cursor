@@ -382,7 +382,7 @@ export const HelperManagementContent: React.FC<Props> = ({
           </div>
           <button
             onClick={loadPastHolidays}
-            className="text-caption text-primary hover:underline"
+            className="text-caption text-primary"
           >
             {t['common.past'] || 'Past'}
           </button>

@@ -1178,6 +1178,18 @@ const AppContent: React.FC = () => {
           await handleDeleteTodoItem(instance.id);
         }
         
+        // Clear recurrence from OLD instances so they stop generating virtual instances
+        // Only update instances that are BEFORE effectiveDate (the ones we're keeping)
+        const oldInstances = todoItems.filter(t => 
+          t.seriesId === seriesId && 
+          t.dueDate && 
+          t.dueDate < effectiveDate &&
+          !t.isException
+        );
+        for (const instance of oldInstances) {
+          await handleUpdateTodoItem(instance.id, { recurrence: { frequency: 'NONE' } });
+        }
+        
         // Create a new series starting from this date with updated data
         const newSeriesData = {
           householdId: hid,

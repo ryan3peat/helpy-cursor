@@ -1204,9 +1204,11 @@ const AppContent: React.FC = () => {
         }
         
         // Update all non-exception instances in this series
+        // IMPORTANT: Exclude dueDate - each instance keeps its own date!
+        const { dueDate: _excludedDate, ...dataWithoutDate } = data;
         const seriesTodo = todoItems.filter(t => t.seriesId === seriesId && !t.isException);
         for (const t of seriesTodo) {
-          await handleUpdateTodoItem(t.id, data);
+          await handleUpdateTodoItem(t.id, dataWithoutDate);
         }
         break;
       }

@@ -635,7 +635,7 @@ const CalendarAgendaView: React.FC<CalendarAgendaViewProps> = ({
             </div>
 
             {/* Days in this week */}
-            <div className="space-y-2">
+            <div className="space-y-5">
               {sortedDays.map(([dateStr, dayTasks]) => {
                 const { dayName, dayNumber, isToday } = formatDayHeader(dateStr);
                 

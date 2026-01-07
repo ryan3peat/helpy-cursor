@@ -555,11 +555,11 @@ const Dashboard: React.FC<DashboardProps> = ({
     switch (role) {
       case UserRole.SUPERADMIN: return 'bg-primary text-white shadow-sm'; // Solid blue with white text
       case UserRole.MASTER: return 'bg-white text-primary shadow-sm'; // White bg, cyan text
-      case UserRole.SPOUSE: return 'bg-white text-[#AB47BC] shadow-sm'; // White bg, purple text
+      case UserRole.SPOUSE: return 'bg-white text-[#7E57C2] shadow-sm'; // White bg, purple text
       case UserRole.HELPER: return 'bg-white text-[#FF9800] shadow-sm'; // White bg, orange text
       case UserRole.CHILD: return 'bg-white text-[#4CAF50] shadow-sm'; // White bg, green text
       case UserRole.OTHER: return 'bg-white text-[#F06292] shadow-sm'; // White bg, pink text
-      default: return 'bg-white text-[#757575] shadow-sm';
+      default: return 'bg-white text-muted-foreground shadow-sm';
     }
   };
 

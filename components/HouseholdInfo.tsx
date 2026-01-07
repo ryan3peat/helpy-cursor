@@ -139,36 +139,30 @@ const HOUSE_ROUTINE_CATEGORY_ICONS: Record<HouseRoutineCategory, React.ReactNode
 // Badge style: White background with colored text, except SuperAdmin (solid blue)
 // See docs/GLOBAL_RULES.md for consistency guidelines
 // ─────────────────────────────────────────────────────────────────
-const ROLE_STYLES: Record<UserRole, { bg: string; color: string; gradient: string }> = {
+const ROLE_STYLES: Record<UserRole, { bg: string; color: string }> = {
   [UserRole.MASTER]: { 
     bg: '#FFFFFF', // White background for badge
     color: '#3EAFD2', // Helpy blue text
-    gradient: 'linear-gradient(135deg, #3EAFD2 0%, #2E99BB 100%)'
   },
   [UserRole.SUPERADMIN]: { 
     bg: '#3EAFD2', // Solid helpy blue background
     color: '#FFFFFF', // White text
-    gradient: 'linear-gradient(135deg, #3EAFD2 0%, #2E99BB 100%)'
   },
   [UserRole.SPOUSE]: { 
     bg: '#FFFFFF', // White background for badge
-    color: '#AB47BC', // Purple text
-    gradient: 'linear-gradient(135deg, #AB47BC 0%, #8E24AA 100%)'
+    color: '#7E57C2', // Purple text (unified with Dinner purple)
   },
   [UserRole.HELPER]: { 
     bg: '#FFFFFF', // White background for badge
     color: '#FF9800', // Orange text
-    gradient: 'linear-gradient(135deg, #FF9800 0%, #F57C00 100%)'
   },
   [UserRole.CHILD]: { 
     bg: '#FFFFFF', // White background for badge
     color: '#4CAF50', // Green text
-    gradient: 'linear-gradient(135deg, #4CAF50 0%, #388E3C 100%)'
   },
   [UserRole.OTHER]: { 
     bg: '#FFFFFF', // White background for badge
     color: '#F06292', // Pink text
-    gradient: 'linear-gradient(135deg, #F06292 0%, #E91E63 100%)'
   },
 };
 

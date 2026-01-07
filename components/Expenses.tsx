@@ -1393,7 +1393,7 @@ const Expenses: React.FC<ExpensesProps> = ({
               <button
         onClick={openAddExpenseSheet}
         disabled={isScanning}
-        className={`fixed bottom-28 right-6 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center z-30 disabled:opacity-50 ${
+        className={`fixed bottom-28 right-6 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center z-30 disabled:bg-muted-foreground ${
           isModalOpen ? 'fab-hiding' : ''
         }`}
         aria-label={t['expenses.add_expense'] || 'Add Expense'}

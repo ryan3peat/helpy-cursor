@@ -208,7 +208,7 @@ const Meals: React.FC<MealsProps> = ({
   };
 
   // --- Icons ---
-  // Colors based on brand palette: #3EAFD2, #FF9800, #7E57C2, #4CAF50, #F06292, #AB47BC
+  // Colors based on brand palette: #3EAFD2, #FF9800, #7E57C2, #4CAF50, #F06292, #757575
   // When isSelected is true, icon inherits parent color (e.g., text-primary-foreground)
   const getMealIcon = (type: MealType, isSelected = false) => {
     const colorClass = isSelected ? '' : {
@@ -247,15 +247,15 @@ const Meals: React.FC<MealsProps> = ({
   const renderAudienceIcons = (audience: MealAudience) => {
     switch (audience) {
       case 'ADULTS':
-        return <UserIcon size={10} className="text-gray-400" />;
+        return <UserIcon size={10} className="text-muted-foreground" />;
       case 'KIDS':
-        return <Baby size={10} className="text-gray-400" />;
+        return <Baby size={10} className="text-muted-foreground" />;
       case 'ALL':
       default:
         return (
           <span className="flex items-center gap-0.5">
-            <UserIcon size={10} className="text-gray-400" />
-            <Baby size={10} className="text-gray-400" />
+            <UserIcon size={10} className="text-muted-foreground" />
+            <Baby size={10} className="text-muted-foreground" />
           </span>
         );
     }

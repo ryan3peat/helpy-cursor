@@ -28,7 +28,7 @@ White solid background with colored text for all roles, **EXCEPT SuperAdmin** (s
 |------|------------|------|
 | **SuperAdmin** | `bg-primary` (#3EAFD2) | `text-white` |
 | Admin (MASTER) | `bg-white` | `text-primary` (#3EAFD2) |
-| Spouse | `bg-white` | `text-[#AB47BC]` (purple) |
+| Spouse | `bg-white` | `text-[#7E57C2]` (purple) |
 | Helper | `bg-white` | `text-[#FF9800]` (orange) |
 | Child | `bg-white` | `text-[#4CAF50]` (green) |
 | Other | `bg-white` | `text-[#F06292]` (pink) |
@@ -43,7 +43,7 @@ Same color scheme as above:
 |------|------------|-------------|
 | **SuperAdmin** | `#3EAFD2` (solid blue) | `#FFFFFF` (white) |
 | Admin (MASTER) | `#FFFFFF` (white) | `#3EAFD2` (helpy blue) |
-| Spouse | `#FFFFFF` (white) | `#AB47BC` (purple) |
+| Spouse | `#FFFFFF` (white) | `#7E57C2` (purple) |
 | Helper | `#FFFFFF` (white) | `#FF9800` (orange) |
 | Child | `#FFFFFF` (white) | `#4CAF50` (green) |
 | Other | `#FFFFFF` (white) | `#F06292` (pink) |
@@ -86,7 +86,7 @@ const getRoleBadgeColor = (role: UserRole) => {
   switch (role) {
     case UserRole.SUPERADMIN: return 'bg-primary text-white'; // Solid blue with white text
     case UserRole.MASTER: return 'bg-white text-primary'; // White bg, cyan text
-    case UserRole.SPOUSE: return 'bg-white text-[#AB47BC]'; // White bg, purple text
+    case UserRole.SPOUSE: return 'bg-white text-[#7E57C2]'; // White bg, purple text
     case UserRole.HELPER: return 'bg-white text-[#FF9800]'; // White bg, orange text
     case UserRole.CHILD: return 'bg-white text-[#4CAF50]'; // White bg, green text
     case UserRole.OTHER: return 'bg-white text-[#F06292]'; // White bg, pink text
@@ -97,13 +97,13 @@ const getRoleBadgeColor = (role: UserRole) => {
 
 **HouseholdInfo.tsx - Role Styles:**
 ```typescript
-const ROLE_STYLES: Record<UserRole, { bg: string; color: string; gradient: string }> = {
-  [UserRole.SUPERADMIN]: { bg: '#3EAFD2', color: '#FFFFFF', gradient: '...' },
-  [UserRole.MASTER]: { bg: '#FFFFFF', color: '#3EAFD2', gradient: '...' },
-  [UserRole.SPOUSE]: { bg: '#FFFFFF', color: '#AB47BC', gradient: '...' },
-  [UserRole.HELPER]: { bg: '#FFFFFF', color: '#FF9800', gradient: '...' },
-  [UserRole.CHILD]: { bg: '#FFFFFF', color: '#4CAF50', gradient: '...' },
-  [UserRole.OTHER]: { bg: '#FFFFFF', color: '#F06292', gradient: '...' },
+const ROLE_STYLES: Record<UserRole, { bg: string; color: string }> = {
+  [UserRole.SUPERADMIN]: { bg: '#3EAFD2', color: '#FFFFFF' },
+  [UserRole.MASTER]: { bg: '#FFFFFF', color: '#3EAFD2' },
+  [UserRole.SPOUSE]: { bg: '#FFFFFF', color: '#7E57C2' },
+  [UserRole.HELPER]: { bg: '#FFFFFF', color: '#FF9800' },
+  [UserRole.CHILD]: { bg: '#FFFFFF', color: '#4CAF50' },
+  [UserRole.OTHER]: { bg: '#FFFFFF', color: '#F06292' },
 };
 ```
 
@@ -128,7 +128,7 @@ When adding a new `UserRole`:
 | Name | Hex | Usage |
 |------|-----|-------|
 | Helpy Blue (Primary) | `#3EAFD2` | Primary actions, Admin badges |
-| Purple | `#AB47BC` | Spouse role |
+| Purple | `#7E57C2` | Spouse role, Dinner meal |
 | Orange | `#FF9800` | Helper role |
 | Green | `#4CAF50` | Child role |
 | Pink | `#F06292` | Other role |

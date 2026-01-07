@@ -162,7 +162,7 @@ const getSortedUsersForAssignment = (users: User[], currentUser: User): User[] =
 };
 
 // Returns badge styling for category (background + text color)
-// Colors based on brand palette: #3EAFD2, #FF9800, #7E57C2, #4CAF50, #F06292, #AB47BC, #757575
+// Colors based on brand palette: #3EAFD2, #FF9800, #7E57C2, #4CAF50, #F06292, #757575
 const getCategoryBadgeStyle = (category: string): string => {
   switch (category) {
     case ShoppingCategory.SUPERMARKET:
@@ -174,7 +174,7 @@ const getCategoryBadgeStyle = (category: string): string => {
     case TaskCategory.FAMILY_CARE:
       return 'bg-[#FCE4EC] text-[#F06292]'; // Magenta
     default:
-      return 'bg-[#F5F5F5] text-[#757575]'; // Gray
+      return 'bg-secondary text-muted-foreground'; // Gray
   }
 };
 
@@ -190,7 +190,7 @@ const getSuggestionPillStyle = (category: string): string => {
     case TaskCategory.FAMILY_CARE:
       return 'bg-[#FCE4EC] text-[#F06292] border-[#F06292]/40'; // Magenta
     default:
-      return 'bg-[#F5F5F5] text-[#757575] border-[#757575]/40'; // Gray
+      return 'bg-secondary text-muted-foreground border-muted-foreground/40'; // Gray
   }
 };
 
@@ -206,7 +206,7 @@ const getCategoryIconColor = (category: string): string => {
     case TaskCategory.FAMILY_CARE:
       return 'text-[#F06292]'; // Magenta
     default:
-      return 'text-[#757575]'; // Gray
+      return 'text-muted-foreground'; // Gray
   }
 };
 

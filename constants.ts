@@ -10,7 +10,7 @@ export const EXPENSE_CATEGORIES = [
   'Miscellaneous'
 ];
 
-// Colors based on brand palette: #3EAFD2, #FF9800, #7E57C2, #4CAF50, #F06292, #AB47BC, #757575
+// Colors based on brand palette: #3EAFD2, #FF9800, #7E57C2, #4CAF50, #F06292, #757575
 export const SHOPPING_CATEGORY_COLORS: Record<ShoppingCategory, string> = {
   [ShoppingCategory.SUPERMARKET]: 'border-l-[#3EAFD2]',
   [ShoppingCategory.WET_MARKET]: 'border-l-[#4CAF50]',

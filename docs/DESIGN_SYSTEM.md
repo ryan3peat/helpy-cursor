@@ -33,7 +33,7 @@ A comprehensive guide to the visual design language and component patterns used 
 |------|-----|-------|
 | **Primary (Helpy Blue)** | `#3EAFD2` | CTAs, links, accents, Admin badges |
 | **Destructive (Pink)** | `#F06292` | Delete actions, allergy warnings |
-| **Purple** | `#AB47BC` | Spouse role |
+| **Purple** | `#7E57C2` | Spouse role, Dinner meal |
 | **Orange** | `#FF9800` | Helper role |
 | **Green** | `#4CAF50` | Child role |
 | **Gray** | `#757575` | Default/unknown |
@@ -259,7 +259,7 @@ White solid background with colored text, **EXCEPT SuperAdmin** which uses solid
 |------|---------|
 | **SuperAdmin** | `bg-primary text-white` |
 | **Admin (MASTER)** | `bg-white text-primary` |
-| **Spouse** | `bg-white text-[#AB47BC]` |
+| **Spouse** | `bg-white text-[#7E57C2]` |
 | **Helper** | `bg-white text-[#FF9800]` |
 | **Child** | `bg-white text-[#4CAF50]` |
 | **Other** | `bg-white text-[#F06292]` |

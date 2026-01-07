@@ -35,7 +35,7 @@ const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   open: { bg: 'bg-blue-100', text: 'text-blue-700' },
   in_progress: { bg: 'bg-yellow-100', text: 'text-yellow-700' },
   resolved: { bg: 'bg-green-100', text: 'text-green-700' },
-  closed: { bg: 'bg-gray-100', text: 'text-gray-500' },
+  closed: { bg: 'bg-secondary', text: 'text-muted-foreground' },
 };
 
 const FeedbackSection: React.FC<FeedbackSectionProps> = ({

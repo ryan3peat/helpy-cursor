@@ -127,104 +127,147 @@ const createDemoUsers = (): User[] => [
 
 const createDemoTodoItems = (): ToDoItem[] => {
   const today = new Date();
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tasks: ToDoItem[] = [];
   
-  return [
-    // Shopping Items
-    {
-      id: 'demo-shop-001',
-      type: 'shopping',
-      name: 'Fresh Salmon',
-      category: ShoppingCategory.WET_MARKET,
-      completed: false,
-      quantity: '500',
-      unit: 'g',
-      assigneeId: 'demo-helper-004',
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: 'demo-shop-002',
-      type: 'shopping',
-      name: 'Bok Choy',
-      category: ShoppingCategory.WET_MARKET,
-      completed: false,
-      quantity: '2',
-      unit: 'bunches',
-      assigneeId: 'demo-helper-004',
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: 'demo-shop-003',
-      type: 'shopping',
-      name: 'Vitasoy Soy Milk',
-      category: ShoppingCategory.SUPERMARKET,
-      completed: false,
-      quantity: '6',
-      unit: 'boxes',
-      brand: 'Vitasoy',
-      assigneeId: 'demo-helper-004',
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: 'demo-shop-004',
-      type: 'shopping',
-      name: 'Lee Kum Kee Oyster Sauce',
-      category: ShoppingCategory.SUPERMARKET,
-      completed: true,
-      quantity: '1',
-      unit: 'bottle',
-      brand: 'Lee Kum Kee',
-      assigneeId: 'demo-helper-004',
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: 'demo-shop-005',
-      type: 'shopping',
-      name: 'Jasmine Rice',
-      category: ShoppingCategory.SUPERMARKET,
-      completed: false,
-      quantity: '5',
-      unit: 'kg',
-      assigneeId: 'demo-helper-004',
-      createdAt: new Date().toISOString(),
-    },
-    // Tasks
-    {
-      id: 'demo-task-001',
-      type: 'task',
-      name: 'Pick up Ethan from school',
-      category: TaskCategory.FAMILY_CARE,
-      completed: false,
-      assigneeId: 'demo-helper-004',
-      dueDate: today.toISOString().split('T')[0],
-      dueTime: '15:30',
-      createdAt: new Date().toISOString(),
-      recurrence: { frequency: 'WEEKLY', dayOfWeek: 1 },
-    },
-    {
-      id: 'demo-task-002',
-      type: 'task',
-      name: 'Clean bathroom',
-      category: TaskCategory.HOME_CARE,
-      completed: false,
-      assigneeId: 'demo-helper-004',
-      dueDate: tomorrow.toISOString().split('T')[0],
-      createdAt: new Date().toISOString(),
-      recurrence: { frequency: 'WEEKLY', dayOfWeek: 3 },
-    },
-    {
-      id: 'demo-task-003',
-      type: 'task',
-      name: 'Take grandma to doctor',
-      category: TaskCategory.FAMILY_CARE,
-      completed: false,
-      assigneeId: 'demo-mom-002',
-      dueDate: tomorrow.toISOString().split('T')[0],
-      dueTime: '10:00',
-      createdAt: new Date().toISOString(),
-    },
+  // Helper to create a date string offset from today
+  const dateOffset = (days: number): string => {
+    const d = new Date(today);
+    d.setDate(d.getDate() + days);
+    return d.toISOString().split('T')[0];
+  };
+  
+  // Shopping Items
+  const shoppingItems: Partial<ToDoItem>[] = [
+    { name: 'Fresh Salmon', category: ShoppingCategory.WET_MARKET, quantity: '500', unit: 'g' },
+    { name: 'Bok Choy', category: ShoppingCategory.WET_MARKET, quantity: '2', unit: 'bunches' },
+    { name: 'Vitasoy Soy Milk', category: ShoppingCategory.SUPERMARKET, quantity: '6', unit: 'boxes', brand: 'Vitasoy' },
+    { name: 'Lee Kum Kee Oyster Sauce', category: ShoppingCategory.SUPERMARKET, quantity: '1', unit: 'bottle', brand: 'Lee Kum Kee', completed: true },
+    { name: 'Jasmine Rice', category: ShoppingCategory.SUPERMARKET, quantity: '5', unit: 'kg' },
   ];
+  
+  shoppingItems.forEach((item, i) => {
+    tasks.push({
+      id: `demo-shop-${String(i + 1).padStart(3, '0')}`,
+      type: 'shopping',
+      name: item.name!,
+      category: item.category!,
+      completed: item.completed || false,
+      quantity: item.quantity || '1',
+      unit: item.unit,
+      brand: item.brand,
+      assigneeId: 'demo-helper-004',
+      createdAt: new Date().toISOString(),
+    });
+  });
+  
+  // Tasks spread across a month for calendar view testing
+  const taskList: { name: string; category: string; daysOffset: number; time?: string; assignee?: string; recurrence?: any }[] = [
+    // Today
+    { name: 'Pick up Ethan from school', category: TaskCategory.FAMILY_CARE, daysOffset: 0, time: '15:30', recurrence: { frequency: 'WEEKLY', dayOfWeek: today.getDay() } },
+    { name: 'Prepare dinner', category: TaskCategory.HOME_CARE, daysOffset: 0, time: '17:00' },
+    
+    // Tomorrow
+    { name: 'Take grandma to doctor', category: TaskCategory.FAMILY_CARE, daysOffset: 1, time: '10:00', assignee: 'demo-mom-002' },
+    { name: 'Clean bathroom', category: TaskCategory.HOME_CARE, daysOffset: 1, time: '14:00', recurrence: { frequency: 'WEEKLY', dayOfWeek: (today.getDay() + 1) % 7 } },
+    
+    // Day 2
+    { name: 'Grocery shopping at Wellcome', category: TaskCategory.HOME_CARE, daysOffset: 2, time: '09:00' },
+    { name: 'Pay electricity bill', category: TaskCategory.OTHERS, daysOffset: 2 },
+    
+    // Day 3
+    { name: 'Ethan swimming class', category: TaskCategory.FAMILY_CARE, daysOffset: 3, time: '16:00', assignee: 'demo-mom-002' },
+    { name: 'Vacuum living room', category: TaskCategory.HOME_CARE, daysOffset: 3 },
+    
+    // Day 4
+    { name: 'Pick up dry cleaning', category: TaskCategory.OTHERS, daysOffset: 4, time: '11:00' },
+    
+    // Day 5
+    { name: 'Water plants', category: TaskCategory.HOME_CARE, daysOffset: 5, recurrence: { frequency: 'WEEKLY', dayOfWeek: (today.getDay() + 5) % 7 } },
+    { name: 'Call insurance company', category: TaskCategory.OTHERS, daysOffset: 5, time: '14:00', assignee: 'demo-dad-001' },
+    
+    // Day 6
+    { name: 'Deep clean kitchen', category: TaskCategory.HOME_CARE, daysOffset: 6, time: '09:00' },
+    { name: 'Ethan piano lesson', category: TaskCategory.FAMILY_CARE, daysOffset: 6, time: '15:00' },
+    
+    // Day 7 (1 week)
+    { name: 'Organize pantry', category: TaskCategory.HOME_CARE, daysOffset: 7 },
+    { name: 'Family dim sum brunch', category: TaskCategory.FAMILY_CARE, daysOffset: 7, time: '10:30', assignee: 'demo-dad-001' },
+    
+    // Day 8
+    { name: 'Iron school uniforms', category: TaskCategory.HOME_CARE, daysOffset: 8, time: '08:00' },
+    
+    // Day 9
+    { name: 'Renew library books', category: TaskCategory.OTHERS, daysOffset: 9 },
+    { name: 'Prepare lunch boxes', category: TaskCategory.HOME_CARE, daysOffset: 9, time: '07:00' },
+    
+    // Day 10
+    { name: 'Parent-teacher meeting', category: TaskCategory.FAMILY_CARE, daysOffset: 10, time: '14:00', assignee: 'demo-mom-002' },
+    { name: 'Change bed sheets', category: TaskCategory.HOME_CARE, daysOffset: 10 },
+    
+    // Day 12
+    { name: 'Take car for service', category: TaskCategory.OTHERS, daysOffset: 12, time: '09:00', assignee: 'demo-dad-001' },
+    { name: 'Ethan dentist appointment', category: TaskCategory.FAMILY_CARE, daysOffset: 12, time: '16:00', assignee: 'demo-mom-002' },
+    
+    // Day 14 (2 weeks)
+    { name: 'Grocery run - wet market', category: TaskCategory.HOME_CARE, daysOffset: 14, time: '07:30' },
+    { name: 'Clean windows', category: TaskCategory.HOME_CARE, daysOffset: 14, time: '10:00' },
+    
+    // Day 15
+    { name: 'Pay credit card bill', category: TaskCategory.OTHERS, daysOffset: 15, assignee: 'demo-dad-001' },
+    
+    // Day 16
+    { name: 'Grandma birthday preparation', category: TaskCategory.FAMILY_CARE, daysOffset: 16 },
+    { name: 'Order birthday cake', category: TaskCategory.OTHERS, daysOffset: 16, time: '11:00', assignee: 'demo-mom-002' },
+    
+    // Day 17
+    { name: 'Birthday party', category: TaskCategory.FAMILY_CARE, daysOffset: 17, time: '12:00' },
+    
+    // Day 18
+    { name: 'Return borrowed items', category: TaskCategory.OTHERS, daysOffset: 18 },
+    
+    // Day 20
+    { name: 'Schedule helper medical checkup', category: TaskCategory.OTHERS, daysOffset: 20, assignee: 'demo-mom-002' },
+    { name: 'Restock medicine cabinet', category: TaskCategory.HOME_CARE, daysOffset: 20 },
+    
+    // Day 21 (3 weeks)
+    { name: 'Deep clean refrigerator', category: TaskCategory.HOME_CARE, daysOffset: 21, time: '09:00' },
+    { name: 'Weekend family outing', category: TaskCategory.FAMILY_CARE, daysOffset: 21, time: '14:00', assignee: 'demo-dad-001' },
+    
+    // Day 23
+    { name: 'Prepare school project materials', category: TaskCategory.FAMILY_CARE, daysOffset: 23, assignee: 'demo-mom-002' },
+    
+    // Day 25
+    { name: 'Pay rent', category: TaskCategory.OTHERS, daysOffset: 25, assignee: 'demo-dad-001' },
+    { name: 'Monthly deep clean', category: TaskCategory.HOME_CARE, daysOffset: 25, time: '08:00', recurrence: { frequency: 'MONTHLY', dayOfMonth: 25 } },
+    
+    // Day 27
+    { name: 'Sort donation items', category: TaskCategory.HOME_CARE, daysOffset: 27 },
+    
+    // Day 28 (4 weeks)
+    { name: 'Ethan report card day', category: TaskCategory.FAMILY_CARE, daysOffset: 28, time: '15:00', assignee: 'demo-mom-002' },
+    { name: 'Plan next month meals', category: TaskCategory.HOME_CARE, daysOffset: 28 },
+    
+    // Day 30
+    { name: 'End of month grocery inventory', category: TaskCategory.HOME_CARE, daysOffset: 30 },
+    { name: 'Review household expenses', category: TaskCategory.OTHERS, daysOffset: 30, time: '20:00', assignee: 'demo-dad-001' },
+  ];
+  
+  taskList.forEach((task, i) => {
+    tasks.push({
+      id: `demo-task-${String(i + 1).padStart(3, '0')}`,
+      type: 'task',
+      name: task.name,
+      category: task.category,
+      completed: false,
+      assigneeId: task.assignee || 'demo-helper-004',
+      dueDate: dateOffset(task.daysOffset),
+      dueTime: task.time,
+      recurrence: task.recurrence,
+      createdAt: new Date().toISOString(),
+    });
+  });
+  
+  return tasks;
 };
 
 // ============================================================================

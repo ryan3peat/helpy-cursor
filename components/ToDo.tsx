@@ -15,9 +15,11 @@ import {
   ClipboardList,
   Trash2,
   Home,
-  Users,
+  HandHeart,
   MoreHorizontal,
   ArrowDownUp,
+  List,
+  CalendarDays,
 } from 'lucide-react';
 import Avatar from './ui/Avatar';
 import ErrorBanner from './ui/ErrorBanner';
@@ -109,7 +111,7 @@ const getTaskCategoryIcon = (category: string, isSelected = false) => {
   const className = isSelected ? '' : undefined;
   switch (category) {
     case TaskCategory.HOME_CARE: return <Home size={16} className={className} />;
-    case TaskCategory.FAMILY_CARE: return <Users size={16} className={className} />;
+    case TaskCategory.FAMILY_CARE: return <HandHeart size={16} className={className} />;
     case TaskCategory.OTHERS: return <MoreHorizontal size={16} className={className} />;
     default: return null;
   }
@@ -306,6 +308,345 @@ const generateOptimisticId = (): string => {
 };
 
 // ─────────────────────────────────────────────────────────────────
+// Calendar Agenda View Component
+// ─────────────────────────────────────────────────────────────────
+
+interface CalendarAgendaViewProps {
+  items: ToDoItem[];
+  users: User[];
+  currentUser: User;
+  t: Record<string, string>;
+  currentLang: string;
+  onUpdate: (id: string, data: Partial<ToDoItem>) => Promise<void>;
+  onItemClick: (item: ToDoItem) => void;
+  onToggleComplete: (id: string, completed: boolean) => void;
+  completingIds: Set<string>;
+}
+
+const CalendarAgendaView: React.FC<CalendarAgendaViewProps> = ({
+  items,
+  users,
+  currentUser,
+  t,
+  currentLang,
+  onUpdate,
+  onItemClick,
+  onToggleComplete,
+  completingIds,
+}) => {
+  // Get today's date at midnight for comparison
+  const today = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
+
+  // Get start of week (Monday) for a given date
+  const getWeekStart = (date: Date): Date => {
+    const d = new Date(date);
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Adjust for Monday start
+    d.setDate(diff);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  };
+
+  // Get week number of year
+  const getWeekNumber = (date: Date): number => {
+    const d = new Date(date);
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() + 4 - (d.getDay() || 7));
+    const yearStart = new Date(d.getFullYear(), 0, 1);
+    return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+  };
+
+  // Format date range for week header: "1 Jan - 7 Jan 2026"
+  const formatWeekRange = (weekStart: Date): string => {
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekEnd.getDate() + 6);
+    
+    const langCode = currentLang === 'en' ? 'en-GB' : currentLang;
+    const startDay = weekStart.getDate();
+    const endDay = weekEnd.getDate();
+    const startMonth = weekStart.toLocaleDateString(langCode, { month: 'short' });
+    const endMonth = weekEnd.toLocaleDateString(langCode, { month: 'short' });
+    const year = weekEnd.getFullYear();
+    
+    if (startMonth === endMonth) {
+      return `${startDay} - ${endDay} ${startMonth} ${year}`;
+    }
+    return `${startDay} ${startMonth} - ${endDay} ${endMonth} ${year}`;
+  };
+
+  // Group tasks by week, then by day (include completed tasks - they show crossed out)
+  const groupedTasks = useMemo(() => {
+    // Include ALL tasks with due dates (completed show crossed out)
+    const tasksWithDates = items
+      .filter(item => item.dueDate)
+      .sort((a, b) => {
+        const dateA = new Date(a.dueDate! + 'T' + (a.dueTime || '00:00'));
+        const dateB = new Date(b.dueDate! + 'T' + (b.dueTime || '00:00'));
+        return dateA.getTime() - dateB.getTime();
+      });
+
+    // Group by week
+    const weeks: Map<string, { weekStart: Date; weekNumber: number; days: Map<string, ToDoItem[]> }> = new Map();
+
+    tasksWithDates.forEach(task => {
+      const taskDate = new Date(task.dueDate! + 'T00:00:00');
+      const weekStart = getWeekStart(taskDate);
+      const weekKey = weekStart.toISOString();
+      const weekNumber = getWeekNumber(taskDate);
+
+      if (!weeks.has(weekKey)) {
+        weeks.set(weekKey, { weekStart, weekNumber, days: new Map() });
+      }
+
+      const dayKey = task.dueDate!;
+      const week = weeks.get(weekKey)!;
+      if (!week.days.has(dayKey)) {
+        week.days.set(dayKey, []);
+      }
+      week.days.get(dayKey)!.push(task);
+    });
+
+    return Array.from(weeks.values());
+  }, [items]);
+
+  // Format day header (no uppercase per global rules)
+  const formatDayHeader = (dateStr: string): { dayName: string; dayNumber: number; isToday: boolean } => {
+    const date = new Date(dateStr + 'T00:00:00');
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const isToday = date.getTime() === today.getTime();
+    return {
+      dayName: dayNames[date.getDay()],
+      dayNumber: date.getDate(),
+      isToday,
+    };
+  };
+
+  // Get user info for avatar
+  const getUser = (userId?: string): User | undefined => {
+    if (!userId) return undefined;
+    return users.find(u => u.id === userId);
+  };
+
+  // Tasks without due dates (include completed - they show crossed out)
+  const tasksWithoutDates = useMemo(() => {
+    return items.filter(item => !item.dueDate);
+  }, [items]);
+
+  if (groupedTasks.length === 0 && tasksWithoutDates.length === 0) {
+    return (
+      <div className="mt-8 text-center py-12">
+        <CalendarDays size={48} className="mx-auto text-muted-foreground/30 mb-4" />
+        <p className="text-body text-foreground">{t['todo.no_tasks'] || 'No tasks yet'}</p>
+        <p className="text-caption text-muted-foreground mt-1">
+          {t['todo.tap_fab_to_add'] || 'Tap + to add a task'}
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-4 space-y-6">
+      {groupedTasks.map(({ weekStart, weekNumber, days }) => (
+        <div key={weekStart.toISOString()}>
+          {/* Week Header */}
+          <div className="text-caption text-muted-foreground mb-3 px-1">
+            Week {weekNumber}, {formatWeekRange(weekStart)}
+          </div>
+
+          {/* Days in this week */}
+          <div className="space-y-2">
+            {Array.from(days.entries()).map(([dateStr, dayTasks]) => {
+              const { dayName, dayNumber, isToday } = formatDayHeader(dateStr);
+
+              return (
+                <div key={dateStr} className="flex gap-3">
+                  {/* Day Column */}
+                  <div className="w-12 shrink-0 text-center pt-2">
+                    <div className="text-micro text-muted-foreground">{dayName}</div>
+                    <div 
+                      className={`text-title font-bold mt-0.5 ${
+                        isToday 
+                          ? 'w-9 h-9 mx-auto rounded-full bg-primary text-primary-foreground flex items-center justify-center' 
+                          : 'text-foreground'
+                      }`}
+                    >
+                      {dayNumber}
+                    </div>
+                  </div>
+
+                  {/* Tasks Column */}
+                  <div className="flex-1 space-y-2 relative">
+                    {/* Today indicator line */}
+                    {isToday && (
+                      <div className="absolute left-0 right-0 top-6 flex items-center z-10 pointer-events-none">
+                        <div className="w-2 h-2 rounded-full bg-primary" />
+                        <div className="flex-1 h-0.5 bg-primary/30" />
+                      </div>
+                    )}
+
+                    {dayTasks.map(task => {
+                      const isCompleting = completingIds.has(task.id);
+                      const isCompleted = task.completed || isCompleting;
+                      const assignee = getUser(task.assigneeId);
+
+                      return (
+                        <div
+                          key={task.id}
+                          className={`w-full text-left rounded-lg px-3 py-2.5 shadow-sm flex items-center gap-3 transition-opacity ${
+                            isCompleted 
+                              ? 'bg-muted/50' 
+                              : 'bg-card'
+                          } ${isCompleting ? 'opacity-50' : ''}`}
+                        >
+                          {/* Checkbox */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (!isCompleting) {
+                                onToggleComplete(task.id, !task.completed);
+                              }
+                            }}
+                            className="shrink-0"
+                          >
+                            {isCompleted ? (
+                              <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center">
+                                <Check size={12} className="text-primary-foreground" strokeWidth={3} />
+                              </div>
+                            ) : (
+                              <Circle size={20} className="text-muted-foreground/50" />
+                            )}
+                          </button>
+                          
+                          {/* Task Content - clickable to edit */}
+                          <button
+                            onClick={() => !isCompleting && onItemClick(task)}
+                            className="flex-1 min-w-0 text-left"
+                          >
+                            <p className={`text-body font-medium ${
+                              isCompleted 
+                                ? 'text-muted-foreground line-through' 
+                                : 'text-foreground'
+                            }`}>
+                              <TranslatedItemName item={task} currentLang={currentLang} onUpdate={onUpdate} />
+                            </p>
+                            {task.dueTime && (
+                              <p className={`text-caption mt-0.5 ${
+                                isCompleted 
+                                  ? 'text-muted-foreground/70' 
+                                  : 'text-muted-foreground'
+                              }`}>
+                                {task.dueTime}
+                                {task.recurrence && task.recurrence.frequency !== 'NONE' && (
+                                  <span className="ml-2 inline-flex items-center gap-1">
+                                    <Repeat size={10} />
+                                    {task.recurrence.frequency === 'DAILY' ? 'Daily' :
+                                     task.recurrence.frequency === 'WEEKLY' ? 'Weekly' : 'Monthly'}
+                                  </span>
+                                )}
+                              </p>
+                            )}
+                          </button>
+                          
+                          {/* Assignee Avatar */}
+                          {assignee && assignee.id !== currentUser.id && (
+                            <Avatar
+                              user={assignee}
+                              size="xs"
+                            />
+                          )}
+                          
+                          {/* Category Icon - right side */}
+                          <div className={`shrink-0 ${getCategoryIconColor(task.category)}`}>
+                            {getTaskCategoryIcon(task.category)}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+
+      {/* Tasks without due dates */}
+      {tasksWithoutDates.length > 0 && (
+        <div>
+          <div className="text-caption text-muted-foreground mb-3 px-1">
+            {t['todo.no_due_date'] || 'No due date'}
+          </div>
+          <div className="space-y-2">
+            {tasksWithoutDates.map(task => {
+              const isCompleting = completingIds.has(task.id);
+              const isCompleted = task.completed || isCompleting;
+              const assignee = getUser(task.assigneeId);
+
+              return (
+                <div
+                  key={task.id}
+                  className={`w-full text-left rounded-lg px-3 py-2.5 shadow-sm flex items-center gap-3 transition-opacity ${
+                    isCompleted ? 'bg-muted/50' : 'bg-card'
+                  } ${isCompleting ? 'opacity-50' : ''}`}
+                >
+                  {/* Checkbox */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (!isCompleting) {
+                        onToggleComplete(task.id, !task.completed);
+                      }
+                    }}
+                    className="shrink-0"
+                  >
+                    {isCompleted ? (
+                      <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center">
+                        <Check size={12} className="text-primary-foreground" strokeWidth={3} />
+                      </div>
+                    ) : (
+                      <Circle size={20} className="text-muted-foreground/50" />
+                    )}
+                  </button>
+                  
+                  {/* Task Content */}
+                  <button
+                    onClick={() => !isCompleting && onItemClick(task)}
+                    className="flex-1 min-w-0 text-left"
+                  >
+                    <p className={`text-body font-medium ${
+                      isCompleted ? 'text-muted-foreground line-through' : 'text-foreground'
+                    }`}>
+                      <TranslatedItemName item={task} currentLang={currentLang} onUpdate={onUpdate} />
+                    </p>
+                    <p className="text-caption text-muted-foreground mt-0.5">
+                      {getCategoryBadgeStyle(task.category).includes('cyan') ? (t['todo.category.home_care'] || 'Home Care') :
+                       getCategoryBadgeStyle(task.category).includes('pink') ? (t['todo.category.family_care'] || 'Family Care') :
+                       (t['todo.category.others'] || 'Others')}
+                    </p>
+                  </button>
+                  
+                  {/* Assignee Avatar */}
+                  {assignee && assignee.id !== currentUser.id && (
+                    <Avatar
+                      user={assignee}
+                      size="xs"
+                    />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────────
 // Main Component
 // ─────────────────────────────────────────────────────────────────
 
@@ -340,6 +681,7 @@ const ToDo: React.FC<ToDoProps> = ({
   // ─────────────────────────────────────────────────────────────────
   
   const [activeSection, setActiveSection] = useState<ToDoType>(initialSection || 'task');
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   
   // Notify parent of section changes (for onboarding)
   useEffect(() => {
@@ -1160,67 +1502,108 @@ const ToDo: React.FC<ToDoProps> = ({
           </div>
         </div>
 
-        {/* Sticky Tab Navigation */}
-        <div 
-          className="sticky z-10 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 py-3 transition-shadow duration-200"
-          style={{ 
-            top: '118px',
-            boxShadow: isScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none'
-          }}
-        >
-          <div 
-            className="relative rounded-full overflow-hidden"
-            style={{ backgroundColor: 'hsl(var(--muted))' }}
-          >
-            <div className="flex p-1 overflow-x-auto scrollbar-hide">
-              <button
-                onClick={() => setSelectedCategory('All')}
-                className={`px-4 py-2 rounded-full text-body whitespace-nowrap transition-all ${
-                  selectedCategory === 'All'
-                    ? 'bg-card text-primary shadow-sm'
-                    : 'text-muted-foreground'
-                }`}
-              >
-                All ({getItemCount('All')})
-              </button>
-              {categories.map(cat => {
-                const getCategoryLabel = (category: string) => {
-                  if (activeSection === 'shopping') {
-                    if (category === ShoppingCategory.SUPERMARKET) return t['todo.category.supermarket'] || t['category.supermarket'] || category;
-                    if (category === ShoppingCategory.WET_MARKET) return t['todo.category.wet_market'] || t['category.wet_market'] || category;
-                    if (category === ShoppingCategory.OTHERS) return t['todo.category.others'] || t['category.others'] || category;
-                  } else {
-                    if (category === TaskCategory.HOME_CARE) return t['todo.category.home_care'] || category;
-                    if (category === TaskCategory.FAMILY_CARE) return t['todo.category.family_care'] || category;
-                    if (category === TaskCategory.OTHERS) return t['todo.category.others'] || category;
-                  }
-                  return category;
-                };
-                return (
-                  <button
-                    key={cat}
-                    onClick={() => setSelectedCategory(cat)}
-                    className={`px-4 py-2 rounded-full text-body whitespace-nowrap transition-all flex items-center gap-1.5 ${
-                      selectedCategory === cat
-                        ? 'bg-card text-primary shadow-sm'
-                        : 'text-muted-foreground'
-                    }`}
-                  >
-                    {categoryIcons[cat]}
-                    {getCategoryLabel(cat)} ({getItemCount(cat)})
-                  </button>
-                );
-              })}
-            </div>
+        {/* View Mode Toggle (Tasks only) */}
+        {activeSection === 'task' && (
+          <div className="mt-3 mb-1 -mx-4 px-4 sm:-mx-6 sm:px-6">
             <div 
-              className="absolute inset-0 rounded-full pointer-events-none"
-              style={{ boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.06)' }}
-            />
+              className="relative rounded-full overflow-hidden inline-flex"
+              style={{ backgroundColor: 'hsl(var(--muted))' }}
+            >
+              <div className="flex p-1">
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={`px-4 py-2 rounded-full text-body whitespace-nowrap transition-all flex items-center gap-1.5 ${
+                    viewMode === 'list'
+                      ? 'bg-card text-primary shadow-sm'
+                      : 'text-muted-foreground'
+                  }`}
+                >
+                  <List size={16} />
+                  {t['todo.list_view'] || 'List'}
+                </button>
+                <button
+                  onClick={() => setViewMode('calendar')}
+                  className={`px-4 py-2 rounded-full text-body whitespace-nowrap transition-all flex items-center gap-1.5 ${
+                    viewMode === 'calendar'
+                      ? 'bg-card text-primary shadow-sm'
+                      : 'text-muted-foreground'
+                  }`}
+                >
+                  <CalendarDays size={16} />
+                  {t['todo.calendar_view'] || 'Calendar'}
+                </button>
+              </div>
+              <div 
+                className="absolute inset-0 rounded-full pointer-events-none"
+                style={{ boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.06)' }}
+              />
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* Suggestions - Collapsible Carousel */}
-        {suggestions.length > 0 && (
+        {/* Sticky Tab Navigation - List View Only */}
+        {(activeSection === 'shopping' || viewMode === 'list') && (
+          <div 
+            className="sticky z-10 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 py-3 transition-shadow duration-200"
+            style={{ 
+              top: '118px',
+              boxShadow: isScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none'
+            }}
+          >
+            <div 
+              className="relative rounded-full overflow-hidden"
+              style={{ backgroundColor: 'hsl(var(--muted))' }}
+            >
+              <div className="flex p-1 overflow-x-auto scrollbar-hide">
+                <button
+                  onClick={() => setSelectedCategory('All')}
+                  className={`px-4 py-2 rounded-full text-body whitespace-nowrap transition-all ${
+                    selectedCategory === 'All'
+                      ? 'bg-card text-primary shadow-sm'
+                      : 'text-muted-foreground'
+                  }`}
+                >
+                  All ({getItemCount('All')})
+                </button>
+                {categories.map(cat => {
+                  const getCategoryLabel = (category: string) => {
+                    if (activeSection === 'shopping') {
+                      if (category === ShoppingCategory.SUPERMARKET) return t['todo.category.supermarket'] || t['category.supermarket'] || category;
+                      if (category === ShoppingCategory.WET_MARKET) return t['todo.category.wet_market'] || t['category.wet_market'] || category;
+                      if (category === ShoppingCategory.OTHERS) return t['todo.category.others'] || t['category.others'] || category;
+                    } else {
+                      if (category === TaskCategory.HOME_CARE) return t['todo.category.home_care'] || category;
+                      if (category === TaskCategory.FAMILY_CARE) return t['todo.category.family_care'] || category;
+                      if (category === TaskCategory.OTHERS) return t['todo.category.others'] || category;
+                    }
+                    return category;
+                  };
+                  return (
+                    <button
+                      key={cat}
+                      onClick={() => setSelectedCategory(cat)}
+                      className={`px-4 py-2 rounded-full text-body whitespace-nowrap transition-all flex items-center gap-1.5 ${
+                        selectedCategory === cat
+                          ? 'bg-card text-primary shadow-sm'
+                          : 'text-muted-foreground'
+                      }`}
+                    >
+                      {categoryIcons[cat]}
+                      {getCategoryLabel(cat)} ({getItemCount(cat)})
+                    </button>
+                  );
+                })}
+              </div>
+              <div 
+                className="absolute inset-0 rounded-full pointer-events-none"
+                style={{ boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.06)' }}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Suggestions - Collapsible Carousel (List View Only) */}
+        {suggestions.length > 0 && (activeSection === 'shopping' || viewMode === 'list') && (
           <div className="mt-4 mb-2">
             <div className="overflow-x-auto scrollbar-hide -mx-4 px-4 sm:-mx-6 sm:px-6 pb-2">
               <div className="flex gap-3" style={{ paddingRight: '1rem' }}>
@@ -1287,7 +1670,8 @@ const ToDo: React.FC<ToDoProps> = ({
           </div>
         )}
 
-        {/* Item List Card */}
+        {/* Item List Card (List View Only) */}
+        {(activeSection === 'shopping' || viewMode === 'list') && (
         <div className="mt-4 bg-card rounded-xl shadow-sm overflow-hidden">
           {/* Inline Add Row at TOP - always visible for rapid entry */}
           <div
@@ -1492,9 +1876,10 @@ const ToDo: React.FC<ToDoProps> = ({
             </div>
           )}
         </div>
+        )}
 
-        {/* Completed Section */}
-        {completedItems.length > 0 && (
+        {/* Completed Section (List View Only) */}
+        {completedItems.length > 0 && (activeSection === 'shopping' || viewMode === 'list') && (
           <div className="mt-6">
             <div className="flex items-center justify-between mb-2 px-2">
               <button
@@ -1564,6 +1949,32 @@ const ToDo: React.FC<ToDoProps> = ({
               </div>
             )}
           </div>
+        )}
+
+        {/* Calendar/Agenda View (Tasks Only) */}
+        {activeSection === 'task' && viewMode === 'calendar' && (
+          <CalendarAgendaView
+            items={items.filter(i => i.type === 'task')}
+            users={users}
+            currentUser={currentUser}
+            t={t}
+            currentLang={currentLang}
+            onUpdate={onUpdate}
+            onItemClick={openEditSheet}
+            onToggleComplete={handleToggleComplete}
+            completingIds={completingIds}
+          />
+        )}
+
+        {/* FAB for Calendar View */}
+        {activeSection === 'task' && viewMode === 'calendar' && (
+          <button
+            onClick={openDetailedSheet}
+            className="fixed bottom-28 right-6 w-14 h-14 bg-primary text-primary-foreground rounded-full shadow-lg flex items-center justify-center z-30"
+            style={{ boxShadow: '0 4px 12px rgba(62, 175, 210, 0.4)' }}
+          >
+            <Plus size={24} />
+          </button>
         )}
 
         {/* Footer */}

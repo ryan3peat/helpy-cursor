@@ -95,7 +95,7 @@ export interface RecurringSeries {
 }
 
 // Edit/Delete action scope for recurring tasks
-export type RecurringActionScope = 'this' | 'future' | 'all';
+export type RecurringActionScope = 'this' | 'all';
 
 // Unified ToDo Item
 export interface ToDoItem {

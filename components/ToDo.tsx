@@ -1109,17 +1109,25 @@ const ToDo: React.FC<ToDoProps> = ({
     
     // For LIST VIEW: Deduplicate recurring task instances - show only ONE per series
     // Keep the NEXT upcoming instance (earliest dueDate that's not completed)
+    // NOTE: Items with seriesId but recurrence.frequency === 'NONE' are "orphaned" from split series
+    // and should be treated as standalone tasks (not grouped/deduplicated)
     const deduplicatedMerged = (() => {
       const seriesMap = new Map<string, ToDoItem[]>();
       const nonSeriesItems: ToDoItem[] = [];
       
       merged.forEach(item => {
-        if (item.seriesId) {
-          if (!seriesMap.has(item.seriesId)) {
-            seriesMap.set(item.seriesId, []);
+        // Only group items that are ACTIVELY recurring (not orphaned from split series)
+        const isActivelyRecurring = item.seriesId && 
+          item.recurrence && 
+          item.recurrence.frequency !== 'NONE';
+        
+        if (isActivelyRecurring) {
+          if (!seriesMap.has(item.seriesId!)) {
+            seriesMap.set(item.seriesId!, []);
           }
-          seriesMap.get(item.seriesId)!.push(item);
+          seriesMap.get(item.seriesId!)!.push(item);
         } else {
+          // Standalone task OR orphaned from split series
           nonSeriesItems.push(item);
         }
       });
@@ -2844,21 +2852,6 @@ const ToDo: React.FC<ToDoProps> = ({
                   {recurringActionDialog.type === 'delete'
                     ? (t['todo.scope_this_only_delete_desc'] || 'Only delete this occurrence')
                     : (t['todo.scope_this_only_update_desc'] || 'Only change this occurrence')
-                  }
-                </p>
-              </button>
-              
-              <button
-                onClick={() => handleRecurringAction('future')}
-                className="w-full p-4 rounded-xl bg-secondary text-left"
-              >
-                <p className="text-body text-foreground font-medium">
-                  {t['todo.scope_this_and_future'] || 'This and future tasks'}
-                </p>
-                <p className="text-caption text-muted-foreground mt-0.5">
-                  {recurringActionDialog.type === 'delete'
-                    ? (t['todo.scope_future_delete_desc'] || 'Delete this and all future occurrences')
-                    : (t['todo.scope_future_update_desc'] || 'Change this and all future occurrences')
                   }
                 </p>
               </button>

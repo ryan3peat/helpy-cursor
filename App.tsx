@@ -1096,12 +1096,12 @@ const AppContent: React.FC = () => {
   };
 
   // Update a recurring task with scope options
-  // scope: 'this' = only this instance, 'future' = this and all future, 'all' = entire series
+  // scope: 'this' = only this instance, 'all' = entire series (past and future)
   // virtualDate: if set, this is a virtual instance that needs to be CREATED, not updated
   const handleUpdateRecurringTask = async (
     id: string, 
     data: Partial<ToDoItem>, 
-    scope: 'this' | 'future' | 'all',
+    scope: 'this' | 'all',
     virtualDate?: string
   ) => {
     if (!hid) return;
@@ -1150,63 +1150,6 @@ const AppContent: React.FC = () => {
         }
         break;
         
-      case 'future': {
-        const effectiveDate = virtualDate || item?.dueDate;
-        const effectiveItem = item || sourceTask;
-        
-        if (!effectiveDate || !effectiveItem) {
-          console.error('Cannot update future: no effective date or item');
-          break;
-        }
-        
-        // End the old series at the day before this date
-        const prevDate = new Date(effectiveDate + 'T00:00:00');
-        prevDate.setDate(prevDate.getDate() - 1);
-        await updateItem(hid, 'recurring_series', seriesId, { 
-          endDate: getLocalDateString(prevDate)
-        });
-        
-        // Delete future instances from the old series (on or after effectiveDate)
-        // This prevents duplicates when new series creates its instances
-        const futureInstances = todoItems.filter(t => 
-          t.seriesId === seriesId && 
-          t.dueDate && 
-          t.dueDate >= effectiveDate &&
-          !t.isException
-        );
-        for (const instance of futureInstances) {
-          await handleDeleteTodoItem(instance.id);
-        }
-        
-        // Clear recurrence from OLD instances so they stop generating virtual instances
-        // Only update instances that are BEFORE effectiveDate (the ones we're keeping)
-        const oldInstances = todoItems.filter(t => 
-          t.seriesId === seriesId && 
-          t.dueDate && 
-          t.dueDate < effectiveDate &&
-          !t.isException
-        );
-        for (const instance of oldInstances) {
-          await handleUpdateTodoItem(instance.id, { recurrence: { frequency: 'NONE' } });
-        }
-        
-        // Create a new series starting from this date with updated data
-        const newSeriesData = {
-          householdId: hid,
-          name: data.name || effectiveItem.name,
-          category: data.category || effectiveItem.category,
-          assigneeId: data.assigneeId || effectiveItem.assigneeId,
-          dueTime: data.dueTime || effectiveItem.dueTime,
-          frequency: data.recurrence?.frequency || effectiveItem.recurrence?.frequency || 'WEEKLY',
-          dayOfWeek: data.recurrence?.dayOfWeek ?? effectiveItem.recurrence?.dayOfWeek,
-          dayOfMonth: data.recurrence?.dayOfMonth ?? effectiveItem.recurrence?.dayOfMonth,
-          startDate: effectiveDate,
-          createdBy: currentUser?.id,
-        };
-        await addItem(hid, 'recurring_series', newSeriesData);
-        break;
-      }
-        
       case 'all': {
         // Update the series template
         const seriesUpdates: Record<string, any> = {};
@@ -1236,7 +1179,7 @@ const AppContent: React.FC = () => {
   
   // Delete a recurring task with scope options
   // virtualDate: if set, this is a virtual instance
-  const handleDeleteRecurringTask = async (id: string, scope: 'this' | 'future' | 'all', virtualDate?: string) => {
+  const handleDeleteRecurringTask = async (id: string, scope: 'this' | 'all', virtualDate?: string) => {
     if (!hid) return;
     
     const item = todoItems.find(i => i.id === id);
@@ -1270,37 +1213,6 @@ const AppContent: React.FC = () => {
           // TODO: Implement proper skip tracking for virtual instances
         }
         break;
-        
-      case 'future': {
-        const effectiveDate = virtualDate || item?.dueDate;
-        if (!effectiveDate) {
-          console.error('Cannot delete future: no effective date');
-          break;
-        }
-        
-        // Set series end_date to exclude this and future
-        const prevDate = new Date(effectiveDate + 'T00:00:00');
-        prevDate.setDate(prevDate.getDate() - 1);
-        await updateItem(hid, 'recurring_series', seriesId, { 
-          endDate: getLocalDateString(prevDate)
-        });
-        
-        // Delete this instance if it exists
-        if (item) {
-          await handleDeleteTodoItem(id);
-        }
-        
-        // Delete future real instances
-        const futureInstances = todoItems.filter(t => 
-          t.seriesId === seriesId && 
-          t.dueDate && 
-          t.dueDate >= effectiveDate
-        );
-        for (const t of futureInstances) {
-          await handleDeleteTodoItem(t.id);
-        }
-        break;
-      }
         
       case 'all': {
         // Delete entire series and all instances

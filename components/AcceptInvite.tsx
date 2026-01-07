@@ -13,18 +13,11 @@ const AUTH_GRADIENT_STYLE = {
 };
 
 // Loading component for auth states  
-const AuthLoading = ({ message }: { message: string }) => (
+const AuthLoading = () => (
   <div className="min-h-screen w-full flex flex-col items-center justify-center p-6 page-fade-in" style={AUTH_GRADIENT_STYLE}>
-    <div className="text-center">
-      <img 
-        src="/helpy-logo-blue.png" 
-        alt="Helpy" 
-        className="h-14 w-auto mx-auto mb-8"
-      />
-      <div className="auth-loading-bar mx-auto mb-4">
-        <div className="auth-loading-bar-fill" />
-      </div>
-      <p className="text-body text-muted-foreground">{message}</p>
+    {/* Loading bar only - no logo/text to avoid jarring transition from iOS splash */}
+    <div className="auth-loading-bar mx-auto">
+      <div className="auth-loading-bar-fill" />
     </div>
   </div>
 );
@@ -217,7 +210,7 @@ const AcceptInvite: React.FC<AcceptInviteProps> = ({ onComplete }) => {
 
   // Loading state
   if (status === 'loading' || status === 'signin') {
-    return <AuthLoading message={status === 'signin' ? 'Signing you in...' : 'Loading invitation...'} />;
+    return <AuthLoading />;
   }
 
   // Error state

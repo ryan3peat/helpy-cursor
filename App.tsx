@@ -57,19 +57,11 @@ const AUTH_GRADIENT_STYLE = {
 };
 
 // Loading component for app states
-const AppLoading = ({ message, subMessage }: { message: string; subMessage?: string }) => (
+const AppLoading = () => (
   <div className="min-h-screen w-full flex flex-col items-center justify-center p-6 page-fade-in" style={AUTH_GRADIENT_STYLE}>
-    <div className="text-center">
-      <img 
-        src="/helpy-logo-blue.png" 
-        alt="Helpy" 
-        className="h-14 w-auto mx-auto mb-8"
-      />
-      <div className="auth-loading-bar mx-auto mb-4">
-        <div className="auth-loading-bar-fill" />
-      </div>
-      <p className="text-body text-muted-foreground">{message}</p>
-      {subMessage && <p className="text-caption text-muted-foreground/60 mt-2">{subMessage}</p>}
+    {/* Loading bar only - no logo/text to avoid jarring transition from iOS splash */}
+    <div className="auth-loading-bar mx-auto">
+      <div className="auth-loading-bar-fill" />
     </div>
   </div>
 );
@@ -1529,7 +1521,7 @@ const AppContent: React.FC = () => {
   };
 
   if (loginProcessedRef.current && !currentUser) {
-    return <AppLoading message="Tidying things up..." subMessage="Almost ready" />;
+    return <AppLoading />;
   }
 
   // CRITICAL: Show loading while Clerk is initializing (after OAuth redirect)
@@ -1577,7 +1569,7 @@ const AppContent: React.FC = () => {
       );
     }
     
-    return <AppLoading message="Please wait a moment" />;
+    return <AppLoading />;
   }
 
   // OPTION 2: Skip InviteWelcome - go directly to Auth/SignUp for faster flow

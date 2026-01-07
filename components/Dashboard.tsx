@@ -1064,9 +1064,9 @@ const Dashboard: React.FC<DashboardProps> = ({
             <div className="p-6 flex-shrink-0 relative">
               {/* Separator */}
               <div className="absolute left-6 right-6 bottom-0 border-b border-border"></div>
-              <img src="/helpy-logo-blue.png" alt="Helpy" className="h-8 mb-3" />
+              <img src="/helpy-logo-blue.png" alt="Helpy" className="h-8 mb-6" />
               <h2 className="text-display text-foreground font-bold">{t['pwa.welcome'] || 'Welcome!'}</h2>
-              <p className="text-muted-foreground mt-1 font-bold" style={{ fontSize: '20px' }}>
+              <p className="text-primary mt-1 font-bold" style={{ fontSize: '20px' }}>
                 {t['pwa.please_add_to_home_line1'] || 'Please add Helpy'}<br />
                 {t['pwa.please_add_to_home_line2'] || 'to your home screen'}
               </p>

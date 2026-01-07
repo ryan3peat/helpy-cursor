@@ -103,12 +103,15 @@ The `page-content` class ensures min-height and flex column for footer positioni
 
 | Element | Class |
 |---------|-------|
-| Cards | `rounded-3xl` |
+| Cards | `rounded-2xl` |
+| Bottom sheets | `rounded-t-2xl` |
 | Buttons | `rounded-xl` |
 | Inputs | `rounded-lg` |
 | Tags/badges | `rounded-full` |
 | Avatars | `rounded-full` |
 | Icon containers | `rounded-xl` or `rounded-full` |
+
+> **Note:** Maximum border radius is `rounded-2xl` (16px). Do NOT use `rounded-3xl` - it's too cartoonish.
 
 ---
 

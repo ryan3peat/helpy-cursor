@@ -683,7 +683,7 @@ select {
 .auth-loading-bar {
   width: 160px;
   height: 4px;
-  background: hsl(var(--border));
+  background: #E5E7EB; /* Fixed light grey - auth flow is always light */
   border-radius: 9999px;
   overflow: hidden;
 }

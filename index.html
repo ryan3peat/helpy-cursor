@@ -247,9 +247,17 @@
     </script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
+      /* Light mode default */
       html, body, #root {
         background-color: var(--initial-bg, #fafafa);
       }
+      /* Dark mode CSS fallback - applies immediately before JS runs */
+      @media (prefers-color-scheme: dark) {
+        html, body, #root {
+          background-color: var(--initial-bg, #121212);
+        }
+      }
+      /* JS-controlled dark mode (after theme is applied) */
       html.dark, html.dark body, html.dark #root {
         background-color: #121212 !important;
       }

@@ -155,7 +155,7 @@ function buildNotificationMessage(
         if (wasLeaveAction) {
           return {
             title: '🍽️ Meals',
-            body: `${mealLabel}\n${creatorName} left`,
+            body: `${mealLabel}\n${creatorName} will not join`,
             type: 'meal'
           };
         }
@@ -194,7 +194,7 @@ function buildNotificationMessage(
         if (leftUsers.length > 0 && joinedUsers.length === 0 && onlyRsvpChanged) {
           return {
             title: '🍽️ Meals',
-            body: `${mealLabel}\n${creatorName} left`,
+            body: `${mealLabel}\n${creatorName} will not join`,
             type: 'meal'
           };
         }
@@ -432,7 +432,7 @@ function buildBatchedNotificationMessage(
         // All items are leave actions - user is leaving multiple empty meal slots
         return {
           title: '🍽️ Meals',
-          body: `${count} meals on ${formattedDate}\n${creatorName} left`,
+          body: `${count} meals on ${formattedDate}\n${creatorName} will not join`,
           type: 'meal'
         };
       }

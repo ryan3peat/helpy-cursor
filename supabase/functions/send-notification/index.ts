@@ -134,21 +134,14 @@ function buildNotificationMessage(
     
     case 'meals': {
       const mealType = record.type as string || 'meal';
-      const mealDate = record.date as string;
+      const mealDate = record.date as string; // "2026-01-08" format
       
-      // Determine if it's today or tomorrow
-      const today = new Date().toISOString().split('T')[0];
-      const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
-      let dateLabel = '';
-      if (mealDate === today) {
-        dateLabel = "Today's";
-      } else if (mealDate === tomorrow) {
-        dateLabel = "Tomorrow's";
-      } else {
-        dateLabel = ''; // Skip notification for other dates (handled in filtering)
-      }
+      // Format date as "8 Jan 2026" using string parsing (timezone-safe)
+      const [year, month, day] = mealDate.split('-');
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const formattedDate = `${parseInt(day)} ${months[parseInt(month) - 1]} ${year}`;
       
-      const mealLabel = dateLabel ? `${dateLabel} ${mealType}` : mealType;
+      const mealLabel = `${mealType} on ${formattedDate}`;
       
       if (event === 'DELETE') {
         return {
@@ -197,6 +190,22 @@ function buildNotificationMessage(
         };
       } else {
         // INSERT
+        // Check if this is a "quick RSVP" scenario (user joining empty meal slot)
+        // Indicators: empty description AND creator is in forUserIds
+        const description = record.description as string || '';
+        const forUserIds = (record.for_user_ids as string[]) || [];
+        const creatorId = record.created_by as string;
+        
+        const isQuickRsvp = !description.trim() && forUserIds.includes(creatorId);
+        
+        if (isQuickRsvp) {
+          return {
+            title: '🍽️ Meals',
+            body: `${mealLabel}\n${creatorName} is joining`,
+            type: 'meal'
+          };
+        }
+        
         return {
           title: '🍽️ Meals',
           body: `${mealLabel}\nadded by ${creatorName}`,
@@ -235,23 +244,36 @@ function buildNotificationMessage(
     
     // NEW: Family Board (households table)
     case 'households': {
-      if (event === 'DELETE') {
+      // Get the note content and truncate if needed
+      const noteContent = (record.family_notes as string) || '';
+      const MAX_PREVIEW_LENGTH = 50; // Character limit for preview
+      
+      // Create truncated preview
+      let notePreview = noteContent.trim();
+      if (notePreview.length > MAX_PREVIEW_LENGTH) {
+        notePreview = notePreview.substring(0, MAX_PREVIEW_LENGTH).trim() + '...';
+      }
+      // Replace newlines with spaces for cleaner single-line preview
+      notePreview = notePreview.replace(/\n+/g, ' ');
+      
+      if (event === 'DELETE' || !noteContent.trim()) {
+        // Note was cleared/deleted
         return {
           title: '📌 Family Board',
-          body: `Note removed\nby ${creatorName}`,
+          body: `Note cleared\nby ${creatorName}`,
           type: 'family_board'
         };
       } else if (event === 'UPDATE') {
         return {
           title: '📌 Family Board',
-          body: `Note updated\nby ${creatorName}`,
+          body: `${notePreview}\nupdated by ${creatorName}`,
           type: 'family_board'
         };
       } else {
         // INSERT (new note pinned)
         return {
           title: '📌 Family Board',
-          body: `Note pinned\nby ${creatorName}`,
+          body: `${notePreview}\npinned by ${creatorName}`,
           type: 'family_board'
         };
       }
@@ -355,20 +377,43 @@ function buildBatchedNotificationMessage(
     case 'meals': {
       // Meals are instant (no batching), but handle just in case
       const mealType = items[0].record.type as string || 'meal';
+      const mealDate = items[0].record.date as string; // "2026-01-08" format
       const actionWord = event === 'DELETE' ? 'removed' : event === 'UPDATE' ? 'changed' : 'added';
+      
+      // Format date as "8 Jan 2026" using string parsing (timezone-safe)
+      const [year, month, day] = mealDate.split('-');
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const formattedDate = `${parseInt(day)} ${months[parseInt(month) - 1]} ${year}`;
+      
+      const mealLabel = `${mealType} on ${formattedDate}`;
       
       return {
         title: '🍽️ Meals',
-        body: `${mealType}\n${actionWord} by ${creatorName}`,
+        body: `${mealLabel}\n${actionWord} by ${creatorName}`,
         type: 'meal'
       };
     }
     
     case 'households': {
-      // Family Board - instant
+      // Family Board - instant (uses same logic as single item)
+      const noteContent = (items[0].record.family_notes as string) || '';
+      const MAX_PREVIEW_LENGTH = 50;
+      let notePreview = noteContent.trim();
+      if (notePreview.length > MAX_PREVIEW_LENGTH) {
+        notePreview = notePreview.substring(0, MAX_PREVIEW_LENGTH).trim() + '...';
+      }
+      notePreview = notePreview.replace(/\n+/g, ' ');
+      
+      if (!noteContent.trim()) {
+        return {
+          title: '📌 Family Board',
+          body: `Note cleared\nby ${creatorName}`,
+          type: 'family_board'
+        };
+      }
       return {
         title: '📌 Family Board',
-        body: `Note updated\nby ${creatorName}`,
+        body: `${notePreview}\nupdated by ${creatorName}`,
         type: 'family_board'
       };
     }

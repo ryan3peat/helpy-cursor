@@ -101,12 +101,20 @@
 }
 
 /* ─────────────────────────────────────────────────────────────────
-   BACKGROUND GRADIENT EXPERIMENT (Light Mode)
+   BACKGROUND GRADIENT (Light Mode default)
    ───────────────────────────────────────────────────────────────── */
 body {
   background-image: linear-gradient(to right bottom, #fafafa, #f9f9fa, #f8f8fa, #f6f8f9, #f4f7f9, #f3f7f9, #f1f6f8, #f0f6f8, #f0f6f8, #eff6f8, #eff6f8, #eef6f8);
   background-attachment: fixed;
   min-height: 100vh;
+}
+
+/* Dark mode - disable gradient immediately (before JS adds .dark class) */
+@media (prefers-color-scheme: dark) {
+  body {
+    background-image: none;
+    background-color: #121212;
+  }
 }
 
 /* ─────────────────────────────────────────────────────────────────
@@ -216,6 +224,14 @@ html {
   /* Hide scrollbar globally for PWA native feel */
   -ms-overflow-style: none;  /* IE and Edge */
   scrollbar-width: none;     /* Firefox */
+}
+
+/* Dark mode - set immediately before JS adds .dark class */
+@media (prefers-color-scheme: dark) {
+  html {
+    background-color: #121212 !important;
+    color-scheme: dark;
+  }
 }
 
 html::-webkit-scrollbar {

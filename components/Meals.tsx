@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useLayoutEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Sparkles,
@@ -498,27 +498,39 @@ const Meals: React.FC<MealsProps> = ({
   };
 
   // ─────────────────────────────────────────────────────────────────
-  // AUTO-SCROLL TO TODAY - Only on initial mount (like HouseholdInfo)
+  // AUTO-SCROLL TO TODAY - On initial mount AND when switching to day view
   // ─────────────────────────────────────────────────────────────────
-  useLayoutEffect(() => {
+  useEffect(() => {
+    // Skip if not in day view
+    if (view !== 'day') return;
+    
+    // Skip if already scrolled in this day view session
     if (hasInitiallyScrolled.current) return;
     hasInitiallyScrolled.current = true;
 
-    // Only auto-scroll in day view on initial load
-    if (view === 'day') {
-      const headerOffset = 230;
-      const targetDateStr = formatDateStr(new Date());
-      
-      requestAnimationFrame(() => {
+    const headerOffset = 230;
+    const targetDateStr = formatDateStr(new Date());
+    
+    // Use multiple attempts for reliability
+    const scrollAttempts = [0, 50, 150];
+    scrollAttempts.forEach(delay => {
+      setTimeout(() => {
         const targetEl = document.getElementById(`day-${targetDateStr}`);
         if (!targetEl) return;
         
         const rect = targetEl.getBoundingClientRect();
         const elementPosition = rect.top + window.scrollY;
         window.scrollTo({ top: elementPosition - headerOffset, behavior: 'auto' });
-      });
+      }, delay);
+    });
+  }, [view]);
+
+  // Reset day scroll flag when leaving day view
+  useEffect(() => {
+    if (view !== 'day') {
+      hasInitiallyScrolled.current = false;
     }
-  }, []);
+  }, [view]);
 
   // ─────────────────────────────────────────────────────────────────
   // AUTO-SCROLL TO TODAY COLUMN IN WEEK VIEW
@@ -533,24 +545,31 @@ const Meals: React.FC<MealsProps> = ({
     if (hasScrolledWeekView.current) return;
     hasScrolledWeekView.current = true;
     
+    // Scroll page to top so table header is visible
+    window.scrollTo({ top: 0, behavior: 'auto' });
+    
     // Find today's index in the week (0-6)
     const today = new Date();
     const todayIndex = weekDays.findIndex(d => d.toDateString() === today.toDateString());
     
-    // Only scroll if today is in the current week
-    if (todayIndex === -1 || !weekScrollRef.current) return;
+    // Only scroll horizontally if today is in the current week
+    if (todayIndex === -1) return;
     
-    requestAnimationFrame(() => {
-      const container = weekScrollRef.current;
-      if (!container) return;
-      
-      // Calculate scroll position: first column is 72px, each day column is equal width
-      // We want to scroll so today's column is visible (centered if possible)
-      const firstColWidth = 72;
-      const dayColWidth = (container.scrollWidth - firstColWidth) / 7;
-      const targetScroll = firstColWidth + (todayIndex * dayColWidth) - (container.clientWidth / 2) + (dayColWidth / 2);
-      
-      container.scrollTo({ left: Math.max(0, targetScroll), behavior: 'smooth' });
+    // Use multiple attempts for reliability (DOM needs time to render)
+    const scrollAttempts = [0, 50, 150, 300];
+    scrollAttempts.forEach(delay => {
+      setTimeout(() => {
+        const container = weekScrollRef.current;
+        if (!container) return;
+        
+        // Calculate scroll position: first column is 72px, each day column is equal width
+        const firstColWidth = 72;
+        const dayColWidth = (container.scrollWidth - firstColWidth) / 7;
+        const targetScroll = firstColWidth + (todayIndex * dayColWidth) - (container.clientWidth / 2) + (dayColWidth / 2);
+        
+        // Use 'auto' for instant scroll (no visible animation)
+        container.scrollTo({ left: Math.max(0, targetScroll), behavior: 'auto' });
+      }, delay);
     });
   }, [view, weekDays]);
 
@@ -1091,126 +1110,130 @@ const Meals: React.FC<MealsProps> = ({
             })}
         </div>
       ) : (
-          /* Week View - Google Calendar Style Grid (Meals as rows, Days as columns) */
-          <div className="rounded-xl bg-card shadow-sm overflow-hidden isolate">
-            {/* Horizontal + vertical scroll container */}
+          /* Week View - Simple HTML Table */
+          <div className="rounded-xl bg-card shadow-sm overflow-hidden">
             <div 
               ref={weekScrollRef}
-              className="overflow-x-auto overflow-y-auto overscroll-x-contain"
-              style={{ WebkitOverflowScrolling: 'touch', maxHeight: 'calc(100vh - 280px)' }}
+              className="overflow-x-auto"
             >
-              {/* CSS Grid - 1 meal label column + 7 day columns */}
-              <div 
-                className="grid min-w-[900px]"
-                style={{ gridTemplateColumns: '72px repeat(7, minmax(120px, 1fr))' }}
-              >
-                {/* ===== HEADER ROW: Corner + Day Headers ===== */}
-                {/* Corner cell (empty) - sticky both left AND top */}
-                <div className="bg-muted p-2 border-b border-r border-border sticky left-0 top-0 z-[3]" />
-                {/* Day header cells - sticky top */}
-                {weekDays.map((day, dayIndex) => {
-                  const isToday = day.toDateString() === new Date().toDateString();
-                  const isLastCol = dayIndex === weekDays.length - 1;
-                  return (
-                    <div 
-                      key={formatDateStr(day)}
-                      id={`week-day-${formatDateStr(day)}`}
-                      onClick={() => handleWeekCellClick(day)}
-                      className={`p-2 border-b border-border text-center cursor-pointer sticky top-0 z-[2] ${!isLastCol ? 'border-r border-border' : ''} ${isToday ? 'bg-primary' : 'bg-muted'}`}
-                    >
-                      <span className={`text-caption font-semibold block ${isToday ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
-                        {day.toLocaleDateString(langCode, { weekday: 'short' })}
-                      </span>
-                      <span className={`text-body font-bold block ${isToday ? 'text-primary-foreground' : 'text-foreground'}`}>
-                        {day.getDate()}
-                      </span>
-                    </div>
-                  );
-                })}
-
-                {/* ===== MEAL ROWS ===== */}
-                {mealTypes.map((type, typeIndex) => {
-                  const isLastRow = typeIndex === mealTypes.length - 1;
-                  return (
-                    <React.Fragment key={type}>
-                      {/* Meal type label cell - sticky left with continuous border lines */}
-                      <div 
-                        className={`sticky left-0 z-[1] bg-card p-2 flex flex-col items-center justify-center gap-0.5 border-r border-border ${!isLastRow ? 'border-b border-border' : ''}`}
-                        style={!isLastRow ? { boxShadow: 'inset 0 -1px 0 0 hsl(var(--border))' } : undefined}
-                      >
-                        {getMealIcon(type)}
-                        <span className="text-micro font-semibold text-muted-foreground text-center leading-tight">
-                          {getMealLabel(type)}
-                        </span>
-                      </div>
-                      
-                      {/* Day cells for this meal type */}
-                      {weekDays.map((day, dayIndex) => {
-                        const dateStr = formatDateStr(day);
-                        const slotMeals = getMealsForSlot(day, type);
-                        const isLastCol = dayIndex === weekDays.length - 1;
-                        
-                        return (
-                          <div
-                            key={`${type}-${dateStr}`}
-                            onClick={() => handleWeekCellClick(day)}
-                            className={`p-1.5 cursor-pointer min-h-[72px] ${!isLastRow ? 'border-b border-border' : ''} ${!isLastCol ? 'border-r border-border' : ''}`}
-                          >
-                            {slotMeals.length > 0 ? (
-                              <div className="space-y-1">
-                                {slotMeals.map(meal => {
-                                  const hasDish = meal.description.trim().length > 0;
-                                  const mealUsers = meal.forUserIds
-                                    .map(uid => users.find(u => u.id === uid))
-                                    .filter((u): u is User => !!u);
-                                  const adultCount = mealUsers.filter(u => u.role !== UserRole.CHILD).length;
-                                  const kidCount = mealUsers.filter(u => u.role === UserRole.CHILD).length;
-                                  
-                                  return (
-                                    <div
-                                      key={meal.id}
-                                      className="px-1.5 py-1 rounded-md bg-muted/50"
-                                    >
-                                      {hasDish ? (
-                                        <span className="text-micro font-semibold text-foreground line-clamp-2 leading-tight block">
-                                          <TranslatedMealDescription meal={meal} currentLang={currentLang} onUpdate={onUpdate} />
-                                        </span>
-                                      ) : (
-                                        <span className="text-micro font-medium text-muted-foreground block">
-                                          RSVP
-                                        </span>
-                                      )}
-                                      {/* RSVP counts */}
-                                      <div className="flex items-center gap-1 text-micro text-muted-foreground mt-0.5">
-                                        {adultCount > 0 && (
-                                          <span className="flex items-center gap-0.5">
-                                            <UserIcon size={10} />
-                                            {adultCount}
-                                          </span>
-                                        )}
-                                        {kidCount > 0 && (
-                                          <span className="flex items-center gap-0.5">
-                                            <Baby size={10} />
-                                            {kidCount}
-                                          </span>
-                                        )}
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            ) : (
-                              <div className="h-full flex items-center justify-center min-h-[56px]">
-                                <span className="text-muted-foreground/30 text-lg">·</span>
-                              </div>
-                            )}
+              <table className="w-full min-w-[700px]" style={{ borderCollapse: 'separate', borderSpacing: 0 }}>
+                {/* Table Header - Day names */}
+                <thead>
+                  <tr>
+                    {/* Corner cell - sticky horizontally */}
+                    <th 
+                      className="p-2 w-[72px] bg-muted sticky left-0 z-20 border-b border-border"
+                      style={{ boxShadow: '1px 0 0 0 #d1d5db' }}
+                    />
+                    {/* Day headers */}
+                    {weekDays.map((day, dayIndex) => {
+                      const isToday = day.toDateString() === new Date().toDateString();
+                      const isLastCol = dayIndex === weekDays.length - 1;
+                      return (
+                        <th 
+                          key={formatDateStr(day)}
+                          onClick={() => handleWeekCellClick(day)}
+                          className={`p-2 text-center cursor-pointer border-b border-border ${!isLastCol ? 'border-r' : ''} ${isToday ? 'bg-primary' : 'bg-muted'}`}
+                        >
+                          <span className={`text-caption font-semibold block ${isToday ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
+                            {day.toLocaleDateString(langCode, { weekday: 'short' })}
+                          </span>
+                          <span className={`text-body font-bold block ${isToday ? 'text-primary-foreground' : 'text-foreground'}`}>
+                            {day.getDate()}
+                          </span>
+                        </th>
+                      );
+                    })}
+                  </tr>
+                </thead>
+                
+                {/* Table Body - Meal rows */}
+                <tbody>
+                  {mealTypes.map((type, typeIndex) => {
+                    const isLastRow = typeIndex === mealTypes.length - 1;
+                    return (
+                      <tr key={type}>
+                        {/* Meal type label cell - sticky horizontally */}
+                        <td 
+                          className={`p-2 bg-card text-center align-middle sticky left-0 z-10 ${!isLastRow ? 'border-b border-border' : ''}`}
+                          style={{ boxShadow: '1px 0 0 0 #d1d5db' }}
+                        >
+                          <div className="flex flex-col items-center gap-0.5">
+                            {getMealIcon(type)}
+                            <span className="text-micro font-semibold text-muted-foreground leading-tight">
+                              {getMealLabel(type)}
+                            </span>
                           </div>
-                        );
-                      })}
-                    </React.Fragment>
-                  );
-                })}
-              </div>
+                        </td>
+                        
+                        {/* Day cells for this meal type */}
+                        {weekDays.map((day, dayIndex) => {
+                          const dateStr = formatDateStr(day);
+                          const slotMeals = getMealsForSlot(day, type);
+                          const isLastCol = dayIndex === weekDays.length - 1;
+                          
+                          return (
+                            <td
+                              key={`${type}-${dateStr}`}
+                              onClick={() => handleWeekCellClick(day)}
+                              className={`p-1.5 cursor-pointer align-top h-[72px] ${!isLastRow ? 'border-b border-border' : ''} ${!isLastCol ? 'border-r border-border' : ''}`}
+                            >
+                              {slotMeals.length > 0 ? (
+                                <div className="space-y-1">
+                                  {slotMeals.map(meal => {
+                                    const hasDish = meal.description.trim().length > 0;
+                                    const mealUsers = meal.forUserIds
+                                      .map(uid => users.find(u => u.id === uid))
+                                      .filter((u): u is User => !!u);
+                                    const adultCount = mealUsers.filter(u => u.role !== UserRole.CHILD).length;
+                                    const kidCount = mealUsers.filter(u => u.role === UserRole.CHILD).length;
+                                    
+                                    return (
+                                      <div
+                                        key={meal.id}
+                                        className="px-1.5 py-1 rounded-md bg-muted/50"
+                                      >
+                                        {hasDish ? (
+                                          <span className="text-micro font-semibold text-foreground line-clamp-2 leading-tight block">
+                                            <TranslatedMealDescription meal={meal} currentLang={currentLang} onUpdate={onUpdate} />
+                                          </span>
+                                        ) : (
+                                          <span className="text-micro font-medium text-muted-foreground block">
+                                            RSVP
+                                          </span>
+                                        )}
+                                        {/* RSVP counts */}
+                                        <div className="flex items-center gap-1 text-micro text-muted-foreground mt-0.5">
+                                          {adultCount > 0 && (
+                                            <span className="flex items-center gap-0.5">
+                                              <UserIcon size={10} />
+                                              {adultCount}
+                                            </span>
+                                          )}
+                                          {kidCount > 0 && (
+                                            <span className="flex items-center gap-0.5">
+                                              <Baby size={10} />
+                                              {kidCount}
+                                            </span>
+                                          )}
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              ) : (
+                                <div className="h-full flex items-center justify-center">
+                                  <span className="text-muted-foreground/30 text-lg">·</span>
+                                </div>
+                              )}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           </div>
       )}

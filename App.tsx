@@ -862,6 +862,13 @@ const AppContent: React.FC = () => {
     const hid = currentUser.householdId;
     
     const unsubUsers = subscribeToCollection(hid, 'users', (data) => {
+      // DEFENSIVE: Don't wipe out cached data with empty results
+      // This prevents the "data gone, data come" flash on app load
+      if (!data || data.length === 0) {
+        console.log('[App] ⚠️ Users callback received empty data, preserving cache');
+        return;
+      }
+      
       // Deduplicate users by id to prevent duplicates
       const uniqueUsers = Array.from(new Map(data.map(u => [u.id, u])).values());
       
@@ -889,6 +896,12 @@ const AppContent: React.FC = () => {
       setUsers(finalUsers as User[]);
     });
     const unsubTodoItems = subscribeToCollection(hid, 'todo_items', (data) => {
+      // DEFENSIVE: Don't wipe out cached data with empty results
+      if (!data || data.length === 0) {
+        console.log('[App] ⚠️ TodoItems callback received empty data, preserving cache');
+        return;
+      }
+      
       // Filter out items that are pending deletion to prevent "ghost returns"
       // This handles the race condition where real-time fires before delete propagates
       const filteredData = (data as ToDoItem[]).filter(item => !pendingTodoDeletions.current.has(item.id));
@@ -910,8 +923,22 @@ const AppContent: React.FC = () => {
         return [...filteredData, ...uniqueTempItems];
       });
     });
-    const unsubMeals = subscribeToCollection(hid, 'meals', (data) => setMeals(data as Meal[]));
-    const unsubExpenses = subscribeToCollection(hid, 'expenses', (data) => setExpenses(data as Expense[]));
+    const unsubMeals = subscribeToCollection(hid, 'meals', (data) => {
+      // DEFENSIVE: Don't wipe out cached data with empty results
+      if (!data || data.length === 0) {
+        console.log('[App] ⚠️ Meals callback received empty data, preserving cache');
+        return;
+      }
+      setMeals(data as Meal[]);
+    });
+    const unsubExpenses = subscribeToCollection(hid, 'expenses', (data) => {
+      // DEFENSIVE: Don't wipe out cached data with empty results
+      if (!data || data.length === 0) {
+        console.log('[App] ⚠️ Expenses callback received empty data, preserving cache');
+        return;
+      }
+      setExpenses(data as Expense[]);
+    });
     const unsubNotes = subscribeToNotes(hid, (notesData) => {
       setFamilyNotes(notesData.notes);
       setFamilyNotesLang(notesData.notesLang || null);

@@ -1585,7 +1585,7 @@ const EssentialInfoCard: React.FC<EssentialInfoCardProps> = ({
       {item.note && (
         <div className="flex items-start gap-2 py-1.5">
           <FileText size={16} className="text-muted-foreground mt-0.5 flex-shrink-0" />
-          <span className="text-body text-muted-foreground">
+          <span className="text-body text-muted-foreground whitespace-pre-wrap">
             <TranslatedEssentialNote 
               info={item} 
               currentLang={currentLang} 
@@ -1690,7 +1690,7 @@ const HouseRoutineCard: React.FC<HouseRoutineCardProps> = ({
           className="mt-3 pt-3 border-t border-border cursor-pointer"
           onClick={handleTap}
         >
-          <p className="text-body text-muted-foreground line-clamp-3">
+          <p className="text-body text-muted-foreground line-clamp-3 whitespace-pre-wrap">
             <TranslatedHouseRoutineNote 
               item={item} 
               currentLang={currentLang} 
@@ -2131,22 +2131,6 @@ const HouseRoutineModal: React.FC<HouseRoutineModalProps> = ({
             </div>
           </div>
 
-          {/* Custom Category (for Others) */}
-          {form.category === "Others" && (
-            <div>
-              <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
-                {t['info.custom_category'] || 'Custom Category Name'}
-              </label>
-              <input
-                type="text"
-                autoComplete="one-time-code"
-                value={form.customCategory}
-                onChange={(e) => setForm({ ...form, customCategory: e.target.value })}
-                placeholder={t['info.custom_category_placeholder'] || 'Enter custom category'}
-                className="w-full px-4 py-3 rounded-xl bg-muted border border-transparent focus:border-primary outline-none transition-all text-body"
-              />
-            </div>
-          )}
         </div>
 
         {/* Footer - Delete button only (when editing), or invisible spacer */}

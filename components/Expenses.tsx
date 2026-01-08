@@ -1508,16 +1508,16 @@ const Expenses: React.FC<ExpensesProps> = ({
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     onClick={() => fileInputRef.current?.click()}
-                      className="py-5 rounded-xl bg-primary flex flex-col items-center justify-center gap-2 text-primary-foreground shadow-sm"
+                      className="px-4 py-3.5 rounded-xl bg-primary flex items-center justify-center gap-2 text-primary-foreground shadow-sm"
                   >
-                      <ImageIcon size={24} />
+                      <ImageIcon size={18} />
                       <span className="text-body font-semibold">{t['expenses.from_photos'] || 'From Photos'}</span>
                   </button>
                   <button
                     onClick={() => cameraInputRef.current?.click()}
-                      className="py-5 rounded-xl bg-primary flex flex-col items-center justify-center gap-2 text-primary-foreground shadow-sm"
+                      className="px-4 py-3.5 rounded-xl bg-primary flex items-center justify-center gap-2 text-primary-foreground shadow-sm"
                     >
-                      <Camera size={24} />
+                      <Camera size={18} />
                       <span className="text-body font-semibold">{t['expenses.scan_receipt'] || 'Scan Receipt'}</span>
                 </button>
         </div>

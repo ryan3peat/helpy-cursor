@@ -119,6 +119,7 @@ const Profile: React.FC<ProfileProps> = ({
   const [inviteLink, setInviteLink] = useState<string | null>(null);
   const [isCopied, setIsCopied] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isAddingUser, setIsAddingUser] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<string | null>(null);

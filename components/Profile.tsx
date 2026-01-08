@@ -1575,7 +1575,10 @@ const Profile: React.FC<ProfileProps> = ({
 
         {/* Add User Modal - Multi-step Flow */}
           {isAddModalOpen && createPortal(
-            <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
+            <div 
+              className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
+              onClick={(e) => { if (e.target === e.currentTarget) setIsAddModalOpen(false); }}
+            >
               {/* Safe area bottom cover */}
               <div 
                 className="absolute bottom-0 left-0 right-0 bg-card"
@@ -1958,7 +1961,10 @@ const Profile: React.FC<ProfileProps> = ({
 
           {/* Delete Confirmation Modal */}
           {deleteConfirmOpen && createPortal(
-            <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
+            <div 
+              className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
+              onClick={(e) => { if (e.target === e.currentTarget) setDeleteConfirmOpen(false); }}
+            >
               {/* Safe area bottom cover */}
               <div 
                 className="absolute bottom-0 left-0 right-0 bg-card"
@@ -2023,7 +2029,10 @@ const Profile: React.FC<ProfileProps> = ({
 
           {/* Edit User Modal */}
           {isEditModalOpen && createPortal(
-            <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
+            <div 
+              className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
+              onClick={(e) => { if (e.target === e.currentTarget) setIsEditModalOpen(false); }}
+            >
               {/* Safe area bottom cover - fills the gap below the sheet */}
               <div 
                 className="absolute bottom-0 left-0 right-0 bg-card"
@@ -2286,7 +2295,10 @@ const Profile: React.FC<ProfileProps> = ({
 
         {/* Photo Options Modal */}
         {showPhotoOptions && createPortal(
-          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
+          <div 
+            className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
+            onClick={(e) => { if (e.target === e.currentTarget) setShowPhotoOptions(false); }}
+          >
             {/* Safe area bottom cover */}
             <div 
               className="absolute bottom-0 left-0 right-0 bg-card"
@@ -3120,7 +3132,10 @@ const Profile: React.FC<ProfileProps> = ({
 
           {/* Plan confirmation + promo code modal */}
           {isPlanConfirmOpen && pendingPlan && createPortal(
-            <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end md:items-center justify-center bottom-sheet-backdrop">
+            <div 
+              className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end md:items-center justify-center bottom-sheet-backdrop"
+              onClick={(e) => { if (e.target === e.currentTarget) setIsPlanConfirmOpen(false); }}
+            >
               {/* Safe area bottom cover */}
               <div 
                 className="absolute bottom-0 left-0 right-0 bg-card"
@@ -3249,7 +3264,10 @@ const Profile: React.FC<ProfileProps> = ({
 
           {/* Downgrade Confirmation Modal - Bottom Sheet */}
           {showDowngradeModal && pendingDowngrade && createPortal(
-            <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
+            <div 
+              className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
+              onClick={(e) => { if (e.target === e.currentTarget) setShowDowngradeModal(false); }}
+            >
               {/* Safe area bottom cover */}
               <div 
                 className="absolute bottom-0 left-0 right-0 bg-card"
@@ -3535,7 +3553,10 @@ const Profile: React.FC<ProfileProps> = ({
 
         {/* First Delete Confirmation Modal */}
         {isDeleteAccountModalOpen && createPortal(
-          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
+          <div 
+            className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
+            onClick={(e) => { if (e.target === e.currentTarget) setIsDeleteAccountModalOpen(false); }}
+          >
             {/* Safe area bottom cover */}
             <div 
               className="absolute bottom-0 left-0 right-0 bg-card"
@@ -3575,7 +3596,10 @@ const Profile: React.FC<ProfileProps> = ({
 
         {/* Final Delete Confirmation Modal */}
         {isFinalDeleteConfirmOpen && createPortal(
-          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
+          <div 
+            className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
+            onClick={(e) => { if (e.target === e.currentTarget) setIsFinalDeleteConfirmOpen(false); }}
+          >
             {/* Safe area bottom cover */}
             <div 
               className="absolute bottom-0 left-0 right-0 bg-card"
@@ -3628,7 +3652,10 @@ const Profile: React.FC<ProfileProps> = ({
 
         {/* Subscription Cancellation Confirmation Modal */}
         {subscriptionCanceled && createPortal(
-          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
+          <div 
+            className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
+            onClick={(e) => { if (e.target === e.currentTarget) setSubscriptionCanceled(false); }}
+          >
             {/* Safe area bottom cover */}
             <div 
               className="absolute bottom-0 left-0 right-0 bg-card"
@@ -4105,7 +4132,10 @@ const Profile: React.FC<ProfileProps> = ({
 
         {/* Cancel Subscription Confirmation Modal */}
         {showCancelSubConfirm && createPortal(
-          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
+          <div 
+            className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
+            onClick={(e) => { if (e.target === e.currentTarget) setShowCancelSubConfirm(false); }}
+          >
             {/* Safe area bottom cover */}
             <div 
               className="absolute bottom-0 left-0 right-0 bg-card"
@@ -4145,7 +4175,10 @@ const Profile: React.FC<ProfileProps> = ({
 
         {/* Generic Alert Modal (replaces native alert()) */}
         {alertModal.isOpen && createPortal(
-          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
+          <div 
+            className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
+            onClick={(e) => { if (e.target === e.currentTarget) setAlertModal(prev => ({ ...prev, isOpen: false })); }}
+          >
             {/* Safe area bottom cover */}
             <div 
               className="absolute bottom-0 left-0 right-0 bg-card"

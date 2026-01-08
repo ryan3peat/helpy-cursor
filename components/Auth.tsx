@@ -53,7 +53,10 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
   const AlertModal = () => {
     if (!alertModal.isOpen) return null;
     return createPortal(
-      <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
+      <div 
+        className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
+        onClick={(e) => { if (e.target === e.currentTarget) setAlertModal(prev => ({ ...prev, isOpen: false })); }}
+      >
         {/* Safe area bottom cover */}
         <div 
           className="absolute bottom-0 left-0 right-0 bg-card"
@@ -427,16 +430,36 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
           console.log('✅ [Auth] Found existing user by email:', existingUserByEmail);
 
           // Update clerk_id if it's missing or different
+          // IMPORTANT: Use API route with service role to bypass RLS
+          // This fixes the chicken-and-egg problem where RLS blocks the update
+          // because get_clerk_id() returns the NEW clerk_id but DB has the OLD one
           if (!existingUserByEmail.clerk_id || existingUserByEmail.clerk_id !== clerkUser.id) {
-            const { error: updateError } = await clientToUse
-              .from('users')
-              .update({ clerk_id: clerkUser.id })
-              .eq('id', existingUserByEmail.id);
-
-            if (updateError) {
-              console.error('❌ Failed to update clerk_id:', updateError);
-            } else {
-              console.log('✅ Updated clerk_id for existing user');
+            console.log('🔄 [Auth] clerk_id mismatch detected, syncing via API (RLS bypass)');
+            console.log(`  Old: ${existingUserByEmail.clerk_id || '(null)'}`);
+            console.log(`  New: ${clerkUser.id}`);
+            
+            try {
+              const apiUrl = import.meta.env?.VITE_API_URL || '';
+              const syncResponse = await fetch(`${apiUrl}/api/sync-clerk-id`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  email: clerkEmail,
+                  newClerkId: clerkUser.id
+                }),
+              });
+              
+              const syncResult = await syncResponse.json();
+              
+              if (!syncResponse.ok) {
+                console.error('❌ [Auth] Failed to sync clerk_id:', syncResult);
+              } else {
+                console.log('✅ [Auth] clerk_id synced successfully via API');
+              }
+            } catch (syncError) {
+              console.error('❌ [Auth] Error calling sync-clerk-id API:', syncError);
+              // Continue anyway - the login will work but RLS might fail
+              // User can try logging out and back in
             }
           }
 

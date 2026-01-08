@@ -11,7 +11,6 @@ import {
   Trash2,
   Receipt,
   ReceiptText,
-  Pencil,
   Plus,
   ArrowLeft,
   Home,
@@ -481,7 +480,6 @@ const Expenses: React.FC<ExpensesProps> = ({
 
   // Existing Expense Modal State
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
-  const [isEditingExisting, setIsEditingExisting] = useState(false);
   const [confirmDeleteExisting, setConfirmDeleteExisting] = useState(false);
   const [savingExisting, setSavingExisting] = useState(false);
   const [receiptPreviewUrl, setReceiptPreviewUrl] = useState<string | null>(null);
@@ -969,13 +967,11 @@ const Expenses: React.FC<ExpensesProps> = ({
   // ─────────────────────────────────────────────────────────────────
   function openExistingModal(exp: Expense) {
     setSelectedExpense(exp);
-    setIsEditingExisting(false);
     setConfirmDeleteExisting(false);
   }
 
   function closeExistingModal() {
     setSelectedExpense(null);
-    setIsEditingExisting(false);
     setConfirmDeleteExisting(false);
   }
 
@@ -1048,8 +1044,8 @@ const Expenses: React.FC<ExpensesProps> = ({
         await onUpdate(updated);
       }
       setLocalExpenses((prev) => prev.map((e) => (e.id === updated.id ? updated : e)));
-      setSelectedExpense(updated);
-      setIsEditingExisting(false);
+      // Close modal after successful save (no more View mode)
+      closeExistingModal();
     } catch (err) {
       console.error('Failed to update expense:', err);
       setError(err instanceof Error ? err.message : 'Failed to update expense');
@@ -1429,7 +1425,10 @@ const Expenses: React.FC<ExpensesProps> = ({
       {/* TWO-STAGE PROGRESSIVE SHEET */}
       {/* ─────────────────────────────────────────────────────────────── */}
       {addExpenseStage !== 'closed' && createPortal(
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
+        <div 
+          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
+          onClick={(e) => { if (e.target === e.currentTarget) setAddExpenseStage('closed'); }}
+        >
           {/* Safe area bottom cover - fills the gap below the sheet */}
           <div 
             className="absolute bottom-0 left-0 right-0 bg-card"
@@ -1437,7 +1436,7 @@ const Expenses: React.FC<ExpensesProps> = ({
           />
           <div 
             className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col"
-            style={{ maxHeight: 'calc(100dvh - 60px)', marginBottom: 'env(safe-area-inset-bottom, 34px)' }}
+            style={{ maxHeight: '80vh', marginBottom: 'env(safe-area-inset-bottom, 34px)' }}
           >
             {/* Header with X left, Title center, ✓ right */}
             <div className="flex items-center justify-between px-5 pt-5 pb-4 shrink-0">
@@ -1790,7 +1789,10 @@ const Expenses: React.FC<ExpensesProps> = ({
       {/* EXISTING EXPENSE BOTTOM SHEET */}
       {/* ─────────────────────────────────────────────────────────────── */}
       {selectedExpense && createPortal(
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
+        <div 
+          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
+          onClick={(e) => { if (e.target === e.currentTarget) setSelectedExpense(null); }}
+        >
           {/* Safe area bottom cover - fills the gap below the sheet */}
           <div 
             className="absolute bottom-0 left-0 right-0 bg-card"
@@ -1798,7 +1800,7 @@ const Expenses: React.FC<ExpensesProps> = ({
           />
           <div 
             className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" 
-            style={{ maxHeight: '85vh', marginBottom: 'env(safe-area-inset-bottom, 34px)' }}
+            style={{ maxHeight: '80vh', marginBottom: 'env(safe-area-inset-bottom, 34px)' }}
           >
             {/* Header with X left, Title center, ✓ or Edit right */}
             <div className="flex items-center justify-between px-5 pt-5 pb-4 shrink-0">
@@ -1813,43 +1815,26 @@ const Expenses: React.FC<ExpensesProps> = ({
 
               {/* Title (center) */}
               <h2 className="text-title font-semibold text-foreground text-center flex-1">
-                {isEditingExisting 
-                  ? (t['expenses.edit_expense'] || 'Edit Expense')
-                  : (selectedExpense.merchant || t['expenses.expense_details'] || 'Expense Details')
-                }
+                {t['expenses.edit_expense'] || 'Edit Expense'}
               </h2>
               
-              {/* ✓ Confirm Button (right) - only in edit mode */}
-              {isEditingExisting ? (
-                <button
-                  onClick={saveExistingEdit}
-                  disabled={savingExisting}
-                  className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
-                    !savingExisting
-                      ? 'bg-primary text-primary-foreground shadow-sm'
-                      : 'bg-muted text-muted-foreground'
-                  }`}
-                  aria-label={t['common.save'] || 'Save'}
-                >
-                  {savingExisting ? (
-                    <Loader2 size={20} className="animate-spin" />
-                  ) : (
-                    <Check size={20} strokeWidth={3} />
-                  )}
-                </button>
-              ) : (
-                <button
-                  onClick={() => {
-                    setIsEditingExisting(true);
-                    setConfirmDeleteExisting(false);
-                  }}
-                  disabled={savingExisting}
-                  className="w-10 h-10 rounded-full flex items-center justify-center text-muted-foreground"
-                  aria-label={t['common.edit'] || 'Edit'}
-                >
-                  <Pencil size={20} />
-                </button>
-              )}
+              {/* ✓ Confirm Button (right) */}
+              <button
+                onClick={saveExistingEdit}
+                disabled={savingExisting}
+                className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+                  !savingExisting
+                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    : 'bg-muted text-muted-foreground'
+                }`}
+                aria-label={t['common.save'] || 'Save'}
+              >
+                {savingExisting ? (
+                  <Loader2 size={20} className="animate-spin" />
+                ) : (
+                  <Check size={20} strokeWidth={3} />
+                )}
+              </button>
             </div>
             
             {/* Header separator */}
@@ -1909,31 +1894,8 @@ const Expenses: React.FC<ExpensesProps> = ({
               )}
             </div>
 
-              {/* Amount - only show when not editing */}
-              {!isEditingExisting && (
-                <div className="flex items-center justify-between py-2">
-                  <span className="text-body text-muted-foreground">{t['expenses.amount'] || 'Amount'}</span>
-                  <span className="text-title text-foreground font-semibold">{formatCurrency(selectedExpense.amount, selectedExpense.currency)}</span>
-                </div>
-              )}
-
-              {/* Line Items - only show when not editing and has items */}
-              {!isEditingExisting && selectedExpense.lineItems && selectedExpense.lineItems.length > 0 && (
-                <div className="border-t border-border pt-3">
-                  <p className="text-caption text-muted-foreground mb-2">{t['expenses.items'] || 'Items'}</p>
-                  <div className={`space-y-2 ${selectedExpense.lineItems.length > 7 ? 'max-h-56 overflow-y-auto' : ''}`}>
-                    {selectedExpense.lineItems.map((item, index) => (
-                      <div key={index} className="flex items-center justify-between text-body">
-                        <span className="text-foreground truncate flex-1 mr-3">{item.name}</span>
-                        <span className="text-muted-foreground shrink-0">{formatCurrency(item.price, selectedExpense.currency)}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Edit Form - inside scroll for form fields only */}
-              {isEditingExisting && (
+              {/* Edit Form */}
+              {selectedExpense && (
                 <div className="space-y-4 border-t border-border pt-4">
                   {/* Main Input: Amount (big font) */}
                   <div>
@@ -2070,36 +2032,14 @@ const Expenses: React.FC<ExpensesProps> = ({
                 </div>
                 </div>
               </>
-            ) : !isEditingExisting && !isHelper ? (
+            ) : !isHelper ? (
               <>
                 {/* Footer separator */}
                 <div className="px-5"><div className="h-px bg-border w-full"></div></div>
                 {/* Footer with Delete button */}
                 <div className="shrink-0 p-5 pb-8">
-                <button
-                    onClick={() => {
-                      setConfirmDeleteExisting(true);
-                      setIsEditingExisting(false);
-                    }}
-                  disabled={savingExisting}
-                    className="w-full py-3.5 rounded-xl bg-destructive/10 text-destructive font-semibold flex items-center justify-center gap-2"
-                >
-                    <Trash2 size={20} />
-                    {t['expenses.delete_expense'] || 'Delete Expense'}
-                </button>
-                </div>
-              </>
-            ) : isEditingExisting && !isHelper ? (
-              <>
-                {/* Footer separator */}
-                <div className="px-5"><div className="h-px bg-border w-full"></div></div>
-                {/* Footer with Delete button in edit mode */}
-                <div className="shrink-0 p-5 pb-8">
                   <button
-                    onClick={() => {
-                      setConfirmDeleteExisting(true);
-                      setIsEditingExisting(false);
-                    }}
+                    onClick={() => setConfirmDeleteExisting(true)}
                     disabled={savingExisting}
                     className="w-full py-3.5 rounded-xl bg-destructive/10 text-destructive font-semibold flex items-center justify-center gap-2"
                   >
@@ -2136,15 +2076,18 @@ const Expenses: React.FC<ExpensesProps> = ({
       {/* MONTH PICKER BOTTOM SHEET */}
       {/* ─────────────────────────────────────────────────────────────── */}
       {isMonthPickerOpen && createPortal(
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
+        <div 
+          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
+          onClick={(e) => { if (e.target === e.currentTarget) setIsMonthPickerOpen(false); }}
+        >
           {/* Safe area bottom cover - fills the gap below the sheet */}
           <div 
             className="absolute bottom-0 left-0 right-0 bg-card"
             style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
           />
           <div 
-            className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content relative"
-            style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}
+            className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col"
+            style={{ maxHeight: '80vh', marginBottom: 'env(safe-area-inset-bottom, 34px)' }}
           >
             {/* Header with X left, Title center */}
             <div className="flex items-center justify-between px-5 pt-5 pb-4 shrink-0">
@@ -2250,13 +2193,16 @@ const Expenses: React.FC<ExpensesProps> = ({
       {/* SUMMARY UPGRADE MODAL - Bottom Sheet */}
       {/* ─────────────────────────────────────────────────────────────── */}
       {showSummaryUpgradeModal && createPortal(
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
+        <div 
+          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowSummaryUpgradeModal(false); }}
+        >
           {/* Safe area bottom cover */}
           <div 
             className="absolute bottom-0 left-0 right-0 bg-card"
             style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
           />
-          <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
+          <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ maxHeight: '80vh', marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
             {/* Close Button */}
             <button 
               onClick={() => setShowSummaryUpgradeModal(false)} 

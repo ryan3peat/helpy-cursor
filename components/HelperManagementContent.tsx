@@ -581,7 +581,10 @@ export const HelperManagementContent: React.FC<Props> = ({
       
       {/* Compensation Type Modal - Bottom Sheet */}
       {showCompensationModal && createPortal(
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
+        <div 
+          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowCompensationModal(false); }}
+        >
           {/* Safe area bottom cover */}
           <div 
             className="absolute bottom-0 left-0 right-0 bg-card"
@@ -633,7 +636,10 @@ export const HelperManagementContent: React.FC<Props> = ({
 
       {/* Overtime Amount Modal - Bottom Sheet */}
       {showOvertimeModal && createPortal(
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
+        <div 
+          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowOvertimeModal(false); }}
+        >
           {/* Safe area bottom cover */}
           <div 
             className="absolute bottom-0 left-0 right-0 bg-card"
@@ -722,7 +728,10 @@ export const HelperManagementContent: React.FC<Props> = ({
 
       {/* Change Amount Modal - Bottom Sheet */}
       {showChangeAmountModal && currentPayslip && createPortal(
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
+        <div 
+          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowChangeAmountModal(false); }}
+        >
           {/* Safe area bottom cover */}
           <div 
             className="absolute bottom-0 left-0 right-0 bg-card"
@@ -812,7 +821,10 @@ export const HelperManagementContent: React.FC<Props> = ({
 
       {/* Sign Confirmation Modal - Bottom Sheet */}
       {showSignConfirmModal && createPortal(
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
+        <div 
+          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowSignConfirmModal(false); }}
+        >
           {/* Safe area bottom cover */}
           <div 
             className="absolute bottom-0 left-0 right-0 bg-card"
@@ -1244,7 +1256,10 @@ const PastHolidaysModal: React.FC<{
   onClose: () => void;
   t: TranslationDictionary;
 }> = ({ records, onClose, t }) => createPortal(
-  <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
+  <div 
+    className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
+    onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+  >
     {/* Safe area bottom cover */}
     <div 
       className="fixed bottom-0 left-0 right-0 bg-card"

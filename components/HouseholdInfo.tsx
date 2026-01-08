@@ -1381,7 +1381,10 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
 
       {/* Helper Upgrade Modal - Bottom Sheet */}
       {showHelperUpgradeModal && createPortal(
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
+        <div 
+          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowHelperUpgradeModal(false); }}
+        >
           {/* Safe area bottom cover */}
           <div 
             className="absolute bottom-0 left-0 right-0 bg-card"
@@ -1435,7 +1438,10 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
 
       {/* Maps Choice Modal (iOS - when Google Maps not installed) */}
       {showMapsChoiceModal && createPortal(
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
+        <div 
+          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowMapsChoiceModal(false); }}
+        >
           {/* Safe area bottom cover */}
           <div 
             className="absolute bottom-0 left-0 right-0 bg-card"
@@ -1748,7 +1754,10 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
   }, [showCountryCodeDropdown]);
 
   return createPortal(
-    <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
+    <div 
+      className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
       {/* Safe area bottom cover - fills the gap below the sheet */}
       <div 
         className="absolute bottom-0 left-0 right-0 bg-card"
@@ -2002,7 +2011,10 @@ const HouseRoutineModal: React.FC<HouseRoutineModalProps> = ({
   t,
 }) => {
   return createPortal(
-    <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
+    <div 
+      className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
       {/* Safe area bottom cover - fills the gap below the sheet */}
       <div 
         className="absolute bottom-0 left-0 right-0 bg-card"
@@ -2207,7 +2219,10 @@ const HouseRoutineViewModal: React.FC<HouseRoutineViewModalProps> = ({
     : getRoutineCategoryLabel(item.category);
 
   return createPortal(
-    <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
+    <div 
+      className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
       {/* Safe area bottom cover - fills the gap below the sheet */}
       <div 
         className="absolute bottom-0 left-0 right-0 bg-card"

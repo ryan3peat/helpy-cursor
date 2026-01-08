@@ -774,7 +774,13 @@ const Profile: React.FC<ProfileProps> = ({
       }
     } catch (error) {
       console.error('Checkout error:', error);
-      setPromoCodeError(error instanceof Error ? error.message : 'Failed to start checkout. Please try again.');
+      // Check for promo code errors
+      const errorMsg = error instanceof Error ? error.message.toLowerCase() : '';
+      if (errorMsg.includes('coupon') || errorMsg.includes('promo')) {
+        setPromoCodeError(t['error.invalid_promo_code'] || 'Invalid promo code. Please check and try again.');
+      } else {
+        setPromoCodeError(t['error.plan_change_failed'] || 'Could not change your plan. Please try again or contact support.');
+      }
       setLoadingPlan(null);
     }
   };
@@ -802,7 +808,7 @@ const Profile: React.FC<ProfileProps> = ({
       console.error('Downgrade error:', error);
       showAlert(
         t['error.downgrade_title'] || 'Downgrade Failed',
-        error instanceof Error ? error.message : 'Failed to downgrade. Please try again.',
+        t['error.plan_change_failed'] || 'Could not change your plan. Please try again or contact support.',
         'error'
       );
       setLoadingPlan(null);
@@ -842,7 +848,7 @@ const Profile: React.FC<ProfileProps> = ({
       console.error('Portal error:', error);
       showAlert(
         t['error.portal_title'] || 'Portal Error',
-        error instanceof Error ? error.message : 'Failed to open subscription management.',
+        t['error.subscription_settings'] || 'Could not open subscription settings. Please try again.',
         'error'
       );
       setIsLoading(false);

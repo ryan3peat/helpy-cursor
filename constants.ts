@@ -1245,6 +1245,28 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'error.remove_user_title': 'Remove User Failed',
   'error.remove_user': 'Failed to remove user',
 
+  // User-friendly error messages (replacing technical gibberish)
+  'error.email_already_registered': 'This email is already registered. Please sign in instead.',
+  'error.weak_password': 'Please choose a stronger password.',
+  'error.incorrect_code': 'Incorrect code. Please check and try again.',
+  'error.code_expired': 'Code expired. Please request a new one.',
+  'error.too_many_attempts': 'Too many attempts. Please wait a moment and try again.',
+  'error.ocr_busy': 'Receipt scanning is busy. Please try again in a moment.',
+  'error.ocr_failed': 'Could not read this receipt. Please try a clearer photo.',
+  'error.save_expense': 'Could not save expense. Please try again.',
+  'error.update_expense': 'Could not update expense. Please try again.',
+  'error.delete_expense': 'Could not delete expense. Please try again.',
+  'error.connection_lost': 'Connection lost. Please check your internet and try again.',
+  'error.account_setup': 'Account setup failed. Please try again or contact support.',
+  'error.household_create': 'Could not create your household. Please try again.',
+  'error.session_expired': 'Session expired. Please sign in again.',
+  'error.invalid_promo_code': 'Invalid promo code. Please check and try again.',
+  'error.plan_change_failed': 'Could not change your plan. Please try again or contact support.',
+  'error.subscription_settings': 'Could not open subscription settings. Please try again.',
+  'error.update_amount': 'Could not update amount. Please try again.',
+  'error.signup_failed': 'Sign up failed. Please try again.',
+  'error.verification_failed': 'Verification failed. Please try again.',
+
   // PWA Update Toast
   'update.new_version_title': 'New App Update',
   'update.available': 'Available',

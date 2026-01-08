@@ -645,7 +645,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
       console.error('❌ Failed to create user:', error);
       showAlert(
         t['error.account_setup_title'] || 'Account Setup Failed',
-        `${error.message || t['error.unknown'] || 'Unknown error'}. ${t['error.try_again'] || 'Please try signing up again.'}`,
+        t['error.account_setup'] || 'Account setup failed. Please try again or contact support.',
         'error'
       );
       
@@ -760,7 +760,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
       console.error('❌ Failed to create new household:', error);
       showAlert(
         t['error.create_household_title'] || 'Household Creation Failed',
-        `${t['error.create_household'] || 'Failed to create household'}: ${error.message || t['error.unknown'] || 'Unknown error'}`,
+        t['error.household_create'] || 'Could not create your household. Please try again.',
         'error'
       );
       setIsCreatingUser(false);
@@ -916,9 +916,15 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
       }
     } catch (error: any) {
       console.error('Failed to switch household:', error);
+      // Check for session expired errors
+      const isSessionExpired = error.message?.toLowerCase().includes('jwt') || 
+                               error.message?.toLowerCase().includes('expired') ||
+                               error.message?.toLowerCase().includes('token');
       showAlert(
         t['error.switch_household_title'] || 'Household Switch Failed',
-        `${t['error.switch_household'] || 'Failed to switch household'}: ${error.message || t['error.unknown'] || 'Unknown error'}`,
+        isSessionExpired 
+          ? (t['error.session_expired'] || 'Session expired. Please sign in again.')
+          : (t['error.switch_household'] || 'Failed to switch household. Please try again.'),
         'error'
       );
       setIsCreatingUser(false);
@@ -952,7 +958,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
 
   // Show custom signup page
   if (showSignUp) {
-    return <SignUp onBackToSignIn={() => setShowSignUp(false)} />;
+    return <SignUp onBackToSignIn={() => setShowSignUp(false)} t={t} />;
   }
 
   // CRITICAL: Show loading while Clerk is initializing (after OAuth redirect)
@@ -1009,7 +1015,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
         }
       };
       
-      return <SignUp onBackToSignIn={handleBackToSignIn} />;
+      return <SignUp onBackToSignIn={handleBackToSignIn} t={t} />;
     }
     
     // Wait for SignIn component to be ready (prevents flash of container without form)

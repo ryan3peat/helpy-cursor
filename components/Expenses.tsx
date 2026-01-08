@@ -834,7 +834,13 @@ const Expenses: React.FC<ExpensesProps> = ({
       setAddExpenseStage('ocr'); // Show OCR confirmation
     } catch (err) {
       console.error('Receipt processing failed:', err);
-      setError(err instanceof Error ? err.message : 'Failed to process receipt');
+      // Check for specific OCR errors and show user-friendly messages
+      const errorMsg = err instanceof Error ? err.message.toLowerCase() : '';
+      if (errorMsg.includes('rate limit') || errorMsg.includes('429')) {
+        setError(t['error.ocr_busy'] || 'Receipt scanning is busy. Please try again in a moment.');
+      } else {
+        setError(t['error.ocr_failed'] || 'Could not read this receipt. Please try a clearer photo.');
+      }
     } finally {
       setIsScanning(false);
       e.target.value = '';
@@ -947,7 +953,7 @@ const Expenses: React.FC<ExpensesProps> = ({
     } catch (addError) {
       console.error('[Expenses] Error saving expense:', addError);
       if (!expenseLikelySaved) {
-        setError(addError instanceof Error ? addError.message : 'Failed to save expense. Please try again.');
+        setError(t['error.save_expense'] || 'Could not save expense. Please try again.');
         haptics.error();
       } else {
         // Expense was likely saved (optimistic or returned), so avoid blocking banner
@@ -1048,7 +1054,7 @@ const Expenses: React.FC<ExpensesProps> = ({
       closeExistingModal();
     } catch (err) {
       console.error('Failed to update expense:', err);
-      setError(err instanceof Error ? err.message : 'Failed to update expense');
+      setError(t['error.update_expense'] || 'Could not update expense. Please try again.');
     } finally {
       setSavingExisting(false);
     }
@@ -1066,7 +1072,7 @@ const Expenses: React.FC<ExpensesProps> = ({
       closeExistingModal();
     } catch (err) {
       console.error('Failed to delete expense:', err);
-      setError(err instanceof Error ? err.message : 'Failed to delete expense');
+      setError(t['error.delete_expense'] || 'Could not delete expense. Please try again.');
     } finally {
       setSavingExisting(false);
     }

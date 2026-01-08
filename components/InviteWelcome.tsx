@@ -7,6 +7,35 @@ import { useSignUp, useSignIn, useClerk, useUser, SignUp } from '@clerk/clerk-re
 import { Loader2, Mail, ArrowRight } from 'lucide-react';
 import ErrorBanner from './ui/ErrorBanner';
 
+// Helper function to get user-friendly error message from Clerk errors
+function getClerkErrorMessage(err: any): string {
+  const errorCode = err.errors?.[0]?.code;
+  const errorMessage = err.errors?.[0]?.longMessage || err.errors?.[0]?.message || err.message || '';
+  
+  // Map Clerk error codes to user-friendly messages
+  if (errorCode === 'form_identifier_exists' || errorMessage.toLowerCase().includes('email address is taken')) {
+    return 'email_already_exists'; // Special flag for redirect
+  }
+  if (errorCode === 'form_password_pwned' || errorMessage.toLowerCase().includes('data breach')) {
+    return 'Please choose a stronger password.';
+  }
+  if (errorCode === 'form_password_length_too_short' || errorMessage.toLowerCase().includes('password')) {
+    return 'Please choose a stronger password.';
+  }
+  if (errorCode === 'form_code_incorrect' || errorMessage.toLowerCase().includes('incorrect code')) {
+    return 'Incorrect code. Please check and try again.';
+  }
+  if (errorCode === 'verification_expired' || errorMessage.toLowerCase().includes('expired')) {
+    return 'Code expired. Please request a new one.';
+  }
+  if (errorCode === 'too_many_requests' || errorMessage.toLowerCase().includes('too many')) {
+    return 'Too many attempts. Please wait a moment and try again.';
+  }
+  
+  // Default fallback
+  return 'Sign up failed. Please try again.';
+}
+
 // Loading component for auth states  
 const AuthLoading = () => (
   <div className="min-h-screen w-full flex flex-col items-center justify-center p-6 page-fade-in auth-gradient-bg">
@@ -180,10 +209,11 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
         setError('Account creation completed but requires additional setup. Please try signing in.');
       }
     } catch (err: any) {
-      const errorMessage = err.errors?.[0]?.longMessage || err.message || 'Sign up failed';
+      console.error('InviteWelcome signup error:', err);
+      const errorMessage = getClerkErrorMessage(err);
       
       // If user already exists, redirect to sign in with invite params - use production URL
-      if (errorMessage.toLowerCase().includes('already') || errorMessage.toLowerCase().includes('taken')) {
+      if (errorMessage === 'email_already_exists') {
         const prodUrl = getProductionUrl();
         const signInUrl = `${prodUrl}?invite=true&hid=${householdId}&uid=${userId}`;
         redirectToSignIn({ redirectUrl: signInUrl });
@@ -232,7 +262,8 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
         setError('Verification failed. Please try again.');
       }
     } catch (err: any) {
-      setError(err.errors?.[0]?.longMessage || err.message || 'Verification failed');
+      console.error('InviteWelcome verification error:', err);
+      setError(getClerkErrorMessage(err));
     } finally {
       setIsSubmitting(false);
     }

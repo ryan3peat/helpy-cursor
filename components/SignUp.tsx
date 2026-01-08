@@ -6,9 +6,39 @@ import ErrorBanner from './ui/ErrorBanner';
 
 interface SignUpProps {
   onBackToSignIn: () => void;
+  t?: Record<string, string>;
 }
 
-const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
+// Helper function to get user-friendly error message from Clerk errors
+function getClerkErrorMessage(err: any, t?: Record<string, string>): string {
+  const errorCode = err.errors?.[0]?.code;
+  const errorMessage = err.errors?.[0]?.longMessage || err.errors?.[0]?.message || err.message || '';
+  
+  // Map Clerk error codes to user-friendly messages
+  if (errorCode === 'form_identifier_exists' || errorMessage.toLowerCase().includes('email address is taken')) {
+    return t?.['error.email_already_registered'] || 'This email is already registered. Please sign in instead.';
+  }
+  if (errorCode === 'form_password_pwned' || errorMessage.toLowerCase().includes('data breach')) {
+    return t?.['error.weak_password'] || 'Please choose a stronger password.';
+  }
+  if (errorCode === 'form_password_length_too_short' || errorMessage.toLowerCase().includes('password')) {
+    return t?.['error.weak_password'] || 'Please choose a stronger password.';
+  }
+  if (errorCode === 'form_code_incorrect' || errorMessage.toLowerCase().includes('incorrect code')) {
+    return t?.['error.incorrect_code'] || 'Incorrect code. Please check and try again.';
+  }
+  if (errorCode === 'verification_expired' || errorMessage.toLowerCase().includes('expired')) {
+    return t?.['error.code_expired'] || 'Code expired. Please request a new one.';
+  }
+  if (errorCode === 'too_many_requests' || errorMessage.toLowerCase().includes('too many')) {
+    return t?.['error.too_many_attempts'] || 'Too many attempts. Please wait a moment and try again.';
+  }
+  
+  // Default fallback - don't show raw technical error
+  return t?.['error.signup_failed'] || 'Sign up failed. Please try again.';
+}
+
+const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn, t }) => {
   const { signUp, setActive, isLoaded } = useSignUp();
   const { signIn, setActive: setActiveSignIn, isLoaded: signInLoaded } = useSignIn();
   
@@ -220,7 +250,8 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
         setError('Account creation completed but requires additional setup. Please try signing in.');
       }
     } catch (err: any) {
-      setError(err.errors?.[0]?.longMessage || err.message || 'Sign up failed');
+      console.error('Signup error:', err);
+      setError(getClerkErrorMessage(err, t));
     } finally {
       setIsSubmitting(false);
     }
@@ -272,7 +303,8 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
         }
       }
     } catch (err: any) {
-      setError(err.errors?.[0]?.longMessage || err.message || 'Verification failed');
+      console.error('Verification error:', err);
+      setError(getClerkErrorMessage(err, t));
     } finally {
       setIsSubmitting(false);
     }

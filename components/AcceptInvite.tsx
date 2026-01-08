@@ -6,6 +6,33 @@ import React, { useEffect, useState } from 'react';
 import { useSignUp, useSignIn, useUser } from '@clerk/clerk-react';
 import { Loader2, CheckCircle, XCircle } from 'lucide-react';
 
+// Helper function to get user-friendly error message from Clerk errors
+function getClerkErrorMessage(err: any): string {
+  const errorCode = err.errors?.[0]?.code;
+  const errorMessage = err.errors?.[0]?.longMessage || err.errors?.[0]?.message || err.message || '';
+  
+  if (errorCode === 'form_identifier_exists' || errorMessage.toLowerCase().includes('email address is taken')) {
+    return 'This email is already registered. Please sign in instead.';
+  }
+  if (errorCode === 'form_password_pwned' || errorMessage.toLowerCase().includes('data breach')) {
+    return 'Please choose a stronger password.';
+  }
+  if (errorCode === 'form_password_length_too_short' || errorMessage.toLowerCase().includes('password')) {
+    return 'Please choose a stronger password.';
+  }
+  if (errorCode === 'form_code_incorrect' || errorMessage.toLowerCase().includes('incorrect code')) {
+    return 'Incorrect code. Please check and try again.';
+  }
+  if (errorCode === 'verification_expired' || errorMessage.toLowerCase().includes('expired')) {
+    return 'Code expired. Please request a new one.';
+  }
+  if (errorCode === 'too_many_requests' || errorMessage.toLowerCase().includes('too many')) {
+    return 'Too many attempts. Please wait a moment and try again.';
+  }
+  
+  return 'Failed to create account. Please try again.';
+}
+
 // Loading component for auth states  
 const AuthLoading = () => (
   <div className="min-h-screen w-full flex flex-col items-center justify-center p-6 page-fade-in auth-gradient-bg">
@@ -145,7 +172,7 @@ const AcceptInvite: React.FC<AcceptInviteProps> = ({ onComplete }) => {
       }
     } catch (err: any) {
       console.error('Signup error:', err);
-      setErrorMessage(err.errors?.[0]?.message || err.message || 'Failed to create account');
+      setErrorMessage(getClerkErrorMessage(err));
     } finally {
       setIsSubmitting(false);
     }
@@ -196,7 +223,7 @@ const AcceptInvite: React.FC<AcceptInviteProps> = ({ onComplete }) => {
       }
     } catch (err: any) {
       console.error('Verification error:', err);
-      setErrorMessage(err.errors?.[0]?.message || err.message || 'Verification failed');
+      setErrorMessage(getClerkErrorMessage(err));
     } finally {
       setIsSubmitting(false);
     }

@@ -286,7 +286,7 @@ export const HelperManagementContent: React.FC<Props> = ({
       loadPayslip();
     } catch (err: any) {
       console.error('Failed to update amount:', err);
-      setError(err.message || (t['error.update_amount'] || 'Failed to update amount'));
+      setError(t['error.update_amount'] || 'Could not update amount. Please try again.');
     } finally {
       setIsLoading(false);
     }

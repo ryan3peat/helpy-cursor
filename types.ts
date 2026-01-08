@@ -94,9 +94,6 @@ export interface RecurringSeries {
   deletedAt?: string;
 }
 
-// Edit/Delete action scope for recurring tasks
-export type RecurringActionScope = 'this' | 'all';
-
 // Unified ToDo Item
 export interface ToDoItem {
   id: string;

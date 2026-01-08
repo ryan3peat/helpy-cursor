@@ -17,7 +17,6 @@ import {
   ArrowDownUp,
   ClipboardList,
   Calendar,
-  MoreHorizontal,
 } from 'lucide-react';
 import Avatar from './ui/Avatar';
 import ErrorBanner from './ui/ErrorBanner';
@@ -253,8 +252,9 @@ const formatDateTime = (dueDate?: string, dueTime?: string): string => {
   let dateStr = `${dayName}, ${day} ${month} ${year}`;
   
   if (dueTime) {
-    // Format: 18:05 (24h)
-    dateStr += `, ${dueTime}`;
+    // Format: 18:05 (24h) - strip seconds if present
+    const timeWithoutSeconds = dueTime.split(':').slice(0, 2).join(':');
+    dateStr += `, ${timeWithoutSeconds}`;
   }
   
   return dateStr;
@@ -466,6 +466,7 @@ const ToDo: React.FC<ToDoProps> = ({
   const [showCompleted, setShowCompleted] = useState(false);
   const [optimisticItems, setOptimisticItems] = useState<ToDoItem[]>([]);
   const [optimisticCompleted, setOptimisticCompleted] = useState<Record<string, boolean>>({});
+  const [optimisticEdits, setOptimisticEdits] = useState<Record<string, Partial<ToDoItem>>>({});
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   
@@ -588,6 +589,7 @@ const ToDo: React.FC<ToDoProps> = ({
     const merged = [...sectionItems, ...optimisticFiltered].map(item => ({
       ...item,
       completed: optimisticCompleted[item.id] ?? item.completed,
+      ...(optimisticEdits[item.id] || {}), // Apply optimistic edits immediately
     }));
     
     // For LIST VIEW: Deduplicate recurring task instances - show only ONE per series
@@ -674,7 +676,7 @@ const ToDo: React.FC<ToDoProps> = ({
       
       return order === 'desc' ? valueB - valueA : valueA - valueB;
     });
-  }, [items, optimisticItems, activeSection, selectedCategory, optimisticCompleted, deletingIds, sortBy, showOnlyMine, currentUser.id]);
+  }, [items, optimisticItems, activeSection, selectedCategory, optimisticCompleted, optimisticEdits, deletingIds, sortBy, showOnlyMine, currentUser.id]);
   
   // Items completing stay in active list during animation, then move to completed
   const activeItems = mergedItems.filter(i => !i.completed || completingIds.has(i.id));
@@ -1042,12 +1044,24 @@ const ToDo: React.FC<ToDoProps> = ({
       
       const itemId = editingItemId; // Capture before clearing
       
-        setIsSheetOpen(false);
-        setEditingItemId(null);
+      // Apply optimistic edit IMMEDIATELY for instant feedback
+      setOptimisticEdits(prev => ({ ...prev, [itemId]: updates }));
+      setIsSheetOpen(false);
+      setEditingItemId(null);
       
       try {
         await onUpdate(itemId, updates);
+        // Clear optimistic edit after success (real data now in props)
+        setOptimisticEdits(prev => {
+          const { [itemId]: _, ...rest } = prev;
+          return rest;
+        });
       } catch (err) {
+        // Clear optimistic edit on failure too
+        setOptimisticEdits(prev => {
+          const { [itemId]: _, ...rest } = prev;
+          return rest;
+        });
         console.error('Failed to update item:', err);
         setError(t['error.update_item'] || 'Failed to update item. Please try again.');
       }
@@ -1162,20 +1176,20 @@ const ToDo: React.FC<ToDoProps> = ({
             
             {/* Header Actions */}
             <div className="flex items-center gap-1 shrink-0">
-              {/* Filter/Sort Button */}
-              <div className="relative" ref={filterDropdownRef}>
-                <button
-                  onClick={() => setIsFilterDropdownOpen(!isFilterDropdownOpen)}
-                  className={`p-2 rounded-full transition-colors relative ${
-                    isFilterDropdownOpen ? 'bg-muted' : ''
-                  }`}
-                >
-                  <ArrowDownUp size={20} className="text-muted-foreground" />
-                  {/* Active indicator dot */}
-                  {(sortBy !== 'addedDate-desc' || showOnlyMine) && (
-                    <span className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full" />
-                  )}
-                </button>
+            {/* Filter/Sort Button */}
+            <div className="relative" ref={filterDropdownRef}>
+              <button
+                onClick={() => setIsFilterDropdownOpen(!isFilterDropdownOpen)}
+                className={`p-2 rounded-full transition-colors relative ${
+                  isFilterDropdownOpen ? 'bg-muted' : ''
+                }`}
+              >
+                <ArrowDownUp size={20} className="text-muted-foreground" />
+                {/* Active indicator dot */}
+                {(sortBy !== 'addedDate-desc' || showOnlyMine) && (
+                  <span className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full" />
+                )}
+              </button>
               
               {/* Dropdown */}
               {isFilterDropdownOpen && (
@@ -1312,63 +1326,63 @@ const ToDo: React.FC<ToDoProps> = ({
 
         {/* Sticky Tab Navigation */}
         {(
+        <div 
+          className="sticky z-10 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 py-3 transition-shadow duration-200"
+          style={{ 
+            top: '118px',
+            boxShadow: isScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none'
+          }}
+        >
           <div 
-            className="sticky z-10 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 py-3 transition-shadow duration-200"
-            style={{ 
-              top: '118px',
-              boxShadow: isScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none'
-            }}
+            className="relative rounded-full overflow-hidden"
+            style={{ backgroundColor: 'hsl(var(--muted))' }}
           >
-            <div 
-              className="relative rounded-full overflow-hidden"
-              style={{ backgroundColor: 'hsl(var(--muted))' }}
-            >
-              <div className="flex p-1 overflow-x-auto scrollbar-hide">
-                <button
-                  onClick={() => setSelectedCategory('All')}
-                  className={`px-4 py-2 rounded-full text-body whitespace-nowrap transition-all ${
-                    selectedCategory === 'All'
-                      ? 'bg-card text-primary shadow-sm'
-                      : 'text-muted-foreground'
-                  }`}
-                >
-                  All ({getItemCount('All')})
-                </button>
-                {categories.map(cat => {
-                  const getCategoryLabel = (category: string) => {
-                    if (activeSection === 'shopping') {
-                      if (category === ShoppingCategory.SUPERMARKET) return t['todo.category.supermarket'] || t['category.supermarket'] || category;
-                      if (category === ShoppingCategory.WET_MARKET) return t['todo.category.wet_market'] || t['category.wet_market'] || category;
-                      if (category === ShoppingCategory.OTHERS) return t['todo.category.others'] || t['category.others'] || category;
-                    } else {
-                      if (category === TaskCategory.HOME_CARE) return t['todo.category.home_care'] || category;
-                      if (category === TaskCategory.FAMILY_CARE) return t['todo.category.family_care'] || category;
-                      if (category === TaskCategory.OTHERS) return t['todo.category.others'] || category;
-                    }
-                    return category;
-                  };
-                  return (
-                    <button
-                      key={cat}
-                      onClick={() => setSelectedCategory(cat)}
-                      className={`px-4 py-2 rounded-full text-body whitespace-nowrap transition-all flex items-center gap-1.5 ${
-                        selectedCategory === cat
-                          ? 'bg-card text-primary shadow-sm'
-                          : 'text-muted-foreground'
-                      }`}
-                    >
-                      {categoryIcons[cat]}
-                      {getCategoryLabel(cat)} ({getItemCount(cat)})
-                    </button>
-                  );
-                })}
-              </div>
-              <div 
-                className="absolute inset-0 rounded-full pointer-events-none"
-                style={{ boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.06)' }}
-              />
+            <div className="flex p-1 overflow-x-auto scrollbar-hide">
+              <button
+                onClick={() => setSelectedCategory('All')}
+                className={`px-4 py-2 rounded-full text-body whitespace-nowrap transition-all ${
+                  selectedCategory === 'All'
+                    ? 'bg-card text-primary shadow-sm'
+                    : 'text-muted-foreground'
+                }`}
+              >
+                All ({getItemCount('All')})
+              </button>
+              {categories.map(cat => {
+                const getCategoryLabel = (category: string) => {
+                  if (activeSection === 'shopping') {
+                    if (category === ShoppingCategory.SUPERMARKET) return t['todo.category.supermarket'] || t['category.supermarket'] || category;
+                    if (category === ShoppingCategory.WET_MARKET) return t['todo.category.wet_market'] || t['category.wet_market'] || category;
+                    if (category === ShoppingCategory.OTHERS) return t['todo.category.others'] || t['category.others'] || category;
+                  } else {
+                    if (category === TaskCategory.HOME_CARE) return t['todo.category.home_care'] || category;
+                    if (category === TaskCategory.FAMILY_CARE) return t['todo.category.family_care'] || category;
+                    if (category === TaskCategory.OTHERS) return t['todo.category.others'] || category;
+                  }
+                  return category;
+                };
+                return (
+                  <button
+                    key={cat}
+                    onClick={() => setSelectedCategory(cat)}
+                    className={`px-4 py-2 rounded-full text-body whitespace-nowrap transition-all flex items-center gap-1.5 ${
+                      selectedCategory === cat
+                        ? 'bg-card text-primary shadow-sm'
+                        : 'text-muted-foreground'
+                    }`}
+                  >
+                    {categoryIcons[cat]}
+                    {getCategoryLabel(cat)} ({getItemCount(cat)})
+                  </button>
+                );
+              })}
             </div>
+            <div 
+              className="absolute inset-0 rounded-full pointer-events-none"
+              style={{ boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.06)' }}
+            />
           </div>
+        </div>
         )}
 
         {/* Suggestions - Collapsible Carousel */}
@@ -1530,9 +1544,9 @@ const ToDo: React.FC<ToDoProps> = ({
                   onTouchEnd={() => handleTouchEnd(item.id)}
                   onClick={() => !isCompleting && !isSwiping && openEditSheet(item)}
                 >
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
                       !isCompleting && handleToggleComplete(item.id, true);
                     }}
                     className="mt-0.5 shrink-0 transition-all"
@@ -1544,7 +1558,7 @@ const ToDo: React.FC<ToDoProps> = ({
                     ) : (
                       <Circle size={22} className="text-muted-foreground/50" />
                     )}
-                  </button>
+              </button>
                   
                   <div className="flex-1 min-w-0">
                     {/* Task name */}
@@ -1552,14 +1566,14 @@ const ToDo: React.FC<ToDoProps> = ({
                       <span className={`text-body ${isCompleting ? 'text-muted-foreground line-through' : 'text-foreground'}`}>
                         <TranslatedItemName item={item} currentLang={currentLang} onUpdate={onUpdate} />
                       </span>
-                    </div>
+            </div>
                     
                     {/* Date info */}
                     {item.dueDate && (
                       <div className="flex items-center gap-1 mt-1 text-caption text-muted-foreground">
                         <Calendar size={11} />
                         {formatDateTime(item.dueDate, item.dueTime)}
-                      </div>
+          </div>
                     )}
                     
                     {/* Recurrence info */}
@@ -1584,7 +1598,7 @@ const ToDo: React.FC<ToDoProps> = ({
                     ) : item.category === TaskCategory.FAMILY_CARE ? (
                       <HandHeart size={16} className="text-[#F06292]" />
                     ) : (
-                      <MoreHorizontal size={16} className="text-muted-foreground" />
+                      <Stone size={16} className="text-muted-foreground" />
                     )}
                   </div>
                 </div>
@@ -1701,26 +1715,26 @@ const ToDo: React.FC<ToDoProps> = ({
                         )}
                       </span>
                     </div>
-                  </div>
-                  
+                    </div>
+                    
                   {/* Right side: Assignee name + Category icon */}
                   <div className="flex flex-col items-end gap-1 shrink-0">
                     {item.assigneeId && (
                       <span className="text-caption text-muted-foreground">
                         {getUserName(item.assigneeId)}
-                      </span>
-                    )}
+                        </span>
+                      )}
                     {/* Category icon */}
                     {item.category === ShoppingCategory.SUPERMARKET ? (
                       <ShoppingCart size={16} className="text-[#3EAFD2]" />
                     ) : item.category === ShoppingCategory.WET_MARKET ? (
                       <Home size={16} className="text-[#4CAF50]" />
                     ) : (
-                      <MoreHorizontal size={16} className="text-muted-foreground" />
+                      <Stone size={16} className="text-muted-foreground" />
                     )}
+                    </div>
+                      </div>
                   </div>
-                </div>
-              </div>
             );
           };
           
@@ -1763,8 +1777,8 @@ const ToDo: React.FC<ToDoProps> = ({
                     ) : (
                       <span className="flex-1 text-body text-muted-foreground">
                         {activeSection === 'shopping' ? (t['todo.add_item'] || 'Add item...') : (t['todo.add_task'] || 'Add task...')}
-                      </span>
-                    )}
+                    </span>
+                  )}
                     
                     <button
                       onClick={(e) => {
@@ -1776,12 +1790,12 @@ const ToDo: React.FC<ToDoProps> = ({
                     >
                       <Plus size={16} />
                     </button>
-                  </div>
                 </div>
-                {/* Bottom line - 6px inset */}
+              </div>
+                {/* Bottom line - 1rem inset to match list items */}
                 <div 
                   className="absolute bottom-0 h-px bg-border" 
-                  style={{ left: '6px', right: '6px' }}
+                  style={{ left: '1rem', right: '1rem' }}
                 />
               </div>
               
@@ -1802,8 +1816,8 @@ const ToDo: React.FC<ToDoProps> = ({
                           renderTaskItem(item, index === items.length - 1)
                         )}
                       </React.Fragment>
-                    );
-                  })}
+            );
+          })}
                 </>
               )}
               
@@ -1815,20 +1829,20 @@ const ToDo: React.FC<ToDoProps> = ({
                   )}
                 </>
               )}
-              
-              {/* Empty State */}
-              {activeItems.length === 0 && !isAddingInline && (
-                <div className="p-8 text-center">
-                  <p className="text-body text-foreground">
-                    {activeSection === 'shopping' 
-                      ? (t['todo.no_shopping'] || 'No shopping items yet')
-                      : (t['todo.no_tasks'] || 'No tasks yet')
-                    }
-                  </p>
-                  <p className="text-caption text-muted-foreground mt-1">{t['todo.tap_to_add'] || 'Tap above to add one'}</p>
-                </div>
-              )}
+          
+          {/* Empty State */}
+          {activeItems.length === 0 && !isAddingInline && (
+            <div className="p-8 text-center">
+              <p className="text-body text-foreground">
+                {activeSection === 'shopping' 
+                  ? (t['todo.no_shopping'] || 'No shopping items yet')
+                  : (t['todo.no_tasks'] || 'No tasks yet')
+                }
+              </p>
+              <p className="text-caption text-muted-foreground mt-1">{t['todo.tap_to_add'] || 'Tap above to add one'}</p>
             </div>
+          )}
+        </div>
           );
         })()}
 
@@ -1938,7 +1952,7 @@ const ToDo: React.FC<ToDoProps> = ({
             {/* Header */}
             <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
               <h2 className="text-title text-foreground">
-                {editingItemId
+                {editingItemId 
                   ? (sheetForm.type === 'shopping' 
                       ? (t['todo.edit_shopping_item'] || 'Edit Shopping Item') 
                       : (t['todo.edit_task'] || 'Edit Task'))
@@ -2223,8 +2237,8 @@ const ToDo: React.FC<ToDoProps> = ({
                 <button
                   onClick={async () => {
                     const itemId = editingItemId;
-                      setIsSheetOpen(false);
-                      setEditingItemId(null);
+                    setIsSheetOpen(false);
+                    setEditingItemId(null);
                     await handleDelete(itemId);
                   }}
                   className="p-3 rounded-xl bg-destructive/10 text-destructive"
@@ -2238,7 +2252,7 @@ const ToDo: React.FC<ToDoProps> = ({
                 className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 <Check size={18} />
-                {editingItemId
+                {editingItemId 
                   ? (t['common.update'] || 'Update')
                   : (activeSection === 'shopping' ? (t['common.add_item'] || 'Add Item') : (t['common.add_task'] || 'Add Task'))
                 }

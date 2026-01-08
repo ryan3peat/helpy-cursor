@@ -33,12 +33,15 @@ const UpdateToast: React.FC<UpdateToastProps> = ({
       role="alert"
       aria-live="polite"
     >
-      <div className="max-w-lg mx-auto bg-card rounded-xl shadow-md p-4 relative border border-border">
+      <div 
+        className="max-w-lg mx-auto bg-primary rounded-xl p-4 relative"
+        style={{ boxShadow: '0 8px 32px rgba(62, 175, 210, 0.4)' }}
+      >
         
         {/* X button - top right */}
         <button 
           onClick={onDismiss}
-          className="absolute top-2.5 right-2.5 p-2 text-muted-foreground"
+          className="absolute top-2.5 right-2.5 p-2 text-white"
           aria-label={t['common.dismiss'] || 'Dismiss'}
         >
           <X size={20} />
@@ -46,14 +49,14 @@ const UpdateToast: React.FC<UpdateToastProps> = ({
         
         {/* Content - title left, button right */}
         <div className="flex items-center justify-between pr-10">
-          <p className="text-body font-semibold text-foreground">
+          <p className="text-body font-semibold text-white">
             {t['update.new_version_title'] || 'New App Update'}<br />
             {t['update.available'] || 'Available'}
           </p>
           
           <button 
             onClick={onUpdate}
-            className="px-5 py-2 bg-primary text-primary-foreground rounded-xl text-body font-semibold shadow-sm"
+            className="px-5 py-2 bg-white text-primary rounded-xl text-body font-semibold shadow-sm"
           >
             {t['update.update_button'] || 'Update'}
           </button>

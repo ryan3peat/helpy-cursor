@@ -129,6 +129,8 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
   });
 
   // Token refresh function
+  // FIX: Don't set isAuthClient=false during refresh - this was causing subscriptions to tear down!
+  // The old client remains valid while we get a fresh token. Only reset on actual failure.
   const refreshToken = useCallback(async () => {
     if (!isSignedIn || !getToken) {
       console.log('[SupabaseContext] ⚠️ Cannot refresh token: not signed in or getToken unavailable');
@@ -136,7 +138,8 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
     }
 
     console.log('[SupabaseContext] 🔄 Refreshing JWT token...');
-    setIsAuthClient(false); // Reset while refreshing
+    // REMOVED: setIsAuthClient(false) - this was causing data to disappear!
+    // Keep the old client working while we refresh the token
 
     try {
       const templateName = import.meta.env.VITE_CLERK_JWT_TEMPLATE_NAME || 'supabase';
@@ -155,6 +158,8 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
 
       if (!token) {
         console.error('[SupabaseContext] ❌ Token refresh failed - no token received');
+        // Only reset auth state on actual failure to get a token
+        setIsAuthClient(false);
         return;
       }
 
@@ -164,6 +169,7 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
       const authenticatedClient = await createAuthenticatedClient(token, refreshToken);
       setClient(authenticatedClient);
       globalAuthenticatedClient = authenticatedClient;
+      // isAuthClient stays true (or becomes true) - no interruption to subscriptions
       setIsAuthClient(true);
     } catch (error: any) {
       console.error('[SupabaseContext] ❌ Token refresh error:', error);

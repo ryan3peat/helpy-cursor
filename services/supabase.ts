@@ -7,6 +7,10 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 // Note: This client won't have JWT tokens, so RLS policies won't work until migration is complete
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+// SINGLETON: Reuse the same authenticated client to prevent "Multiple GoTrueClient instances" warning
+// The customFetch inside handles getting fresh tokens on every request, so we don't need new clients
+let authenticatedClientSingleton: SupabaseClient | null = null;
+
 // Global token refresh function (set by SupabaseContext) - LEGACY, kept for fallback
 let globalTokenRefresh: (() => Promise<void>) | null = null;
 let currentToken: string | null = null;
@@ -49,19 +53,31 @@ export const updateCurrentToken = (token: string | null) => {
 
 // Function to create authenticated client with Clerk JWT token
 // This client will include the JWT in headers, allowing RLS policies to work
+// FIX: Now returns singleton to prevent "Multiple GoTrueClient instances" warning
 export const createAuthenticatedClient = async (clerkToken: string | null, tokenRefresh?: () => Promise<void>): Promise<SupabaseClient> => {
   if (!clerkToken) {
     console.warn('[Supabase] No JWT token provided, creating client without authentication');
-    return createClient(supabaseUrl, supabaseAnonKey);
+    return supabase; // Return default client instead of creating new one
+  }
+  
+  // Store token refresh function globally (always update these)
+  if (tokenRefresh) {
+    setTokenRefresh(tokenRefresh, clerkToken);
+  } else {
+    // Still update the current token even if no refresh function
+    currentToken = clerkToken;
+  }
+  
+  // SINGLETON PATTERN: Reuse existing client if available
+  // The customFetch already handles getting fresh tokens via globalGetFreshToken
+  // So we don't need a new client, we just need to update the token references
+  if (authenticatedClientSingleton) {
+    console.log('[Supabase] Reusing existing authenticated client (token updated)');
+    return authenticatedClientSingleton;
   }
   
   console.log('[Supabase] Creating authenticated client with JWT token');
   console.log('[Supabase] Token preview:', clerkToken.substring(0, 50) + '...');
-  
-  // Store token refresh function globally
-  if (tokenRefresh) {
-    setTokenRefresh(tokenRefresh, clerkToken);
-  }
   
   // Use custom fetch to ensure JWT is sent with EVERY request
   // This is more reliable than global.headers which may not persist
@@ -204,6 +220,9 @@ export const createAuthenticatedClient = async (clerkToken: string | null, token
     },
   });
   
-  console.log('[Supabase] ✅ Authenticated client created, JWT will be sent in requests');
+  // Store in singleton for reuse
+  authenticatedClientSingleton = client;
+  
+  console.log('[Supabase] ✅ Authenticated client created (singleton), JWT will be sent in requests');
   return client;
 };

@@ -454,6 +454,10 @@ const ToDo: React.FC<ToDoProps> = ({
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [showClearCompletedConfirm, setShowClearCompletedConfirm] = useState(false);
   
+  // Shopping Mode - Full-screen distraction-free shopping list
+  const [isShoppingMode, setIsShoppingMode] = useState(false);
+  const [shoppingModeCategory, setShoppingModeCategory] = useState<string>('All');
+  
   // Lock body scroll when sheet or shopping mode is open
   useScrollLock(isSheetOpen || showClearCompletedConfirm || isShoppingMode);
   
@@ -489,10 +493,6 @@ const ToDo: React.FC<ToDoProps> = ({
   const [showOnlyMine, setShowOnlyMine] = useState(false);
   const [isFilterDropdownOpen, setIsFilterDropdownOpen] = useState(false);
   const filterDropdownRef = useRef<HTMLDivElement>(null);
-  
-  // Shopping Mode - Full-screen distraction-free shopping list
-  const [isShoppingMode, setIsShoppingMode] = useState(false);
-  const [shoppingModeCategory, setShoppingModeCategory] = useState<string>('All');
   
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -1349,22 +1349,40 @@ const ToDo: React.FC<ToDoProps> = ({
             </button>
 
             {/* Shopping Card */}
-            <button
-              onClick={() => setActiveSection('shopping')}
-              className={`flex-1 px-3 py-2.5 rounded-xl text-left transition-all ${
-                activeSection === 'shopping'
-                  ? 'bg-primary text-primary-foreground shadow-md'
-                  : 'bg-card text-foreground shadow-sm'
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <ShoppingCart size={16} />
-                <span className="text-title">{t['todo.shopping'] || 'Shopping'}</span>
-              </div>
-              <div className={`text-caption mt-1 ml-6 ${activeSection === 'shopping' ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
-                {shoppingStats.total} {t['dashboard.items_to_buy'] || 'items to buy'}
-              </div>
-            </button>
+            <div className={`flex-1 px-3 py-2.5 rounded-xl text-left transition-all relative ${
+              activeSection === 'shopping'
+                ? 'bg-primary text-primary-foreground shadow-md'
+                : 'bg-card text-foreground shadow-sm'
+            }`}>
+              <button
+                onClick={() => setActiveSection('shopping')}
+                className="w-full text-left"
+              >
+                <div className="flex items-center gap-2">
+                  <ShoppingCart size={16} />
+                  <span className="text-title">{t['todo.shopping'] || 'Shopping'}</span>
+                </div>
+                <div className={`text-caption mt-1 ml-6 ${activeSection === 'shopping' ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
+                  {shoppingStats.total} {t['dashboard.items_to_buy'] || 'items to buy'}
+                </div>
+              </button>
+              
+              {/* Shopping Mode Button - only show when shopping section is active and has items */}
+              {activeSection === 'shopping' && shoppingStats.total > 0 && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    haptics.medium();
+                    setShoppingModeCategory('All');
+                    setIsShoppingMode(true);
+                  }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 rounded-lg bg-primary-foreground/20 text-primary-foreground text-caption font-semibold flex items-center gap-1.5"
+                >
+                  <ShoppingBag size={14} />
+                  {t['todo.start_shopping'] || 'Shop'}
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -2304,6 +2322,233 @@ const ToDo: React.FC<ToDoProps> = ({
                   ? (t['common.update'] || 'Update')
                   : (activeSection === 'shopping' ? (t['common.add_item'] || 'Add Item') : (t['common.add_task'] || 'Add Task'))
                 }
+              </button>
+            </div>
+          </div>
+        </div>
+      , document.body)}
+
+      {/* Shopping Mode Full-Screen Overlay */}
+      {isShoppingMode && createPortal(
+        <div className="fixed inset-0 bg-background z-[9999] flex flex-col">
+          {/* Header */}
+          <div className="shrink-0 px-5 pt-safe-top pb-4 border-b border-border bg-background" style={{ paddingTop: 'max(env(safe-area-inset-top), 1rem)' }}>
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1">
+                <h1 className="text-display text-foreground">{t['todo.shopping_mode'] || 'Shopping Mode'}</h1>
+                <p className="text-caption text-muted-foreground mt-1">
+                  {t['todo.shopping_mode_hint'] || 'Tap or swipe to complete. Editing is disabled.'}
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  haptics.light();
+                  setIsShoppingMode(false);
+                  setShoppingModeCategory('All');
+                }}
+                className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center shrink-0"
+              >
+                <X size={20} className="text-foreground" />
+              </button>
+            </div>
+            
+            {/* Category Filter Tabs */}
+            <div className="mt-4 flex gap-2 overflow-x-auto scrollbar-hide -mx-5 px-5">
+              {['All', ShoppingCategory.SUPERMARKET, ShoppingCategory.WET_MARKET].map((cat) => {
+                const isActive = shoppingModeCategory === cat;
+                const label = cat === 'All' 
+                  ? (t['common.all'] || 'All')
+                  : cat === ShoppingCategory.SUPERMARKET 
+                    ? (t['todo.category.supermarket'] || 'Supermarket')
+                    : (t['todo.category.wet_market'] || 'Wet Market');
+                const count = cat === 'All'
+                  ? items.filter(i => i.type === 'shopping' && !i.completed && !deletingIds.has(i.id) && !completingIds.has(i.id)).length
+                  : items.filter(i => i.type === 'shopping' && !i.completed && i.category === cat && !deletingIds.has(i.id) && !completingIds.has(i.id)).length;
+                
+                return (
+                  <button
+                    key={cat}
+                    onClick={() => {
+                      haptics.selection();
+                      setShoppingModeCategory(cat);
+                    }}
+                    className={`px-4 py-2.5 rounded-xl font-semibold transition-colors flex items-center gap-2 whitespace-nowrap ${
+                      isActive
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-card text-foreground'
+                    }`}
+                    style={{ fontSize: '16px' }}
+                  >
+                    {cat === ShoppingCategory.SUPERMARKET && <ShoppingCart size={18} />}
+                    {cat === ShoppingCategory.WET_MARKET && <Home size={18} />}
+                    {label} ({count})
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          
+          {/* Items List */}
+          <div className="flex-1 overflow-y-auto">
+            {shoppingModeItems.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-center px-8">
+                <ShoppingCart size={64} className="text-muted-foreground/20 mb-4" />
+                <p className="text-title text-muted-foreground">
+                  {shoppingModeCategory === 'All' 
+                    ? (t['todo.shopping_list_empty'] || 'Shopping list is empty')
+                    : (t['todo.no_items_in_category'] || 'No items in this category')
+                  }
+                </p>
+                <p className="text-body text-muted-foreground/70 mt-2">
+                  {t['todo.add_items_first'] || 'Add items to your shopping list first'}
+                </p>
+              </div>
+            ) : (
+              <div className="bg-card">
+                {shoppingModeItems.map((item, index) => {
+                  const isCompleting = completingIds.has(item.id);
+                  const isCollapsing = collapsingIds.has(item.id);
+                  const isSwiping = swipeState.id === item.id;
+                  const swipeOffset = isSwiping ? swipeState.offset : 0;
+                  const swipeThresholdReached = swipeOffset > 90;
+                  const isLast = index === shoppingModeItems.length - 1;
+                  
+                  return (
+                    <div
+                      key={item.id}
+                      className={`relative ${!isLast && !isCollapsing ? 'list-item-separator' : ''} overflow-hidden`}
+                      style={{
+                        transition: isCollapsing 
+                          ? 'max-height 0.2s ease-out, opacity 0.2s ease-out'
+                          : undefined,
+                        maxHeight: isCollapsing ? '0px' : '200px',
+                      }}
+                    >
+                      {/* iOS-style swipe reveal */}
+                      <div 
+                        className="absolute inset-0 flex items-center pl-6 transition-colors duration-150"
+                        style={{ 
+                          backgroundColor: swipeOffset > 0 || isCompleting
+                            ? (swipeThresholdReached || isCompleting
+                                ? 'hsl(var(--primary))' 
+                                : 'hsl(var(--primary) / 0.25)')
+                            : 'transparent',
+                        }}
+                      >
+                        {(swipeOffset > 30 || isCompleting) && (
+                          <div 
+                            className="text-primary-foreground transition-all duration-150"
+                            style={{ 
+                              transform: swipeThresholdReached || isCompleting ? 'scale(1.2)' : 'scale(1)',
+                              opacity: isCompleting ? 1 : Math.min(swipeOffset / 50, 1),
+                            }}
+                          >
+                            <Check size={28} strokeWidth={3} />
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Item card - large touch target */}
+                      <div
+                        className="flex items-center gap-4 px-5 py-5 bg-card cursor-pointer relative"
+                        style={{
+                          transition: isSwiping 
+                            ? 'none' 
+                            : isCompleting 
+                              ? 'opacity 0.2s ease-out, transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                              : 'transform 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+                          opacity: isCompleting ? 0 : 1,
+                          transform: isCompleting && !isCollapsing 
+                            ? 'translateX(100%)' 
+                            : `translateX(${swipeOffset}px)`,
+                          boxShadow: swipeOffset > 10 
+                            ? `0 2px 12px rgba(0, 0, 0, ${Math.min(swipeOffset / 150, 0.12)})` 
+                            : 'none',
+                        }}
+                        onTouchStart={(e) => handleTouchStart(e, item.id)}
+                        onTouchMove={handleTouchMove}
+                        onTouchEnd={() => handleTouchEnd(item.id)}
+                        onClick={() => {
+                          if (!isCompleting && !isSwiping) {
+                            haptics.success();
+                            handleToggleComplete(item.id, true);
+                          }
+                        }}
+                      >
+                        {/* Checkbox */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (!isCompleting) {
+                              haptics.success();
+                              handleToggleComplete(item.id, true);
+                            }
+                          }}
+                          className="shrink-0"
+                        >
+                          {isCompleting ? (
+                            <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center">
+                              <Check size={18} className="text-primary-foreground" strokeWidth={3} />
+                            </div>
+                          ) : (
+                            <Circle size={28} className="text-muted-foreground/40" />
+                          )}
+                        </button>
+                        
+                        {/* Item content - Large font */}
+                        <div className="flex-1 min-w-0">
+                          <div className={`font-medium ${isCompleting ? 'text-muted-foreground line-through' : 'text-foreground'}`} style={{ fontSize: '20px', lineHeight: '1.3' }}>
+                            <TranslatedItemName item={item} currentLang={currentLang} onUpdate={onUpdate} />
+                            {item.brand && (
+                              <span className="text-muted-foreground font-normal" style={{ fontSize: '16px' }}>
+                                {' ('}{item.brand}{')'}
+                              </span>
+                            )}
+                          </div>
+                          {/* Quantity info */}
+                          {item.quantity && (item.quantity !== '1' || item.unit) && (
+                            <div className="text-muted-foreground mt-1" style={{ fontSize: '16px' }}>
+                              {item.quantity}{item.unit ? ` ${item.unit}` : ''}
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* Category icon */}
+                        <div className="shrink-0">
+                          {item.category === ShoppingCategory.SUPERMARKET ? (
+                            <ShoppingCart size={20} className="text-[#3EAFD2]" />
+                          ) : item.category === ShoppingCategory.WET_MARKET ? (
+                            <Home size={20} className="text-[#4CAF50]" />
+                          ) : (
+                            <Stone size={20} className="text-muted-foreground" />
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+          
+          {/* Footer with item count */}
+          <div className="shrink-0 px-5 py-4 border-t border-border bg-background" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 1rem)' }}>
+            <div className="flex items-center justify-between">
+              <span className="text-body text-muted-foreground">
+                {shoppingModeItems.length} {shoppingModeItems.length === 1 
+                  ? (t['todo.item_remaining'] || 'item remaining')
+                  : (t['todo.items_remaining'] || 'items remaining')
+                }
+              </span>
+              <button
+                onClick={() => {
+                  haptics.light();
+                  setIsShoppingMode(false);
+                  setShoppingModeCategory('All');
+                }}
+                className="px-4 py-2 rounded-xl bg-secondary text-foreground text-body font-semibold"
+              >
+                {t['todo.done_shopping'] || 'Done Shopping'}
               </button>
             </div>
           </div>

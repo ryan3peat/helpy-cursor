@@ -562,9 +562,9 @@ const Meals: React.FC<MealsProps> = ({
         const container = weekScrollRef.current;
         if (!container) return;
         
-        // Calculate scroll position: first column is 72px, each day column is equal width
+        // Calculate scroll position using fixed column widths: 72px for meal type, 116px for each day
         const firstColWidth = 72;
-        const dayColWidth = (container.scrollWidth - firstColWidth) / 7;
+        const dayColWidth = 116;
         const targetScroll = firstColWidth + (todayIndex * dayColWidth) - (container.clientWidth / 2) + (dayColWidth / 2);
         
         // Use 'auto' for instant scroll (no visible animation)
@@ -1116,13 +1116,20 @@ const Meals: React.FC<MealsProps> = ({
               ref={weekScrollRef}
               className="overflow-x-auto"
             >
-              <table className="w-full min-w-[700px]" style={{ borderCollapse: 'separate', borderSpacing: 0 }}>
+              <table style={{ borderCollapse: 'separate', borderSpacing: 0, tableLayout: 'fixed' }}>
+                {/* Define column widths - 72px for meal type, 116px for each day */}
+                <colgroup>
+                  <col style={{ width: '72px' }} />
+                  {weekDays.map((day) => (
+                    <col key={formatDateStr(day)} style={{ width: '116px' }} />
+                  ))}
+                </colgroup>
                 {/* Table Header - Day names */}
                 <thead>
                   <tr>
                     {/* Corner cell - sticky horizontally */}
                     <th 
-                      className="p-2 w-[72px] bg-muted sticky left-0 z-20 border-b border-border"
+                      className="p-2 bg-muted sticky left-0 z-20 border-b border-border"
                       style={{ boxShadow: '1px 0 0 0 #d1d5db' }}
                     />
                     {/* Day headers */}
@@ -1176,7 +1183,7 @@ const Meals: React.FC<MealsProps> = ({
                             <td
                               key={`${type}-${dateStr}`}
                               onClick={() => handleWeekCellClick(day)}
-                              className={`p-1.5 cursor-pointer align-top h-[72px] ${!isLastRow ? 'border-b border-border' : ''} ${!isLastCol ? 'border-r border-border' : ''}`}
+                              className={`p-1.5 cursor-pointer align-top min-h-[72px] ${!isLastRow ? 'border-b border-border' : ''} ${!isLastCol ? 'border-r border-border' : ''}`}
                             >
                               {slotMeals.length > 0 ? (
                                 <div className="space-y-1">
@@ -1194,7 +1201,7 @@ const Meals: React.FC<MealsProps> = ({
                                         className="px-1.5 py-1 rounded-md bg-muted/50"
                                       >
                                         {hasDish ? (
-                                          <span className="text-micro font-semibold text-foreground line-clamp-2 leading-tight block">
+                                          <span className="text-micro font-semibold text-foreground leading-tight block break-words">
                                             <TranslatedMealDescription meal={meal} currentLang={currentLang} onUpdate={onUpdate} />
                                           </span>
                                         ) : (
@@ -1222,7 +1229,7 @@ const Meals: React.FC<MealsProps> = ({
                                   })}
                                 </div>
                               ) : (
-                                <div className="h-full flex items-center justify-center">
+                                <div className="min-h-[60px] flex items-center justify-center">
                                   <span className="text-muted-foreground/30 text-lg">·</span>
                                 </div>
                               )}
@@ -1260,7 +1267,7 @@ const Meals: React.FC<MealsProps> = ({
           />
           <div 
             className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col"
-            style={{ maxHeight: '80vh', marginBottom: 'env(safe-area-inset-bottom, 34px)' }}
+            style={{ maxHeight: '88vh', marginBottom: 'env(safe-area-inset-bottom, 34px)' }}
           >
             {/* Header with X left, Title center, ✓ right */}
             <div className="flex items-center justify-between px-5 pt-5 pb-4 shrink-0">
@@ -1281,9 +1288,9 @@ const Meals: React.FC<MealsProps> = ({
               {/* ✓ Confirm Button (right) */}
               <button
                 onClick={handleSave}
-                disabled={!(description.trim().length > 0 || selectedUserIds.length > 0)}
+                disabled={!description.trim()}
                 className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
-                  (description.trim().length > 0 || selectedUserIds.length > 0)
+                  description.trim()
                     ? 'bg-primary text-primary-foreground shadow-sm'
                     : 'bg-muted text-muted-foreground'
                 }`}

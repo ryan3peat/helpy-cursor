@@ -1564,6 +1564,14 @@ const Expenses: React.FC<ExpensesProps> = ({
                           const formatted = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : value;
                           setEditAmount(formatted);
                         }}
+                        onFocus={(e) => {
+                          // Select all text for easy replacement (best practice for number inputs)
+                          e.target.select();
+                          // Prevent iOS from pushing sheet - scroll input into view within container
+                          setTimeout(() => {
+                            e.target.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+                          }, 100);
+                        }}
                         placeholder="0.00"
                       className="w-full pl-16 pr-4 py-3 bg-muted rounded-xl text-xl font-semibold text-foreground placeholder-light outline-none border border-transparent focus:border-primary transition-colors text-right"
                       />
@@ -1580,6 +1588,12 @@ const Expenses: React.FC<ExpensesProps> = ({
                       autoComplete="one-time-code"
                       value={editMerchant}
                       onChange={(e) => setEditMerchant(e.target.value)}
+                      onFocus={(e) => {
+                        // Prevent iOS from pushing sheet - scroll input into view within container
+                        setTimeout(() => {
+                          e.target.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+                        }, 100);
+                      }}
                     placeholder={t['expenses.merchant_placeholder'] || "e.g., Wellcome, McDonald's"}
                     className="w-full px-4 py-3 rounded-xl bg-muted border border-transparent focus:border-primary outline-none transition-all text-body"
                     />
@@ -1694,6 +1708,14 @@ const Expenses: React.FC<ExpensesProps> = ({
                           const formatted = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : value;
                           setEditAmount(formatted);
                         }}
+                        onFocus={(e) => {
+                          // Select all text for easy replacement (best practice for number inputs)
+                          e.target.select();
+                          // Prevent iOS from pushing sheet - scroll input into view within container
+                          setTimeout(() => {
+                            e.target.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+                          }, 100);
+                        }}
                         placeholder="0.00"
                       className="w-full pl-16 pr-4 py-3 bg-muted rounded-xl text-xl font-semibold text-foreground placeholder-light outline-none border border-transparent focus:border-primary transition-colors text-right"
                       />
@@ -1710,6 +1732,12 @@ const Expenses: React.FC<ExpensesProps> = ({
                   autoComplete="one-time-code"
                   value={editMerchant}
                   onChange={(e) => setEditMerchant(e.target.value)}
+                  onFocus={(e) => {
+                    // Prevent iOS from pushing sheet - scroll input into view within container
+                    setTimeout(() => {
+                      e.target.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+                    }, 100);
+                  }}
                     placeholder={t['expenses.merchant_placeholder'] || "e.g., Wellcome, McDonald's"}
                     className="w-full px-4 py-3 rounded-xl bg-muted border border-transparent focus:border-primary outline-none transition-all text-body"
                 />
@@ -1918,6 +1946,14 @@ const Expenses: React.FC<ExpensesProps> = ({
                           const formatted = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : value;
                           setExAmount(formatted);
                         }}
+                        onFocus={(e) => {
+                          // Select all text for easy replacement (best practice for number inputs)
+                          e.target.select();
+                          // Prevent iOS from pushing sheet - scroll input into view within container
+                          setTimeout(() => {
+                            e.target.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+                          }, 100);
+                        }}
                         placeholder="0.00"
                       />
                     </div>
@@ -1934,6 +1970,12 @@ const Expenses: React.FC<ExpensesProps> = ({
                       className="w-full px-4 py-3 rounded-xl bg-muted border border-transparent focus:border-primary outline-none transition-all text-body"
                       value={exMerchant}
                       onChange={(e) => setExMerchant(e.target.value)}
+                      onFocus={(e) => {
+                        // Prevent iOS from pushing sheet - scroll input into view within container
+                        setTimeout(() => {
+                          e.target.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+                        }, 100);
+                      }}
                       placeholder={t['expenses.merchant_placeholder'] || "e.g., Wellcome, McDonald's"}
                     />
                   </div>

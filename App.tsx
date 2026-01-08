@@ -1154,11 +1154,19 @@ const AppContent: React.FC = () => {
       return;
     }
     
+    // Get the item before deleting to check if it has a series
+    const itemToDelete = todoItems.find(i => i.id === id);
+    const seriesId = itemToDelete?.seriesId;
+    
     // Track this deletion to prevent "ghost returns" from real-time sync
     pendingTodoDeletions.current.add(id);
     
-    // Optimistically remove from UI
-    setTodoItems(prev => prev.filter(item => item.id !== id));
+    // Optimistically remove from UI (also remove other items from same series)
+    if (seriesId) {
+      setTodoItems(prev => prev.filter(item => item.id !== id && item.seriesId !== seriesId));
+    } else {
+      setTodoItems(prev => prev.filter(item => item.id !== id));
+    }
     
     // Skip database call for temp IDs - item not in database yet
     if (isTempId(id)) {
@@ -1169,7 +1177,23 @@ const AppContent: React.FC = () => {
     }
     
     try {
+      // Delete the todo item
       await deleteItem(hid, 'todo_items', id);
+      
+      // If this was a recurring task, also soft-delete the series and all its items
+      if (seriesId) {
+        console.log('🗑️ Deleting recurring series:', seriesId);
+        // Soft-delete the series
+        await updateItem(hid, 'recurring_series', seriesId, { 
+          deletedAt: new Date().toISOString() 
+        });
+        // Delete all other items in this series
+        const seriesItems = todoItems.filter(t => t.seriesId === seriesId && t.id !== id);
+        for (const item of seriesItems) {
+          await deleteItem(hid, 'todo_items', item.id);
+        }
+      }
+      
       // Clear from pending deletions after the delete succeeds + brief buffer for real-time
       setTimeout(() => pendingTodoDeletions.current.delete(id), 2000);
     } catch (error) {

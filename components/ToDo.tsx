@@ -17,6 +17,7 @@ import {
   ArrowDownUp,
   ClipboardList,
   Calendar,
+  Loader2,
 } from 'lucide-react';
 import Avatar from './ui/Avatar';
 import ErrorBanner from './ui/ErrorBanner';
@@ -469,6 +470,7 @@ const ToDo: React.FC<ToDoProps> = ({
   const [optimisticEdits, setOptimisticEdits] = useState<Record<string, Partial<ToDoItem>>>({});
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false); // Prevent double-click duplicate submissions
   
   // Track items animating to completed (iOS-style delayed move)
   const [completingIds, setCompletingIds] = useState<Set<string>>(new Set());
@@ -1006,7 +1008,9 @@ const ToDo: React.FC<ToDoProps> = ({
   };
   
   const handleSheetSave = async () => {
-    if (!sheetForm.name?.trim()) return;
+    if (!sheetForm.name?.trim() || isSaving) return; // Prevent double-click
+    
+    setIsSaving(true);
     
     if (editingItemId) {
       // Editing existing item - ALWAYS recalculate dayOfWeek/dayOfMonth from current dueDate
@@ -1064,6 +1068,8 @@ const ToDo: React.FC<ToDoProps> = ({
         });
         console.error('Failed to update item:', err);
         setError(t['error.update_item'] || 'Failed to update item. Please try again.');
+      } finally {
+        setIsSaving(false);
       }
     } else {
       // Adding new item
@@ -1101,6 +1107,8 @@ const ToDo: React.FC<ToDoProps> = ({
         console.error('Failed to add item:', err);
         setOptimisticItems(prev => prev.filter(i => i.id !== optimisticId));
         setError(t['error.add_item'] || 'Failed to add item. Please try again.');
+      } finally {
+        setIsSaving(false);
       }
     }
   };
@@ -2248,10 +2256,14 @@ const ToDo: React.FC<ToDoProps> = ({
               )}
               <button
                 onClick={handleSheetSave}
-                disabled={!sheetForm.name?.trim()}
+                disabled={!sheetForm.name?.trim() || isSaving}
                 className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                <Check size={18} />
+                {isSaving ? (
+                  <Loader2 size={18} className="animate-spin" />
+                ) : (
+                  <Check size={18} />
+                )}
                 {editingItemId 
                   ? (t['common.update'] || 'Update')
                   : (activeSection === 'shopping' ? (t['common.add_item'] || 'Add Item') : (t['common.add_task'] || 'Add Task'))

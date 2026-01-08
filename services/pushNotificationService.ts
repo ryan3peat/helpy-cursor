@@ -1456,7 +1456,7 @@ if (typeof window !== 'undefined') {
 export async function triggerBatchProcessing(): Promise<boolean> {
   try {
     const client = getSupabaseClient();
-    const { data, error } = await client.rpc('trigger_notification_batches');
+    const { data, error } = await client.rpc('process_notification_batches');
     
     if (error) {
       // Function might not exist yet - that's OK

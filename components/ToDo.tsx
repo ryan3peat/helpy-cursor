@@ -380,12 +380,7 @@ const SectionDivider: React.FC<{
       : 'text-muted-foreground';
   
   return (
-    <div className="relative px-4 py-2.5 bg-card">
-      {/* Top border line - 6px inset */}
-      <div 
-        className="absolute top-0 h-px bg-border" 
-        style={{ left: '6px', right: '6px' }}
-      />
+    <div className="px-4 py-2.5 bg-card">
       <span className={`text-base font-bold ${colorClass}`}>
         {label}
       </span>

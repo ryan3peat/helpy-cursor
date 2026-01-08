@@ -51,6 +51,7 @@ import { haptics } from '../utils/haptics';
 import { useDemoMode } from '../contexts/DemoModeContext';
 import { isRunningAsPwa, isIosDevice, isAndroidDevice } from '../utils/pwaUtils';
 import { isDevicePwaInstalled, recordPwaInstallation } from '../services/pwaService';
+import { getCachedSupabaseUuid } from '../services/supabaseService';
 
 import type { ConnectionStatus } from '../hooks/useRealtimeStatus';
 
@@ -636,7 +637,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     isMobile,
     isInstalled: isPwaInstalled
   } = usePwaInstallNudge(
-    currentUser?.id,
+    currentUser?.id ? getCachedSupabaseUuid(currentUser.id) : undefined,
     currentUser?.householdId
   );
   

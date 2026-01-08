@@ -9,10 +9,12 @@ import {
   X,
   User as UserIcon,
   Repeat,
+  Store,
   ShoppingCart,
   ShoppingBag,
   Trash2,
-  Home,
+  HouseHeart,
+  LampCeiling,
   HandHeart,
   Stone,
   ArrowDownUp,
@@ -100,8 +102,8 @@ const DAYS_OF_WEEK = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const getShoppingCategoryIcon = (category: string, isSelected = false) => {
   const className = isSelected ? '' : undefined;
   switch (category) {
-    case ShoppingCategory.SUPERMARKET: return <ShoppingCart size={16} className={className} />;
-    case ShoppingCategory.WET_MARKET: return <Home size={16} className={className} />;
+    case ShoppingCategory.SUPERMARKET: return <Store size={16} className={className} />;
+    case ShoppingCategory.WET_MARKET: return <LampCeiling size={16} className={className} />;
     case ShoppingCategory.OTHERS: return <Stone size={16} className={className} />;
     default: return null;
   }
@@ -110,7 +112,7 @@ const getShoppingCategoryIcon = (category: string, isSelected = false) => {
 const getTaskCategoryIcon = (category: string, isSelected = false) => {
   const className = isSelected ? '' : undefined;
   switch (category) {
-    case TaskCategory.HOME_CARE: return <Home size={16} className={className} />;
+    case TaskCategory.HOME_CARE: return <HouseHeart size={16} className={className} />;
     case TaskCategory.FAMILY_CARE: return <HandHeart size={16} className={className} />;
     case TaskCategory.OTHERS: return <Stone size={16} className={className} />;
     default: return null;
@@ -168,9 +170,9 @@ const getSortedUsersForAssignment = (users: User[], currentUser: User): User[] =
 const getCategoryBadgeStyle = (category: string): string => {
   switch (category) {
     case ShoppingCategory.SUPERMARKET:
-      return 'bg-[#E6F7FB] text-[#3EAFD2]'; // Primary cyan
-    case ShoppingCategory.WET_MARKET:
       return 'bg-[#E8F5E9] text-[#4CAF50]'; // Green
+    case ShoppingCategory.WET_MARKET:
+      return 'bg-[#FCE4EC] text-[#F06292]'; // Pink
     case TaskCategory.HOME_CARE:
       return 'bg-[#FFF3E0] text-[#FF9800]'; // Orange
     case TaskCategory.FAMILY_CARE:
@@ -184,9 +186,9 @@ const getCategoryBadgeStyle = (category: string): string => {
 const getSuggestionPillStyle = (category: string): string => {
   switch (category) {
     case ShoppingCategory.SUPERMARKET:
-      return 'bg-[#E6F7FB] text-[#3EAFD2] border-[#3EAFD2]/40'; // Primary cyan
-    case ShoppingCategory.WET_MARKET:
       return 'bg-[#E8F5E9] text-[#4CAF50] border-[#4CAF50]/40'; // Green
+    case ShoppingCategory.WET_MARKET:
+      return 'bg-[#FCE4EC] text-[#F06292] border-[#F06292]/40'; // Pink
     case TaskCategory.HOME_CARE:
       return 'bg-[#FFF3E0] text-[#FF9800] border-[#FF9800]/40'; // Orange
     case TaskCategory.FAMILY_CARE:
@@ -200,9 +202,9 @@ const getSuggestionPillStyle = (category: string): string => {
 const getCategoryIconColor = (category: string): string => {
   switch (category) {
     case ShoppingCategory.SUPERMARKET:
-      return 'text-[#3EAFD2]'; // Primary cyan
-    case ShoppingCategory.WET_MARKET:
       return 'text-[#4CAF50]'; // Green
+    case ShoppingCategory.WET_MARKET:
+      return 'text-[#F06292]'; // Pink
     case TaskCategory.HOME_CARE:
       return 'text-[#FF9800]'; // Orange
     case TaskCategory.FAMILY_CARE:
@@ -1654,7 +1656,7 @@ const ToDo: React.FC<ToDoProps> = ({
                     )}
                     {/* Category icon */}
                     {item.category === TaskCategory.HOME_CARE ? (
-                      <Home size={16} className="text-[#FF9800]" />
+                      <HouseHeart size={16} className="text-[#FF9800]" />
                     ) : item.category === TaskCategory.FAMILY_CARE ? (
                       <HandHeart size={16} className="text-[#F06292]" />
                     ) : (
@@ -1785,9 +1787,9 @@ const ToDo: React.FC<ToDoProps> = ({
                       )}
                     {/* Category icon */}
                     {item.category === ShoppingCategory.SUPERMARKET ? (
-                      <ShoppingCart size={16} className="text-[#3EAFD2]" />
+                      <Store size={16} className="text-[#4CAF50]" />
                     ) : item.category === ShoppingCategory.WET_MARKET ? (
-                      <Home size={16} className="text-[#4CAF50]" />
+                      <LampCeiling size={16} className="text-[#F06292]" />
                     ) : (
                       <Stone size={16} className="text-muted-foreground" />
                     )}
@@ -2364,8 +2366,8 @@ const ToDo: React.FC<ToDoProps> = ({
                     }`}
                     style={{ fontSize: '16px' }}
                   >
-                    {cat === ShoppingCategory.SUPERMARKET && <ShoppingCart size={18} />}
-                    {cat === ShoppingCategory.WET_MARKET && <Home size={18} />}
+                    {cat === ShoppingCategory.SUPERMARKET && <Store size={18} />}
+                    {cat === ShoppingCategory.WET_MARKET && <LampCeiling size={18} />}
                     {label} ({count})
                   </button>
                 );
@@ -2524,9 +2526,9 @@ const ToDo: React.FC<ToDoProps> = ({
                         {/* Category icon */}
                         <div className="shrink-0">
                           {item.category === ShoppingCategory.SUPERMARKET ? (
-                            <ShoppingCart size={20} className="text-[#3EAFD2]" />
+                            <Store size={20} className="text-[#4CAF50]" />
                           ) : item.category === ShoppingCategory.WET_MARKET ? (
-                            <Home size={20} className="text-[#4CAF50]" />
+                            <LampCeiling size={20} className="text-[#F06292]" />
                           ) : (
                             <Stone size={20} className="text-muted-foreground" />
                           )}

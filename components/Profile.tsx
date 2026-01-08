@@ -5,7 +5,7 @@ import {
   Image as ImageIcon, LogOut, Copy, Check, ChevronLeft, ChevronRight,
   Shield, Lock, Crown, Mail, Share2, Bell, BellOff, Phone, CheckCircle, Loader2, GraduationCap,
   MessageCircleQuestionMark, Palette, Monitor, BookOpen, Pencil, CalendarCheck, HandCoins, CircleStar,
-  MoreVertical
+  MoreVertical, Globe
 } from 'lucide-react';
 import FeedbackSection from './FeedbackSection';
 import UserGuide from './UserGuide';
@@ -3711,21 +3711,35 @@ const Profile: React.FC<ProfileProps> = ({
                 { id: 'plan', label: t['common.plan'] || 'Subscription', icon: Crown, helperHidden: true },
                 { id: 'security', label: t['common.security'] || 'Account', icon: Shield, helperHidden: false },
                 { id: 'appearance', label: t['settings.appearance'] || 'Appearance', icon: Palette, helperHidden: false },
+                { id: 'timezone', label: t['settings.timezone'] || 'Time Zone', icon: Globe, helperHidden: false, isStatic: true },
                 { id: 'feedback', label: t['feedback.title'] || 'Feedback', icon: MessageCircleQuestionMark, helperHidden: false },
               ]
                 .filter(item => !isHelper || !item.helperHidden)
                 .map((item, index, filteredArray) => (
                 <div key={item.id}>
-                  <button
-                    onClick={() => setActiveSection(item.id as any)}
-                    className="w-full px-5 py-4 flex items-center justify-between "
-                  >
-                    <div className="flex items-center gap-3">
-                      <item.icon size={18} className="text-primary" />
-                      <p className="font-bold text-foreground text-title">{item.label}</p>
+                  {item.isStatic ? (
+                    // Static timezone display (no navigation)
+                    <div className="w-full px-5 py-4 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <item.icon size={18} className="text-primary" />
+                        <div>
+                          <p className="font-bold text-foreground text-title">{item.label}</p>
+                          <p className="text-caption text-muted-foreground">UTC +8 | Hong Kong, Singapore, Philippines</p>
+                        </div>
+                      </div>
                     </div>
-                    <ChevronRight size={20} className="text-muted-foreground" />
-                  </button>
+                  ) : (
+                    <button
+                      onClick={() => setActiveSection(item.id as any)}
+                      className="w-full px-5 py-4 flex items-center justify-between "
+                    >
+                      <div className="flex items-center gap-3">
+                        <item.icon size={18} className="text-primary" />
+                        <p className="font-bold text-foreground text-title">{item.label}</p>
+                      </div>
+                      <ChevronRight size={20} className="text-muted-foreground" />
+                    </button>
+                  )}
                   {index < filteredArray.length - 1 && (
                     <div className="mx-5 border-t border-border" />
                   )}

@@ -19,7 +19,7 @@ import {
   Car,
   Heart,
   PartyPopper,
-  MoreHorizontal,
+  Stone,
   ChevronLeft,
   ChevronRight,
   ChevronDown,
@@ -62,7 +62,7 @@ const EXPENSE_CATEGORY_CONFIG: Record<string, ExpenseCategoryConfig> = {
   'Transport & Travel': { color: '#7E57C2', bgColor: '#EDE7F6', icon: <Car size={18} /> },
   'Health & Personal Care': { color: '#4CAF50', bgColor: '#E8F5E9', icon: <Heart size={18} /> },
   'Fun & Lifestyle': { color: '#F06292', bgColor: '#FCE4EC', icon: <PartyPopper size={18} /> },
-  'Miscellaneous': { color: '#757575', bgColor: '#F5F5F5', icon: <MoreHorizontal size={18} /> },
+  'Miscellaneous': { color: '#757575', bgColor: '#F5F5F5', icon: <Stone size={18} /> },
 };
 
 const getExpenseCategoryConfig = (category: string): ExpenseCategoryConfig => {

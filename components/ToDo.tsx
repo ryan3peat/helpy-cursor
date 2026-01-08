@@ -1,25 +1,23 @@
-import React, { useState, useMemo, useEffect, useLayoutEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Plus,
   Circle,
-  CheckCircle2,
   ChevronDown,
   ChevronRight,
   Check,
   X,
-  Calendar,
   User as UserIcon,
   Repeat,
   ShoppingCart,
-  ClipboardList,
   Trash2,
   Home,
   HandHeart,
-  MoreHorizontal,
+  Stone,
   ArrowDownUp,
-  List,
-  CalendarDays,
+  ClipboardList,
+  Calendar,
+  MoreHorizontal,
 } from 'lucide-react';
 import Avatar from './ui/Avatar';
 import ErrorBanner from './ui/ErrorBanner';
@@ -27,7 +25,7 @@ import { useScrollHeader } from '@/hooks/useScrollHeader';
 import { useTranslatedContent } from '@/hooks/useTranslatedContent';
 import { useScrollLock } from '@/hooks/useScrollLock';
 import { useSheetTheme } from '@/hooks/useSheetTheme';
-import { ToDoItem, ToDoType, ShoppingCategory, TaskCategory, RecurrenceFrequency, RecurringActionScope, User, UserRole, BaseViewProps } from '../types';
+import { ToDoItem, ToDoType, ShoppingCategory, TaskCategory, RecurrenceFrequency, User, UserRole, BaseViewProps } from '../types';
 import { detectInputLanguage } from '../services/languageDetectionService';
 import { haptics } from '../utils/haptics';
 import { useDemoMode } from '../contexts/DemoModeContext';
@@ -43,9 +41,6 @@ interface ToDoProps extends BaseViewProps {
   onAdd: (item: ToDoItem) => Promise<void>;
   onUpdate: (id: string, data: Partial<ToDoItem>) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
-  onUpdateRecurring?: (id: string, data: Partial<ToDoItem>, scope: RecurringActionScope, virtualDate?: string) => Promise<void>;
-  onDeleteRecurring?: (id: string, scope: RecurringActionScope, virtualDate?: string) => Promise<void>;
-  onCompleteVirtual?: (virtualTask: ToDoItem, virtualDate: string) => Promise<void>;
   initialSection?: 'shopping' | 'task';
   onSectionChange?: (section: string) => void;
   autoOpenSheet?: boolean; // Auto-open add sheet when navigating from Dashboard (+) button
@@ -78,6 +73,7 @@ const RECURRENCE_OPTIONS: { value: RecurrenceFrequency; labelKey: string }[] = [
   { value: 'NONE', labelKey: 'tasks.recurrence' },
   { value: 'DAILY', labelKey: 'tasks.daily' },
   { value: 'WEEKLY', labelKey: 'tasks.weekly' },
+  { value: 'BIWEEKLY', labelKey: 'tasks.biweekly' },
   { value: 'MONTHLY', labelKey: 'tasks.monthly' },
 ];
 
@@ -105,7 +101,7 @@ const getShoppingCategoryIcon = (category: string, isSelected = false) => {
   switch (category) {
     case ShoppingCategory.SUPERMARKET: return <ShoppingCart size={16} className={className} />;
     case ShoppingCategory.WET_MARKET: return <Home size={16} className={className} />;
-    case ShoppingCategory.OTHERS: return <MoreHorizontal size={16} className={className} />;
+    case ShoppingCategory.OTHERS: return <Stone size={16} className={className} />;
     default: return null;
   }
 };
@@ -115,7 +111,7 @@ const getTaskCategoryIcon = (category: string, isSelected = false) => {
   switch (category) {
     case TaskCategory.HOME_CARE: return <Home size={16} className={className} />;
     case TaskCategory.FAMILY_CARE: return <HandHeart size={16} className={className} />;
-    case TaskCategory.OTHERS: return <MoreHorizontal size={16} className={className} />;
+    case TaskCategory.OTHERS: return <Stone size={16} className={className} />;
     default: return null;
   }
 };
@@ -224,6 +220,9 @@ const formatRecurrence = (recurrence?: { frequency: RecurrenceFrequency; dayOfWe
     case 'WEEKLY':
       const day = recurrence.dayOfWeek !== undefined ? DAYS_OF_WEEK[recurrence.dayOfWeek] : '';
       return day ? `Every ${day}` : 'Weekly';
+    case 'BIWEEKLY':
+      const biweeklyDay = recurrence.dayOfWeek !== undefined ? DAYS_OF_WEEK[recurrence.dayOfWeek] : '';
+      return biweeklyDay ? `Every other ${biweeklyDay}` : 'Every 2 weeks';
     case 'MONTHLY':
       const date = recurrence.dayOfMonth;
       if (date) {
@@ -279,6 +278,65 @@ const getLocalDateString = (date: Date = new Date()): string => {
 };
 
 // ─────────────────────────────────────────────────────────────────
+// Date Grouping for Task List
+// ─────────────────────────────────────────────────────────────────
+
+type DateGroup = 'overdue' | 'noDate' | 'today' | 'tomorrow' | 'thisWeek' | 'nextWeek' | 'later';
+
+const getDateGroup = (dueDate?: string): DateGroup => {
+  if (!dueDate) return 'noDate';
+  
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const due = new Date(dueDate + 'T00:00:00');
+  
+  const diffDays = Math.floor((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  
+  if (diffDays < 0) return 'overdue';
+  if (diffDays === 0) return 'today';
+  if (diffDays === 1) return 'tomorrow';
+  
+  // Calculate end of this week (Sunday)
+  const dayOfWeek = today.getDay(); // 0 = Sunday
+  const daysUntilEndOfWeek = 7 - dayOfWeek;
+  const endOfWeek = new Date(today);
+  endOfWeek.setDate(today.getDate() + daysUntilEndOfWeek);
+  
+  if (due <= endOfWeek) return 'thisWeek';
+  
+  // End of next week
+  const endOfNextWeek = new Date(endOfWeek);
+  endOfNextWeek.setDate(endOfWeek.getDate() + 7);
+  
+  if (due <= endOfNextWeek) return 'nextWeek';
+  
+  return 'later';
+};
+
+// Group items by date
+const groupItemsByDate = (items: ToDoItem[]): Record<DateGroup, ToDoItem[]> => {
+  const groups: Record<DateGroup, ToDoItem[]> = {
+    overdue: [],
+    noDate: [],
+    today: [],
+    tomorrow: [],
+    thisWeek: [],
+    nextWeek: [],
+    later: [],
+  };
+  
+  items.forEach(item => {
+    const group = getDateGroup(item.dueDate);
+    groups[group].push(item);
+  });
+  
+  return groups;
+};
+
+// Section order for rendering
+const DATE_GROUP_ORDER: DateGroup[] = ['overdue', 'noDate', 'today', 'tomorrow', 'thisWeek', 'nextWeek', 'later'];
+
+// ─────────────────────────────────────────────────────────────────
 // Component for displaying translated item name
 // ─────────────────────────────────────────────────────────────────
 
@@ -308,545 +366,40 @@ const TranslatedItemName: React.FC<{
 };
 
 // ─────────────────────────────────────────────────────────────────
+// Section Divider Component (for date-grouped task list)
+// ─────────────────────────────────────────────────────────────────
+
+const SectionDivider: React.FC<{ 
+  label: string; 
+  type: 'overdue' | 'today' | 'future';
+}> = ({ label, type }) => {
+  const colorClass = type === 'overdue' 
+    ? 'text-destructive' 
+    : type === 'today' 
+      ? 'text-primary' 
+      : 'text-muted-foreground';
+  
+  return (
+    <div className="relative px-4 py-2.5 bg-card">
+      {/* Top border line - 6px inset */}
+      <div 
+        className="absolute top-0 h-px bg-border" 
+        style={{ left: '6px', right: '6px' }}
+      />
+      <span className={`text-base font-bold ${colorClass}`}>
+        {label}
+      </span>
+    </div>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────────
 // Unique ID Generator (prevents collisions on rapid adds)
 // ─────────────────────────────────────────────────────────────────
 let optimisticIdCounter = 0;
 const generateOptimisticId = (): string => {
   optimisticIdCounter += 1;
   return `temp-${Date.now()}-${optimisticIdCounter}`;
-};
-
-// ─────────────────────────────────────────────────────────────────
-// Calendar Agenda View Component
-// ─────────────────────────────────────────────────────────────────
-
-interface CalendarAgendaViewProps {
-  items: ToDoItem[];
-  users: User[];
-  currentUser: User;
-  t: Record<string, string>;
-  currentLang: string;
-  onUpdate: (id: string, data: Partial<ToDoItem>) => Promise<void>;
-  onItemClick: (item: ToDoItem) => void;
-  onToggleComplete: (id: string, completed: boolean) => void;
-  onCompleteVirtual?: (virtualTask: ToDoItem, virtualDate: string) => Promise<void>;
-  completingIds: Set<string>;
-}
-
-const CalendarAgendaView: React.FC<CalendarAgendaViewProps> = ({
-  items,
-  users,
-  currentUser,
-  t,
-  currentLang,
-  onUpdate,
-  onItemClick,
-  onToggleComplete,
-  onCompleteVirtual,
-  completingIds,
-}) => {
-  // Get today's date at midnight for comparison
-  const today = useMemo(() => {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    return d;
-  }, []);
-
-  // Get start of week (Monday) for a given date
-  const getWeekStart = (date: Date): Date => {
-    const d = new Date(date);
-    const day = d.getDay();
-    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Adjust for Monday start
-    d.setDate(diff);
-    d.setHours(0, 0, 0, 0);
-    return d;
-  };
-
-  // Get week number of year
-  const getWeekNumber = (date: Date): number => {
-    const d = new Date(date);
-    d.setHours(0, 0, 0, 0);
-    d.setDate(d.getDate() + 4 - (d.getDay() || 7));
-    const yearStart = new Date(d.getFullYear(), 0, 1);
-    return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
-  };
-
-  // Format date as local YYYY-MM-DD string (avoids UTC timezone issues)
-  const formatLocalDateKey = (d: Date) => 
-    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-
-  // Format date range for week header: "Mon 1 Jan 2025 - Sun 7 Jan 2025"
-  const formatWeekRange = (weekStart: Date): string => {
-    const weekEnd = new Date(weekStart);
-    weekEnd.setDate(weekEnd.getDate() + 6);
-    
-    const langCode = currentLang === 'en' ? 'en-GB' : currentLang;
-    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    
-    const startDayName = dayNames[weekStart.getDay()];
-    const startDay = weekStart.getDate();
-    const startMonth = weekStart.toLocaleDateString(langCode, { month: 'short' });
-    const startYear = weekStart.getFullYear();
-    
-    const endDayName = dayNames[weekEnd.getDay()];
-    const endDay = weekEnd.getDate();
-    const endMonth = weekEnd.toLocaleDateString(langCode, { month: 'short' });
-    const endYear = weekEnd.getFullYear();
-    
-    // Format: "Mon 1 Jan 2025 - Sun 7 Jan 2025"
-    if (startYear === endYear) {
-      return `${startDayName} ${startDay} ${startMonth} - ${endDayName} ${endDay} ${endMonth} ${endYear}`;
-    }
-    // Different years (e.g., Dec 30 2024 - Jan 5 2025)
-    return `${startDayName} ${startDay} ${startMonth} ${startYear} - ${endDayName} ${endDay} ${endMonth} ${endYear}`;
-  };
-
-  // Helper: Generate next occurrence date for recurring tasks
-  const getNextOccurrenceDate = (
-    frequency: string,
-    dayOfWeek: number | undefined,
-    dayOfMonth: number | undefined,
-    fromDate: Date
-  ): Date | null => {
-    const nextDate = new Date(fromDate);
-    nextDate.setDate(nextDate.getDate() + 1); // Start from day after
-    
-    switch (frequency) {
-      case 'DAILY':
-        return nextDate;
-        
-      case 'WEEKLY':
-        if (dayOfWeek === undefined) return null;
-        while (nextDate.getDay() !== dayOfWeek) {
-          nextDate.setDate(nextDate.getDate() + 1);
-        }
-        return nextDate;
-        
-      case 'MONTHLY':
-        if (dayOfMonth === undefined) return null;
-        // Move to next month if we've passed the day
-        if (nextDate.getDate() > dayOfMonth) {
-          nextDate.setMonth(nextDate.getMonth() + 1);
-        }
-        nextDate.setDate(Math.min(dayOfMonth, new Date(nextDate.getFullYear(), nextDate.getMonth() + 1, 0).getDate()));
-        return nextDate;
-        
-      default:
-        return null;
-    }
-  };
-
-  // Group tasks by week, then by day (include completed tasks - they show crossed out)
-  // Also generate virtual instances for recurring tasks
-  const groupedTasks = useMemo(() => {
-    // Start with all real tasks that have due dates
-    const allTasks: ToDoItem[] = [...items.filter(item => item.dueDate)];
-    
-    // Generate virtual future instances for recurring tasks
-    const WEEKS_AHEAD = 8; // Generate 8 weeks of future instances
-    const endDate = new Date(today);
-    endDate.setDate(endDate.getDate() + WEEKS_AHEAD * 7);
-    
-    // Find recurring tasks (those with seriesId or recurrence rules)
-    const recurringTasks = items.filter(item => 
-      item.dueDate && 
-      item.recurrence && 
-      item.recurrence.frequency !== 'NONE' &&
-      !item.completed
-    );
-    
-    // Track existing dates per series to avoid duplicates
-    const existingDatesPerSeries = new Map<string, Set<string>>();
-    items.forEach(item => {
-      if (item.seriesId && item.dueDate) {
-        if (!existingDatesPerSeries.has(item.seriesId)) {
-          existingDatesPerSeries.set(item.seriesId, new Set());
-        }
-        existingDatesPerSeries.get(item.seriesId)!.add(item.dueDate);
-      }
-    });
-    
-    // Generate future instances
-    recurringTasks.forEach(task => {
-      const seriesKey = task.seriesId || task.id; // Use seriesId if available, else task id
-      const existingDates = existingDatesPerSeries.get(seriesKey) || new Set();
-      
-      let currentDate = new Date(task.dueDate! + 'T00:00:00');
-      let instanceCount = 0;
-      const maxInstances = WEEKS_AHEAD * (task.recurrence!.frequency === 'DAILY' ? 7 : 1);
-      
-      while (instanceCount < maxInstances) {
-        const nextDate = getNextOccurrenceDate(
-          task.recurrence!.frequency,
-          task.recurrence!.dayOfWeek,
-          task.recurrence!.dayOfMonth,
-          currentDate
-        );
-        
-        if (!nextDate || nextDate > endDate) break;
-        
-        // Use local date format (not toISOString which converts to UTC)
-        const dateStr = `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, '0')}-${String(nextDate.getDate()).padStart(2, '0')}`;
-        
-        // Only add if we don't already have a real instance for this date
-        if (!existingDates.has(dateStr)) {
-          // Create virtual instance (not in database)
-          allTasks.push({
-            ...task,
-            id: `virtual-${task.id}-${dateStr}`, // Virtual ID
-            dueDate: dateStr,
-            completed: false,
-            // Keep seriesId to link back to the series
-          });
-          existingDates.add(dateStr);
-        }
-        
-        currentDate = nextDate;
-        instanceCount++;
-      }
-    });
-    
-    // Sort all tasks by date
-    const tasksWithDates = allTasks.sort((a, b) => {
-      const dateA = new Date(a.dueDate! + 'T' + (a.dueTime || '00:00'));
-      const dateB = new Date(b.dueDate! + 'T' + (b.dueTime || '00:00'));
-      return dateA.getTime() - dateB.getTime();
-    });
-
-    // Group by week
-    const weeks: Map<string, { weekStart: Date; weekNumber: number; days: Map<string, ToDoItem[]> }> = new Map();
-
-    // ALWAYS include today's date in the calendar, even if no tasks
-    // Use local date format (not toISOString which converts to UTC)
-    const todayKey = formatLocalDateKey(today);
-    const todayWeekStart = getWeekStart(today);
-    const todayWeekKey = formatLocalDateKey(todayWeekStart);
-    const todayWeekNumber = getWeekNumber(today);
-    
-    weeks.set(todayWeekKey, { weekStart: todayWeekStart, weekNumber: todayWeekNumber, days: new Map() });
-    weeks.get(todayWeekKey)!.days.set(todayKey, []);
-
-    tasksWithDates.forEach(task => {
-      const taskDate = new Date(task.dueDate! + 'T00:00:00');
-      const weekStart = getWeekStart(taskDate);
-      const weekKey = formatLocalDateKey(weekStart);
-      const weekNumber = getWeekNumber(taskDate);
-
-      if (!weeks.has(weekKey)) {
-        weeks.set(weekKey, { weekStart, weekNumber, days: new Map() });
-      }
-
-      const dayKey = task.dueDate!;
-      const week = weeks.get(weekKey)!;
-      if (!week.days.has(dayKey)) {
-        week.days.set(dayKey, []);
-      }
-      week.days.get(dayKey)!.push(task);
-    });
-
-    // Sort weeks by date and return
-    return Array.from(weeks.values()).sort((a, b) => a.weekStart.getTime() - b.weekStart.getTime());
-  }, [items, today]);
-
-  // Format day header (no uppercase per global rules)
-  const formatDayHeader = (dateStr: string): { dayName: string; dayNumber: number; isToday: boolean } => {
-    const date = new Date(dateStr + 'T00:00:00');
-    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    const isToday = date.getTime() === today.getTime();
-    return {
-      dayName: dayNames[date.getDay()],
-      dayNumber: date.getDate(),
-      isToday,
-    };
-  };
-
-  // Get user info for avatar
-  const getUser = (userId?: string): User | undefined => {
-    if (!userId) return undefined;
-    return users.find(u => u.id === userId);
-  };
-
-  // Tasks without due dates (include completed - they show crossed out)
-  const tasksWithoutDates = useMemo(() => {
-    return items.filter(item => !item.dueDate);
-  }, [items]);
-
-  if (groupedTasks.length === 0 && tasksWithoutDates.length === 0) {
-    return (
-      <div className="mt-8 text-center py-12">
-        <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-secondary flex items-center justify-center">
-          <CalendarDays size={28} className="text-muted-foreground" />
-        </div>
-        <p className="text-body text-foreground">{t['todo.no_tasks'] || 'No tasks yet'}</p>
-        <p className="text-caption text-muted-foreground mt-1">
-          {t['todo.tap_fab_to_add'] || 'Tap + to add a task'}
-        </p>
-      </div>
-    );
-  }
-
-  // Track last rendered month for separators
-  let lastRenderedMonth: string | null = null;
-  
-  // Helper to get month-year key from date string
-  const getMonthYearKey = (dateStr: string): string => {
-    const date = new Date(dateStr + 'T00:00:00');
-    return `${date.getFullYear()}-${date.getMonth()}`;
-  };
-  
-  // Helper to format month separator: "January 2025"
-  const formatMonthSeparator = (dateStr: string): string => {
-    const date = new Date(dateStr + 'T00:00:00');
-    const langCode = currentLang === 'en' ? 'en-GB' : currentLang;
-    const monthName = date.toLocaleDateString(langCode, { month: 'long' });
-    const year = date.getFullYear();
-    return `${monthName} ${year}`;
-  };
-
-  return (
-    <div className="mt-4 space-y-6">
-      {groupedTasks.map(({ weekStart, weekNumber, days }) => {
-        // Sort days once for reuse
-        const sortedDays = Array.from(days.entries()).sort(([a], [b]) => a.localeCompare(b));
-        
-        // Check if first day of week starts a new month (for separator placement BEFORE week header)
-        const firstDayOfWeek = sortedDays[0]?.[0];
-        const firstDayMonthKey = firstDayOfWeek ? getMonthYearKey(firstDayOfWeek) : null;
-        const showMonthBeforeWeek = firstDayMonthKey && lastRenderedMonth !== firstDayMonthKey;
-        
-        if (showMonthBeforeWeek) {
-          lastRenderedMonth = firstDayMonthKey;
-        }
-        
-        return (
-          <div key={formatLocalDateKey(weekStart)}>
-            {/* Month Separator - appears BEFORE week header when week starts in new month */}
-            {showMonthBeforeWeek && firstDayOfWeek && (
-              <div className="pb-2">
-                <h2 className="text-xl font-bold text-foreground">
-                  {formatMonthSeparator(firstDayOfWeek)}
-                </h2>
-              </div>
-            )}
-            
-            {/* Week Header */}
-            <div className="text-caption text-muted-foreground mb-3 px-1">
-              Week {weekNumber} | {formatWeekRange(weekStart)}
-            </div>
-
-            {/* Days in this week */}
-            <div className="space-y-5">
-              {sortedDays.map(([dateStr, dayTasks]) => {
-                const { dayName, dayNumber, isToday } = formatDayHeader(dateStr);
-                
-                // Check for mid-week month change (e.g., week spans Jan 28 - Feb 3)
-                const monthYearKey = getMonthYearKey(dateStr);
-                const showMidWeekMonthSeparator = lastRenderedMonth !== monthYearKey;
-                if (showMidWeekMonthSeparator) {
-                  lastRenderedMonth = monthYearKey;
-                }
-
-                return (
-                  <React.Fragment key={dateStr}>
-                    {/* Month Separator - for mid-week month changes only */}
-                    {showMidWeekMonthSeparator && (
-                      <div className="pt-4 pb-2">
-                        <h2 className="text-xl font-bold text-foreground">
-                          {formatMonthSeparator(dateStr)}
-                        </h2>
-                      </div>
-                    )}
-                    
-                    <div 
-                      className="flex gap-3 items-start" 
-                      data-today={isToday ? 'true' : undefined}
-                      style={isToday ? { scrollMarginTop: '320px' } : undefined}
-                    >
-                    {/* Day Column */}
-                    <div className="w-12 shrink-0 text-center pt-2">
-                      <div className="text-micro text-muted-foreground">{dayName}</div>
-                      <div 
-                        className={`text-title font-bold mt-0.5 w-9 h-9 mx-auto flex items-center justify-center ${
-                          isToday 
-                            ? 'rounded-full bg-primary text-primary-foreground' 
-                            : 'text-foreground'
-                        }`}
-                      >
-                        {dayNumber}
-                      </div>
-                    </div>
-
-                  {/* Tasks Column */}
-                  <div className="flex-1 space-y-2">
-                    {dayTasks.map(task => {
-                      const isVirtual = task.id.startsWith('virtual-');
-                      const isCompleting = !isVirtual && completingIds.has(task.id);
-                      const isCompleted = task.completed || isCompleting;
-                      const assignee = getUser(task.assigneeId);
-
-                      return (
-                        <div
-                          key={task.id}
-                          className={`w-full text-left rounded-lg px-3 py-2.5 shadow-sm flex items-center gap-3 transition-opacity min-h-[60px] ${
-                            isCompleted 
-                              ? 'bg-muted/50' 
-                              : 'bg-card'
-                          } ${isCompleting ? 'opacity-50' : ''}`}
-                        >
-                          {/* Checkbox */}
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (isCompleting) return;
-                              
-                              // Virtual instances: complete directly (creates real + marks done)
-                              if (isVirtual && onCompleteVirtual) {
-                                onCompleteVirtual(task, dateStr);
-                                return;
-                              }
-                              
-                              // Real instances: toggle completion
-                              onToggleComplete(task.id, !task.completed);
-                            }}
-                            className="shrink-0"
-                          >
-                            {isCompleted ? (
-                              <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center">
-                                <Check size={12} className="text-primary-foreground" strokeWidth={3} />
-                              </div>
-                            ) : (
-                              <Circle size={20} className="text-muted-foreground/50" />
-                            )}
-                          </button>
-                          
-                          {/* Task Content - clickable to edit */}
-                          <button
-                            onClick={() => !isCompleting && onItemClick(task)}
-                            className="flex-1 min-w-0 text-left"
-                          >
-                            <p className={`text-body font-medium ${
-                              isCompleted 
-                                ? 'text-muted-foreground line-through' 
-                                : 'text-foreground'
-                            }`}>
-                              <TranslatedItemName item={task} currentLang={currentLang} onUpdate={onUpdate} />
-                            </p>
-                            {/* Time and/or Recurrence info */}
-                            {(task.dueTime || (task.recurrence && task.recurrence.frequency !== 'NONE')) && (
-                              <p className={`text-caption mt-0.5 ${
-                                isCompleted 
-                                  ? 'text-muted-foreground/70' 
-                                  : 'text-muted-foreground'
-                              }`}>
-                                {task.dueTime}
-                                {task.recurrence && task.recurrence.frequency !== 'NONE' && (
-                                  <span className={task.dueTime ? 'ml-2' : ''}>
-                                    <span className="inline-flex items-center gap-1">
-                                      <Repeat size={10} />
-                                      {task.recurrence.frequency === 'DAILY' ? 'Daily' :
-                                       task.recurrence.frequency === 'WEEKLY' ? 'Weekly' : 'Monthly'}
-                                    </span>
-                                  </span>
-                                )}
-                              </p>
-                            )}
-                          </button>
-                          
-                          {/* Assignee Avatar - show for all assigned users including yourself */}
-                          {assignee && (
-                            <Avatar
-                              user={assignee}
-                              size="xs"
-                            />
-                          )}
-                          
-                          {/* Category Icon - right side */}
-                          <div className={`shrink-0 ${getCategoryIconColor(task.category)}`}>
-                            {getTaskCategoryIcon(task.category)}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-                </React.Fragment>
-              );
-              })}
-            </div>
-          </div>
-        );
-      })}
-
-      {/* Tasks without due dates */}
-      {tasksWithoutDates.length > 0 && (
-        <div>
-          <div className="text-caption text-muted-foreground mb-3 px-1">
-            {t['todo.no_due_date'] || 'No due date'}
-          </div>
-          <div className="space-y-2">
-            {tasksWithoutDates.map(task => {
-              const isCompleting = completingIds.has(task.id);
-              const isCompleted = task.completed || isCompleting;
-              const assignee = getUser(task.assigneeId);
-
-              return (
-                <div
-                  key={task.id}
-                  className={`w-full text-left rounded-lg px-3 py-2.5 shadow-sm flex items-center gap-3 transition-opacity ${
-                    isCompleted ? 'bg-muted/50' : 'bg-card'
-                  } ${isCompleting ? 'opacity-50' : ''}`}
-                >
-                  {/* Checkbox */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (!isCompleting) {
-                        onToggleComplete(task.id, !task.completed);
-                      }
-                    }}
-                    className="shrink-0"
-                  >
-                    {isCompleted ? (
-                      <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center">
-                        <Check size={12} className="text-primary-foreground" strokeWidth={3} />
-                      </div>
-                    ) : (
-                      <Circle size={20} className="text-muted-foreground/50" />
-                    )}
-                  </button>
-                  
-                  {/* Task Content */}
-                  <button
-                    onClick={() => !isCompleting && onItemClick(task)}
-                    className="flex-1 min-w-0 text-left"
-                  >
-                    <p className={`text-body font-medium ${
-                      isCompleted ? 'text-muted-foreground line-through' : 'text-foreground'
-                    }`}>
-                      <TranslatedItemName item={task} currentLang={currentLang} onUpdate={onUpdate} />
-                    </p>
-                    <p className="text-caption text-muted-foreground mt-0.5">
-                      {getCategoryBadgeStyle(task.category).includes('cyan') ? (t['todo.category.home_care'] || 'Home Care') :
-                       getCategoryBadgeStyle(task.category).includes('pink') ? (t['todo.category.family_care'] || 'Family Care') :
-                       (t['todo.category.others'] || 'Others')}
-                    </p>
-                  </button>
-                  
-                  {/* Assignee Avatar - show for all assigned users including yourself */}
-                  {assignee && (
-                    <Avatar
-                      user={assignee}
-                      size="xs"
-                    />
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-    </div>
-  );
 };
 
 // ─────────────────────────────────────────────────────────────────
@@ -860,9 +413,6 @@ const ToDo: React.FC<ToDoProps> = ({
   onAdd,
   onUpdate,
   onDelete,
-  onUpdateRecurring,
-  onDeleteRecurring,
-  onCompleteVirtual,
   t,
   currentLang,
   initialSection,
@@ -887,7 +437,6 @@ const ToDo: React.FC<ToDoProps> = ({
   // ─────────────────────────────────────────────────────────────────
   
   const [activeSection, setActiveSection] = useState<ToDoType>(initialSection || 'task');
-  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   
   // Notify parent of section changes (for onboarding)
   useEffect(() => {
@@ -901,57 +450,6 @@ const ToDo: React.FC<ToDoProps> = ({
     }
   }, [initialSection]);
   
-  // Auto-scroll to today when switching to calendar view (instant, no animation)
-  const hasScrolledToToday = useRef(false);
-  const [isTodayVisible, setIsTodayVisible] = useState(true);
-  
-  useLayoutEffect(() => {
-    if (viewMode === 'calendar' && activeSection === 'task') {
-      // Small delay to ensure DOM is ready, but use requestAnimationFrame for no jitter
-      requestAnimationFrame(() => {
-        const todayElement = document.querySelector('[data-today="true"]');
-        if (todayElement && !hasScrolledToToday.current) {
-          todayElement.scrollIntoView({ behavior: 'instant', block: 'start' });
-          hasScrolledToToday.current = true;
-        }
-      });
-    }
-    // Reset flag when switching away from calendar
-    if (viewMode !== 'calendar') {
-      hasScrolledToToday.current = false;
-    }
-  }, [viewMode, activeSection]);
-  
-  // Track if today element is visible on screen (for Today button styling)
-  useEffect(() => {
-    if (viewMode !== 'calendar' || activeSection !== 'task') {
-      setIsTodayVisible(true); // Reset when not in calendar view
-      return;
-    }
-    
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach(entry => {
-          setIsTodayVisible(entry.isIntersecting);
-        });
-      },
-      { threshold: 0.1 } // Consider visible if 10% is showing
-    );
-    
-    // Observe the today element after a short delay to ensure it exists
-    const timeoutId = setTimeout(() => {
-      const todayElement = document.querySelector('[data-today="true"]');
-      if (todayElement) {
-        observer.observe(todayElement);
-      }
-    }, 100);
-    
-    return () => {
-      clearTimeout(timeoutId);
-      observer.disconnect();
-    };
-  }, [viewMode, activeSection]);
-  
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [isAddingInline, setIsAddingInline] = useState(false);
   const [inlineInputValue, setInlineInputValue] = useState('');
@@ -959,24 +457,14 @@ const ToDo: React.FC<ToDoProps> = ({
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [showClearCompletedConfirm, setShowClearCompletedConfirm] = useState(false);
   
-  // Recurring task action dialog state
-  const [recurringActionDialog, setRecurringActionDialog] = useState<{
-    isOpen: boolean;
-    type: 'update' | 'delete';
-    itemId: string | null;
-    pendingData?: Partial<ToDoItem>;
-    virtualDate?: string; // For virtual task operations - tracks which date instance
-  }>({ isOpen: false, type: 'update', itemId: null });
-  
   // Lock body scroll when sheet is open
-  useScrollLock(isSheetOpen || showClearCompletedConfirm || recurringActionDialog.isOpen);
+  useScrollLock(isSheetOpen || showClearCompletedConfirm);
   
   // Dim status bar when sheet is open (iOS)
-  useSheetTheme(isSheetOpen || showClearCompletedConfirm || recurringActionDialog.isOpen);
+  useSheetTheme(isSheetOpen || showClearCompletedConfirm);
   
   const [sheetForm, setSheetForm] = useState<Partial<ToDoItem>>({});
   const [editingItemId, setEditingItemId] = useState<string | null>(null); // Track if editing existing item
-  const [editingVirtualTask, setEditingVirtualTask] = useState<ToDoItem | null>(null); // Track if editing a virtual instance
   const [showUnitSuggestions, setShowUnitSuggestions] = useState(false);
   const unitInputRef = useRef<HTMLInputElement>(null);
   const sheetContentRef = useRef<HTMLDivElement>(null);
@@ -1504,14 +992,7 @@ const ToDo: React.FC<ToDoProps> = ({
   }, [autoOpenSheet]);
   
   const openEditSheet = (item: ToDoItem) => {
-    const isVirtual = item.id.startsWith('virtual-');
-    
-    // For virtual instances, track the virtual task for special handling
-    setEditingVirtualTask(isVirtual ? item : null);
-    
-    // For virtual instances, we set editingItemId to null so it creates a new instance
-    // but we keep the seriesId to maintain the link
-    setEditingItemId(isVirtual ? null : item.id);
+    setEditingItemId(item.id);
     setSheetForm({
       type: item.type,
       name: item.name,
@@ -1522,7 +1003,7 @@ const ToDo: React.FC<ToDoProps> = ({
       brand: item.brand,
       dueDate: item.dueDate,
       dueTime: item.dueTime,
-      recurrence: item.recurrence, // Keep recurrence info for all instances (virtual and real)
+      recurrence: item.recurrence,
     });
     setIsSheetOpen(true);
   };
@@ -1538,7 +1019,7 @@ const ToDo: React.FC<ToDoProps> = ({
       if (sheetForm.recurrence?.frequency && sheetForm.recurrence.frequency !== 'NONE') {
         recurrence = {
           frequency: sheetForm.recurrence.frequency,
-          dayOfWeek: sheetForm.recurrence.frequency === 'WEEKLY' ? dueDate.getDay() : undefined,
+          dayOfWeek: (sheetForm.recurrence.frequency === 'WEEKLY' || sheetForm.recurrence.frequency === 'BIWEEKLY') ? dueDate.getDay() : undefined,
           dayOfMonth: sheetForm.recurrence.frequency === 'MONTHLY' ? dueDate.getDate() : undefined,
         };
       }
@@ -1566,26 +1047,8 @@ const ToDo: React.FC<ToDoProps> = ({
       
       const itemId = editingItemId; // Capture before clearing
       
-      // Check if this is a recurring task - show scope dialog
-      // Check both seriesId AND recurrence to handle latency (seriesId may not be populated yet)
-      const isRecurringTask = existingItem?.seriesId || 
-        (existingItem?.recurrence && existingItem.recurrence.frequency !== 'NONE');
-      if (isRecurringTask && onUpdateRecurring) {
         setIsSheetOpen(false);
         setEditingItemId(null);
-        setEditingVirtualTask(null);
-        setRecurringActionDialog({
-          isOpen: true,
-          type: 'update',
-          itemId,
-          pendingData: updates,
-        });
-        return;
-      }
-      
-      setIsSheetOpen(false);
-      setEditingItemId(null);
-      setEditingVirtualTask(null);
       
       try {
         await onUpdate(itemId, updates);
@@ -1593,49 +1056,6 @@ const ToDo: React.FC<ToDoProps> = ({
         console.error('Failed to update item:', err);
         setError(t['error.update_item'] || 'Failed to update item. Please try again.');
       }
-    } else if (editingVirtualTask) {
-      // Editing virtual task - show recurring action dialog
-      // Extract the original task ID from virtual ID (virtual-{originalId}-{date})
-      const originalId = editingVirtualTask.id.replace(/^virtual-/, '').replace(/-\d{4}-\d{2}-\d{2}$/, '');
-      
-      const dueDate = sheetForm.dueDate ? new Date(sheetForm.dueDate + 'T00:00:00') : new Date();
-      
-      let recurrence = undefined;
-      if (sheetForm.recurrence?.frequency && sheetForm.recurrence.frequency !== 'NONE') {
-        recurrence = {
-          frequency: sheetForm.recurrence.frequency,
-          dayOfWeek: sheetForm.recurrence.frequency === 'WEEKLY' ? dueDate.getDay() : undefined,
-          dayOfMonth: sheetForm.recurrence.frequency === 'MONTHLY' ? dueDate.getDate() : undefined,
-        };
-      }
-      
-      const detectedLang = detectInputLanguage(currentLang);
-      
-      const updates: Partial<ToDoItem> = {
-        name: sheetForm.name!,
-        category: sheetForm.category,
-        assigneeId: sheetForm.assigneeId,
-        quantity: sheetForm.quantity || '1',
-        unit: sheetForm.unit,
-        brand: sheetForm.brand,
-        dueDate: sheetForm.dueDate,
-        dueTime: sheetForm.dueTime,
-        recurrence,
-        nameLang: detectedLang || null,
-        nameTranslations: {},
-      };
-      
-      setIsSheetOpen(false);
-      setEditingItemId(null);
-      setEditingVirtualTask(null);
-      setRecurringActionDialog({
-        isOpen: true,
-        type: 'update',
-        itemId: originalId,
-        pendingData: updates,
-        virtualDate: editingVirtualTask.dueDate,
-      });
-      return;
     } else {
       // Adding new item
       // Detect language for the new item
@@ -1663,7 +1083,6 @@ const ToDo: React.FC<ToDoProps> = ({
       
       setOptimisticItems(prev => [...prev, newItem]);
       setIsSheetOpen(false);
-      setEditingVirtualTask(null);
       
       try {
         await onAdd(newItem);
@@ -1683,29 +1102,6 @@ const ToDo: React.FC<ToDoProps> = ({
     const user = users.find(u => u.id === userId);
     if (!user) return t['common.deleted_user'] || 'Deleted User';
     return user.name.split(' ')[0] || '';
-  };
-
-  // ─────────────────────────────────────────────────────────────────
-  // Recurring Action Handler
-  // ─────────────────────────────────────────────────────────────────
-  
-  const handleRecurringAction = async (scope: RecurringActionScope) => {
-    const { type, itemId, pendingData, virtualDate } = recurringActionDialog;
-    
-    if (!itemId) return;
-    
-    setRecurringActionDialog({ isOpen: false, type: 'update', itemId: null });
-    
-    try {
-      if (type === 'update' && pendingData && onUpdateRecurring) {
-        await onUpdateRecurring(itemId, pendingData, scope, virtualDate);
-      } else if (type === 'delete' && onDeleteRecurring) {
-        await onDeleteRecurring(itemId, scope, virtualDate);
-      }
-    } catch (err) {
-      console.error(`Failed to ${type} recurring task:`, err);
-      setError(t[`error.${type}_item`] || `Failed to ${type} item. Please try again.`);
-    }
   };
 
   // ─────────────────────────────────────────────────────────────────
@@ -1760,9 +1156,7 @@ const ToDo: React.FC<ToDoProps> = ({
           className="sticky top-0 z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 pb-3 flex items-end" 
           style={{ 
             height: '120px', 
-            boxShadow: (activeSection === 'task' && viewMode === 'calendar')
-              ? (isScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none')
-              : '0 10px 0 0 hsl(var(--background))' 
+            boxShadow: '0 10px 0 0 hsl(var(--background))' 
           }}
         >
           <div className="flex items-center justify-between w-full">
@@ -1771,56 +1165,19 @@ const ToDo: React.FC<ToDoProps> = ({
               <span className="text-display text-foreground">{activeSection === 'shopping' ? (t['todo.shopping'] || 'Shopping') : (t['todo.tasks'] || 'Tasks')}</span>
             </h1>
             
-            {/* Header Actions - Fixed positions to prevent jumping */}
+            {/* Header Actions */}
             <div className="flex items-center gap-1 shrink-0">
-              {/* Today Button - invisible in list view, "Today" text in calendar view */}
-              {activeSection === 'task' && (
-                <button
-                  onClick={() => {
-                    const todayElement = document.querySelector('[data-today="true"]');
-                    todayElement?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                  }}
-                  className={`px-3 py-2 rounded-full text-body font-medium transition-colors ${
-                    viewMode === 'calendar' 
-                      ? isTodayVisible
-                        ? 'bg-muted text-muted-foreground cursor-default'
-                        : 'bg-primary text-primary-foreground shadow-sm'
-                      : 'invisible'
-                  }`}
-                >
-                  {t['meals.today'] ?? 'Today'}
-                </button>
-              )}
-              
-              {/* View Switcher - shows icon for the OTHER view (tap to switch) */}
-              {activeSection === 'task' && (
-                <button
-                  onClick={() => setViewMode(viewMode === 'list' ? 'calendar' : 'list')}
-                  className="p-2 rounded-full text-muted-foreground transition-colors"
-                >
-                  {viewMode === 'list' ? <Calendar size={20} /> : <List size={20} />}
-                </button>
-              )}
-              
-              {/* Filter/Sort Button - greyed out in calendar view */}
+              {/* Filter/Sort Button */}
               <div className="relative" ref={filterDropdownRef}>
                 <button
-                  onClick={() => {
-                    // Disabled in calendar view
-                    if (activeSection === 'task' && viewMode === 'calendar') return;
-                    setIsFilterDropdownOpen(!isFilterDropdownOpen);
-                  }}
+                  onClick={() => setIsFilterDropdownOpen(!isFilterDropdownOpen)}
                   className={`p-2 rounded-full transition-colors relative ${
                     isFilterDropdownOpen ? 'bg-muted' : ''
-                  } ${
-                    activeSection === 'task' && viewMode === 'calendar' 
-                      ? 'opacity-30 cursor-default' 
-                      : ''
                   }`}
                 >
                   <ArrowDownUp size={20} className="text-muted-foreground" />
-                  {/* Active indicator dot - hide in calendar view */}
-                  {(sortBy !== 'addedDate-desc' || showOnlyMine) && !(activeSection === 'task' && viewMode === 'calendar') && (
+                  {/* Active indicator dot */}
+                  {(sortBy !== 'addedDate-desc' || showOnlyMine) && (
                     <span className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full" />
                   )}
                 </button>
@@ -1958,8 +1315,8 @@ const ToDo: React.FC<ToDoProps> = ({
           </div>
         </div>
 
-        {/* Sticky Tab Navigation - List View Only */}
-        {(activeSection === 'shopping' || viewMode === 'list') && (
+        {/* Sticky Tab Navigation */}
+        {(
           <div 
             className="sticky z-10 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 py-3 transition-shadow duration-200"
             style={{ 
@@ -2019,8 +1376,8 @@ const ToDo: React.FC<ToDoProps> = ({
           </div>
         )}
 
-        {/* Suggestions - Collapsible Carousel (List View Only) */}
-        {suggestions.length > 0 && (activeSection === 'shopping' || viewMode === 'list') && (
+        {/* Suggestions - Collapsible Carousel */}
+        {suggestions.length > 0 && (
           <div className="mt-4 mb-2">
             <div className="overflow-x-auto scrollbar-hide -mx-4 px-4 sm:-mx-6 sm:px-6 pb-2">
               <div className="flex gap-3" style={{ paddingRight: '1rem' }}>
@@ -2087,67 +1444,34 @@ const ToDo: React.FC<ToDoProps> = ({
           </div>
         )}
 
-        {/* Item List Card (List View Only) */}
-        {(activeSection === 'shopping' || viewMode === 'list') && (
-        <div className="mt-4 bg-card rounded-xl shadow-sm overflow-hidden">
-          {/* Inline Add Row at TOP - always visible for rapid entry */}
-          <div
-            className={`flex items-center gap-3 p-4 ${
-              activeItems.length > 0 || !isAddingInline ? 'list-item-separator' : ''
-            } ${!isAddingInline ? 'cursor-pointer' : ''}`}
-            onClick={() => !isAddingInline && setIsAddingInline(true)}
-          >
-            <div className="text-muted-foreground/50 shrink-0">
-              <Circle size={22} />
-            </div>
-            
-            {/* Content area with consistent height */}
-            <div className="flex-1 flex items-center gap-2 min-h-[28px]">
-              {isAddingInline ? (
-                <input
-                  ref={inlineInputRef}
-                  type="text"
-                  autoComplete="one-time-code"
-                  value={inlineInputValue}
-                  onChange={e => setInlineInputValue(e.target.value)}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter') {
-                      handleInlineAdd();
-                    } else if (e.key === 'Escape') {
-                      setIsAddingInline(false);
-                      setInlineInputValue('');
-                    }
-                  }}
-                  onBlur={() => {
-                    if (!inlineInputValue.trim()) {
-                      setIsAddingInline(false);
-                    }
-                  }}
-                  placeholder={t['todo.add_hint'] || 'Press Enter to add | tap + to set details'}
-                  className="flex-1 bg-transparent text-body text-foreground placeholder-muted-foreground/50 outline-none"
-                />
-              ) : (
-                <span className="flex-1 text-body text-muted-foreground">
-                  {activeSection === 'shopping' ? (t['todo.add_item'] || 'Add item...') : (t['todo.add_task'] || 'Add task...')}
-                </span>
-              )}
-              
-              {/* Plus button - always visible for detailed add */}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  openDetailedSheet();
-                }}
-                className="p-1.5 rounded-full bg-primary text-primary-foreground shrink-0"
-                title={t['common.add_with_details'] || 'Add with details'}
-              >
-                <Plus size={16} />
-              </button>
-            </div>
-          </div>
+        {/* Item List Card - Unified Card with Date-Grouped Sections */}
+        {(() => {
+          // For tasks, group items by date; for shopping, keep flat list
+          const groupedItems = activeSection === 'task' ? groupItemsByDate(activeItems) : null;
           
-          {/* Items list */}
-          {activeItems.map((item, index) => {
+          // Helper to get section label translation
+          const getSectionLabel = (group: DateGroup): string => {
+            switch (group) {
+              case 'overdue': return t['tasks.section.overdue'] || 'Overdue';
+              case 'noDate': return t['tasks.section.noDate'] || 'No Due Date';
+              case 'today': return t['tasks.section.today'] || 'Today';
+              case 'tomorrow': return t['tasks.section.tomorrow'] || 'Tomorrow';
+              case 'thisWeek': return t['tasks.section.thisWeek'] || 'This Week';
+              case 'nextWeek': return t['tasks.section.nextWeek'] || 'Next Week';
+              case 'later': return t['tasks.section.later'] || 'Later';
+              default: return '';
+            }
+          };
+          
+          // Helper to get section type for coloring
+          const getSectionType = (group: DateGroup): 'overdue' | 'today' | 'future' => {
+            if (group === 'overdue') return 'overdue';
+            if (group === 'today') return 'today';
+            return 'future';
+          };
+          
+          // Render a single task item
+          const renderTaskItem = (item: ToDoItem, isLastInSection: boolean) => {
             const isCompleting = completingIds.has(item.id);
             const isCollapsing = collapsingIds.has(item.id);
             const isSwiping = swipeState.id === item.id;
@@ -2157,9 +1481,7 @@ const ToDo: React.FC<ToDoProps> = ({
             return (
               <div
                 key={item.id}
-                className={`relative ${
-                  index !== activeItems.length - 1 && !isCollapsing ? 'list-item-separator' : ''
-                } overflow-hidden`}
+                className="relative overflow-hidden"
                 style={{
                   transition: isCollapsing 
                     ? 'max-height 0.2s ease-out, opacity 0.2s ease-out'
@@ -2215,7 +1537,7 @@ const ToDo: React.FC<ToDoProps> = ({
                 >
                   <button
                     onClick={(e) => {
-                      e.stopPropagation(); // Don't open edit when clicking checkbox
+                      e.stopPropagation();
                       !isCompleting && handleToggleComplete(item.id, true);
                     }}
                     className="mt-0.5 shrink-0 transition-all"
@@ -2230,38 +1552,23 @@ const ToDo: React.FC<ToDoProps> = ({
                   </button>
                   
                   <div className="flex-1 min-w-0">
+                    {/* Task name */}
                     <div className="flex items-center">
                       <span className={`text-body ${isCompleting ? 'text-muted-foreground line-through' : 'text-foreground'}`}>
                         <TranslatedItemName item={item} currentLang={currentLang} onUpdate={onUpdate} />
-                        {/* Brand (not translated) */}
-                        {item.type === 'shopping' && item.brand && (
-                          <span className="text-muted-foreground font-normal">
-                            {' ('}{item.brand}{')'}
-                          </span>
-                        )}
-                        {/* Quantity & Unit - show if qty is not 1, OR if unit is specified */}
-                        {item.type === 'shopping' && item.quantity && (item.quantity !== '1' || item.unit) && (
-                          <span className="text-muted-foreground font-normal">
-                            {' · '}{item.quantity}{item.unit ? ` ${item.unit}` : ''}
-                          </span>
-                        )}
                       </span>
                     </div>
                     
-                    <div className="flex items-center flex-wrap gap-1.5 mt-1.5">
-                      {/* Category Badge */}
-                      <span className={`px-2 py-0.5 rounded-full text-micro ${getCategoryBadgeStyle(item.category)}`}>
-                        {item.category}
-                      </span>
-                      {item.type === 'task' && item.dueDate && (
-                        <span className={`flex items-center gap-1 text-caption ${isOverdue(item.dueDate) ? 'text-[#F06292]' : 'text-muted-foreground'}`}>
-                          <Calendar size={11} />
-                          {formatDateTime(item.dueDate, item.dueTime)}
-                        </span>
-                      )}
-                    </div>
+                    {/* Date info */}
+                    {item.dueDate && (
+                      <div className="flex items-center gap-1 mt-1 text-caption text-muted-foreground">
+                        <Calendar size={11} />
+                        {formatDateTime(item.dueDate, item.dueTime)}
+                      </div>
+                    )}
                     
-                    {item.type === 'task' && item.recurrence && item.recurrence.frequency !== 'NONE' && (
+                    {/* Recurrence info */}
+                    {item.recurrence && item.recurrence.frequency !== 'NONE' && (
                       <div className="flex items-center gap-1 mt-1 text-caption text-primary">
                         <Repeat size={12} />
                         {formatRecurrence(item.recurrence)}
@@ -2269,34 +1576,269 @@ const ToDo: React.FC<ToDoProps> = ({
                     )}
                   </div>
                   
-                  {/* Assignee - positioned on the right */}
-                  {item.assigneeId && (
-                    <span className="text-caption text-muted-foreground shrink-0 self-center">
-                      {getUserName(item.assigneeId)}
-                    </span>
+                  {/* Right side: Assignee name + Category icon */}
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    {item.assigneeId && (
+                      <span className="text-caption text-muted-foreground">
+                        {getUserName(item.assigneeId)}
+                      </span>
+                    )}
+                    {/* Category icon */}
+                    {item.category === TaskCategory.HOME_CARE ? (
+                      <Home size={16} className="text-[#FF9800]" />
+                    ) : item.category === TaskCategory.FAMILY_CARE ? (
+                      <HandHeart size={16} className="text-[#F06292]" />
+                    ) : (
+                      <MoreHorizontal size={16} className="text-muted-foreground" />
+                    )}
+                  </div>
+                </div>
+                
+                {/* Bottom separator - only show if not last in section */}
+                {!isLastInSection && !isCollapsing && (
+                  <div 
+                    className="absolute bottom-0 h-px bg-border" 
+                    style={{ left: '1rem', right: '1rem' }}
+                  />
+                )}
+              </div>
+            );
+          };
+          
+          // Render a shopping item (same as before, with category badge)
+          const renderShoppingItem = (item: ToDoItem, index: number, total: number) => {
+            const isCompleting = completingIds.has(item.id);
+            const isCollapsing = collapsingIds.has(item.id);
+            const isSwiping = swipeState.id === item.id;
+            const swipeOffset = isSwiping ? swipeState.offset : 0;
+            const swipeThresholdReached = swipeOffset > 90;
+            const isLast = index === total - 1;
+            
+            return (
+              <div
+                key={item.id}
+                className={`relative ${
+                  !isLast && !isCollapsing ? 'list-item-separator' : ''
+                } overflow-hidden`}
+                style={{
+                  transition: isCollapsing 
+                    ? 'max-height 0.2s ease-out, opacity 0.2s ease-out'
+                    : undefined,
+                  maxHeight: isCollapsing ? '0px' : '150px',
+                }}
+              >
+                {/* iOS-style swipe reveal */}
+                <div 
+                  className="absolute inset-0 flex items-center pl-5 transition-colors duration-150"
+                  style={{ 
+                    backgroundColor: swipeOffset > 0 || isCompleting
+                      ? (swipeThresholdReached || isCompleting
+                          ? 'hsl(var(--primary))' 
+                          : 'hsl(var(--primary) / 0.25)')
+                      : 'transparent',
+                  }}
+                >
+                  {(swipeOffset > 30 || isCompleting) && (
+                    <div 
+                      className="text-primary-foreground transition-all duration-150"
+                      style={{ 
+                        transform: swipeThresholdReached || isCompleting ? 'scale(1.1)' : 'scale(1)',
+                        opacity: isCompleting ? 1 : Math.min(swipeOffset / 50, 1),
+                      }}
+                    >
+                      <Check size={22} strokeWidth={3} />
+                    </div>
                   )}
+                </div>
+                
+                {/* Item card */}
+                <div
+                  className="flex items-start gap-3 p-4 bg-card cursor-pointer relative"
+                  style={{
+                    transition: isSwiping 
+                      ? 'none' 
+                      : isCompleting 
+                        ? 'opacity 0.2s ease-out, transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                        : 'transform 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+                    opacity: isCompleting ? 0 : 1,
+                    transform: isCompleting && !isCollapsing 
+                      ? 'translateX(100%)' 
+                      : `translateX(${swipeOffset}px)`,
+                    boxShadow: swipeOffset > 10 
+                      ? `0 2px 12px rgba(0, 0, 0, ${Math.min(swipeOffset / 150, 0.12)})` 
+                      : 'none',
+                  }}
+                  onTouchStart={(e) => handleTouchStart(e, item.id)}
+                  onTouchMove={handleTouchMove}
+                  onTouchEnd={() => handleTouchEnd(item.id)}
+                  onClick={() => !isCompleting && !isSwiping && openEditSheet(item)}
+                >
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      !isCompleting && handleToggleComplete(item.id, true);
+                    }}
+                    className="mt-0.5 shrink-0 transition-all"
+                  >
+                    {isCompleting ? (
+                      <div className="w-[22px] h-[22px] rounded-full bg-primary flex items-center justify-center">
+                        <Check size={14} className="text-primary-foreground" strokeWidth={3} />
+                      </div>
+                    ) : (
+                      <Circle size={22} className="text-muted-foreground/50" />
+                    )}
+                  </button>
+                  
+                  <div className="flex-1 min-w-0">
+                    {/* Item name with brand and quantity */}
+                    <div className="flex items-center">
+                      <span className={`text-body ${isCompleting ? 'text-muted-foreground line-through' : 'text-foreground'}`}>
+                        <TranslatedItemName item={item} currentLang={currentLang} onUpdate={onUpdate} />
+                        {item.brand && (
+                          <span className="text-muted-foreground font-normal">
+                            {' ('}{item.brand}{')'}
+                          </span>
+                        )}
+                        {item.quantity && (item.quantity !== '1' || item.unit) && (
+                          <span className="text-muted-foreground font-normal">
+                            {' · '}{item.quantity}{item.unit ? ` ${item.unit}` : ''}
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  {/* Right side: Assignee name + Category icon */}
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    {item.assigneeId && (
+                      <span className="text-caption text-muted-foreground">
+                        {getUserName(item.assigneeId)}
+                      </span>
+                    )}
+                    {/* Category icon */}
+                    {item.category === ShoppingCategory.SUPERMARKET ? (
+                      <ShoppingCart size={16} className="text-[#3EAFD2]" />
+                    ) : item.category === ShoppingCategory.WET_MARKET ? (
+                      <Home size={16} className="text-[#4CAF50]" />
+                    ) : (
+                      <MoreHorizontal size={16} className="text-muted-foreground" />
+                    )}
+                  </div>
                 </div>
               </div>
             );
-          })}
+          };
           
-          {/* Empty State */}
-          {activeItems.length === 0 && !isAddingInline && (
-            <div className="p-8 text-center">
-              <p className="text-body text-foreground">
-                {activeSection === 'shopping' 
-                  ? (t['todo.no_shopping'] || 'No shopping items yet')
-                  : (t['todo.no_tasks'] || 'No tasks yet')
-                }
-              </p>
-              <p className="text-caption text-muted-foreground mt-1">{t['todo.tap_to_add'] || 'Tap above to add one'}</p>
+          return (
+            <div className="mt-4 bg-card rounded-2xl shadow-sm overflow-hidden">
+              {/* Add Input Row (hero - always first) */}
+              <div className="relative">
+                <div
+                  className={`flex items-center gap-3 p-4 bg-card ${!isAddingInline ? 'cursor-pointer' : ''}`}
+                  onClick={() => !isAddingInline && setIsAddingInline(true)}
+                >
+                  <div className="text-muted-foreground/50 shrink-0">
+                    <Circle size={22} />
+                  </div>
+                  
+                  <div className="flex-1 flex items-center gap-2 min-h-[28px]">
+                    {isAddingInline ? (
+                      <input
+                        ref={inlineInputRef}
+                        type="text"
+                        autoComplete="one-time-code"
+                        value={inlineInputValue}
+                        onChange={e => setInlineInputValue(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') {
+                            handleInlineAdd();
+                          } else if (e.key === 'Escape') {
+                            setIsAddingInline(false);
+                            setInlineInputValue('');
+                          }
+                        }}
+                        onBlur={() => {
+                          if (!inlineInputValue.trim()) {
+                            setIsAddingInline(false);
+                          }
+                        }}
+                        placeholder={t['todo.add_hint'] || 'Press Enter to add | tap + to set details'}
+                        className="flex-1 bg-transparent text-body text-foreground placeholder-muted-foreground/50 outline-none"
+                      />
+                    ) : (
+                      <span className="flex-1 text-body text-muted-foreground">
+                        {activeSection === 'shopping' ? (t['todo.add_item'] || 'Add item...') : (t['todo.add_task'] || 'Add task...')}
+                      </span>
+                    )}
+                    
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openDetailedSheet();
+                      }}
+                      className="p-1.5 rounded-full bg-primary text-primary-foreground shrink-0"
+                      title={t['common.add_with_details'] || 'Add with details'}
+                    >
+                      <Plus size={16} />
+                    </button>
+                  </div>
+                </div>
+                {/* Bottom line - 6px inset */}
+                <div 
+                  className="absolute bottom-0 h-px bg-border" 
+                  style={{ left: '6px', right: '6px' }}
+                />
+              </div>
+              
+              {/* Tasks: Date-grouped sections */}
+              {activeSection === 'task' && groupedItems && (
+                <>
+                  {DATE_GROUP_ORDER.map(group => {
+                    const items = groupedItems[group];
+                    if (items.length === 0) return null;
+                    
+                    return (
+                      <React.Fragment key={group}>
+                        <SectionDivider 
+                          label={getSectionLabel(group)} 
+                          type={getSectionType(group)} 
+                        />
+                        {items.map((item, index) => 
+                          renderTaskItem(item, index === items.length - 1)
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
+                </>
+              )}
+              
+              {/* Shopping: Flat list */}
+              {activeSection === 'shopping' && (
+                <>
+                  {activeItems.map((item, index) => 
+                    renderShoppingItem(item, index, activeItems.length)
+                  )}
+                </>
+              )}
+              
+              {/* Empty State */}
+              {activeItems.length === 0 && !isAddingInline && (
+                <div className="p-8 text-center">
+                  <p className="text-body text-foreground">
+                    {activeSection === 'shopping' 
+                      ? (t['todo.no_shopping'] || 'No shopping items yet')
+                      : (t['todo.no_tasks'] || 'No tasks yet')
+                    }
+                  </p>
+                  <p className="text-caption text-muted-foreground mt-1">{t['todo.tap_to_add'] || 'Tap above to add one'}</p>
+                </div>
+              )}
             </div>
-          )}
-        </div>
-        )}
+          );
+        })()}
 
-        {/* Completed Section (List View Only) */}
-        {completedItems.length > 0 && (activeSection === 'shopping' || viewMode === 'list') && (
+        {/* Completed Section */}
+        {completedItems.length > 0 && (
           <div className="mt-6">
             <div className="flex items-center justify-between mb-2 px-2">
               <button
@@ -2355,21 +1897,7 @@ const ToDo: React.FC<ToDoProps> = ({
                     {/* Delete button - Hidden for Helper */}
                     {!isHelper && (
                       <button
-                        onClick={() => {
-                          // Check if this is a recurring task - show scope dialog
-                          // Check both seriesId AND recurrence to handle latency
-                          const isRecurring = item.seriesId || 
-                            (item.recurrence && item.recurrence.frequency !== 'NONE');
-                          if (isRecurring && onDeleteRecurring) {
-                            setRecurringActionDialog({
-                              isOpen: true,
-                              type: 'delete',
-                              itemId: item.id,
-                            });
-                          } else {
-                            handleDelete(item.id);
-                          }
-                        }}
+                        onClick={() => handleDelete(item.id)}
                         className="text-muted-foreground shrink-0"
                       >
                         <Trash2 size={18} />
@@ -2380,33 +1908,6 @@ const ToDo: React.FC<ToDoProps> = ({
               </div>
             )}
           </div>
-        )}
-
-        {/* Calendar/Agenda View (Tasks Only) */}
-        {activeSection === 'task' && viewMode === 'calendar' && (
-          <CalendarAgendaView
-            items={items.filter(i => i.type === 'task')}
-            users={users}
-            currentUser={currentUser}
-            t={t}
-            currentLang={currentLang}
-            onUpdate={onUpdate}
-            onItemClick={openEditSheet}
-            onToggleComplete={handleToggleComplete}
-            onCompleteVirtual={onCompleteVirtual}
-            completingIds={completingIds}
-          />
-        )}
-
-        {/* FAB for Calendar View */}
-        {activeSection === 'task' && viewMode === 'calendar' && (
-          <button
-            onClick={openDetailedSheet}
-            className="fixed bottom-28 right-6 w-14 h-14 bg-primary text-primary-foreground rounded-full shadow-lg flex items-center justify-center z-30"
-            style={{ boxShadow: '0 4px 12px rgba(62, 175, 210, 0.4)' }}
-          >
-            <Plus size={24} />
-          </button>
         )}
 
         {/* Footer */}
@@ -2432,7 +1933,6 @@ const ToDo: React.FC<ToDoProps> = ({
               onClick={() => {
                 setIsSheetOpen(false);
                 setEditingItemId(null);
-                setEditingVirtualTask(null);
               }}
               className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center right-4 top-4 text-muted-foreground"
               aria-label={t['common.close'] || 'Close'}
@@ -2443,7 +1943,7 @@ const ToDo: React.FC<ToDoProps> = ({
             {/* Header */}
             <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
               <h2 className="text-title text-foreground">
-                {(editingItemId || editingVirtualTask)
+                {editingItemId
                   ? (sheetForm.type === 'shopping' 
                       ? (t['todo.edit_shopping_item'] || 'Edit Shopping Item') 
                       : (t['todo.edit_task'] || 'Edit Task'))
@@ -2626,7 +2126,7 @@ const ToDo: React.FC<ToDoProps> = ({
                           ...prev,
                           recurrence: {
                             frequency,
-                            dayOfWeek: frequency === 'WEEKLY' ? dueDate.getDay() : undefined,
+                            dayOfWeek: (frequency === 'WEEKLY' || frequency === 'BIWEEKLY') ? dueDate.getDay() : undefined,
                             dayOfMonth: frequency === 'MONTHLY' ? dueDate.getDate() : undefined,
                           },
                         }));
@@ -2637,6 +2137,8 @@ const ToDo: React.FC<ToDoProps> = ({
                         <option key={opt.value} value={opt.value}>
                           {t[opt.labelKey] || opt.value}
                           {opt.value === 'WEEKLY' && sheetForm.dueDate && 
+                            ` (${DAYS_OF_WEEK[new Date(sheetForm.dueDate + 'T00:00:00').getDay()]}s)`}
+                          {opt.value === 'BIWEEKLY' && sheetForm.dueDate && 
                             ` (${DAYS_OF_WEEK[new Date(sheetForm.dueDate + 'T00:00:00').getDay()]}s)`}
                           {opt.value === 'MONTHLY' && sheetForm.dueDate && 
                             ` (${new Date(sheetForm.dueDate + 'T00:00:00').getDate()}${
@@ -2721,48 +2223,13 @@ const ToDo: React.FC<ToDoProps> = ({
             
             {/* Fixed Footer with Delete + Save */}
             <div className="shrink-0 p-5 pb-8 border-t border-border flex gap-3">
-              {/* Delete button - Hidden for Helper, shown for real items AND virtual recurring tasks */}
-              {(editingItemId || editingVirtualTask) && !isHelper && (
+              {/* Delete button - Hidden for Helper */}
+              {editingItemId && !isHelper && (
                 <button
                   onClick={async () => {
-                    // For virtual tasks, always show recurring action dialog
-                    if (editingVirtualTask) {
-                      // Extract the original task ID from virtual ID (virtual-{originalId}-{date})
-                      const originalId = editingVirtualTask.id.replace(/^virtual-/, '').replace(/-\d{4}-\d{2}-\d{2}$/, '');
+                    const itemId = editingItemId;
                       setIsSheetOpen(false);
                       setEditingItemId(null);
-                      setEditingVirtualTask(null);
-                      setRecurringActionDialog({
-                        isOpen: true,
-                        type: 'delete',
-                        itemId: originalId,
-                        virtualDate: editingVirtualTask.dueDate, // Track which date was selected
-                      });
-                      return;
-                    }
-                    
-                    const itemId = editingItemId!;
-                    const existingItem = items.find(i => i.id === itemId);
-                    
-                    // Check if this is a recurring task - show scope dialog
-                    // Check both seriesId AND recurrence to handle latency
-                    const isRecurringItem = existingItem?.seriesId || 
-                      (existingItem?.recurrence && existingItem.recurrence.frequency !== 'NONE');
-                    if (isRecurringItem && onDeleteRecurring) {
-                      setIsSheetOpen(false);
-                      setEditingItemId(null);
-                      setEditingVirtualTask(null);
-                      setRecurringActionDialog({
-                        isOpen: true,
-                        type: 'delete',
-                        itemId,
-                      });
-                      return;
-                    }
-                    
-                    setIsSheetOpen(false);
-                    setEditingItemId(null);
-                    setEditingVirtualTask(null);
                     await handleDelete(itemId);
                   }}
                   className="p-3 rounded-xl bg-destructive/10 text-destructive"
@@ -2776,7 +2243,7 @@ const ToDo: React.FC<ToDoProps> = ({
                 className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 <Check size={18} />
-                {(editingItemId || editingVirtualTask)
+                {editingItemId
                   ? (t['common.update'] || 'Update')
                   : (activeSection === 'shopping' ? (t['common.add_item'] || 'Add Item') : (t['common.add_task'] || 'Add Task'))
                 }
@@ -2820,74 +2287,6 @@ const ToDo: React.FC<ToDoProps> = ({
                 className="flex-1 py-3.5 rounded-xl bg-destructive/10 text-destructive text-body"
               >
                 {t['common.clear_all'] || 'Clear All'}
-              </button>
-            </div>
-          </div>
-        </div>
-      , document.body)}
-
-      {/* Recurring Action Scope Dialog */}
-      {recurringActionDialog.isOpen && createPortal(
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop">
-          {/* Safe area bottom cover */}
-          <div 
-            className="absolute bottom-0 left-0 right-0 bg-card"
-            style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
-          />
-          <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
-            {/* Header */}
-            <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
-              <h2 className="text-title text-foreground">
-                {recurringActionDialog.type === 'delete' 
-                  ? (t['todo.delete_recurring_title'] || 'Delete Recurring Task')
-                  : (t['todo.update_recurring_title'] || 'Update Recurring Task')
-                }
-              </h2>
-              <p className="text-body text-muted-foreground mt-1">
-                {t['todo.recurring_scope_message'] || 'This is a recurring task. What would you like to change?'}
-              </p>
-            </div>
-
-            {/* Options */}
-            <div className="p-5 space-y-3">
-              <button
-                onClick={() => handleRecurringAction('this')}
-                className="w-full p-4 rounded-xl bg-secondary text-left"
-              >
-                <p className="text-body text-foreground font-medium">
-                  {t['todo.scope_this_only'] || 'This task only'}
-                </p>
-                <p className="text-caption text-muted-foreground mt-0.5">
-                  {recurringActionDialog.type === 'delete'
-                    ? (t['todo.scope_this_only_delete_desc'] || 'Only delete this occurrence')
-                    : (t['todo.scope_this_only_update_desc'] || 'Only change this occurrence')
-                  }
-                </p>
-              </button>
-              
-              <button
-                onClick={() => handleRecurringAction('all')}
-                className="w-full p-4 rounded-xl bg-secondary text-left"
-              >
-                <p className="text-body text-foreground font-medium">
-                  {t['todo.scope_all_tasks'] || 'All tasks'}
-                </p>
-                <p className="text-caption text-muted-foreground mt-0.5">
-                  {recurringActionDialog.type === 'delete'
-                    ? (t['todo.scope_all_delete_desc'] || 'Delete all occurrences (past and future)')
-                    : (t['todo.scope_all_update_desc'] || 'Change all occurrences (past and future)')
-                  }
-                </p>
-              </button>
-            </div>
-
-            {/* Cancel Button */}
-            <div className="p-5 pb-8 border-t border-border shrink-0">
-              <button
-                onClick={() => setRecurringActionDialog({ isOpen: false, type: 'update', itemId: null })}
-                className="w-full py-3.5 rounded-xl bg-muted text-foreground text-body"
-              >
-                {t['common.cancel'] || 'Cancel'}
               </button>
             </div>
           </div>

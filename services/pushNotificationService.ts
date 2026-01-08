@@ -359,7 +359,8 @@ export async function checkNotificationCapability(
 export async function ensureCurrentSubscriptionSaved(
   userId: string,
   householdId: string,
-  retryCount: number = 0
+  retryCount: number = 0,
+  email?: string
 ): Promise<boolean> {
   const MAX_RETRIES = 3;
   const RETRY_DELAYS = [0, 1000, 2000]; // No delay first, then 1s, then 2s
@@ -471,7 +472,8 @@ export async function ensureCurrentSubscriptionSaved(
         p256dh_key: subscriptionJson.keys.p256dh,
         auth_key: subscriptionJson.keys.auth,
         user_agent: navigator.userAgent,
-        device_fingerprint: getDeviceId()
+        device_fingerprint: getDeviceId(),
+        email: email || undefined  // Optional: helps API resolve user if clerk_id missing
       }),
     });
     
@@ -717,7 +719,8 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
  */
 export async function subscribeToPush(
   userId: string,
-  householdId: string
+  householdId: string,
+  email?: string
 ): Promise<PushSubscription | null> {
   console.log('[Push] subscribeToPush called:', { userId, householdId });
   
@@ -798,7 +801,8 @@ export async function subscribeToPush(
         p256dh_key: subscriptionJson.keys.p256dh,
         auth_key: subscriptionJson.keys.auth,
         user_agent: navigator.userAgent,
-        device_fingerprint: getDeviceId()
+        device_fingerprint: getDeviceId(),
+        email: email || undefined  // Optional: helps API resolve user if clerk_id missing
       }),
     });
 
@@ -1250,7 +1254,8 @@ export async function initializePushNotifications(): Promise<void> {
 export async function autoSubscribeIfNeeded(
   userId: string,
   householdId: string,
-  notificationsEnabled: boolean
+  notificationsEnabled: boolean,
+  email?: string
 ): Promise<boolean> {
   console.log('[Push] Checking auto-subscribe...', { userId, householdId, notificationsEnabled });
 
@@ -1310,7 +1315,7 @@ export async function autoSubscribeIfNeeded(
 
     // Subscribe to push notifications without prompting (permission already granted)
     console.log('[Push] Auto-subscribing user to push notifications...');
-    const subscription = await subscribeToPush(userId, householdId);
+    const subscription = await subscribeToPush(userId, householdId, email);
     
     if (subscription) {
       console.log('[Push] Auto-subscribe successful!');

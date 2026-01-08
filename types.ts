@@ -63,7 +63,7 @@ export enum TaskCategory {
 export type ToDoCategory = ShoppingCategory | TaskCategory;
 
 // Recurrence types for tasks
-export type RecurrenceFrequency = 'NONE' | 'DAILY' | 'WEEKLY' | 'MONTHLY';
+export type RecurrenceFrequency = 'NONE' | 'DAILY' | 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY';
 
 export interface RecurrenceRule {
   frequency: RecurrenceFrequency;

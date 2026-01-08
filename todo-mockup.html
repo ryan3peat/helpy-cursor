@@ -1,0 +1,1947 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ToDo List View - Design Options</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #3EAFD2;
+      --primary-foreground: #ffffff;
+      --destructive: #F06292;
+      --background: #F8FAFC;
+      --card: #ffffff;
+      --foreground: #1a1a1a;
+      --muted: #f1f5f9;
+      --muted-foreground: #64748b;
+      --border: #e2e8f0;
+      --orange: #FF9800;
+      --green: #4CAF50;
+      --purple: #7E57C2;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--background);
+      color: var(--foreground);
+      line-height: 1.5;
+    }
+
+    /* Tab Navigation */
+    .tab-container {
+      position: sticky;
+      top: 0;
+      background: var(--background);
+      padding: 20px;
+      z-index: 100;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .tab-header {
+      text-align: center;
+      margin-bottom: 16px;
+    }
+
+    .tab-header h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--foreground);
+    }
+
+    .tab-header p {
+      font-size: 0.875rem;
+      color: var(--muted-foreground);
+      margin-top: 4px;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .tab {
+      padding: 10px 20px;
+      border: none;
+      background: var(--muted);
+      color: var(--muted-foreground);
+      border-radius: 9999px;
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+
+    .tab.active {
+      background: var(--primary);
+      color: var(--primary-foreground);
+      box-shadow: 0 2px 8px rgba(62, 175, 210, 0.3);
+    }
+
+    /* Phone Frame */
+    .phone-frame {
+      max-width: 390px;
+      margin: 24px auto;
+      background: var(--card);
+      border-radius: 40px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+      overflow: hidden;
+      border: 8px solid #1a1a1a;
+    }
+
+    .phone-notch {
+      height: 30px;
+      background: #1a1a1a;
+      border-radius: 0 0 20px 20px;
+      margin: 0 80px;
+    }
+
+    .phone-content {
+      height: 700px;
+      overflow-y: auto;
+      background: var(--background);
+    }
+
+    /* Content wrapper */
+    .content-wrapper {
+      display: none;
+      padding: 0;
+    }
+
+    .content-wrapper.active {
+      display: block;
+    }
+
+    /* Page Header */
+    .page-header {
+      padding: 20px 20px 16px;
+      background: var(--background);
+    }
+
+    .page-header h2 {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--foreground);
+    }
+
+    .page-header .subtitle {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--primary);
+    }
+
+    /* Section Toggle (Shopping/Tasks) */
+    .section-toggle {
+      display: flex;
+      gap: 8px;
+      padding: 0 20px 16px;
+    }
+
+    .section-btn {
+      flex: 1;
+      padding: 12px;
+      border: none;
+      border-radius: 12px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .section-btn.active {
+      background: var(--primary);
+      color: var(--primary-foreground);
+      box-shadow: 0 2px 8px rgba(62, 175, 210, 0.3);
+    }
+
+    .section-btn:not(.active) {
+      background: var(--card);
+      color: var(--foreground);
+    }
+
+    /* ─────────────────────────────────────────────────────────── */
+    /* OPTION A: Sticky Date Headers */
+    /* ─────────────────────────────────────────────────────────── */
+
+    .date-group-header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: var(--background);
+      padding: 12px 20px 8px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .date-group-header .label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      white-space: nowrap;
+    }
+
+    .date-group-header .label.overdue {
+      color: var(--destructive);
+    }
+
+    .date-group-header .label.today {
+      color: var(--primary);
+    }
+
+    .date-group-header .label.tomorrow {
+      color: var(--orange);
+    }
+
+    .date-group-header .label.future {
+      color: var(--muted-foreground);
+    }
+
+    .date-group-header .line {
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    .date-group-header .count {
+      font-size: 0.75rem;
+      color: var(--muted-foreground);
+      background: var(--muted);
+      padding: 2px 8px;
+      border-radius: 9999px;
+    }
+
+    /* Task Cards */
+    .task-list {
+      background: var(--card);
+      margin: 0 16px 16px;
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    .task-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .task-item:last-child {
+      border-bottom: none;
+    }
+
+    .task-checkbox {
+      width: 22px;
+      height: 22px;
+      border: 2px solid var(--muted-foreground);
+      border-radius: 50%;
+      opacity: 0.4;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .task-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .task-name {
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--foreground);
+    }
+
+    .task-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 6px;
+      flex-wrap: wrap;
+    }
+
+    .task-category {
+      font-size: 0.625rem;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 9999px;
+    }
+
+    .task-category.home-care {
+      background: #FFF3E0;
+      color: var(--orange);
+    }
+
+    .task-category.family-care {
+      background: #FCE4EC;
+      color: var(--destructive);
+    }
+
+    .task-category.supermarket {
+      background: #E6F7FB;
+      color: var(--primary);
+    }
+
+    .task-date {
+      font-size: 0.75rem;
+      color: var(--muted-foreground);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .task-date.overdue {
+      color: var(--destructive);
+    }
+
+    .task-recurring {
+      font-size: 0.75rem;
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: 4px;
+    }
+
+    .task-assignee {
+      font-size: 0.75rem;
+      color: var(--muted-foreground);
+      margin-left: auto;
+    }
+
+    /* ─────────────────────────────────────────────────────────── */
+    /* OPTION B: Left Border Accents */
+    /* ─────────────────────────────────────────────────────────── */
+
+    .border-accent-list {
+      margin: 0 16px 16px;
+    }
+
+    .border-accent-group {
+      margin-bottom: 16px;
+    }
+
+    .border-accent-header {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 8px;
+      padding-left: 4px;
+    }
+
+    .border-accent-header.overdue { color: var(--destructive); }
+    .border-accent-header.today { color: var(--primary); }
+    .border-accent-header.tomorrow { color: var(--orange); }
+    .border-accent-header.future { color: var(--muted-foreground); }
+
+    .border-accent-card {
+      background: var(--card);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    .border-accent-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 16px;
+      border-bottom: 1px solid var(--border);
+      border-left: 3px solid transparent;
+    }
+
+    .border-accent-item:last-child {
+      border-bottom: none;
+    }
+
+    .border-accent-item.overdue { border-left-color: var(--destructive); }
+    .border-accent-item.today { border-left-color: var(--primary); }
+    .border-accent-item.tomorrow { border-left-color: var(--orange); }
+    .border-accent-item.future { border-left-color: var(--muted); }
+
+    /* ─────────────────────────────────────────────────────────── */
+    /* OPTION C: Mini Week Strip */
+    /* ─────────────────────────────────────────────────────────── */
+
+    .week-strip {
+      display: flex;
+      gap: 4px;
+      padding: 12px 20px;
+      background: var(--card);
+      margin: 0 16px 16px;
+      border-radius: 16px;
+      overflow-x: auto;
+    }
+
+    .week-day {
+      flex: 1;
+      min-width: 44px;
+      text-align: center;
+      padding: 8px 4px;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .week-day:hover {
+      background: var(--muted);
+    }
+
+    .week-day.active {
+      background: var(--primary);
+      color: var(--primary-foreground);
+    }
+
+    .week-day.has-overdue {
+      background: rgba(240, 98, 146, 0.1);
+    }
+
+    .week-day .day-name {
+      font-size: 0.625rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      opacity: 0.7;
+    }
+
+    .week-day .day-num {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-top: 2px;
+    }
+
+    .week-day .dot-container {
+      height: 8px;
+      margin-top: 4px;
+      display: flex;
+      justify-content: center;
+      gap: 2px;
+    }
+
+    .week-day .dot {
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: currentColor;
+      opacity: 0.6;
+    }
+
+    .week-day.active .dot {
+      background: var(--primary-foreground);
+      opacity: 1;
+    }
+
+    /* ─────────────────────────────────────────────────────────── */
+    /* OPTION D: Current Flat List */
+    /* ─────────────────────────────────────────────────────────── */
+
+    .flat-list {
+      background: var(--card);
+      margin: 0 16px 16px;
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    /* ─────────────────────────────────────────────────────────── */
+    /* OPTION E: Date Cards (Calendar Grid Feel) */
+    /* ─────────────────────────────────────────────────────────── */
+
+    .date-card-container {
+      padding: 0 16px 16px;
+    }
+
+    .date-card {
+      background: var(--card);
+      border-radius: 16px;
+      margin-bottom: 12px;
+      overflow: hidden;
+    }
+
+    .date-card-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      background: var(--muted);
+    }
+
+    .date-card-header.overdue {
+      background: rgba(240, 98, 146, 0.1);
+    }
+
+    .date-card-header.today {
+      background: rgba(62, 175, 210, 0.1);
+    }
+
+    .date-card-day {
+      width: 44px;
+      height: 44px;
+      background: var(--card);
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .date-card-header.overdue .date-card-day {
+      background: var(--destructive);
+      color: white;
+    }
+
+    .date-card-header.today .date-card-day {
+      background: var(--primary);
+      color: white;
+    }
+
+    .date-card-day .weekday {
+      font-size: 0.5rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      opacity: 0.7;
+    }
+
+    .date-card-day .num {
+      font-size: 1.125rem;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .date-card-info {
+      flex: 1;
+    }
+
+    .date-card-label {
+      font-size: 0.875rem;
+      font-weight: 700;
+    }
+
+    .date-card-header.overdue .date-card-label {
+      color: var(--destructive);
+    }
+
+    .date-card-header.today .date-card-label {
+      color: var(--primary);
+    }
+
+    .date-card-sublabel {
+      font-size: 0.75rem;
+      color: var(--muted-foreground);
+    }
+
+    .date-card-count {
+      font-size: 0.75rem;
+      font-weight: 600;
+      background: var(--background);
+      padding: 4px 10px;
+      border-radius: 9999px;
+      color: var(--muted-foreground);
+    }
+
+    /* Icons (simple SVG inline) */
+    .icon {
+      width: 12px;
+      height: 12px;
+      display: inline-block;
+      vertical-align: middle;
+    }
+
+    /* Add item input */
+    .add-item-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px;
+      background: var(--card);
+      margin: 0 16px 16px;
+      border-radius: 16px;
+    }
+
+    /* ─────────────────────────────────────────────────────────── */
+    /* OPTION F: Unified Card with Internal Sections */
+    /* ─────────────────────────────────────────────────────────── */
+
+    .unified-card {
+      background: var(--card);
+      margin: 0 16px 16px;
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    .unified-add-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px;
+      position: relative;
+    }
+
+    /* Add row bottom line - near edge-to-edge like section dividers */
+    .unified-add-row::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 6px;
+      right: 6px;
+      height: 1px;
+      background: var(--border);
+    }
+
+    .unified-add-input {
+      flex: 1;
+      font-size: 0.875rem;
+      color: var(--muted-foreground);
+    }
+
+    .unified-section-divider {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 16px;
+      background: var(--card);
+      position: relative;
+    }
+
+    /* Section divider top line - near edge-to-edge (only 6px inset) */
+    .unified-section-divider::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 6px;
+      right: 6px;
+      height: 1px;
+      background: var(--border);
+    }
+
+    .unified-section-divider:first-of-type::before {
+      display: none;
+    }
+
+    .unified-section-divider .section-icon {
+      font-size: 0.75rem;
+    }
+
+    .unified-section-divider .section-label {
+      font-size: 16px;
+      font-weight: 700;
+      flex: 1;
+    }
+
+    .unified-section-divider .section-label.overdue {
+      color: var(--destructive);
+    }
+
+    .unified-section-divider .section-label.today {
+      color: var(--primary);
+    }
+
+    .unified-section-divider .section-label.future {
+      color: var(--muted-foreground);
+    }
+
+    .unified-section-divider .section-count {
+      font-size: 0.6875rem;
+      font-weight: 600;
+      color: var(--muted-foreground);
+    }
+
+    .unified-task-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 14px 16px;
+      position: relative;
+    }
+
+    /* Task separator line - bigger inset (48px left to align after checkbox, 24px right) */
+    .unified-task-item::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 48px;
+      right: 24px;
+      height: 1px;
+      background: var(--border);
+    }
+
+    .unified-task-item:last-child::after {
+      display: none;
+    }
+
+    .unified-task-item.last-in-section::after {
+      display: none;
+    }
+
+    /* Assignee with category icon below */
+    .unified-assignee-block {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+
+    .unified-assignee-block .assignee-name {
+      font-size: 0.75rem;
+      color: var(--muted-foreground);
+    }
+
+    .unified-assignee-block .category-icon {
+      width: 16px;
+      height: 16px;
+    }
+
+    .unified-assignee-block .category-icon.home-care {
+      color: var(--orange);
+    }
+
+    .unified-assignee-block .category-icon.family-care {
+      color: var(--destructive);
+    }
+
+    .add-item-input {
+      flex: 1;
+      font-size: 0.875rem;
+      color: var(--muted-foreground);
+    }
+
+    .add-item-btn {
+      width: 28px;
+      height: 28px;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+      font-weight: 300;
+    }
+
+    /* Description below mockup */
+    .option-description {
+      max-width: 600px;
+      margin: 0 auto 40px;
+      padding: 20px;
+      background: var(--card);
+      border-radius: 16px;
+      text-align: center;
+    }
+
+    .option-description h3 {
+      font-size: 1.125rem;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 8px;
+    }
+
+    .option-description p {
+      font-size: 0.875rem;
+      color: var(--muted-foreground);
+      line-height: 1.6;
+    }
+
+    .option-description .pros {
+      margin-top: 12px;
+      text-align: left;
+      font-size: 0.8125rem;
+    }
+
+    .option-description .pros li {
+      margin: 4px 0;
+      color: var(--green);
+    }
+  </style>
+</head>
+<body>
+  <!-- Tab Navigation -->
+  <div class="tab-container">
+    <div class="tab-header">
+      <h1>ToDo List View - Design Options</h1>
+      <p>Click each option to compare different "calendar feel" approaches</p>
+    </div>
+    <div class="tabs">
+      <button class="tab active" onclick="showOption('a')">A: Sticky Headers</button>
+      <button class="tab" onclick="showOption('b')">B: Border Accents</button>
+      <button class="tab" onclick="showOption('c')">C: Week Strip</button>
+      <button class="tab" onclick="showOption('d')">D: Flat List (Current)</button>
+      <button class="tab" onclick="showOption('e')">E: Date Cards</button>
+      <button class="tab" onclick="showOption('f')">F: Unified Card</button>
+    </div>
+  </div>
+
+  <!-- Phone Mockups -->
+  <div class="phone-frame">
+    <div class="phone-notch"></div>
+    <div class="phone-content">
+
+      <!-- ═══════════════════════════════════════════════════════════ -->
+      <!-- OPTION A: Sticky Date Headers -->
+      <!-- ═══════════════════════════════════════════════════════════ -->
+      <div class="content-wrapper active" id="option-a">
+        <div class="page-header">
+          <div class="subtitle">ToDo</div>
+          <h2>Tasks</h2>
+        </div>
+
+        <div class="section-toggle">
+          <button class="section-btn">Shopping</button>
+          <button class="section-btn active">Tasks</button>
+        </div>
+
+        <!-- Add Item -->
+        <div class="add-item-row">
+          <div class="add-item-input">Add task...</div>
+          <button class="add-item-btn">+</button>
+        </div>
+
+        <!-- Overdue -->
+        <div class="date-group-header">
+          <span class="label overdue">Overdue</span>
+          <div class="line"></div>
+          <span class="count">2</span>
+        </div>
+        <div class="task-list">
+          <div class="task-item">
+            <div class="task-checkbox"></div>
+            <div class="task-content">
+              <div class="task-name">Pay electricity bill</div>
+              <div class="task-meta">
+                <span class="task-category home-care">Home Care</span>
+                <span class="task-date overdue">
+                  <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" stroke-width="2"/><line x1="16" y1="2" x2="16" y2="6" stroke-width="2"/><line x1="8" y1="2" x2="8" y2="6" stroke-width="2"/><line x1="3" y1="10" x2="21" y2="10" stroke-width="2"/></svg>
+                  Mon, 6 Jan
+                </span>
+              </div>
+            </div>
+            <span class="task-assignee">Liko</span>
+          </div>
+          <div class="task-item">
+            <div class="task-checkbox"></div>
+            <div class="task-content">
+              <div class="task-name">Submit expense report</div>
+              <div class="task-meta">
+                <span class="task-category home-care">Home Care</span>
+                <span class="task-date overdue">
+                  <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" stroke-width="2"/><line x1="16" y1="2" x2="16" y2="6" stroke-width="2"/><line x1="8" y1="2" x2="8" y2="6" stroke-width="2"/><line x1="3" y1="10" x2="21" y2="10" stroke-width="2"/></svg>
+                  Sun, 5 Jan
+                </span>
+              </div>
+            </div>
+            <span class="task-assignee">Liko</span>
+          </div>
+        </div>
+
+        <!-- Today -->
+        <div class="date-group-header">
+          <span class="label today">Today</span>
+          <div class="line"></div>
+          <span class="count">3</span>
+        </div>
+        <div class="task-list">
+          <div class="task-item">
+            <div class="task-checkbox"></div>
+            <div class="task-content">
+              <div class="task-name">Pick up kids from school</div>
+              <div class="task-meta">
+                <span class="task-category family-care">Family Care</span>
+                <span class="task-date">
+                  <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" stroke-width="2"/><line x1="16" y1="2" x2="16" y2="6" stroke-width="2"/><line x1="8" y1="2" x2="8" y2="6" stroke-width="2"/><line x1="3" y1="10" x2="21" y2="10" stroke-width="2"/></svg>
+                  Wed, 8 Jan, 15:30
+                </span>
+              </div>
+              <div class="task-recurring">
+                <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M17 1l4 4-4 4" stroke-width="2"/><path d="M3 11V9a4 4 0 014-4h14" stroke-width="2"/><path d="M7 23l-4-4 4-4" stroke-width="2"/><path d="M21 13v2a4 4 0 01-4 4H3" stroke-width="2"/></svg>
+                Every weekday
+              </div>
+            </div>
+            <span class="task-assignee">Juanilyn</span>
+          </div>
+          <div class="task-item">
+            <div class="task-checkbox"></div>
+            <div class="task-content">
+              <div class="task-name">Team standup call</div>
+              <div class="task-meta">
+                <span class="task-category home-care">Home Care</span>
+                <span class="task-date">Wed, 8 Jan, 09:00</span>
+              </div>
+            </div>
+            <span class="task-assignee">Liko</span>
+          </div>
+          <div class="task-item">
+            <div class="task-checkbox"></div>
+            <div class="task-content">
+              <div class="task-name">Water the plants</div>
+              <div class="task-meta">
+                <span class="task-category home-care">Home Care</span>
+              </div>
+              <div class="task-recurring">
+                <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M17 1l4 4-4 4" stroke-width="2"/><path d="M3 11V9a4 4 0 014-4h14" stroke-width="2"/><path d="M7 23l-4-4 4-4" stroke-width="2"/><path d="M21 13v2a4 4 0 01-4 4H3" stroke-width="2"/></svg>
+                Every Wednesday
+              </div>
+            </div>
+            <span class="task-assignee">Chaeyoung</span>
+          </div>
+        </div>
+
+        <!-- Tomorrow -->
+        <div class="date-group-header">
+          <span class="label tomorrow">Tomorrow</span>
+          <div class="line"></div>
+          <span class="count">1</span>
+        </div>
+        <div class="task-list">
+          <div class="task-item">
+            <div class="task-checkbox"></div>
+            <div class="task-content">
+              <div class="task-name">Doctor appointment - Annual checkup</div>
+              <div class="task-meta">
+                <span class="task-category family-care">Family Care</span>
+                <span class="task-date">Thu, 9 Jan, 10:00</span>
+              </div>
+            </div>
+            <span class="task-assignee">Liko</span>
+          </div>
+        </div>
+
+        <!-- This Week -->
+        <div class="date-group-header">
+          <span class="label future">This Week</span>
+          <div class="line"></div>
+          <span class="count">2</span>
+        </div>
+        <div class="task-list">
+          <div class="task-item">
+            <div class="task-checkbox"></div>
+            <div class="task-content">
+              <div class="task-name">Prepare weekend groceries list</div>
+              <div class="task-meta">
+                <span class="task-category home-care">Home Care</span>
+                <span class="task-date">Fri, 10 Jan</span>
+              </div>
+            </div>
+            <span class="task-assignee">Juanilyn</span>
+          </div>
+          <div class="task-item">
+            <div class="task-checkbox"></div>
+            <div class="task-content">
+              <div class="task-name">Family dinner reservation</div>
+              <div class="task-meta">
+                <span class="task-category family-care">Family Care</span>
+                <span class="task-date">Sat, 11 Jan, 19:00</span>
+              </div>
+            </div>
+            <span class="task-assignee">Chaeyoung</span>
+          </div>
+        </div>
+
+        <!-- No Date -->
+        <div class="date-group-header">
+          <span class="label future">No Due Date</span>
+          <div class="line"></div>
+          <span class="count">1</span>
+        </div>
+        <div class="task-list">
+          <div class="task-item">
+            <div class="task-checkbox"></div>
+            <div class="task-content">
+              <div class="task-name">Research vacation destinations</div>
+              <div class="task-meta">
+                <span class="task-category family-care">Family Care</span>
+              </div>
+            </div>
+            <span class="task-assignee">Liko</span>
+          </div>
+        </div>
+
+        <div style="height: 40px;"></div>
+      </div>
+
+      <!-- ═══════════════════════════════════════════════════════════ -->
+      <!-- OPTION B: Left Border Accents -->
+      <!-- ═══════════════════════════════════════════════════════════ -->
+      <div class="content-wrapper" id="option-b">
+        <div class="page-header">
+          <div class="subtitle">ToDo</div>
+          <h2>Tasks</h2>
+        </div>
+
+        <div class="section-toggle">
+          <button class="section-btn">Shopping</button>
+          <button class="section-btn active">Tasks</button>
+        </div>
+
+        <div class="add-item-row">
+          <div class="add-item-input">Add task...</div>
+          <button class="add-item-btn">+</button>
+        </div>
+
+        <div class="border-accent-list">
+          <!-- Overdue -->
+          <div class="border-accent-group">
+            <div class="border-accent-header overdue">Overdue (2)</div>
+            <div class="border-accent-card">
+              <div class="border-accent-item overdue">
+                <div class="task-checkbox"></div>
+                <div class="task-content">
+                  <div class="task-name">Pay electricity bill</div>
+                  <div class="task-meta">
+                    <span class="task-category home-care">Home Care</span>
+                    <span class="task-date overdue">Mon, 6 Jan</span>
+                  </div>
+                </div>
+                <span class="task-assignee">Liko</span>
+              </div>
+              <div class="border-accent-item overdue">
+                <div class="task-checkbox"></div>
+                <div class="task-content">
+                  <div class="task-name">Submit expense report</div>
+                  <div class="task-meta">
+                    <span class="task-category home-care">Home Care</span>
+                    <span class="task-date overdue">Sun, 5 Jan</span>
+                  </div>
+                </div>
+                <span class="task-assignee">Liko</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Today -->
+          <div class="border-accent-group">
+            <div class="border-accent-header today">Today (3)</div>
+            <div class="border-accent-card">
+              <div class="border-accent-item today">
+                <div class="task-checkbox"></div>
+                <div class="task-content">
+                  <div class="task-name">Pick up kids from school</div>
+                  <div class="task-meta">
+                    <span class="task-category family-care">Family Care</span>
+                    <span class="task-date">15:30</span>
+                  </div>
+                  <div class="task-recurring">
+                    <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M17 1l4 4-4 4" stroke-width="2"/><path d="M3 11V9a4 4 0 014-4h14" stroke-width="2"/><path d="M7 23l-4-4 4-4" stroke-width="2"/><path d="M21 13v2a4 4 0 01-4 4H3" stroke-width="2"/></svg>
+                    Every weekday
+                  </div>
+                </div>
+                <span class="task-assignee">Juanilyn</span>
+              </div>
+              <div class="border-accent-item today">
+                <div class="task-checkbox"></div>
+                <div class="task-content">
+                  <div class="task-name">Team standup call</div>
+                  <div class="task-meta">
+                    <span class="task-category home-care">Home Care</span>
+                    <span class="task-date">09:00</span>
+                  </div>
+                </div>
+                <span class="task-assignee">Liko</span>
+              </div>
+              <div class="border-accent-item today">
+                <div class="task-checkbox"></div>
+                <div class="task-content">
+                  <div class="task-name">Water the plants</div>
+                  <div class="task-meta">
+                    <span class="task-category home-care">Home Care</span>
+                  </div>
+                  <div class="task-recurring">
+                    <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M17 1l4 4-4 4" stroke-width="2"/><path d="M3 11V9a4 4 0 014-4h14" stroke-width="2"/><path d="M7 23l-4-4 4-4" stroke-width="2"/><path d="M21 13v2a4 4 0 01-4 4H3" stroke-width="2"/></svg>
+                    Every Wednesday
+                  </div>
+                </div>
+                <span class="task-assignee">Chaeyoung</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tomorrow -->
+          <div class="border-accent-group">
+            <div class="border-accent-header tomorrow">Tomorrow (1)</div>
+            <div class="border-accent-card">
+              <div class="border-accent-item tomorrow">
+                <div class="task-checkbox"></div>
+                <div class="task-content">
+                  <div class="task-name">Doctor appointment</div>
+                  <div class="task-meta">
+                    <span class="task-category family-care">Family Care</span>
+                    <span class="task-date">Thu, 9 Jan, 10:00</span>
+                  </div>
+                </div>
+                <span class="task-assignee">Liko</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- This Week -->
+          <div class="border-accent-group">
+            <div class="border-accent-header future">This Week (2)</div>
+            <div class="border-accent-card">
+              <div class="border-accent-item future">
+                <div class="task-checkbox"></div>
+                <div class="task-content">
+                  <div class="task-name">Prepare weekend groceries list</div>
+                  <div class="task-meta">
+                    <span class="task-category home-care">Home Care</span>
+                    <span class="task-date">Fri, 10 Jan</span>
+                  </div>
+                </div>
+                <span class="task-assignee">Juanilyn</span>
+              </div>
+              <div class="border-accent-item future">
+                <div class="task-checkbox"></div>
+                <div class="task-content">
+                  <div class="task-name">Family dinner reservation</div>
+                  <div class="task-meta">
+                    <span class="task-category family-care">Family Care</span>
+                    <span class="task-date">Sat, 11 Jan, 19:00</span>
+                  </div>
+                </div>
+                <span class="task-assignee">Chaeyoung</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="height: 40px;"></div>
+      </div>
+
+      <!-- ═══════════════════════════════════════════════════════════ -->
+      <!-- OPTION C: Week Strip -->
+      <!-- ═══════════════════════════════════════════════════════════ -->
+      <div class="content-wrapper" id="option-c">
+        <div class="page-header">
+          <div class="subtitle">ToDo</div>
+          <h2>Tasks</h2>
+        </div>
+
+        <div class="section-toggle">
+          <button class="section-btn">Shopping</button>
+          <button class="section-btn active">Tasks</button>
+        </div>
+
+        <!-- Week Strip -->
+        <div class="week-strip">
+          <div class="week-day has-overdue">
+            <div class="day-name">Mon</div>
+            <div class="day-num">6</div>
+            <div class="dot-container">
+              <div class="dot" style="background: var(--destructive);"></div>
+            </div>
+          </div>
+          <div class="week-day">
+            <div class="day-name">Tue</div>
+            <div class="day-num">7</div>
+            <div class="dot-container"></div>
+          </div>
+          <div class="week-day active">
+            <div class="day-name">Wed</div>
+            <div class="day-num">8</div>
+            <div class="dot-container">
+              <div class="dot"></div>
+              <div class="dot"></div>
+              <div class="dot"></div>
+            </div>
+          </div>
+          <div class="week-day">
+            <div class="day-name">Thu</div>
+            <div class="day-num">9</div>
+            <div class="dot-container">
+              <div class="dot"></div>
+            </div>
+          </div>
+          <div class="week-day">
+            <div class="day-name">Fri</div>
+            <div class="day-num">10</div>
+            <div class="dot-container">
+              <div class="dot"></div>
+            </div>
+          </div>
+          <div class="week-day">
+            <div class="day-name">Sat</div>
+            <div class="day-num">11</div>
+            <div class="dot-container">
+              <div class="dot"></div>
+            </div>
+          </div>
+          <div class="week-day">
+            <div class="day-name">Sun</div>
+            <div class="day-num">12</div>
+            <div class="dot-container"></div>
+          </div>
+        </div>
+
+        <div class="add-item-row">
+          <div class="add-item-input">Add task...</div>
+          <button class="add-item-btn">+</button>
+        </div>
+
+        <!-- Overdue Banner -->
+        <div style="margin: 0 16px 12px; padding: 12px 16px; background: rgba(240, 98, 146, 0.1); border-radius: 12px; display: flex; align-items: center; gap: 12px;">
+          <div style="width: 8px; height: 8px; background: var(--destructive); border-radius: 50%;"></div>
+          <span style="font-size: 0.875rem; font-weight: 600; color: var(--destructive);">2 overdue tasks</span>
+          <svg style="margin-left: auto; width: 16px; height: 16px; color: var(--destructive);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6" stroke-width="2"/></svg>
+        </div>
+
+        <!-- Today's tasks (highlighted by week strip) -->
+        <div class="date-group-header">
+          <span class="label today">Today - Wed, 8 Jan</span>
+          <div class="line"></div>
+        </div>
+        <div class="task-list">
+          <div class="task-item">
+            <div class="task-checkbox"></div>
+            <div class="task-content">
+              <div class="task-name">Pick up kids from school</div>
+              <div class="task-meta">
+                <span class="task-category family-care">Family Care</span>
+                <span class="task-date">15:30</span>
+              </div>
+              <div class="task-recurring">
+                <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M17 1l4 4-4 4" stroke-width="2"/><path d="M3 11V9a4 4 0 014-4h14" stroke-width="2"/><path d="M7 23l-4-4 4-4" stroke-width="2"/><path d="M21 13v2a4 4 0 01-4 4H3" stroke-width="2"/></svg>
+                Every weekday
+              </div>
+            </div>
+            <span class="task-assignee">Juanilyn</span>
+          </div>
+          <div class="task-item">
+            <div class="task-checkbox"></div>
+            <div class="task-content">
+              <div class="task-name">Team standup call</div>
+              <div class="task-meta">
+                <span class="task-category home-care">Home Care</span>
+                <span class="task-date">09:00</span>
+              </div>
+            </div>
+            <span class="task-assignee">Liko</span>
+          </div>
+          <div class="task-item">
+            <div class="task-checkbox"></div>
+            <div class="task-content">
+              <div class="task-name">Water the plants</div>
+              <div class="task-meta">
+                <span class="task-category home-care">Home Care</span>
+              </div>
+              <div class="task-recurring">
+                <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M17 1l4 4-4 4" stroke-width="2"/><path d="M3 11V9a4 4 0 014-4h14" stroke-width="2"/><path d="M7 23l-4-4 4-4" stroke-width="2"/><path d="M21 13v2a4 4 0 01-4 4H3" stroke-width="2"/></svg>
+                Every Wednesday
+              </div>
+            </div>
+            <span class="task-assignee">Chaeyoung</span>
+          </div>
+        </div>
+
+        <!-- Upcoming -->
+        <div class="date-group-header">
+          <span class="label future">Upcoming</span>
+          <div class="line"></div>
+        </div>
+        <div class="task-list">
+          <div class="task-item">
+            <div class="task-checkbox"></div>
+            <div class="task-content">
+              <div class="task-name">Doctor appointment</div>
+              <div class="task-meta">
+                <span class="task-category family-care">Family Care</span>
+                <span class="task-date">Thu, 9 Jan, 10:00</span>
+              </div>
+            </div>
+            <span class="task-assignee">Liko</span>
+          </div>
+          <div class="task-item">
+            <div class="task-checkbox"></div>
+            <div class="task-content">
+              <div class="task-name">Prepare weekend groceries list</div>
+              <div class="task-meta">
+                <span class="task-category home-care">Home Care</span>
+                <span class="task-date">Fri, 10 Jan</span>
+              </div>
+            </div>
+            <span class="task-assignee">Juanilyn</span>
+          </div>
+          <div class="task-item">
+            <div class="task-checkbox"></div>
+            <div class="task-content">
+              <div class="task-name">Family dinner reservation</div>
+              <div class="task-meta">
+                <span class="task-category family-care">Family Care</span>
+                <span class="task-date">Sat, 11 Jan, 19:00</span>
+              </div>
+            </div>
+            <span class="task-assignee">Chaeyoung</span>
+          </div>
+        </div>
+
+        <div style="height: 40px;"></div>
+      </div>
+
+      <!-- ═══════════════════════════════════════════════════════════ -->
+      <!-- OPTION D: Current Flat List -->
+      <!-- ═══════════════════════════════════════════════════════════ -->
+      <div class="content-wrapper" id="option-d">
+        <div class="page-header">
+          <div class="subtitle">ToDo</div>
+          <h2>Tasks</h2>
+        </div>
+
+        <div class="section-toggle">
+          <button class="section-btn">Shopping</button>
+          <button class="section-btn active">Tasks</button>
+        </div>
+
+        <div class="add-item-row">
+          <div class="add-item-input">Add task...</div>
+          <button class="add-item-btn">+</button>
+        </div>
+
+        <!-- Flat list - current design -->
+        <div class="flat-list">
+          <div class="task-item">
+            <div class="task-checkbox"></div>
+            <div class="task-content">
+              <div class="task-name">Pay electricity bill</div>
+              <div class="task-meta">
+                <span class="task-category home-care">Home Care</span>
+                <span class="task-date overdue">Mon, 6 Jan</span>
+              </div>
+            </div>
+            <span class="task-assignee">Liko</span>
+          </div>
+          <div class="task-item">
+            <div class="task-checkbox"></div>
+            <div class="task-content">
+              <div class="task-name">Submit expense report</div>
+              <div class="task-meta">
+                <span class="task-category home-care">Home Care</span>
+                <span class="task-date overdue">Sun, 5 Jan</span>
+              </div>
+            </div>
+            <span class="task-assignee">Liko</span>
+          </div>
+          <div class="task-item">
+            <div class="task-checkbox"></div>
+            <div class="task-content">
+              <div class="task-name">Pick up kids from school</div>
+              <div class="task-meta">
+                <span class="task-category family-care">Family Care</span>
+                <span class="task-date">Wed, 8 Jan, 15:30</span>
+              </div>
+              <div class="task-recurring">
+                <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M17 1l4 4-4 4" stroke-width="2"/><path d="M3 11V9a4 4 0 014-4h14" stroke-width="2"/><path d="M7 23l-4-4 4-4" stroke-width="2"/><path d="M21 13v2a4 4 0 01-4 4H3" stroke-width="2"/></svg>
+                Every weekday
+              </div>
+            </div>
+            <span class="task-assignee">Juanilyn</span>
+          </div>
+          <div class="task-item">
+            <div class="task-checkbox"></div>
+            <div class="task-content">
+              <div class="task-name">Team standup call</div>
+              <div class="task-meta">
+                <span class="task-category home-care">Home Care</span>
+                <span class="task-date">Wed, 8 Jan, 09:00</span>
+              </div>
+            </div>
+            <span class="task-assignee">Liko</span>
+          </div>
+          <div class="task-item">
+            <div class="task-checkbox"></div>
+            <div class="task-content">
+              <div class="task-name">Water the plants</div>
+              <div class="task-meta">
+                <span class="task-category home-care">Home Care</span>
+                <span class="task-date">Wed, 8 Jan</span>
+              </div>
+              <div class="task-recurring">
+                <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M17 1l4 4-4 4" stroke-width="2"/><path d="M3 11V9a4 4 0 014-4h14" stroke-width="2"/><path d="M7 23l-4-4 4-4" stroke-width="2"/><path d="M21 13v2a4 4 0 01-4 4H3" stroke-width="2"/></svg>
+                Every Wednesday
+              </div>
+            </div>
+            <span class="task-assignee">Chaeyoung</span>
+          </div>
+          <div class="task-item">
+            <div class="task-checkbox"></div>
+            <div class="task-content">
+              <div class="task-name">Doctor appointment</div>
+              <div class="task-meta">
+                <span class="task-category family-care">Family Care</span>
+                <span class="task-date">Thu, 9 Jan, 10:00</span>
+              </div>
+            </div>
+            <span class="task-assignee">Liko</span>
+          </div>
+          <div class="task-item">
+            <div class="task-checkbox"></div>
+            <div class="task-content">
+              <div class="task-name">Prepare weekend groceries list</div>
+              <div class="task-meta">
+                <span class="task-category home-care">Home Care</span>
+                <span class="task-date">Fri, 10 Jan</span>
+              </div>
+            </div>
+            <span class="task-assignee">Juanilyn</span>
+          </div>
+          <div class="task-item">
+            <div class="task-checkbox"></div>
+            <div class="task-content">
+              <div class="task-name">Family dinner reservation</div>
+              <div class="task-meta">
+                <span class="task-category family-care">Family Care</span>
+                <span class="task-date">Sat, 11 Jan, 19:00</span>
+              </div>
+            </div>
+            <span class="task-assignee">Chaeyoung</span>
+          </div>
+          <div class="task-item">
+            <div class="task-checkbox"></div>
+            <div class="task-content">
+              <div class="task-name">Research vacation destinations</div>
+              <div class="task-meta">
+                <span class="task-category family-care">Family Care</span>
+              </div>
+            </div>
+            <span class="task-assignee">Liko</span>
+          </div>
+        </div>
+
+        <div style="height: 40px;"></div>
+      </div>
+
+      <!-- ═══════════════════════════════════════════════════════════ -->
+      <!-- OPTION E: Date Cards (Calendar Grid Feel) -->
+      <!-- ═══════════════════════════════════════════════════════════ -->
+      <div class="content-wrapper" id="option-e">
+        <div class="page-header">
+          <div class="subtitle">ToDo</div>
+          <h2>Tasks</h2>
+        </div>
+
+        <div class="section-toggle">
+          <button class="section-btn">Shopping</button>
+          <button class="section-btn active">Tasks</button>
+        </div>
+
+        <div class="add-item-row">
+          <div class="add-item-input">Add task...</div>
+          <button class="add-item-btn">+</button>
+        </div>
+
+        <div class="date-card-container">
+          <!-- Overdue Card -->
+          <div class="date-card">
+            <div class="date-card-header overdue">
+              <div class="date-card-day">
+                <div class="weekday">!</div>
+                <div class="num" style="font-size: 0.875rem;">Late</div>
+              </div>
+              <div class="date-card-info">
+                <div class="date-card-label">Overdue</div>
+                <div class="date-card-sublabel">Needs attention</div>
+              </div>
+              <div class="date-card-count">2 tasks</div>
+            </div>
+            <div class="task-item">
+              <div class="task-checkbox"></div>
+              <div class="task-content">
+                <div class="task-name">Pay electricity bill</div>
+                <div class="task-meta">
+                  <span class="task-category home-care">Home Care</span>
+                  <span class="task-date overdue">Mon, 6 Jan</span>
+                </div>
+              </div>
+            </div>
+            <div class="task-item">
+              <div class="task-checkbox"></div>
+              <div class="task-content">
+                <div class="task-name">Submit expense report</div>
+                <div class="task-meta">
+                  <span class="task-category home-care">Home Care</span>
+                  <span class="task-date overdue">Sun, 5 Jan</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Today Card -->
+          <div class="date-card">
+            <div class="date-card-header today">
+              <div class="date-card-day">
+                <div class="weekday">Wed</div>
+                <div class="num">8</div>
+              </div>
+              <div class="date-card-info">
+                <div class="date-card-label">Today</div>
+                <div class="date-card-sublabel">January 2026</div>
+              </div>
+              <div class="date-card-count">3 tasks</div>
+            </div>
+            <div class="task-item">
+              <div class="task-checkbox"></div>
+              <div class="task-content">
+                <div class="task-name">Pick up kids from school</div>
+                <div class="task-meta">
+                  <span class="task-category family-care">Family Care</span>
+                  <span class="task-date">15:30</span>
+                </div>
+              </div>
+            </div>
+            <div class="task-item">
+              <div class="task-checkbox"></div>
+              <div class="task-content">
+                <div class="task-name">Team standup call</div>
+                <div class="task-meta">
+                  <span class="task-category home-care">Home Care</span>
+                  <span class="task-date">09:00</span>
+                </div>
+              </div>
+            </div>
+            <div class="task-item">
+              <div class="task-checkbox"></div>
+              <div class="task-content">
+                <div class="task-name">Water the plants</div>
+                <div class="task-meta">
+                  <span class="task-category home-care">Home Care</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tomorrow Card -->
+          <div class="date-card">
+            <div class="date-card-header">
+              <div class="date-card-day">
+                <div class="weekday">Thu</div>
+                <div class="num">9</div>
+              </div>
+              <div class="date-card-info">
+                <div class="date-card-label">Tomorrow</div>
+                <div class="date-card-sublabel">January 2026</div>
+              </div>
+              <div class="date-card-count">1 task</div>
+            </div>
+            <div class="task-item">
+              <div class="task-checkbox"></div>
+              <div class="task-content">
+                <div class="task-name">Doctor appointment</div>
+                <div class="task-meta">
+                  <span class="task-category family-care">Family Care</span>
+                  <span class="task-date">10:00</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Friday Card -->
+          <div class="date-card">
+            <div class="date-card-header">
+              <div class="date-card-day">
+                <div class="weekday">Fri</div>
+                <div class="num">10</div>
+              </div>
+              <div class="date-card-info">
+                <div class="date-card-label">Friday</div>
+                <div class="date-card-sublabel">January 2026</div>
+              </div>
+              <div class="date-card-count">1 task</div>
+            </div>
+            <div class="task-item">
+              <div class="task-checkbox"></div>
+              <div class="task-content">
+                <div class="task-name">Prepare weekend groceries list</div>
+                <div class="task-meta">
+                  <span class="task-category home-care">Home Care</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Saturday Card -->
+          <div class="date-card">
+            <div class="date-card-header">
+              <div class="date-card-day">
+                <div class="weekday">Sat</div>
+                <div class="num">11</div>
+              </div>
+              <div class="date-card-info">
+                <div class="date-card-label">Saturday</div>
+                <div class="date-card-sublabel">January 2026</div>
+              </div>
+              <div class="date-card-count">1 task</div>
+            </div>
+            <div class="task-item">
+              <div class="task-checkbox"></div>
+              <div class="task-content">
+                <div class="task-name">Family dinner reservation</div>
+                <div class="task-meta">
+                  <span class="task-category family-care">Family Care</span>
+                  <span class="task-date">19:00</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- No Date Card -->
+          <div class="date-card">
+            <div class="date-card-header">
+              <div class="date-card-day" style="background: var(--muted);">
+                <div class="weekday">-</div>
+                <div class="num" style="font-size: 0.75rem;">TBD</div>
+              </div>
+              <div class="date-card-info">
+                <div class="date-card-label" style="color: var(--muted-foreground);">No Due Date</div>
+                <div class="date-card-sublabel">Someday</div>
+              </div>
+              <div class="date-card-count">1 task</div>
+            </div>
+            <div class="task-item">
+              <div class="task-checkbox"></div>
+              <div class="task-content">
+                <div class="task-name">Research vacation destinations</div>
+                <div class="task-meta">
+                  <span class="task-category family-care">Family Care</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="height: 40px;"></div>
+      </div>
+
+      <!-- ═══════════════════════════════════════════════════════════ -->
+      <!-- OPTION F: Unified Card with Internal Sections -->
+      <!-- ═══════════════════════════════════════════════════════════ -->
+      <div class="content-wrapper" id="option-f">
+        <div class="page-header">
+          <div class="subtitle">ToDo</div>
+          <h2>Tasks</h2>
+        </div>
+
+        <div class="section-toggle">
+          <button class="section-btn">Shopping</button>
+          <button class="section-btn active">Tasks</button>
+        </div>
+
+        <!-- Unified Card - One seamless card with internal sections -->
+        <div class="unified-card">
+          <!-- Hero Add Input - Always first -->
+          <div class="unified-add-row">
+            <div class="task-checkbox" style="opacity: 0.3;"></div>
+            <div class="unified-add-input">Add task...</div>
+            <button class="add-item-btn">+</button>
+          </div>
+
+          <!-- OVERDUE Section -->
+          <div class="unified-section-divider">
+            <span class="section-label overdue">Overdue</span>
+          </div>
+          <div class="unified-task-item">
+            <div class="task-checkbox"></div>
+            <div class="task-content">
+              <div class="task-name">Pay electricity bill</div>
+              <div class="task-meta">
+                <span class="task-date overdue">Mon, 6 Jan</span>
+              </div>
+            </div>
+            <div class="unified-assignee-block">
+              <span class="assignee-name">Liko</span>
+              <svg class="category-icon home-care" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            </div>
+          </div>
+          <div class="unified-task-item last-in-section">
+            <div class="task-checkbox"></div>
+            <div class="task-content">
+              <div class="task-name">Submit expense report</div>
+              <div class="task-meta">
+                <span class="task-date overdue">Sun, 5 Jan</span>
+              </div>
+            </div>
+            <div class="unified-assignee-block">
+              <span class="assignee-name">Liko</span>
+              <svg class="category-icon home-care" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            </div>
+          </div>
+
+          <!-- NO DATE Section -->
+          <div class="unified-section-divider">
+            <span class="section-label future">No Due Date</span>
+          </div>
+          <div class="unified-task-item last-in-section">
+            <div class="task-checkbox"></div>
+            <div class="task-content">
+              <div class="task-name">Research vacation destinations</div>
+            </div>
+            <div class="unified-assignee-block">
+              <span class="assignee-name">Liko</span>
+              <svg class="category-icon family-care" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/><path d="M12 5.67v5.33"/><path d="M9 9h6"/></svg>
+            </div>
+          </div>
+
+          <!-- TODAY Section -->
+          <div class="unified-section-divider">
+            <span class="section-label today">Today</span>
+          </div>
+          <div class="unified-task-item">
+            <div class="task-checkbox"></div>
+            <div class="task-content">
+              <div class="task-name">Pick up kids from school</div>
+              <div class="task-meta">
+                <span class="task-date">15:30</span>
+              </div>
+              <div class="task-recurring">
+                <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M17 1l4 4-4 4" stroke-width="2"/><path d="M3 11V9a4 4 0 014-4h14" stroke-width="2"/><path d="M7 23l-4-4 4-4" stroke-width="2"/><path d="M21 13v2a4 4 0 01-4 4H3" stroke-width="2"/></svg>
+                Every weekday
+              </div>
+            </div>
+            <div class="unified-assignee-block">
+              <span class="assignee-name">Juanilyn</span>
+              <svg class="category-icon family-care" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/><path d="M12 5.67v5.33"/><path d="M9 9h6"/></svg>
+            </div>
+          </div>
+          <div class="unified-task-item">
+            <div class="task-checkbox"></div>
+            <div class="task-content">
+              <div class="task-name">Team standup call</div>
+              <div class="task-meta">
+                <span class="task-date">09:00</span>
+              </div>
+            </div>
+            <div class="unified-assignee-block">
+              <span class="assignee-name">Liko</span>
+              <svg class="category-icon home-care" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            </div>
+          </div>
+          <div class="unified-task-item last-in-section">
+            <div class="task-checkbox"></div>
+            <div class="task-content">
+              <div class="task-name">Water the plants</div>
+              <div class="task-recurring">
+                <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M17 1l4 4-4 4" stroke-width="2"/><path d="M3 11V9a4 4 0 014-4h14" stroke-width="2"/><path d="M7 23l-4-4 4-4" stroke-width="2"/><path d="M21 13v2a4 4 0 01-4 4H3" stroke-width="2"/></svg>
+                Every Wednesday
+              </div>
+            </div>
+            <div class="unified-assignee-block">
+              <span class="assignee-name">Chaeyoung</span>
+              <svg class="category-icon home-care" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            </div>
+          </div>
+
+          <!-- TOMORROW Section -->
+          <div class="unified-section-divider">
+            <span class="section-label future">Tomorrow</span>
+          </div>
+          <div class="unified-task-item last-in-section">
+            <div class="task-checkbox"></div>
+            <div class="task-content">
+              <div class="task-name">Doctor appointment - Annual checkup</div>
+              <div class="task-meta">
+                <span class="task-date">Thu, 9 Jan, 10:00</span>
+              </div>
+            </div>
+            <div class="unified-assignee-block">
+              <span class="assignee-name">Liko</span>
+              <svg class="category-icon family-care" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/><path d="M12 5.67v5.33"/><path d="M9 9h6"/></svg>
+            </div>
+          </div>
+
+          <!-- THIS WEEK Section -->
+          <div class="unified-section-divider">
+            <span class="section-label future">This Week</span>
+          </div>
+          <div class="unified-task-item">
+            <div class="task-checkbox"></div>
+            <div class="task-content">
+              <div class="task-name">Prepare weekend groceries list</div>
+              <div class="task-meta">
+                <span class="task-date">Fri, 10 Jan</span>
+              </div>
+            </div>
+            <div class="unified-assignee-block">
+              <span class="assignee-name">Juanilyn</span>
+              <svg class="category-icon home-care" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            </div>
+          </div>
+          <div class="unified-task-item last-in-section">
+            <div class="task-checkbox"></div>
+            <div class="task-content">
+              <div class="task-name">Family dinner reservation</div>
+              <div class="task-meta">
+                <span class="task-date">Sat, 11 Jan, 19:00</span>
+              </div>
+            </div>
+            <div class="unified-assignee-block">
+              <span class="assignee-name">Chaeyoung</span>
+              <svg class="category-icon family-care" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/><path d="M12 5.67v5.33"/><path d="M9 9h6"/></svg>
+            </div>
+          </div>
+
+          <!-- NEXT WEEK Section -->
+          <div class="unified-section-divider">
+            <span class="section-label future">Next Week</span>
+          </div>
+          <div class="unified-task-item">
+            <div class="task-checkbox"></div>
+            <div class="task-content">
+              <div class="task-name">Schedule car maintenance</div>
+              <div class="task-meta">
+                <span class="task-date">Mon, 13 Jan</span>
+              </div>
+            </div>
+            <div class="unified-assignee-block">
+              <span class="assignee-name">Liko</span>
+              <svg class="category-icon home-care" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            </div>
+          </div>
+          <div class="unified-task-item last-in-section">
+            <div class="task-checkbox"></div>
+            <div class="task-content">
+              <div class="task-name">Piano lesson</div>
+              <div class="task-meta">
+                <span class="task-date">Wed, 15 Jan, 16:00</span>
+              </div>
+              <div class="task-recurring">
+                <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M17 1l4 4-4 4" stroke-width="2"/><path d="M3 11V9a4 4 0 014-4h14" stroke-width="2"/><path d="M7 23l-4-4 4-4" stroke-width="2"/><path d="M21 13v2a4 4 0 01-4 4H3" stroke-width="2"/></svg>
+                Every Wednesday
+              </div>
+            </div>
+            <div class="unified-assignee-block">
+              <span class="assignee-name">Chaeyoung</span>
+              <svg class="category-icon family-care" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/><path d="M12 5.67v5.33"/><path d="M9 9h6"/></svg>
+            </div>
+          </div>
+
+          <!-- LATER Section -->
+          <div class="unified-section-divider">
+            <span class="section-label future">Later</span>
+          </div>
+          <div class="unified-task-item">
+            <div class="task-checkbox"></div>
+            <div class="task-content">
+              <div class="task-name">Renew passport</div>
+              <div class="task-meta">
+                <span class="task-date">Fri, 24 Jan</span>
+              </div>
+            </div>
+            <div class="unified-assignee-block">
+              <span class="assignee-name">Liko</span>
+              <svg class="category-icon home-care" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            </div>
+          </div>
+          <div class="unified-task-item last-in-section">
+            <div class="task-checkbox"></div>
+            <div class="task-content">
+              <div class="task-name">Book summer vacation flights</div>
+              <div class="task-meta">
+                <span class="task-date">Sun, 2 Feb</span>
+              </div>
+            </div>
+            <div class="unified-assignee-block">
+              <span class="assignee-name">Liko</span>
+              <svg class="category-icon family-care" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/><path d="M12 5.67v5.33"/><path d="M9 9h6"/></svg>
+            </div>
+          </div>
+
+        </div>
+
+        <div style="height: 40px;"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Option Descriptions -->
+  <div class="option-description" id="desc-a">
+    <h3>Option A: Sticky Date Headers</h3>
+    <p>Tasks grouped by relative time periods (Overdue, Today, Tomorrow, This Week, etc.) with sticky headers that stay visible as you scroll through each section.</p>
+    <ul class="pros">
+      <li>Immediate temporal awareness - scan urgency at a glance</li>
+      <li>Familiar pattern (iOS Reminders, Todoist)</li>
+      <li>Minimal design change from current</li>
+      <li>Sticky headers provide context while scrolling</li>
+    </ul>
+  </div>
+
+  <div class="option-description" id="desc-b" style="display: none;">
+    <h3>Option B: Left Border Accents</h3>
+    <p>Same grouping as Option A, but with colored left borders on each task indicating urgency level. More subtle visual differentiation.</p>
+    <ul class="pros">
+      <li>Color-coded urgency visible on each task</li>
+      <li>Clean, minimal design</li>
+      <li>Works well with dark mode</li>
+      <li>Less visual noise than sticky headers</li>
+    </ul>
+  </div>
+
+  <div class="option-description" id="desc-c" style="display: none;">
+    <h3>Option C: Mini Week Strip</h3>
+    <p>A horizontal scrollable week view at the top showing task counts per day. Tapping a day could filter or scroll to that section. Includes an overdue banner.</p>
+    <ul class="pros">
+      <li>Strongest "calendar feel"</li>
+      <li>Quick week overview at a glance</li>
+      <li>Interactive - tap days to navigate</li>
+      <li>Overdue tasks prominently called out</li>
+    </ul>
+  </div>
+
+  <div class="option-description" id="desc-d" style="display: none;">
+    <h3>Option D: Current Flat List</h3>
+    <p>Your existing design - a flat list sorted by date. Each task shows its due date inline. No temporal grouping.</p>
+    <ul class="pros">
+      <li>Simple and familiar to your current users</li>
+      <li>Compact - shows more tasks at once</li>
+      <li>Less visual complexity</li>
+      <li>BUT: No quick way to see "what's due today?"</li>
+    </ul>
+  </div>
+
+  <div class="option-description" id="desc-e" style="display: none;">
+    <h3>Option E: Date Cards</h3>
+    <p>Each date gets its own card with a calendar-style date badge. Most "calendar-like" feel - mimics looking at individual calendar days.</p>
+    <ul class="pros">
+      <li>Strongest visual hierarchy per day</li>
+      <li>Calendar-style date badges are familiar</li>
+      <li>Clear separation between days</li>
+      <li>Great for days with few tasks each</li>
+      <li>BUT: More vertical space usage</li>
+    </ul>
+  </div>
+
+  <div class="option-description" id="desc-f" style="display: none;">
+    <h3>Option F: Unified Card with Internal Sections</h3>
+    <p>One seamless card with the add input as the hero at the top. Date sections are internal dividers within the card - preserving the "writing on a notepad" feel while adding temporal structure.</p>
+    <ul class="pros">
+      <li>Add input stays as the hero - first thing you see</li>
+      <li>One unified card surface - seamless scrolling</li>
+      <li>Preserves "writing on the card" feel</li>
+      <li>Minimal visual change from current design</li>
+      <li>Section dividers add structure without fragmenting UI</li>
+      <li>Compact - no wasted space between sections</li>
+    </ul>
+  </div>
+
+  <script>
+    function showOption(option) {
+      // Update tabs
+      document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+      event.target.classList.add('active');
+
+      // Update content
+      document.querySelectorAll('.content-wrapper').forEach(content => content.classList.remove('active'));
+      document.getElementById('option-' + option).classList.add('active');
+
+      // Update descriptions
+      document.querySelectorAll('.option-description').forEach(desc => desc.style.display = 'none');
+      document.getElementById('desc-' + option).style.display = 'block';
+    }
+  </script>
+</body>
+</html>
+

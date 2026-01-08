@@ -17,7 +17,7 @@ import {
   Stethoscope,
   Building2,
   ShoppingCart,
-  MoreHorizontal,
+  Stone,
   Clock,
   ChevronRight,
   ClipboardList,
@@ -111,7 +111,7 @@ const ESSENTIAL_CATEGORY_ICONS: Record<EssentialInfoCategory, React.ReactNode> =
   Doctor: <Stethoscope size={18} />,
   Hospital: <Building2 size={18} />,
   Shops: <ShoppingCart size={18} />,
-  Others: <MoreHorizontal size={18} />,
+  Others: <Stone size={18} />,
 };
 
 // Map house routine categories to Lucide icons
@@ -127,7 +127,7 @@ const HOUSE_ROUTINE_CATEGORY_ICONS: Record<HouseRoutineCategory, React.ReactNode
   'Safety': <ShieldAlert size={18} />,
   'Utilities': <Zap size={18} />,
   'Helper Care': <HeartHandshake size={18} />,
-  'Others': <MoreHorizontal size={18} />,
+  'Others': <Stone size={18} />,
 };
 
 // ─────────────────────────────────────────────────────────────────

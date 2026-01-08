@@ -712,6 +712,7 @@ const AppContent: React.FC = () => {
     const householdId = currentUser?.householdId;
     const notificationsEnabled = currentUser?.notificationsEnabled;
     const currentHasPushSubscription = currentUser?.hasPushSubscription;
+    const userEmail = currentUser?.email;
     
     console.log('[App] Auto-subscribe useEffect triggered', {
       hasCurrentUser: !!currentUser,
@@ -775,8 +776,8 @@ const AppContent: React.FC = () => {
         // and the database has old endpoints that don't work
         if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
           console.log('[App] 🔄 Ensuring current browser subscription is synced to database...');
-          console.log('[App] 🔍 Debug: userId =', userId, 'householdId =', householdId);
-          const synced = await ensureCurrentSubscriptionSaved(userId, householdId);
+          console.log('[App] 🔍 Debug: userId =', userId, 'householdId =', householdId, 'email =', userEmail ? userEmail.substring(0, 3) + '***' : 'undefined');
+          const synced = await ensureCurrentSubscriptionSaved(userId, householdId, 0, userEmail);
           if (synced) {
             console.log('[App] ✅ Subscription synced successfully');
             setCurrentUser(prev => prev ? { ...prev, hasPushSubscription: true } : prev);
@@ -787,7 +788,7 @@ const AppContent: React.FC = () => {
             console.log('[App] 📅 Scheduling delayed retry in 5 seconds...');
             setTimeout(async () => {
               console.log('[App] ⏰ Delayed retry: Attempting subscription sync again...');
-              const delayedSync = await ensureCurrentSubscriptionSaved(userId, householdId);
+              const delayedSync = await ensureCurrentSubscriptionSaved(userId, householdId, 0, userEmail);
               if (delayedSync) {
                 console.log('[App] ✅ Delayed sync succeeded!');
                 setCurrentUser(prev => prev ? { ...prev, hasPushSubscription: true } : prev);
@@ -1093,6 +1094,55 @@ const AppContent: React.FC = () => {
       return;
     }
     await updateItem(hid, 'todo_items', id, enhancedData);
+    
+    // AUTO-CREATE NEXT INSTANCE for recurring tasks when completed
+    if (data.completed === true) {
+      const item = todoItems.find(i => i.id === id);
+      if (item?.recurrence && item.recurrence.frequency !== 'NONE' && item.dueDate) {
+        // Calculate next due date based on recurrence
+        const currentDate = new Date(item.dueDate + 'T00:00:00');
+        let nextDate = new Date(currentDate);
+        
+        switch (item.recurrence.frequency) {
+          case 'DAILY':
+            nextDate.setDate(nextDate.getDate() + 1);
+            break;
+          case 'WEEKLY':
+            nextDate.setDate(nextDate.getDate() + 7);
+            break;
+          case 'BIWEEKLY':
+            nextDate.setDate(nextDate.getDate() + 14);
+            break;
+          case 'MONTHLY':
+            nextDate.setMonth(nextDate.getMonth() + 1);
+            break;
+        }
+        
+        // Format as YYYY-MM-DD
+        const nextDueDateStr = `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, '0')}-${String(nextDate.getDate()).padStart(2, '0')}`;
+        
+        // Create next instance
+        const nextItem: ToDoItem = {
+          ...item,
+          id: `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, // Temp ID
+          dueDate: nextDueDateStr,
+          completed: false,
+          completedAt: undefined,
+          createdAt: new Date().toISOString(),
+          // Update dayOfWeek/dayOfMonth based on new date
+          recurrence: {
+            ...item.recurrence,
+            dayOfWeek: (item.recurrence.frequency === 'WEEKLY' || item.recurrence.frequency === 'BIWEEKLY') 
+              ? nextDate.getDay() : undefined,
+            dayOfMonth: item.recurrence.frequency === 'MONTHLY' 
+              ? nextDate.getDate() : undefined,
+          },
+        };
+        
+        console.log('🔄 Creating next recurring instance:', { from: item.dueDate, to: nextDueDateStr });
+        await handleAddTodoItem(nextItem);
+      }
+    }
   };
 
   // Update a recurring task with scope options
@@ -1795,9 +1845,6 @@ const AppContent: React.FC = () => {
             onAdd={handleAddTodoItem}
             onUpdate={handleUpdateTodoItem}
             onDelete={handleDeleteTodoItem}
-            onUpdateRecurring={handleUpdateRecurringTask}
-            onDeleteRecurring={handleDeleteRecurringTask}
-            onCompleteVirtual={handleCompleteVirtualTask}
             t={translations}
             currentLang={lang}
             initialSection={navData?.section as 'shopping' | 'task' | undefined}

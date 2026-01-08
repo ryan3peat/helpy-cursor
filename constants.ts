@@ -91,6 +91,7 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'tasks.once': 'Once',
   'tasks.daily': 'Daily',
   'tasks.weekly': 'Weekly',
+  'tasks.biweekly': 'Bi-weekly',
   'tasks.monthly': 'Monthly',
   'tasks.yearly': 'Yearly',
   
@@ -1239,4 +1240,13 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'helper.hide_past_signed_salary': 'Hide Past & Signed Salary',
   'helper.no_signed_payslips': 'No signed payslips yet',
   'helper.started': 'Started',
+
+  // ToDo - Section Labels
+  'tasks.section.overdue': 'Overdue',
+  'tasks.section.noDate': 'No Due Date',
+  'tasks.section.today': 'Today',
+  'tasks.section.tomorrow': 'Tomorrow',
+  'tasks.section.thisWeek': 'This Week',
+  'tasks.section.nextWeek': 'Next Week',
+  'tasks.section.later': 'Later',
 };

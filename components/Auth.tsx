@@ -19,27 +19,8 @@ const AuthLoading = () => (
   </div>
 );
 
-/**
- * Check if a user has push subscriptions in the database.
- * Used for immediate bell icon display on login.
- * 
- * @param supabaseUserId - The Supabase UUID (not Clerk ID)
- * @param client - The Supabase client to use
- * @returns true if user has at least one push subscription
- */
-async function checkHasPushSubscription(supabaseUserId: string, client: any): Promise<boolean> {
-  try {
-    const { count } = await client
-      .from('push_subscriptions')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', supabaseUserId);
-    return (count ?? 0) > 0;
-  } catch (e) {
-    // Silent fail - users subscription will correct it later
-    console.log('[Auth] Failed to check push subscription, will be corrected on users load');
-    return false;
-  }
-}
+// NOTE: checkHasPushSubscription was removed to speed up login
+// Push subscription status is now checked asynchronously in App.tsx after login
 
 interface AuthProps {
   onLogin: (user: User) => void;
@@ -270,10 +251,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
             // Clear the invite params from URL
             window.history.replaceState({}, '', window.location.pathname);
             
-            // Check push subscription for immediate bell icon display
-            const hasPushSubscription = await checkHasPushSubscription(activatedUser.id, clientToUse);
-            
-            // Call onLogin and then reset state
+            // Call onLogin immediately - App.tsx will check push subscription async
             onLogin({
               id: activatedUser.clerk_id || activatedUser.id,
               householdId: activatedUser.household_id,
@@ -285,7 +263,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
               preferences: activatedUser.preferences || [],
               status: 'active',
               notificationsEnabled: activatedUser.notifications_enabled ?? true,
-              hasPushSubscription,
+              hasPushSubscription: false, // App.tsx will update this async
               onboardingStatus: activatedUser.onboarding_status || 'not_started'
             });
             
@@ -367,7 +345,6 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
         } else if (activatedUser) {
           console.log('✅ [Auth] Invited user activated via metadata:', activatedUser);
           console.log('✅ [Auth] Calling onLogin() with user');
-          const hasPushSubscription = await checkHasPushSubscription(activatedUser.id, clientToUse);
           onLogin({
             id: activatedUser.clerk_id || activatedUser.id,
             householdId: activatedUser.household_id,
@@ -379,7 +356,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
             preferences: activatedUser.preferences || [],
             status: 'active',
             notificationsEnabled: activatedUser.notifications_enabled ?? true,
-            hasPushSubscription,
+            hasPushSubscription: false, // App.tsx will update this async
             onboardingStatus: activatedUser.onboarding_status || 'not_started'
           });
           setIsCreatingUser(false);
@@ -415,7 +392,6 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
         }
 
         console.log('✅ [Auth] Calling onLogin() with existing user');
-        const hasPushSubscription = await checkHasPushSubscription(existingUser.id, clientToUse);
         onLogin({
           id: existingUser.clerk_id,
           householdId: existingUser.household_id,
@@ -427,7 +403,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
           preferences: existingUser.preferences || [],
           status: existingUser.status || 'active',
           notificationsEnabled: existingUser.notifications_enabled ?? true,
-          hasPushSubscription,
+          hasPushSubscription: false, // App.tsx will update this async
           onboardingStatus: existingUser.onboarding_status || 'completed'
         });
         setIsCreatingUser(false);
@@ -473,7 +449,6 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
           }
 
           console.log('✅ [Auth] Calling onLogin() with existing user (found by email)');
-          const hasPushSubscription = await checkHasPushSubscription(existingUserByEmail.id, clientToUse);
           onLogin({
             id: clerkUser.id, // Use the current clerk_id
             householdId: existingUserByEmail.household_id,
@@ -485,7 +460,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
             preferences: existingUserByEmail.preferences || [],
             status: existingUserByEmail.status || 'active',
             notificationsEnabled: existingUserByEmail.notifications_enabled ?? true,
-            hasPushSubscription,
+            hasPushSubscription: false, // App.tsx will update this async
             onboardingStatus: existingUserByEmail.onboarding_status || 'completed'
           });
           setIsCreatingUser(false);
@@ -530,7 +505,6 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
             if (!activateError && activatedUser) {
               console.log('✅ [Auth] Pending user activated by email:', activatedUser);
               console.log('✅ [Auth] Calling onLogin() with activated user');
-              const hasPushSubscription = await checkHasPushSubscription(activatedUser.id, clientToUse);
               onLogin({
                 id: activatedUser.clerk_id,
                 householdId: activatedUser.household_id,
@@ -542,7 +516,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
                 preferences: activatedUser.preferences || [],
                 status: 'active',
                 notificationsEnabled: activatedUser.notifications_enabled ?? true,
-                hasPushSubscription,
+                hasPushSubscription: false, // App.tsx will update this async
                 onboardingStatus: activatedUser.onboarding_status || 'not_started'
               });
               setIsCreatingUser(false);
@@ -684,7 +658,6 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
       }
       
       console.log('✅ [Auth] Calling onLogin() from handleStayInCurrentHousehold');
-      const hasPushSubscription = await checkHasPushSubscription(existingUser.id, client);
       onLogin({
         id: existingUser.clerk_id || existingUser.id,
         householdId: existingUser.household_id,
@@ -696,7 +669,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
         preferences: existingUser.preferences || [],
         status: existingUser.status || 'active',
         notificationsEnabled: existingUser.notifications_enabled ?? true,
-        hasPushSubscription,
+        hasPushSubscription: false, // App.tsx will update this async
         onboardingStatus: existingUser.onboarding_status || 'completed'
       });
       setIsCreatingUser(false);
@@ -865,7 +838,6 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
           window.history.replaceState({}, '', window.location.pathname);
           
           console.log('✅ [Auth] Calling onLogin() from handleSwitchToNewHousehold (activated user)');
-          const hasPushSubscription = await checkHasPushSubscription(activatedUser.id, client);
           onLogin({
             id: activatedUser.clerk_id || activatedUser.id,
             householdId: activatedUser.household_id,
@@ -877,7 +849,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
             preferences: activatedUser.preferences || [],
             status: 'active',
             notificationsEnabled: activatedUser.notifications_enabled ?? true,
-            hasPushSubscription,
+            hasPushSubscription: false, // App.tsx will update this async
             onboardingStatus: activatedUser.onboarding_status || 'not_started'
           });
           setIsCreatingUser(false);
@@ -901,7 +873,6 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
         window.history.replaceState({}, '', window.location.pathname);
         
         console.log('✅ [Auth] Calling onLogin() from handleSwitchToNewHousehold (updated user)');
-        const hasPushSubscription = await checkHasPushSubscription(updatedUser.id, client);
         onLogin({
           id: updatedUser.clerk_id || updatedUser.id,
           householdId: updatedUser.household_id,
@@ -913,7 +884,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
           preferences: updatedUser.preferences || [],
           status: updatedUser.status || 'active',
           notificationsEnabled: updatedUser.notifications_enabled ?? true,
-          hasPushSubscription,
+          hasPushSubscription: false, // App.tsx will update this async
           onboardingStatus: updatedUser.onboarding_status || 'completed'
         });
         setIsCreatingUser(false);

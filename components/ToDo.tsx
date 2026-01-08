@@ -1759,23 +1759,22 @@ const ToDo: React.FC<ToDoProps> = ({
                   </button>
                   
                   <div className="flex-1 min-w-0">
-                    {/* Item name with brand and quantity */}
-                    <div className="flex items-center">
-                      <span className={`text-body ${isCompleting ? 'text-muted-foreground line-through' : 'text-foreground'}`}>
-                        <TranslatedItemName item={item} currentLang={currentLang} onUpdate={onUpdate} />
-                        {item.brand && (
-                          <span className="text-muted-foreground font-normal">
-                            {' ('}{item.brand}{')'}
-                          </span>
-                        )}
-                        {item.quantity && (item.quantity !== '1' || item.unit) && (
-                          <span className="text-muted-foreground font-normal">
-                            {' · '}{item.quantity}{item.unit ? ` ${item.unit}` : ''}
-                          </span>
-                        )}
-                      </span>
+                    {/* Item name with brand */}
+                    <div className={`text-body ${isCompleting ? 'text-muted-foreground line-through' : 'text-foreground'}`}>
+                      <TranslatedItemName item={item} currentLang={currentLang} onUpdate={onUpdate} />
+                      {item.brand && (
+                        <span className="text-muted-foreground font-normal">
+                          {' ('}{item.brand}{')'}
+                        </span>
+                      )}
                     </div>
-                    </div>
+                    {/* Quantity on separate line */}
+                    {item.quantity && (item.quantity !== '1' || item.unit) && (
+                      <div className="text-caption text-muted-foreground mt-0.5">
+                        {item.quantity}{item.unit ? ` ${item.unit}` : ''}
+                      </div>
+                    )}
+                  </div>
                     
                   {/* Right side: Assignee name + Category icon */}
                   <div className="flex flex-col items-end gap-1 shrink-0">

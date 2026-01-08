@@ -21,13 +21,13 @@ function getClerkErrorMessage(err: any): string {
     return 'Please choose a stronger password.';
   }
   if (errorCode === 'form_code_incorrect' || errorMessage.toLowerCase().includes('incorrect code')) {
-    return 'Incorrect code. Please check and try again.';
+    return 'Incorrect code. Please check your email and enter the correct 6-digit code.';
   }
   if (errorCode === 'verification_expired' || errorMessage.toLowerCase().includes('expired')) {
     return 'Code expired. Please request a new one.';
   }
   if (errorCode === 'too_many_requests' || errorMessage.toLowerCase().includes('too many')) {
-    return 'Too many attempts. Please wait a moment and try again.';
+    return 'Too many attempts. Please wait a few minutes before trying again.';
   }
   
   return 'Failed to create account. Please try again.';

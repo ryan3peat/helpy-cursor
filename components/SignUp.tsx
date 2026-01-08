@@ -25,13 +25,13 @@ function getClerkErrorMessage(err: any, t?: Record<string, string>): string {
     return t?.['error.weak_password'] || 'Please choose a stronger password.';
   }
   if (errorCode === 'form_code_incorrect' || errorMessage.toLowerCase().includes('incorrect code')) {
-    return t?.['error.incorrect_code'] || 'Incorrect code. Please check and try again.';
+    return t?.['error.incorrect_code'] || 'Incorrect code. Please check your email and enter the correct 6-digit code.';
   }
   if (errorCode === 'verification_expired' || errorMessage.toLowerCase().includes('expired')) {
     return t?.['error.code_expired'] || 'Code expired. Please request a new one.';
   }
   if (errorCode === 'too_many_requests' || errorMessage.toLowerCase().includes('too many')) {
-    return t?.['error.too_many_attempts'] || 'Too many attempts. Please wait a moment and try again.';
+    return t?.['error.too_many_attempts'] || 'Too many attempts. Please wait a few minutes before trying again.';
   }
   
   // Default fallback - don't show raw technical error

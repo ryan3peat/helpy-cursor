@@ -458,6 +458,7 @@ const ToDo: React.FC<ToDoProps> = ({
   const [isShoppingMode, setIsShoppingMode] = useState(false);
   const [shoppingModeCategory, setShoppingModeCategory] = useState<string>('All');
   const [shoppingModeScrolled, setShoppingModeScrolled] = useState(false);
+  const shoppingModeScrollLockRef = useRef(false);
   
   // Lock body scroll when sheet or shopping mode is open
   useScrollLock(isSheetOpen || showClearCompletedConfirm || isShoppingMode);
@@ -701,11 +702,10 @@ const ToDo: React.FC<ToDoProps> = ({
       completed: optimisticCompleted[item.id] ?? item.completed,
     }));
     
-    // Filter out completed and deleting items
+    // Filter out completed and deleting items, BUT keep completing items for animation
     let filtered = withOptimistic.filter(i => 
-      !i.completed && 
-      !deletingIds.has(i.id) && 
-      !completingIds.has(i.id)
+      (!i.completed || completingIds.has(i.id)) && 
+      !deletingIds.has(i.id)
     );
     
     // Apply shopping mode category filter
@@ -1466,12 +1466,12 @@ const ToDo: React.FC<ToDoProps> = ({
                               {s.name}
                             </p>
                             {/* Shopping: Line 2 - Brand */}
-                            <p className="text-caption text-muted-foreground truncate">
+                            <p className={`text-caption truncate ${s.brand ? 'text-muted-foreground' : 'text-transparent'}`}>
                               {s.brand || '-'}
                             </p>
                             {/* Shopping: Line 3 - Quantity */}
-                            <p className="text-caption text-muted-foreground truncate">
-                              {s.quantity && s.unit ? `${s.quantity} ${s.unit}` : (s.quantity !== '1' ? s.quantity : '-')}
+                            <p className={`text-caption truncate ${(s.quantity && s.unit) || (s.quantity && s.quantity !== '1') ? 'text-muted-foreground' : 'text-transparent'}`}>
+                              {s.quantity && s.unit ? `${s.quantity} ${s.unit}` : (s.quantity && s.quantity !== '1' ? s.quantity : '-')}
                             </p>
                           </>
                         ) : (
@@ -2375,10 +2375,35 @@ const ToDo: React.FC<ToDoProps> = ({
           
           {/* Items List */}
           <div 
-            className="flex-1 overflow-y-auto"
+            className="flex-1 overflow-y-auto scrollbar-hide"
+            style={{ overscrollBehavior: 'none' }}
             onScroll={(e) => {
               const scrollTop = (e.target as HTMLDivElement).scrollTop;
-              setShoppingModeScrolled(scrollTop > 0);
+              
+              // Ignore negative/elastic scroll
+              if (scrollTop < 0) return;
+              
+              // Instant collapse when at very top - bypass cooldown
+              if (scrollTop < 5) {
+                shoppingModeScrollLockRef.current = false;
+                setShoppingModeScrolled(false);
+                return;
+              }
+              
+              // Hysteresis: show shadow at 60px, hide at 35px (same as useScrollHeader)
+              if (scrollTop > 60 && !shoppingModeScrolled) {
+                if (!shoppingModeScrollLockRef.current) {
+                  shoppingModeScrollLockRef.current = true;
+                  setShoppingModeScrolled(true);
+                  setTimeout(() => { shoppingModeScrollLockRef.current = false; }, 150);
+                }
+              } else if (scrollTop < 35 && shoppingModeScrolled) {
+                if (!shoppingModeScrollLockRef.current) {
+                  shoppingModeScrollLockRef.current = true;
+                  setShoppingModeScrolled(false);
+                  setTimeout(() => { shoppingModeScrollLockRef.current = false; }, 150);
+                }
+              }
             }}
           >
             {shoppingModeItems.length === 0 ? (

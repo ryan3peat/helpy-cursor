@@ -929,7 +929,7 @@ const AppContent: React.FC = () => {
       unsubEssential();
       unsubHouseRoutine();
     };
-  }, [currentUser, isSupabaseReady]);
+  }, [currentUser?.householdId, isSupabaseReady]);
 
   // Sync currentUser with users array when user data changes (e.g., role updates)
   // This ensures role changes take effect immediately without requiring logout/login

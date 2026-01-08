@@ -10,6 +10,7 @@ import {
   User as UserIcon,
   Repeat,
   ShoppingCart,
+  ShoppingBag,
   Trash2,
   Home,
   HandHeart,
@@ -453,10 +454,10 @@ const ToDo: React.FC<ToDoProps> = ({
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [showClearCompletedConfirm, setShowClearCompletedConfirm] = useState(false);
   
-  // Lock body scroll when sheet is open
-  useScrollLock(isSheetOpen || showClearCompletedConfirm);
+  // Lock body scroll when sheet or shopping mode is open
+  useScrollLock(isSheetOpen || showClearCompletedConfirm || isShoppingMode);
   
-  // Dim status bar when sheet is open (iOS)
+  // Dim status bar when sheet is open (iOS) - not for shopping mode since it's full screen
   useSheetTheme(isSheetOpen || showClearCompletedConfirm);
   
   const [sheetForm, setSheetForm] = useState<Partial<ToDoItem>>({});
@@ -488,6 +489,10 @@ const ToDo: React.FC<ToDoProps> = ({
   const [showOnlyMine, setShowOnlyMine] = useState(false);
   const [isFilterDropdownOpen, setIsFilterDropdownOpen] = useState(false);
   const filterDropdownRef = useRef<HTMLDivElement>(null);
+  
+  // Shopping Mode - Full-screen distraction-free shopping list
+  const [isShoppingMode, setIsShoppingMode] = useState(false);
+  const [shoppingModeCategory, setShoppingModeCategory] = useState<string>('All');
   
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -683,6 +688,37 @@ const ToDo: React.FC<ToDoProps> = ({
   // Items completing stay in active list during animation, then move to completed
   const activeItems = mergedItems.filter(i => !i.completed || completingIds.has(i.id));
   const completedItems = mergedItems.filter(i => i.completed && !completingIds.has(i.id));
+  
+  // Shopping Mode items - uses same data source, filtered for shopping only
+  const shoppingModeItems = useMemo(() => {
+    // Get all shopping items (not filtered by current view's category or other filters)
+    const allShoppingItems = items.filter(i => i.type === 'shopping');
+    
+    // Apply optimistic state
+    const withOptimistic = [...allShoppingItems, ...optimisticItems.filter(i => i.type === 'shopping')].map(item => ({
+      ...item,
+      completed: optimisticCompleted[item.id] ?? item.completed,
+    }));
+    
+    // Filter out completed and deleting items
+    let filtered = withOptimistic.filter(i => 
+      !i.completed && 
+      !deletingIds.has(i.id) && 
+      !completingIds.has(i.id)
+    );
+    
+    // Apply shopping mode category filter
+    if (shoppingModeCategory !== 'All') {
+      filtered = filtered.filter(i => i.category === shoppingModeCategory);
+    }
+    
+    // Sort by added date (newest first)
+    return filtered.sort((a, b) => {
+      const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return dateB - dateA;
+    });
+  }, [items, optimisticItems, optimisticCompleted, deletingIds, completingIds, shoppingModeCategory]);
   
   const suggestions = useMemo(() => {
     const sectionItems = items.filter(i => i.type === activeSection);

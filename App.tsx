@@ -1158,8 +1158,16 @@ const AppContent: React.FC = () => {
     const itemToDelete = todoItems.find(i => i.id === id);
     const seriesId = itemToDelete?.seriesId;
     
-    // Track this deletion to prevent "ghost returns" from real-time sync
+    // Get ALL series items upfront (before state changes) for ghost prevention
+    const allSeriesItems = seriesId 
+      ? todoItems.filter(t => t.seriesId === seriesId)
+      : [];
+    
+    // Track this deletion AND all series items to prevent "ghost returns" from real-time sync
     pendingTodoDeletions.current.add(id);
+    if (seriesId) {
+      allSeriesItems.forEach(item => pendingTodoDeletions.current.add(item.id));
+    }
     
     // Optimistically remove from UI (also remove other items from same series)
     if (seriesId) {
@@ -1172,7 +1180,10 @@ const AppContent: React.FC = () => {
     if (isTempId(id)) {
       console.warn('⚠️ Skipping delete for temp item - not yet saved:', id);
       // Still clear from pending deletions after a brief delay
-      setTimeout(() => pendingTodoDeletions.current.delete(id), 500);
+      setTimeout(() => {
+        pendingTodoDeletions.current.delete(id);
+        allSeriesItems.forEach(item => pendingTodoDeletions.current.delete(item.id));
+      }, 500);
       return;
     }
     
@@ -1188,18 +1199,22 @@ const AppContent: React.FC = () => {
           deletedAt: new Date().toISOString() 
         });
         // Delete all other items in this series
-        const seriesItems = todoItems.filter(t => t.seriesId === seriesId && t.id !== id);
-        for (const item of seriesItems) {
+        const otherSeriesItems = allSeriesItems.filter(t => t.id !== id);
+        for (const item of otherSeriesItems) {
           await deleteItem(hid, 'todo_items', item.id);
         }
       }
       
       // Clear from pending deletions after the delete succeeds + brief buffer for real-time
-      setTimeout(() => pendingTodoDeletions.current.delete(id), 2000);
+      setTimeout(() => {
+        pendingTodoDeletions.current.delete(id);
+        allSeriesItems.forEach(item => pendingTodoDeletions.current.delete(item.id));
+      }, 2000);
     } catch (error) {
       console.error('Failed to delete todo item:', error);
       // On error, clear from pending and restore the item
       pendingTodoDeletions.current.delete(id);
+      allSeriesItems.forEach(item => pendingTodoDeletions.current.delete(item.id));
       // Note: Real-time sync will bring the item back automatically
     }
   };

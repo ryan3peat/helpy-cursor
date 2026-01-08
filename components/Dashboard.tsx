@@ -51,7 +51,7 @@ import { haptics } from '../utils/haptics';
 import { useDemoMode } from '../contexts/DemoModeContext';
 import { isRunningAsPwa, isIosDevice, isAndroidDevice } from '../utils/pwaUtils';
 import { isDevicePwaInstalled, recordPwaInstallation } from '../services/pwaService';
-import { getCachedSupabaseUuid } from '../services/supabaseService';
+import { getCachedSupabaseUuid, isUserCachePopulated } from '../services/supabaseService';
 
 import type { ConnectionStatus } from '../hooks/useRealtimeStatus';
 
@@ -637,7 +637,13 @@ const Dashboard: React.FC<DashboardProps> = ({
     isMobile,
     isInstalled: isPwaInstalled
   } = usePwaInstallNudge(
-    currentUser?.id ? getCachedSupabaseUuid(currentUser.id) : undefined,
+    // Only pass userId when we have a valid Supabase UUID (not a Clerk ID)
+    (() => {
+      if (!currentUser?.id || !isUserCachePopulated()) return undefined;
+      const uuid = getCachedSupabaseUuid(currentUser.id);
+      // Don't pass Clerk IDs (they start with "user_") to PWA service
+      return uuid && !uuid.startsWith('user_') ? uuid : undefined;
+    })(),
     currentUser?.householdId
   );
   

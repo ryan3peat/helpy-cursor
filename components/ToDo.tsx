@@ -457,6 +457,7 @@ const ToDo: React.FC<ToDoProps> = ({
   // Shopping Mode - Full-screen distraction-free shopping list
   const [isShoppingMode, setIsShoppingMode] = useState(false);
   const [shoppingModeCategory, setShoppingModeCategory] = useState<string>('All');
+  const [shoppingModeScrolled, setShoppingModeScrolled] = useState(false);
   
   // Lock body scroll when sheet or shopping mode is open
   useScrollLock(isSheetOpen || showClearCompletedConfirm || isShoppingMode);
@@ -1219,12 +1220,27 @@ const ToDo: React.FC<ToDoProps> = ({
             </h1>
             
             {/* Header Actions */}
-            <div className="flex items-center gap-1 shrink-0">
+            <div className="flex items-center gap-2 shrink-0">
+            {/* Shopping Mode Button - only show when shopping section is active and has items */}
+            {activeSection === 'shopping' && shoppingStats.total > 0 && (
+              <button
+                onClick={() => {
+                  haptics.medium();
+                  setShoppingModeCategory('All');
+                  setIsShoppingMode(true);
+                }}
+                className="h-9 px-3 rounded-full bg-primary text-primary-foreground text-caption font-semibold flex items-center gap-1.5"
+              >
+                <ShoppingBag size={16} />
+                {t['todo.shopping_mode'] || 'Shopping Mode'}
+              </button>
+            )}
+            
             {/* Filter/Sort Button */}
             <div className="relative" ref={filterDropdownRef}>
               <button
                 onClick={() => setIsFilterDropdownOpen(!isFilterDropdownOpen)}
-                className={`p-2 rounded-full transition-colors relative ${
+                className={`w-9 h-9 rounded-full transition-colors relative flex items-center justify-center ${
                   isFilterDropdownOpen ? 'bg-muted' : ''
                 }`}
               >
@@ -1349,40 +1365,22 @@ const ToDo: React.FC<ToDoProps> = ({
             </button>
 
             {/* Shopping Card */}
-            <div className={`flex-1 px-3 py-2.5 rounded-xl text-left transition-all relative ${
-              activeSection === 'shopping'
-                ? 'bg-primary text-primary-foreground shadow-md'
-                : 'bg-card text-foreground shadow-sm'
-            }`}>
-              <button
-                onClick={() => setActiveSection('shopping')}
-                className="w-full text-left"
-              >
-                <div className="flex items-center gap-2">
-                  <ShoppingCart size={16} />
-                  <span className="text-title">{t['todo.shopping'] || 'Shopping'}</span>
-                </div>
-                <div className={`text-caption mt-1 ml-6 ${activeSection === 'shopping' ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
-                  {shoppingStats.total} {t['dashboard.items_to_buy'] || 'items to buy'}
-                </div>
-              </button>
-              
-              {/* Shopping Mode Button - only show when shopping section is active and has items */}
-              {activeSection === 'shopping' && shoppingStats.total > 0 && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    haptics.medium();
-                    setShoppingModeCategory('All');
-                    setIsShoppingMode(true);
-                  }}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 rounded-lg bg-primary-foreground/20 text-primary-foreground text-caption font-semibold flex items-center gap-1.5"
-                >
-                  <ShoppingBag size={14} />
-                  {t['todo.start_shopping'] || 'Shop'}
-                </button>
-              )}
-            </div>
+            <button
+              onClick={() => setActiveSection('shopping')}
+              className={`flex-1 px-3 py-2.5 rounded-xl text-left transition-all ${
+                activeSection === 'shopping'
+                  ? 'bg-primary text-primary-foreground shadow-md'
+                  : 'bg-card text-foreground shadow-sm'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <ShoppingCart size={16} />
+                <span className="text-title">{t['todo.shopping'] || 'Shopping'}</span>
+              </div>
+              <div className={`text-caption mt-1 ml-6 ${activeSection === 'shopping' ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
+                {shoppingStats.total} {t['dashboard.items_to_buy'] || 'items to buy'}
+              </div>
+            </button>
           </div>
         </div>
 
@@ -2332,24 +2330,12 @@ const ToDo: React.FC<ToDoProps> = ({
       {isShoppingMode && createPortal(
         <div className="fixed inset-0 bg-background z-[9999] flex flex-col">
           {/* Header */}
-          <div className="shrink-0 px-5 pt-safe-top pb-4 border-b border-border bg-background" style={{ paddingTop: 'max(env(safe-area-inset-top), 1rem)' }}>
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex-1">
-                <h1 className="text-display text-foreground">{t['todo.shopping_mode'] || 'Shopping Mode'}</h1>
-                <p className="text-caption text-muted-foreground mt-1">
-                  {t['todo.shopping_mode_hint'] || 'Tap or swipe to complete. Editing is disabled.'}
-                </p>
-              </div>
-              <button
-                onClick={() => {
-                  haptics.light();
-                  setIsShoppingMode(false);
-                  setShoppingModeCategory('All');
-                }}
-                className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center shrink-0"
-              >
-                <X size={20} className="text-foreground" />
-              </button>
+          <div className="shrink-0 px-5 pt-safe-top pb-4 bg-background transition-shadow duration-200" style={{ paddingTop: 'max(env(safe-area-inset-top), 1rem)', boxShadow: shoppingModeScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none' }}>
+            <div>
+              <h1 className="text-display text-foreground">{t['todo.shopping_mode'] || 'Shopping Mode'}</h1>
+              <p className="text-caption text-muted-foreground mt-1">
+                {t['todo.shopping_mode_hint'] || 'Tap or swipe to complete. Editing is disabled.'}
+              </p>
             </div>
             
             {/* Category Filter Tabs */}
@@ -2389,7 +2375,13 @@ const ToDo: React.FC<ToDoProps> = ({
           </div>
           
           {/* Items List */}
-          <div className="flex-1 overflow-y-auto">
+          <div 
+            className="flex-1 overflow-y-auto"
+            onScroll={(e) => {
+              const scrollTop = (e.target as HTMLDivElement).scrollTop;
+              setShoppingModeScrolled(scrollTop > 0);
+            }}
+          >
             {shoppingModeItems.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center px-8">
                 <ShoppingCart size={64} className="text-muted-foreground/20 mb-4" />
@@ -2448,9 +2440,9 @@ const ToDo: React.FC<ToDoProps> = ({
                         )}
                       </div>
                       
-                      {/* Item card - large touch target */}
+                      {/* Item card */}
                       <div
-                        className="flex items-center gap-4 px-5 py-5 bg-card cursor-pointer relative"
+                        className="flex items-center gap-4 px-5 py-5 bg-card relative"
                         style={{
                           transition: isSwiping 
                             ? 'none' 
@@ -2468,23 +2460,15 @@ const ToDo: React.FC<ToDoProps> = ({
                         onTouchStart={(e) => handleTouchStart(e, item.id)}
                         onTouchMove={handleTouchMove}
                         onTouchEnd={() => handleTouchEnd(item.id)}
-                        onClick={() => {
-                          if (!isCompleting && !isSwiping) {
-                            haptics.success();
-                            handleToggleComplete(item.id, true);
-                          }
-                        }}
                       >
-                        {/* Checkbox */}
+                        {/* Checkbox - tap area for completing */}
                         <button
-                          onClick={(e) => {
-                            e.stopPropagation();
+                          onClick={() => {
                             if (!isCompleting) {
-                              haptics.success();
                               handleToggleComplete(item.id, true);
                             }
                           }}
-                          className="shrink-0"
+                          className="shrink-0 w-12 h-12 flex items-center justify-center -ml-2"
                         >
                           {isCompleting ? (
                             <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center">
@@ -2532,9 +2516,9 @@ const ToDo: React.FC<ToDoProps> = ({
           </div>
           
           {/* Footer with item count */}
-          <div className="shrink-0 px-5 py-4 border-t border-border bg-background" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 1rem)' }}>
+          <div className="shrink-0 px-5 py-4 bg-primary" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 1rem)' }}>
             <div className="flex items-center justify-between">
-              <span className="text-body text-muted-foreground">
+              <span className="text-body text-primary-foreground">
                 {shoppingModeItems.length} {shoppingModeItems.length === 1 
                   ? (t['todo.item_remaining'] || 'item remaining')
                   : (t['todo.items_remaining'] || 'items remaining')
@@ -2545,8 +2529,9 @@ const ToDo: React.FC<ToDoProps> = ({
                   haptics.light();
                   setIsShoppingMode(false);
                   setShoppingModeCategory('All');
+                  setShoppingModeScrolled(false);
                 }}
-                className="px-4 py-2 rounded-xl bg-secondary text-foreground text-body font-semibold"
+                className="px-4 py-2.5 rounded-xl bg-white text-primary text-body font-semibold"
               >
                 {t['todo.done_shopping'] || 'Done Shopping'}
               </button>

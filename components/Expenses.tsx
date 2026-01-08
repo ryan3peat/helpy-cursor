@@ -26,6 +26,7 @@ import {
   Calendar,
   Lock,
   ZoomIn,
+  Loader2,
 } from 'lucide-react';
 import { useScrollHeader } from '@/hooks/useScrollHeader';
 import { useTranslatedContent } from '@/hooks/useTranslatedContent';
@@ -1435,102 +1436,105 @@ const Expenses: React.FC<ExpensesProps> = ({
             style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
           />
           <div 
-            className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content relative"
-            style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}
+            className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col"
+            style={{ maxHeight: 'calc(100dvh - 60px)', marginBottom: 'env(safe-area-inset-bottom, 34px)' }}
           >
-            {/* Close Button */}
+            {/* Header with X left, Title center, ✓ right */}
+            <div className="flex items-center justify-between px-5 pt-5 pb-4 shrink-0">
+              {/* X Close Button (left) - or Back button for OCR */}
+              {addExpenseStage === 'ocr' ? (
+                <button
+                  onClick={() => {
+                    setPendingReceipt(null);
+                    setAddExpenseStage('manual');
+                  }}
+                  className="w-10 h-10 rounded-full flex items-center justify-center text-muted-foreground"
+                  aria-label={t['common.back'] || 'Back'}
+                >
+                  <ArrowLeft size={20} />
+                </button>
+              ) : (
             <button
               onClick={closeAddExpenseSheet}
-              className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center right-4 top-4 text-muted-foreground"
+                  className="w-10 h-10 rounded-full flex items-center justify-center text-muted-foreground"
               aria-label={t['common.close'] || 'Close'}
             >
               <X size={20} />
             </button>
-
-            {/* Header */}
-            <div className="pt-6 pb-4 px-5 border-b border-border">
-              <div className={addExpenseStage !== 'options' ? 'ml-10' : ''}>
-                <h2 className="text-title text-foreground">
-                  {addExpenseStage === 'options' && (t['expenses.add_expense'] || 'Add Expense')}
-                  {addExpenseStage === 'manual' && (t['expenses.enter_expense'] || 'Enter Expense')}
-                  {addExpenseStage === 'ocr' && (t['expenses.confirm_receipt'] || 'Confirm Receipt')}
+              )}
+              
+              {/* Title (center) */}
+              <h2 className="text-title font-semibold text-foreground text-center flex-1">
+                {addExpenseStage === 'ocr' 
+                  ? (t['expenses.confirm_receipt'] || 'Confirm Receipt')
+                  : (t['expenses.add_expense'] || 'Add Expense')
+                }
                 </h2>
-                <p className="text-body text-muted-foreground mt-1">{t['expenses.in_currency'] || 'in'} {getCurrencySymbol()}</p>
-              </div>
+              
+              {/* ✓ Confirm Button (right) */}
+              <button
+                onClick={handleSaveExpense}
+                disabled={isSaving || !editAmount}
+                className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+                  editAmount && !isSaving
+                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    : 'bg-muted text-muted-foreground'
+                }`}
+                aria-label={t['common.save'] || 'Save'}
+              >
+                {isSaving ? (
+                  <Loader2 size={20} className="animate-spin" />
+                ) : (
+                  <Check size={20} strokeWidth={3} />
+                )}
+              </button>
           </div>
+            
+            {/* Header separator */}
+            <div className="px-5"><div className="h-px bg-border w-full"></div></div>
 
             {/* ─────────────────────────────────────────────────────────────── */}
-            {/* STAGE 1: OPTIONS (Compact - Thumb Friendly) */}
+            {/* UNIFIED ADD EXPENSE FORM (Manual + OCR at top for paid) */}
             {/* ─────────────────────────────────────────────────────────────── */}
-            {addExpenseStage === 'options' && (
-              <div className="p-5 pb-8 space-y-3">
-                {/* Scan Options - Side by side for quick access */}
+            {(addExpenseStage === 'manual' || addExpenseStage === 'options') && (
+              <div className="p-5 space-y-4 flex-1 overflow-y-auto">
+                {/* OCR Options for Paid Users */}
+                {!isFreePlan && (
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     onClick={() => fileInputRef.current?.click()}
-                    className="py-6 rounded-xl bg-secondary border border-border flex flex-col items-center justify-center gap-2 text-foreground "
+                      className="py-6 rounded-xl bg-primary flex flex-col items-center justify-center gap-2 text-primary-foreground shadow-sm"
                   >
-                    <ImageIcon size={28} />
-                    <span className="text-body font-medium">{t['expenses.upload_photo'] || 'Upload Photo'}</span>
+                      <ImageIcon size={24} />
+                      <span className="text-body font-semibold">{t['expenses.from_photos'] || 'From Photos'}</span>
                   </button>
                   <button
                     onClick={() => cameraInputRef.current?.click()}
-                    className="py-6 rounded-xl bg-primary/10 border border-primary/20 flex flex-col items-center justify-center gap-2 text-primary "
-                  >
-                    <Camera size={28} />
-                    <span className="text-body font-medium">{t['expenses.scan_receipt'] || 'Scan Receipt'}</span>
-                  </button>
-                </div>
-
-                {/* Divider */}
-                <div className="flex items-center gap-3 py-2">
-                  <div className="flex-1 h-px bg-border" />
-                  <span className="text-caption text-muted-foreground">{t['expenses.or'] || 'or'}</span>
-                  <div className="flex-1 h-px bg-border" />
-          </div>
-
-                {/* Manual Entry Button - Full width at bottom for thumb reach */}
-                <button
-                  onClick={enterManualMode}
-                  className="w-full py-4 rounded-xl bg-secondary border border-border flex items-center justify-center gap-3 text-title text-foreground "
-                >
-                  <Pencil size={20} />
-                  {t['expenses.enter_manually'] || 'Enter Manually'}
+                      className="py-6 rounded-xl bg-primary flex flex-col items-center justify-center gap-2 text-primary-foreground shadow-sm"
+                    >
+                      <Camera size={24} />
+                      <span className="text-body font-semibold">{t['expenses.scan_receipt'] || 'Scan Receipt'}</span>
                 </button>
         </div>
       )}
 
-            {/* ─────────────────────────────────────────────────────────────── */}
-            {/* STAGE 2A: MANUAL ENTRY FORM */}
-            {/* ─────────────────────────────────────────────────────────────── */}
-            {addExpenseStage === 'manual' && (
-              <>
-                {/* Back Button */}
-                <button
-                  onClick={() => setAddExpenseStage(isFreePlan ? 'manual' : 'options')}
-                  className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center left-4 top-4 text-muted-foreground"
-                  aria-label={t['common.back'] || 'Back'}
-                >
-                  <ArrowLeft size={20} />
-              </button>
-
-                <div className="p-5 space-y-4 max-h-[50vh] overflow-y-auto overflow-x-hidden">
+                {/* Upgrade Banner for Free Users */}
                   {showFreeUpgradeBanner && (
                     <button
                       onClick={handleExpenseUpgrade}
-                      className="w-full p-4 rounded-xl bg-secondary border border-border flex items-center gap-4 text-left"
+                    className="w-full p-4 rounded-xl bg-muted flex items-center gap-4 text-left"
                     >
                       {/* Lock icon in circle */}
-                      <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                    <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">
                         <Lock size={20} className="text-muted-foreground" />
                       </div>
                       
                       {/* Text */}
                       <div className="flex-1 min-w-0">
-                        <p className="text-title text-foreground">
+                      <p className="text-body font-semibold text-foreground">
                           {t['expenses.receipt_scanner'] || 'Receipt Scanner'}
                         </p>
-                        <p className="text-body text-muted-foreground mt-0.5">
+                      <p className="text-caption text-muted-foreground mt-0.5">
                           {t['expenses.scanner_locked_desc'] || 'Upgrade to scan or upload receipts'}
                         </p>
                       </div>
@@ -1540,13 +1544,13 @@ const Expenses: React.FC<ExpensesProps> = ({
                     </button>
                   )}
 
-                  {/* Amount - Auto-focused */}
+                {/* Main Input: Amount (big font) */}
                   <div>
                     <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
-                      {t['expenses.amount'] || 'Amount'}
+                    {t['expenses.how_much'] || 'Amount'}
                     </label>
-                    <div className="flex items-center gap-3">
-                      <span className="text-display text-foreground flex-shrink-0">
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl font-semibold text-muted-foreground">
                         {getCurrencySymbol()}
                       </span>
                       <input
@@ -1556,15 +1560,13 @@ const Expenses: React.FC<ExpensesProps> = ({
                         inputMode="decimal"
                         value={editAmount}
                         onChange={(e) => {
-                          // Only allow digits and one decimal point
                           const value = e.target.value.replace(/[^\d.]/g, '');
-                          // Prevent multiple decimal points
                           const parts = value.split('.');
                           const formatted = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : value;
                           setEditAmount(formatted);
                         }}
                         placeholder="0.00"
-                        className="flex-1 px-4 py-4 rounded-xl bg-muted border border-border focus:border-primary outline-none transition-all text-display"
+                      className="w-full pl-16 pr-4 py-3 bg-muted rounded-xl text-xl font-semibold text-foreground placeholder-light outline-none border border-transparent focus:border-primary transition-colors text-right"
                       />
                     </div>
             </div>
@@ -1572,49 +1574,66 @@ const Expenses: React.FC<ExpensesProps> = ({
                   {/* Shop Name */}
                   <div>
                     <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
-                      {t['expenses.shop_name'] || 'Shop Name'}
+                    {t['expenses.where_spend'] || 'Where did you spend?'}
                     </label>
                     <input
                       type="text"
                       autoComplete="one-time-code"
                       value={editMerchant}
                       onChange={(e) => setEditMerchant(e.target.value)}
-                      placeholder={t['common.where_did_you_spend']}
-                      className="w-full px-4 py-3 rounded-lg bg-muted border border-border focus:border-primary outline-none transition-all text-body"
+                    placeholder={t['expenses.merchant_placeholder'] || "e.g., Wellcome, McDonald's"}
+                    className="w-full px-4 py-3 rounded-xl bg-muted border border-transparent focus:border-primary outline-none transition-all text-body"
                     />
                   </div>
 
-                  {/* Category & Date - Side by side */}
-                  <div className="grid grid-cols-2 gap-3">
+                {/* Category - Button style like mockup */}
                     <div>
                       <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
                         {t['common.category'] || 'Category'}
                       </label>
-                      <select
-                        value={editCategory}
-                        onChange={(e) => setEditCategory(e.target.value)}
-                        className="w-full px-4 py-3 rounded-lg bg-muted border border-border focus:border-primary outline-none transition-all text-body"
-                      >
-                        {EXPENSE_CATEGORIES.map((cat) => {
-                          const getCategoryLabel = (category: string) => {
-                            const categoryMap: Record<string, string> = {
-                              'Housing & Utilities': t['expenses.category.housing_utilities'] || category,
-                              'Food & Daily Needs': t['expenses.category.food_daily'] || category,
-                              'Transport & Travel': t['expenses.category.transport_travel'] || category,
-                              'Health & Personal Care': t['expenses.category.health_personal'] || category,
-                              'Fun & Lifestyle': t['expenses.category.fun_lifestyle'] || category,
-                              'Miscellaneous': t['expenses.category.miscellaneous'] || category,
-                            };
-                            return categoryMap[category] || category;
-                          };
+                  <div className="grid grid-cols-3 gap-2 mb-2">
+                    {EXPENSE_CATEGORIES.slice(0, 3).map((cat) => {
+                      const isSelected = editCategory === cat;
+                      const config = getExpenseCategoryConfig(cat);
+                      return (
+                        <button
+                          key={cat}
+                          onClick={() => setEditCategory(cat)}
+                          className={`px-2 py-2 rounded-xl text-body transition-all flex items-center justify-start gap-1.5 ${
+                            isSelected
+                              ? 'bg-primary text-primary-foreground'
+                              : 'bg-card text-foreground ring-1 ring-border'
+                          }`}
+                        >
+                          <span className="flex-shrink-0">{config.icon}</span>
+                          <span className="truncate text-caption">{getCategoryLabel(cat).split(' ')[0]}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {EXPENSE_CATEGORIES.slice(3).map((cat) => {
+                      const isSelected = editCategory === cat;
+                      const config = getExpenseCategoryConfig(cat);
                           return (
-                            <option key={cat} value={cat}>
-                              {getCategoryLabel(cat)}
-                            </option>
+                        <button
+                          key={cat}
+                          onClick={() => setEditCategory(cat)}
+                          className={`px-2 py-2 rounded-xl text-body transition-all flex items-center justify-start gap-1.5 ${
+                            isSelected
+                              ? 'bg-primary text-primary-foreground'
+                              : 'bg-card text-foreground ring-1 ring-border'
+                          }`}
+                        >
+                          <span className="flex-shrink-0">{config.icon}</span>
+                          <span className="truncate text-caption">{getCategoryLabel(cat).split(' ')[0]}</span>
+                        </button>
                           );
                         })}
-                      </select>
                     </div>
+                </div>
+
+                {/* Date */}
                     <div>
                       <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
                         {t['expenses.date'] || 'Date'}
@@ -1623,73 +1642,46 @@ const Expenses: React.FC<ExpensesProps> = ({
                         type="date"
                         value={editDate}
                         onChange={(e) => setEditDate(e.target.value)}
-                        className="w-full px-4 py-3 rounded-lg bg-muted border border-border focus:border-primary outline-none transition-all text-body"
+                    className="w-full px-4 py-3 rounded-xl bg-muted border border-transparent focus:border-primary outline-none transition-all text-body"
                       />
                     </div>
                   </div>
-                </div>
-
-                {/* Footer - Actions at bottom for thumb reach */}
-                <div className="p-5 pb-8 border-t border-border">
-                  <button
-                    onClick={handleSaveExpense}
-                    disabled={isSaving || !editAmount}
-                    className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground text-body  shadow-sm disabled:opacity-50 flex items-center justify-center gap-2"
-                  >
-                    {isSaving ? (
-                      <span className="animate-pulse">{t['common.saving'] || 'Saving...'}</span>
-                    ) : (
-                      <>
-                        <Check size={18} /> {t['common.save'] || 'Save'}
-                      </>
-                    )}
-                  </button>
-                </div>
-              </>
             )}
 
             {/* ─────────────────────────────────────────────────────────────── */}
-            {/* STAGE 2B: OCR CONFIRMATION */}
+            {/* OCR CONFIRMATION - Photo on right, text on left */}
             {/* ─────────────────────────────────────────────────────────────── */}
             {addExpenseStage === 'ocr' && pendingReceipt && (
-              <>
-                {/* Back Button */}
+              <div className="p-5 space-y-4 flex-1 overflow-y-auto">
+                {/* Receipt confirmation banner - text left, photo right */}
+                <div className="flex items-start gap-4 p-4 rounded-xl bg-muted">
+                  <div className="flex-1">
+                    <p className="text-body font-semibold text-foreground">
+                      {t['expenses.receipt_scanned'] || 'Receipt scanned successfully.'}
+                    </p>
+                    <p className="text-caption text-muted-foreground mt-1">
+                      {t['expenses.adjust_details'] || 'You can still manually adjust the details below if needed.'}
+                    </p>
+                  </div>
                 <button
-                  onClick={() => {
-                    setPendingReceipt(null);
-                    setAddExpenseStage('options');
-                  }}
-                  className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center left-4 top-4 text-muted-foreground"
-                  aria-label={t['common.back'] || 'Back'}
-                >
-                  <ArrowLeft size={20} />
-                </button>
-
-                <div className="p-5 space-y-4 max-h-[50vh] overflow-y-auto overflow-x-hidden">
-            {/* Receipt Thumbnail - Clickable to zoom */}
-                  <div 
-                    className="rounded-xl overflow-hidden border border-border cursor-pointer relative group"
                     onClick={() => setZoomImageSrc(pendingReceipt.thumbnailBase64)}
+                    className="w-16 h-20 rounded-lg overflow-hidden border border-border flex-shrink-0"
                   >
                     <img 
                       src={pendingReceipt.thumbnailBase64} 
                       alt="Receipt" 
-                      className="w-full h-32 object-contain bg-secondary" 
+                      className="w-full h-full object-cover" 
                     />
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-caption text-white opacity-0 bg-black/50 px-2 py-1 rounded">
-                        {t['expenses.tap_to_zoom'] || 'Tap to zoom'}
-                      </span>
-                    </div>
+                  </button>
                   </div>
 
-                  {/* Amount */}
+                {/* Main Input: Amount (big font) */}
               <div>
                     <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
-                      {t['expenses.amount'] || 'Amount'}
+                    {t['expenses.how_much'] || 'Amount'}
                     </label>
-                    <div className="flex items-center gap-3">
-                      <span className="text-display text-foreground flex-shrink-0">
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl font-semibold text-muted-foreground">
                         {getCurrencySymbol()}
                       </span>
                       <input
@@ -1698,15 +1690,13 @@ const Expenses: React.FC<ExpensesProps> = ({
                         inputMode="decimal"
                         value={editAmount}
                         onChange={(e) => {
-                          // Only allow digits and one decimal point
                           const value = e.target.value.replace(/[^\d.]/g, '');
-                          // Prevent multiple decimal points
                           const parts = value.split('.');
                           const formatted = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : value;
                           setEditAmount(formatted);
                         }}
                         placeholder="0.00"
-                        className="flex-1 px-4 py-4 rounded-xl bg-muted border border-border focus:border-primary outline-none transition-all text-display"
+                      className="w-full pl-16 pr-4 py-3 bg-muted rounded-xl text-xl font-semibold text-foreground placeholder-light outline-none border border-transparent focus:border-primary transition-colors text-right"
                       />
                     </div>
               </div>
@@ -1714,36 +1704,66 @@ const Expenses: React.FC<ExpensesProps> = ({
                   {/* Shop Name */}
               <div>
                     <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
-                      {t['expenses.shop_name'] || 'Shop Name'}
+                    {t['expenses.where_spend'] || 'Where did you spend?'}
                     </label>
                 <input
                   type="text"
                   autoComplete="one-time-code"
                   value={editMerchant}
                   onChange={(e) => setEditMerchant(e.target.value)}
-                  placeholder={t['common.store_name']}
-                      className="w-full px-4 py-3 rounded-lg bg-muted border border-border focus:border-primary outline-none transition-all text-body"
+                    placeholder={t['expenses.merchant_placeholder'] || "e.g., Wellcome, McDonald's"}
+                    className="w-full px-4 py-3 rounded-xl bg-muted border border-transparent focus:border-primary outline-none transition-all text-body"
                 />
               </div>
 
-                  {/* Category & Date - Side by side */}
-                  <div className="grid grid-cols-2 gap-3">
+                {/* Category - Button style */}
               <div>
                       <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
                         {t['common.category'] || 'Category'}
                       </label>
-                <select
-                  value={editCategory}
-                  onChange={(e) => setEditCategory(e.target.value)}
-                        className="w-full px-4 py-3 rounded-lg bg-muted border border-border focus:border-primary outline-none transition-all text-body"
-                >
-                  {EXPENSE_CATEGORIES.map((cat) => (
-                    <option key={cat} value={cat}>
-                      {getCategoryLabel(cat)}
-                    </option>
-                  ))}
-                </select>
+                  <div className="grid grid-cols-3 gap-2 mb-2">
+                    {EXPENSE_CATEGORIES.slice(0, 3).map((cat) => {
+                      const isSelected = editCategory === cat;
+                      const config = getExpenseCategoryConfig(cat);
+                      return (
+                        <button
+                          key={cat}
+                          onClick={() => setEditCategory(cat)}
+                          className={`px-2 py-2 rounded-xl text-body transition-all flex items-center justify-start gap-1.5 ${
+                            isSelected
+                              ? 'bg-primary text-primary-foreground'
+                              : 'bg-card text-foreground ring-1 ring-border'
+                          }`}
+                        >
+                          <span className="flex-shrink-0">{config.icon}</span>
+                          <span className="truncate text-caption">{getCategoryLabel(cat).split(' ')[0]}</span>
+                        </button>
+                      );
+                    })}
               </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {EXPENSE_CATEGORIES.slice(3).map((cat) => {
+                      const isSelected = editCategory === cat;
+                      const config = getExpenseCategoryConfig(cat);
+                      return (
+                        <button
+                          key={cat}
+                          onClick={() => setEditCategory(cat)}
+                          className={`px-2 py-2 rounded-xl text-body transition-all flex items-center justify-start gap-1.5 ${
+                            isSelected
+                              ? 'bg-primary text-primary-foreground'
+                              : 'bg-card text-foreground ring-1 ring-border'
+                          }`}
+                        >
+                          <span className="flex-shrink-0">{config.icon}</span>
+                          <span className="truncate text-caption">{getCategoryLabel(cat).split(' ')[0]}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Date */}
               <div>
                       <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
                         {t['expenses.date'] || 'Date'}
@@ -1752,30 +1772,16 @@ const Expenses: React.FC<ExpensesProps> = ({
                   type="date"
                   value={editDate}
                   onChange={(e) => setEditDate(e.target.value)}
-                        className="w-full px-4 py-3 rounded-lg bg-muted border border-border focus:border-primary outline-none transition-all text-body"
+                    className="w-full px-4 py-3 rounded-xl bg-muted border border-transparent focus:border-primary outline-none transition-all text-body"
                 />
                     </div>
               </div>
-            </div>
-
-                {/* Footer - Actions at bottom for thumb reach */}
-                <div className="p-5 pb-8 border-t border-border">
-                  <button
-                    onClick={handleSaveExpense}
-                    disabled={isSaving || !editAmount}
-                    className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground text-body  shadow-sm disabled:opacity-50 flex items-center justify-center gap-2"
-                  >
-                    {isSaving ? (
-                      <span className="animate-pulse">{t['common.saving'] || 'Saving...'}</span>
-                    ) : (
-                      <>
-                        <Check size={18} /> {t['common.save'] || 'Save'}
-                      </>
-                    )}
-                  </button>
-                </div>
-              </>
             )}
+
+            {/* Invisible spacer for consistent height */}
+            <div className="shrink-0 p-5 pb-8">
+              <div className="h-[52px]"></div>
+                </div>
           </div>
         </div>
       , document.body)}
@@ -1794,26 +1800,60 @@ const Expenses: React.FC<ExpensesProps> = ({
             className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" 
             style={{ maxHeight: '85vh', marginBottom: 'env(safe-area-inset-bottom, 34px)' }}
           >
-            {/* Close Button */}
+            {/* Header with X left, Title center, ✓ or Edit right */}
+            <div className="flex items-center justify-between px-5 pt-5 pb-4 shrink-0">
+              {/* X Close Button (left) */}
             <button
               onClick={closeExistingModal}
-              className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center right-4 top-4 text-muted-foreground"
+                className="w-10 h-10 rounded-full flex items-center justify-center text-muted-foreground"
               aria-label={t['common.close'] || 'Close'}
             >
               <X size={20} />
             </button>
 
-            {/* Header */}
-            <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
-              <h2 className="text-title text-foreground">{selectedExpense.merchant}</h2>
-              <p className="text-caption text-muted-foreground">
-                {getCategoryLabel(selectedExpense.category || 'Miscellaneous')} ·{' '}
-                {selectedExpense.date ? new Date(selectedExpense.date).toLocaleDateString(
-                  currentLang === 'en' ? 'en-GB' : currentLang,
-                  { day: 'numeric', month: 'short', year: 'numeric' }
-                ) : '-'}
-              </p>
+              {/* Title (center) */}
+              <h2 className="text-title font-semibold text-foreground text-center flex-1">
+                {isEditingExisting 
+                  ? (t['expenses.edit_expense'] || 'Edit Expense')
+                  : (selectedExpense.merchant || t['expenses.expense_details'] || 'Expense Details')
+                }
+              </h2>
+              
+              {/* ✓ Confirm Button (right) - only in edit mode */}
+              {isEditingExisting ? (
+                <button
+                  onClick={saveExistingEdit}
+                  disabled={savingExisting}
+                  className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+                    !savingExisting
+                      ? 'bg-primary text-primary-foreground shadow-sm'
+                      : 'bg-muted text-muted-foreground'
+                  }`}
+                  aria-label={t['common.save'] || 'Save'}
+                >
+                  {savingExisting ? (
+                    <Loader2 size={20} className="animate-spin" />
+                  ) : (
+                    <Check size={20} strokeWidth={3} />
+                  )}
+                </button>
+              ) : (
+                <button
+                  onClick={() => {
+                    setIsEditingExisting(true);
+                    setConfirmDeleteExisting(false);
+                  }}
+                  disabled={savingExisting}
+                  className="w-10 h-10 rounded-full flex items-center justify-center text-muted-foreground"
+                  aria-label={t['common.edit'] || 'Edit'}
+                >
+                  <Pencil size={20} />
+                </button>
+              )}
             </div>
+            
+            {/* Header separator */}
+            <div className="px-5"><div className="h-px bg-border w-full"></div></div>
 
             {/* Scrollable Content */}
             <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 p-5 space-y-4">
@@ -1895,25 +1935,23 @@ const Expenses: React.FC<ExpensesProps> = ({
               {/* Edit Form - inside scroll for form fields only */}
               {isEditingExisting && (
                 <div className="space-y-4 border-t border-border pt-4">
-                  {/* Amount - Full width, prominent */}
+                  {/* Main Input: Amount (big font) */}
                   <div>
                     <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
-                      {t['expenses.amount'] || 'Amount'}
+                      {t['expenses.how_much'] || 'Amount'}
                     </label>
-                    <div className="flex items-center gap-3">
-                      <span className="text-display text-foreground flex-shrink-0">
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl font-semibold text-muted-foreground">
                         {getCurrencySymbol()}
                       </span>
                       <input
                         type="text"
                         autoComplete="one-time-code"
                         inputMode="decimal"
-                        className="flex-1 px-4 py-4 rounded-xl bg-muted border border-border focus:border-primary outline-none transition-all text-display"
+                        className="w-full pl-16 pr-4 py-3 bg-muted rounded-xl text-xl font-semibold text-foreground placeholder-light outline-none border border-transparent focus:border-primary transition-colors text-right"
                         value={exAmount}
                         onChange={(e) => {
-                          // Only allow digits and one decimal point
                           const value = e.target.value.replace(/[^\d.]/g, '');
-                          // Prevent multiple decimal points
                           const parts = value.split('.');
                           const formatted = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : value;
                           setExAmount(formatted);
@@ -1923,126 +1961,159 @@ const Expenses: React.FC<ExpensesProps> = ({
                     </div>
                   </div>
 
-                  {/* Shop Name - Full width */}
+                  {/* Shop Name */}
                   <div>
                     <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
-                      {t['expenses.shop_name'] || 'Shop Name'}
+                      {t['expenses.where_spend'] || 'Where did you spend?'}
                     </label>
                     <input
                       type="text"
                       autoComplete="one-time-code"
-                      className="w-full px-4 py-3 rounded-lg bg-muted border border-border focus:border-primary outline-none transition-all text-body"
+                      className="w-full px-4 py-3 rounded-xl bg-muted border border-transparent focus:border-primary outline-none transition-all text-body"
                       value={exMerchant}
                       onChange={(e) => setExMerchant(e.target.value)}
-                      placeholder={t['common.where_did_you_spend']}
+                      placeholder={t['expenses.merchant_placeholder'] || "e.g., Wellcome, McDonald's"}
                     />
                   </div>
 
-                  {/* Category & Date - Side by side */}
-                  <div className="grid grid-cols-2 gap-3">
+                  {/* Category - Button style */}
                     <div>
                       <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
                         {t['common.category'] || 'Category'}
                       </label>
-                      <select
-                        className="w-full px-4 py-3 rounded-lg bg-muted border border-border focus:border-primary outline-none transition-all text-body"
-                        value={exCategory}
-                        onChange={(e) => setExCategory(e.target.value)}
-                      >
-                        {EXPENSE_CATEGORIES.map((c) => (
-                          <option key={c} value={c}>
-                            {getCategoryLabel(c)}
-                          </option>
-                        ))}
-                      </select>
+                    <div className="grid grid-cols-3 gap-2 mb-2">
+                      {EXPENSE_CATEGORIES.slice(0, 3).map((cat) => {
+                        const isSelected = exCategory === cat;
+                        const config = getExpenseCategoryConfig(cat);
+                        return (
+                          <button
+                            key={cat}
+                            type="button"
+                            onClick={() => setExCategory(cat)}
+                            className={`px-2 py-2 rounded-xl text-body transition-all flex items-center justify-start gap-1.5 ${
+                              isSelected
+                                ? 'bg-primary text-primary-foreground'
+                                : 'bg-card text-foreground ring-1 ring-border'
+                            }`}
+                          >
+                            <span className="flex-shrink-0">{config.icon}</span>
+                            <span className="truncate text-caption">{getCategoryLabel(cat).split(' ')[0]}</span>
+                          </button>
+                        );
+                      })}
                     </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      {EXPENSE_CATEGORIES.slice(3).map((cat) => {
+                        const isSelected = exCategory === cat;
+                        const config = getExpenseCategoryConfig(cat);
+                        return (
+                          <button
+                            key={cat}
+                            type="button"
+                            onClick={() => setExCategory(cat)}
+                            className={`px-2 py-2 rounded-xl text-body transition-all flex items-center justify-start gap-1.5 ${
+                              isSelected
+                                ? 'bg-primary text-primary-foreground'
+                                : 'bg-card text-foreground ring-1 ring-border'
+                            }`}
+                          >
+                            <span className="flex-shrink-0">{config.icon}</span>
+                            <span className="truncate text-caption">{getCategoryLabel(cat).split(' ')[0]}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Date */}
                     <div>
                       <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
                         {t['expenses.date'] || 'Date'}
                       </label>
                       <input
                         type="date"
-                        className="w-full px-4 py-3 rounded-lg bg-muted border border-border focus:border-primary outline-none transition-all text-body"
+                      className="w-full px-4 py-3 rounded-xl bg-muted border border-transparent focus:border-primary outline-none transition-all text-body"
                         value={exDate}
                         onChange={(e) => setExDate(e.target.value)}
                       />
-                    </div>
                   </div>
                 </div>
               )}
 
-              {/* Delete Confirmation - inside scroll for the message */}
-              {confirmDeleteExisting && (
-                <div className="border-t border-border pt-4">
-                  <p className="text-body text-foreground">
-                    {t['confirm.delete_expense'] || 'Are you sure you want to delete this receipt/expense?'}
-                  </p>
-                </div>
-              )}
             </div>
 
-            {/* Fixed Footer - Action buttons always visible */}
-            <div className="shrink-0 p-5 pb-8 border-t border-border bg-card space-y-3">
-              {/* Default Actions */}
-              {!isEditingExisting && !confirmDeleteExisting && (
+            {/* Footer - Delete button only (when not editing), confirmation, or spacer */}
+            {confirmDeleteExisting ? (
+              <>
+                {/* Footer separator */}
+                <div className="px-5"><div className="h-px bg-border w-full"></div></div>
+                {/* Delete Confirmation Actions */}
+                <div className="shrink-0 p-5 pb-8 space-y-3">
+                  <p className="text-body text-foreground text-center mb-3">
+                    {t['confirm.delete_expense'] || 'Are you sure you want to delete this receipt/expense?'}
+                  </p>
                 <div className="flex items-center gap-3">
-                  {/* Delete button - Hidden for Helper */}
-                  {!isHelper && (
                   <button
-                    className="p-3 rounded-xl bg-destructive/10 text-destructive disabled:opacity-60"
+                      className="flex-1 py-3.5 rounded-xl bg-card text-foreground text-body ring-1 ring-border font-semibold"
+                      onClick={() => setConfirmDeleteExisting(false)}
+                    disabled={savingExisting}
+                  >
+                      {t['common.cancel'] || 'Cancel'}
+                  </button>
+                  <button
+                      className="flex-1 py-3.5 rounded-xl bg-destructive text-primary-foreground text-body font-semibold disabled:opacity-50"
+                      onClick={confirmExistingDelete}
+                    disabled={savingExisting}
+                  >
+                      {savingExisting ? (t['common.deleting'] || 'Deleting...') : (t['expenses.yes_delete'] || 'Yes, delete')}
+                  </button>
+                </div>
+                </div>
+              </>
+            ) : !isEditingExisting && !isHelper ? (
+              <>
+                {/* Footer separator */}
+                <div className="px-5"><div className="h-px bg-border w-full"></div></div>
+                {/* Footer with Delete button */}
+                <div className="shrink-0 p-5 pb-8">
+                <button
+                    onClick={() => {
+                      setConfirmDeleteExisting(true);
+                      setIsEditingExisting(false);
+                    }}
+                  disabled={savingExisting}
+                    className="w-full py-3.5 rounded-xl bg-destructive/10 text-destructive font-semibold flex items-center justify-center gap-2"
+                >
+                    <Trash2 size={20} />
+                    {t['expenses.delete_expense'] || 'Delete Expense'}
+                </button>
+                </div>
+              </>
+            ) : isEditingExisting && !isHelper ? (
+              <>
+                {/* Footer separator */}
+                <div className="px-5"><div className="h-px bg-border w-full"></div></div>
+                {/* Footer with Delete button in edit mode */}
+                <div className="shrink-0 p-5 pb-8">
+                  <button
                     onClick={() => {
                       setConfirmDeleteExisting(true);
                       setIsEditingExisting(false);
                     }}
                     disabled={savingExisting}
+                    className="w-full py-3.5 rounded-xl bg-destructive/10 text-destructive font-semibold flex items-center justify-center gap-2"
                   >
                     <Trash2 size={20} />
-                  </button>
-                  )}
-                  <button
-                    className="flex-1 rounded-xl bg-primary px-4 py-3 text-primary-foreground disabled:opacity-60 inline-flex items-center justify-center gap-2 text-body shadow-sm"
-                    onClick={() => {
-                      setIsEditingExisting(true);
-                      setConfirmDeleteExisting(false);
-                    }}
-                    disabled={savingExisting}
-                  >
-                    <Pencil size={18} /> {t['common.edit'] || 'Edit'}
+                    {t['expenses.delete_expense'] || 'Delete Expense'}
                   </button>
                 </div>
-              )}
-
-              {/* Edit Actions */}
-              {isEditingExisting && (
-                <button
-                  className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground text-body  shadow-sm disabled:opacity-50"
-                  onClick={saveExistingEdit}
-                  disabled={savingExisting}
-                >
-                  {savingExisting ? (t['common.saving'] || 'Saving...') : (t['common.save'] || 'Save')}
-                </button>
-              )}
-
-              {/* Delete Confirmation Actions */}
-              {confirmDeleteExisting && (
-                <div className="flex items-center gap-3">
-                  <button
-                    className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body "
-                    onClick={() => setConfirmDeleteExisting(false)}
-                    disabled={savingExisting}
-                  >
-                    {t['common.cancel'] || 'Cancel'}
-                  </button>
-                  <button
-                    className="flex-1 py-3.5 rounded-xl bg-destructive text-primary-foreground text-body disabled:opacity-50"
-                    onClick={confirmExistingDelete}
-                    disabled={savingExisting}
-                  >
-                    {savingExisting ? (t['common.deleting'] || 'Deleting...') : (t['expenses.yes_delete'] || 'Yes, delete')}
-                  </button>
+              </>
+            ) : (
+              /* Invisible spacer for consistent height */
+              <div className="shrink-0 p-5 pb-8">
+                <div className="h-[52px]"></div>
                 </div>
               )}
-            </div>
           </div>
         </div>
       , document.body)}
@@ -2075,19 +2146,28 @@ const Expenses: React.FC<ExpensesProps> = ({
             className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content relative"
             style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}
           >
-            {/* Close Button */}
+            {/* Header with X left, Title center */}
+            <div className="flex items-center justify-between px-5 pt-5 pb-4 shrink-0">
+              {/* X Close Button (left) */}
             <button
               onClick={() => setIsMonthPickerOpen(false)}
-              className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center right-4 top-4 text-muted-foreground"
+                className="w-10 h-10 rounded-full flex items-center justify-center text-muted-foreground"
               aria-label={t['common.close'] || 'Close'}
             >
               <X size={20} />
             </button>
 
-            {/* Header */}
-            <div className="pt-6 pb-4 px-5 border-b border-border">
-              <h2 className="text-title text-foreground">{t['expenses.select_month'] || 'Select Month'}</h2>
+              {/* Title (center) */}
+              <h2 className="text-title font-semibold text-foreground text-center flex-1">
+                {t['expenses.select_month'] || 'Select Month'}
+              </h2>
+              
+              {/* Invisible spacer (right) */}
+              <div className="w-10 h-10" />
     </div>
+            
+            {/* Header separator */}
+            <div className="px-5"><div className="h-px bg-border w-full"></div></div>
 
             {/* Year Selector */}
             <div className="flex items-center justify-center gap-4 py-4 border-b border-border">

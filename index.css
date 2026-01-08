@@ -49,6 +49,7 @@
   /* Muted */
   --muted: 0 0% 96%;
   --muted-foreground: 0 0% 46%;
+  --placeholder: 0 0% 65%;
 
   /* Accent */
   --accent: 0 0% 96%;
@@ -147,6 +148,7 @@ body {
   /* Muted - more visible */
   --muted: 0 0% 18%;
   --muted-foreground: 0 0% 65%;
+  --placeholder: 0 0% 45%;
 
   /* Accent */
   --accent: 0 0% 18%;
@@ -457,6 +459,15 @@ button:focus-visible {
 }
 
 /* ─────────────────────────────────────────────────────────────────
+   PLACEHOLDER COLOR
+   ───────────────────────────────────────────────────────────────── */
+
+/* Custom placeholder color - lighter than muted-foreground */
+.placeholder-light::placeholder {
+  color: hsl(var(--placeholder));
+}
+
+/* ─────────────────────────────────────────────────────────────────
    ANIMATION CLASSES
    ───────────────────────────────────────────────────────────────── */
 
@@ -550,6 +561,16 @@ button:focus-visible {
 .bottom-sheet-content {
   animation: sheet-slide-up 0.4s cubic-bezier(0.32, 0.72, 0, 1) forwards;
   overflow-x: hidden;
+  overscroll-behavior: contain;
+}
+
+/* Keyboard-aware scrolling for inputs in bottom sheets */
+.bottom-sheet-content input:focus,
+.bottom-sheet-content textarea:focus,
+.bottom-sheet-content select:focus {
+  /* Ensure focused inputs scroll into view with padding above keyboard */
+  scroll-margin-bottom: 120px;
+  scroll-margin-top: 80px;
 }
 
 /* Safe area for devices with home indicators */

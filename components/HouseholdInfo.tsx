@@ -35,6 +35,8 @@ import {
   ListChecks,
   HeartHandshake,
   Lock,
+  Check,
+  Globe,
 } from "lucide-react";
 import Avatar from "./ui/Avatar";
 import ErrorBanner from "./ui/ErrorBanner";
@@ -1753,32 +1755,64 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
         style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
       />
       <div className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ maxHeight: '80vh', marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
-        {/* Close Button */}
-        <button 
-          onClick={onClose} 
-          className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center right-4 top-4 text-muted-foreground"
-          aria-label={t['common.close'] || 'Close'}
-        >
-          <X size={20} />
-        </button>
-
-        {/* Header */}
-        <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
-          <h2 className="text-title text-foreground">
-            {isEditing ? (t['info.edit_info'] || "Edit Info") : (t['info.add_new_info'] || "Add New Info")}
+        {/* Header with X left, Title center, ✓ right */}
+        <div className="flex items-center justify-between px-5 pt-5 pb-4 shrink-0">
+          {/* X Close Button (left) */}
+          <button 
+            onClick={onClose} 
+            className="w-10 h-10 rounded-full flex items-center justify-center text-muted-foreground"
+            aria-label={t['common.close'] || 'Close'}
+          >
+            <X size={20} />
+          </button>
+          
+          {/* Title (center) */}
+          <h2 className="text-title font-semibold text-foreground text-center flex-1">
+            {isEditing ? (t['info.edit_place'] || "Edit Place") : (t['info.add_new_place'] || "Add New Place")}
           </h2>
+          
+          {/* ✓ Confirm Button (right) */}
+          <button
+            onClick={onSave}
+            disabled={!form.name?.trim()}
+            className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+              form.name?.trim()
+                ? 'bg-primary text-primary-foreground shadow-sm'
+                : 'bg-muted text-muted-foreground'
+            }`}
+            aria-label={t['common.save'] || 'Save'}
+          >
+            <Check size={20} strokeWidth={3} />
+          </button>
         </div>
+        
+        {/* Header separator */}
+        <div className="px-5"><div className="h-px bg-border w-full"></div></div>
 
         {/* Form */}
         <div className="p-5 space-y-4 flex-1 overflow-y-auto">
-              {/* Category */}
-              <div>
+          {/* Main Input: Name (big font) */}
+          <div>
+            <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
+              {t['info.name_of_the_place'] || 'Place Name'}
+            </label>
+            <input
+              type="text"
+              autoComplete="one-time-code"
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              placeholder={t['info.place_placeholder'] || 'e.g., City General Hospital'}
+              className="w-full px-4 py-3 bg-muted rounded-xl text-xl font-semibold text-foreground placeholder-light outline-none border border-transparent focus:border-primary transition-colors"
+            />
+          </div>
+          
+          {/* Category */}
+          <div>
             <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
               {t['common.category'] || 'Category'}
             </label>
             <div className="grid grid-cols-3 gap-2">
               {ESSENTIAL_CATEGORIES.map((cat) => {
-                const config = CATEGORY_CONFIG[cat];
                 const isSelected = form.category === cat;
                 const getCatLabel = (category: EssentialInfoCategory): string => {
                   const categoryMap: Record<EssentialInfoCategory, string> = {
@@ -1798,10 +1832,9 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
                     onClick={() => setForm({ ...form, category: cat })}
                     className={`px-3 py-2 rounded-xl text-body transition-all flex items-center justify-start gap-1.5 ${
                       isSelected
-                        ? "text-white shadow-sm"
-                        : "bg-secondary text-foreground"
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "bg-card text-foreground ring-1 ring-border"
                     }`}
-                    style={isSelected ? { backgroundColor: config.color } : undefined}
                   >
                     {ESSENTIAL_CATEGORY_ICONS[cat]}
                     {getCatLabel(cat)}
@@ -1811,21 +1844,6 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
             </div>
           </div>
 
-          {/* Name */}
-          <div>
-            <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
-              {t['common.name'] || 'Name'}
-            </label>
-            <input
-              type="text"
-              autoComplete="one-time-code"
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              placeholder={t['info.name_placeholder'] || 'e.g., City General Hospital'}
-              className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
-            />
-          </div>
-
           {/* Address */}
           <div>
             <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
@@ -1833,19 +1851,19 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
             </label>
             <div className="relative">
               <MapPin size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                <input
+              <input
                 type="text"
                 autoComplete="one-time-code"
                 value={form.address}
                 onChange={(e) => setForm({ ...form, address: e.target.value })}
                 placeholder={t['info.address_placeholder'] || '123 Main St, City'}
-                className="w-full pl-11 pr-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
+                className="w-full pl-11 pr-4 py-3 rounded-xl bg-muted border border-transparent focus:border-primary outline-none transition-all text-body"
               />
             </div>
-              </div>
+          </div>
 
           {/* Phone */}
-              <div>
+          <div>
             <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
               {t['info.phone_number'] || 'Phone Number'}
             </label>
@@ -1858,9 +1876,9 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
                   value={form.countryCode}
                   onClick={() => setShowCountryCodeDropdown(true)}
                   placeholder="+852"
-                  className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none cursor-pointer transition-all text-body"
+                  className="w-full px-4 py-3 rounded-xl bg-muted border border-transparent focus:border-primary outline-none cursor-pointer transition-all text-body"
                 />
-                <Phone size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                <Globe size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                 {showCountryCodeDropdown && (
                   <div className="absolute z-50 bottom-full mb-1 w-64 bg-card border border-border rounded-xl shadow-lg max-h-60 overflow-hidden flex flex-col country-code-dropdown">
                     {/* Country list - scrollable area */}
@@ -1893,7 +1911,7 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
                         value={countryCodeSearch}
                         onChange={(e) => setCountryCodeSearch(e.target.value)}
                         placeholder={t['placeholder.search_country'] || 'Search country...'}
-                        className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-body focus:outline-none focus:border-primary transition-colors"
+                        className="w-full bg-muted border border-transparent rounded-xl px-3 py-2 text-body focus:outline-none focus:border-primary transition-colors"
                       />
                     </div>
                   </div>
@@ -1912,7 +1930,7 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
                     setForm({ ...form, phone: value });
                   }}
                   placeholder={t['placeholder.mobile_number'] || 'Mobile number'}
-                  className="w-full pl-11 pr-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
+                  className="w-full pl-11 pr-4 py-3 rounded-xl bg-muted border border-transparent focus:border-primary outline-none transition-all text-body"
                 />
               </div>
             </div>
@@ -1929,28 +1947,33 @@ const EssentialInfoModal: React.FC<EssentialInfoModalProps> = ({
               onChange={(e) => setForm({ ...form, note: e.target.value })}
               placeholder={t['info.note_placeholder'] || 'Any additional details...'}
               rows={2}
-              className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body resize-none"
+              className="w-full px-4 py-3 rounded-xl bg-muted border border-transparent focus:border-primary outline-none transition-all text-body resize-none"
             />
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="p-5 pb-8 border-t border-border flex gap-3 shrink-0">
-          {isEditing && (
-            <button
-              onClick={onDelete}
-              className="p-3 rounded-xl bg-destructive/10 text-destructive"
-            >
-              <Trash2 size={20} />
-            </button>
-          )}
-          <button
-            onClick={onSave}
-            className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body  shadow-sm"
-          >
-            {isEditing ? t['common.update'] : t['common.save']}
-          </button>
-        </div>
+        {/* Footer - Delete button only (when editing), or invisible spacer */}
+        {isEditing ? (
+          <>
+            {/* Footer separator */}
+            <div className="px-5"><div className="h-px bg-border w-full"></div></div>
+            {/* Footer with Delete button */}
+            <div className="shrink-0 p-5 pb-8">
+              <button
+                onClick={onDelete}
+                className="w-full py-3.5 rounded-xl bg-destructive/10 text-destructive font-semibold flex items-center justify-center gap-2"
+              >
+                <Trash2 size={20} />
+                {t['info.delete_place'] || 'Delete Place'}
+              </button>
+            </div>
+          </>
+        ) : (
+          /* Invisible spacer for consistent height */
+          <div className="shrink-0 p-5 pb-8">
+            <div className="h-[52px]"></div>
+          </div>
+        )}
       </div>
     </div>
   , document.body);
@@ -1986,24 +2009,72 @@ const HouseRoutineModal: React.FC<HouseRoutineModalProps> = ({
         style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
       />
       <div className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ maxHeight: '80vh', marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
-        {/* Close Button */}
-        <button 
-          onClick={onClose} 
-          className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center right-4 top-4 text-muted-foreground"
-          aria-label={t['common.close'] || 'Close'}
-        >
-          <X size={20} />
-        </button>
-
-        {/* Header */}
-        <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
-          <h2 className="text-title text-foreground">
+        {/* Header with X left, Title center, ✓ right */}
+        <div className="flex items-center justify-between px-5 pt-5 pb-4 shrink-0">
+          {/* X Close Button (left) */}
+          <button 
+            onClick={onClose} 
+            className="w-10 h-10 rounded-full flex items-center justify-center text-muted-foreground"
+            aria-label={t['common.close'] || 'Close'}
+          >
+            <X size={20} />
+          </button>
+          
+          {/* Title (center) */}
+          <h2 className="text-title font-semibold text-foreground text-center flex-1">
             {isEditing ? (t['info.edit_practice'] || 'Edit Practice') : (t['info.add_practice'] || 'Add Practice')}
           </h2>
+          
+          {/* ✓ Confirm Button (right) */}
+          <button
+            onClick={onSave}
+            disabled={!form.name?.trim()}
+            className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+              form.name?.trim()
+                ? 'bg-primary text-primary-foreground shadow-sm'
+                : 'bg-muted text-muted-foreground'
+            }`}
+            aria-label={t['common.save'] || 'Save'}
+          >
+            <Check size={20} strokeWidth={3} />
+          </button>
         </div>
+        
+        {/* Header separator */}
+        <div className="px-5"><div className="h-px bg-border w-full"></div></div>
 
         {/* Form */}
         <div className="p-5 space-y-4 flex-1 overflow-y-auto">
+          {/* Main Input: Name (big font) */}
+          <div>
+            <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
+              {t['info.name_of_the_practice'] || 'Practice Name'}
+            </label>
+            <input
+              type="text"
+              autoComplete="one-time-code"
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              placeholder={t['info.practice_placeholder'] || 'e.g., How to make the bed'}
+              className="w-full px-4 py-3 bg-muted rounded-xl text-xl font-semibold text-foreground placeholder-light outline-none border border-transparent focus:border-primary transition-colors"
+            />
+          </div>
+
+          {/* Instructions / Notes */}
+          <div>
+            <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
+              {t['info.instructions_notes'] || 'Instructions / Notes'}
+            </label>
+            <textarea
+              autoComplete="one-time-code"
+              value={form.note}
+              onChange={(e) => setForm({ ...form, note: e.target.value })}
+              placeholder={t['info.routine_note_placeholder'] || 'Enter the instructions, steps, or details...'}
+              rows={4}
+              className="w-full px-4 py-3 rounded-xl bg-muted border border-transparent focus:border-primary outline-none transition-all resize-none text-body"
+            />
+          </div>
+
           {/* Category - Compact 3-column grid for 4 rows */}
           <div>
             <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
@@ -2011,7 +2082,6 @@ const HouseRoutineModal: React.FC<HouseRoutineModalProps> = ({
             </label>
             <div className="grid grid-cols-3 gap-2">
               {HOUSE_ROUTINE_CATEGORIES.map((cat) => {
-                const config = HOUSE_ROUTINE_CATEGORY_CONFIG[cat];
                 const isSelected = form.category === cat;
                 const getCatLabel = (category: HouseRoutineCategory): string => {
                   const categoryMap: Record<HouseRoutineCategory, string> = {
@@ -2025,26 +2095,21 @@ const HouseRoutineModal: React.FC<HouseRoutineModalProps> = ({
                     'Pet Care': t['routine.category.pet_care'] || category,
                     'Safety': t['routine.category.safety'] || category,
                     'Utilities': t['routine.category.utilities'] || category,
-                      'Helper Care': t['routine.category.helper_care'] || category,
+                    'Helper Care': t['routine.category.helper_care'] || category,
                     'Others': t['routine.category.others'] || category,
                   };
                   return categoryMap[category] || category;
                 };
-                // All buttons are now uniform width
-                const isWide = false;
                 return (
                   <button
                     key={cat}
                     type="button"
                     onClick={() => setForm({ ...form, category: cat })}
-                    className={`px-2 py-2 rounded-xl text-caption transition-all flex items-center gap-1.5 ${
-                      isWide ? 'col-span-2' : ''
-                    } ${
+                    className={`px-2 py-2 rounded-xl text-caption transition-all flex items-center justify-start gap-1.5 ${
                       isSelected
-                        ? "text-white shadow-sm"
-                        : "bg-secondary text-foreground"
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "bg-card text-foreground ring-1 ring-border"
                     }`}
-                    style={isSelected ? { backgroundColor: config.color } : undefined}
                   >
                     {HOUSE_ROUTINE_CATEGORY_ICONS[cat]}
                     {getCatLabel(cat)}
@@ -2066,59 +2131,34 @@ const HouseRoutineModal: React.FC<HouseRoutineModalProps> = ({
                 value={form.customCategory}
                 onChange={(e) => setForm({ ...form, customCategory: e.target.value })}
                 placeholder={t['info.custom_category_placeholder'] || 'Enter custom category'}
-                className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
+                className="w-full px-4 py-3 rounded-xl bg-muted border border-transparent focus:border-primary outline-none transition-all text-body"
               />
             </div>
           )}
-
-          {/* Name */}
-          <div>
-            <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
-              {t['common.name'] || 'Name'}
-            </label>
-            <input
-              type="text"
-              autoComplete="one-time-code"
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              placeholder={t['info.routine_name_placeholder'] || 'e.g., How to make the bed'}
-              className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
-            />
-          </div>
-
-          {/* Note */}
-          <div>
-            <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
-              {t['common.note'] || 'Note'}
-            </label>
-            <textarea
-              autoComplete="one-time-code"
-              value={form.note}
-              onChange={(e) => setForm({ ...form, note: e.target.value })}
-              placeholder={t['info.routine_note_placeholder'] || 'Enter the instructions, steps, or details...'}
-              rows={6}
-              className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all resize-none text-body"
-            />
-          </div>
         </div>
 
-        {/* Footer */}
-        <div className="p-5 pb-8 border-t border-border flex gap-3 shrink-0">
-          {isEditing && (
-            <button
-              onClick={onDelete}
-              className="p-3 rounded-xl bg-destructive/10 text-destructive"
-            >
-              <Trash2 size={20} />
-            </button>
-          )}
-          <button
-            onClick={onSave}
-            className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body  shadow-sm"
-          >
-            {isEditing ? t['common.update'] : t['common.save']}
-          </button>
-        </div>
+        {/* Footer - Delete button only (when editing), or invisible spacer */}
+        {isEditing ? (
+          <>
+            {/* Footer separator */}
+            <div className="px-5"><div className="h-px bg-border w-full"></div></div>
+            {/* Footer with Delete button */}
+            <div className="shrink-0 p-5 pb-8">
+              <button
+                onClick={onDelete}
+                className="w-full py-3.5 rounded-xl bg-destructive/10 text-destructive font-semibold flex items-center justify-center gap-2"
+              >
+                <Trash2 size={20} />
+                {t['info.delete_practice'] || 'Delete Practice'}
+              </button>
+            </div>
+          </>
+        ) : (
+          /* Invisible spacer for consistent height */
+          <div className="shrink-0 p-5 pb-8">
+            <div className="h-[52px]"></div>
+          </div>
+        )}
       </div>
     </div>
   , document.body);
@@ -2174,34 +2214,47 @@ const HouseRoutineViewModal: React.FC<HouseRoutineViewModalProps> = ({
         style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
       />
       <div className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ maxHeight: '80vh', marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
-        {/* Close Button */}
-        <button 
-          onClick={onClose} 
-          className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center right-4 top-4 text-muted-foreground"
-          aria-label={t['common.close'] || 'Close'}
-        >
-          <X size={20} />
-        </button>
-
-        {/* Header */}
-        <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
-          <span
-            className="text-caption px-2 py-0.5 rounded-full inline-block mb-2"
-            style={{ backgroundColor: config.bgColor, color: config.color }}
+        {/* Header with X left, Title center */}
+        <div className="flex items-center justify-between px-5 pt-5 pb-4 shrink-0">
+          {/* X Close Button (left) */}
+          <button 
+            onClick={onClose} 
+            className="w-10 h-10 rounded-full flex items-center justify-center text-muted-foreground"
+            aria-label={t['common.close'] || 'Close'}
           >
+            <X size={20} />
+          </button>
+          
+          {/* Title (center) */}
+          <h2 className="text-title font-semibold text-foreground text-center flex-1">
             {displayCategory}
-          </span>
-          <h2 className="text-display text-foreground">
-            <TranslatedHouseRoutineName 
-              item={item} 
-              currentLang={currentLang} 
-              onUpdate={(id, data) => updateHouseRoutine(householdId, id, data as any)} 
-            />
           </h2>
+          
+          {/* Invisible spacer (right) */}
+          <div className="w-10 h-10" />
         </div>
+        
+        {/* Header separator */}
+        <div className="px-5"><div className="h-px bg-border w-full"></div></div>
 
         {/* Content */}
-        <div className="p-5 flex-1 overflow-y-auto">
+        <div className="p-5 flex-1 overflow-y-auto space-y-4">
+          <div>
+            <span
+              className="text-caption px-2 py-0.5 rounded-full inline-block mb-2"
+              style={{ backgroundColor: config.bgColor, color: config.color }}
+            >
+              {displayCategory}
+            </span>
+            <h2 className="text-xl font-semibold text-foreground">
+              <TranslatedHouseRoutineName 
+                item={item} 
+                currentLang={currentLang} 
+                onUpdate={(id, data) => updateHouseRoutine(householdId, id, data as any)} 
+              />
+            </h2>
+          </div>
+
           <div className="prose prose-gray prose-sm">
             {item.note ? (
               <div className="whitespace-pre-wrap text-body text-foreground">
@@ -2217,14 +2270,9 @@ const HouseRoutineViewModal: React.FC<HouseRoutineViewModalProps> = ({
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="p-5 pb-8 border-t border-border shrink-0">
-          <button
-            onClick={onClose}
-            className="w-full py-3.5 rounded-xl bg-secondary text-foreground text-body"
-          >
-            {t['common.close'] || 'Close'}
-          </button>
+        {/* Invisible spacer for consistent height */}
+        <div className="shrink-0 p-5 pb-8">
+          <div className="h-[52px]"></div>
         </div>
       </div>
     </div>

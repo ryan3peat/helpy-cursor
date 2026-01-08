@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import {
   AlertCircle, AlertTriangle, Heart, Settings, Plus, Trash2, X, Save, Camera,
-  Image as ImageIcon, LogOut, Copy, Check, ChevronLeft, ChevronRight,
+  Image as ImageIcon, LogOut, Copy, Check, ChevronLeft, ChevronRight, ArrowLeft,
   Shield, Lock, Crown, Mail, Share2, Bell, BellOff, Phone, CheckCircle, Loader2, GraduationCap,
   MessageCircleQuestionMark, Palette, Monitor, BookOpen, Pencil, CalendarCheck, HandCoins, CircleStar,
   MoreVertical, Globe
@@ -1547,7 +1547,7 @@ const Profile: React.FC<ProfileProps> = ({
               </button>
 
               {/* Line Separator */}
-              <div className="mx-5 border-t border-border" />
+              <div className="px-5"><div className="h-px bg-border w-full"></div></div>
 
               {/* Tutorial */}
               {onRestartTutorial && (
@@ -1582,58 +1582,69 @@ const Profile: React.FC<ProfileProps> = ({
                 style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
               />
               <div className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ minHeight: '400px', maxHeight: '80vh', marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
-                {/* Close Button - always visible */}
-                <button 
-                  onClick={closeAddUserModal} 
-                  className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center right-4 top-4 text-muted-foreground"
-                  aria-label={t['common.close'] || 'Close'}
-                >
-                  <X size={20} />
-                </button>
-
-                {/* Header - consistent across all steps */}
-                <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
-                  <h2 className="text-title text-foreground">{t['profile.addMember'] || 'Add Family Member'}</h2>
-                  {/* Show slot usage for form step */}
-                  {addUserStep === 'form' && (
-                    <p className="text-caption mt-1 text-muted-foreground">
-                      {totalMemberCount} {t['common.of'] || 'of'} {totalMaxSlots} {t['profile.member_slots_used'] || 'member slots used'}
-                    </p>
+                {/* Header with X left, Title center (no ✓ for Add Family Member) */}
+                <div className="flex items-center justify-between px-5 pt-5 pb-4 shrink-0">
+                  {/* X Close Button or Back Button (left) */}
+                  {addUserStep === 'invite' ? (
+                    <button
+                      onClick={() => setAddUserStep('form')}
+                      className="w-10 h-10 rounded-full flex items-center justify-center text-muted-foreground"
+                      aria-label={t['common.back'] || 'Back'}
+                    >
+                      <ArrowLeft size={20} />
+                    </button>
+                  ) : (
+                    <button 
+                      onClick={closeAddUserModal} 
+                      className="w-10 h-10 rounded-full flex items-center justify-center text-muted-foreground"
+                      aria-label={t['common.close'] || 'Close'}
+                    >
+                      <X size={20} />
+                    </button>
                   )}
-                  {/* Show name subtitle for invite step */}
-                  {addUserStep === 'invite' && addedUserName && (
-                    <p className="text-body text-muted-foreground mt-1">
-                      {t['profile.share_with'] || 'Share with'} {addedUserName}
-                    </p>
-                  )}
+                  
+                  {/* Title (center) */}
+                  <h2 className="text-title font-semibold text-foreground text-center flex-1">
+                    {addUserStep === 'invite' 
+                      ? (t['profile.invite_link'] || 'Invite Link')
+                      : (t['profile.addMember'] || 'Add Family Member')
+                    }
+                  </h2>
+                  
+                  {/* Invisible spacer (right) - no check button for Add Family Member */}
+                  <div className="w-10 h-10" />
                 </div>
+                
+                {/* Header separator */}
+                <div className="px-5"><div className="h-px bg-border w-full"></div></div>
 
                 {/* STEP: Form */}
                 {addUserStep === 'form' && (
                   <>
                     {/* Form */}
-                    <div className="p-5 space-y-3 flex-1 overflow-y-auto">
+                    <div className="p-5 space-y-4 flex-1 overflow-y-auto">
+                      {/* Main Input: Name (big font) */}
                       <div>
-                        <label className="block text-caption text-muted-foreground mb-1.5 tracking-wide">{t['common.name']}</label>
+                        <label className="block text-caption text-muted-foreground mb-2 tracking-wide">{t['common.name'] || 'Name'}</label>
                         <input
                           type="text"
                           autoComplete="one-time-code"
                           value={newName}
                           onChange={(e) => setNewName(e.target.value)}
-                          className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
-                          placeholder={t['common.enter_name'] || 'Enter name'}
+                          className="w-full px-4 py-3 bg-muted rounded-xl text-xl font-semibold text-foreground placeholder-light outline-none border border-transparent focus:border-primary transition-colors"
+                          placeholder={t['common.enter_name'] || 'Enter Name'}
                         />
                       </div>
                       <div>
-                        <label className="block text-caption text-muted-foreground mb-1.5 tracking-wide">{t['profile.role']}</label>
+                        <label className="block text-caption text-muted-foreground mb-2 tracking-wide">{t['profile.role'] || 'Role'}</label>
                         <div className="flex gap-2">
                           <button
                             type="button"
                             onClick={() => setNewRole(UserRole.SPOUSE)}
-                            className={`flex-1 px-3 py-2.5 rounded-lg font-semibold transition-colors text-body ${
+                            className={`flex-1 px-3 py-2 rounded-xl text-body transition-all flex items-center justify-start ${
                               newRole === UserRole.SPOUSE
-                                ? 'bg-[#EDE7F6] text-[#7E57C2] border-2 border-[#7E57C2]'
-                                : 'bg-secondary text-muted-foreground border-2 border-transparent '
+                                ? 'bg-primary text-primary-foreground'
+                                : 'bg-card text-foreground ring-1 ring-border'
                             }`}
                           >
                             Spouse
@@ -1641,10 +1652,10 @@ const Profile: React.FC<ProfileProps> = ({
                           <button
                             type="button"
                             onClick={() => setNewRole(UserRole.HELPER)}
-                            className={`flex-1 px-3 py-2.5 rounded-lg font-semibold transition-colors text-body ${
+                            className={`flex-1 px-3 py-2 rounded-xl text-body transition-all flex items-center justify-start ${
                               newRole === UserRole.HELPER
-                                ? 'bg-[#FFF3E0] text-[#FF9800] border-2 border-[#FF9800]'
-                                : 'bg-secondary text-muted-foreground border-2 border-transparent '
+                                ? 'bg-primary text-primary-foreground'
+                                : 'bg-card text-foreground ring-1 ring-border'
                             }`}
                           >
                             Helper
@@ -1652,10 +1663,10 @@ const Profile: React.FC<ProfileProps> = ({
                           <button
                             type="button"
                             onClick={() => setNewRole(UserRole.CHILD)}
-                            className={`flex-1 px-3 py-2.5 rounded-lg font-semibold transition-colors text-body ${
+                            className={`flex-1 px-3 py-2 rounded-xl text-body transition-all flex items-center justify-start ${
                               newRole === UserRole.CHILD
-                                ? 'bg-[#E8F5E9] text-[#4CAF50] border-2 border-[#4CAF50]'
-                                : 'bg-secondary text-muted-foreground border-2 border-transparent '
+                                ? 'bg-primary text-primary-foreground'
+                                : 'bg-card text-foreground ring-1 ring-border'
                             }`}
                           >
                             Child
@@ -1663,10 +1674,10 @@ const Profile: React.FC<ProfileProps> = ({
                           <button
                             type="button"
                             onClick={() => setNewRole(UserRole.OTHER)}
-                            className={`flex-1 px-3 py-2.5 rounded-lg font-semibold transition-colors text-body ${
+                            className={`flex-1 px-3 py-2 rounded-xl text-body transition-all flex items-center justify-start ${
                               newRole === UserRole.OTHER
-                                ? 'bg-[#FCE4EC] text-[#F06292] border-2 border-[#F06292]'
-                                : 'bg-secondary text-muted-foreground border-2 border-transparent '
+                                ? 'bg-primary text-primary-foreground'
+                                : 'bg-card text-foreground ring-1 ring-border'
                             }`}
                           >
                             Other
@@ -1674,7 +1685,7 @@ const Profile: React.FC<ProfileProps> = ({
                         </div>
                       </div>
                       
-                      {/* Role Info Box - dynamically shows selected role's capabilities */}
+                      {/* Role Info Box - fixed height to match Helper (tallest) */}
                       {(() => {
                         const roleConfig = getRoleConfig(newRole);
                         if (!roleConfig) return null;
@@ -1682,7 +1693,7 @@ const Profile: React.FC<ProfileProps> = ({
                         // Profile-only roles (like Child) have a different display format
                         if (roleConfig.isProfileOnly) {
                           return (
-                            <div className="bg-muted rounded-xl p-4 mt-2" style={{ height: '400px', overflow: 'auto' }}>
+                            <div className="bg-muted rounded-xl p-4 mt-2" style={{ minHeight: '280px' }}>
                               <p className="text-body font-semibold text-foreground mb-1">
                                 {roleConfig.displayName}
                               </p>
@@ -1719,7 +1730,7 @@ const Profile: React.FC<ProfileProps> = ({
                         
                         // Regular roles (Admin, Spouse, Helper, Other)
                         return (
-                          <div className="bg-muted rounded-xl p-4 mt-2" style={{ height: '400px', overflow: 'auto' }}>
+                          <div className="bg-muted rounded-xl p-4 mt-2" style={{ minHeight: '280px' }}>
                             <p className="text-body font-semibold text-foreground mb-1">
                               {roleConfig.displayName}
                             </p>
@@ -1770,10 +1781,16 @@ const Profile: React.FC<ProfileProps> = ({
                           </div>
                         );
                       })()}
+                      
+                      {/* Slot usage */}
+                      <p className="text-caption text-muted-foreground text-center">
+                        {totalMemberCount} {t['common.of'] || 'of'} {totalMaxSlots} {t['profile.member_slots_used'] || 'member slots used'}
+                      </p>
                     </div>
 
-                    {/* Footer */}
-                    <div className="p-5 pb-8 border-t border-border shrink-0">
+                    {/* Footer with Add button */}
+                    <div className="px-5"><div className="h-px bg-border w-full"></div></div>
+                    <div className="p-5 pb-8 shrink-0">
                       {isAtMemberLimit ? (
                         <button
                           onClick={() => {
@@ -1793,10 +1810,11 @@ const Profile: React.FC<ProfileProps> = ({
                         <button
                           onClick={handleAddUser}
                           disabled={isAddingUser || !newName.trim()}
-                          className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground text-body shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground text-body font-semibold shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                         >
+                          {isAddingUser && <Loader2 size={18} className="animate-spin" />}
                           {newRole === UserRole.CHILD 
-                            ? t['common.add'] 
+                            ? (t['common.add'] || 'Add')
                             : (t['common.add_and_invite'] || 'Add and Send Invite Link')}
                         </button>
                       )}
@@ -1842,38 +1860,48 @@ const Profile: React.FC<ProfileProps> = ({
                 {addUserStep === 'invite' && (
                   <>
                     {/* Content */}
-                    <div className="p-5 flex-1">
-                      <p className="text-body text-muted-foreground mb-4">
-                        {t['profile.share_link_text'] || 'Share this link with the new member:'}
+                    <div className="p-5 flex-1 space-y-4">
+                      {/* Success icon */}
+                      <div className="flex justify-center">
+                        <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+                          <CheckCircle size={32} className="text-primary" />
+                        </div>
+                      </div>
+                      
+                      <p className="text-body text-muted-foreground text-center">
+                        {addedUserName} {t['profile.added'] || 'added'}! {t['profile.share_link_text'] || 'Share this link with them to join:'}
                       </p>
-                      <div className="bg-secondary p-3 rounded-lg break-all text-body font-mono text-foreground">
+                      
+                      {/* Invite link box */}
+                      <div className="bg-muted p-3 rounded-xl break-all text-caption font-mono text-muted-foreground">
                         {inviteLink}
                       </div>
                     </div>
 
-                    {/* Footer */}
-                    <div className="p-5 pb-8 border-t border-border flex gap-2 shrink-0">
+                    {/* Footer with share buttons - standard styling */}
+                    <div className="px-5"><div className="h-px bg-border w-full"></div></div>
+                    <div className="p-5 pb-8 flex gap-2 shrink-0">
                       <button
                         onClick={handleWhatsAppShare}
-                        className="flex-1 py-3.5 rounded-xl bg-[#4CAF50] text-white text-body flex items-center justify-center gap-2 shadow-sm"
+                        className="flex-1 py-3.5 rounded-xl bg-card text-foreground text-body font-semibold flex items-center justify-center gap-2 ring-1 ring-border"
                       >
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" className="text-[#4CAF50]">
                           <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
                         </svg>
                         WhatsApp
                       </button>
                       <button
                         onClick={handleShareInvite}
-                        className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body flex items-center justify-center gap-2"
+                        className="flex-1 py-3.5 rounded-xl bg-card text-foreground text-body font-semibold flex items-center justify-center gap-2 ring-1 ring-border"
                       >
                         <Share2 size={18} />
                         {t['common.share'] || 'Share'}
                       </button>
                       <button
                         onClick={handleCopyInvite}
-                        className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body flex items-center justify-center gap-2"
+                        className="flex-1 py-3.5 rounded-xl bg-card text-foreground text-body font-semibold flex items-center justify-center gap-2 ring-1 ring-border"
                       >
-                        {isCopied ? <Check size={18} /> : <Copy size={18} />}
+                        {isCopied ? <Check size={18} className="text-primary" /> : <Copy size={18} />}
                         {isCopied ? (t['profile.copied'] || 'Copied!') : (t['profile.copy_link'] || 'Copy')}
                       </button>
                     </div>
@@ -1937,32 +1965,54 @@ const Profile: React.FC<ProfileProps> = ({
                 style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
               />
               <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
-                {/* Header */}
-                <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
-                  <h2 className="text-title text-foreground">{t['profile.delete_family_member'] || 'Delete Family Member'}</h2>
-                </div>
-
-                {/* Content */}
-                <div className="p-5">
-                  <p className="text-body text-muted-foreground">
-                    {t['profile.confirmDelete'] || 'Are you sure you want to delete this family member? This action cannot be undone.'}
-                  </p>
-                </div>
-
-                {/* Footer */}
-                <div className="p-5 pb-8 border-t border-border flex gap-3 shrink-0">
+                {/* Header with X left, Title center */}
+                <div className="flex items-center justify-between px-5 pt-5 pb-4 shrink-0">
+                  {/* X Close Button (left) */}
                   <button
                     onClick={() => {
                       setDeleteConfirmOpen(false);
                       setUserToDelete(null);
                     }}
-                    className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body "
+                    className="w-10 h-10 rounded-full flex items-center justify-center text-muted-foreground"
+                    aria-label={t['common.close'] || 'Close'}
+                  >
+                    <X size={20} />
+                  </button>
+                  
+                  {/* Title (center) */}
+                  <h2 className="text-title font-semibold text-foreground text-center flex-1">
+                    {t['profile.delete_family_member'] || 'Delete Family Member'}
+                  </h2>
+                  
+                  {/* Invisible spacer (right) */}
+                  <div className="w-10 h-10" />
+                </div>
+                
+                {/* Header separator */}
+                <div className="px-5"><div className="h-px bg-border w-full"></div></div>
+
+                {/* Content */}
+                <div className="p-5">
+                  <p className="text-body text-muted-foreground text-center">
+                    {t['profile.confirmDelete'] || 'Are you sure you want to delete this family member? This action cannot be undone.'}
+                  </p>
+                </div>
+
+                {/* Footer */}
+                <div className="px-5"><div className="h-px bg-border w-full"></div></div>
+                <div className="p-5 pb-8 flex gap-3 shrink-0">
+                  <button
+                    onClick={() => {
+                      setDeleteConfirmOpen(false);
+                      setUserToDelete(null);
+                    }}
+                    className="flex-1 py-3.5 rounded-xl bg-card text-foreground text-body font-semibold ring-1 ring-border"
                   >
                     {t['common.cancel'] || 'Cancel'}
                   </button>
                   <button
                     onClick={confirmDeleteUser}
-                    className="flex-1 py-3.5 rounded-xl bg-destructive/10 text-destructive text-body "
+                    className="flex-1 py-3.5 rounded-xl bg-destructive text-primary-foreground text-body font-semibold"
                   >
                     {t['common.delete'] || 'Delete'}
                   </button>
@@ -1980,42 +2030,66 @@ const Profile: React.FC<ProfileProps> = ({
                 style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
               />
               <div className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ maxHeight: '80vh', marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
-                {/* Close Button */}
-                <button 
-                  onClick={() => setIsEditModalOpen(false)} 
-                  className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center right-4 top-4 text-muted-foreground"
-                  aria-label={t['common.close'] || 'Close'}
-                >
-                  <X size={20} />
-                </button>
-
-                {/* Header */}
-                <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
-                  <h2 className="text-title text-foreground">{t['profile.edit_profile'] || 'Edit Profile'}</h2>
+                {/* Header with X left, Title center, ✓ right */}
+                <div className="flex items-center justify-between px-5 pt-5 pb-4 shrink-0">
+                  {/* X Close Button (left) */}
+                  <button 
+                    onClick={() => setIsEditModalOpen(false)} 
+                    className="w-10 h-10 rounded-full flex items-center justify-center text-muted-foreground"
+                    aria-label={t['common.close'] || 'Close'}
+                  >
+                    <X size={20} />
+                  </button>
+                  
+                  {/* Title (center) */}
+                  <h2 className="text-title font-semibold text-foreground text-center flex-1">
+                    {t['profile.edit_profile'] || 'Edit Profile'}
+                  </h2>
+                  
+                  {/* ✓ Confirm Button (right) */}
+                  <button
+                    onClick={handleUpdateProfile}
+                    disabled={isSavingProfile}
+                    className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+                      !isSavingProfile
+                        ? 'bg-primary text-primary-foreground shadow-sm'
+                        : 'bg-muted text-muted-foreground'
+                    }`}
+                    aria-label={t['common.save'] || 'Save'}
+                  >
+                    {isSavingProfile ? (
+                      <Loader2 size={20} className="animate-spin" />
+                    ) : (
+                      <Check size={20} strokeWidth={3} />
+                    )}
+                  </button>
                 </div>
+                
+                {/* Header separator */}
+                <div className="px-5"><div className="h-px bg-border w-full"></div></div>
 
                 {/* Form */}
-                <div className="p-5 space-y-3 flex-1 overflow-y-auto">
-                  {/* Name */}
+                <div className="p-5 space-y-4 flex-1 overflow-y-auto">
+                  {/* Main Input: Name (big font) */}
                   <div>
-                    <label className="block text-caption text-muted-foreground mb-1.5 tracking-wide">{t['profile.name_label'] || 'Name'}</label>
+                    <label className="block text-caption text-muted-foreground mb-2 tracking-wide">{t['profile.name_label'] || 'Name'}</label>
                     <input
                       type="text"
                       autoComplete="one-time-code"
                       value={editName}
                       onChange={(e) => setEditName(e.target.value)}
-                      className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
+                      className="w-full px-4 py-3 bg-muted rounded-xl text-xl font-semibold text-foreground placeholder-light outline-none border border-transparent focus:border-primary transition-colors"
                     />
                   </div>
 
                   {/* Role - Hidden when Admin/Helper edits their own profile (prevent self-demotion/escalation) */}
                   {!((isHelper || currentUser.role === UserRole.MASTER) && selectedUser.id === currentUser.id) && (
                   <div>
-                    <label className="block text-caption text-muted-foreground mb-1.5 tracking-wide">{t['profile.role'] || 'Role'}</label>
+                    <label className="block text-caption text-muted-foreground mb-2 tracking-wide">{t['profile.role'] || 'Role'}</label>
                     <select
                       value={editRole}
                       onChange={(e) => setEditRole(e.target.value as UserRole)}
-                      className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
+                      className="w-full px-4 py-3 rounded-xl bg-muted border border-transparent focus:border-primary outline-none transition-all text-body"
                     >
                       <option value={UserRole.MASTER}>{t['profile.role_admin'] || 'Admin'}</option>
                       <option value={UserRole.SPOUSE}>{t['profile.role_spouse'] || 'Spouse'}</option>
@@ -2028,7 +2102,7 @@ const Profile: React.FC<ProfileProps> = ({
 
                   {/* Allergies */}
                   <div>
-                    <label className="block text-caption text-muted-foreground mb-1.5 tracking-wide">{t['profile.allergies']}</label>
+                    <label className="block text-caption text-muted-foreground mb-2 tracking-wide">{t['profile.allergies']}</label>
                     <div className="flex gap-2 mb-2">
                       <input
                         type="text"
@@ -2036,10 +2110,10 @@ const Profile: React.FC<ProfileProps> = ({
                         value={newAllergyInput}
                         onChange={(e) => setNewAllergyInput(e.target.value)}
                         onKeyPress={(e) => e.key === 'Enter' && addAllergy()}
-                        className="flex-1 px-4 py-2.5 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
+                        className="flex-1 px-4 py-3 rounded-xl bg-muted border border-transparent focus:border-primary outline-none transition-all text-body"
                         placeholder={t['common.add_allergy']}
                       />
-                      <button onClick={addAllergy} className="w-10 h-10 bg-primary text-primary-foreground rounded-full flex items-center justify-center ">
+                      <button onClick={addAllergy} className="w-10 h-10 bg-primary text-primary-foreground rounded-full flex items-center justify-center">
                         <Plus size={18} />
                       </button>
                     </div>
@@ -2057,7 +2131,7 @@ const Profile: React.FC<ProfileProps> = ({
 
                   {/* Preferences */}
                   <div>
-                    <label className="block text-caption text-muted-foreground mb-1.5 tracking-wide">{t['profile.preferences']}</label>
+                    <label className="block text-caption text-muted-foreground mb-2 tracking-wide">{t['profile.preferences']}</label>
                     <div className="flex gap-2 mb-2">
                       <input
                         type="text"
@@ -2065,10 +2139,10 @@ const Profile: React.FC<ProfileProps> = ({
                         value={newPreferenceInput}
                         onChange={(e) => setNewPreferenceInput(e.target.value)}
                         onKeyPress={(e) => e.key === 'Enter' && addPreference()}
-                        className="flex-1 px-4 py-2.5 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
+                        className="flex-1 px-4 py-3 rounded-xl bg-muted border border-transparent focus:border-primary outline-none transition-all text-body"
                         placeholder={t['common.add_preference']}
                       />
-                      <button onClick={addPreference} className="w-10 h-10 bg-primary text-primary-foreground rounded-full flex items-center justify-center ">
+                      <button onClick={addPreference} className="w-10 h-10 bg-primary text-primary-foreground rounded-full flex items-center justify-center">
                         <Plus size={18} />
                       </button>
                     </div>
@@ -2179,41 +2253,33 @@ const Profile: React.FC<ProfileProps> = ({
                   </div>
                 )}
 
-                {/* DELETE USER SECTION - At very bottom of scrollable form */}
-                {selectedUser && selectedUser.id !== currentUser.id && !isHelper && (
-                  <div className="pt-6 mt-4 border-t border-border">
-                    <button
-                      onClick={() => {
-                        setIsEditModalOpen(false);
-                        handleDeleteUser(selectedUser.id);
-                      }}
-                      className="w-full flex items-center justify-center gap-2 py-3 bg-destructive/10 text-destructive rounded-xl transition-colors"
-                    >
-                      <Trash2 size={16} />
-                      <span className="text-body font-medium">{t['profile.remove_member'] || 'Remove from Family'}</span>
-                    </button>
-                    <p className="text-caption text-muted-foreground text-center mt-2">
-                      {t['profile.remove_warning'] || 'This will permanently remove this person from your family.'}
-                    </p>
-                  </div>
-                )}
                 </div>
 
-                {/* Footer */}
-                <div className="p-5 pb-8 border-t border-border flex gap-3 shrink-0">
-                  <button
-                    onClick={() => setIsEditModalOpen(false)}
-                    className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body "
-                  >
-                    {t['common.cancel'] || 'Cancel'}
-                  </button>
-                  <button
-                    onClick={handleSaveEdit}
-                    className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body shadow-sm"
-                  >
-                    {t['common.save'] || 'Save'}
-                  </button>
-                </div>
+                {/* Footer - Delete button only (when editing other member), or spacer */}
+                {selectedUser && selectedUser.id !== currentUser.id && !isHelper ? (
+                  <>
+                    {/* Footer separator */}
+                    <div className="px-5"><div className="h-px bg-border w-full"></div></div>
+                    {/* Footer with Remove button */}
+                    <div className="shrink-0 p-5 pb-8">
+                      <button
+                        onClick={() => {
+                          setIsEditModalOpen(false);
+                          handleDeleteUser(selectedUser.id);
+                        }}
+                        className="w-full py-3.5 rounded-xl bg-destructive/10 text-destructive font-semibold flex items-center justify-center gap-2"
+                      >
+                        <Trash2 size={20} />
+                        {t['profile.remove_member'] || 'Remove Family Member'}
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  /* Invisible spacer for consistent height */
+                  <div className="shrink-0 p-5 pb-8">
+                    <div className="h-[52px]"></div>
+                  </div>
+                )}
               </div>
             </div>
           , document.body)}
@@ -3302,7 +3368,7 @@ const Profile: React.FC<ProfileProps> = ({
                           placeholder="+852"
                           className="w-full bg-muted border border-border rounded-xl px-4 py-3 text-foreground font-medium focus:border-primary outline-none cursor-pointer transition-colors text-body"
                         />
-                        <Phone size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                        <Globe size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                         {showCountryCodeDropdown && (
                           <div className="absolute z-50 mt-1 w-64 bg-card border border-border rounded-xl shadow-lg max-h-60 overflow-y-auto country-code-dropdown">
                             <div className="p-2 sticky top-0 bg-card border-b border-border">
@@ -3741,7 +3807,7 @@ const Profile: React.FC<ProfileProps> = ({
                     </button>
                   )}
                   {index < filteredArray.length - 1 && (
-                    <div className="mx-5 border-t border-border" />
+                    <div className="px-5"><div className="h-px bg-border w-full"></div></div>
                   )}
                 </div>
               ))}

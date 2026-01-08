@@ -1262,114 +1262,58 @@ const Meals: React.FC<MealsProps> = ({
             className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col"
             style={{ maxHeight: '80vh', marginBottom: 'env(safe-area-inset-bottom, 34px)' }}
           >
-            {/* Close Button */}
-            <button
-              onClick={() => setIsModalOpen(false)}
-              className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center right-4 top-4 text-muted-foreground"
-              aria-label={t['common.close'] || 'Close'}
-            >
-              <X size={20} />
-            </button>
-
-            {/* Header */}
-            <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
-              <h2 className="text-title text-foreground">
+            {/* Header with X left, Title center, ✓ right */}
+            <div className="flex items-center justify-between px-5 pt-5 pb-4 shrink-0">
+              {/* X Close Button (left) */}
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="w-10 h-10 rounded-full flex items-center justify-center text-muted-foreground"
+                aria-label={t['common.close'] || 'Close'}
+              >
+                <X size={20} />
+              </button>
+              
+              {/* Title (center) */}
+              <h2 className="text-title font-semibold text-foreground text-center flex-1">
                 {`${modalDate.toLocaleDateString(langCode, { weekday: 'short' })}, ${modalDate.getDate()} ${modalDate.toLocaleDateString(langCode, { month: 'short' })}`}
               </h2>
+              
+              {/* ✓ Confirm Button (right) */}
+              <button
+                onClick={handleSave}
+                disabled={!(description.trim().length > 0 || selectedUserIds.length > 0)}
+                className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+                  (description.trim().length > 0 || selectedUserIds.length > 0)
+                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    : 'bg-muted text-muted-foreground'
+                }`}
+                aria-label={t['common.save'] || 'Save'}
+              >
+                <Check size={20} strokeWidth={3} />
+              </button>
             </div>
+            
+            {/* Header separator */}
+            <div className="px-5"><div className="h-px bg-border w-full"></div></div>
 
             {/* Scrollable Form Content */}
             <div className="flex-1 overflow-y-auto p-5 space-y-4">
-                {/* Meal Type Selector */}
+                {/* Main Input: Dish Name (big font) */}
                 <div>
                   <label className="block text-caption text-muted-foreground tracking-wide mb-2">
-                    {t['meals.meal_type'] ?? 'Meal Type'}
+                    {t['meals.whats_cooking'] ?? 'Dish Name'}
                   </label>
-                  <div className="grid grid-cols-4 gap-2">
-                    {mealTypes.map(type => {
-                      const isSelected = modalType === type;
-                      return (
-                        <button
-                          key={type}
-                          onClick={() => setModalType(type)}
-                          className={`py-2.5 rounded-xl transition-colors flex flex-col items-center justify-center gap-1 ${
-                            isSelected
-                              ? 'bg-primary text-primary-foreground'
-                              : 'bg-card ring-1 ring-border text-muted-foreground'
-                          }`}
-                        >
-                          {getMealIcon(type, isSelected)}
-                          <span className="text-caption font-semibold">{getMealLabel(type)}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
+                  <textarea
+                    rows={2}
+                    autoComplete="one-time-code"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder={`${t['meals.whats_for'] ?? "What's for"} ${getMealLabel(modalType).toLowerCase()}?`}
+                    className="w-full bg-muted border border-transparent rounded-xl px-4 py-3 text-xl font-semibold focus:border-primary outline-none text-foreground resize-none placeholder-light transition-colors"
+                  />
                 </div>
 
-                {/* Audience Selector */}
-                <div>
-                  <label className="block text-caption text-muted-foreground tracking-wide mb-2">
-                    {t['meals.audience_label'] ?? 'This meal is for'}
-                  </label>
-                  <div 
-                    className="relative rounded-full overflow-hidden"
-                    style={{ backgroundColor: 'hsl(var(--muted))' }}
-                  >
-                    <div className="flex p-1">
-                      {(['ALL', 'ADULTS', 'KIDS'] as const).map(aud => {
-                        const active = modalAudience === aud;
-                        return (
-                          <button
-                            key={aud}
-                            onClick={() => handleAudienceChange(aud)}
-                            className={`flex-1 py-2 text-body font-medium rounded-full transition-colors ${
-                              active ? 'bg-card text-primary shadow-sm' : 'text-muted-foreground'
-                            }`}
-                          >
-                            {getAudienceLabel(aud)}
-                          </button>
-                        );
-                      })}
-                    </div>
-                    <div 
-                      className="absolute inset-0 rounded-full pointer-events-none"
-                      style={{ boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.06)' }}
-                    />
-                  </div>
-                </div>
-
-                {/* Dish Input */}
-                <div>
-                  <label className="block text-caption text-muted-foreground tracking-wide mb-2">
-                    {t['meals.the_dish'] ?? 'Dish'}
-                  </label>
-                  <div className="relative">
-                    <textarea
-                      rows={2}
-                      autoComplete="one-time-code"
-                      value={description}
-                      onChange={(e) => setDescription(e.target.value)}
-                      placeholder={`${t['meals.whats_for'] ?? "What's for"} ${getMealLabel(modalType).toLowerCase()}?`}
-                      className="w-full bg-muted border border-transparent rounded-xl px-4 py-3 text-body focus:border-primary outline-none font-medium text-foreground resize-none placeholder:text-muted-foreground transition-colors"
-                    />
-                    {/* AI Suggest button - temporarily hidden
-                    <button
-                      onClick={handleAiSuggest}
-                      disabled={loadingAi}
-                      className="absolute bottom-2 right-2 p-2 bg-card shadow-sm border border-border rounded-full text-primary disabled:opacity-50"
-                      title={t['meals.suggest_ai']}
-                    >
-                      {loadingAi ? (
-                        <span className="animate-spin block w-4 h-4 border-2 border-primary border-t-transparent rounded-full"></span>
-                      ) : (
-                        <Sparkles size={14} />
-                      )}
-                    </button>
-                    */}
-                  </div>
-                </div>
-
-                {/* Search Recipe in YouTube - Always visible, disabled when no dish name */}
+                {/* Search Recipe in YouTube - Right after meal name */}
                 <button
                   onClick={() => {
                     if (!description.trim()) return;
@@ -1379,21 +1323,15 @@ const Meals: React.FC<MealsProps> = ({
                     const isAndroid = /Android/.test(navigator.userAgent);
                     
                     if (isIOS) {
-                      // iOS: Try YouTube app URI scheme first
-                      // Using window.location.href ensures user returns where they left off
                       window.location.href = `youtube://www.youtube.com/results?search_query=${searchQuery}`;
-                      
-                      // Fallback to web after short delay if app not installed
                       setTimeout(() => {
                         if (document.visibilityState === 'visible') {
                           window.location.href = `https://www.youtube.com/results?search_query=${searchQuery}`;
                         }
                       }, 500);
                     } else if (isAndroid) {
-                      // Android: intent URI opens YouTube app if installed, falls back to browser
                       window.location.href = `intent://www.youtube.com/results?search_query=${searchQuery}#Intent;scheme=https;package=com.google.android.youtube;end`;
                     } else {
-                      // Desktop: open in new tab
                       window.open(`https://www.youtube.com/results?search_query=${searchQuery}`, '_blank');
                     }
                   }}
@@ -1408,6 +1346,57 @@ const Meals: React.FC<MealsProps> = ({
                   {t['meals.search_youtube'] ?? 'Search Recipe in YouTube'}
                 </button>
 
+                {/* Meal Type Selector - 2x2 grid */}
+                <div>
+                  <label className="block text-caption text-muted-foreground tracking-wide mb-2">
+                    {t['meals.meal_type'] ?? 'Meal Type'}
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {mealTypes.map(type => {
+                      const isSelected = modalType === type;
+                      return (
+                        <button
+                          key={type}
+                          onClick={() => setModalType(type)}
+                          className={`py-2.5 rounded-xl transition-colors flex items-center justify-start gap-2 px-3 ${
+                            isSelected
+                              ? 'bg-primary text-primary-foreground'
+                              : 'bg-card ring-1 ring-border text-foreground'
+                          }`}
+                        >
+                          {getMealIcon(type, isSelected)}
+                          <span className="text-body font-medium">{getMealLabel(type)}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Audience Selector */}
+                <div>
+                  <label className="block text-caption text-muted-foreground tracking-wide mb-2">
+                    {t['meals.audience_label'] ?? 'This meal is for'}
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {(['ALL', 'ADULTS', 'KIDS'] as const).map(aud => {
+                      const active = modalAudience === aud;
+                      return (
+                        <button
+                          key={aud}
+                          onClick={() => handleAudienceChange(aud)}
+                          className={`flex items-center justify-start gap-2 px-3 py-2 rounded-xl text-body transition-colors ${
+                            active
+                              ? 'bg-primary text-primary-foreground'
+                              : 'bg-card text-foreground ring-1 ring-border'
+                          }`}
+                        >
+                          {getAudienceLabel(aud)}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
                 {/* People Section */}
                 <div>
                   <label className="block text-caption text-muted-foreground tracking-wide mb-2 flex items-center gap-2">
@@ -1420,7 +1409,7 @@ const Meals: React.FC<MealsProps> = ({
                         <button
                           key={user.id}
                           onClick={() => toggleUser(user.id)}
-                          className={`flex items-center gap-2 px-3 py-2 rounded-xl text-body transition-colors ${
+                          className={`flex items-center justify-start gap-2 px-3 py-2 rounded-xl text-body transition-colors ${
                             isSelected
                               ? 'bg-primary text-primary-foreground'
                               : 'bg-card text-foreground ring-1 ring-border'
@@ -1438,26 +1427,28 @@ const Meals: React.FC<MealsProps> = ({
                 </div>
             </div>
 
-            {/* Fixed Footer with Delete + Save */}
-            <div className="shrink-0 p-5 pb-8 border-t border-border flex gap-3">
-              {/* Delete button - Hidden for Helper */}
-              {editingMealId && !isHelper && (
-                <button
-                  onClick={handleDelete}
-                  className="p-3 rounded-xl bg-destructive/10 text-destructive"
-                >
-                  <Trash2 size={20} />
-                </button>
-              )}
-              <button
-                onClick={handleSave}
-                disabled={!(description.trim().length > 0 || selectedUserIds.length > 0)}
-                className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              >
-                <Check size={18} />
-                {editingMealId ? (t['common.update'] ?? 'Update') : (t['meals.add_meal'] ?? 'Add Meal')}
-              </button>
-            </div>
+            {/* Footer - Delete button only (when editing), or invisible spacer */}
+            {editingMealId && !isHelper ? (
+              <>
+                {/* Footer separator */}
+                <div className="px-5"><div className="h-px bg-border w-full"></div></div>
+                {/* Footer with Delete button */}
+                <div className="shrink-0 p-5 pb-8">
+                  <button
+                    onClick={handleDelete}
+                    className="w-full py-3.5 rounded-xl bg-destructive/10 text-destructive font-semibold flex items-center justify-center gap-2"
+                  >
+                    <Trash2 size={20} />
+                    {t['meals.delete_meal'] ?? 'Delete Meal'}
+                  </button>
+                </div>
+              </>
+            ) : (
+              /* Invisible spacer for consistent height */
+              <div className="shrink-0 p-5 pb-8">
+                <div className="h-[52px]"></div>
+              </div>
+            )}
           </div>
         </div>
       , document.body)}

@@ -7,6 +7,11 @@
 // It uses createPortal to render to document.body, ensuring the sheet
 // ALWAYS appears above the bottom navigation bar.
 //
+// KEYBOARD BEHAVIOR:
+// - Uses useKeyboardAwareSheet hook for consistent iOS keyboard handling
+// - Automatically scrolls focused inputs into view when keyboard opens
+// - CSS scroll-margin ensures inputs stay visible above keyboard
+//
 // DO NOT create bottom sheets manually with <div className="fixed inset-0...">
 // ALWAYS use this component instead.
 //
@@ -30,9 +35,111 @@
 //
 // ═══════════════════════════════════════════════════════════════════════════
 
-import React, { ReactNode } from 'react';
+import React, { ReactNode, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
+
+// ═══════════════════════════════════════════════════════════════════════════
+// KEYBOARD-AWARE SHEET HOOK (inline for simpler imports)
+// Ensures consistent keyboard behavior - scrolls focused input into view
+// ═══════════════════════════════════════════════════════════════════════════
+const useKeyboardAwareSheet = (isOpen: boolean, contentRef: React.RefObject<HTMLDivElement>) => {
+  const lastViewportHeight = useRef<number>(0);
+  const scrollTimeoutRef = useRef<number | null>(null);
+
+  // Clear any pending scroll timeout to prevent memory leaks
+  const clearScrollTimeout = useCallback(() => {
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current);
+      scrollTimeoutRef.current = null;
+    }
+  }, []);
+
+  const scrollFocusedInputIntoView = useCallback(() => {
+    const activeElement = document.activeElement as HTMLElement;
+    if (!activeElement || !contentRef.current) return;
+
+    // Check if focused element is an input inside our sheet
+    const isInput = ['INPUT', 'TEXTAREA', 'SELECT'].includes(activeElement.tagName);
+    if (!isInput) return;
+
+    // Ensure the input is inside our sheet content
+    if (!contentRef.current.contains(activeElement)) return;
+
+    // Clear any pending timeout before setting new one
+    clearScrollTimeout();
+
+    // Use a small delay to let keyboard finish animating (iOS needs ~300ms)
+    scrollTimeoutRef.current = window.setTimeout(() => {
+      // Double-check element is still focused before scrolling
+      if (document.activeElement === activeElement) {
+        activeElement.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center',
+        });
+      }
+      scrollTimeoutRef.current = null;
+    }, 350);
+  }, [contentRef, clearScrollTimeout]);
+
+  useEffect(() => {
+    // Clean up timeout when sheet closes
+    if (!isOpen) {
+      clearScrollTimeout();
+      return;
+    }
+
+    const viewport = window.visualViewport;
+    
+    if (viewport) {
+      // Store initial viewport height
+      lastViewportHeight.current = viewport.height;
+
+      const handleResize = () => {
+        // Only trigger scroll when viewport shrinks significantly (keyboard opening)
+        if (viewport.height < lastViewportHeight.current * 0.8) {
+          scrollFocusedInputIntoView();
+        }
+        lastViewportHeight.current = viewport.height;
+      };
+
+      viewport.addEventListener('resize', handleResize);
+      return () => {
+        viewport.removeEventListener('resize', handleResize);
+        clearScrollTimeout();
+      };
+    }
+
+    // Fallback for browsers without visualViewport: listen to focus events
+    // Scoped to only inputs inside this sheet's contentRef
+    const handleFocus = (e: FocusEvent) => {
+      const target = e.target as HTMLElement;
+      
+      // Only handle inputs inside our sheet
+      if (!contentRef.current?.contains(target)) return;
+      
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(target?.tagName)) {
+        clearScrollTimeout();
+        scrollTimeoutRef.current = window.setTimeout(() => {
+          // Double-check element is still focused
+          if (document.activeElement === target) {
+            target.scrollIntoView({
+              behavior: 'smooth',
+              block: 'center',
+            });
+          }
+          scrollTimeoutRef.current = null;
+        }, 350);
+      }
+    };
+
+    document.addEventListener('focusin', handleFocus);
+    return () => {
+      document.removeEventListener('focusin', handleFocus);
+      clearScrollTimeout();
+    };
+  }, [isOpen, scrollFocusedInputIntoView, clearScrollTimeout, contentRef]);
+};
 
 interface BottomSheetProps {
   isOpen: boolean;
@@ -83,6 +190,12 @@ const BottomSheet: React.FC<BottomSheetProps> & {
   showCloseButton = true,
   centered = false,
 }) => {
+  // Ref for keyboard-aware scrolling
+  const sheetContentRef = useRef<HTMLDivElement>(null);
+  
+  // Enable keyboard-aware scrolling for inputs (skip for centered modals)
+  useKeyboardAwareSheet(isOpen && !centered, sheetContentRef);
+
   if (!isOpen) return null;
 
   const maxWidthClass = {
@@ -112,6 +225,7 @@ const BottomSheet: React.FC<BottomSheetProps> & {
       )}
       
       <div 
+        ref={sheetContentRef}
         className={`bg-card w-full ${maxWidthClass} ${
           centered ? 'rounded-2xl' : 'rounded-t-2xl'
         } overflow-hidden bottom-sheet-content relative flex flex-col`}

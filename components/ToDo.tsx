@@ -1833,7 +1833,7 @@ const ToDo: React.FC<ToDoProps> = ({
                           }
                         }}
                         placeholder={t['todo.add_hint'] || 'Press Enter to add | tap + to set details'}
-                        className="flex-1 bg-transparent text-body text-foreground placeholder-muted-foreground/50 outline-none"
+                        className="flex-1 bg-transparent text-body text-foreground placeholder-light/50 outline-none"
                       />
                     ) : (
                       <span className="flex-1 text-body text-muted-foreground">
@@ -1998,21 +1998,22 @@ const ToDo: React.FC<ToDoProps> = ({
             className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col"
             style={{ maxHeight: 'calc(100dvh - 60px)', marginBottom: 'env(safe-area-inset-bottom, 34px)' }}
           >
-            {/* Close Button */}
-            <button
-              onClick={() => {
-                setIsSheetOpen(false);
-                setEditingItemId(null);
-              }}
-              className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center right-4 top-4 text-muted-foreground"
-              aria-label={t['common.close'] || 'Close'}
-            >
-              <X size={20} />
-            </button>
-
-            {/* Header */}
-            <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
-              <h2 className="text-title text-foreground">
+            {/* Header with X left, Title center, ✓ right */}
+            <div className="flex items-center justify-between px-5 pt-5 pb-4 shrink-0">
+              {/* X Close Button (left) */}
+              <button
+                onClick={() => {
+                  setIsSheetOpen(false);
+                  setEditingItemId(null);
+                }}
+                className="w-10 h-10 rounded-full flex items-center justify-center text-muted-foreground"
+                aria-label={t['common.close'] || 'Close'}
+              >
+                <X size={20} />
+              </button>
+              
+              {/* Title (center) */}
+              <h2 className="text-title font-semibold text-foreground text-center flex-1">
                 {editingItemId 
                   ? (sheetForm.type === 'shopping' 
                       ? (t['todo.edit_shopping_item'] || 'Edit Shopping Item') 
@@ -2022,43 +2023,65 @@ const ToDo: React.FC<ToDoProps> = ({
                       : (t['common.add_task'] || 'Add Task'))
                 }
               </h2>
+              
+              {/* ✓ Confirm Button (right) */}
+              <button
+                onClick={handleSheetSave}
+                disabled={!sheetForm.name?.trim() || isSaving}
+                className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+                  sheetForm.name?.trim() && !isSaving
+                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    : 'bg-muted text-muted-foreground'
+                }`}
+                aria-label={t['common.save'] || 'Save'}
+              >
+                {isSaving ? (
+                  <Loader2 size={20} className="animate-spin" />
+                ) : (
+                  <Check size={20} strokeWidth={3} />
+                )}
+              </button>
             </div>
+            
+            {/* Header separator */}
+            <div className="px-5"><div className="h-px bg-border w-full"></div></div>
             
             {/* Scrollable Form Content */}
             <div ref={sheetContentRef} className="flex-1 overflow-y-auto p-5 space-y-4">
-              {/* Name & Brand Row - 50/50 for Shopping, full width for Tasks */}
-              <div className={activeSection === 'shopping' ? 'flex gap-3' : ''}>
-                <div className={activeSection === 'shopping' ? 'flex-1' : 'w-full'}>
+              {/* Main Input: Name (big font) */}
+              <div>
+                <label className="block text-caption text-muted-foreground tracking-wide mb-2">
+                  {activeSection === 'shopping' 
+                    ? (t['todo.what_do_you_need'] || 'Shopping Item Name')
+                    : (t['todo.what_needs_to_be_done'] || 'Task Name')
+                  }
+                </label>
+                <input
+                  type="text"
+                  autoComplete="one-time-code"
+                  value={sheetForm.name || ''}
+                  onChange={e => setSheetForm(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder={activeSection === 'shopping' ? (t['common.eg_milk'] || 'e.g., Milk') : (t['common.eg_clean_bathroom'] || 'e.g., Clean bathroom')}
+                  className="w-full px-4 py-3 bg-muted rounded-xl text-xl font-semibold text-foreground placeholder-light outline-none border border-transparent focus:border-primary transition-colors"
+                />
+              </div>
+              
+              {/* Brand - Shopping only (secondary field) */}
+              {activeSection === 'shopping' && (
+                <div>
                   <label className="block text-caption text-muted-foreground tracking-wide mb-2">
-                    {activeSection === 'shopping' ? t['common.item_name'] : t['common.task_name']}
+                    {t['common.brand'] || 'Brand'}
                   </label>
                   <input
                     type="text"
                     autoComplete="one-time-code"
-                    value={sheetForm.name || ''}
-                    onChange={e => setSheetForm(prev => ({ ...prev, name: e.target.value }))}
-                    placeholder={activeSection === 'shopping' ? t['common.eg_milk'] : t['common.eg_clean_bathroom']}
-                    className="w-full px-4 py-3 bg-muted rounded-xl text-body text-foreground placeholder-muted-foreground outline-none border border-transparent focus:border-primary transition-colors"
+                    value={sheetForm.brand || ''}
+                    onChange={e => setSheetForm(prev => ({ ...prev, brand: e.target.value }))}
+                    placeholder={t['common.brand_placeholder'] || 'Your favorite brand'}
+                    className="w-full px-4 py-3 bg-muted rounded-xl text-body text-foreground placeholder-light outline-none border border-transparent focus:border-primary transition-colors"
                   />
                 </div>
-                
-                {/* Brand - Shopping only, 50% width */}
-                {activeSection === 'shopping' && (
-                  <div className="flex-1">
-                    <label className="block text-caption text-muted-foreground tracking-wide mb-2">
-                      {t['common.brand'] || 'Brand'}
-                    </label>
-                    <input
-                      type="text"
-                      autoComplete="one-time-code"
-                      value={sheetForm.brand || ''}
-                      onChange={e => setSheetForm(prev => ({ ...prev, brand: e.target.value }))}
-                      placeholder={t['common.brand_placeholder'] || 'Your favorite brand'}
-                      className="w-full px-4 py-3 bg-muted rounded-xl text-body text-foreground placeholder-muted-foreground outline-none border border-transparent focus:border-primary transition-colors"
-                    />
-                  </div>
-                )}
-              </div>
+              )}
               
               {/* Shopping-specific fields */}
               {activeSection === 'shopping' && (
@@ -2101,7 +2124,7 @@ const ToDo: React.FC<ToDoProps> = ({
                         setTimeout(() => setShowUnitSuggestions(false), 150);
                       }}
                       placeholder={t['common.unit_placeholder']}
-                      className="w-full px-4 py-3 bg-muted rounded-xl text-body text-foreground placeholder-muted-foreground outline-none border border-transparent focus:border-primary transition-colors"
+                      className="w-full px-4 py-3 bg-muted rounded-xl text-body text-foreground placeholder-light outline-none border border-transparent focus:border-primary transition-colors"
                     />
                     
                     {/* Unit suggestions dropdown */}
@@ -2250,7 +2273,7 @@ const ToDo: React.FC<ToDoProps> = ({
                       <button
                         key={cat}
                         onClick={() => setSheetForm(prev => ({ ...prev, category: cat }))}
-                        className={`flex-1 px-2 py-2 rounded-xl text-sm transition-all flex items-center justify-center gap-1 ${
+                        className={`flex-1 px-2 py-2 rounded-xl text-body transition-all flex items-center justify-start gap-1 ${
                           sheetForm.category === cat
                             ? 'bg-primary text-primary-foreground'
                             : 'bg-card text-foreground ring-1 ring-border'
@@ -2274,7 +2297,7 @@ const ToDo: React.FC<ToDoProps> = ({
                     <button
                       key={user.id}
                       onClick={() => setSheetForm(prev => ({ ...prev, assigneeId: user.id }))}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-xl text-body transition-all ${
+                      className={`flex items-center justify-start gap-2 px-3 py-2 rounded-xl text-body transition-all ${
                         sheetForm.assigneeId === user.id
                           ? 'bg-primary text-primary-foreground'
                           : 'bg-card text-foreground ring-1 ring-border'
@@ -2291,38 +2314,36 @@ const ToDo: React.FC<ToDoProps> = ({
               </div>
             </div>
             
-            {/* Fixed Footer with Delete + Save */}
-            <div className="shrink-0 p-5 pb-8 border-t border-border flex gap-3">
-              {/* Delete button - Hidden for Helper */}
-              {editingItemId && !isHelper && (
-                <button
-                  onClick={async () => {
-                    const itemId = editingItemId;
-                    setIsSheetOpen(false);
-                    setEditingItemId(null);
-                    await handleDelete(itemId);
-                  }}
-                  className="p-3 rounded-xl bg-destructive/10 text-destructive"
-                >
-                  <Trash2 size={20} />
-                </button>
-              )}
-              <button
-                onClick={handleSheetSave}
-                disabled={!sheetForm.name?.trim() || isSaving}
-                className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              >
-                {isSaving ? (
-                  <Loader2 size={18} className="animate-spin" />
-                ) : (
-                  <Check size={18} />
-                )}
-                {editingItemId 
-                  ? (t['common.update'] || 'Update')
-                  : (activeSection === 'shopping' ? (t['common.add_item'] || 'Add Item') : (t['common.add_task'] || 'Add Task'))
-                }
-              </button>
-            </div>
+            {/* Footer - Delete button only (when editing), or invisible spacer */}
+            {editingItemId && !isHelper ? (
+              <>
+                {/* Footer separator */}
+                <div className="px-5"><div className="h-px bg-border w-full"></div></div>
+                {/* Footer with Delete button */}
+                <div className="shrink-0 p-5 pb-8">
+                  <button
+                    onClick={async () => {
+                      const itemId = editingItemId;
+                      setIsSheetOpen(false);
+                      setEditingItemId(null);
+                      await handleDelete(itemId);
+                    }}
+                    className="w-full py-3.5 rounded-xl bg-destructive/10 text-destructive font-semibold flex items-center justify-center gap-2"
+                  >
+                    <Trash2 size={20} />
+                    {activeSection === 'shopping' 
+                      ? (t['todo.delete_item'] || 'Delete Item')
+                      : (t['todo.delete_task'] || 'Delete Task')
+                    }
+                  </button>
+                </div>
+              </>
+            ) : (
+              /* Invisible spacer for consistent height */
+              <div className="shrink-0 p-5 pb-8">
+                <div className="h-[52px]"></div>
+              </div>
+            )}
           </div>
         </div>
       , document.body)}

@@ -2048,7 +2048,7 @@ const Profile: React.FC<ProfileProps> = ({
                   
                   {/* ✓ Confirm Button (right) */}
                   <button
-                    onClick={handleUpdateProfile}
+                    onClick={handleSaveEdit}
                     disabled={isSavingProfile}
                     className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
                       !isSavingProfile

@@ -209,7 +209,12 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
     });
     
     const initClient = async () => {
-      setIsAuthClient(false); // reset while initializing
+      // NOTE: Do NOT call setIsAuthClient(false) here!
+      // It was causing data to flash (disappear then reappear) because:
+      // 1. Setting false tears down subscriptions
+      // 2. Then setting true restarts them with fresh fetch
+      // 3. User sees cached data → empty → fresh data
+      // Only set to false on actual failure (see error handlers below)
       console.log('[SupabaseContext] 🚀 initClient called', { isSignedIn });
       
       if (isSignedIn) {

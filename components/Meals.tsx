@@ -91,7 +91,6 @@ const Meals: React.FC<MealsProps> = ({
   const [view, setView] = useState<'day' | 'week'>('day');
   const [loadingAi, setLoadingAi] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [contentReady, setContentReady] = useState(false);
   
   
   // Scroll header hook for animation - lower threshold so shadow appears when card date gets covered
@@ -131,13 +130,10 @@ const Meals: React.FC<MealsProps> = ({
   const weekScrollRef = useRef<HTMLDivElement | null>(null);
 
   // ─────────────────────────────────────────────────────────────────
-  // ⚠️  iOS AUTO-SCROLL FIX - DO NOT MODIFY WITHOUT READING docs/MEALS_SCROLL_FIX.md
+  // AUTO-SCROLL TO TODAY - Only on initial mount
   // ─────────────────────────────────────────────────────────────────
-  // Auto-scrolls to "Today" on page load using useLayoutEffect.
-  // useLayoutEffect runs BEFORE browser paint, preventing visible scroll jump.
-  // RAF fallback handles rare cases where DOM isn't ready on first attempt.
-  // ─────────────────────────────────────────────────────────────────
-  const shouldAutoScroll = useRef(true);
+  const hasInitiallyScrolled = useRef(false);
+  const hasScrolledWeekView = useRef(false);
 
   const mealTypes = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER, MealType.SNACKS];
   const langCode = currentLang === 'en' ? 'en-GB' : currentLang;
@@ -497,81 +493,66 @@ const Meals: React.FC<MealsProps> = ({
 
   // Week cell click -> go to Day view
   const handleWeekCellClick = (date: Date) => {
-    shouldAutoScroll.current = true;
     setCurrentViewDate(new Date(date));
     setView('day');
   };
 
-  // Go to today (with auto-scroll)
-  const goToTodayWithScroll = () => {
-    shouldAutoScroll.current = true;
-    goToToday();
-  };
-
   // ─────────────────────────────────────────────────────────────────
-  // AUTO-SCROLL TO TODAY - SINGLE ATTEMPT, NO RACE CONDITIONS
-  // Uses useLayoutEffect to scroll BEFORE browser paint (no flicker)
-  // Content is hidden until scroll completes to prevent wrong-day flash
+  // AUTO-SCROLL TO TODAY - Only on initial mount (like HouseholdInfo)
   // ─────────────────────────────────────────────────────────────────
   useLayoutEffect(() => {
-    if (!shouldAutoScroll.current) {
-      if (!contentReady) setContentReady(true);
-      return;
-    }
+    if (hasInitiallyScrolled.current) return;
+    hasInitiallyScrolled.current = true;
 
+    // Only auto-scroll in day view on initial load
     if (view === 'day') {
       const headerOffset = 230;
-      const targetDateStr = formatDateStr(new Date(currentViewDate));
+      const targetDateStr = formatDateStr(new Date());
       
-      // Use requestAnimationFrame to ensure DOM is ready
-      const frameId = requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
         const targetEl = document.getElementById(`day-${targetDateStr}`);
-        if (!targetEl) {
-          shouldAutoScroll.current = false;
-          setContentReady(true);
-          return;
-        }
+        if (!targetEl) return;
         
         const rect = targetEl.getBoundingClientRect();
         const elementPosition = rect.top + window.scrollY;
         window.scrollTo({ top: elementPosition - headerOffset, behavior: 'auto' });
-        shouldAutoScroll.current = false;
-        setContentReady(true);
       });
-
-      return () => cancelAnimationFrame(frameId);
-      
-    } else if (view === 'week') {
-      const frameId = requestAnimationFrame(() => {
-        const scrollContainer = weekScrollRef.current;
-        if (!scrollContainer) {
-          shouldAutoScroll.current = false;
-          setContentReady(true);
-          return;
-        }
-        
-        window.scrollTo({ top: 0, behavior: 'auto' });
-        
-        const todayIndex = weekDays.findIndex(d => 
-          d.toDateString() === new Date().toDateString()
-        );
-        
-        if (todayIndex >= 0) {
-          const labelColumnWidth = 72;
-          const totalDayColumnsWidth = scrollContainer.scrollWidth - labelColumnWidth;
-          const columnWidth = totalDayColumnsWidth / 7;
-          const todayColumnStart = labelColumnWidth + (columnWidth * todayIndex);
-          const targetScroll = todayColumnStart - (scrollContainer.clientWidth / 2) + (columnWidth / 2);
-          scrollContainer.scrollTo({ left: Math.max(0, targetScroll), behavior: 'auto' });
-        }
-        
-        shouldAutoScroll.current = false;
-        setContentReady(true);
-      });
-
-      return () => cancelAnimationFrame(frameId);
     }
-  }, [view, currentViewDate, weekDays]);
+  }, []);
+
+  // ─────────────────────────────────────────────────────────────────
+  // AUTO-SCROLL TO TODAY COLUMN IN WEEK VIEW
+  // ─────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (view !== 'week') {
+      hasScrolledWeekView.current = false;
+      return;
+    }
+    
+    // Only scroll once per week view entry
+    if (hasScrolledWeekView.current) return;
+    hasScrolledWeekView.current = true;
+    
+    // Find today's index in the week (0-6)
+    const today = new Date();
+    const todayIndex = weekDays.findIndex(d => d.toDateString() === today.toDateString());
+    
+    // Only scroll if today is in the current week
+    if (todayIndex === -1 || !weekScrollRef.current) return;
+    
+    requestAnimationFrame(() => {
+      const container = weekScrollRef.current;
+      if (!container) return;
+      
+      // Calculate scroll position: first column is 72px, each day column is equal width
+      // We want to scroll so today's column is visible (centered if possible)
+      const firstColWidth = 72;
+      const dayColWidth = (container.scrollWidth - firstColWidth) / 7;
+      const targetScroll = firstColWidth + (todayIndex * dayColWidth) - (container.clientWidth / 2) + (dayColWidth / 2);
+      
+      container.scrollTo({ left: Math.max(0, targetScroll), behavior: 'smooth' });
+    });
+  }, [view, weekDays]);
 
   // Close quick join popover when clicking outside
   useEffect(() => {
@@ -772,33 +753,22 @@ const Meals: React.FC<MealsProps> = ({
 
   return (
     <div className="min-h-screen bg-background pb-40">
-      {/* Fixed background shield - sits just behind sticky header (z-19) 
-          to prevent any flicker during iOS Safari scroll operations */}
-      <div 
-        className="fixed top-0 left-0 right-0 z-[19] bg-background"
-        style={{ height: '200px', transform: 'translateZ(0)', backfaceVisibility: 'hidden' }}
-        aria-hidden="true"
-      />
-      
       <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
         {/* ─────────────────────────────────────────────────────────────── */}
-        {/* STICKY HEADER - Push Up (No Shrink) - matches ToDo/Expenses */}
+        {/* STICKY HEADER - matches HouseholdInfo */}
         {/* ─────────────────────────────────────────────────────────────── */}
         <header 
           className="sticky top-0 z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 pb-3 flex items-end" 
-          style={{ height: '120px', boxShadow: '0 10px 0 0 hsl(var(--background))', transform: 'translateZ(0)', backfaceVisibility: 'hidden' }}
+          style={{ height: '120px' }}
         >
           <div className="flex items-center justify-between w-full">
             <h1 className="text-display text-foreground">
               {t['meals.title']}
             </h1>
             
-            {/* Day/Week Toggle - Single icon button (matches ToDo calendar/list toggle) */}
+            {/* Day/Week Toggle - Simple state change like HouseholdInfo tabs */}
             <button
-              onClick={() => {
-                shouldAutoScroll.current = true;
-                setView(view === 'day' ? 'week' : 'day');
-              }}
+              onClick={() => setView(view === 'day' ? 'week' : 'day')}
               className="p-2 rounded-full text-muted-foreground transition-colors"
             >
               {view === 'day' ? <Sheet size={20} /> : <Rows3 size={20} />}
@@ -818,9 +788,7 @@ const Meals: React.FC<MealsProps> = ({
           className="sticky z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 py-5 transition-shadow duration-200"
           style={{ 
             top: '120px',
-            boxShadow: isScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none',
-            transform: 'translateZ(0)',
-            backfaceVisibility: 'hidden'
+            boxShadow: isScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none'
           }}
         >
           <div className="flex items-center gap-3">
@@ -845,7 +813,7 @@ const Meals: React.FC<MealsProps> = ({
 
             {/* Today Button */}
             <button
-              onClick={goToTodayWithScroll}
+              onClick={goToToday}
               disabled={isCurrentWeek}
               className={`px-4 rounded-xl font-semibold text-body h-12 ${
                 isCurrentWeek
@@ -859,9 +827,9 @@ const Meals: React.FC<MealsProps> = ({
         </div>
 
         {/* ─────────────────────────────────────────────────────────────── */}
-        {/* MAIN CONTENT - Hidden until scroll completes to prevent flicker */}
+        {/* MAIN CONTENT - Simple render like HouseholdInfo tabs */}
         {/* ─────────────────────────────────────────────────────────────── */}
-        <div className="pt-1" style={{ visibility: contentReady ? 'visible' : 'hidden' }}>
+        <div className="pt-1">
 
       {/* Day View */}
       {view === 'day' ? (
@@ -1125,11 +1093,11 @@ const Meals: React.FC<MealsProps> = ({
       ) : (
           /* Week View - Google Calendar Style Grid (Meals as rows, Days as columns) */
           <div className="rounded-xl bg-card shadow-sm overflow-hidden isolate">
-            {/* Horizontal scroll container */}
+            {/* Horizontal + vertical scroll container */}
             <div 
               ref={weekScrollRef}
-              className="overflow-x-auto overflow-y-hidden overscroll-x-contain"
-              style={{ WebkitOverflowScrolling: 'touch' }}
+              className="overflow-x-auto overflow-y-auto overscroll-x-contain"
+              style={{ WebkitOverflowScrolling: 'touch', maxHeight: 'calc(100vh - 280px)' }}
             >
               {/* CSS Grid - 1 meal label column + 7 day columns */}
               <div 
@@ -1137,17 +1105,18 @@ const Meals: React.FC<MealsProps> = ({
                 style={{ gridTemplateColumns: '72px repeat(7, minmax(120px, 1fr))' }}
               >
                 {/* ===== HEADER ROW: Corner + Day Headers ===== */}
-                {/* Corner cell (empty) - sticky left but low z-index */}
-                <div className="bg-muted p-2 border-b border-r border-border sticky left-0 z-[2]" />
-                {/* Day header cells */}
+                {/* Corner cell (empty) - sticky both left AND top */}
+                <div className="bg-muted p-2 border-b border-r border-border sticky left-0 top-0 z-[3]" />
+                {/* Day header cells - sticky top */}
                 {weekDays.map((day, dayIndex) => {
                   const isToday = day.toDateString() === new Date().toDateString();
                   const isLastCol = dayIndex === weekDays.length - 1;
                   return (
                     <div 
                       key={formatDateStr(day)}
+                      id={`week-day-${formatDateStr(day)}`}
                       onClick={() => handleWeekCellClick(day)}
-                      className={`p-2 border-b border-border text-center cursor-pointer ${!isLastCol ? 'border-r border-border' : ''} ${isToday ? 'bg-primary' : 'bg-muted'}`}
+                      className={`p-2 border-b border-border text-center cursor-pointer sticky top-0 z-[2] ${!isLastCol ? 'border-r border-border' : ''} ${isToday ? 'bg-primary' : 'bg-muted'}`}
                     >
                       <span className={`text-caption font-semibold block ${isToday ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
                         {day.toLocaleDateString(langCode, { weekday: 'short' })}

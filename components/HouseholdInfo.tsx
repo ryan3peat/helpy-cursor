@@ -1690,18 +1690,13 @@ const HouseRoutineCard: React.FC<HouseRoutineCardProps> = ({
           className="mt-3 pt-3 border-t border-border cursor-pointer"
           onClick={handleTap}
         >
-          <p className="text-body text-muted-foreground line-clamp-3 whitespace-pre-wrap">
+          <p className="text-body text-muted-foreground whitespace-pre-wrap">
             <TranslatedHouseRoutineNote 
               item={item} 
               currentLang={currentLang} 
               onUpdate={(id, data) => updateHouseRoutine(householdId, id, data as any)} 
             />
           </p>
-          {item.note.length > 150 && (
-            <span className="text-caption text-primary mt-1 inline-block">
-              {t['info.tap_see_more'] || 'tap to see more'}
-            </span>
-          )}
         </div>
       )}
     </div>

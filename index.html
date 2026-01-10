@@ -89,7 +89,11 @@
         }
 
         function computeThemeColor(isDark) {
-          // Auth pages now also respect dark mode (no special override)
+          // Auth pages are ALWAYS light-themed - force light theme-color
+          // so iOS shows dark status bar text (visible on light background)
+          if (document.documentElement.classList.contains('auth-page')) {
+            return LIGHT_COLOR;
+          }
           return isDark ? DARK_COLOR : LIGHT_COLOR;
         }
 

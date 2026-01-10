@@ -1687,7 +1687,7 @@ const HouseRoutineCard: React.FC<HouseRoutineCardProps> = ({
       {/* Note Preview */}
       {item.note && (
         <div 
-          className="mt-3 pt-3 border-t border-border cursor-pointer"
+          className="mt-3 pt-3 cursor-pointer"
           onClick={handleTap}
         >
           <p className="text-body text-muted-foreground whitespace-pre-wrap">

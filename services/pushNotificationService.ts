@@ -614,6 +614,13 @@ function setupUpdateDetection(registration: ServiceWorkerRegistration): void {
       }
     });
   });
+  
+  // Safety net: if the service worker controller changes mid-session, reload cleanly
+  // This handles the case where user clicks Update or browser decides to activate new SW
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    console.log('[SW Update] Controller changed - reloading for clean state...');
+    window.location.reload();
+  });
 }
 
 /**

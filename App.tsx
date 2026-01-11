@@ -862,8 +862,6 @@ const AppContent: React.FC = () => {
     const hid = currentUser.householdId;
     
     const unsubUsers = subscribeToCollection(hid, 'users', (data) => {
-      // Allow empty data - the real-time system will update when data arrives
-      // Previously we blocked empty results which caused data to stay at 0 on slow connections
       if (!data) return;
       
       // Deduplicate users by id to prevent duplicates
@@ -890,18 +888,30 @@ const AppContent: React.FC = () => {
         return acc;
       }, []);
       
-      setUsers(finalUsers as User[]);
+      // Protect cached data: don't replace existing users with empty results
+      setUsers(prev => {
+        if (finalUsers.length === 0 && prev.length > 0) {
+          console.log('[App] 🛡️ Protecting cached users from empty result');
+          return prev;
+        }
+        return finalUsers as User[];
+      });
     });
     const unsubTodoItems = subscribeToCollection(hid, 'todo_items', (data) => {
-      // Allow empty data - if user has no todos, show empty state
       if (!data) return;
       
       // Filter out items that are pending deletion to prevent "ghost returns"
-      // This handles the race condition where real-time fires before delete propagates
       const filteredData = (data as ToDoItem[]).filter(item => !pendingTodoDeletions.current.has(item.id));
       
-      // Also merge with any temp items that haven't been saved yet
+      // Merge with temp items and protect cached data
       setTodoItems(prev => {
+        // Protect cached data: don't replace existing todos with empty results
+        const realPrevItems = prev.filter(item => !item.id.startsWith('temp-') && !item.id.startsWith('todo-'));
+        if (filteredData.length === 0 && realPrevItems.length > 0) {
+          console.log('[App] 🛡️ Protecting cached todos from empty result');
+          return prev;
+        }
+        
         const tempItems = prev.filter(item => item.id.startsWith('temp-') || item.id.startsWith('todo-'));
         // Create a map of real items by their content key for deduplication
         const realItemKeys = new Set(filteredData.map(item => {
@@ -918,14 +928,27 @@ const AppContent: React.FC = () => {
       });
     });
     const unsubMeals = subscribeToCollection(hid, 'meals', (data) => {
-      // Allow empty data - if user has no meals, show empty state
       if (!data) return;
-      setMeals(data as Meal[]);
+      // Protect cached data: don't replace existing data with empty results
+      // This prevents brief network hiccups from wiping the UI
+      setMeals(prev => {
+        if (data.length === 0 && prev.length > 0) {
+          console.log('[App] 🛡️ Protecting cached meals from empty result');
+          return prev;
+        }
+        return data as Meal[];
+      });
     });
     const unsubExpenses = subscribeToCollection(hid, 'expenses', (data) => {
-      // Allow empty data - if user has no expenses, show empty state
       if (!data) return;
-      setExpenses(data as Expense[]);
+      // Protect cached data: don't replace existing data with empty results
+      setExpenses(prev => {
+        if (data.length === 0 && prev.length > 0) {
+          console.log('[App] 🛡️ Protecting cached expenses from empty result');
+          return prev;
+        }
+        return data as Expense[];
+      });
     });
     const unsubNotes = subscribeToNotes(hid, (notesData) => {
       setFamilyNotes(notesData.notes);

@@ -601,11 +601,12 @@ self.addEventListener('install', (event) => {
   console.log('[SW] Installing service worker...');
   console.log('[SW] Service worker scope:', self.registration?.scope);
   
-  // Skip waiting to activate immediately - NO caching
+  // Clear caches but DON'T skipWaiting automatically
+  // Let the user control when to activate via the Update button
+  // This prevents mid-session takeover that causes data to disappear
   event.waitUntil(
-    // Clear ALL existing caches to fix broken state
     caches.keys().then(cacheNames => {
-      console.log('[SW] Clearing all caches to fix broken state...');
+      console.log('[SW] Clearing all caches...');
       return Promise.all(
         cacheNames.map(name => {
           console.log('[SW] Deleting cache:', name);
@@ -614,7 +615,9 @@ self.addEventListener('install', (event) => {
       );
     }).then(() => {
       console.log('[SW] All caches cleared');
-      return self.skipWaiting();
+      console.log('[SW] Waiting for user to trigger update (no auto-skipWaiting)');
+      // NOTE: skipWaiting() is now only called when user clicks "Update" button
+      // which sends a SKIP_WAITING message (handled in the message listener)
     })
   );
 });

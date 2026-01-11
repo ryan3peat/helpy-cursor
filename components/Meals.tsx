@@ -904,7 +904,7 @@ const Meals: React.FC<MealsProps> = ({
                         const { adultCount, kidCount } = getParticipantCounts(meal.forUserIds);
 
                         return (
-                          <div key={meal.id} className="grid grid-cols-[1fr_1px_4rem_1px_7rem] h-[80px] items-center">
+                          <div key={meal.id} className="grid grid-cols-[1fr_1px_4rem_1px_7rem] min-h-[80px] items-center">
                             {/* Left Column: Meal Info */}
                             <div 
                               onClick={() => openEditModal(meal)}
@@ -915,7 +915,7 @@ const Meals: React.FC<MealsProps> = ({
                                 {getMealLabel(meal.type)}
                               </span>
                               {hasDish ? (
-                                <span className="text-body font-semibold text-foreground leading-tight line-clamp-2 block">
+                                <span className="text-body font-semibold text-foreground leading-tight block">
                                   <TranslatedMealDescription meal={meal} currentLang={currentLang} onUpdate={onUpdate} />
                                 </span>
                               ) : (
@@ -928,7 +928,7 @@ const Meals: React.FC<MealsProps> = ({
 
                             {/* Vertical Separator */}
                             <div 
-                              className="h-1/2 opacity-50"
+                              className="self-stretch opacity-50 my-3"
                               style={{ background: 'linear-gradient(to bottom, transparent, hsl(var(--border)) 20%, hsl(var(--border)) 80%, transparent)' }}
                             />
 
@@ -962,7 +962,7 @@ const Meals: React.FC<MealsProps> = ({
 
                             {/* Vertical Separator */}
                             <div 
-                              className="h-1/2 opacity-50"
+                              className="self-stretch opacity-50 my-3"
                               style={{ background: 'linear-gradient(to bottom, transparent, hsl(var(--border)) 20%, hsl(var(--border)) 80%, transparent)' }}
                             />
 
@@ -1059,7 +1059,7 @@ const Meals: React.FC<MealsProps> = ({
                             )}
 
                             {/* Grid row - same structure as meal rows */}
-                            <div className="grid grid-cols-[1fr_1px_4rem_1px_7rem] h-[80px] items-center">
+                            <div className="grid grid-cols-[1fr_1px_4rem_1px_7rem] min-h-[80px] items-center">
                               {/* Left Column: Add Meal Plan button */}
                               <div 
                                 onClick={() => openAddModal(dayDate, MealType.DINNER)}
@@ -1073,7 +1073,7 @@ const Meals: React.FC<MealsProps> = ({
 
                               {/* Vertical Separator */}
                               <div 
-                                className="h-1/2 opacity-50"
+                                className="self-stretch opacity-50 my-3"
                                 style={{ background: 'linear-gradient(to bottom, transparent, hsl(var(--border)) 20%, hsl(var(--border)) 80%, transparent)' }}
                               />
 
@@ -1090,7 +1090,7 @@ const Meals: React.FC<MealsProps> = ({
 
                               {/* Vertical Separator */}
                               <div 
-                                className="h-1/2 opacity-50"
+                                className="self-stretch opacity-50 my-3"
                                 style={{ background: 'linear-gradient(to bottom, transparent, hsl(var(--border)) 20%, hsl(var(--border)) 80%, transparent)' }}
                               />
 
@@ -1119,19 +1119,20 @@ const Meals: React.FC<MealsProps> = ({
             <div 
               ref={weekScrollRef}
               className="overflow-x-auto"
+              style={{ overscrollBehavior: 'none' }}
             >
               <table style={{ 
                 borderCollapse: 'separate', 
                 borderSpacing: 0, 
-                tableLayout: 'fixed',
+                tableLayout: 'auto',
                 minWidth: '490px',
-                width: '490px'
+                width: '100%'
               }}>
-                {/* Define column widths - 90px for date, 100px for each meal type */}
+                {/* Define column minimum widths - 90px for date, 100px for each meal type */}
                 <colgroup>
-                  <col style={{ width: '90px' }} />
+                  <col style={{ minWidth: '90px', width: '90px' }} />
                   {mealTypes.map((type) => (
-                    <col key={type} style={{ width: '100px' }} />
+                    <col key={type} style={{ minWidth: '100px', width: '100px' }} />
                   ))}
                 </colgroup>
                 {/* Table Header - Meal type names */}
@@ -1139,11 +1140,10 @@ const Meals: React.FC<MealsProps> = ({
                   <tr>
                     {/* Corner cell - sticky horizontally */}
                     <th 
-                      className="p-2 bg-muted sticky left-0 z-30 border-b border-border"
+                      className="p-2 bg-muted sticky left-0 z-10 border-b border-border"
                       style={{ 
                         boxShadow: '1px 0 0 0 #d1d5db',
-                        width: '90px',
-                        maxWidth: '90px'
+                        minWidth: '90px'
                       }}
                     />
                     {/* Meal type headers - no sticky, scrolls with content */}
@@ -1158,7 +1158,7 @@ const Meals: React.FC<MealsProps> = ({
                             {getMealIcon(type)}
                             <span className="text-caption font-semibold text-muted-foreground leading-tight text-center break-words">
                               {getMealLabel(type)}
-                            </span>
+                          </span>
                           </div>
                         </th>
                       );
@@ -1180,13 +1180,12 @@ const Meals: React.FC<MealsProps> = ({
                           className={`p-2 text-center align-middle sticky left-0 z-10 cursor-pointer border-r border-border ${!isLastRow ? 'border-b border-border' : ''} ${isToday ? 'bg-primary' : 'bg-card'}`}
                           style={{ 
                             boxShadow: '1px 0 0 0 #d1d5db',
-                            width: '90px',
-                            maxWidth: '90px'
+                            minWidth: '90px'
                           }}
                         >
                           <span className={`text-caption font-semibold block ${isToday ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
                             {day.toLocaleDateString(langCode, { weekday: 'short' })}
-                          </span>
+                            </span>
                           <span className={`text-body font-bold block ${isToday ? 'text-primary-foreground' : 'text-foreground'}`}>
                             {day.getDate()} {day.toLocaleDateString(langCode, { month: 'short' })}
                           </span>
@@ -1202,7 +1201,7 @@ const Meals: React.FC<MealsProps> = ({
                               key={`${dateStr}-${type}`}
                               onClick={() => handleWeekCellClick(day)}
                               className={`p-1.5 cursor-pointer align-top ${!isLastRow ? 'border-b border-border' : ''} ${!isLastCol ? 'border-r border-border' : ''}`}
-                              style={{ width: '100px', maxWidth: '100px' }}
+                              style={{ minWidth: '100px' }}
                             >
                               {slotMeals.length > 0 ? (
                                 <div className="space-y-1">

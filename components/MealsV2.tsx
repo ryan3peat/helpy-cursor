@@ -886,25 +886,25 @@ const MealsV2: React.FC<MealsV2Props> = ({
                   }}
                 >
                   {/* ═══════════════════════════════════════════════════════════ */}
-                  {/* HEADER ROW - Frozen at top (sticky top-0) */}
+                  {/* HEADER ROW - NOT sticky (per user request) */}
                   {/* ═══════════════════════════════════════════════════════════ */}
                   
-                  {/* Corner cell - frozen both horizontally and vertically */}
+                  {/* Corner cell - sticky left only (matches date column) */}
                   <div 
-                    className="sticky top-0 left-0 z-30 p-2 bg-muted border-b border-border flex items-center justify-center"
+                    className="sticky left-0 z-20 p-2 bg-muted border-b border-border flex items-center justify-center"
                     style={{ 
                       boxShadow: '1px 0 0 0 hsl(var(--border)), 4px 0 8px -2px rgba(0,0,0,0.1)',
                       minHeight: '52px'
                     }}
                   />
 
-                  {/* Meal type header cells - frozen at top only */}
+                  {/* Meal type header cells - NOT sticky */}
                   {mealTypes.map((type, typeIndex) => {
                     const isLastCol = typeIndex === mealTypes.length - 1;
                     return (
                       <div 
                         key={`header-${type}`}
-                        className={`sticky top-0 z-20 p-2 bg-muted text-center flex flex-col items-center justify-center gap-0.5 border-b border-border ${!isLastCol ? 'border-r' : ''}`}
+                        className={`p-2 bg-muted text-center flex flex-col items-center justify-center gap-0.5 border-b border-border ${!isLastCol ? 'border-r border-border' : ''}`}
                         style={{ minHeight: '52px' }}
                       >
                         {getMealIcon(type)}
@@ -952,7 +952,7 @@ const MealsV2: React.FC<MealsV2Props> = ({
                             <div
                               key={`${dateStr}-${type}`}
                               onClick={() => handleWeekCellClick(day)}
-                              className={`p-1.5 cursor-pointer bg-card ${!isLastRow ? 'border-b border-border' : ''} ${!isLastCol ? 'border-r border-border' : ''}`}
+                              className={`p-1.5 cursor-pointer bg-card border-border ${!isLastRow ? 'border-b' : ''} ${!isLastCol ? 'border-r' : ''}`}
                               style={{ minHeight: '80px' }}
                             >
                               {slotMeals.length > 0 ? (

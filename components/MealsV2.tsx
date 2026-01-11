@@ -862,80 +862,62 @@ const MealsV2: React.FC<MealsV2Props> = ({
           </div>
 
           {/* ═══════════════════════════════════════════════════════════ */}
-          {/* WEEK VIEW - Always mounted, hidden when not active */}
-          {/* STRUCTURE: Meal type header is OUTSIDE the card, at page level */}
-          {/* This allows it to be sticky at the page level like the week nav */}
+          {/* WEEK VIEW - Freeze first row (header) and first column (dates) */}
+          {/* Single scroll container with sticky positioning */}
           {/* ═══════════════════════════════════════════════════════════ */}
           <div style={{ display: view === 'week' ? 'block' : 'none' }}>
-            
-            {/* ─────────────────────────────────────────────────────────────── */}
-            {/* STICKY MEAL TYPE HEADER - Direct child of page-content wrapper */}
-            {/* Sticks below week navigation (top: 188px = 120px header + 68px nav) */}
-            {/* ─────────────────────────────────────────────────────────────── */}
-            <div 
-              className="sticky z-20 bg-muted rounded-t-xl -mx-4 px-4 sm:-mx-6 sm:px-6"
-              style={{ top: '188px' }}
-            >
-              <div 
-                className="grid"
-                style={{ 
-                  gridTemplateColumns: '80px repeat(4, minmax(110px, 1fr))',
-                  width: '100%'
-                }}
-              >
-                {/* Corner cell */}
-                <div 
-                  className="p-2 bg-muted border-b border-border"
-                  style={{ 
-                    boxShadow: '1px 0 0 0 hsl(var(--border)), 4px 0 8px -2px rgba(0,0,0,0.1)' 
-                  }}
-                />
-
-                {/* Meal type headers */}
-                {mealTypes.map((type, typeIndex) => {
-                  const isLastCol = typeIndex === mealTypes.length - 1;
-                  return (
-                    <div 
-                      key={type}
-                      className={`p-2 bg-muted text-center flex flex-col items-center justify-center gap-0.5 border-b border-border ${!isLastCol ? 'border-r' : ''}`}
-                    >
-                      {getMealIcon(type)}
-                      <span className="text-micro font-semibold text-muted-foreground leading-tight">
-                        {getMealLabel(type)}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* ─────────────────────────────────────────────────────────────── */}
-            {/* CARD WITH SCROLLABLE DAY ROWS ONLY */}
-            {/* ─────────────────────────────────────────────────────────────── */}
-            <div className="rounded-b-xl bg-card shadow-sm overflow-hidden">
+            <div className="rounded-xl bg-card shadow-sm overflow-hidden">
               <div 
                 ref={weekScrollRef}
                 className="overflow-auto"
                 style={{ 
-                  // Fixed height: viewport - header(120) - nav(68) - meal type row(52) - padding
-                  height: 'calc(100vh - 272px)',
-                  // Completely disable rubber-band/bounce effect on iOS
+                  height: 'calc(100vh - 220px)',
+                  WebkitOverflowScrolling: 'touch',
                   overscrollBehavior: 'none'
                 }}
               >
+                {/* Single grid with header as first row */}
                 <div 
                   className="grid"
                   style={{ 
-                    // Date column (80px) + 4 meal columns at 150% width (~110px each)
-                    gridTemplateColumns: '80px repeat(4, minmax(110px, 1fr))',
-                    gridAutoRows: 'minmax(80px, auto)',
-                    width: '100%',
-                    minWidth: '100%'
+                    // Fixed widths to ensure horizontal scroll is needed
+                    gridTemplateColumns: '80px 120px 120px 120px 120px',
+                    width: 'max-content'
                   }}
                 >
-                  {/* ─────────────────────────────────────────────────────────────── */}
-                  {/* DAY ROWS ONLY - No header here, it's above the card */}
-                  {/* ─────────────────────────────────────────────────────────────── */}
+                  {/* ═══════════════════════════════════════════════════════════ */}
+                  {/* HEADER ROW - Frozen at top (sticky top-0) */}
+                  {/* ═══════════════════════════════════════════════════════════ */}
+                  
+                  {/* Corner cell - frozen both horizontally and vertically */}
+                  <div 
+                    className="sticky top-0 left-0 z-30 p-2 bg-muted border-b border-border flex items-center justify-center"
+                    style={{ 
+                      boxShadow: '1px 0 0 0 hsl(var(--border)), 4px 0 8px -2px rgba(0,0,0,0.1)',
+                      minHeight: '52px'
+                    }}
+                  />
+
+                  {/* Meal type header cells - frozen at top only */}
+                  {mealTypes.map((type, typeIndex) => {
+                    const isLastCol = typeIndex === mealTypes.length - 1;
+                    return (
+                      <div 
+                        key={`header-${type}`}
+                        className={`sticky top-0 z-20 p-2 bg-muted text-center flex flex-col items-center justify-center gap-0.5 border-b border-border ${!isLastCol ? 'border-r' : ''}`}
+                        style={{ minHeight: '52px' }}
+                      >
+                        {getMealIcon(type)}
+                        <span className="text-micro font-semibold text-muted-foreground leading-tight">
+                          {getMealLabel(type)}
+                        </span>
+                      </div>
+                    );
+                  })}
+
+                  {/* ═══════════════════════════════════════════════════════════ */}
+                  {/* DAY ROWS - First column (dates) frozen at left */}
+                  {/* ═══════════════════════════════════════════════════════════ */}
                   {weekDays.map((day, dayIndex) => {
                     const dateStr = formatDateStr(day);
                     const isToday = day.toDateString() === new Date().toDateString();
@@ -943,13 +925,14 @@ const MealsV2: React.FC<MealsV2Props> = ({
                     
                     return (
                       <React.Fragment key={dateStr}>
-                        {/* Row header (date) - sticky left with shadow separator */}
+                        {/* Date cell - frozen at left (sticky left-0) */}
                         <div 
                           data-day-row={dayIndex}
                           onClick={() => handleWeekCellClick(day)}
                           className={`sticky left-0 z-10 p-1.5 text-center cursor-pointer flex flex-col items-center justify-center ${!isLastRow ? 'border-b border-border' : ''} ${isToday ? 'bg-primary' : 'bg-card'}`}
                           style={{ 
-                            boxShadow: '1px 0 0 0 hsl(var(--border)), 4px 0 8px -2px rgba(0,0,0,0.1)' 
+                            boxShadow: '1px 0 0 0 hsl(var(--border)), 4px 0 8px -2px rgba(0,0,0,0.1)',
+                            minHeight: '80px'
                           }}
                         >
                           <span className={`text-micro font-semibold block ${isToday ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
@@ -969,7 +952,8 @@ const MealsV2: React.FC<MealsV2Props> = ({
                             <div
                               key={`${dateStr}-${type}`}
                               onClick={() => handleWeekCellClick(day)}
-                              className={`p-1.5 cursor-pointer ${!isLastRow ? 'border-b border-border' : ''} ${!isLastCol ? 'border-r border-border' : ''}`}
+                              className={`p-1.5 cursor-pointer bg-card ${!isLastRow ? 'border-b border-border' : ''} ${!isLastCol ? 'border-r border-border' : ''}`}
+                              style={{ minHeight: '80px' }}
                             >
                               {slotMeals.length > 0 ? (
                                 <div className="space-y-1">
@@ -1014,7 +998,7 @@ const MealsV2: React.FC<MealsV2Props> = ({
                                   })}
                                 </div>
                               ) : (
-                                <div className="flex items-center justify-center py-4">
+                                <div className="flex items-center justify-center h-full">
                                   <span className="text-muted-foreground/30 text-lg">·</span>
                                 </div>
                               )}

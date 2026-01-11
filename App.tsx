@@ -5,6 +5,7 @@ import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
 import ToDo from './components/ToDo';
 import Meals from './components/Meals';
+import MealsV2 from './components/MealsV2';
 import Expenses from './components/Expenses';
 import Profile from './components/Profile';
 import HouseholdInfo from './components/HouseholdInfo';
@@ -1749,6 +1750,20 @@ const AppContent: React.FC = () => {
       case 'meals':
         return (
           <Meals
+            meals={isDemoMode ? demoMeals : meals}
+            users={isDemoMode ? demoUsers : users}
+            currentUser={isDemoMode ? demoUsers[0] : currentUser!}
+            onAdd={handleAddMeal}
+            onUpdate={handleUpdateMeal}
+            onDelete={handleDeleteMeal}
+            t={translations}
+            currentLang={lang}
+          />
+        );
+
+      case 'mealsv2':
+        return (
+          <MealsV2
             meals={isDemoMode ? demoMeals : meals}
             users={isDemoMode ? demoUsers : users}
             currentUser={isDemoMode ? demoUsers[0] : currentUser!}

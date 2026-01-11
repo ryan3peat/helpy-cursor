@@ -1584,6 +1584,19 @@ const Expenses: React.FC<ExpensesProps> = ({
                     </div>
             </div>
 
+                {/* Date */}
+                    <div>
+                      <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
+                        {t['expenses.date'] || 'Date'}
+                      </label>
+                      <input
+                        type="date"
+                        value={editDate}
+                        onChange={(e) => setEditDate(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl bg-muted border border-transparent focus:border-primary outline-none transition-all text-body"
+                      />
+                    </div>
+
                   {/* Shop Name */}
                   <div>
                     <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
@@ -1651,19 +1664,6 @@ const Expenses: React.FC<ExpensesProps> = ({
                         })}
                     </div>
                 </div>
-
-                {/* Date */}
-                    <div>
-                      <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
-                        {t['expenses.date'] || 'Date'}
-                      </label>
-                      <input
-                        type="date"
-                        value={editDate}
-                        onChange={(e) => setEditDate(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl bg-muted border border-transparent focus:border-primary outline-none transition-all text-body"
-                      />
-                    </div>
                   </div>
             )}
 
@@ -1727,6 +1727,19 @@ const Expenses: React.FC<ExpensesProps> = ({
                       />
                     </div>
               </div>
+
+                {/* Date */}
+              <div>
+                      <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
+                        {t['expenses.date'] || 'Date'}
+                      </label>
+                <input
+                  type="date"
+                  value={editDate}
+                  onChange={(e) => setEditDate(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl bg-muted border border-transparent focus:border-primary outline-none transition-all text-body"
+                />
+                    </div>
 
                   {/* Shop Name */}
               <div>
@@ -1795,19 +1808,6 @@ const Expenses: React.FC<ExpensesProps> = ({
                     })}
                   </div>
                 </div>
-
-                {/* Date */}
-              <div>
-                      <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
-                        {t['expenses.date'] || 'Date'}
-                      </label>
-                <input
-                  type="date"
-                  value={editDate}
-                  onChange={(e) => setEditDate(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl bg-muted border border-transparent focus:border-primary outline-none transition-all text-body"
-                />
-                    </div>
               </div>
             )}
 
@@ -1965,6 +1965,19 @@ const Expenses: React.FC<ExpensesProps> = ({
                     </div>
                   </div>
 
+                  {/* Date */}
+                    <div>
+                      <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
+                        {t['expenses.date'] || 'Date'}
+                      </label>
+                      <input
+                        type="date"
+                      className="w-full px-4 py-3 rounded-xl bg-muted border border-transparent focus:border-primary outline-none transition-all text-body"
+                        value={exDate}
+                        onChange={(e) => setExDate(e.target.value)}
+                      />
+                  </div>
+
                   {/* Shop Name */}
                   <div>
                     <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
@@ -2033,19 +2046,6 @@ const Expenses: React.FC<ExpensesProps> = ({
                         );
                       })}
                     </div>
-                  </div>
-
-                  {/* Date */}
-                    <div>
-                      <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
-                        {t['expenses.date'] || 'Date'}
-                      </label>
-                      <input
-                        type="date"
-                      className="w-full px-4 py-3 rounded-xl bg-muted border border-transparent focus:border-primary outline-none transition-all text-body"
-                        value={exDate}
-                        onChange={(e) => setExDate(e.target.value)}
-                      />
                   </div>
                 </div>
               )}

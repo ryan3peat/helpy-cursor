@@ -1,0 +1,1140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <title>Meals - Prototype</title>
+  <style>
+    /* ─────────────────────────────────────────────────────────────────
+       HELPY DESIGN SYSTEM (copied from index.css)
+       ───────────────────────────────────────────────────────────────── */
+    :root {
+      --background: 0 0% 98%;
+      --foreground: 0 0% 28%;
+      --border: 0 0% 88%;
+      --card: 0 0% 100%;
+      --card-foreground: 0 0% 28%;
+      --primary: 194 62% 53%;
+      --primary-foreground: 0 0% 100%;
+      --muted: 0 0% 96%;
+      --muted-foreground: 0 0% 46%;
+      --destructive: 340 83% 66%;
+      
+      /* Meal colors */
+      --breakfast: #FF9800;
+      --lunch: #4CAF50;
+      --dinner: #7E57C2;
+      --snacks: #F06292;
+      
+      /* Typography */
+      --text-display: 2rem;
+      --text-title: 1rem;
+      --text-body: 0.875rem;
+      --text-caption: 0.75rem;
+      
+      /* Safe areas */
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 34px);
+    }
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+    
+    html {
+      overscroll-behavior-y: none;
+      background-color: #fafafa;
+    }
+    
+    body {
+      font-family: Inter, -apple-system, BlinkMacSystemFont, sans-serif;
+      background-image: linear-gradient(to right bottom, #fafafa, #f9f9fa, #f8f8fa, #f6f8f9, #f4f7f9, #f3f7f9, #f1f6f8, #f0f6f8, #f0f6f8, #eff6f8, #eff6f8, #eef6f8);
+      background-attachment: fixed;
+      color: hsl(var(--foreground));
+      -webkit-font-smoothing: antialiased;
+      -webkit-user-select: none;
+      user-select: none;
+      
+      /* KEY: Page doesn't scroll - containers do */
+      overflow: hidden;
+      height: 100vh;
+      height: 100dvh;
+    }
+    
+    /* ─────────────────────────────────────────────────────────────────
+       APP LAYOUT - Fixed structure, no page scroll
+       ───────────────────────────────────────────────────────────────── */
+    .app-container {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      height: 100dvh;
+      max-width: 672px; /* max-w-2xl */
+      margin: 0 auto;
+      padding: 0 16px;
+    }
+    
+    /* ─────────────────────────────────────────────────────────────────
+       HEADER - Matches Meals.tsx exactly
+       ───────────────────────────────────────────────────────────────── */
+    .app-header {
+      flex-shrink: 0;
+      height: 120px;
+      display: flex;
+      align-items: flex-end;
+      padding-bottom: 12px;
+      padding-top: var(--safe-top);
+      background: hsl(var(--background));
+    }
+    
+    .header-content {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+    }
+    
+    .header-title {
+      font-size: var(--text-display);
+      font-weight: 700;
+      color: hsl(var(--foreground));
+    }
+    
+    .view-toggle-btn {
+      padding: 8px;
+      border-radius: 9999px;
+      background: none;
+      border: none;
+      color: hsl(var(--muted-foreground));
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    /* ─────────────────────────────────────────────────────────────────
+       WEEK NAVIGATION - Matches Meals.tsx exactly
+       ───────────────────────────────────────────────────────────────── */
+    .week-nav {
+      flex-shrink: 0;
+      padding: 20px 0;
+      background: hsl(var(--background));
+      transition: box-shadow 0.2s;
+    }
+    
+    .week-nav.scrolled {
+      box-shadow: 0 8px 16px -8px rgba(0,0,0,0.15);
+    }
+    
+    .week-nav-inner {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    
+    .week-selector {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 8px;
+      border-radius: 12px;
+      height: 48px;
+      background: hsl(var(--muted));
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .week-selector::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 12px;
+      pointer-events: none;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.06);
+    }
+    
+    .week-selector button {
+      padding: 8px;
+      border-radius: 8px;
+      background: none;
+      border: none;
+      color: hsl(var(--muted-foreground));
+      cursor: pointer;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .week-selector span {
+      font-size: var(--text-body);
+      font-weight: 600;
+      color: hsl(var(--foreground));
+      z-index: 1;
+      font-variant-numeric: tabular-nums;
+    }
+    
+    .week-selector span.current-week {
+      color: hsl(var(--primary));
+    }
+    
+    .today-btn {
+      padding: 0 16px;
+      border-radius: 12px;
+      height: 48px;
+      font-size: var(--text-body);
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+    }
+    
+    .today-btn.active {
+      background: hsl(var(--primary));
+      color: hsl(var(--primary-foreground));
+      box-shadow: 0 2px 4px rgba(0,0,0,0.06);
+    }
+    
+    .today-btn.disabled {
+      background: hsl(var(--muted));
+      color: hsl(var(--muted-foreground));
+      cursor: default;
+    }
+    
+    /* ─────────────────────────────────────────────────────────────────
+       CONTENT AREA - This is where the magic happens
+       Both views exist, toggle visibility with animation
+       ───────────────────────────────────────────────────────────────── */
+    .content-area {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+      min-height: 0; /* Important for flex children */
+    }
+    
+    .view-container {
+      position: absolute;
+      inset: 0;
+      transition: opacity 0.25s ease, transform 0.25s ease;
+    }
+    
+    .view-container.hidden {
+      opacity: 0;
+      pointer-events: none;
+      transform: scale(0.98);
+    }
+    
+    .view-container.visible {
+      opacity: 1;
+      pointer-events: auto;
+      transform: scale(1);
+    }
+    
+    /* ─────────────────────────────────────────────────────────────────
+       DAY VIEW - Scrolls independently, pre-positioned at today
+       ───────────────────────────────────────────────────────────────── */
+    .day-view {
+      height: 100%;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding-bottom: calc(120px + var(--safe-bottom));
+    }
+    
+    .day-view::-webkit-scrollbar {
+      display: none;
+    }
+    
+    .day-card {
+      background: hsl(var(--card));
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.06);
+      margin-bottom: 16px;
+    }
+    
+    .day-header {
+      padding: 12px 16px;
+      background: hsl(var(--card));
+    }
+    
+    .day-header.today {
+      background: hsl(var(--primary));
+    }
+    
+    .day-header span {
+      font-size: var(--text-body);
+      font-weight: 700;
+      color: hsl(var(--foreground));
+    }
+    
+    .day-header.today span {
+      color: hsl(var(--primary-foreground));
+    }
+    
+    .meal-row {
+      display: grid;
+      grid-template-columns: 1fr 1px 4rem 1px 7rem;
+      height: 80px;
+      align-items: center;
+      margin: 0 12px;
+      border-bottom: 1px solid hsl(var(--border));
+    }
+    
+    .meal-row:last-child {
+      border-bottom: none;
+    }
+    
+    .meal-info {
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      min-width: 0;
+      cursor: pointer;
+    }
+    
+    .meal-type {
+      font-size: var(--text-caption);
+      font-weight: 500;
+      color: hsl(var(--muted-foreground));
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-bottom: 2px;
+    }
+    
+    .meal-name {
+      font-size: var(--text-body);
+      font-weight: 600;
+      color: hsl(var(--foreground));
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+    
+    .meal-add {
+      font-size: var(--text-body);
+      font-weight: 600;
+      color: hsl(var(--primary));
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    
+    .separator {
+      height: 50%;
+      opacity: 0.5;
+      background: linear-gradient(to bottom, transparent, hsl(var(--border)) 20%, hsl(var(--border)) 80%, transparent);
+    }
+    
+    .participant-counts {
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      cursor: pointer;
+    }
+    
+    .count-row {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    
+    .count-row svg {
+      color: hsl(var(--muted-foreground));
+    }
+    
+    .count-row span {
+      font-size: var(--text-body);
+      font-weight: 700;
+      color: hsl(var(--foreground));
+    }
+    
+    .count-row.empty svg,
+    .count-row.empty span {
+      opacity: 0.4;
+    }
+    
+    .join-btn-cell {
+      padding: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .join-btn {
+      width: 100px;
+      padding: 8px 12px;
+      border-radius: 9999px;
+      font-size: var(--text-caption);
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      text-align: center;
+      white-space: nowrap;
+    }
+    
+    .join-btn.not-joined {
+      background: hsl(var(--muted));
+      color: hsl(var(--muted-foreground));
+    }
+    
+    .join-btn.joined {
+      background: hsl(var(--primary));
+      color: hsl(var(--primary-foreground));
+    }
+    
+    /* ─────────────────────────────────────────────────────────────────
+       WEEK VIEW - Single scroll container with frozen row + column
+       ───────────────────────────────────────────────────────────────── */
+    .week-view {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .week-grid-container {
+      flex: 1;
+      background: hsl(var(--card));
+      border-radius: 12px;
+      overflow: auto; /* BOTH scrolls in one container */
+      box-shadow: 0 2px 4px rgba(0,0,0,0.06);
+      -webkit-overflow-scrolling: touch;
+    }
+    
+    .week-grid-container::-webkit-scrollbar {
+      display: none;
+    }
+    
+    .week-grid {
+      display: grid;
+      /* First column 72px, then 7 day columns 116px each */
+      grid-template-columns: 72px repeat(7, 116px);
+      /* Header row auto, then 4 meal rows */
+      grid-template-rows: auto repeat(4, 80px);
+      width: max-content;
+    }
+    
+    /* Header cells - frozen at top */
+    .week-header-cell {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background: hsl(var(--muted));
+      padding: 8px;
+      text-align: center;
+      border-bottom: 1px solid hsl(var(--border));
+    }
+    
+    .week-header-cell:not(:last-child) {
+      border-right: 1px solid hsl(var(--border));
+    }
+    
+    .week-header-cell .day-name {
+      font-size: var(--text-caption);
+      font-weight: 600;
+      color: hsl(var(--muted-foreground));
+    }
+    
+    .week-header-cell .day-number {
+      font-size: var(--text-body);
+      font-weight: 700;
+      color: hsl(var(--foreground));
+    }
+    
+    .week-header-cell.today {
+      background: hsl(var(--primary));
+    }
+    
+    .week-header-cell.today .day-name,
+    .week-header-cell.today .day-number {
+      color: hsl(var(--primary-foreground));
+    }
+    
+    /* Corner cell - frozen both ways */
+    .week-corner-cell {
+      position: sticky;
+      top: 0;
+      left: 0;
+      z-index: 30; /* Above both header and row headers */
+      background: hsl(var(--muted));
+      border-bottom: 1px solid hsl(var(--border));
+      border-right: 1px solid hsl(var(--border));
+    }
+    
+    /* Row header cells (meal types) - frozen at left */
+    .week-row-header {
+      position: sticky;
+      left: 0;
+      z-index: 10;
+      background: hsl(var(--card));
+      padding: 8px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      border-right: 1px solid hsl(var(--border));
+    }
+    
+    .week-row-header:not(:last-child) {
+      border-bottom: 1px solid hsl(var(--border));
+    }
+    
+    .week-row-header .meal-icon {
+      width: 16px;
+      height: 16px;
+    }
+    
+    .week-row-header .meal-label {
+      font-size: 10px;
+      font-weight: 600;
+      color: hsl(var(--muted-foreground));
+      line-height: 1.2;
+    }
+    
+    /* Content cells */
+    .week-cell {
+      padding: 6px;
+      cursor: pointer;
+      vertical-align: top;
+    }
+    
+    .week-cell:not(:last-child) {
+      border-right: 1px solid hsl(var(--border));
+    }
+    
+    .week-row-header:not(:last-of-type) + .week-cell,
+    .week-cell:not(:nth-last-child(-n+7)) {
+      border-bottom: 1px solid hsl(var(--border));
+    }
+    
+    /* Fix: Apply bottom border to all cells except last row */
+    .week-grid > .week-cell:nth-child(-n+40):not(:nth-child(n+34)) {
+      border-bottom: 1px solid hsl(var(--border));
+    }
+    
+    .week-cell-content {
+      padding: 6px;
+      border-radius: 6px;
+      background: hsl(var(--muted) / 0.5);
+    }
+    
+    .week-cell-content .meal-text {
+      font-size: 10px;
+      font-weight: 600;
+      color: hsl(var(--foreground));
+      line-height: 1.3;
+      word-break: break-word;
+    }
+    
+    .week-cell-content .rsvp-text {
+      font-size: 10px;
+      font-weight: 500;
+      color: hsl(var(--muted-foreground));
+    }
+    
+    .week-cell-content .counts {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: 4px;
+      font-size: 10px;
+      color: hsl(var(--muted-foreground));
+    }
+    
+    .week-cell-content .counts svg {
+      width: 10px;
+      height: 10px;
+    }
+    
+    .week-cell-empty {
+      min-height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: hsl(var(--muted-foreground) / 0.3);
+      font-size: 18px;
+    }
+    
+    /* ─────────────────────────────────────────────────────────────────
+       BOTTOM NAV (placeholder)
+       ───────────────────────────────────────────────────────────────── */
+    .bottom-nav {
+      flex-shrink: 0;
+      height: calc(80px + var(--safe-bottom));
+      padding-bottom: var(--safe-bottom);
+      background: hsl(var(--card));
+      border-top: 1px solid hsl(var(--border));
+      display: flex;
+      align-items: center;
+      justify-content: space-around;
+    }
+    
+    .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      color: hsl(var(--muted-foreground));
+      font-size: 10px;
+      font-weight: 500;
+    }
+    
+    .nav-item.active {
+      color: hsl(var(--primary));
+    }
+    
+    /* ─────────────────────────────────────────────────────────────────
+       SVG ICONS (inline for simplicity)
+       ───────────────────────────────────────────────────────────────── */
+    .icon {
+      width: 20px;
+      height: 20px;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      fill: none;
+    }
+    
+    .icon-sm {
+      width: 14px;
+      height: 14px;
+    }
+    
+    .icon-xs {
+      width: 10px;
+      height: 10px;
+    }
+    
+    /* Meal type colors */
+    .icon-breakfast { color: var(--breakfast); }
+    .icon-lunch { color: var(--lunch); }
+    .icon-dinner { color: var(--dinner); }
+    .icon-snacks { color: var(--snacks); }
+  </style>
+</head>
+<body>
+  <div class="app-container">
+    <!-- HEADER - Matches Meals.tsx -->
+    <header class="app-header">
+      <div class="header-content">
+        <h1 class="header-title">Meals</h1>
+        <button class="view-toggle-btn" id="viewToggle">
+          <svg class="icon" id="toggleIcon" viewBox="0 0 24 24">
+            <!-- Sheet icon (day view) -->
+            <rect x="3" y="3" width="18" height="18" rx="2"/>
+            <line x1="3" y1="9" x2="21" y2="9"/>
+            <line x1="9" y1="21" x2="9" y2="9"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+    
+    <!-- WEEK NAVIGATION - Matches Meals.tsx -->
+    <div class="week-nav" id="weekNav">
+      <div class="week-nav-inner">
+        <div class="week-selector">
+          <button id="prevWeek">
+            <svg class="icon" viewBox="0 0 24 24">
+              <polyline points="15 18 9 12 15 6"/>
+            </svg>
+          </button>
+          <span id="weekRange" class="current-week">6 - 12 Jan</span>
+          <button id="nextWeek">
+            <svg class="icon" viewBox="0 0 24 24">
+              <polyline points="9 18 15 12 9 6"/>
+            </svg>
+          </button>
+        </div>
+        <button class="today-btn disabled" id="todayBtn">Today</button>
+      </div>
+    </div>
+    
+    <!-- CONTENT AREA - Both views exist, toggle visibility -->
+    <div class="content-area">
+      <!-- DAY VIEW -->
+      <div class="view-container visible" id="dayView">
+        <div class="day-view" id="dayScroller">
+          <!-- Days will be rendered here by JS -->
+        </div>
+      </div>
+      
+      <!-- WEEK VIEW -->
+      <div class="view-container hidden" id="weekView">
+        <div class="week-view">
+          <div class="week-grid-container" id="weekScroller">
+            <div class="week-grid" id="weekGrid">
+              <!-- Grid will be rendered here by JS -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- BOTTOM NAV (placeholder) -->
+    <nav class="bottom-nav">
+      <div class="nav-item">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        <span>Home</span>
+      </div>
+      <div class="nav-item">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        <span>To-Do</span>
+      </div>
+      <div class="nav-item active">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
+        <span>Meals</span>
+      </div>
+      <div class="nav-item">
+        <svg class="icon" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        <span>Expenses</span>
+      </div>
+      <div class="nav-item">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <span>Profile</span>
+      </div>
+    </nav>
+  </div>
+
+  <script>
+    // ─────────────────────────────────────────────────────────────────
+    // DATA & STATE
+    // ─────────────────────────────────────────────────────────────────
+    const MEAL_TYPES = ['Breakfast', 'Lunch', 'Dinner', 'Snacks'];
+    const MEAL_ICONS = {
+      Breakfast: { icon: 'coffee', color: '#FF9800' },
+      Lunch: { icon: 'sun', color: '#4CAF50' },
+      Dinner: { icon: 'moon', color: '#7E57C2' },
+      Snacks: { icon: 'cookie', color: '#F06292' }
+    };
+    
+    // Sample meals data
+    const sampleMeals = {
+      // Today
+      [formatDate(new Date())]: [
+        { type: 'Breakfast', name: 'Eggs & Toast', adults: 3, kids: 1, joined: true },
+        { type: 'Lunch', name: 'Caesar Salad', adults: 2, kids: 0, joined: false },
+        { type: 'Dinner', name: 'Spaghetti Bolognese', adults: 4, kids: 2, joined: true }
+      ],
+      // Tomorrow
+      [formatDate(addDays(new Date(), 1))]: [
+        { type: 'Dinner', name: 'Grilled Salmon', adults: 3, kids: 1, joined: false }
+      ],
+      // Day after
+      [formatDate(addDays(new Date(), 2))]: [
+        { type: 'Breakfast', name: 'Pancakes', adults: 4, kids: 2, joined: true },
+        { type: 'Snacks', name: 'Fruit Bowl', adults: 2, kids: 2, joined: false }
+      ]
+    };
+    
+    let currentView = 'day';
+    let currentWeekStart = getMonday(new Date());
+    
+    // ─────────────────────────────────────────────────────────────────
+    // DATE HELPERS
+    // ─────────────────────────────────────────────────────────────────
+    function formatDate(date) {
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    }
+    
+    function addDays(date, days) {
+      const result = new Date(date);
+      result.setDate(result.getDate() + days);
+      return result;
+    }
+    
+    function getMonday(date) {
+      const d = new Date(date);
+      const day = d.getDay();
+      const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+      d.setDate(diff);
+      d.setHours(0, 0, 0, 0);
+      return d;
+    }
+    
+    function getWeekDays(monday) {
+      return Array.from({ length: 7 }, (_, i) => addDays(monday, i));
+    }
+    
+    function isToday(date) {
+      const today = new Date();
+      return date.toDateString() === today.toDateString();
+    }
+    
+    function isCurrentWeek(monday) {
+      const currentMonday = getMonday(new Date());
+      return monday.getTime() === currentMonday.getTime();
+    }
+    
+    function formatDateRange(monday) {
+      const sunday = addDays(monday, 6);
+      const options = { day: 'numeric', month: 'short' };
+      return `${monday.toLocaleDateString('en-GB', options)} - ${sunday.toLocaleDateString('en-GB', options)}`;
+    }
+    
+    function formatDayHeader(date) {
+      return `${date.toLocaleDateString('en-GB', { weekday: 'short' })}, ${date.getDate()} ${date.toLocaleDateString('en-GB', { month: 'short' })}`;
+    }
+    
+    // ─────────────────────────────────────────────────────────────────
+    // ICON GENERATORS
+    // ─────────────────────────────────────────────────────────────────
+    function getMealIcon(type, size = 14) {
+      const color = MEAL_ICONS[type]?.color || '#6B7280';
+      switch (type) {
+        case 'Breakfast':
+          return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>`;
+        case 'Lunch':
+          return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>`;
+        case 'Dinner':
+          return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`;
+        case 'Snacks':
+          return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>`;
+        default:
+          return '';
+      }
+    }
+    
+    function getUserIcon(size = 14) {
+      return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`;
+    }
+    
+    function getBabyIcon(size = 14) {
+      return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 1 0-16 0"/></svg>`;
+    }
+    
+    // ─────────────────────────────────────────────────────────────────
+    // RENDER DAY VIEW
+    // ─────────────────────────────────────────────────────────────────
+    function renderDayView() {
+      const container = document.getElementById('dayScroller');
+      const weekDays = getWeekDays(currentWeekStart);
+      
+      let html = '';
+      let todayIndex = -1;
+      
+      weekDays.forEach((date, index) => {
+        const dateStr = formatDate(date);
+        const dayIsToday = isToday(date);
+        if (dayIsToday) todayIndex = index;
+        
+        const meals = sampleMeals[dateStr] || [];
+        
+        html += `
+          <div class="day-card" id="day-${dateStr}" data-index="${index}">
+            <div class="day-header ${dayIsToday ? 'today' : ''}">
+              <span>${formatDayHeader(date)}</span>
+            </div>
+            <div class="day-meals">
+        `;
+        
+        // Render existing meals
+        meals.forEach(meal => {
+          html += renderMealRow(meal);
+        });
+        
+        // Always add "Add Meal Plan" row
+        html += `
+          <div class="meal-row">
+            <div class="meal-info">
+              <div class="meal-add">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Add Meal Plan
+              </div>
+            </div>
+            <div class="separator"></div>
+            <div class="participant-counts">
+              <div class="count-row empty">
+                ${getUserIcon(14)}
+                <span>0</span>
+              </div>
+            </div>
+            <div class="separator"></div>
+            <div class="join-btn-cell">
+              <button class="join-btn not-joined">Tap to Join</button>
+            </div>
+          </div>
+        `;
+        
+        html += `
+            </div>
+          </div>
+        `;
+      });
+      
+      container.innerHTML = html;
+      
+      // KEY: Scroll to today BEFORE first paint using requestAnimationFrame
+      // This happens synchronously before the browser paints
+      if (todayIndex >= 0) {
+        requestAnimationFrame(() => {
+          const todayCard = container.querySelector(`[data-index="${todayIndex}"]`);
+          if (todayCard) {
+            // Calculate offset (accounting for any top padding we want)
+            const offset = todayCard.offsetTop - 8;
+            container.scrollTop = offset;
+          }
+        });
+      }
+    }
+    
+    function renderMealRow(meal) {
+      return `
+        <div class="meal-row">
+          <div class="meal-info">
+            <div class="meal-type">
+              ${getMealIcon(meal.type)}
+              ${meal.type}
+            </div>
+            <div class="meal-name">${meal.name}</div>
+          </div>
+          <div class="separator"></div>
+          <div class="participant-counts">
+            ${meal.adults > 0 ? `
+              <div class="count-row">
+                ${getUserIcon(14)}
+                <span>${meal.adults}</span>
+              </div>
+            ` : ''}
+            ${meal.kids > 0 ? `
+              <div class="count-row">
+                ${getBabyIcon(14)}
+                <span>${meal.kids}</span>
+              </div>
+            ` : ''}
+            ${meal.adults === 0 && meal.kids === 0 ? `
+              <div class="count-row empty">
+                ${getUserIcon(14)}
+                <span>0</span>
+              </div>
+            ` : ''}
+          </div>
+          <div class="separator"></div>
+          <div class="join-btn-cell">
+            <button class="join-btn ${meal.joined ? 'joined' : 'not-joined'}">
+              ${meal.joined ? 'Joined' : 'Tap to Join'}
+            </button>
+          </div>
+        </div>
+      `;
+    }
+    
+    // ─────────────────────────────────────────────────────────────────
+    // RENDER WEEK VIEW
+    // ─────────────────────────────────────────────────────────────────
+    function renderWeekView() {
+      const grid = document.getElementById('weekGrid');
+      const weekDays = getWeekDays(currentWeekStart);
+      
+      let html = '';
+      let todayColIndex = -1;
+      
+      // Corner cell
+      html += `<div class="week-corner-cell"></div>`;
+      
+      // Header row
+      weekDays.forEach((date, index) => {
+        const dayIsToday = isToday(date);
+        if (dayIsToday) todayColIndex = index;
+        
+        html += `
+          <div class="week-header-cell ${dayIsToday ? 'today' : ''}">
+            <div class="day-name">${date.toLocaleDateString('en-GB', { weekday: 'short' })}</div>
+            <div class="day-number">${date.getDate()}</div>
+          </div>
+        `;
+      });
+      
+      // Meal rows
+      MEAL_TYPES.forEach((mealType, rowIndex) => {
+        // Row header (meal type)
+        html += `
+          <div class="week-row-header">
+            ${getMealIcon(mealType, 16)}
+            <div class="meal-label">${mealType}</div>
+          </div>
+        `;
+        
+        // Day cells for this meal type
+        weekDays.forEach((date, colIndex) => {
+          const dateStr = formatDate(date);
+          const meals = sampleMeals[dateStr] || [];
+          const meal = meals.find(m => m.type === mealType);
+          const isLast = rowIndex === MEAL_TYPES.length - 1;
+          
+          if (meal) {
+            html += `
+              <div class="week-cell" style="${isLast ? '' : 'border-bottom: 1px solid hsl(var(--border));'}">
+                <div class="week-cell-content">
+                  <div class="meal-text">${meal.name}</div>
+                  <div class="counts">
+                    ${meal.adults > 0 ? `${getUserIcon(10)} ${meal.adults}` : ''}
+                    ${meal.kids > 0 ? `${getBabyIcon(10)} ${meal.kids}` : ''}
+                  </div>
+                </div>
+              </div>
+            `;
+          } else {
+            html += `
+              <div class="week-cell" style="${isLast ? '' : 'border-bottom: 1px solid hsl(var(--border));'}">
+                <div class="week-cell-empty">·</div>
+              </div>
+            `;
+          }
+        });
+      });
+      
+      grid.innerHTML = html;
+      
+      // KEY: Scroll to today column BEFORE first paint
+      if (todayColIndex >= 0) {
+        const container = document.getElementById('weekScroller');
+        requestAnimationFrame(() => {
+          const firstColWidth = 72;
+          const dayColWidth = 116;
+          const targetScroll = firstColWidth + (todayColIndex * dayColWidth) - (container.clientWidth / 2) + (dayColWidth / 2);
+          container.scrollLeft = Math.max(0, targetScroll);
+        });
+      }
+    }
+    
+    // ─────────────────────────────────────────────────────────────────
+    // VIEW SWITCHING - Animated, no flicker
+    // ─────────────────────────────────────────────────────────────────
+    function switchView(newView) {
+      if (newView === currentView) return;
+      
+      const dayViewEl = document.getElementById('dayView');
+      const weekViewEl = document.getElementById('weekView');
+      const toggleIcon = document.getElementById('toggleIcon');
+      
+      currentView = newView;
+      
+      if (newView === 'week') {
+        // Render week view content BEFORE showing it
+        renderWeekView();
+        
+        // Animate transition
+        dayViewEl.classList.remove('visible');
+        dayViewEl.classList.add('hidden');
+        weekViewEl.classList.remove('hidden');
+        weekViewEl.classList.add('visible');
+        
+        // Update icon to Rows3 (day view indicator)
+        toggleIcon.innerHTML = '<line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>';
+      } else {
+        // Render day view content BEFORE showing it
+        renderDayView();
+        
+        // Animate transition
+        weekViewEl.classList.remove('visible');
+        weekViewEl.classList.add('hidden');
+        dayViewEl.classList.remove('hidden');
+        dayViewEl.classList.add('visible');
+        
+        // Update icon to Sheet (week view indicator)
+        toggleIcon.innerHTML = '<rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/>';
+      }
+    }
+    
+    // ─────────────────────────────────────────────────────────────────
+    // WEEK NAVIGATION
+    // ─────────────────────────────────────────────────────────────────
+    function updateWeekDisplay() {
+      const rangeEl = document.getElementById('weekRange');
+      const todayBtn = document.getElementById('todayBtn');
+      
+      rangeEl.textContent = formatDateRange(currentWeekStart);
+      
+      if (isCurrentWeek(currentWeekStart)) {
+        rangeEl.classList.add('current-week');
+        todayBtn.classList.remove('active');
+        todayBtn.classList.add('disabled');
+      } else {
+        rangeEl.classList.remove('current-week');
+        todayBtn.classList.remove('disabled');
+        todayBtn.classList.add('active');
+      }
+      
+      // Re-render current view
+      if (currentView === 'day') {
+        renderDayView();
+      } else {
+        renderWeekView();
+      }
+    }
+    
+    function goToPrevWeek() {
+      currentWeekStart = addDays(currentWeekStart, -7);
+      updateWeekDisplay();
+    }
+    
+    function goToNextWeek() {
+      currentWeekStart = addDays(currentWeekStart, 7);
+      updateWeekDisplay();
+    }
+    
+    function goToToday() {
+      currentWeekStart = getMonday(new Date());
+      updateWeekDisplay();
+    }
+    
+    // ─────────────────────────────────────────────────────────────────
+    // SCROLL SHADOW FOR NAV
+    // ─────────────────────────────────────────────────────────────────
+    function setupScrollShadow() {
+      const dayScroller = document.getElementById('dayScroller');
+      const weekNav = document.getElementById('weekNav');
+      
+      dayScroller.addEventListener('scroll', () => {
+        if (dayScroller.scrollTop > 20) {
+          weekNav.classList.add('scrolled');
+        } else {
+          weekNav.classList.remove('scrolled');
+        }
+      });
+    }
+    
+    // ─────────────────────────────────────────────────────────────────
+    // INIT
+    // ─────────────────────────────────────────────────────────────────
+    function init() {
+      // Initial render
+      renderDayView();
+      updateWeekDisplay();
+      
+      // Event listeners
+      document.getElementById('viewToggle').addEventListener('click', () => {
+        switchView(currentView === 'day' ? 'week' : 'day');
+      });
+      
+      document.getElementById('prevWeek').addEventListener('click', goToPrevWeek);
+      document.getElementById('nextWeek').addEventListener('click', goToNextWeek);
+      document.getElementById('todayBtn').addEventListener('click', goToToday);
+      
+      setupScrollShadow();
+    }
+    
+    // Run when DOM is ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
+    }
+  </script>
+</body>
+</html>
+

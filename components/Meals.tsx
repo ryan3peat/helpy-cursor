@@ -1387,14 +1387,14 @@ const Meals: React.FC<MealsProps> = ({
                   <label className="block text-caption text-muted-foreground tracking-wide mb-2">
                     {t['meals.audience_label'] ?? 'This meal is for'}
                   </label>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex gap-2">
                     {(['ALL', 'ADULTS', 'KIDS'] as const).map(aud => {
                       const active = modalAudience === aud;
                       return (
                         <button
                           key={aud}
                           onClick={() => handleAudienceChange(aud)}
-                          className={`flex items-center justify-start gap-2 px-3 py-2 rounded-xl text-body transition-colors ${
+                          className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-body transition-colors ${
                             active
                               ? 'bg-primary text-primary-foreground'
                               : 'bg-card text-foreground ring-1 ring-border'

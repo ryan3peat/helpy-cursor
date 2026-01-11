@@ -211,3 +211,5 @@ CREATE POLICY "Allow delete on expenses" ON expenses FOR DELETE USING (true);
 
 
 
+
+

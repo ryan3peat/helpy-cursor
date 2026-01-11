@@ -208,9 +208,9 @@ const MealsV2: React.FC<MealsV2Props> = ({
     const targetEl = document.querySelector(`[data-day-index="${todayIndex}"]`) as HTMLElement;
     if (!targetEl) return;
     
-    // Header height (120px) + nav height (~68px) + padding (12px) = 200px offset
-    // The extra padding ensures the card isn't flush against the nav
-    const headerOffset = 200;
+    // Use same offset as Meals V1: 230px
+    // This accounts for: header (120px) + nav (~68px) + padding/breathing room (~42px)
+    const headerOffset = 230;
     const rect = targetEl.getBoundingClientRect();
     const absoluteTop = rect.top + window.scrollY;
     
@@ -225,27 +225,29 @@ const MealsV2: React.FC<MealsV2Props> = ({
   useLayoutEffect(() => {
     if (view !== 'week') return;
     
-    // Scroll page to top first so header is visible
+    // Scroll page to top first so page header is visible
     window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
 
     const container = weekScrollRef.current;
     if (!container) return;
 
-    // If today is not in this week, don't scroll the container
+    // If today is not in this week, start at top
     if (todayIndex < 0) {
       container.scrollTop = 0;
       return;
     }
 
-    // Scroll to today's row, but keep some padding at top
-    // Header row is 52px, each day row is 80px
-    // We want today's row to be visible but not at the very top
-    const headerRowHeight = 52;
-    const dayRowHeight = 80;
-    
-    // Position today's row about 1/3 from the top (not centered, feels more natural)
-    const targetScroll = (todayIndex * dayRowHeight);
-    container.scrollTop = Math.max(0, targetScroll);
+    // If today is Monday (index 0), don't scroll - show from top
+    // Otherwise, scroll so today's row is visible with the header
+    if (todayIndex === 0) {
+      container.scrollTop = 0;
+    } else {
+      // Each day row is 80px, scroll to show today with header visible
+      // Subtract a bit so we see the row above too for context
+      const dayRowHeight = 80;
+      const targetScroll = Math.max(0, (todayIndex - 1) * dayRowHeight);
+      container.scrollTop = targetScroll;
+    }
   }, [view, todayIndex, startOfWeek]);
 
   // ─────────────────────────────────────────────────────────────────
@@ -862,17 +864,62 @@ const MealsV2: React.FC<MealsV2Props> = ({
           {/* ═══════════════════════════════════════════════════════════ */}
           {/* WEEK VIEW - Always mounted, hidden when not active */}
           {/* SWAPPED: Days are ROWS (vertical scroll), Meal types are COLUMNS */}
+          {/* Meal type header is STICKY at page level (below week nav) */}
           {/* ═══════════════════════════════════════════════════════════ */}
           <div 
             className="rounded-xl bg-card shadow-sm overflow-hidden"
             style={{ display: view === 'week' ? 'block' : 'none' }}
           >
+            {/* ─────────────────────────────────────────────────────────────── */}
+            {/* STICKY MEAL TYPE HEADER - Sticks below week navigation */}
+            {/* ─────────────────────────────────────────────────────────────── */}
+            <div 
+              className="sticky z-20 bg-muted"
+              style={{ top: '188px' }}
+            >
+              <div 
+                className="grid"
+                style={{ 
+                  // Date column (80px) + 4 meal columns at 150% width (~110px each)
+                  gridTemplateColumns: '80px repeat(4, minmax(110px, 1fr))',
+                  width: '100%'
+                }}
+              >
+                {/* Corner cell */}
+                <div 
+                  className="p-2 bg-muted border-b border-border"
+                  style={{ 
+                    boxShadow: '1px 0 0 0 hsl(var(--border)), 4px 0 8px -2px rgba(0,0,0,0.1)' 
+                  }}
+                />
+
+                {/* Meal type headers */}
+                {mealTypes.map((type, typeIndex) => {
+                  const isLastCol = typeIndex === mealTypes.length - 1;
+                  return (
+                    <div 
+                      key={type}
+                      className={`p-2 bg-muted text-center flex flex-col items-center justify-center gap-0.5 border-b border-border ${!isLastCol ? 'border-r' : ''}`}
+                    >
+                      {getMealIcon(type)}
+                      <span className="text-micro font-semibold text-muted-foreground leading-tight">
+                        {getMealLabel(type)}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* ─────────────────────────────────────────────────────────────── */}
+            {/* SCROLLABLE DAY ROWS */}
+            {/* ─────────────────────────────────────────────────────────────── */}
             <div 
               ref={weekScrollRef}
               className="overflow-auto"
               style={{ 
-                // Fixed height: viewport - header(120) - nav(68) - padding(32) - bottom safe area
-                height: 'calc(100vh - 220px)',
+                // Fixed height: viewport - header(120) - nav(68) - meal type row(52) - padding
+                height: 'calc(100vh - 272px)',
                 // Prevent rubber-band scrolling on iOS
                 overscrollBehavior: 'contain',
                 // Smooth scroll for touch
@@ -882,37 +929,14 @@ const MealsV2: React.FC<MealsV2Props> = ({
               <div 
                 className="grid"
                 style={{ 
-                  // Columns: Date label (80px) + 4 meal types (flexible)
-                  gridTemplateColumns: '80px repeat(4, 1fr)',
-                  // Rows: Header (52px) + 7 days (80px each)
-                  gridTemplateRows: '52px repeat(7, 80px)',
-                  // Full width to avoid horizontal scroll
+                  // Same columns as header to align (80px date + 4 meal columns at 150% width)
+                  gridTemplateColumns: '80px repeat(4, minmax(110px, 1fr))',
+                  // Flexible row heights - min 80px, expands with content
+                  gridAutoRows: 'minmax(80px, auto)',
                   width: '100%',
                   minWidth: '100%'
                 }}
               >
-                {/* Corner cell - sticky both ways (top + left) */}
-                <div 
-                  className="sticky top-0 left-0 z-30 bg-muted border-b border-border"
-                  style={{ boxShadow: '2px 0 0 0 hsl(var(--border))' }}
-                />
-
-                {/* Header row (meal types) - sticky top */}
-                {mealTypes.map((type, typeIndex) => {
-                  const isLastCol = typeIndex === mealTypes.length - 1;
-                  return (
-                    <div 
-                      key={type}
-                      className={`sticky top-0 z-20 p-2 bg-muted text-center flex flex-col items-center justify-center gap-0.5 border-b border-border ${!isLastCol ? 'border-r' : ''}`}
-                    >
-                      {getMealIcon(type)}
-                      <span className="text-micro font-semibold text-muted-foreground leading-tight">
-                        {getMealLabel(type)}
-                      </span>
-                    </div>
-                  );
-                })}
-
                 {/* Day rows */}
                 {weekDays.map((day, dayIndex) => {
                   const dateStr = formatDateStr(day);
@@ -926,7 +950,9 @@ const MealsV2: React.FC<MealsV2Props> = ({
                         data-day-row={dayIndex}
                         onClick={() => handleWeekCellClick(day)}
                         className={`sticky left-0 z-10 p-1.5 text-center cursor-pointer flex flex-col items-center justify-center ${!isLastRow ? 'border-b border-border' : ''} ${isToday ? 'bg-primary' : 'bg-card'}`}
-                        style={{ boxShadow: '2px 0 0 0 hsl(var(--border))' }}
+                        style={{ 
+                          boxShadow: '1px 0 0 0 hsl(var(--border)), 4px 0 8px -2px rgba(0,0,0,0.1)' 
+                        }}
                       >
                         <span className={`text-micro font-semibold block ${isToday ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
                           {day.toLocaleDateString(langCode, { weekday: 'short' })}
@@ -963,7 +989,7 @@ const MealsV2: React.FC<MealsV2Props> = ({
                                       className="px-1.5 py-1 rounded-md bg-muted/50"
                                     >
                                       {hasDish ? (
-                                        <span className="text-micro font-semibold text-foreground leading-tight block break-words line-clamp-2">
+                                        <span className="text-micro font-semibold text-foreground leading-tight block break-words">
                                           <TranslatedMealDescription meal={meal} currentLang={currentLang} onUpdate={onUpdate} />
                                         </span>
                                       ) : (
@@ -990,7 +1016,7 @@ const MealsV2: React.FC<MealsV2Props> = ({
                                 })}
                               </div>
                             ) : (
-                              <div className="min-h-[60px] flex items-center justify-center">
+                              <div className="flex items-center justify-center py-4">
                                 <span className="text-muted-foreground/30 text-lg">·</span>
                               </div>
                             )}

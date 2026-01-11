@@ -1220,25 +1220,25 @@ const Meals: React.FC<MealsProps> = ({
                                         className="px-1.5 py-1 rounded-md bg-muted/50"
                                       >
                                         {hasDish ? (
-                                          <span className="text-micro font-semibold text-foreground leading-tight block break-words">
+                                          <span className="text-caption font-semibold text-foreground leading-tight block break-words">
                                             <TranslatedMealDescription meal={meal} currentLang={currentLang} onUpdate={onUpdate} />
                                           </span>
                                         ) : (
-                                          <span className="text-micro font-medium text-muted-foreground block">
+                                          <span className="text-caption font-semibold text-muted-foreground block">
                                             RSVP
                                           </span>
                                         )}
                                         {/* RSVP counts */}
-                                        <div className="flex items-center gap-1 text-micro text-muted-foreground mt-0.5">
+                                        <div className="flex items-center gap-1 text-caption text-muted-foreground mt-0.5">
                                           {adultCount > 0 && (
                                             <span className="flex items-center gap-0.5">
-                                              <UserIcon size={10} />
+                                              <UserIcon size={12} />
                                               {adultCount}
                                             </span>
                                           )}
                                           {kidCount > 0 && (
                                             <span className="flex items-center gap-0.5">
-                                              <Baby size={10} />
+                                              <Baby size={12} />
                                               {kidCount}
                                             </span>
                                           )}

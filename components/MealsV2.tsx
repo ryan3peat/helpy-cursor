@@ -93,7 +93,7 @@ const MealsV2: React.FC<MealsV2Props> = ({
   const { isViewingAsHelper } = useDemoMode();
   const isHelper = currentUser.role === UserRole.HELPER || (isSuperAdmin && isViewingAsHelper);
 
-  const [view, setView] = useState<'day' | 'week'>('day');
+  const [view, setView] = useState<'list' | 'table'>('list');
   const [loadingAi, setLoadingAi] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
@@ -128,7 +128,7 @@ const MealsV2: React.FC<MealsV2Props> = ({
   const quickJoinPopoverRef = useRef<HTMLDivElement | null>(null);
 
   // Refs for scroll containers
-  const weekScrollRef = useRef<HTMLDivElement | null>(null);
+  const tableScrollRef = useRef<HTMLDivElement | null>(null);
 
   // ─────────────────────────────────────────────────────────────────
   // Constants
@@ -146,47 +146,43 @@ const MealsV2: React.FC<MealsV2Props> = ({
     return `${year}-${month}-${day}`;
   };
 
-  const startOfWeek = useMemo(() => {
-    const d = new Date(currentViewDate);
-    const day = d.getDay();
-    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-    const monday = new Date(d.setDate(diff));
-    monday.setHours(0, 0, 0, 0);
-    return monday;
-  }, [currentViewDate]);
-
-  const weekDays = useMemo(() => {
-    return Array.from({ length: 7 }, (_, i) => {
-      const d = new Date(startOfWeek);
-      d.setDate(startOfWeek.getDate() + i);
+  // Get all days in the current month
+  const monthDays = useMemo(() => {
+    const year = currentViewDate.getFullYear();
+    const month = currentViewDate.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0); // Last day of month
+    const daysInMonth = lastDay.getDate();
+    
+    return Array.from({ length: daysInMonth }, (_, i) => {
+      const d = new Date(year, month, i + 1);
+      d.setHours(0, 0, 0, 0);
       return d;
     });
-  }, [startOfWeek]);
+  }, [currentViewDate]);
 
-  const isCurrentWeek = useMemo(() => {
+  const isCurrentMonth = useMemo(() => {
     const now = new Date();
-    const currentStart = new Date(now);
-    const day = currentStart.getDay();
-    const diff = currentStart.getDate() - day + (day === 0 ? -6 : 1);
-    currentStart.setDate(diff);
-    currentStart.setHours(0, 0, 0, 0);
-    return startOfWeek.getTime() === currentStart.getTime();
-  }, [startOfWeek]);
+    return (
+      currentViewDate.getFullYear() === now.getFullYear() &&
+      currentViewDate.getMonth() === now.getMonth()
+    );
+  }, [currentViewDate]);
 
   const todayIndex = useMemo(() => {
     const today = new Date();
-    return weekDays.findIndex(d => d.toDateString() === today.toDateString());
-  }, [weekDays]);
+    return monthDays.findIndex(d => d.toDateString() === today.toDateString());
+  }, [monthDays]);
 
   // Navigation Handlers
-  const nextWeek = () => {
+  const nextMonth = () => {
     const d = new Date(currentViewDate);
-    d.setDate(d.getDate() + 7);
+    d.setMonth(d.getMonth() + 1);
     setCurrentViewDate(d);
   };
-  const prevWeek = () => {
+  const prevMonth = () => {
     const d = new Date(currentViewDate);
-    d.setDate(d.getDate() - 7);
+    d.setMonth(d.getMonth() - 1);
     setCurrentViewDate(d);
   };
   const goToToday = () => {
@@ -200,8 +196,8 @@ const MealsV2: React.FC<MealsV2Props> = ({
   // - We scroll the page instantly so user never sees the wrong position
   // ─────────────────────────────────────────────────────────────────
   useLayoutEffect(() => {
-    // Only scroll day view when it becomes visible
-    if (view !== 'day') return;
+    // Only scroll list view when it becomes visible
+    if (view !== 'list') return;
     if (todayIndex < 0) return;
     
     // Find today's card and scroll page to it
@@ -219,25 +215,25 @@ const MealsV2: React.FC<MealsV2Props> = ({
       top: Math.max(0, absoluteTop - headerOffset),
       behavior: 'instant' as ScrollBehavior
     });
-  }, [view, todayIndex, startOfWeek]);
+  }, [view, todayIndex, currentViewDate]);
 
-  // Auto-scroll week view to today's row (vertical scroll within container)
+  // Auto-scroll table view to today's row (vertical scroll within container)
   useLayoutEffect(() => {
-    if (view !== 'week') return;
+    if (view !== 'table') return;
     
     // Scroll page to top first so page header is visible
     window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
 
-    const container = weekScrollRef.current;
+    const container = tableScrollRef.current;
     if (!container) return;
 
-    // If today is not in this week, start at top
+    // If today is not in this month, start at top
     if (todayIndex < 0) {
       container.scrollTop = 0;
       return;
     }
 
-    // If today is Monday (index 0), don't scroll - show from top
+    // If today is the 1st (index 0), don't scroll - show from top
     // Otherwise, scroll so today's row is visible with the header
     if (todayIndex === 0) {
       container.scrollTop = 0;
@@ -248,7 +244,7 @@ const MealsV2: React.FC<MealsV2Props> = ({
       const targetScroll = Math.max(0, (todayIndex - 1) * dayRowHeight);
       container.scrollTop = targetScroll;
     }
-  }, [view, todayIndex, startOfWeek]);
+  }, [view, todayIndex, currentViewDate]);
 
   // ─────────────────────────────────────────────────────────────────
   // Translation Helpers
@@ -488,10 +484,10 @@ const MealsV2: React.FC<MealsV2Props> = ({
     );
   };
 
-  // Week cell click -> go to Day view
-  const handleWeekCellClick = (date: Date) => {
+  // Table cell click -> go to List view for that day
+  const handleTableCellClick = (date: Date) => {
     setCurrentViewDate(new Date(date));
-    setView('day');
+    setView('list');
   };
 
   // Close quick join popover when clicking outside
@@ -514,7 +510,8 @@ const MealsV2: React.FC<MealsV2Props> = ({
   }, [quickJoinPopoverDate]);
 
   // Date Range String
-  const dateRangeStr = `${weekDays[0].toLocaleDateString(langCode, { day: 'numeric', month: 'short' })} - ${weekDays[6].toLocaleDateString(langCode, { day: 'numeric', month: 'short' })}`;
+  // Month display string: "Jan 2026"
+  const monthDisplayStr = currentViewDate.toLocaleDateString(langCode, { month: 'short', year: 'numeric' });
 
   // ─────────────────────────────────────────────────────────────────
   // Helper: Get participant counts
@@ -549,12 +546,12 @@ const MealsV2: React.FC<MealsV2Props> = ({
               </h1>
             </div>
             
-            {/* Day/Week Toggle */}
+            {/* List/Table Toggle */}
             <button
-              onClick={() => setView(view === 'day' ? 'week' : 'day')}
+              onClick={() => setView(view === 'list' ? 'table' : 'list')}
               className="p-2 rounded-full text-muted-foreground transition-colors"
             >
-              {view === 'day' ? <Sheet size={20} /> : <Rows3 size={20} />}
+              {view === 'list' ? <Sheet size={20} /> : <Rows3 size={20} />}
             </button>
           </div>
         </header>
@@ -567,7 +564,7 @@ const MealsV2: React.FC<MealsV2Props> = ({
         />
 
         {/* ─────────────────────────────────────────────────────────────── */}
-        {/* WEEK NAVIGATION */}
+        {/* MONTH NAVIGATION */}
         {/* ─────────────────────────────────────────────────────────────── */}
         <div 
           className="sticky z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 py-5 transition-shadow duration-200"
@@ -577,19 +574,19 @@ const MealsV2: React.FC<MealsV2Props> = ({
           }}
         >
           <div className="flex items-center gap-3">
-            {/* Week Selector */}
+            {/* Month Selector */}
             <div className="relative flex-1 flex items-center justify-between px-2 rounded-xl h-12 overflow-hidden bg-muted">
               <button
-                onClick={prevWeek}
+                onClick={prevMonth}
                 className="p-2 rounded-lg text-muted-foreground z-10"
               >
                 <ChevronLeft size={20} />
               </button>
-              <span className={`text-body font-semibold tabular-nums z-10 ${isCurrentWeek ? 'text-primary' : 'text-foreground'}`}>
-                {dateRangeStr}
+              <span className={`text-body font-semibold tabular-nums z-10 ${isCurrentMonth ? 'text-primary' : 'text-foreground'}`}>
+                {monthDisplayStr}
               </span>
               <button
-                onClick={nextWeek}
+                onClick={nextMonth}
                 className="p-2 rounded-lg text-muted-foreground z-10"
               >
                 <ChevronRight size={20} />
@@ -601,9 +598,9 @@ const MealsV2: React.FC<MealsV2Props> = ({
             {/* Today Button */}
             <button
               onClick={goToToday}
-              disabled={isCurrentWeek}
+              disabled={isCurrentMonth}
               className={`px-4 rounded-xl font-semibold text-body h-12 ${
-                isCurrentWeek
+                isCurrentMonth
                   ? 'bg-muted text-muted-foreground cursor-default'
                   : 'bg-primary text-primary-foreground shadow-sm'
               }`}
@@ -620,14 +617,14 @@ const MealsV2: React.FC<MealsV2Props> = ({
         <div className="pt-3 relative">
 
           {/* ═══════════════════════════════════════════════════════════ */}
-          {/* DAY VIEW - Always mounted, hidden when not active */}
-          {/* Uses page scroll (window.scrollTo) for positioning */}
+          {/* LIST VIEW - Always mounted, hidden when not active */}
+          {/* Shows all days of the month as cards */}
           {/* ═══════════════════════════════════════════════════════════ */}
           <div 
             className="space-y-4"
-            style={{ display: view === 'day' ? 'block' : 'none' }}
+            style={{ display: view === 'list' ? 'block' : 'none' }}
           >
-            {weekDays.map((dayDate, dayIndex) => {
+            {monthDays.map((dayDate, dayIndex) => {
               const dateStr = formatDateStr(dayDate);
               const isToday = dayDate.toDateString() === new Date().toDateString();
               const mealTypeOrder: Record<string, number> = { Breakfast: 1, Lunch: 2, Dinner: 3, Snacks: 4 };
@@ -862,16 +859,16 @@ const MealsV2: React.FC<MealsV2Props> = ({
           </div>
 
           {/* ═══════════════════════════════════════════════════════════ */}
-          {/* WEEK VIEW - Freeze first row (header) and first column (dates) */}
-          {/* Single scroll container with sticky positioning */}
+          {/* TABLE VIEW - Shows all days of the month in a grid */}
+          {/* First column (dates) frozen at left */}
           {/* ═══════════════════════════════════════════════════════════ */}
-          <div style={{ display: view === 'week' ? 'block' : 'none' }}>
+          <div style={{ display: view === 'table' ? 'block' : 'none' }}>
             <div className="rounded-xl bg-card shadow-sm overflow-hidden">
               <div 
-                ref={weekScrollRef}
-                className="overflow-auto"
+                ref={tableScrollRef}
+                className="overflow-x-scroll overflow-y-auto"
                 style={{ 
-                  height: 'calc(100vh - 220px)',
+                  maxHeight: 'calc(100vh - 220px)',
                   WebkitOverflowScrolling: 'touch',
                   overscrollBehavior: 'none'
                 }}
@@ -918,17 +915,17 @@ const MealsV2: React.FC<MealsV2Props> = ({
                   {/* ═══════════════════════════════════════════════════════════ */}
                   {/* DAY ROWS - First column (dates) frozen at left */}
                   {/* ═══════════════════════════════════════════════════════════ */}
-                  {weekDays.map((day, dayIndex) => {
+                  {monthDays.map((day, dayIndex) => {
                     const dateStr = formatDateStr(day);
                     const isToday = day.toDateString() === new Date().toDateString();
-                    const isLastRow = dayIndex === weekDays.length - 1;
+                    const isLastRow = dayIndex === monthDays.length - 1;
                     
                     return (
                       <React.Fragment key={dateStr}>
                         {/* Date cell - frozen at left (sticky left-0) */}
                         <div 
                           data-day-row={dayIndex}
-                          onClick={() => handleWeekCellClick(day)}
+                          onClick={() => handleTableCellClick(day)}
                           className={`sticky left-0 z-10 p-1.5 text-center cursor-pointer flex flex-col items-center justify-center ${!isLastRow ? 'border-b border-border' : ''} ${isToday ? 'bg-primary' : 'bg-card'}`}
                           style={{ 
                             boxShadow: '1px 0 0 0 hsl(var(--border)), 4px 0 8px -2px rgba(0,0,0,0.1)',
@@ -951,7 +948,7 @@ const MealsV2: React.FC<MealsV2Props> = ({
                           return (
                             <div
                               key={`${dateStr}-${type}`}
-                              onClick={() => handleWeekCellClick(day)}
+                              onClick={() => handleTableCellClick(day)}
                               className={`p-1.5 cursor-pointer bg-card border-border ${!isLastRow ? 'border-b' : ''} ${!isLastCol ? 'border-r' : ''}`}
                               style={{ minHeight: '80px' }}
                             >

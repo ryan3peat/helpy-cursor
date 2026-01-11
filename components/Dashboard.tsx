@@ -1525,22 +1525,6 @@ const Dashboard: React.FC<DashboardProps> = ({
                   </span>
                 </button>
               )}
-              
-              {/* MealsV2 Prototype Button - SuperAdmin Only */}
-              <button
-                onClick={() => {
-                  haptics.light();
-                  onNavigate('mealsv2');
-                }}
-                className="w-full mt-3 px-4 py-3 rounded-xl bg-primary/10 border border-primary/30 text-left"
-              >
-                <span className="text-body font-medium text-primary block">
-                  🧪 MealsV2 Prototype
-                </span>
-                <span className="text-caption text-muted-foreground">
-                  Test the rebuilt Meals page (no iOS flicker)
-                </span>
-              </button>
             </div>
           )}
         </div>

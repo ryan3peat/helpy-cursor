@@ -5,7 +5,6 @@ import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
 import ToDo from './components/ToDo';
 import Meals from './components/Meals';
-import MealsV2 from './components/MealsV2';
 import Expenses from './components/Expenses';
 import Profile from './components/Profile';
 import HouseholdInfo from './components/HouseholdInfo';
@@ -598,14 +597,14 @@ const AppContent: React.FC = () => {
         supabase.from('households').select('max_family_members, max_helpers, family_notes, family_notes_lang, family_notes_translations').eq('id', hid).maybeSingle(),
       ]);
       
-      // Update state with fresh data
+      // Update state with fresh data - only if data exists (don't wipe cache with empty results)
       if (usersData.length > 0) {
         const uniqueUsers = Array.from(new Map(usersData.map(u => [u.id, u])).values());
         setUsers(uniqueUsers as User[]);
       }
-      if (todoData) setTodoItems(todoData as ToDoItem[]);
-      if (mealsData) setMeals(mealsData as Meal[]);
-      if (expensesData) setExpenses(expensesData as Expense[]);
+      if (todoData && todoData.length > 0) setTodoItems(todoData as ToDoItem[]);
+      if (mealsData && mealsData.length > 0) setMeals(mealsData as Meal[]);
+      if (expensesData && expensesData.length > 0) setExpenses(expensesData as Expense[]);
       
       // Update household limits AND family notes (Family Board)
       if (householdData.data) {
@@ -863,12 +862,9 @@ const AppContent: React.FC = () => {
     const hid = currentUser.householdId;
     
     const unsubUsers = subscribeToCollection(hid, 'users', (data) => {
-      // DEFENSIVE: Don't wipe out cached data with empty results
-      // This prevents the "data gone, data come" flash on app load
-      if (!data || data.length === 0) {
-        console.log('[App] ⚠️ Users callback received empty data, preserving cache');
-        return;
-      }
+      // Allow empty data - the real-time system will update when data arrives
+      // Previously we blocked empty results which caused data to stay at 0 on slow connections
+      if (!data) return;
       
       // Deduplicate users by id to prevent duplicates
       const uniqueUsers = Array.from(new Map(data.map(u => [u.id, u])).values());
@@ -897,11 +893,8 @@ const AppContent: React.FC = () => {
       setUsers(finalUsers as User[]);
     });
     const unsubTodoItems = subscribeToCollection(hid, 'todo_items', (data) => {
-      // DEFENSIVE: Don't wipe out cached data with empty results
-      if (!data || data.length === 0) {
-        console.log('[App] ⚠️ TodoItems callback received empty data, preserving cache');
-        return;
-      }
+      // Allow empty data - if user has no todos, show empty state
+      if (!data) return;
       
       // Filter out items that are pending deletion to prevent "ghost returns"
       // This handles the race condition where real-time fires before delete propagates
@@ -925,19 +918,13 @@ const AppContent: React.FC = () => {
       });
     });
     const unsubMeals = subscribeToCollection(hid, 'meals', (data) => {
-      // DEFENSIVE: Don't wipe out cached data with empty results
-      if (!data || data.length === 0) {
-        console.log('[App] ⚠️ Meals callback received empty data, preserving cache');
-        return;
-      }
+      // Allow empty data - if user has no meals, show empty state
+      if (!data) return;
       setMeals(data as Meal[]);
     });
     const unsubExpenses = subscribeToCollection(hid, 'expenses', (data) => {
-      // DEFENSIVE: Don't wipe out cached data with empty results
-      if (!data || data.length === 0) {
-        console.log('[App] ⚠️ Expenses callback received empty data, preserving cache');
-        return;
-      }
+      // Allow empty data - if user has no expenses, show empty state
+      if (!data) return;
       setExpenses(data as Expense[]);
     });
     const unsubNotes = subscribeToNotes(hid, (notesData) => {
@@ -1750,20 +1737,6 @@ const AppContent: React.FC = () => {
       case 'meals':
         return (
           <Meals
-            meals={isDemoMode ? demoMeals : meals}
-            users={isDemoMode ? demoUsers : users}
-            currentUser={isDemoMode ? demoUsers[0] : currentUser!}
-            onAdd={handleAddMeal}
-            onUpdate={handleUpdateMeal}
-            onDelete={handleDeleteMeal}
-            t={translations}
-            currentLang={lang}
-          />
-        );
-
-      case 'mealsv2':
-        return (
-          <MealsV2
             meals={isDemoMode ? demoMeals : meals}
             users={isDemoMode ? demoUsers : users}
             currentUser={isDemoMode ? demoUsers[0] : currentUser!}

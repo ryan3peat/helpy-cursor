@@ -533,7 +533,7 @@ const Meals: React.FC<MealsProps> = ({
   }, [view]);
 
   // ─────────────────────────────────────────────────────────────────
-  // AUTO-SCROLL TO TODAY COLUMN IN WEEK VIEW
+  // AUTO-SCROLL TO TODAY ROW IN WEEK VIEW
   // ─────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (view !== 'week') {
@@ -545,30 +545,34 @@ const Meals: React.FC<MealsProps> = ({
     if (hasScrolledWeekView.current) return;
     hasScrolledWeekView.current = true;
     
-    // Scroll page to top so table header is visible
-    window.scrollTo({ top: 0, behavior: 'auto' });
-    
     // Find today's index in the week (0-6)
     const today = new Date();
     const todayIndex = weekDays.findIndex(d => d.toDateString() === today.toDateString());
     
-    // Only scroll horizontally if today is in the current week
-    if (todayIndex === -1) return;
+    // Only scroll vertically if today is in the current week
+    if (todayIndex === -1) {
+      // Still scroll to top to show table header
+      window.scrollTo({ top: 0, behavior: 'auto' });
+      return;
+    }
     
     // Use multiple attempts for reliability (DOM needs time to render)
     const scrollAttempts = [0, 50, 150, 300];
     scrollAttempts.forEach(delay => {
       setTimeout(() => {
-        const container = weekScrollRef.current;
-        if (!container) return;
+        // Find the table row for today's date
+        const dateStr = formatDateStr(weekDays[todayIndex]);
+        const targetRow = document.getElementById(`week-row-${dateStr}`);
+        if (!targetRow) return;
         
-        // Calculate scroll position using fixed column widths: 72px for meal type, 116px for each day
-        const firstColWidth = 72;
-        const dayColWidth = 116;
-        const targetScroll = firstColWidth + (todayIndex * dayColWidth) - (container.clientWidth / 2) + (dayColWidth / 2);
+        // Calculate scroll position to center today's row
+        const headerOffset = 250; // Approximate header height
+        const rect = targetRow.getBoundingClientRect();
+        const elementPosition = rect.top + window.scrollY;
+        const targetScroll = elementPosition - headerOffset - (window.innerHeight / 2) + (rect.height / 2);
         
         // Use 'auto' for instant scroll (no visible animation)
-        container.scrollTo({ left: Math.max(0, targetScroll), behavior: 'auto' });
+        window.scrollTo({ top: Math.max(0, targetScroll), behavior: 'auto' });
       }, delay);
     });
   }, [view, weekDays]);
@@ -1116,74 +1120,89 @@ const Meals: React.FC<MealsProps> = ({
               ref={weekScrollRef}
               className="overflow-x-auto"
             >
-              <table style={{ borderCollapse: 'separate', borderSpacing: 0, tableLayout: 'fixed' }}>
-                {/* Define column widths - 72px for meal type, 116px for each day */}
+              <table style={{ 
+                borderCollapse: 'separate', 
+                borderSpacing: 0, 
+                tableLayout: 'fixed',
+                minWidth: '490px',
+                width: '490px'
+              }}>
+                {/* Define column widths - 90px for date, 100px for each meal type */}
                 <colgroup>
-                  <col style={{ width: '72px' }} />
-                  {weekDays.map((day) => (
-                    <col key={formatDateStr(day)} style={{ width: '116px' }} />
+                  <col style={{ width: '90px' }} />
+                  {mealTypes.map((type) => (
+                    <col key={type} style={{ width: '100px' }} />
                   ))}
                 </colgroup>
-                {/* Table Header - Day names */}
+                {/* Table Header - Meal type names */}
                 <thead>
                   <tr>
                     {/* Corner cell - sticky horizontally */}
                     <th 
-                      className="p-2 bg-muted sticky left-0 z-20 border-b border-border"
-                      style={{ boxShadow: '1px 0 0 0 #d1d5db' }}
+                      className="p-2 bg-muted sticky left-0 z-30 border-b border-border"
+                      style={{ 
+                        boxShadow: '1px 0 0 0 #d1d5db',
+                        width: '90px',
+                        maxWidth: '90px'
+                      }}
                     />
-                    {/* Day headers */}
-                    {weekDays.map((day, dayIndex) => {
-                      const isToday = day.toDateString() === new Date().toDateString();
-                      const isLastCol = dayIndex === weekDays.length - 1;
+                    {/* Meal type headers - no sticky, scrolls with content */}
+                    {mealTypes.map((type, typeIndex) => {
+                      const isLastCol = typeIndex === mealTypes.length - 1;
                       return (
                         <th 
-                          key={formatDateStr(day)}
-                          onClick={() => handleWeekCellClick(day)}
-                          className={`p-2 text-center cursor-pointer border-b border-border ${!isLastCol ? 'border-r' : ''} ${isToday ? 'bg-primary' : 'bg-muted'}`}
+                          key={type}
+                          className={`p-2 text-center border-b border-border ${!isLastCol ? 'border-r' : ''} bg-muted`}
                         >
-                          <span className={`text-caption font-semibold block ${isToday ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
-                            {day.toLocaleDateString(langCode, { weekday: 'short' })}
-                          </span>
-                          <span className={`text-body font-bold block ${isToday ? 'text-primary-foreground' : 'text-foreground'}`}>
-                            {day.getDate()}
-                          </span>
+                          <div className="flex flex-col items-center gap-0.5">
+                            {getMealIcon(type)}
+                            <span className="text-caption font-semibold text-muted-foreground leading-tight text-center break-words">
+                              {getMealLabel(type)}
+                            </span>
+                          </div>
                         </th>
                       );
                     })}
                   </tr>
                 </thead>
                 
-                {/* Table Body - Meal rows */}
+                {/* Table Body - Date rows */}
                 <tbody>
-                  {mealTypes.map((type, typeIndex) => {
-                    const isLastRow = typeIndex === mealTypes.length - 1;
+                  {weekDays.map((day, dayIndex) => {
+                    const dateStr = formatDateStr(day);
+                    const isToday = day.toDateString() === new Date().toDateString();
+                    const isLastRow = dayIndex === weekDays.length - 1;
                     return (
-                      <tr key={type}>
-                        {/* Meal type label cell - sticky horizontally */}
+                      <tr key={dateStr} id={`week-row-${dateStr}`}>
+                        {/* Date label cell - sticky horizontally */}
                         <td 
-                          className={`p-2 bg-card text-center align-middle sticky left-0 z-10 ${!isLastRow ? 'border-b border-border' : ''}`}
-                          style={{ boxShadow: '1px 0 0 0 #d1d5db' }}
+                          onClick={() => handleWeekCellClick(day)}
+                          className={`p-2 text-center align-middle sticky left-0 z-10 cursor-pointer border-r border-border ${!isLastRow ? 'border-b border-border' : ''} ${isToday ? 'bg-primary' : 'bg-card'}`}
+                          style={{ 
+                            boxShadow: '1px 0 0 0 #d1d5db',
+                            width: '90px',
+                            maxWidth: '90px'
+                          }}
                         >
-                          <div className="flex flex-col items-center gap-0.5">
-                            {getMealIcon(type)}
-                            <span className="text-micro font-semibold text-muted-foreground leading-tight">
-                              {getMealLabel(type)}
-                            </span>
-                          </div>
+                          <span className={`text-caption font-semibold block ${isToday ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
+                            {day.toLocaleDateString(langCode, { weekday: 'short' })}
+                          </span>
+                          <span className={`text-body font-bold block ${isToday ? 'text-primary-foreground' : 'text-foreground'}`}>
+                            {day.getDate()} {day.toLocaleDateString(langCode, { month: 'short' })}
+                          </span>
                         </td>
                         
-                        {/* Day cells for this meal type */}
-                        {weekDays.map((day, dayIndex) => {
-                          const dateStr = formatDateStr(day);
+                        {/* Meal type cells for this date */}
+                        {mealTypes.map((type, typeIndex) => {
                           const slotMeals = getMealsForSlot(day, type);
-                          const isLastCol = dayIndex === weekDays.length - 1;
+                          const isLastCol = typeIndex === mealTypes.length - 1;
                           
                           return (
                             <td
-                              key={`${type}-${dateStr}`}
+                              key={`${dateStr}-${type}`}
                               onClick={() => handleWeekCellClick(day)}
-                              className={`p-1.5 cursor-pointer align-top min-h-[72px] ${!isLastRow ? 'border-b border-border' : ''} ${!isLastCol ? 'border-r border-border' : ''}`}
+                              className={`p-1.5 cursor-pointer align-top ${!isLastRow ? 'border-b border-border' : ''} ${!isLastCol ? 'border-r border-border' : ''}`}
+                              style={{ width: '100px', maxWidth: '100px' }}
                             >
                               {slotMeals.length > 0 ? (
                                 <div className="space-y-1">
@@ -1229,7 +1248,7 @@ const Meals: React.FC<MealsProps> = ({
                                   })}
                                 </div>
                               ) : (
-                                <div className="min-h-[60px] flex items-center justify-center">
+                                <div className="flex items-center justify-center py-2">
                                   <span className="text-muted-foreground/30 text-lg">·</span>
                                 </div>
                               )}

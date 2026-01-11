@@ -208,14 +208,15 @@ const MealsV2: React.FC<MealsV2Props> = ({
     const targetEl = document.querySelector(`[data-day-index="${todayIndex}"]`) as HTMLElement;
     if (!targetEl) return;
     
-    // Header height (120px) + nav height (~68px) = ~188px offset
-    const headerOffset = 188;
+    // Header height (120px) + nav height (~68px) + padding (12px) = 200px offset
+    // The extra padding ensures the card isn't flush against the nav
+    const headerOffset = 200;
     const rect = targetEl.getBoundingClientRect();
     const absoluteTop = rect.top + window.scrollY;
     
     // Scroll instantly - no animation, no visible movement
     window.scrollTo({
-      top: absoluteTop - headerOffset,
+      top: Math.max(0, absoluteTop - headerOffset),
       behavior: 'instant' as ScrollBehavior
     });
   }, [view, todayIndex, startOfWeek]);
@@ -223,7 +224,6 @@ const MealsV2: React.FC<MealsV2Props> = ({
   // Auto-scroll week view to today's row (vertical scroll within container)
   useLayoutEffect(() => {
     if (view !== 'week') return;
-    if (todayIndex < 0) return;
     
     // Scroll page to top first so header is visible
     window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
@@ -231,11 +231,20 @@ const MealsV2: React.FC<MealsV2Props> = ({
     const container = weekScrollRef.current;
     if (!container) return;
 
-    // Scroll to today's row (vertical scroll)
+    // If today is not in this week, don't scroll the container
+    if (todayIndex < 0) {
+      container.scrollTop = 0;
+      return;
+    }
+
+    // Scroll to today's row, but keep some padding at top
     // Header row is 52px, each day row is 80px
+    // We want today's row to be visible but not at the very top
     const headerRowHeight = 52;
     const dayRowHeight = 80;
-    const targetScroll = headerRowHeight + (todayIndex * dayRowHeight) - (container.clientHeight / 2) + (dayRowHeight / 2);
+    
+    // Position today's row about 1/3 from the top (not centered, feels more natural)
+    const targetScroll = (todayIndex * dayRowHeight);
     container.scrollTop = Math.max(0, targetScroll);
   }, [view, todayIndex, startOfWeek]);
 
@@ -606,7 +615,7 @@ const MealsV2: React.FC<MealsV2Props> = ({
         {/* CONTENT AREA - Both views ALWAYS exist, toggle with display */}
         {/* This is the key architectural change to eliminate flicker */}
         {/* ─────────────────────────────────────────────────────────────── */}
-        <div className="pt-1 relative">
+        <div className="pt-3 relative">
 
           {/* ═══════════════════════════════════════════════════════════ */}
           {/* DAY VIEW - Always mounted, hidden when not active */}
@@ -873,8 +882,8 @@ const MealsV2: React.FC<MealsV2Props> = ({
               <div 
                 className="grid"
                 style={{ 
-                  // Columns: Date label (100px) + 4 meal types (flexible)
-                  gridTemplateColumns: '100px repeat(4, 1fr)',
+                  // Columns: Date label (80px) + 4 meal types (flexible)
+                  gridTemplateColumns: '80px repeat(4, 1fr)',
                   // Rows: Header (52px) + 7 days (80px each)
                   gridTemplateRows: '52px repeat(7, 80px)',
                   // Full width to avoid horizontal scroll
@@ -884,7 +893,8 @@ const MealsV2: React.FC<MealsV2Props> = ({
               >
                 {/* Corner cell - sticky both ways (top + left) */}
                 <div 
-                  className="sticky top-0 left-0 z-30 bg-muted border-b border-r border-border"
+                  className="sticky top-0 left-0 z-30 bg-muted border-b border-border"
+                  style={{ boxShadow: '2px 0 0 0 hsl(var(--border))' }}
                 />
 
                 {/* Header row (meal types) - sticky top */}
@@ -911,17 +921,18 @@ const MealsV2: React.FC<MealsV2Props> = ({
                   
                   return (
                     <React.Fragment key={dateStr}>
-                      {/* Row header (date) - sticky left */}
+                      {/* Row header (date) - sticky left with shadow separator */}
                       <div 
                         data-day-row={dayIndex}
                         onClick={() => handleWeekCellClick(day)}
-                        className={`sticky left-0 z-10 p-2 text-center cursor-pointer flex flex-col items-center justify-center border-r border-border ${!isLastRow ? 'border-b' : ''} ${isToday ? 'bg-primary' : 'bg-card'}`}
+                        className={`sticky left-0 z-10 p-1.5 text-center cursor-pointer flex flex-col items-center justify-center ${!isLastRow ? 'border-b border-border' : ''} ${isToday ? 'bg-primary' : 'bg-card'}`}
+                        style={{ boxShadow: '2px 0 0 0 hsl(var(--border))' }}
                       >
-                        <span className={`text-caption font-semibold block ${isToday ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
+                        <span className={`text-micro font-semibold block ${isToday ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
                           {day.toLocaleDateString(langCode, { weekday: 'short' })}
                         </span>
-                        <span className={`text-body font-bold block ${isToday ? 'text-primary-foreground' : 'text-foreground'}`}>
-                          {day.getDate()}
+                        <span className={`text-caption font-bold block ${isToday ? 'text-primary-foreground' : 'text-foreground'}`}>
+                          {day.getDate()} {day.toLocaleDateString(langCode, { month: 'short' })}
                         </span>
                       </div>
 

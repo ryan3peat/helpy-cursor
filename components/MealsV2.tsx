@@ -190,30 +190,32 @@ const MealsV2: React.FC<MealsV2Props> = ({
   };
 
   // ─────────────────────────────────────────────────────────────────
-  // AUTO-SCROLL TO TODAY - useLayoutEffect (runs BEFORE paint)
-  // This is the KEY to eliminating iOS flicker:
-  // - useLayoutEffect runs synchronously after DOM mutations but BEFORE browser paint
-  // - We scroll the page instantly so user never sees the wrong position
+  // AUTO-SCROLL TO TODAY - useLayoutEffect with rAF
+  // Use rAF to let browser paint first before scrolling to prevent jitter
+  // when switching views (especially with monthly view's larger content)
   // ─────────────────────────────────────────────────────────────────
   useLayoutEffect(() => {
     // Only scroll list view when it becomes visible
     if (view !== 'list') return;
     if (todayIndex < 0) return;
     
-    // Find today's card and scroll page to it
-    const targetEl = document.querySelector(`[data-day-index="${todayIndex}"]`) as HTMLElement;
-    if (!targetEl) return;
-    
-    // Use same offset as Meals V1: 230px
-    // This accounts for: header (120px) + nav (~68px) + padding/breathing room (~42px)
-    const headerOffset = 230;
-    const rect = targetEl.getBoundingClientRect();
-    const absoluteTop = rect.top + window.scrollY;
-    
-    // Scroll instantly - no animation, no visible movement
-    window.scrollTo({
-      top: Math.max(0, absoluteTop - headerOffset),
-      behavior: 'instant' as ScrollBehavior
+    // Use rAF to let browser paint first, then scroll
+    requestAnimationFrame(() => {
+      // Find today's card and scroll page to it
+      const targetEl = document.querySelector(`[data-day-index="${todayIndex}"]`) as HTMLElement;
+      if (!targetEl) return;
+      
+      // Use same offset as Meals V1: 230px
+      // This accounts for: header (120px) + nav (~68px) + padding/breathing room (~42px)
+      const headerOffset = 230;
+      const rect = targetEl.getBoundingClientRect();
+      const absoluteTop = rect.top + window.scrollY;
+      
+      // Scroll instantly - no animation, no visible movement
+      window.scrollTo({
+        top: Math.max(0, absoluteTop - headerOffset),
+        behavior: 'instant' as ScrollBehavior
+      });
     });
   }, [view, todayIndex, currentViewDate]);
 
@@ -221,29 +223,32 @@ const MealsV2: React.FC<MealsV2Props> = ({
   useLayoutEffect(() => {
     if (view !== 'table') return;
     
-    // Scroll page to top first so page header is visible
-    window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+    // Use rAF to let browser paint first, then scroll
+    requestAnimationFrame(() => {
+      // Scroll page to top first so page header is visible
+      window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
 
-    const container = tableScrollRef.current;
-    if (!container) return;
+      const container = tableScrollRef.current;
+      if (!container) return;
 
-    // If today is not in this month, start at top
-    if (todayIndex < 0) {
-      container.scrollTop = 0;
-      return;
-    }
+      // If today is not in this month, start at top
+      if (todayIndex < 0) {
+        container.scrollTop = 0;
+        return;
+      }
 
-    // If today is the 1st (index 0), don't scroll - show from top
-    // Otherwise, scroll so today's row is visible with the header
-    if (todayIndex === 0) {
-      container.scrollTop = 0;
-    } else {
-      // Each day row is 80px, scroll to show today with header visible
-      // Subtract a bit so we see the row above too for context
-      const dayRowHeight = 80;
-      const targetScroll = Math.max(0, (todayIndex - 1) * dayRowHeight);
-      container.scrollTop = targetScroll;
-    }
+      // If today is the 1st (index 0), don't scroll - show from top
+      // Otherwise, scroll so today's row is visible with the header
+      if (todayIndex === 0) {
+        container.scrollTop = 0;
+      } else {
+        // Each day row is 80px, scroll to show today with header visible
+        // Subtract a bit so we see the row above too for context
+        const dayRowHeight = 80;
+        const targetScroll = Math.max(0, (todayIndex - 1) * dayRowHeight);
+        container.scrollTop = targetScroll;
+      }
+    });
   }, [view, todayIndex, currentViewDate]);
 
   // ─────────────────────────────────────────────────────────────────
@@ -949,7 +954,7 @@ const MealsV2: React.FC<MealsV2Props> = ({
                             <div
                               key={`${dateStr}-${type}`}
                               onClick={() => handleTableCellClick(day)}
-                              className={`p-1.5 cursor-pointer bg-card border-border ${!isLastRow ? 'border-b' : ''} ${!isLastCol ? 'border-r' : ''}`}
+                              className={`p-1.5 cursor-pointer bg-card ${!isLastRow ? 'border-b border-border' : ''} ${!isLastCol ? 'border-r border-border' : ''}`}
                               style={{ minHeight: '80px' }}
                             >
                               {slotMeals.length > 0 ? (

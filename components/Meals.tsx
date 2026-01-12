@@ -827,6 +827,11 @@ const Meals: React.FC<MealsProps> = ({
         doc.save(safeFilename);
       }
     } catch (err) {
+      // Don't show error if user just cancelled the share dialog
+      if (err instanceof Error && err.name === 'AbortError') {
+        // User cancelled - not an error
+        return;
+      }
       console.error('Failed to export PDF:', err);
       haptics.error();
       setError(t['error.export_pdf'] || 'Failed to export PDF. Please try again.');

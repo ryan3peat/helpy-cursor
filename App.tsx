@@ -1133,54 +1133,9 @@ const AppContent: React.FC = () => {
     }
     await updateItem(hid, 'todo_items', id, enhancedData);
     
-    // AUTO-CREATE NEXT INSTANCE for recurring tasks when completed
-    if (data.completed === true) {
-      const item = todoItems.find(i => i.id === id);
-      if (item?.recurrence && item.recurrence.frequency !== 'NONE' && item.dueDate) {
-        // Calculate next due date based on recurrence
-        const currentDate = new Date(item.dueDate + 'T00:00:00');
-        let nextDate = new Date(currentDate);
-        
-        switch (item.recurrence.frequency) {
-          case 'DAILY':
-            nextDate.setDate(nextDate.getDate() + 1);
-            break;
-          case 'WEEKLY':
-            nextDate.setDate(nextDate.getDate() + 7);
-            break;
-          case 'BIWEEKLY':
-            nextDate.setDate(nextDate.getDate() + 14);
-            break;
-          case 'MONTHLY':
-            nextDate.setMonth(nextDate.getMonth() + 1);
-            break;
-        }
-        
-        // Format as YYYY-MM-DD
-        const nextDueDateStr = `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, '0')}-${String(nextDate.getDate()).padStart(2, '0')}`;
-        
-        // Create next instance
-        const nextItem: ToDoItem = {
-          ...item,
-          id: `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, // Temp ID
-          dueDate: nextDueDateStr,
-          completed: false,
-          completedAt: undefined,
-          createdAt: new Date().toISOString(),
-          // Update dayOfWeek/dayOfMonth based on new date
-          recurrence: {
-            ...item.recurrence,
-            dayOfWeek: (item.recurrence.frequency === 'WEEKLY' || item.recurrence.frequency === 'BIWEEKLY') 
-              ? nextDate.getDay() : undefined,
-            dayOfMonth: item.recurrence.frequency === 'MONTHLY' 
-              ? nextDate.getDate() : undefined,
-          },
-        };
-        
-        console.log('🔄 Creating next recurring instance:', { from: item.dueDate, to: nextDueDateStr });
-        await handleAddTodoItem(nextItem);
-      }
-    }
+    // NOTE: Recurring task next instance creation is handled by database trigger
+    // (create_next_recurring_instance in migration 074_recurring_task_series.sql)
+    // This ensures a single source of truth and prevents duplicate instances
   };
 
   const handleDeleteTodoItem = async (id: string) => {
@@ -1196,16 +1151,8 @@ const AppContent: React.FC = () => {
     const itemToDelete = todoItems.find(i => i.id === id);
     const seriesId = itemToDelete?.seriesId;
     
-    // Get ALL series items upfront (before state changes) for ghost prevention
-    const allSeriesItems = seriesId 
-      ? todoItems.filter(t => t.seriesId === seriesId)
-      : [];
-    
-    // Track this deletion AND all series items to prevent "ghost returns" from real-time sync
+    // Track this item for ghost prevention immediately
     pendingTodoDeletions.current.add(id);
-    if (seriesId) {
-      allSeriesItems.forEach(item => pendingTodoDeletions.current.add(item.id));
-    }
     
     // Optimistically remove from UI (also remove other items from same series)
     if (seriesId) {
@@ -1217,43 +1164,61 @@ const AppContent: React.FC = () => {
     // Skip database call for temp IDs - item not in database yet
     if (isTempId(id)) {
       console.warn('⚠️ Skipping delete for temp item - not yet saved:', id);
-      // Still clear from pending deletions after a brief delay
       setTimeout(() => {
         pendingTodoDeletions.current.delete(id);
-        allSeriesItems.forEach(item => pendingTodoDeletions.current.delete(item.id));
       }, 500);
       return;
     }
     
+    // Track all series item IDs for ghost prevention and cleanup
+    let allSeriesItemIds: string[] = [id];
+    
     try {
-      // Delete the todo item
-      await deleteItem(hid, 'todo_items', id);
-      
-      // If this was a recurring task, also soft-delete the series and all its items
+      // For recurring tasks: FIRST soft-delete the series to prevent the trigger
+      // from creating new instances while we're deleting
       if (seriesId) {
-        console.log('🗑️ Deleting recurring series:', seriesId);
-        // Soft-delete the series
+        console.log('🗑️ Soft-deleting recurring series FIRST:', seriesId);
         await updateItem(hid, 'recurring_series', seriesId, { 
           deletedAt: new Date().toISOString() 
         });
-        // Delete all other items in this series
-        const otherSeriesItems = allSeriesItems.filter(t => t.id !== id);
-        for (const item of otherSeriesItems) {
-          await deleteItem(hid, 'todo_items', item.id);
+        
+        // NOW query database for all items - safe because series is already soft-deleted
+        // No new instances can be created by the trigger at this point
+        try {
+          const { data: dbSeriesItems } = await supabase
+            .from('todo_items')
+            .select('id')
+            .eq('series_id', seriesId)
+            .is('deleted_at', null);
+          
+          if (dbSeriesItems && dbSeriesItems.length > 0) {
+            allSeriesItemIds = dbSeriesItems.map(item => item.id);
+            // Add all to pending deletions for ghost prevention
+            allSeriesItemIds.forEach(itemId => pendingTodoDeletions.current.add(itemId));
+          }
+        } catch (err) {
+          console.warn('Failed to fetch series items from DB, falling back to local state');
+          allSeriesItemIds = todoItems.filter(t => t.seriesId === seriesId).map(t => t.id);
+          allSeriesItemIds.forEach(itemId => pendingTodoDeletions.current.add(itemId));
         }
+        
+        // Delete ALL items in the series (including the one user clicked)
+        for (const itemId of allSeriesItemIds) {
+          await deleteItem(hid, 'todo_items', itemId);
+        }
+      } else {
+        // Non-recurring: just delete the single item
+        await deleteItem(hid, 'todo_items', id);
       }
       
-      // Clear from pending deletions after the delete succeeds + brief buffer for real-time
+      // Clear from pending deletions after success + buffer for real-time sync
       setTimeout(() => {
-        pendingTodoDeletions.current.delete(id);
-        allSeriesItems.forEach(item => pendingTodoDeletions.current.delete(item.id));
+        allSeriesItemIds.forEach(itemId => pendingTodoDeletions.current.delete(itemId));
       }, 2000);
     } catch (error) {
       console.error('Failed to delete todo item:', error);
-      // On error, clear from pending and restore the item
-      pendingTodoDeletions.current.delete(id);
-      allSeriesItems.forEach(item => pendingTodoDeletions.current.delete(item.id));
-      // Note: Real-time sync will bring the item back automatically
+      // On error, clear from pending - real-time sync will restore items
+      allSeriesItemIds.forEach(itemId => pendingTodoDeletions.current.delete(itemId));
     }
   };
 

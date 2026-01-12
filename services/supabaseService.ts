@@ -15,6 +15,30 @@ function getSupabaseClient() {
   return supabase;
 }
 
+/**
+ * Check if an error is JWT/auth related and should trigger a retry
+ */
+function isJwtError(error: any): boolean {
+  if (!error) return false;
+  
+  // Check error code
+  if (error.code === 'PGRST303') return true;
+  
+  // Check error message for JWT-related issues
+  const message = error.message?.toLowerCase() || '';
+  if (message.includes('jwt expired')) return true;
+  if (message.includes('jwt') && message.includes('expired')) return true;
+  if (message.includes('invalid jwt')) return true;
+  if (message.includes('jwt malformed')) return true;
+  
+  // Check for RLS/permission errors that might be auth-related
+  // Note: Be careful - not all RLS errors are token issues
+  // Only retry if it looks like a session/token problem
+  if (error.code === '42501' && message.includes('policy')) return true;
+  
+  return false;
+}
+
 // Type for generic data items
 type DataItem = User | ShoppingItem | Task | Meal | Expense | Section | ToDoItem;
 
@@ -672,9 +696,9 @@ export async function addItem(
   console.log('🟡 Sending to Supabase:', finalData);
   
   // Use authenticated client for RLS
-  const client = getSupabaseClient();
+  let client = getSupabaseClient();
   
-  const { data, error } = await client
+  let { data, error } = await client
     .from(tableName)
     .insert([finalData])
     .select()
@@ -688,6 +712,37 @@ export async function addItem(
     errorHint: error?.hint,
     errorCode: error?.code,
   });
+
+  // SELF-HEALING: If this looks like a JWT/auth error, refresh token and retry ONCE
+  // This handles edge cases where the token expired between requests
+  if (error && isJwtError(error)) {
+    console.warn('⚠️ [addItem] JWT error detected, refreshing token and retrying...');
+    try {
+      await refreshSupabaseToken();
+      
+      // Get fresh client after token refresh
+      client = getSupabaseClient();
+      
+      // Retry the insert
+      const retryResult = await client
+        .from(tableName)
+        .insert([finalData])
+        .select()
+        .single();
+      
+      if (!retryResult.error) {
+        console.log('✅ [addItem] Retry successful after token refresh');
+        data = retryResult.data;
+        error = null;
+      } else {
+        console.error('❌ [addItem] Retry also failed:', retryResult.error);
+        error = retryResult.error;
+      }
+    } catch (refreshError) {
+      console.error('❌ [addItem] Token refresh failed:', refreshError);
+      // Keep original error
+    }
+  }
 
   if (error) {
     console.error('❌ Insert failed:', error);
@@ -822,9 +877,9 @@ export async function updateItem(
   }
   
   // Use authenticated client for RLS
-  const client = getSupabaseClient();
+  let client = getSupabaseClient();
   
-  const { error, data } = await client
+  let { error, data } = await client
     .from(tableName)
     .update(snakeCaseUpdates)
     .eq('id', actualId)
@@ -832,6 +887,37 @@ export async function updateItem(
     .select();
 
   console.log('🔄 Update response:', { data, error });
+
+  // SELF-HEALING: If this looks like a JWT/auth error, refresh token and retry ONCE
+  if (error && isJwtError(error)) {
+    console.warn('⚠️ [updateItem] JWT error detected, refreshing token and retrying...');
+    try {
+      await refreshSupabaseToken();
+      
+      // Get fresh client after token refresh
+      client = getSupabaseClient();
+      
+      // Retry the update
+      const retryResult = await client
+        .from(tableName)
+        .update(snakeCaseUpdates)
+        .eq('id', actualId)
+        .eq('household_id', householdId)
+        .select();
+      
+      if (!retryResult.error) {
+        console.log('✅ [updateItem] Retry successful after token refresh');
+        data = retryResult.data;
+        error = null;
+      } else {
+        console.error('❌ [updateItem] Retry also failed:', retryResult.error);
+        error = retryResult.error;
+      }
+    } catch (refreshError) {
+      console.error('❌ [updateItem] Token refresh failed:', refreshError);
+      // Keep original error
+    }
+  }
 
   if (error) {
     console.error('❌ Update failed:', error);
@@ -873,16 +959,43 @@ export async function deleteItem(
   }
   
   // Use authenticated client for RLS
-  const client = getSupabaseClient();
+  let client = getSupabaseClient();
   
   // Soft delete for todo_items (preserve shopping/task history)
   if (collection === 'todo_items') {
-    const { error, count } = await client
+    let { error, count } = await client
       .from(tableName)
       .update({ deleted_at: new Date().toISOString() })
       .eq('id', actualId)
       .eq('household_id', householdId)
       .select();
+
+    // SELF-HEALING: If this looks like a JWT/auth error, refresh token and retry ONCE
+    if (error && isJwtError(error)) {
+      console.warn('⚠️ [deleteItem] JWT error detected on soft delete, refreshing token and retrying...');
+      try {
+        await refreshSupabaseToken();
+        client = getSupabaseClient();
+        
+        const retryResult = await client
+          .from(tableName)
+          .update({ deleted_at: new Date().toISOString() })
+          .eq('id', actualId)
+          .eq('household_id', householdId)
+          .select();
+        
+        if (!retryResult.error) {
+          console.log('✅ [deleteItem] Retry successful after token refresh');
+          error = null;
+          count = retryResult.count;
+        } else {
+          console.error('❌ [deleteItem] Retry also failed:', retryResult.error);
+          error = retryResult.error;
+        }
+      } catch (refreshError) {
+        console.error('❌ [deleteItem] Token refresh failed:', refreshError);
+      }
+    }
 
     if (error) {
       console.error('❌ Soft delete error:', error);
@@ -898,11 +1011,37 @@ export async function deleteItem(
   }
   
   // Hard delete for other tables
-  const { error, count } = await client
+  let { error, count } = await client
     .from(tableName)
     .delete({ count: 'exact' })
     .eq('id', actualId)
     .eq('household_id', householdId);
+
+  // SELF-HEALING: If this looks like a JWT/auth error, refresh token and retry ONCE
+  if (error && isJwtError(error)) {
+    console.warn('⚠️ [deleteItem] JWT error detected on hard delete, refreshing token and retrying...');
+    try {
+      await refreshSupabaseToken();
+      client = getSupabaseClient();
+      
+      const retryResult = await client
+        .from(tableName)
+        .delete({ count: 'exact' })
+        .eq('id', actualId)
+        .eq('household_id', householdId);
+      
+      if (!retryResult.error) {
+        console.log('✅ [deleteItem] Retry successful after token refresh');
+        error = null;
+        count = retryResult.count;
+      } else {
+        console.error('❌ [deleteItem] Retry also failed:', retryResult.error);
+        error = retryResult.error;
+      }
+    } catch (refreshError) {
+      console.error('❌ [deleteItem] Token refresh failed:', refreshError);
+    }
+  }
 
   if (error) {
     console.error('❌ Delete error:', error);

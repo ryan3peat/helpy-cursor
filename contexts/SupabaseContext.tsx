@@ -178,15 +178,27 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
   }, [getToken, isSignedIn]);
 
   // Store refresh callback globally for error handlers
+  // CRITICAL FIX: Don't nullify in cleanup - keep last known good reference
+  // Only clear when user is actually signed out (handled in the token getter effect above)
   useEffect(() => {
-    globalTokenRefreshCallback = refreshToken;
-    return () => {
-      globalTokenRefreshCallback = null;
-    };
+    if (refreshToken) {
+      globalTokenRefreshCallback = refreshToken;
+    }
+    // NO cleanup that nullifies - this was part of the "broken auth state" bug
   }, [refreshToken]);
 
   // Store getToken function globally so we can get fresh tokens on every request
   // This is the KEY to proper token management - no more stale cached tokens!
+  // 
+  // CRITICAL FIX: We NO LONGER nullify these in cleanup!
+  // The old pattern caused a race condition where:
+  // 1. Component remounts or isSignedIn briefly changes
+  // 2. Cleanup runs, sets globalGetToken = null
+  // 3. Any in-flight or subsequent requests fail because they can't get fresh tokens
+  // 4. User sees "Failed to add item" and has to kill the app
+  //
+  // New pattern: Only clear on actual logout (isSignedIn becomes false)
+  // Keep last known good reference during remounts/re-renders
   useEffect(() => {
     if (getToken && isSignedIn) {
       globalGetToken = getToken as any;
@@ -194,11 +206,16 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
       // This allows the customFetch to get fresh tokens on every request
       setFreshTokenGetter(getFreshClerkToken);
       console.log('[SupabaseContext] ✅ Fresh token getter registered - proper auth enabled');
-    }
-    return () => {
+    } else if (!isSignedIn) {
+      // Only clear when user is actually signed out
+      // This prevents the "stuck in broken auth state" bug
+      console.log('[SupabaseContext] 🔓 User signed out - clearing auth globals');
       globalGetToken = null;
+      globalTokenRefreshCallback = null;
       setFreshTokenGetter(null);
-    };
+    }
+    // NO cleanup function that nullifies - this was causing the bug!
+    // The token getter should persist across remounts while user is signed in
   }, [getToken, isSignedIn]);
 
   useEffect(() => {

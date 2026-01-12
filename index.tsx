@@ -58,8 +58,7 @@ root.render(
     <ClerkProvider 
       publishableKey={clerkPubKey}
       domain={isProduction ? 'helpyfam.com' : undefined}
-      afterSignInUrl={typeof window !== 'undefined' ? window.location.origin : undefined}
-      afterSignUpUrl={typeof window !== 'undefined' ? window.location.origin : undefined}
+      fallbackRedirectUrl={typeof window !== 'undefined' ? window.location.origin : undefined}
     >
       <SupabaseProvider>
         <App />

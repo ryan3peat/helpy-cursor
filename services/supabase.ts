@@ -5,7 +5,14 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 // Default client (for backward compatibility during migration)
 // Note: This client won't have JWT tokens, so RLS policies won't work until migration is complete
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Auth is disabled to prevent "Multiple GoTrueClient instances" warning - auth is handled by authenticated client only
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: false,
+    autoRefreshToken: false,
+    detectSessionInUrl: false,
+  },
+});
 
 // SINGLETON: Reuse the same authenticated client to prevent "Multiple GoTrueClient instances" warning
 // The customFetch inside handles getting fresh tokens on every request, so we don't need new clients
@@ -101,7 +108,19 @@ export const createAuthenticatedClient = async (clerkToken: string | null, token
         token = currentToken || clerkToken;
       }
     } else {
-      // Fallback to cached token if fresh getter not available
+      // IMPROVED FALLBACK: If fresh getter not available but we have a refresh function,
+      // ALWAYS try to refresh - we're already in a bad state if we're here
+      // This handles edge cases where the token getter was cleared but user is still signed in
+      // Being aggressive here is safe because the refresh function is smart about caching
+      if (globalTokenRefresh) {
+        console.warn('[Supabase] ⚠️ Fresh token getter unavailable, attempting refresh...');
+        try {
+          await globalTokenRefresh();
+        } catch (e) {
+          console.warn('[Supabase] Token refresh during fallback failed:', e);
+        }
+      }
+      // Use cached token (hopefully refreshed above, or still valid)
       token = currentToken || clerkToken;
     }
     

@@ -1876,9 +1876,9 @@ const Expenses: React.FC<ExpensesProps> = ({
 
             {/* Scrollable Content */}
             <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 p-5 space-y-4">
-            {/* Receipt Thumbnail - Edge-to-edge with vertical scroll */}
-            <div className="rounded-xl overflow-hidden border border-border">
-              {selectedExpense.receiptUrl ? (
+            {/* Receipt Thumbnail - Only show if receipt exists */}
+            {selectedExpense.receiptUrl && (
+              <div className="rounded-xl overflow-hidden border border-border">
                 <button
                   type="button"
                   className="relative w-full block"
@@ -1921,16 +1921,12 @@ const Expenses: React.FC<ExpensesProps> = ({
                     </div>
                   )}
                 </button>
-              ) : (
-                <div className="w-full h-28 bg-secondary flex items-center justify-center text-muted-foreground">
-                  {t['expenses.no_receipt_image'] || 'No receipt image'}
-                </div>
-              )}
-            </div>
+              </div>
+            )}
 
               {/* Edit Form */}
               {selectedExpense && (
-                <div className="space-y-4 border-t border-border pt-4">
+                <div className={`space-y-4 ${selectedExpense.receiptUrl ? 'border-t border-border pt-4' : ''}`}>
                   {/* Main Input: Amount (big font) */}
                   <div>
                     <label className="block text-caption text-muted-foreground mb-2 tracking-wide">

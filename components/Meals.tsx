@@ -21,8 +21,12 @@ import {
   Rows3,
   Sheet,
   Check,
-  Youtube
+  Youtube,
+  Download,
+  Loader2
 } from 'lucide-react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import Avatar from './ui/Avatar';
 import ErrorBanner from './ui/ErrorBanner';
 import { useScrollHeader } from '@/hooks/useScrollHeader';
@@ -90,6 +94,7 @@ const Meals: React.FC<MealsProps> = ({
 
   const [view, setView] = useState<'day' | 'week'>('day');
   const [loadingAi, setLoadingAi] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
   
@@ -485,6 +490,317 @@ const Meals: React.FC<MealsProps> = ({
     setLoadingAi(false);
   };
 
+  // ─────────────────────────────────────────────────────────────────
+  // PDF EXPORT
+  // ─────────────────────────────────────────────────────────────────
+  const handleExportPDF = async () => {
+    setExportingPdf(true);
+    haptics.medium();
+    
+    try {
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+      });
+      
+      const pageWidth = doc.internal.pageSize.getWidth();
+      
+      // Load logo
+      const logoImg = new Image();
+      logoImg.crossOrigin = 'anonymous';
+      logoImg.src = '/helpy-logo-blue.png';
+      
+      // Wait for logo to load
+      await new Promise<void>((resolve) => {
+        logoImg.onload = () => resolve();
+        logoImg.onerror = () => resolve(); // Continue even if logo fails
+        // Timeout fallback
+        setTimeout(() => resolve(), 1000);
+      });
+      
+      // Format date range with year for PDF
+      const pdfDateRange = `${weekDays[0].toLocaleDateString(langCode, { day: 'numeric', month: 'short', year: 'numeric' })} - ${weekDays[6].toLocaleDateString(langCode, { day: 'numeric', month: 'short', year: 'numeric' })}`;
+      
+      // Add header content function
+      const addHeader = (pageNum: number) => {
+        // Logo (proportional size)
+        try {
+          doc.addImage(logoImg, 'PNG', 14, 10, 24, 10);
+        } catch {
+          // Logo failed, add text fallback
+          doc.setFontSize(16);
+          doc.setTextColor('#3EAFD2');
+          doc.text('helpy', 14, 18);
+        }
+        
+        // URL at top right
+        doc.setFontSize(10);
+        doc.setTextColor('#3EAFD2');
+        doc.text('www.helpyfam.com', pageWidth - 14, 17, { align: 'right' });
+        
+        // "Meal Planning: date range" underneath logo - bold and larger
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor('#1a1a1a');
+        doc.text(`Meal Planning: ${pdfDateRange}`, 14, 26);
+        
+        // Reset font to normal for table
+        doc.setFont('helvetica', 'normal');
+      };
+      
+      // Build table data with participant counts
+      const tableData = weekDays.map(day => {
+        const dateStr = formatDateStr(day);
+        const dateLabel = `${day.toLocaleDateString(langCode, { weekday: 'short' })}, ${day.getDate()} ${day.toLocaleDateString(langCode, { month: 'short' })}`;
+        
+        return [
+          dateLabel,
+          ...mealTypes.map(type => {
+            const slotMeals = getMealsForSlot(day, type);
+            if (slotMeals.length === 0) return '-';
+            
+            // Build structured data for each meal
+            // Format: BOLD:mealname::COUNT:counttext separated by ::MEAL:: for multiple meals
+            return slotMeals.map(meal => {
+              const mealUsers = meal.forUserIds
+                .map(uid => users.find(u => u.id === uid))
+                .filter((u): u is User => !!u);
+              const adultCount = mealUsers.filter(u => u.role !== UserRole.CHILD).length;
+              const kidCount = mealUsers.filter(u => u.role === UserRole.CHILD).length;
+              
+              const mealName = meal.description || 'RSVP only';
+              
+              // Add participant counts (format: 1x Adult, 2x Kids)
+              const counts: string[] = [];
+              if (adultCount > 0) counts.push(`${adultCount}x Adult${adultCount > 1 ? 's' : ''}`);
+              if (kidCount > 0) counts.push(`${kidCount}x Kid${kidCount > 1 ? 's' : ''}`);
+              const countText = counts.length > 0 ? counts.join(', ') : '';
+              
+              // Structure: BOLD:name::COUNT:count
+              return `BOLD:${mealName}${countText ? `::COUNT:${countText}` : ''}`;
+            }).join('::MEAL::');
+          })
+        ];
+      });
+      
+      // Meal type colors for headers
+      const mealColors: Record<MealType, string> = {
+        [MealType.BREAKFAST]: '#FF9800',
+        [MealType.LUNCH]: '#4CAF50',
+        [MealType.DINNER]: '#7E57C2',
+        [MealType.SNACKS]: '#F06292',
+      };
+      
+      // Add initial header
+      addHeader(1);
+      
+      // Generate table with running headers
+      autoTable(doc, {
+        startY: 34,
+        head: [[
+          t['common.date'] || 'Date',
+          t['meal.type.breakfast'] || 'Breakfast',
+          t['meal.type.lunch'] || 'Lunch',
+          t['meal.type.dinner'] || 'Dinner',
+          t['meal.type.snacks'] || 'Snacks'
+        ]],
+        body: tableData,
+        theme: 'grid',
+        headStyles: {
+          fillColor: '#3EAFD2',
+          textColor: '#ffffff',
+          fontStyle: 'bold',
+          halign: 'center',
+          valign: 'top',
+          fontSize: 10,
+        },
+        // Calculate equal column widths: A4 width is 210mm, margins ~14mm each side = 182mm usable
+        // Date column: 32mm, remaining 150mm / 4 meal columns = ~37.5mm each
+        columnStyles: {
+          0: { cellWidth: 32, fontStyle: 'bold', halign: 'left', valign: 'top' },
+          1: { cellWidth: 37.5, halign: 'left', valign: 'top' },
+          2: { cellWidth: 37.5, halign: 'left', valign: 'top' },
+          3: { cellWidth: 37.5, halign: 'left', valign: 'top' },
+          4: { cellWidth: 37.5, halign: 'left', valign: 'top' },
+        },
+        styles: {
+          fontSize: 9,
+          cellPadding: 3,
+          valign: 'top',
+          overflow: 'linebreak',
+        },
+        alternateRowStyles: {
+          fillColor: '#f8f9fa',
+        },
+        // Running header on each page
+        showHead: 'everyPage',
+        // Don't break rows across pages (keeps same-date meals together)
+        rowPageBreak: 'avoid',
+        // Custom cell rendering for meal columns (bold name, normal count)
+        didParseCell: (data) => {
+          // Convert structured format to plain text for proper height calculation
+          if (data.section === 'body' && data.column.index >= 1) {
+            const cellText = String(data.cell.raw || '');
+            if (cellText.startsWith('BOLD:')) {
+              // Convert to plain text for height calculation
+              const meals = cellText.split('::MEAL::');
+              const plainText = meals.map(mealData => {
+                let mealName = '';
+                let countText = '';
+                if (mealData.includes('::COUNT:')) {
+                  const parts = mealData.split('::COUNT:');
+                  mealName = parts[0].replace('BOLD:', '');
+                  countText = parts[1] || '';
+                } else {
+                  mealName = mealData.replace('BOLD:', '');
+                }
+                return countText ? `${mealName}\n${countText}` : mealName;
+              }).join('\n\n');
+              
+              data.cell.text = plainText.split('\n');
+            }
+          }
+        },
+        willDrawCell: (data) => {
+          // For meal columns with our markers, we'll do custom drawing
+          if (data.section === 'body' && data.column.index >= 1) {
+            const cellText = String(data.cell.raw || '');
+            if (cellText.startsWith('BOLD:')) {
+              // Prevent default text drawing - we'll draw custom
+              data.cell.text = [];
+            }
+          }
+        },
+        didDrawCell: (data) => {
+          // For meal columns, draw meal name bold and count normal
+          if (data.section === 'body' && data.column.index >= 1) {
+            const cellText = String(data.cell.raw || '');
+            if (cellText.startsWith('BOLD:')) {
+              const cellPadding = 3;
+              const fontSize = 9;
+              const lineHeight = fontSize * 0.45; // line height in mm
+              const maxWidth = data.cell.width - cellPadding * 2;
+              let currentY = data.cell.y + cellPadding + fontSize * 0.35;
+              
+              // Split by ::MEAL:: to get individual meals
+              const meals = cellText.split('::MEAL::');
+              
+              meals.forEach((mealData, mealIndex) => {
+                // Add spacing between meals
+                if (mealIndex > 0) {
+                  currentY += lineHeight * 1.5; // Extra space between meals
+                }
+                
+                // Parse meal data: BOLD:name::COUNT:count
+                let mealName = '';
+                let countText = '';
+                
+                if (mealData.includes('::COUNT:')) {
+                  const parts = mealData.split('::COUNT:');
+                  mealName = parts[0].replace('BOLD:', '');
+                  countText = parts[1] || '';
+                } else {
+                  mealName = mealData.replace('BOLD:', '');
+                }
+                
+                // Draw meal name in bold
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(fontSize);
+                doc.setTextColor('#1a1a1a');
+                const mealNameLines = doc.splitTextToSize(mealName, maxWidth);
+                doc.text(mealNameLines, data.cell.x + cellPadding, currentY);
+                currentY += mealNameLines.length * lineHeight;
+                
+                // Draw count text in normal weight, grey
+                if (countText) {
+                  currentY += lineHeight * 0.3; // Small gap before count
+                  doc.setFont('helvetica', 'normal');
+                  doc.setFontSize(fontSize);
+                  doc.setTextColor('#666666');
+                  doc.text(countText, data.cell.x + cellPadding, currentY);
+                  currentY += lineHeight;
+                }
+              });
+              
+              // Reset
+              doc.setTextColor('#1a1a1a');
+              doc.setFont('helvetica', 'normal');
+            }
+          }
+        },
+        // Add header and footer on each page
+        didDrawPage: (data) => {
+          const pageCount = doc.getNumberOfPages();
+          const currentPage = data.pageNumber;
+          
+          // Add header on subsequent pages
+          if (currentPage > 1) {
+            addHeader(currentPage);
+          }
+          
+          // Add footer with page numbers
+          const footerY = doc.internal.pageSize.getHeight() - 10;
+          doc.setFontSize(9);
+          doc.setTextColor('#999999');
+          doc.text(
+            `Helpy Meal Planning | page ${currentPage} of ${pageCount}`,
+            pageWidth / 2,
+            footerY,
+            { align: 'center' }
+          );
+        },
+      });
+      
+      // Fix page count in footers (autoTable doesn't know total pages during generation)
+      const totalPages = doc.getNumberOfPages();
+      for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+        const footerY = doc.internal.pageSize.getHeight() - 10;
+        
+        // White rectangle to cover old footer
+        doc.setFillColor(255, 255, 255);
+        doc.rect(0, footerY - 5, pageWidth, 15, 'F');
+        
+        // Redraw footer with correct total
+        doc.setFontSize(9);
+        doc.setTextColor('#999999');
+        doc.text(
+          `Helpy Meal Planning | page ${i} of ${totalPages}`,
+          pageWidth / 2,
+          footerY,
+          { align: 'center' }
+        );
+      }
+      
+      // Generate filename
+      const safeFilename = `helpy-meals-${weekDays[0].toISOString().split('T')[0]}.pdf`;
+      
+      // Save/Share using Web Share API
+      const pdfBlob = doc.output('blob');
+      const file = new File([pdfBlob], safeFilename, { type: 'application/pdf' });
+      
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        // Native share (iOS/Android)
+        haptics.success();
+        await navigator.share({
+          files: [file],
+          title: t['meals.meal_plan'] || 'Meal Plan',
+        });
+      } else {
+        // Fallback: download directly
+        haptics.success();
+        doc.save(safeFilename);
+      }
+    } catch (err) {
+      console.error('Failed to export PDF:', err);
+      haptics.error();
+      setError(t['error.export_pdf'] || 'Failed to export PDF. Please try again.');
+    } finally {
+      setExportingPdf(false);
+    }
+  };
+
   const toggleUser = (uid: string) => {
     setSelectedUserIds(prev =>
       prev.includes(uid) ? prev.filter(id => id !== uid) : [...prev, uid]
@@ -789,13 +1105,32 @@ const Meals: React.FC<MealsProps> = ({
               {t['meals.title']}
             </h1>
             
-            {/* Day/Week Toggle - Simple state change like HouseholdInfo tabs */}
-            <button
-              onClick={() => setView(view === 'day' ? 'week' : 'day')}
-              className="p-2 rounded-full text-muted-foreground transition-colors"
-            >
-              {view === 'day' ? <Sheet size={20} /> : <Rows3 size={20} />}
-            </button>
+            {/* Header Actions */}
+            <div className="flex items-center gap-1">
+              {/* Export PDF Button - Only visible in table view */}
+              {view === 'week' && (
+                <button
+                  onClick={handleExportPDF}
+                  disabled={exportingPdf}
+                  className="p-2 rounded-full text-muted-foreground transition-colors disabled:opacity-50"
+                  aria-label={t['meals.export_pdf'] || 'Export PDF'}
+                >
+                  {exportingPdf ? (
+                    <Loader2 size={20} className="animate-spin" />
+                  ) : (
+                    <Download size={20} />
+                  )}
+                </button>
+              )}
+              
+              {/* Day/Week Toggle - Simple state change like HouseholdInfo tabs */}
+              <button
+                onClick={() => setView(view === 'day' ? 'week' : 'day')}
+                className="p-2 rounded-full text-muted-foreground transition-colors"
+              >
+                {view === 'day' ? <Sheet size={20} /> : <Rows3 size={20} />}
+              </button>
+            </div>
           </div>
         </header>
         {/* Error Banner */}

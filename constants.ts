@@ -171,6 +171,8 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'meals.joined': 'Joined',
   'meals.whats_cooking': 'Dish Name',
   'meals.delete_meal': 'Delete Meal',
+  'meals.export_pdf': 'Export PDF',
+  'meals.meal_plan': 'Meal Plan',
 
   // Expenses
   'expenses.title': 'Expenses',
@@ -295,6 +297,7 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'common.add': 'Add',
   'common.add_and_invite': 'Add and Send Invite Link',
   'common.of': 'of',
+  'common.date': 'Date',
   'common.upgrade_to_add_more': 'Upgrade to Add More',
   'profile.family_slots_used': 'family slots used',
   'profile.helper_slots_used': 'helper slots used',
@@ -787,6 +790,7 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'error.cancel_subscription': 'Failed to cancel subscription. Please try again.',
   'error.delete_account_unable': 'Unable to delete account. Please try again.',
   'error.delete_account': 'Failed to delete account. Please try again or contact support.',
+  'error.export_pdf': 'Failed to export PDF. Please try again.',
   'error.helper_limit_title': 'Helper Limit Reached',
   'error.family_limit_title': 'Family Member Limit Reached',
   'error.upgrade_to_add_more': 'Upgrade your plan to add more members to your household.',
@@ -1266,6 +1270,8 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'error.update_amount': 'Could not update amount. Please try again.',
   'error.signup_failed': 'Sign up failed. Please try again.',
   'error.verification_failed': 'Verification failed. Please try again.',
+  'error.title': 'Error',
+  'error.taskSaveFailed': 'Failed to save task. Please try again.',
 
   // PWA Update Toast
   'update.new_version_title': 'New App Update',

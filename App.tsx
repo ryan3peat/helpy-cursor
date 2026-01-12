@@ -33,6 +33,7 @@ import {
 } from './services/supabaseService';
 import { initializePushNotifications, autoSubscribeIfNeeded, validateAndSyncSubscription, startPeriodicBatchProcessing, stopPeriodicBatchProcessing, checkNotificationCapability, autoFixNotificationIssues, ensureCurrentSubscriptionSaved, checkForUpdates, applyServiceWorkerUpdate } from './services/pushNotificationService';
 import UpdateToast from './components/ui/UpdateToast';
+import ErrorBoundary from './components/ui/ErrorBoundary';
 import NotificationPrompt from './components/NotificationPrompt';
 import type { EssentialInfo } from '@src/types/essentialInfo';
 import type { HouseRoutine } from '@src/types/houseRoutine';
@@ -1035,55 +1036,67 @@ const AppContent: React.FC = () => {
         createdBy: currentUser?.id,
       };
       
-      const savedSeries = await addItem(hid, 'recurring_series', seriesData);
-      console.log('🔄 Created recurring series:', savedSeries?.id);
-      
-      // The database trigger automatically creates current + next instances
-      // Fetch the created instances to update UI
-      if (savedSeries?.id) {
-        const createdInstances = await supabase
-          .from('todo_items')
-          .select('*')
-          .eq('series_id', savedSeries.id)
-          .order('due_date', { ascending: true });
+      try {
+        const savedSeries = await addItem(hid, 'recurring_series', seriesData);
+        console.log('🔄 Created recurring series:', savedSeries?.id);
         
-        if (createdInstances.data && createdInstances.data.length > 0) {
-          // Transform snake_case to camelCase and replace temp item with real instances
-          const transformedInstances = createdInstances.data.map(dbItem => ({
-            id: dbItem.id,
-            householdId: dbItem.household_id,
-            type: dbItem.type,
-            name: dbItem.name,
-            category: dbItem.category,
-            completed: dbItem.completed,
-            completedAt: dbItem.completed_at,
-            assigneeId: dbItem.assignee_id,
-            quantity: dbItem.quantity,
-            unit: dbItem.unit,
-            brand: dbItem.brand,
-            dueDate: dbItem.due_date,
-            dueTime: dbItem.due_time,
-            seriesId: dbItem.series_id,
-            isException: dbItem.is_exception,
-            originalDueDate: dbItem.original_due_date,
-            createdAt: dbItem.created_at,
-            createdBy: dbItem.created_by,
-            recurrence: item.recurrence, // Keep the recurrence info from original item
-            nameLang: dbItem.name_lang,
-            nameTranslations: dbItem.name_translations,
-          })) as ToDoItem[];
+        // The database trigger automatically creates current + next instances
+        // Fetch the created instances to update UI
+        if (savedSeries?.id) {
+          const createdInstances = await supabase
+            .from('todo_items')
+            .select('*')
+            .eq('series_id', savedSeries.id)
+            .order('due_date', { ascending: true });
           
-          // Remove temp item and add real instances
-          setTodoItems(prev => [
-            ...transformedInstances,
-            ...prev.filter(i => i.id !== tempId)
-          ]);
-          
-          return transformedInstances[0]; // Return first instance
+          if (createdInstances.data && createdInstances.data.length > 0) {
+            // Transform snake_case to camelCase and replace temp item with real instances
+            const transformedInstances = createdInstances.data.map(dbItem => ({
+              id: dbItem.id,
+              householdId: dbItem.household_id,
+              type: dbItem.type,
+              name: dbItem.name,
+              category: dbItem.category,
+              completed: dbItem.completed,
+              completedAt: dbItem.completed_at,
+              assigneeId: dbItem.assignee_id,
+              quantity: dbItem.quantity,
+              unit: dbItem.unit,
+              brand: dbItem.brand,
+              dueDate: dbItem.due_date,
+              dueTime: dbItem.due_time,
+              seriesId: dbItem.series_id,
+              isException: dbItem.is_exception,
+              originalDueDate: dbItem.original_due_date,
+              createdAt: dbItem.created_at,
+              createdBy: dbItem.created_by,
+              recurrence: item.recurrence, // Keep the recurrence info from original item
+              nameLang: dbItem.name_lang,
+              nameTranslations: dbItem.name_translations,
+            })) as ToDoItem[];
+            
+            // Remove temp item and add real instances
+            setTodoItems(prev => [
+              ...transformedInstances,
+              ...prev.filter(i => i.id !== tempId)
+            ]);
+            
+            return transformedInstances[0]; // Return first instance
+          }
         }
+        
+        return newItem; // Fallback
+      } catch (error) {
+        console.error('❌ Failed to create recurring task:', error);
+        // Remove the optimistic temp item since save failed
+        setTodoItems(prev => prev.filter(i => i.id !== tempId));
+        showAlert(
+          t['error.title'] || 'Error',
+          t['error.taskSaveFailed'] || 'Failed to save recurring task. Please try again.',
+          'error'
+        );
+        return item; // Return original item (without temp ID)
       }
-      
-      return newItem; // Fallback
     }
     
     // Non-recurring: create the todo item directly
@@ -1092,17 +1105,29 @@ const AppContent: React.FC = () => {
       createdBy: currentUser?.id,
     };
     
-    const savedItem = await addItem(hid, 'todo_items', itemData);
-    
-    // Immediately replace temp ID with real ID from database
-    // This ensures any subsequent edits use the real ID and get saved properly
-    if (savedItem?.id && savedItem.id !== tempId) {
-      setTodoItems(prev => prev.map(i => 
-        i.id === tempId ? { ...i, id: savedItem.id } : i
-      ));
+    try {
+      const savedItem = await addItem(hid, 'todo_items', itemData);
+      
+      // Immediately replace temp ID with real ID from database
+      // This ensures any subsequent edits use the real ID and get saved properly
+      if (savedItem?.id && savedItem.id !== tempId) {
+        setTodoItems(prev => prev.map(i => 
+          i.id === tempId ? { ...i, id: savedItem.id } : i
+        ));
+      }
+      
+      return savedItem || newItem;
+    } catch (error) {
+      console.error('❌ Failed to create task:', error);
+      // Remove the optimistic temp item since save failed
+      setTodoItems(prev => prev.filter(i => i.id !== tempId));
+      showAlert(
+        t['error.title'] || 'Error',
+        t['error.taskSaveFailed'] || 'Failed to save task. Please try again.',
+        'error'
+      );
+      return item; // Return original item
     }
-    
-    return savedItem || newItem;
   };
 
   const handleUpdateTodoItem = async (id: string, data: Partial<ToDoItem>) => {
@@ -1978,7 +2003,9 @@ const App: React.FC = () => {
   return (
     <TranslationProvider>
       <DemoModeProvider>
-        <AppContent />
+        <ErrorBoundary>
+          <AppContent />
+        </ErrorBoundary>
       </DemoModeProvider>
     </TranslationProvider>
   );

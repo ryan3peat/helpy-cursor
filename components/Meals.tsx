@@ -818,6 +818,7 @@ const Meals: React.FC<MealsProps> = ({
         haptics.success();
         await navigator.share({
           files: [file],
+          title: `Helpy Meal Planning ${filenameDateRange}`,
           text: `Hi,\n\nI am sharing our Meal Plan PDF in the attachment.\n\nThis meal plan was generated from the Helpy App.\n\nThank you.`,
         });
       } else {

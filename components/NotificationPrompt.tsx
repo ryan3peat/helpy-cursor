@@ -3,7 +3,7 @@
  * 
  * Shows a first-launch notification prompt to users after they:
  * 1. Install Helpy as a PWA (standalone mode)
- * 2. Log in and land on the Dashboard
+ * 2. Log in and land on the Home page
  * 
  * This prompt only shows:
  * - In PWA mode (not browser)
@@ -66,7 +66,7 @@ const NotificationPrompt: React.FC<NotificationPromptProps> = ({
     const shouldShow = checkShouldShowPrompt();
     
     if (shouldShow) {
-      // Small delay to let Dashboard load first
+      // Small delay to let Home page load first
       const timer = setTimeout(() => {
         setIsVisible(true);
       }, 1000);

@@ -129,7 +129,7 @@ export const ExpenseItemSkeleton: React.FC = () => (
 );
 
 /**
- * Family Member Card Skeleton - for Dashboard carousel
+ * Family Member Card Skeleton - for Home carousel
  */
 export const FamilyMemberSkeleton: React.FC = () => (
   <div className="flex flex-col items-center gap-2 w-20">
@@ -140,9 +140,9 @@ export const FamilyMemberSkeleton: React.FC = () => (
 );
 
 /**
- * Dashboard Card Skeleton - for summary cards
+ * Home Card Skeleton - for summary cards
  */
-export const DashboardCardSkeleton: React.FC = () => (
+export const HomeCardSkeleton: React.FC = () => (
   <div className="bg-card rounded-2xl p-6 space-y-4">
     <div className="flex items-center justify-between">
       <Skeleton className="h-5 w-24" />
@@ -157,9 +157,9 @@ export const DashboardCardSkeleton: React.FC = () => (
 );
 
 /**
- * Essential Info Card Skeleton
+ * Place Card Skeleton
  */
-export const EssentialInfoCardSkeleton: React.FC = () => (
+export const PlaceCardSkeleton: React.FC = () => (
   <div className="bg-card rounded-2xl p-5 space-y-3">
     <div className="flex items-center gap-3">
       <SkeletonCircle size="w-12 h-12" />

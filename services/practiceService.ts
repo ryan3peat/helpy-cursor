@@ -203,11 +203,3 @@ export function subscribeToPractices(
     subscription.unsubscribe();
   };
 }
-
-// Legacy function aliases for backwards compatibility
-export const listHouseRoutine = listPractices;
-export const listHouseRoutineByCategory = listPracticesByCategory;
-export const createHouseRoutine = createPractice;
-export const updateHouseRoutine = updatePractice;
-export const deleteHouseRoutine = deletePractice;
-export const subscribeToHouseRoutine = subscribeToPractices;

@@ -30,7 +30,7 @@ export const SUPPORTED_LANGUAGES = [
 
 // The source of truth for UI strings.
 export const BASE_TRANSLATIONS: Record<string, string> = {
-  // Dashboard
+  // Home (formerly Dashboard)
   'dashboard.greeting.morning': 'Good morning',
   'dashboard.greeting.afternoon': 'Good afternoon',
   'dashboard.greeting.evening': 'Good evening',
@@ -183,7 +183,7 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'expenses.manual_entry': 'Manual Entry',
 
   // Household Info
-  'info.title': 'Family Info',
+  'info.title': 'Family Book',
   'info.add_section': 'Add Custom Section',
   'info.edit_info': 'Edit Info',
   'info.new_info': 'New Info',
@@ -287,7 +287,7 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'nav.todo': 'To Do',
   'nav.meals': 'Meals',
   'nav.expenses': 'Expenses',
-  'nav.info': 'Info',
+  'nav.info': 'Family',
   'nav.profile': 'Profile',
   
   // Common
@@ -538,7 +538,7 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'expenses.select_month': 'Select Month',
   'expenses.add_to_start': 'Add an expense to get started',
 
-  // HouseholdInfo
+  // Family (Places/Practice)
   'info.no_places_yet': 'No places yet',
   'info.no_countries_found': 'No countries found',
   'info.add_places_hint': 'Add important places and contacts for your household',
@@ -684,7 +684,7 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'routine.category.helper_care': 'Helper Care',
   'routine.category.others': 'Others',
 
-  // HouseholdInfo - Form Labels
+  // Family (Places/Practice) - Form Labels
   'info.address': 'Address',
   'info.phone_number': 'Phone Number',
   'info.note': 'Note',
@@ -901,8 +901,8 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'guide.faq': 'FAQ',
   'guide.need_help': 'Need Help?',
   
-  // User Guide - Dashboard
-  'guide.dashboard_title': 'Dashboard',
+  // User Guide - Home
+  'guide.dashboard_title': 'Home',
   'guide.dashboard_desc': 'Your home screen shows a quick overview of everything: shopping items needed, pending tasks, upcoming meals, and monthly expenses.',
   'guide.family_board_title': 'Family Board',
   'guide.family_board_desc': 'Pin notes for your whole family to see. Tap to edit and share reminders, announcements, or instructions.',
@@ -1219,7 +1219,7 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'subscription.cancel_title': 'Cancel Subscription',
   'subscription.downgrade_success_title': 'Subscription Canceled',
 
-  // Alert Modal - Maps (HouseholdInfo)
+  // Alert Modal - Maps (Family)
   'maps.open_in_maps': 'Open in Maps',
   'maps.open_apple_maps': 'Open Apple Maps',
 

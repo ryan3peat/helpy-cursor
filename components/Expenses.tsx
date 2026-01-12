@@ -380,7 +380,7 @@ interface ExpensesProps extends BaseViewProps {
   onAdd: (expense: Expense) => Promise<Expense> | Expense | void;
   onUpdate?: (expense: Expense) => Promise<void> | void;
   onDelete?: (id: string) => Promise<void> | void;
-  autoOpenSheet?: boolean; // Auto-open add sheet when navigating from Dashboard (+) button
+  autoOpenSheet?: boolean; // Auto-open add sheet when navigating from Home (+) button
 }
 
 interface PendingReceipt {
@@ -757,7 +757,7 @@ const Expenses: React.FC<ExpensesProps> = ({
     setAddExpenseStage(isFreePlan ? 'manual' : 'options');
   };
 
-  // Auto-open add sheet when navigating from Dashboard (+) button
+  // Auto-open add sheet when navigating from Home (+) button
   useEffect(() => {
     if (autoOpenSheet) {
       openAddExpenseSheet();

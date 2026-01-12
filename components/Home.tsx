@@ -146,7 +146,7 @@ const TranslatedFamilyNotes: React.FC<{
   return <>{translatedNotes}</>;
 };
 
-// Family Card component with Apple Wallet-style photo glow effect (Dashboard only)
+// Family Card component with Apple Wallet-style photo glow effect (Home only)
 const FamilyCardWithGlow: React.FC<{
   user: User;
   isCurrent: boolean;

@@ -46,7 +46,7 @@ interface ToDoProps extends BaseViewProps {
   onDelete: (id: string) => Promise<void>;
   initialSection?: 'shopping' | 'task';
   onSectionChange?: (section: string) => void;
-  autoOpenSheet?: boolean; // Auto-open add sheet when navigating from Dashboard (+) button
+  autoOpenSheet?: boolean; // Auto-open add sheet when navigating from Home (+) button
 }
 
 const SHOPPING_CATEGORIES = Object.values(ShoppingCategory);
@@ -1018,7 +1018,7 @@ const ToDo: React.FC<ToDoProps> = ({
     setIsSheetOpen(true);
   };
   
-  // Auto-open add sheet when navigating from Dashboard (+) button
+  // Auto-open add sheet when navigating from Home (+) button
   useEffect(() => {
     if (autoOpenSheet) {
       // Small delay to ensure section is set first

@@ -51,13 +51,6 @@ export interface Practice {
 // For creating new entries (id is auto-generated)
 export type CreatePractice = Omit<Practice, 'id' | 'householdId' | 'createdAt'>;
 
-// Legacy aliases for backwards compatibility during migration
-// TODO: Remove these after all references are updated
-export type HouseRoutineCategory = PracticeCategory;
-export type HouseRoutine = Practice;
-export type CreateHouseRoutine = CreatePractice;
-export const HOUSE_ROUTINE_CATEGORIES = PRACTICE_CATEGORIES;
-
 // Category colors
 export const PRACTICE_CATEGORY_CONFIG: Record<PracticeCategory, { color: string; bgColor: string }> = {
   'Home Rules': { color: '#7E57C2', bgColor: '#EDE7F6' },
@@ -73,6 +66,3 @@ export const PRACTICE_CATEGORY_CONFIG: Record<PracticeCategory, { color: string;
   'Helper Care': { color: '#F06292', bgColor: '#FCE4EC' },
   'Others': { color: '#757575', bgColor: '#F5F5F5' },
 };
-
-// Legacy alias
-export const HOUSE_ROUTINE_CATEGORY_CONFIG = PRACTICE_CATEGORY_CONFIG;

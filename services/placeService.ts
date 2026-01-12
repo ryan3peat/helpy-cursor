@@ -205,11 +205,3 @@ export function subscribeToPlaces(
     subscription.unsubscribe();
   };
 }
-
-// Legacy function aliases for backwards compatibility
-export const listEssentialInfo = listPlaces;
-export const listEssentialInfoByCategory = listPlacesByCategory;
-export const createEssentialInfo = createPlace;
-export const updateEssentialInfo = updatePlace;
-export const deleteEssentialInfo = deletePlace;
-export const subscribeToEssentialInfo = subscribeToPlaces;

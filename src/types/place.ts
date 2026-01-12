@@ -29,12 +29,6 @@ export interface Place {
 // For creating new entries (id is auto-generated)
 export type CreatePlace = Omit<Place, 'id' | 'householdId' | 'createdAt'>;
 
-// Legacy aliases for backwards compatibility during migration
-// TODO: Remove these after all references are updated
-export type EssentialInfoCategory = PlaceCategory;
-export type EssentialInfo = Place;
-export type CreateEssentialInfo = CreatePlace;
-
 // Country codes for phone input dropdown
 // Priority order: Hong Kong, China, Taiwan, Singapore, Indonesia, South Korea, Australia
 // Then alphabetically by country name
@@ -292,6 +286,3 @@ export const PLACE_CATEGORY_CONFIG: Record<PlaceCategory, { color: string; bgCol
   Shops: { color: '#FF9800', bgColor: '#FFF3E0' },
   Others: { color: '#757575', bgColor: '#F5F5F5' },
 };
-
-// Legacy alias
-export const CATEGORY_CONFIG = PLACE_CATEGORY_CONFIG;

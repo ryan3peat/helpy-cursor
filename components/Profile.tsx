@@ -77,7 +77,7 @@ const Profile: React.FC<ProfileProps> = ({
   // Navigation State
   const [activeSection, setActiveSection] = useState<'main' | 'settings' | 'plan' | 'security' | 'payment' | 'appearance' | 'feedback' | 'guide'>('main');
 
-  // Check if we should navigate to a specific section (e.g., from Expenses upgrade button or Dashboard user guide)
+  // Check if we should navigate to a specific section (e.g., from Expenses upgrade button or Home user guide)
   useEffect(() => {
     const targetSection = localStorage.getItem('helpy_profile_target_section');
     if (targetSection === 'plan') {

@@ -1133,7 +1133,7 @@ const Meals: React.FC<MealsProps> = ({
     <div className="min-h-screen bg-background pb-40">
       <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
         {/* ─────────────────────────────────────────────────────────────── */}
-        {/* STICKY HEADER - matches HouseholdInfo */}
+        {/* STICKY HEADER - matches Family */}
         {/* ─────────────────────────────────────────────────────────────── */}
         <header 
           className="sticky top-0 z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 pb-3 flex items-end" 
@@ -1162,7 +1162,7 @@ const Meals: React.FC<MealsProps> = ({
                 </button>
               )}
               
-              {/* Day/Week Toggle - Simple state change like HouseholdInfo tabs */}
+              {/* Day/Week Toggle - Simple state change like Family tabs */}
               <button
                 onClick={() => setView(view === 'day' ? 'week' : 'day')}
                 className="p-2 rounded-full text-muted-foreground transition-colors"
@@ -1224,7 +1224,7 @@ const Meals: React.FC<MealsProps> = ({
         </div>
 
         {/* ─────────────────────────────────────────────────────────────── */}
-        {/* MAIN CONTENT - Simple render like HouseholdInfo tabs */}
+        {/* MAIN CONTENT - Simple render like Family tabs */}
         {/* ─────────────────────────────────────────────────────────────── */}
         <div className="pt-1">
 

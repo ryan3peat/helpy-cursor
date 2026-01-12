@@ -6,7 +6,7 @@ import {
   ClipboardList, 
   Utensils, 
   DollarSign, 
-  Info,
+  BookUser,
   ShoppingCart,
   Users,
   Camera,
@@ -40,16 +40,16 @@ export const NAV_ITEMS = {
   info: {
     id: 'info',
     labelKey: 'nav.info',
-    icon: Info,
+    icon: BookUser,
   },
 } as const;
 
 // Feature icons - used in UserGuide and feature cards
-// These match the icons used in the actual feature pages (Dashboard.tsx, ToDo.tsx, etc.)
+// These match the icons used in the actual feature pages (Home.tsx, ToDo.tsx, etc.)
 export const FEATURE_ICONS = {
-  // To-Do sub-features (matching Dashboard stat cards and ToDo.tsx section tabs)
-  shopping: ShoppingCart,    // Dashboard line 552, ToDo line 952
-  tasks: ClipboardList,      // Dashboard line 560, ToDo line 934
+  // To-Do sub-features (matching Home stat cards and ToDo.tsx section tabs)
+  shopping: ShoppingCart,    // Home.tsx, ToDo line 952
+  tasks: ClipboardList,      // Home.tsx, ToDo line 934
   
   // Meals sub-features
   mealPlanning: Utensils,
@@ -59,7 +59,7 @@ export const FEATURE_ICONS = {
   manualEntry: DollarSign,
   receiptScan: Camera,
   
-  // Household Info sub-features (matching HouseholdInfo.tsx)
+  // Family sub-features (matching Family.tsx)
   places: MapPin,           // MapPin used for Places section tab
   routines: ListChecks,     // ListChecks used for Practice/Routines section tab
   helperManagement: Users,

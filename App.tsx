@@ -2,12 +2,12 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useClerk, useUser } from '@clerk/clerk-react';
 import Layout from './components/Layout';
-import Dashboard from './components/Dashboard';
+import Home from './components/Home';
 import ToDo from './components/ToDo';
 import Meals from './components/Meals';
 import Expenses from './components/Expenses';
 import Profile from './components/Profile';
-import HouseholdInfo from './components/HouseholdInfo';
+import Family from './components/Family';
 // IntroAnimation removed - replaced by iOS splash screen + simple fade-in
 import { initBadgeTracking, updateBadgeFromData, markAppAsSeen } from './services/appBadgeService';
 import Auth from './components/Auth';
@@ -35,22 +35,20 @@ import { initializePushNotifications, autoSubscribeIfNeeded, validateAndSyncSubs
 import UpdateToast from './components/ui/UpdateToast';
 import ErrorBoundary from './components/ui/ErrorBoundary';
 import NotificationPrompt from './components/NotificationPrompt';
-import type { EssentialInfo } from '@src/types/essentialInfo';
-import type { HouseRoutine } from '@src/types/houseRoutine';
+import type { Place, CreatePlace } from '@src/types/place';
+import type { Practice, CreatePractice } from '@src/types/practice';
 import { 
-  subscribeToEssentialInfo,
-  createEssentialInfo,
-  updateEssentialInfo,
-  deleteEssentialInfo,
-} from './services/essentialInfoService';
+  subscribeToPlaces,
+  createPlace,
+  updatePlace,
+  deletePlace,
+} from './services/placeService';
 import { 
-  subscribeToHouseRoutine,
-  createHouseRoutine,
-  updateHouseRoutine,
-  deleteHouseRoutine,
-} from './services/houseRoutineService';
-import type { CreateEssentialInfo } from '@src/types/essentialInfo';
-import type { CreateHouseRoutine } from '@src/types/houseRoutine';
+  subscribeToPractices,
+  createPractice,
+  updatePractice,
+  deletePractice,
+} from './services/practiceService';
 import { useRealtimeStatus } from './hooks/useRealtimeStatus';
 
 // Loading component for app states
@@ -86,8 +84,8 @@ const AppContent: React.FC = () => {
     demoFamilyNotes,
     demoFamilyNotesLang,
     demoFamilyNotesTranslations,
-    demoEssentialItems,
-    demoHouseRoutineItems,
+    demoPlaces,
+    demoPractices,
   } = useDemoMode();
   // App fade-in state (replaces old intro animation)
   const [appReady, setAppReady] = useState(false);
@@ -295,7 +293,7 @@ const AppContent: React.FC = () => {
     // If onboarding is already complete (step 0), no need to wait for PWA modal
     const savedStep = localStorage.getItem('helpy_onboarding_step');
     if (savedStep === '0') return true;
-    // Otherwise, wait for Dashboard to signal PWA modal is handled
+    // Otherwise, wait for Home to signal PWA modal is handled
     return false;
   });
   
@@ -454,7 +452,7 @@ const AppContent: React.FC = () => {
           // Default to dashboard
           setActiveView('dashboard');
           setNavData(null);
-          console.log('[App] Navigating to Dashboard (default)');
+          console.log('[App] Navigating to Home (default)');
         }
         
         // Mark app as seen for badge tracking
@@ -530,10 +528,10 @@ const AppContent: React.FC = () => {
     const cached = localStorage.getItem('helpy_cached_family_notes_translations');
     return cached ? JSON.parse(cached) : {};
   });
-  const [essentialItems, setEssentialItems] = useState<EssentialInfo[]>([]);
-  const [houseRoutineItems, setHouseRoutineItems] = useState<HouseRoutine[]>([]);
+  const [places, setPlaces] = useState<Place[]>([]);
+  const [practices, setPractices] = useState<Practice[]>([]);
   
-  // Household limits for family member quota (used by Dashboard)
+  // Household limits for family member quota (used by Home)
   const [householdLimits, setHouseholdLimits] = useState<{ maxFamily: number; maxHelpers: number }>({ maxFamily: 3, maxHelpers: 1 });
   
   // Track pending deletions to prevent "ghost returns" from real-time sync
@@ -956,8 +954,8 @@ const AppContent: React.FC = () => {
       setFamilyNotesLang(notesData.notesLang || null);
       setFamilyNotesTranslations(notesData.notesTranslations || {});
     });
-    const unsubEssential = subscribeToEssentialInfo(hid, (data) => setEssentialItems(data));
-    const unsubHouseRoutine = subscribeToHouseRoutine(hid, (data) => setHouseRoutineItems(data));
+    const unsubPlaces = subscribeToPlaces(hid, (data) => setPlaces(data));
+    const unsubPractices = subscribeToPractices(hid, (data) => setPractices(data));
     
     return () => {
       unsubUsers();
@@ -965,8 +963,8 @@ const AppContent: React.FC = () => {
       unsubMeals();
       unsubExpenses();
       unsubNotes();
-      unsubEssential();
-      unsubHouseRoutine();
+      unsubPlaces();
+      unsubPractices();
     };
   }, [currentUser?.householdId, isSupabaseReady]);
 
@@ -1502,7 +1500,7 @@ const AppContent: React.FC = () => {
       // Rollback on error
       setFamilyNotes(previousNotes);
       setFamilyNotesLang(previousLang);
-      throw error; // Re-throw so Dashboard knows save failed
+      throw error; // Re-throw so Home knows save failed
     }
   };
 
@@ -1529,159 +1527,159 @@ const AppContent: React.FC = () => {
     }
   };
 
-  // Essential Info CRUD Handlers (with optimistic updates for instant UI)
-  const handleAddEssentialInfo = async (info: CreateEssentialInfo) => {
+  // Places CRUD Handlers (with optimistic updates for instant UI)
+  const handleAddPlace = async (info: CreatePlace) => {
     if (!hid) return;
     
     // Demo mode: skip database operation
     if (isDemoMode) {
-      console.log('📷 Demo mode: skipping essential info add to database');
+      console.log('📷 Demo mode: skipping place add to database');
       return;
     }
     
     const tempId = `temp-${Date.now()}`;
-    const tempItem: EssentialInfo = {
+    const tempItem: Place = {
       ...info,
       id: tempId,
       householdId: hid,
       createdAt: new Date().toISOString(),
     };
-    setEssentialItems(prev => [tempItem, ...prev]);  // Optimistic
+    setPlaces(prev => [tempItem, ...prev]);  // Optimistic
     try {
-      await createEssentialInfo(hid, info);
+      await createPlace(hid, info);
     } catch (error) {
-      console.error('Failed to add essential info:', error);
-      setEssentialItems(prev => prev.filter(item => item.id !== tempId));  // Rollback
+      console.error('Failed to add place:', error);
+      setPlaces(prev => prev.filter(item => item.id !== tempId));  // Rollback
     }
   };
 
-  const handleUpdateEssentialInfo = async (id: string, data: Partial<CreateEssentialInfo>) => {
+  const handleUpdatePlace = async (id: string, data: Partial<CreatePlace>) => {
     if (!hid) return;
     
     // Demo mode: skip database operation
     if (isDemoMode) {
-      console.log('📷 Demo mode: skipping essential info update to database');
+      console.log('📷 Demo mode: skipping place update to database');
       return;
     }
     
-    const previousItems = essentialItems;
-    setEssentialItems(prev => prev.map(item => 
+    const previousItems = places;
+    setPlaces(prev => prev.map(item => 
       item.id === id ? { ...item, ...data } : item
     ));  // Optimistic
     // Skip database call for temp IDs - real-time sync will handle it
     if (isTempId(id)) {
-      console.warn('⚠️ Skipping update for temp essential info - waiting for real ID:', id);
+      console.warn('⚠️ Skipping update for temp place - waiting for real ID:', id);
       return;
     }
     try {
-      await updateEssentialInfo(hid, id, data);
+      await updatePlace(hid, id, data);
     } catch (error) {
-      console.error('Failed to update essential info:', error);
-      setEssentialItems(previousItems);  // Rollback
+      console.error('Failed to update place:', error);
+      setPlaces(previousItems);  // Rollback
     }
   };
 
-  const handleDeleteEssentialInfo = async (id: string) => {
+  const handleDeletePlace = async (id: string) => {
     if (!hid) return;
     
     // Demo mode: skip database operation
     if (isDemoMode) {
-      console.log('📷 Demo mode: skipping essential info delete from database');
+      console.log('📷 Demo mode: skipping place delete from database');
       return;
     }
     
-    const previousItems = essentialItems;
-    setEssentialItems(prev => prev.filter(item => item.id !== id));  // Optimistic
+    const previousItems = places;
+    setPlaces(prev => prev.filter(item => item.id !== id));  // Optimistic
     // Skip database call for temp IDs - item not in database yet
     if (isTempId(id)) {
-      console.warn('⚠️ Skipping delete for temp essential info - not yet saved:', id);
+      console.warn('⚠️ Skipping delete for temp place - not yet saved:', id);
       return;
     }
     try {
-      await deleteEssentialInfo(hid, id);
+      await deletePlace(hid, id);
     } catch (error) {
-      console.error('Failed to delete essential info:', error);
-      setEssentialItems(previousItems);  // Rollback
+      console.error('Failed to delete place:', error);
+      setPlaces(previousItems);  // Rollback
     }
   };
 
-  // House Routine CRUD Handlers (with optimistic updates for instant UI)
-  const handleAddHouseRoutine = async (item: CreateHouseRoutine) => {
+  // Practice CRUD Handlers (with optimistic updates for instant UI)
+  const handleAddPractice = async (item: CreatePractice) => {
     if (!hid) return;
     
     // Demo mode: skip database operation
     if (isDemoMode) {
-      console.log('📷 Demo mode: skipping house routine add to database');
+      console.log('📷 Demo mode: skipping practice add to database');
       return;
     }
     
     const tempId = `temp-${Date.now()}`;
-    const tempItem: HouseRoutine = {
+    const tempItem: Practice = {
       ...item,
       id: tempId,
       householdId: hid,
       createdAt: new Date().toISOString(),
     };
-    setHouseRoutineItems(prev => [tempItem, ...prev]);  // Optimistic
+    setPractices(prev => [tempItem, ...prev]);  // Optimistic
     try {
-      const saved = await createHouseRoutine(hid, item);
+      const saved = await createPractice(hid, item);
       // Replace the temp item with the saved record
-      setHouseRoutineItems(prev => prev.map(i => i.id === tempId ? saved : i));
+      setPractices(prev => prev.map(i => i.id === tempId ? saved : i));
     } catch (error) {
-      console.error('Failed to add house routine:', error);
-      setHouseRoutineItems(prev => prev.filter(i => i.id !== tempId));  // Rollback
+      console.error('Failed to add practice:', error);
+      setPractices(prev => prev.filter(i => i.id !== tempId));  // Rollback
     }
   };
 
-  const handleUpdateHouseRoutine = async (id: string, data: Partial<CreateHouseRoutine>) => {
+  const handleUpdatePractice = async (id: string, data: Partial<CreatePractice>) => {
     if (!hid) return;
     
     // Demo mode: skip database operation
     if (isDemoMode) {
-      console.log('📷 Demo mode: skipping house routine update to database');
+      console.log('📷 Demo mode: skipping practice update to database');
       return;
     }
     
-    const previousItems = houseRoutineItems;
-    setHouseRoutineItems(prev => prev.map(i => 
+    const previousItems = practices;
+    setPractices(prev => prev.map(i => 
       i.id === id ? { ...i, ...data } : i
     ));  // Optimistic
     // Skip database call for temp IDs - real-time sync will handle it
     if (isTempId(id)) {
-      console.warn('⚠️ Skipping update for temp house routine - waiting for real ID:', id);
+      console.warn('⚠️ Skipping update for temp practice - waiting for real ID:', id);
       return;
     }
     try {
-      const updated = await updateHouseRoutine(hid, id, data);
+      const updated = await updatePractice(hid, id, data);
       // Ensure state reflects server-mapped data (translations, etc.)
-      setHouseRoutineItems(prev => prev.map(i => i.id === id ? updated : i));
+      setPractices(prev => prev.map(i => i.id === id ? updated : i));
     } catch (error) {
-      console.error('Failed to update house routine:', error);
-      setHouseRoutineItems(previousItems);  // Rollback
+      console.error('Failed to update practice:', error);
+      setPractices(previousItems);  // Rollback
     }
   };
 
-  const handleDeleteHouseRoutine = async (id: string) => {
+  const handleDeletePractice = async (id: string) => {
     if (!hid) return;
     
     // Demo mode: skip database operation
     if (isDemoMode) {
-      console.log('📷 Demo mode: skipping house routine delete from database');
+      console.log('📷 Demo mode: skipping practice delete from database');
       return;
     }
     
-    const previousItems = houseRoutineItems;
-    setHouseRoutineItems(prev => prev.filter(i => i.id !== id));  // Optimistic
+    const previousItems = practices;
+    setPractices(prev => prev.filter(i => i.id !== id));  // Optimistic
     // Skip database call for temp IDs - item not in database yet
     if (isTempId(id)) {
-      console.warn('⚠️ Skipping delete for temp house routine - not yet saved:', id);
+      console.warn('⚠️ Skipping delete for temp practice - not yet saved:', id);
       return;
     }
     try {
-      await deleteHouseRoutine(hid, id);
+      await deletePractice(hid, id);
     } catch (error) {
-      console.error('Failed to delete house routine:', error);
-      setHouseRoutineItems(previousItems);  // Rollback
+      console.error('Failed to delete practice:', error);
+      setPractices(previousItems);  // Rollback
     }
   };
 
@@ -1689,7 +1687,7 @@ const AppContent: React.FC = () => {
     switch (activeView) {
       case 'dashboard':
         return (
-          <Dashboard
+          <Home
             todoItems={isDemoMode ? demoTodoItems : todoItems}
             meals={isDemoMode ? demoMeals : meals}
             users={isDemoMode ? demoUsers : users}
@@ -1779,18 +1777,18 @@ const AppContent: React.FC = () => {
 
       case 'info':
         return (
-          <HouseholdInfo
+          <Family
             householdId={hid}
             currentUser={isDemoMode ? demoUsers[0] : currentUser!}
             users={isDemoMode ? demoUsers : users}
-            essentialItems={isDemoMode ? demoEssentialItems : essentialItems}
-            houseRoutineItems={isDemoMode ? demoHouseRoutineItems : houseRoutineItems}
-            onAddEssentialInfo={handleAddEssentialInfo}
-            onUpdateEssentialInfo={handleUpdateEssentialInfo}
-            onDeleteEssentialInfo={handleDeleteEssentialInfo}
-            onAddHouseRoutine={handleAddHouseRoutine}
-            onUpdateHouseRoutine={handleUpdateHouseRoutine}
-            onDeleteHouseRoutine={handleDeleteHouseRoutine}
+            places={isDemoMode ? demoPlaces : places}
+            practices={isDemoMode ? demoPractices : practices}
+            onAddPlace={handleAddPlace}
+            onUpdatePlace={handleUpdatePlace}
+            onDeletePlace={handleDeletePlace}
+            onAddPractice={handleAddPractice}
+            onUpdatePractice={handleUpdatePractice}
+            onDeletePractice={handleDeletePractice}
             t={translations}
             currentLang={lang}
             onNavigateToProfile={() => handleNavigate('profile')}

@@ -340,11 +340,11 @@ const UserGuide: React.FC<UserGuideProps> = ({ currentUser, t, onNavigateToPlan,
         icon={<Star size={20} />}
         defaultOpen={true}
       >
-        {/* Dashboard - Level 1 Section Header */}
+        {/* Home - Level 1 Section Header */}
         <div className="mb-3">
           <h3 className="text-body font-bold text-foreground flex items-center gap-2">
             <NAV_ITEMS.dashboard.icon size={18} className="text-foreground" />
-            {t['guide.dashboard_title'] || 'Dashboard'}
+            {t['guide.dashboard_title'] || 'Home'}
           </h3>
           <p className="text-body text-foreground mt-1 ml-6">
             {t['guide.dashboard_desc'] ||

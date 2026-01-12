@@ -1308,7 +1308,7 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'info.practice_ideas': 'Practice Ideas',
   'info.practice_ideas_title': 'Practice Ideas',
   'info.practice_ideas_subtitle': 'Choose from commonly used templates to help organize your home.',
-  'info.practice_ideas_disclaimer': 'These suggestions are common templates based on Hong Kong household practices. They are provided for your convenience and inspiration. Please review and customize them to ensure they fit your family\'s unique needs and comply with local labor regulations.',
+  'info.practice_ideas_disclaimer': 'These templates are provided for convenience and inspiration. Please review and customize them to fit your family\'s needs and comply with local regulations.',
   'info.practice_ideas_select_all': 'Select All',
   'info.practice_ideas_deselect_all': 'Deselect All',
   'info.practice_ideas_add_selected': 'Add Selected',

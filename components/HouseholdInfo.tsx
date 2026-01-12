@@ -1612,7 +1612,7 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
               {t['info.practice_ideas_subtitle'] || 'Choose from commonly used templates to help organize your home.'}
             </p>
             <p className="text-caption text-muted-foreground text-center mt-2 px-4">
-              {t['info.practice_ideas_disclaimer'] || "These suggestions are common templates based on Hong Kong household practices. They are provided for your convenience and inspiration. Please review and customize them to ensure they fit your family's unique needs and comply with local labor regulations."}
+              {t['info.practice_ideas_disclaimer'] || "These templates are provided for convenience and inspiration. Please review and customize them to fit your family's needs and comply with local regulations."}
             </p>
           </div>
 

@@ -1038,30 +1038,33 @@ const Family: React.FC<FamilyProps> = ({
           className="sticky top-0 z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 pb-3 flex items-end" 
           style={{ height: '120px', boxShadow: '0 10px 0 0 hsl(var(--background))' }}
         >
-          <div className="flex items-center justify-between w-full">
-            <h1>
-              <span className="text-primary font-bold" style={{ fontSize: '20px' }}>{t['info.title'] || 'Family Book'}</span><br />
-              <span className="text-display text-foreground">
+          <div className="w-full">
+            <span className="text-primary font-bold block" style={{ fontSize: '20px' }}>{t['info.title'] || 'Family Book'}</span>
+            <div className="flex items-center justify-between">
+              <h1 className="text-display text-foreground">
                 {activeSection === 'places' ? (t['common.places'] || 'Places') : 
                  activeSection === 'practice' ? (t['common.practice'] || 'Practice') :
                  (t['common.helper'] || 'Helper')}
-              </span>
-            </h1>
-            
-            {/* Practice Ideas Button - all roles except Helper, show when in Practice tab */}
-            {activeSection === 'practice' && !isHelper && availablePresets.length > 0 && (
-              <button
-                onClick={() => {
-                  haptics.medium();
-                  setSelectedPresetIds(new Set());
-                  setIsPracticeIdeasModalOpen(true);
-                }}
-                className="h-9 px-3 rounded-full bg-primary text-primary-foreground text-caption font-semibold flex items-center gap-1.5 shrink-0 mb-1"
-              >
-                <Lightbulb size={16} />
-                {t['info.practice_ideas'] || 'Practice Ideas'}
-              </button>
-            )}
+              </h1>
+              
+              {/* Header Actions */}
+              <div className="flex items-center gap-2 shrink-0">
+                {/* Practice Ideas Button - all roles except Helper, show when in Practice tab */}
+                {activeSection === 'practice' && !isHelper && availablePresets.length > 0 && (
+                  <button
+                    onClick={() => {
+                      haptics.medium();
+                      setSelectedPresetIds(new Set());
+                      setIsPracticeIdeasModalOpen(true);
+                    }}
+                    className="h-9 px-3 rounded-full bg-primary text-primary-foreground text-caption font-semibold flex items-center gap-1.5"
+                  >
+                    <Lightbulb size={16} />
+                    {t['info.practice_ideas'] || 'Practice Ideas'}
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
         </header>
 

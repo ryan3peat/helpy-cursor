@@ -7,7 +7,7 @@
  */
 
 import { supabase } from './supabase';
-import { getAuthenticatedSupabaseClient } from '../contexts/SupabaseContext';
+import { getAuthenticatedSupabaseClient, refreshSupabaseToken } from '../contexts/SupabaseContext';
 import { getDeviceId, isIosDevice, isAndroidDevice } from '../utils/pwaUtils';
 
 // ============================================================================
@@ -16,11 +16,24 @@ import { getDeviceId, isIosDevice, isAndroidDevice } from '../utils/pwaUtils';
 
 function getSupabaseClient() {
   const authClient = getAuthenticatedSupabaseClient();
-  if (authClient) {
-    return authClient;
+  if (!authClient) {
+    console.warn('[pwaService] ⚠️ No authenticated client available, using default (may fail RLS)');
   }
-  console.warn('[PWA Service] No authenticated client available, using default');
-  return supabase;
+  return authClient || supabase;
+}
+
+/**
+ * Check if an error is JWT/auth related and should trigger a retry
+ */
+function isJwtError(error: any): boolean {
+  if (!error) return false;
+  if (error.code === 'PGRST303') return true;
+  const message = error.message?.toLowerCase() || '';
+  if (message.includes('jwt expired')) return true;
+  if (message.includes('jwt') && message.includes('expired')) return true;
+  if (message.includes('invalid jwt')) return true;
+  if (error.code === '42501' && message.includes('policy')) return true;
+  return false;
 }
 
 // ============================================================================
@@ -37,12 +50,33 @@ export async function isDevicePwaInstalled(userId: string): Promise<boolean> {
   try {
     const deviceId = getDeviceId();
     
-    const { data, error } = await getSupabaseClient()
+    let { data, error } = await getSupabaseClient()
       .from('pwa_installations')
       .select('id')
       .eq('user_id', userId)
       .eq('device_id', deviceId)
       .limit(1);
+
+    // SELF-HEALING: If JWT error, refresh token and retry ONCE
+    if (error && isJwtError(error)) {
+      console.warn('[pwaService] ⚠️ JWT error on isDevicePwaInstalled, refreshing token...');
+      try {
+        await refreshSupabaseToken();
+        const retryResult = await getSupabaseClient()
+          .from('pwa_installations')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('device_id', deviceId)
+          .limit(1);
+        if (!retryResult.error) {
+          console.log('[pwaService] ✅ Retry successful');
+          data = retryResult.data;
+          error = null;
+        }
+      } catch (refreshError) {
+        console.error('[pwaService] ❌ Token refresh failed:', refreshError);
+      }
+    }
     
     if (error) {
       console.error('[PWA Service] Error checking installation:', error);

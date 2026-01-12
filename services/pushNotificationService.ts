@@ -14,14 +14,32 @@
 
 import { supabase } from './supabase';
 import { getCachedSupabaseUuid, isUserCachePopulated, getUserCacheStats } from './supabaseService';
-import { getAuthenticatedSupabaseClient } from '../contexts/SupabaseContext';
+import { getAuthenticatedSupabaseClient, refreshSupabaseToken } from '../contexts/SupabaseContext';
 import { getDeviceId } from '../utils/pwaUtils';
 
 // ============================================================================
 // HELPER: Get authenticated Supabase client (for RLS) or fallback to default
 // ============================================================================
 function getSupabaseClient() {
-  return getAuthenticatedSupabaseClient() || supabase;
+  const authClient = getAuthenticatedSupabaseClient();
+  if (!authClient) {
+    console.warn('[pushNotificationService] ⚠️ No authenticated client available, using default (may fail RLS)');
+  }
+  return authClient || supabase;
+}
+
+/**
+ * Check if an error is JWT/auth related and should trigger a retry
+ */
+function isJwtError(error: any): boolean {
+  if (!error) return false;
+  if (error.code === 'PGRST303') return true;
+  const message = error.message?.toLowerCase() || '';
+  if (message.includes('jwt expired')) return true;
+  if (message.includes('jwt') && message.includes('expired')) return true;
+  if (message.includes('invalid jwt')) return true;
+  if (error.code === '42501' && message.includes('policy')) return true;
+  return false;
 }
 
 // ============================================================================
@@ -98,10 +116,29 @@ async function resolveSupabaseUserId(userId: string, householdId: string): Promi
     }
     
     // Query users in the household
-    const { data, error } = await getSupabaseClient()
+    let { data, error } = await getSupabaseClient()
       .from('users')
       .select('id, clerk_id')
       .eq('household_id', householdId);
+
+    // SELF-HEALING: If JWT error, refresh token and retry ONCE
+    if (error && isJwtError(error)) {
+      console.warn('[Push] ⚠️ JWT error on resolveSupabaseUserId, refreshing token...');
+      try {
+        await refreshSupabaseToken();
+        const retryResult = await getSupabaseClient()
+          .from('users')
+          .select('id, clerk_id')
+          .eq('household_id', householdId);
+        if (!retryResult.error) {
+          console.log('[Push] ✅ Retry successful');
+          data = retryResult.data;
+          error = null;
+        }
+      } catch (refreshError) {
+        console.error('[Push] ❌ Token refresh failed:', refreshError);
+      }
+    }
 
     if (error) {
       console.error('[Push] ❌ Failed to query users:', error);

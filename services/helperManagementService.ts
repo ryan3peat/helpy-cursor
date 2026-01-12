@@ -1,7 +1,7 @@
 // services/helperManagementService.ts
 
 import { supabase as defaultSupabase } from './supabase';
-import { getAuthenticatedSupabaseClient } from '../contexts/SupabaseContext';
+import { getAuthenticatedSupabaseClient, refreshSupabaseToken } from '../contexts/SupabaseContext';
 import { getCachedSupabaseUuid } from './supabaseService';
 import type { 
   HKStatutoryHoliday, 
@@ -20,6 +20,20 @@ function getSupabase() {
     console.warn('[helperManagementService] ⚠️ No authenticated client available, using default (may fail RLS)');
   }
   return authClient || defaultSupabase;
+}
+
+/**
+ * Check if an error is JWT/auth related and should trigger a retry
+ */
+function isJwtError(error: any): boolean {
+  if (!error) return false;
+  if (error.code === 'PGRST303') return true;
+  const message = error.message?.toLowerCase() || '';
+  if (message.includes('jwt expired')) return true;
+  if (message.includes('jwt') && message.includes('expired')) return true;
+  if (message.includes('invalid jwt')) return true;
+  if (error.code === '42501' && message.includes('policy')) return true;
+  return false;
 }
 
 // Wrapper that uses authenticated client for all operations
@@ -47,13 +61,35 @@ function toSupabaseUuid(userId: string): string {
 export async function getUpcomingHolidays(limit: number = 3): Promise<HKStatutoryHoliday[]> {
   const today = new Date().toISOString().split('T')[0];
   
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from('hk_statutory_holidays')
     .select('*')
     .gte('holiday_date', today)
     .eq('is_active', true)
     .order('holiday_date', { ascending: true })
     .limit(limit);
+
+  // SELF-HEALING: If JWT error, refresh token and retry ONCE
+  if (error && isJwtError(error)) {
+    console.warn('[helperManagementService] ⚠️ JWT error on getUpcomingHolidays, refreshing token...');
+    try {
+      await refreshSupabaseToken();
+      const retryResult = await getSupabase()
+        .from('hk_statutory_holidays')
+        .select('*')
+        .gte('holiday_date', today)
+        .eq('is_active', true)
+        .order('holiday_date', { ascending: true })
+        .limit(limit);
+      if (!retryResult.error) {
+        console.log('[helperManagementService] ✅ Retry successful');
+        data = retryResult.data;
+        error = null;
+      }
+    } catch (refreshError) {
+      console.error('[helperManagementService] ❌ Token refresh failed:', refreshError);
+    }
+  }
     
   if (error) throw error;
   

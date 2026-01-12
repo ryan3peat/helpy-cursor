@@ -1,7 +1,7 @@
 // services/practiceService.ts
 // Renamed from houseRoutineService.ts - "Practice" is the user-facing name
 import { supabase as defaultSupabase } from './supabase';
-import { getAuthenticatedSupabaseClient } from '../contexts/SupabaseContext';
+import { getAuthenticatedSupabaseClient, refreshSupabaseToken } from '../contexts/SupabaseContext';
 import type { Practice, CreatePractice, PracticeCategory } from '@src/types/practice';
 
 // Table renamed from 'house_routine' to 'practices' (see migration 060)
@@ -10,10 +10,28 @@ const TABLE_NAME = 'practices';
 /**
  * Get the best available Supabase client.
  * Prefers authenticated client with JWT (for RLS), falls back to default.
+ * WARNING: If auth client is null, RLS will fail and queries return empty!
  */
 function getSupabase() {
   const authClient = getAuthenticatedSupabaseClient();
+  if (!authClient) {
+    console.warn('[practiceService] ⚠️ No authenticated client - RLS may fail');
+  }
   return authClient || defaultSupabase;
+}
+
+/**
+ * Check if an error is JWT/auth related and should trigger a retry
+ */
+function isJwtError(error: any): boolean {
+  if (!error) return false;
+  if (error.code === 'PGRST303') return true;
+  const message = error.message?.toLowerCase() || '';
+  if (message.includes('jwt expired')) return true;
+  if (message.includes('jwt') && message.includes('expired')) return true;
+  if (message.includes('invalid jwt')) return true;
+  if (error.code === '42501' && message.includes('policy')) return true;
+  return false;
 }
 
 // Wrapper that uses authenticated client for all operations
@@ -61,13 +79,40 @@ function toSnakeCase(data: Partial<Practice | CreatePractice>): any {
 
 /**
  * Fetch all practice entries for a household
+ * Includes JWT retry logic for self-healing on token expiration
  */
 export async function listPractices(householdId: string): Promise<Practice[]> {
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from(TABLE_NAME)
     .select('*')
     .eq('household_id', householdId)
     .order('created_at', { ascending: false });
+
+  // SELF-HEALING: If JWT error, refresh token and retry ONCE
+  if (error && isJwtError(error)) {
+    console.warn('[practiceService] ⚠️ JWT error on listPractices, refreshing token and retrying...');
+    try {
+      await refreshSupabaseToken();
+      
+      // Retry with fresh client
+      const retryResult = await getSupabase()
+        .from(TABLE_NAME)
+        .select('*')
+        .eq('household_id', householdId)
+        .order('created_at', { ascending: false });
+      
+      if (!retryResult.error) {
+        console.log('[practiceService] ✅ Retry successful after token refresh');
+        data = retryResult.data;
+        error = null;
+      } else {
+        console.error('[practiceService] ❌ Retry also failed:', retryResult.error);
+        error = retryResult.error;
+      }
+    } catch (refreshError) {
+      console.error('[practiceService] ❌ Token refresh failed:', refreshError);
+    }
+  }
 
   if (error) {
     console.error('Failed to fetch practices:', error);

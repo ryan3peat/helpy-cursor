@@ -532,10 +532,48 @@ const ToDo: React.FC<ToDoProps> = ({
     completed: items.filter(i => i.type === 'shopping' && i.completed).length,
   };
   
-  const taskStats = {
-    total: items.filter(i => i.type === 'task' && !i.completed).length,
-    completed: items.filter(i => i.type === 'task' && i.completed).length,
-  };
+  // Task stats - deduplicate recurring tasks (count only next upcoming instance per series)
+  const taskStats = useMemo(() => {
+    const taskItems = items.filter(i => i.type === 'task');
+    
+    // Apply same deduplication logic as display
+    const seriesMap = new Map<string, ToDoItem[]>();
+    const nonSeriesItems: ToDoItem[] = [];
+    
+    taskItems.forEach(item => {
+      const isActivelyRecurring = item.seriesId && 
+        item.recurrence && 
+        item.recurrence.frequency !== 'NONE';
+      
+      if (isActivelyRecurring) {
+        if (!seriesMap.has(item.seriesId!)) {
+          seriesMap.set(item.seriesId!, []);
+        }
+        seriesMap.get(item.seriesId!)!.push(item);
+      } else {
+        nonSeriesItems.push(item);
+      }
+    });
+    
+    // For each series, count only the next upcoming instance
+    let pendingCount = nonSeriesItems.filter(i => !i.completed).length;
+    let completedCount = nonSeriesItems.filter(i => i.completed).length;
+    
+    seriesMap.forEach((seriesItems) => {
+      const sorted = seriesItems.sort((a, b) => {
+        const dateA = a.dueDate ? new Date(a.dueDate + 'T00:00:00').getTime() : Infinity;
+        const dateB = b.dueDate ? new Date(b.dueDate + 'T00:00:00').getTime() : Infinity;
+        return dateA - dateB;
+      });
+      
+      const nextUpcoming = sorted.find(item => !item.completed);
+      if (nextUpcoming) pendingCount++;
+      
+      completedCount += sorted.filter(item => item.completed).length;
+    });
+    
+    return { total: pendingCount, completed: completedCount };
+  }, [items]);
 
   useEffect(() => {
     setSelectedCategory('All');
@@ -776,10 +814,49 @@ const ToDo: React.FC<ToDoProps> = ({
   // Handlers
   // ─────────────────────────────────────────────────────────────────
   
+  // Get item count for category tabs - deduplicates recurring tasks
   const getItemCount = (category: string): number => {
     const sectionItems = items.filter(i => i.type === activeSection && !i.completed);
-    if (category === 'All') return sectionItems.length;
-    return sectionItems.filter(i => i.category === category).length;
+    
+    // For shopping, no deduplication needed
+    if (activeSection === 'shopping') {
+      if (category === 'All') return sectionItems.length;
+      return sectionItems.filter(i => i.category === category).length;
+    }
+    
+    // For tasks, apply recurring task deduplication
+    const seriesMap = new Map<string, ToDoItem[]>();
+    const nonSeriesItems: ToDoItem[] = [];
+    
+    sectionItems.forEach(item => {
+      const isActivelyRecurring = item.seriesId && 
+        item.recurrence && 
+        item.recurrence.frequency !== 'NONE';
+      
+      if (isActivelyRecurring) {
+        if (!seriesMap.has(item.seriesId!)) {
+          seriesMap.set(item.seriesId!, []);
+        }
+        seriesMap.get(item.seriesId!)!.push(item);
+      } else {
+        nonSeriesItems.push(item);
+      }
+    });
+    
+    // Build deduplicated list
+    const deduplicated: ToDoItem[] = [...nonSeriesItems];
+    seriesMap.forEach((seriesItems) => {
+      const sorted = seriesItems.sort((a, b) => {
+        const dateA = a.dueDate ? new Date(a.dueDate + 'T00:00:00').getTime() : Infinity;
+        const dateB = b.dueDate ? new Date(b.dueDate + 'T00:00:00').getTime() : Infinity;
+        return dateA - dateB;
+      });
+      const nextUpcoming = sorted.find(item => !item.completed);
+      if (nextUpcoming) deduplicated.push(nextUpcoming);
+    });
+    
+    if (category === 'All') return deduplicated.length;
+    return deduplicated.filter(i => i.category === category).length;
   };
   
   const handleInlineAdd = async () => {
@@ -1215,14 +1292,13 @@ const ToDo: React.FC<ToDoProps> = ({
             boxShadow: '0 10px 0 0 hsl(var(--background))' 
           }}
         >
-          <div className="flex items-center justify-between w-full">
-            <h1>
-              <span className="text-primary font-bold" style={{ fontSize: '20px' }}>{t['todo.title'] || 'To Do'}</span><br />
-              <span className="text-display text-foreground">{activeSection === 'shopping' ? (t['todo.shopping'] || 'Shopping') : (t['todo.tasks'] || 'Tasks')}</span>
-            </h1>
-            
-            {/* Header Actions */}
-            <div className="flex items-center gap-2 shrink-0">
+          <div className="w-full">
+            <span className="text-primary font-bold block" style={{ fontSize: '20px' }}>{t['todo.title'] || 'To Do'}</span>
+            <div className="flex items-center justify-between">
+              <h1 className="text-display text-foreground">{activeSection === 'shopping' ? (t['todo.shopping'] || 'Shopping') : (t['todo.tasks'] || 'Tasks')}</h1>
+              
+              {/* Header Actions */}
+              <div className="flex items-center gap-2 shrink-0">
             {/* Shopping Mode Button - only show when shopping section is active and has items */}
             {activeSection === 'shopping' && shoppingStats.total > 0 && (
               <button
@@ -1334,6 +1410,7 @@ const ToDo: React.FC<ToDoProps> = ({
                 </div>
               )}
               </div>
+            </div>
             </div>
           </div>
         </header>

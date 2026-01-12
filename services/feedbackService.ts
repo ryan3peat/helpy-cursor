@@ -1,4 +1,4 @@
-import { getAuthenticatedSupabaseClient } from '../contexts/SupabaseContext';
+import { getAuthenticatedSupabaseClient, refreshSupabaseToken } from '../contexts/SupabaseContext';
 import { supabase } from './supabase';
 
 // ─────────────────────────────────────────────────────────────────
@@ -36,11 +36,24 @@ export interface SupportTicket {
 
 function getSupabaseClient() {
   const authClient = getAuthenticatedSupabaseClient();
-  if (authClient) {
-    return authClient;
+  if (!authClient) {
+    console.warn('[feedbackService] ⚠️ No authenticated client available, using default (may fail RLS)');
   }
-  console.warn('[feedbackService] No authenticated client available, using default');
-  return supabase;
+  return authClient || supabase;
+}
+
+/**
+ * Check if an error is JWT/auth related and should trigger a retry
+ */
+function isJwtError(error: any): boolean {
+  if (!error) return false;
+  if (error.code === 'PGRST303') return true;
+  const message = error.message?.toLowerCase() || '';
+  if (message.includes('jwt expired')) return true;
+  if (message.includes('jwt') && message.includes('expired')) return true;
+  if (message.includes('invalid jwt')) return true;
+  if (error.code === '42501' && message.includes('policy')) return true;
+  return false;
 }
 
 function generateMessageId(): string {
@@ -107,7 +120,29 @@ export function subscribeToTickets(
       query = query.eq('household_id', householdId);
     }
     
-    const { data, error } = await query.order('updated_at', { ascending: false });
+    let { data, error } = await query.order('updated_at', { ascending: false });
+    
+    // SELF-HEALING: If JWT error, refresh token and retry ONCE
+    if (error && isJwtError(error)) {
+      console.warn('[feedbackService] ⚠️ JWT error on fetchTickets, refreshing token...');
+      try {
+        await refreshSupabaseToken();
+        let retryQuery = getSupabaseClient()
+          .from('support_tickets')
+          .select('*, users!support_tickets_user_id_fkey(name, avatar)');
+        if (!isSuperAdmin) {
+          retryQuery = retryQuery.eq('household_id', householdId);
+        }
+        const retryResult = await retryQuery.order('updated_at', { ascending: false });
+        if (!retryResult.error) {
+          console.log('[feedbackService] ✅ Retry successful');
+          data = retryResult.data;
+          error = null;
+        }
+      } catch (refreshError) {
+        console.error('[feedbackService] ❌ Token refresh failed:', refreshError);
+      }
+    }
     
     if (error) {
       console.error('[feedbackService] Error fetching tickets:', error);

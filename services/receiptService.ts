@@ -2,7 +2,7 @@
 // Handles receipt storage and database operations
 
 import { supabase as defaultSupabase } from './supabase';
-import { getAuthenticatedSupabaseClient } from '../contexts/SupabaseContext';
+import { getAuthenticatedSupabaseClient, refreshSupabaseToken } from '../contexts/SupabaseContext';
 import { ParsedReceipt, processReceipt } from './visionService';
 
 /**
@@ -11,7 +11,24 @@ import { ParsedReceipt, processReceipt } from './visionService';
  */
 function getSupabase() {
   const authClient = getAuthenticatedSupabaseClient();
+  if (!authClient) {
+    console.warn('[receiptService] ⚠️ No authenticated client available, using default (may fail RLS)');
+  }
   return authClient || defaultSupabase;
+}
+
+/**
+ * Check if an error is JWT/auth related and should trigger a retry
+ */
+function isJwtError(error: any): boolean {
+  if (!error) return false;
+  if (error.code === 'PGRST303') return true;
+  const message = error.message?.toLowerCase() || '';
+  if (message.includes('jwt expired')) return true;
+  if (message.includes('jwt') && message.includes('expired')) return true;
+  if (message.includes('invalid jwt')) return true;
+  if (error.code === '42501' && message.includes('policy')) return true;
+  return false;
 }
 
 // Wrapper that uses authenticated client for all database operations
@@ -21,15 +38,38 @@ const supabase = {
 };
 /**
  * Fetch known merchant names for a household (user-corrected history).
+ * Includes JWT retry logic for self-healing on token expiration.
  */
 export async function getKnownMerchants(householdId: string): Promise<string[]> {
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from('expenses')
     .select('merchant')
     .eq('household_id', householdId)
     .not('merchant', 'is', null)
     .neq('merchant', '')
     .limit(500);
+
+  // SELF-HEALING: If JWT error, refresh token and retry ONCE
+  if (error && isJwtError(error)) {
+    console.warn('[receiptService] ⚠️ JWT error on getKnownMerchants, refreshing token...');
+    try {
+      await refreshSupabaseToken();
+      const retryResult = await getSupabase()
+        .from('expenses')
+        .select('merchant')
+        .eq('household_id', householdId)
+        .not('merchant', 'is', null)
+        .neq('merchant', '')
+        .limit(500);
+      if (!retryResult.error) {
+        console.log('[receiptService] ✅ Retry successful');
+        data = retryResult.data;
+        error = null;
+      }
+    } catch (refreshError) {
+      console.error('[receiptService] ❌ Token refresh failed:', refreshError);
+    }
+  }
 
   if (error) {
     console.warn('[ReceiptService] Failed to fetch known merchants (non-fatal):', error.message);

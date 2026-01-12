@@ -605,7 +605,46 @@ const Home: React.FC<HomeProps> = ({
   };
 
   const shoppingCount = todoItems.filter(i => i.type === 'shopping' && !i.completed).length;
-  const activeTaskCount = todoItems.filter(i => i.type === 'task' && !i.completed).length;
+  
+  // Task count - deduplicate recurring tasks (count only next upcoming instance per series)
+  const activeTaskCount = useMemo(() => {
+    const taskItems = todoItems.filter(i => i.type === 'task' && !i.completed);
+    
+    // Apply same deduplication logic as ToDo display
+    const seriesMap = new Map<string, ToDoItem[]>();
+    const nonSeriesItems: ToDoItem[] = [];
+    
+    taskItems.forEach(item => {
+      const isActivelyRecurring = item.seriesId && 
+        item.recurrence && 
+        item.recurrence.frequency !== 'NONE';
+      
+      if (isActivelyRecurring) {
+        if (!seriesMap.has(item.seriesId!)) {
+          seriesMap.set(item.seriesId!, []);
+        }
+        seriesMap.get(item.seriesId!)!.push(item);
+      } else {
+        nonSeriesItems.push(item);
+      }
+    });
+    
+    // For each series, count only the next upcoming instance
+    let pendingCount = nonSeriesItems.length;
+    
+    seriesMap.forEach((seriesItems) => {
+      const sorted = seriesItems.sort((a, b) => {
+        const dateA = a.dueDate ? new Date(a.dueDate + 'T00:00:00').getTime() : Infinity;
+        const dateB = b.dueDate ? new Date(b.dueDate + 'T00:00:00').getTime() : Infinity;
+        return dateA - dateB;
+      });
+      
+      const nextUpcoming = sorted.find(item => !item.completed);
+      if (nextUpcoming) pendingCount++;
+    });
+    
+    return pendingCount;
+  }, [todoItems]);
   
   // Calculate total member count for quota display (family + helpers combined)
   // Count ALL users (active + pending) since pending invites also consume quota slots

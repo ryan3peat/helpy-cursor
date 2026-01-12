@@ -954,8 +954,27 @@ const AppContent: React.FC = () => {
       setFamilyNotesLang(notesData.notesLang || null);
       setFamilyNotesTranslations(notesData.notesTranslations || {});
     });
-    const unsubPlaces = subscribeToPlaces(hid, (data) => setPlaces(data));
-    const unsubPractices = subscribeToPractices(hid, (data) => setPractices(data));
+    const unsubPlaces = subscribeToPlaces(hid, (data) => {
+      // Protect cached data: don't replace existing places with empty results
+      // This prevents brief JWT hiccups from wiping the UI
+      setPlaces(prev => {
+        if (data.length === 0 && prev.length > 0) {
+          console.log('[App] 🛡️ Protecting cached places from empty result');
+          return prev;
+        }
+        return data;
+      });
+    });
+    const unsubPractices = subscribeToPractices(hid, (data) => {
+      // Protect cached data: don't replace existing practices with empty results
+      setPractices(prev => {
+        if (data.length === 0 && prev.length > 0) {
+          console.log('[App] 🛡️ Protecting cached practices from empty result');
+          return prev;
+        }
+        return data;
+      });
+    });
     
     return () => {
       unsubUsers();

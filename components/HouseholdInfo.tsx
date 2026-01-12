@@ -652,6 +652,7 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
   const [isPracticeIdeasModalOpen, setIsPracticeIdeasModalOpen] = useState(false);
   const [selectedPresetIds, setSelectedPresetIds] = useState<Set<string>>(new Set());
   const [isAddingPresets, setIsAddingPresets] = useState(false);
+  const [showAddPresetsConfirm, setShowAddPresetsConfirm] = useState(false);
   
   // Filter out presets that have already been added to this household
   const availablePresets = PRACTICE_PRESETS.filter(
@@ -664,10 +665,10 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
   ) as HouseRoutineCategory[];
   
   // Lock body scroll when any modal is open
-  useScrollLock(isEssentialModalOpen || isHouseRoutineModalOpen || !!viewingHouseRoutineItem || showMapsChoiceModal || isPracticeIdeasModalOpen);
+  useScrollLock(isEssentialModalOpen || isHouseRoutineModalOpen || !!viewingHouseRoutineItem || showMapsChoiceModal || isPracticeIdeasModalOpen || showAddPresetsConfirm);
   
   // Dim status bar when sheet is open (iOS)
-  useSheetTheme(isEssentialModalOpen || isHouseRoutineModalOpen || !!viewingHouseRoutineItem || showHelperUpgradeModal || showMapsChoiceModal || isPracticeIdeasModalOpen);
+  useSheetTheme(isEssentialModalOpen || isHouseRoutineModalOpen || !!viewingHouseRoutineItem || showHelperUpgradeModal || showMapsChoiceModal || isPracticeIdeasModalOpen || showAddPresetsConfirm);
 
   // ─────────────────────────────────────────────────────────────────
   // Scroll State for Header Animation (using reusable hook)
@@ -1009,12 +1010,14 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
       }
       
       haptics.success();
+      setShowAddPresetsConfirm(false);
       setIsPracticeIdeasModalOpen(false);
       setSelectedPresetIds(new Set());
     } catch (err) {
       console.error("Failed to add presets:", err);
       setError(t['error.save_house_routine'] || 'Failed to save. Please try again.');
       haptics.error();
+      setShowAddPresetsConfirm(false);
     } finally {
       setIsAddingPresets(false);
     }
@@ -1605,8 +1608,11 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
               </div>
               <div className="w-10" /> {/* Spacer for centering */}
             </div>
-            <p className="text-caption text-muted-foreground text-center mt-1">
+            <p className="text-caption text-muted-foreground text-center mt-2 px-4">
               {t['info.practice_ideas_subtitle'] || 'Choose from commonly used templates to help organize your home.'}
+            </p>
+            <p className="text-caption text-muted-foreground text-center mt-2 px-4">
+              {t['info.practice_ideas_disclaimer'] || "These suggestions are common templates based on Hong Kong household practices. They are provided for your convenience and inspiration. Please review and customize them to ensure they fit your family's unique needs and comply with local labor regulations."}
             </p>
           </div>
 
@@ -1686,7 +1692,7 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <p className="text-body font-semibold text-foreground">{preset.name}</p>
-                                  <p className="text-caption text-muted-foreground mt-1 line-clamp-2">{preset.note}</p>
+                                  <p className="text-caption text-muted-foreground mt-1">{preset.note}</p>
                                 </div>
                               </div>
                             </button>
@@ -1698,22 +1704,13 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
                 })}
               </div>
             )}
-            
-            {/* Disclaimer */}
-            {availablePresets.length > 0 && (
-              <div className="mt-6 px-4 py-3 bg-muted/30 rounded-xl">
-                <p className="text-micro text-muted-foreground leading-relaxed">
-                  {t['info.practice_ideas_disclaimer'] || "These suggestions are common templates based on Hong Kong household practices. They are provided for your convenience and inspiration. Please review and customize them to ensure they fit your family's unique needs and comply with local labor regulations."}
-                </p>
-              </div>
-            )}
           </div>
 
           {/* Footer - Add Button */}
           {availablePresets.length > 0 && (
             <div className="shrink-0 p-4 pb-6 border-t border-border">
               <button
-                onClick={handleAddSelectedPresets}
+                onClick={() => setShowAddPresetsConfirm(true)}
                 disabled={selectedPresetIds.size === 0 || isAddingPresets}
                 className={`w-full py-3.5 rounded-xl text-body font-semibold flex items-center justify-center gap-2 transition-all ${
                   selectedPresetIds.size > 0 && !isAddingPresets
@@ -1735,6 +1732,54 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
               </button>
             </div>
           )}
+        </div>
+      , document.body)}
+
+      {/* Add Presets Confirmation Modal - Centered */}
+      {showAddPresetsConfirm && createPortal(
+        <div 
+          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[70] flex items-center justify-center p-6"
+          onClick={(e) => { if (e.target === e.currentTarget && !isAddingPresets) setShowAddPresetsConfirm(false); }}
+        >
+          <div className="bg-card w-full max-w-sm rounded-2xl overflow-hidden shadow-xl">
+            {/* Content */}
+            <div className="p-6 text-center">
+              <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center">
+                <Lightbulb size={28} className="text-primary" />
+              </div>
+              <h3 className="text-title text-foreground mb-2">
+                {(t['info.practice_ideas_confirm_title'] || 'Add {count} Practice Ideas?').replace('{count}', String(selectedPresetIds.size))}
+              </h3>
+              <p className="text-body text-muted-foreground">
+                {t['info.practice_ideas_confirm_desc'] || 'You can edit or delete them anytime after adding.'}
+              </p>
+            </div>
+            
+            {/* Buttons */}
+            <div className="flex border-t border-border">
+              <button
+                onClick={handleAddSelectedPresets}
+                disabled={isAddingPresets}
+                className="flex-1 py-4 text-body font-semibold text-primary border-r border-border disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {isAddingPresets ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    {t['info.practice_ideas_adding'] || 'Adding...'}
+                  </>
+                ) : (
+                  t['common.add'] || 'Add'
+                )}
+              </button>
+              <button
+                onClick={() => setShowAddPresetsConfirm(false)}
+                disabled={isAddingPresets}
+                className="flex-1 py-4 text-body text-muted-foreground disabled:opacity-50"
+              >
+                {t['common.cancel'] || 'Cancel'}
+              </button>
+            </div>
+          </div>
         </div>
       , document.body)}
     </div>

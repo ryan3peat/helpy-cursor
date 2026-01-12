@@ -86,20 +86,20 @@ export const PRACTICE_PRESETS: PracticePreset[] = [
   {
     id: 'hk-clean-trash',
     category: 'Cleaning',
-    name: 'Daily Trash',
-    note: 'Empty all household trash bins every evening before finishing work.'
+    name: 'Trash Disposal',
+    note: 'Empty all household trash bins before finishing work. Separate recyclables (paper, plastic, metal) from general waste.'
   },
   {
-    id: 'hk-clean-weekly',
+    id: 'hk-clean-deepclean',
     category: 'Cleaning',
-    name: 'Weekly Deep Clean',
-    note: 'Every Friday, please vacuum under the beds/sofas and wipe down the interior of the microwave and oven.'
+    name: 'Deep Cleaning Areas',
+    note: 'Areas that need regular deep cleaning: under beds and sofas, inside microwave and oven, behind furniture, and inside the fridge.'
   },
   {
     id: 'hk-clean-linen',
     category: 'Cleaning',
-    name: 'Linen Change',
-    note: 'Change all bedsheets, pillowcases, and towels every Saturday morning.'
+    name: 'Bedding & Towels',
+    note: 'Bedsheets, pillowcases, and towels should be changed regularly. Use hot water for white linens and cold water for colored items.'
   },
 
   // ─────────────────────────────────────────────────────────────────
@@ -176,8 +176,8 @@ export const PRACTICE_PRESETS: PracticePreset[] = [
   {
     id: 'hk-laundry-ironing',
     category: 'Laundry',
-    name: 'Ironing Schedule',
-    note: 'Iron work shirts and school uniforms every Sunday evening and hang them ready for the week.'
+    name: 'Ironing Guidelines',
+    note: 'Work shirts and school uniforms should be ironed and hung ready before they are needed. Check care labels for temperature settings.'
   },
 
   // ─────────────────────────────────────────────────────────────────
@@ -192,8 +192,8 @@ export const PRACTICE_PRESETS: PracticePreset[] = [
   {
     id: 'hk-helper-feedback',
     category: 'Helper Care',
-    name: 'Weekly Feedback',
-    note: 'We will have a brief 10-minute chat every Saturday morning to discuss the week\'s schedule and any concerns you may have.'
+    name: 'Open Communication',
+    note: 'We value open communication. Please feel free to discuss any concerns, questions, or suggestions with us at any time.'
   },
   {
     id: 'hk-helper-rest',
@@ -212,16 +212,16 @@ export const PRACTICE_PRESETS: PracticePreset[] = [
   // ROUTINE
   // ─────────────────────────────────────────────────────────────────
   {
-    id: 'hk-routine-morning',
+    id: 'hk-routine-priority',
     category: 'Routine',
-    name: 'Morning Routine',
-    note: 'Start work at the agreed time. Prepare breakfast, ensure children are ready for school, and tidy up the kitchen before other tasks.'
+    name: 'Task Priorities',
+    note: 'Priority order: Child safety first, then meal preparation, followed by cleaning tasks. Urgent requests from employers take precedence.'
   },
   {
-    id: 'hk-routine-evening',
+    id: 'hk-routine-endofday',
     category: 'Routine',
-    name: 'Evening Routine',
-    note: 'Prepare dinner, help children with bath time if needed, and ensure the kitchen is clean before ending the workday.'
+    name: 'End of Day Checklist',
+    note: 'Before finishing work: ensure kitchen is clean, trash is emptied, doors are locked, and children have completed their evening routine.'
   },
 ];
 

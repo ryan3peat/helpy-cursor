@@ -1316,4 +1316,6 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'info.practice_ideas_all_added': 'You\'ve added all suggested ideas!',
   'info.practice_ideas_all_added_desc': 'Great job setting up your household practices.',
   'info.practice_ideas_selected': 'selected',
+  'info.practice_ideas_confirm_title': 'Add {count} Practice Ideas?',
+  'info.practice_ideas_confirm_desc': 'You can edit or delete them anytime after adding.',
 };

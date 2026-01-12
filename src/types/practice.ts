@@ -44,6 +44,8 @@ export interface Practice {
   nameTranslations?: Record<string, string>;
   noteLang?: string | null;
   noteTranslations?: Record<string, string>;
+  // Preset tracking (links to suggested practice templates)
+  preset_id?: string | null;
 }
 
 // For creating new entries (id is auto-generated)

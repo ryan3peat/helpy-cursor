@@ -38,6 +38,7 @@ function toCamelCase(data: any): Practice {
     nameTranslations: data.name_translations,
     noteLang: data.note_lang,
     noteTranslations: data.note_translations,
+    preset_id: data.preset_id,
   };
 }
 
@@ -54,6 +55,7 @@ function toSnakeCase(data: Partial<Practice | CreatePractice>): any {
   if ('nameTranslations' in data && data.nameTranslations !== undefined) result.name_translations = data.nameTranslations;
   if ('noteLang' in data && data.noteLang !== undefined) result.note_lang = data.noteLang;
   if ('noteTranslations' in data && data.noteTranslations !== undefined) result.note_translations = data.noteTranslations;
+  if ('preset_id' in data && data.preset_id !== undefined) result.preset_id = data.preset_id;
   return result;
 }
 

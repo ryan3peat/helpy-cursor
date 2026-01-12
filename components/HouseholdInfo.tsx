@@ -37,6 +37,8 @@ import {
   Lock,
   Check,
   Globe,
+  Lightbulb,
+  Loader2,
 } from "lucide-react";
 import Avatar from "./ui/Avatar";
 import ErrorBanner from "./ui/ErrorBanner";
@@ -68,6 +70,11 @@ import {
 } from "@src/types/houseRoutine";
 // Keep updateHouseRoutine for translation updates in card components
 import { updateHouseRoutine } from "@/services/houseRoutineService";
+
+// Practice Presets (Suggested Practice Ideas)
+import { PRACTICE_PRESETS, getPresetCategories } from "@src/data/practicePresets";
+import type { PracticePreset } from "@src/data/practicePresets";
+import haptics from "@/utils/haptics";
 
 // Helper Management
 import HelperManagementContent from "./HelperManagementContent";
@@ -632,19 +639,35 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
   const [isHouseRoutineModalOpen, setIsHouseRoutineModalOpen] = useState(false);
   const [editingHouseRoutineItem, setEditingHouseRoutineItem] = useState<HouseRoutine | null>(null);
   const [viewingHouseRoutineItem, setViewingHouseRoutineItem] = useState<HouseRoutine | null>(null);
-  
-  // Lock body scroll when any modal is open
-  useScrollLock(isEssentialModalOpen || isHouseRoutineModalOpen || !!viewingHouseRoutineItem || showMapsChoiceModal);
-  
-  // Dim status bar when sheet is open (iOS)
-  useSheetTheme(isEssentialModalOpen || isHouseRoutineModalOpen || !!viewingHouseRoutineItem || showHelperUpgradeModal || showMapsChoiceModal);
-  
   const [houseRoutineForm, setHouseRoutineForm] = useState<CreateHouseRoutine>({
     category: "Home Rules",
     customCategory: "",
     name: "",
     note: "",
   });
+
+  // ─────────────────────────────────────────────────────────────────
+  // Practice Ideas Modal State (SuperAdmin only for now)
+  // ─────────────────────────────────────────────────────────────────
+  const [isPracticeIdeasModalOpen, setIsPracticeIdeasModalOpen] = useState(false);
+  const [selectedPresetIds, setSelectedPresetIds] = useState<Set<string>>(new Set());
+  const [isAddingPresets, setIsAddingPresets] = useState(false);
+  
+  // Filter out presets that have already been added to this household
+  const availablePresets = PRACTICE_PRESETS.filter(
+    preset => !houseRoutineItems.some(item => item.preset_id === preset.id)
+  );
+  
+  // Get unique categories from available presets
+  const availablePresetCategories = Array.from(
+    new Set(availablePresets.map(p => p.category))
+  ) as HouseRoutineCategory[];
+  
+  // Lock body scroll when any modal is open
+  useScrollLock(isEssentialModalOpen || isHouseRoutineModalOpen || !!viewingHouseRoutineItem || showMapsChoiceModal || isPracticeIdeasModalOpen);
+  
+  // Dim status bar when sheet is open (iOS)
+  useSheetTheme(isEssentialModalOpen || isHouseRoutineModalOpen || !!viewingHouseRoutineItem || showHelperUpgradeModal || showMapsChoiceModal || isPracticeIdeasModalOpen);
 
   // ─────────────────────────────────────────────────────────────────
   // Scroll State for Header Animation (using reusable hook)
@@ -935,6 +958,69 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
   };
 
   // ─────────────────────────────────────────────────────────────────
+  // Practice Ideas Handlers
+  // ─────────────────────────────────────────────────────────────────
+  const handleTogglePreset = (presetId: string) => {
+    setSelectedPresetIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(presetId)) {
+        newSet.delete(presetId);
+      } else {
+        newSet.add(presetId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSelectAllPresets = () => {
+    if (selectedPresetIds.size === availablePresets.length) {
+      // Deselect all
+      setSelectedPresetIds(new Set());
+    } else {
+      // Select all
+      setSelectedPresetIds(new Set(availablePresets.map(p => p.id)));
+    }
+  };
+
+  const handleAddSelectedPresets = async () => {
+    if (selectedPresetIds.size === 0) return;
+    
+    setIsAddingPresets(true);
+    haptics.medium();
+    
+    try {
+      // Get selected presets
+      const presetsToAdd = availablePresets.filter(p => selectedPresetIds.has(p.id));
+      
+      // Add each preset as a new practice item
+      for (const preset of presetsToAdd) {
+        const createData: CreateHouseRoutine = {
+          category: preset.category,
+          name: preset.name,
+          note: preset.note,
+          nameLang: 'en', // Presets are in English
+          nameTranslations: {},
+          noteLang: 'en',
+          noteTranslations: {},
+          preset_id: preset.id, // Link to the preset
+        };
+        
+        await onAddHouseRoutine(createData);
+      }
+      
+      haptics.success();
+      setIsPracticeIdeasModalOpen(false);
+      setSelectedPresetIds(new Set());
+    } catch (err) {
+      console.error("Failed to add presets:", err);
+      setError(t['error.save_house_routine'] || 'Failed to save. Please try again.');
+      haptics.error();
+    } finally {
+      setIsAddingPresets(false);
+    }
+  };
+
+  // ─────────────────────────────────────────────────────────────────
   // Render
   // ─────────────────────────────────────────────────────────────────
   return (
@@ -948,14 +1034,31 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
           className="sticky top-0 z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 pb-3 flex items-end" 
           style={{ height: '120px', boxShadow: '0 10px 0 0 hsl(var(--background))' }}
         >
-          <h1 className="w-full">
-            <span className="text-primary font-bold" style={{ fontSize: '20px' }}>{t['info.title'] || 'Family Info'}</span><br />
-            <span className="text-display text-foreground">
-              {activeSection === 'essentialInfo' ? (t['common.places'] || 'Places') : 
-               activeSection === 'houseRoutine' ? (t['common.practice'] || 'Practice') :
-               (t['common.helper'] || 'Helper')}
-            </span>
-          </h1>
+          <div className="flex items-center justify-between w-full">
+            <h1>
+              <span className="text-primary font-bold" style={{ fontSize: '20px' }}>{t['info.title'] || 'Family Info'}</span><br />
+              <span className="text-display text-foreground">
+                {activeSection === 'essentialInfo' ? (t['common.places'] || 'Places') : 
+                 activeSection === 'houseRoutine' ? (t['common.practice'] || 'Practice') :
+                 (t['common.helper'] || 'Helper')}
+              </span>
+            </h1>
+            
+            {/* Practice Ideas Button - SuperAdmin only, show when in Practice tab */}
+            {activeSection === 'houseRoutine' && isSuperAdmin && availablePresets.length > 0 && (
+              <button
+                onClick={() => {
+                  haptics.medium();
+                  setSelectedPresetIds(new Set());
+                  setIsPracticeIdeasModalOpen(true);
+                }}
+                className="h-9 px-3 rounded-full bg-primary text-primary-foreground text-caption font-semibold flex items-center gap-1.5 shrink-0 mb-1"
+              >
+                <Lightbulb size={16} />
+                {t['info.practice_ideas'] || 'Practice Ideas'}
+              </button>
+            )}
+          </div>
         </header>
 
         {/* Error Banner */}
@@ -1476,6 +1579,162 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
               </button>
             </div>
           </div>
+        </div>
+      , document.body)}
+
+      {/* Practice Ideas Modal - Full Screen Selection */}
+      {isPracticeIdeasModalOpen && createPortal(
+        <div 
+          className="fixed inset-0 bg-background z-[60] flex flex-col"
+          style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}
+        >
+          {/* Header */}
+          <div className="shrink-0 px-4 pt-4 pb-3 border-b border-border">
+            <div className="flex items-center justify-between">
+              <button
+                onClick={() => {
+                  setIsPracticeIdeasModalOpen(false);
+                  setSelectedPresetIds(new Set());
+                }}
+                className="w-10 h-10 rounded-full flex items-center justify-center text-muted-foreground"
+              >
+                <X size={20} />
+              </button>
+              <div className="text-center flex-1">
+                <h2 className="text-title text-foreground">{t['info.practice_ideas_title'] || 'Practice Ideas'}</h2>
+              </div>
+              <div className="w-10" /> {/* Spacer for centering */}
+            </div>
+            <p className="text-caption text-muted-foreground text-center mt-1">
+              {t['info.practice_ideas_subtitle'] || 'Choose from commonly used templates to help organize your home.'}
+            </p>
+          </div>
+
+          {/* Select All / Deselect All */}
+          {availablePresets.length > 0 && (
+            <div className="shrink-0 px-4 py-3 border-b border-border flex items-center justify-between">
+              <span className="text-body text-foreground">
+                {selectedPresetIds.size} {t['info.practice_ideas_selected'] || 'selected'}
+              </span>
+              <button
+                onClick={handleSelectAllPresets}
+                className="text-body text-primary font-semibold"
+              >
+                {selectedPresetIds.size === availablePresets.length 
+                  ? (t['info.practice_ideas_deselect_all'] || 'Deselect All')
+                  : (t['info.practice_ideas_select_all'] || 'Select All')
+                }
+              </button>
+            </div>
+          )}
+
+          {/* Content - Scrollable */}
+          <div className="flex-1 overflow-y-auto px-4 py-4">
+            {availablePresets.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Check size={28} className="text-primary" />
+                </div>
+                <p className="text-body text-foreground">{t['info.practice_ideas_all_added'] || "You've added all suggested ideas!"}</p>
+                <p className="text-caption text-muted-foreground mt-1">
+                  {t['info.practice_ideas_all_added_desc'] || 'Great job setting up your household practices.'}
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {availablePresetCategories.map(category => {
+                  const categoryPresets = availablePresets.filter(p => p.category === category);
+                  if (categoryPresets.length === 0) return null;
+                  
+                  const config = HOUSE_ROUTINE_CATEGORY_CONFIG[category];
+                  
+                  return (
+                    <div key={category}>
+                      {/* Category Header */}
+                      <div className="flex items-center gap-2 mb-3">
+                        <div
+                          className="w-8 h-8 rounded-full flex items-center justify-center"
+                          style={{ backgroundColor: config.bgColor, color: config.color }}
+                        >
+                          {HOUSE_ROUTINE_CATEGORY_ICONS[category]}
+                        </div>
+                        <span className="text-title text-foreground">{getRoutineCategoryLabel(category)}</span>
+                        <span className="text-caption text-muted-foreground">({categoryPresets.length})</span>
+                      </div>
+                      
+                      {/* Category Items */}
+                      <div className="space-y-2">
+                        {categoryPresets.map(preset => {
+                          const isSelected = selectedPresetIds.has(preset.id);
+                          return (
+                            <button
+                              key={preset.id}
+                              onClick={() => handleTogglePreset(preset.id)}
+                              className={`w-full text-left p-4 rounded-xl border transition-all ${
+                                isSelected 
+                                  ? 'bg-primary/5 border-primary' 
+                                  : 'bg-card border-border'
+                              }`}
+                            >
+                              <div className="flex items-start gap-3">
+                                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 mt-0.5 transition-all ${
+                                  isSelected 
+                                    ? 'bg-primary border-primary' 
+                                    : 'border-muted-foreground/30'
+                                }`}>
+                                  {isSelected && <Check size={14} className="text-primary-foreground" strokeWidth={3} />}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-body font-semibold text-foreground">{preset.name}</p>
+                                  <p className="text-caption text-muted-foreground mt-1 line-clamp-2">{preset.note}</p>
+                                </div>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            
+            {/* Disclaimer */}
+            {availablePresets.length > 0 && (
+              <div className="mt-6 px-4 py-3 bg-muted/30 rounded-xl">
+                <p className="text-micro text-muted-foreground leading-relaxed">
+                  {t['info.practice_ideas_disclaimer'] || "These suggestions are common templates based on Hong Kong household practices. They are provided for your convenience and inspiration. Please review and customize them to ensure they fit your family's unique needs and comply with local labor regulations."}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Footer - Add Button */}
+          {availablePresets.length > 0 && (
+            <div className="shrink-0 p-4 pb-6 border-t border-border">
+              <button
+                onClick={handleAddSelectedPresets}
+                disabled={selectedPresetIds.size === 0 || isAddingPresets}
+                className={`w-full py-3.5 rounded-xl text-body font-semibold flex items-center justify-center gap-2 transition-all ${
+                  selectedPresetIds.size > 0 && !isAddingPresets
+                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    : 'bg-muted text-muted-foreground'
+                }`}
+              >
+                {isAddingPresets ? (
+                  <>
+                    <Loader2 size={18} className="animate-spin" />
+                    {t['info.practice_ideas_adding'] || 'Adding...'}
+                  </>
+                ) : (
+                  <>
+                    <Plus size={18} />
+                    {t['info.practice_ideas_add_selected'] || 'Add Selected'} ({selectedPresetIds.size})
+                  </>
+                )}
+              </button>
+            </div>
+          )}
         </div>
       , document.body)}
     </div>

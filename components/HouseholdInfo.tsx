@@ -652,6 +652,7 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
   const [isPracticeIdeasModalOpen, setIsPracticeIdeasModalOpen] = useState(false);
   const [selectedPresetIds, setSelectedPresetIds] = useState<Set<string>>(new Set());
   const [isAddingPresets, setIsAddingPresets] = useState(false);
+  const [presetsScrolled, setPresetsScrolled] = useState(false);
   const [showAddPresetsConfirm, setShowAddPresetsConfirm] = useState(false);
   
   // Filter out presets that have already been added to this household
@@ -1047,8 +1048,8 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
               </span>
             </h1>
             
-            {/* Practice Ideas Button - SuperAdmin only, show when in Practice tab */}
-            {activeSection === 'houseRoutine' && isSuperAdmin && availablePresets.length > 0 && (
+            {/* Practice Ideas Button - all roles except Helper, show when in Practice tab */}
+            {activeSection === 'houseRoutine' && !isHelper && availablePresets.length > 0 && (
               <button
                 onClick={() => {
                   haptics.medium();
@@ -1592,12 +1593,13 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
           style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}
         >
           {/* Header */}
-          <div className="shrink-0 px-4 pt-4 pb-3 border-b border-border relative">
+          <div className="shrink-0 px-4 pt-4 pb-3 relative">
             {/* Close button - absolute top right */}
             <button
               onClick={() => {
                 setIsPracticeIdeasModalOpen(false);
                 setSelectedPresetIds(new Set());
+                setPresetsScrolled(false);
               }}
               className="absolute z-10 right-4 top-4 w-10 h-10 rounded-full flex items-center justify-center text-muted-foreground"
             >
@@ -1614,11 +1616,16 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
                 {t['info.practice_ideas_disclaimer'] || "These templates are provided for convenience and inspiration. Please review and customize them to fit your family's needs and comply with local regulations."}
               </p>
             </div>
+            {/* Inset separator */}
+            <div className="absolute bottom-0 left-4 right-4 h-px bg-border" />
           </div>
 
           {/* Select All / Deselect All */}
           {availablePresets.length > 0 && (
-            <div className="shrink-0 px-4 py-3 border-b border-border flex items-center justify-between">
+            <div 
+              className="shrink-0 px-4 py-3 flex items-center justify-between transition-shadow duration-200"
+              style={{ boxShadow: presetsScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none' }}
+            >
               <span className="text-body text-foreground">
                 {selectedPresetIds.size} {t['info.practice_ideas_selected'] || 'selected'}
               </span>
@@ -1635,7 +1642,10 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
           )}
 
           {/* Content - Scrollable */}
-          <div className="flex-1 overflow-y-auto px-4 py-4">
+          <div 
+            className="flex-1 overflow-y-auto px-4 py-4"
+            onScroll={(e) => setPresetsScrolled(e.currentTarget.scrollTop > 0)}
+          >
             {availablePresets.length === 0 ? (
               <div className="text-center py-12">
                 <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center">

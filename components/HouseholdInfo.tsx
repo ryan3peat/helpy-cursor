@@ -1743,24 +1743,31 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
         >
           <div className="bg-card w-full max-w-sm rounded-2xl overflow-hidden shadow-xl">
             {/* Content */}
-            <div className="p-6 text-center">
+            <div className="p-6">
               <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center">
                 <Lightbulb size={28} className="text-primary" />
               </div>
-              <h3 className="text-title text-foreground mb-2">
+              <h3 className="text-title text-foreground text-center mb-2">
                 {(t['info.practice_ideas_confirm_title'] || 'Add {count} Practice Ideas?').replace('{count}', String(selectedPresetIds.size))}
               </h3>
-              <p className="text-body text-muted-foreground">
+              <p className="text-body text-muted-foreground text-center">
                 {t['info.practice_ideas_confirm_desc'] || 'You can edit or delete them anytime after adding.'}
               </p>
             </div>
             
-            {/* Buttons */}
-            <div className="flex border-t border-border">
+            {/* Buttons - Helpy Theme Style */}
+            <div className="p-5 pt-0 flex gap-3">
+              <button
+                onClick={() => setShowAddPresetsConfirm(false)}
+                disabled={isAddingPresets}
+                className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body font-semibold disabled:opacity-50"
+              >
+                {t['common.cancel'] || 'Cancel'}
+              </button>
               <button
                 onClick={handleAddSelectedPresets}
                 disabled={isAddingPresets}
-                className="flex-1 py-4 text-body font-semibold text-primary border-r border-border disabled:opacity-50 flex items-center justify-center gap-2"
+                className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body font-semibold shadow-sm disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {isAddingPresets ? (
                   <>
@@ -1770,13 +1777,6 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
                 ) : (
                   t['common.add'] || 'Add'
                 )}
-              </button>
-              <button
-                onClick={() => setShowAddPresetsConfirm(false)}
-                disabled={isAddingPresets}
-                className="flex-1 py-4 text-body text-muted-foreground disabled:opacity-50"
-              >
-                {t['common.cancel'] || 'Cancel'}
               </button>
             </div>
           </div>

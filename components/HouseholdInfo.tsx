@@ -1592,28 +1592,28 @@ const HouseholdInfo: React.FC<HouseholdInfoProps> = ({
           style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}
         >
           {/* Header */}
-          <div className="shrink-0 px-4 pt-4 pb-3 border-b border-border">
-            <div className="flex items-center justify-between">
-              <button
-                onClick={() => {
-                  setIsPracticeIdeasModalOpen(false);
-                  setSelectedPresetIds(new Set());
-                }}
-                className="w-10 h-10 rounded-full flex items-center justify-center text-muted-foreground"
-              >
-                <X size={20} />
-              </button>
-              <div className="text-center flex-1">
-                <h2 className="text-title text-foreground">{t['info.practice_ideas_title'] || 'Practice Ideas'}</h2>
-              </div>
-              <div className="w-10" /> {/* Spacer for centering */}
+          <div className="shrink-0 px-4 pt-4 pb-3 border-b border-border relative">
+            {/* Close button - absolute top right */}
+            <button
+              onClick={() => {
+                setIsPracticeIdeasModalOpen(false);
+                setSelectedPresetIds(new Set());
+              }}
+              className="absolute z-10 right-4 top-4 w-10 h-10 rounded-full flex items-center justify-center text-muted-foreground"
+            >
+              <X size={20} />
+            </button>
+            
+            {/* Title and description - left aligned */}
+            <div className="pr-12">
+              <h2 className="text-title text-foreground">{t['info.practice_ideas_title'] || 'Practice Ideas'}</h2>
+              <p className="text-body text-muted-foreground mt-1">
+                {t['info.practice_ideas_subtitle'] || 'Choose from commonly used templates to help organize your home.'}
+              </p>
+              <p className="text-caption text-muted-foreground mt-3">
+                {t['info.practice_ideas_disclaimer'] || "These templates are provided for convenience and inspiration. Please review and customize them to fit your family's needs and comply with local regulations."}
+              </p>
             </div>
-            <p className="text-caption text-muted-foreground text-center mt-2 px-4">
-              {t['info.practice_ideas_subtitle'] || 'Choose from commonly used templates to help organize your home.'}
-            </p>
-            <p className="text-caption text-muted-foreground text-center mt-2 px-4">
-              {t['info.practice_ideas_disclaimer'] || "These templates are provided for convenience and inspiration. Please review and customize them to fit your family's needs and comply with local regulations."}
-            </p>
           </div>
 
           {/* Select All / Deselect All */}

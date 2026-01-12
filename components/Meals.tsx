@@ -506,38 +506,67 @@ const Meals: React.FC<MealsProps> = ({
       
       const pageWidth = doc.internal.pageSize.getWidth();
       
-      // Load logo
-      const logoImg = new Image();
-      logoImg.crossOrigin = 'anonymous';
-      logoImg.src = '/helpy-logo-blue.png';
-      
-      // Wait for logo to load
-      await new Promise<void>((resolve) => {
-        logoImg.onload = () => resolve();
-        logoImg.onerror = () => resolve(); // Continue even if logo fails
-        // Timeout fallback
-        setTimeout(() => resolve(), 1000);
-      });
-      
       // Format date range with year for PDF
       const pdfDateRange = `${weekDays[0].toLocaleDateString(langCode, { day: 'numeric', month: 'short', year: 'numeric' })} - ${weekDays[6].toLocaleDateString(langCode, { day: 'numeric', month: 'short', year: 'numeric' })}`;
       
+      // Load and resize logo to prevent huge file size
+      // Original is 4096x1889px, we resize to ~200px wide
+      let logoDataUrl: string | null = null;
+      try {
+        const logoImg = new Image();
+        logoImg.crossOrigin = 'anonymous';
+        logoImg.src = '/helpy-logo-blue.png';
+        
+        await new Promise<void>((resolve) => {
+          logoImg.onload = () => {
+            // Resize using canvas
+            const canvas = document.createElement('canvas');
+            const targetWidth = 200; // Small width for PDF
+            const aspectRatio = logoImg.height / logoImg.width;
+            const targetHeight = Math.round(targetWidth * aspectRatio);
+            
+            canvas.width = targetWidth;
+            canvas.height = targetHeight;
+            
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+              // White background for JPEG (no transparency)
+              ctx.fillStyle = '#FFFFFF';
+              ctx.fillRect(0, 0, targetWidth, targetHeight);
+              ctx.drawImage(logoImg, 0, 0, targetWidth, targetHeight);
+              // Convert to JPEG with 80% quality - much smaller than PNG
+              logoDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+            }
+            resolve();
+          };
+          logoImg.onerror = () => resolve();
+          setTimeout(() => resolve(), 2000); // Timeout fallback
+        });
+      } catch {
+        // Logo loading failed, will use text fallback
+      }
+      
       // Add header content function
-      const addHeader = (pageNum: number) => {
-        // Logo (proportional size)
-        try {
-          doc.addImage(logoImg, 'PNG', 14, 10, 24, 10);
-        } catch {
-          // Logo failed, add text fallback
-          doc.setFontSize(16);
+      const addHeader = () => {
+        // Logo image (resized and compressed)
+        if (logoDataUrl) {
+          // Logo dimensions in PDF: ~24mm wide, maintain aspect ratio
+          const logoWidth = 24;
+          const logoHeight = logoWidth * (1889 / 4096); // Original aspect ratio ~0.46
+          doc.addImage(logoDataUrl, 'JPEG', 14, 10, logoWidth, logoHeight);
+        } else {
+          // Text fallback if logo failed to load
+          doc.setFontSize(20);
           doc.setTextColor('#3EAFD2');
-          doc.text('helpy', 14, 18);
+          doc.setFont('helvetica', 'bold');
+          doc.text('helpy', 14, 16);
         }
         
         // URL at top right
         doc.setFontSize(10);
         doc.setTextColor('#3EAFD2');
-        doc.text('www.helpyfam.com', pageWidth - 14, 17, { align: 'right' });
+        doc.setFont('helvetica', 'normal');
+        doc.text('www.helpyfam.com', pageWidth - 14, 16, { align: 'right' });
         
         // "Meal Planning: date range" underneath logo - bold and larger
         doc.setFontSize(14);
@@ -593,7 +622,7 @@ const Meals: React.FC<MealsProps> = ({
       };
       
       // Add initial header
-      addHeader(1);
+      addHeader();
       
       // Generate table with running headers
       autoTable(doc, {
@@ -626,9 +655,10 @@ const Meals: React.FC<MealsProps> = ({
         },
         styles: {
           fontSize: 9,
-          cellPadding: 3,
+          cellPadding: { top: 4, right: 4, bottom: 4, left: 4 }, // Equal padding all sides
           valign: 'top',
           overflow: 'linebreak',
+          minCellHeight: 0, // No minimum - let content determine height
         },
         alternateRowStyles: {
           fillColor: '#f8f9fa',
@@ -655,9 +685,11 @@ const Meals: React.FC<MealsProps> = ({
                 } else {
                   mealName = mealData.replace('BOLD:', '');
                 }
+                // Add extra line for count spacing
                 return countText ? `${mealName}\n${countText}` : mealName;
-              }).join('\n\n');
+              }).join('\n\n\n'); // Extra newline for spacing between meals
               
+              // Set as array of lines for autoTable to calculate height
               data.cell.text = plainText.split('\n');
             }
           }
@@ -677,7 +709,7 @@ const Meals: React.FC<MealsProps> = ({
           if (data.section === 'body' && data.column.index >= 1) {
             const cellText = String(data.cell.raw || '');
             if (cellText.startsWith('BOLD:')) {
-              const cellPadding = 3;
+              const cellPadding = 4; // Match table styles padding
               const fontSize = 9;
               const lineHeight = fontSize * 0.45; // line height in mm
               const maxWidth = data.cell.width - cellPadding * 2;
@@ -736,7 +768,7 @@ const Meals: React.FC<MealsProps> = ({
           
           // Add header on subsequent pages
           if (currentPage > 1) {
-            addHeader(currentPage);
+            addHeader();
           }
           
           // Add footer with page numbers
@@ -773,8 +805,9 @@ const Meals: React.FC<MealsProps> = ({
         );
       }
       
-      // Generate filename
-      const safeFilename = `helpy-meals-${weekDays[0].toISOString().split('T')[0]}.pdf`;
+      // Generate filename: "Helpy Meal Planning 12 Jan - 18 Jan 2026"
+      const filenameDateRange = `${weekDays[0].toLocaleDateString(langCode, { day: 'numeric', month: 'short' })} - ${weekDays[6].toLocaleDateString(langCode, { day: 'numeric', month: 'short', year: 'numeric' })}`;
+      const safeFilename = `Helpy Meal Planning ${filenameDateRange}.pdf`;
       
       // Save/Share using Web Share API
       const pdfBlob = doc.output('blob');
@@ -785,7 +818,7 @@ const Meals: React.FC<MealsProps> = ({
         haptics.success();
         await navigator.share({
           files: [file],
-          title: t['meals.meal_plan'] || 'Meal Plan',
+          text: `Hi,\n\nI am sharing our Meal Plan PDF in the attachment.\n\nThis meal plan was generated from the Helpy App.\n\nThank you.`,
         });
       } else {
         // Fallback: download directly

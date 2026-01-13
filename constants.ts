@@ -929,14 +929,14 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'guide.expenses_scan': 'Scan receipts with AI to automatically extract total, merchant, and date.',
   'guide.expenses_chart': 'View spending breakdown by category in a visual pie chart.',
   
-  // User Guide - Household Info
-  'guide.info_title': 'Household Info',
+  // User Guide - Family
+  'guide.info_title': 'Family',
   'guide.info_desc': 'Store important places, house routines, and manage helpers.',
   'guide.places_title': 'Places',
   'guide.places_desc': 'Save important addresses like home, school, doctor, hospital, and shops.',
   'guide.routines_title': 'Practice',
   'guide.routines_desc': 'Document house rules, schedules, cleaning instructions, and emergency procedures.',
-  'guide.helper_mgmt_title': 'Helper Management',
+  'guide.helper_mgmt_title': 'Helper',
   'guide.helper_mgmt_desc': 'Track helper salary, holiday records, and generate payslips with digital signatures.',
   
   // User Guide - Languages
@@ -1023,7 +1023,7 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'guide.plan_family_members': 'Family Members',
   'guide.plan_helpers': 'Helpers',
   'guide.plan_receipt_scan': 'AI Receipt Scanning',
-  'guide.plan_helper_mgmt': 'Helper Management',
+  'guide.plan_helper_mgmt': 'Helper',
   'guide.plan_view_plans': 'View Plans',
   'guide.plan_included': 'Included',
   'guide.plan_not_included': 'Not included',

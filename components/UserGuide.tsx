@@ -461,11 +461,11 @@ const UserGuide: React.FC<UserGuideProps> = ({ currentUser, t, onNavigateToPlan,
           </>
         )}
 
-        {/* Household Info - Level 1 Section Header */}
+        {/* Family - Level 1 Section Header */}
         <div className="mb-3">
           <h3 className="text-body font-bold text-foreground flex items-center gap-2">
             <NAV_ITEMS.info.icon size={18} className="text-foreground" />
-            {t['guide.info_title'] || 'Household Info'}
+            {t['guide.info_title'] || 'Family'}
           </h3>
           <p className="text-body text-foreground mt-1 ml-6">
             {t['guide.info_desc'] || 'Store important places, house routines, and manage helpers.'}
@@ -494,7 +494,7 @@ const UserGuide: React.FC<UserGuideProps> = ({ currentUser, t, onNavigateToPlan,
         {!isHelper && !isChild && (
           <FeatureCard
             icon={<FEATURE_ICONS.helperManagement size={14} />}
-            title={t['guide.helper_mgmt_title'] || 'Helper Management'}
+            title={t['guide.helper_mgmt_title'] || 'Helper'}
             description={
               t['guide.helper_mgmt_desc'] ||
               'Track helper salary, holiday records, and generate payslips with digital signatures.'
@@ -572,7 +572,7 @@ const UserGuide: React.FC<UserGuideProps> = ({ currentUser, t, onNavigateToPlan,
                 </tr>
                 <tr>
                   <td className="py-3 px-2 text-foreground">
-                    {t['guide.plan_helper_mgmt'] || 'Helper Management'}
+                    {t['guide.plan_helper_mgmt'] || 'Helper'}
                   </td>
                   <td className="py-3 px-2 text-center">
                     <X size={16} className="text-muted-foreground mx-auto" />

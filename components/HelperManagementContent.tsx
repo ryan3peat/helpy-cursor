@@ -98,8 +98,9 @@ export const HelperManagementContent: React.FC<Props> = ({
   const isSuperAdmin = currentUser.role === UserRole.SUPERADMIN;
   const isAdmin = currentUser.role === UserRole.MASTER;
   const isSpouse = currentUser.role === UserRole.SPOUSE;
-  const isHelper = currentUser.role === UserRole.HELPER;
-  const canManage = canManageSalarySlips(currentUser.role);
+  const isHelper = currentUser.role === UserRole.HELPER || currentUser.role === 'Helper';
+  // Helpers can ONLY view - they cannot edit or delete anything
+  const canManage = !isHelper && canManageSalarySlips(currentUser.role);
   
   // Get eligible signers (SuperAdmin, Admin, Spouse)
   const eligibleSigners = useMemo(() => {
@@ -1225,7 +1226,8 @@ const SalarySlipCard: React.FC<SalarySlipCardProps> = ({
           
           {/* Action Buttons */}
           <div className="flex gap-3">
-            {canManage && (
+            {/* Delete button - Helpers cannot delete, only Admin/Spouse can */}
+            {canManage && !isHelper && (
               <button
                 onClick={onDelete}
                 className="py-2.5 px-4 rounded-xl bg-destructive/10 text-destructive flex items-center justify-center gap-2"

@@ -1055,13 +1055,8 @@ export const HelperManagementContent: React.FC<Props> = ({
   // ─────────────────────────────────────────────────────────────────
   // Render
   // ─────────────────────────────────────────────────────────────────
-  if (isLoading && !contract && salarySlips.length === 0) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 size={24} className="animate-spin text-primary" />
-      </div>
-    );
-  }
+  // No loading spinner - render immediately like other pages (ToDo, Meals, Expenses)
+  // Empty states are handled in the JSX below
 
   return (
     <div className="space-y-4">
@@ -1144,14 +1139,14 @@ export const HelperManagementContent: React.FC<Props> = ({
       </div>
 
       {/* Line separator */}
-      <div className="mx-4 my-12">
+      <div className="mx-4 mt-0 my-12">
         <div className="h-px bg-border"></div>
       </div>
 
       {/* ═══════════════════════════════════════════════════════════════ */}
       {/* SALARY SLIPS SECTION */}
       {/* ═══════════════════════════════════════════════════════════════ */}
-      <div className="mt-12">
+      <div>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <FilePenLine size={20} className="text-primary" />

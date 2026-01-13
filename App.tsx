@@ -1008,6 +1008,23 @@ const AppContent: React.FC = () => {
       });
     });
     
+    // Initial fetch for helper data (no real-time subscriptions for these tables)
+    // This ensures helper data loads on mount, not just on periodic sync
+    (async () => {
+      try {
+        console.log('[App] Fetching initial helper data...');
+        const [contractsData, slipsData] = await Promise.all([
+          getHelperContracts(hid),
+          getAllSalarySlips(hid),
+        ]);
+        if (contractsData) setHelperContracts(contractsData);
+        if (slipsData) setSalarySlips(slipsData);
+        console.log('[App] ✅ Initial helper data loaded');
+      } catch (err) {
+        console.error('[App] Failed to fetch initial helper data:', err);
+      }
+    })();
+    
     return () => {
       unsubUsers();
       unsubTodoItems();

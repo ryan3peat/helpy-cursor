@@ -1144,7 +1144,7 @@ export const HelperManagementContent: React.FC<Props> = ({
       </div>
 
       {/* Line separator */}
-      <div className="mx-4 my-8">
+      <div className="mx-4 my-12">
         <div className="h-px bg-border"></div>
       </div>
 

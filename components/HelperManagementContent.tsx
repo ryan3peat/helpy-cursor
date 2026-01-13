@@ -19,6 +19,7 @@ import {
   Plus,
   Pencil,
   Info,
+  Signature,
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import JSZip from 'jszip';
@@ -1490,7 +1491,7 @@ const SalarySlipCard: React.FC<SalarySlipCardProps> = ({
             {formatFullDate(periodStart)} - {formatFullDate(periodEnd)}
           </span>
         {isBothSigned && (
-            <Check size={16} className="text-green-600" />
+            <Signature size={16} className="text-green-600" />
           )}
           </div>
         <div className="flex items-center gap-2">
@@ -1545,12 +1546,12 @@ const SalarySlipCard: React.FC<SalarySlipCardProps> = ({
       {/* Signature Section */}
           <div className="grid grid-cols-2 gap-4 mb-4">
             {/* Employer Signature */}
-        <div className="text-center">
+        <div>
               <p className="text-body text-muted-foreground mb-2">{t['salary.employer'] || 'Employer'}</p>
               {slip.employerSignedAt ? (
                 <div className="rounded-xl p-3 bg-green-50 dark:bg-green-900/20">
-              <div className="flex items-center justify-center gap-1 text-green-600">
-                <Check size={16} />
+              <div className="flex items-center gap-1 text-green-600">
+                <Signature size={16} />
                     <span className="text-body font-medium">{t['salary.signed'] || 'Signed'}</span>
               </div>
                   <p className="text-body text-muted-foreground mt-1">{slip.employerSignerName}</p>
@@ -1589,12 +1590,12 @@ const SalarySlipCard: React.FC<SalarySlipCardProps> = ({
         </div>
         
             {/* Helper Signature */}
-        <div className="text-center">
+        <div>
               <p className="text-body text-muted-foreground mb-2">{t['salary.helper'] || 'Helper'}</p>
               {slip.helperSignedAt ? (
                 <div className="rounded-xl p-3 bg-green-50 dark:bg-green-900/20">
-              <div className="flex items-center justify-center gap-1 text-green-600">
-                <Check size={16} />
+              <div className="flex items-center gap-1 text-green-600">
+                <Signature size={16} />
                     <span className="text-body font-medium">{t['salary.signed'] || 'Signed'}</span>
               </div>
                   <p className="text-body text-muted-foreground mt-1">

@@ -157,12 +157,14 @@ export const HelperManagementContent: React.FC<Props> = ({
   useEffect(() => {
     if (cachedContract) {
       setContract(cachedContract);
+      setIsLoading(false); // Hide loading when cached data arrives
     }
   }, [cachedContract]);
   
   useEffect(() => {
     if (cachedHelperSlips.length > 0) {
       setSalarySlips(cachedHelperSlips);
+      setIsLoading(false); // Hide loading when cached data arrives
     }
   }, [cachedHelperSlips]);
   
@@ -1082,7 +1084,7 @@ export const HelperManagementContent: React.FC<Props> = ({
       {/* ═══════════════════════════════════════════════════════════════ */}
       {/* EMPLOYMENT DETAILS SECTION */}
       {/* ═══════════════════════════════════════════════════════════════ */}
-      <div>
+      <div className="mb-12">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <FileText size={20} className="text-primary" />
@@ -1139,6 +1141,11 @@ export const HelperManagementContent: React.FC<Props> = ({
                 </div>
           )}
         </div>
+      </div>
+
+      {/* Line separator */}
+      <div className="mx-4 my-8">
+        <div className="h-px bg-border"></div>
       </div>
 
       {/* ═══════════════════════════════════════════════════════════════ */}

@@ -5,8 +5,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Check, Loader2, ChevronLeft, AlertTriangle } from 'lucide-react';
-import BottomSheet from './ui/BottomSheet';
+import { X, Check, Loader2, ChevronLeft } from 'lucide-react';
 import type { User, TranslationDictionary } from '@/types';
 import { UserRole } from '@/types';
 import type { HelperContract, CreateSalarySlip } from '@src/types/helperManagement';
@@ -360,10 +359,11 @@ const CreateSalarySlipSheet: React.FC<Props> = ({
                   <input
                     type="text"
                     autoComplete="one-time-code"
-                    inputMode="decimal"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     value={baseSalary}
                     onChange={(e) => {
-                      const value = e.target.value.replace(/[^\d.]/g, '');
+                      const value = e.target.value.replace(/[^\d]/g, '');
                       setBaseSalary(value);
                     }}
                     placeholder={contract ? contract.baseSalary.toString() : '0'}
@@ -399,10 +399,11 @@ const CreateSalarySlipSheet: React.FC<Props> = ({
                   <input
                     type="text"
                     autoComplete="one-time-code"
-                    inputMode="decimal"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     value={extraSalary}
                     onChange={(e) => {
-                      const value = e.target.value.replace(/[^\d.]/g, '');
+                      const value = e.target.value.replace(/[^\d]/g, '');
                       setExtraSalary(value);
                     }}
                     placeholder="0"
@@ -417,25 +418,23 @@ const CreateSalarySlipSheet: React.FC<Props> = ({
                   {t['salary.deduction'] || 'Payout Deduction'}
                 </label>
                 <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg font-semibold text-muted-foreground">
-                    HK$
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg font-semibold text-destructive">
+                    -HK$
                   </span>
                   <input
                     type="text"
                     autoComplete="one-time-code"
-                    inputMode="decimal"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     value={salaryDeduction}
                     onChange={(e) => {
-                      const value = e.target.value.replace(/[^\d.]/g, '');
+                      const value = e.target.value.replace(/[^\d]/g, '');
                       setSalaryDeduction(value);
                     }}
                     placeholder="0"
-                    className="w-full pl-16 pr-4 py-3 bg-muted rounded-xl text-lg font-semibold text-foreground outline-none border border-transparent focus:border-primary transition-colors text-right"
+                    className="w-full pl-[4.5rem] pr-4 py-3 bg-muted rounded-xl text-lg font-semibold text-destructive outline-none border border-transparent focus:border-primary transition-colors text-right"
                   />
                 </div>
-                <p className="text-caption text-muted-foreground mt-1">
-                  {t['salary.deduction_hint'] || 'Enter as positive number, will be subtracted'}
-                </p>
               </div>
               
               {/* Total Payout (calculated) */}

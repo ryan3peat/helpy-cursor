@@ -699,17 +699,12 @@ export const HelperManagementContent: React.FC<Props> = ({
         <p className="text-body font-bold text-foreground" style={{ fontSize: '20px' }}>
           {helper.firstName || helper.name?.split(' ')[0] || 'Helper'}
         </p>
-        {contract?.employmentStartDate && (
-          <p className="text-caption text-muted-foreground" style={{ fontSize: '14px' }}>
-            {t['helper.started'] || 'Started'}: {new Date(contract.employmentStartDate).toLocaleDateString(langCode, { day: 'numeric', month: 'short', year: 'numeric' })}
-          </p>
-        )}
       </div>
       
       {/* ═══════════════════════════════════════════════════════════════ */}
-      {/* CONTRACT SECTION */}
+      {/* EMPLOYMENT DETAILS SECTION */}
       {/* ═══════════════════════════════════════════════════════════════ */}
-      <div className="bg-card rounded-xl p-4 shadow-sm">
+      <div>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <FileText size={20} className="text-primary" />
@@ -717,47 +712,55 @@ export const HelperManagementContent: React.FC<Props> = ({
               {t['salary.contract'] || 'Employment Details'}
             </h3>
           </div>
-          {canManage && (
+          {canManage && contract && (
             <button
               onClick={openContractSheet}
               className="text-caption text-primary flex items-center gap-1"
             >
-              {contract ? <Pencil size={14} /> : <Plus size={14} />}
-              {contract ? (t['common.edit'] || 'Edit') : (t['common.setup'] || 'Set Up')}
+              <Pencil size={14} />
+              {t['common.edit'] || 'Edit'}
             </button>
           )}
         </div>
         
-        {contract ? (
-          <div className="space-y-2">
-            <div className="flex justify-between">
-              <span className="text-body text-muted-foreground">{t['salary.base_salary'] || 'Base Salary'}</span>
-              <span className="text-body text-foreground">HK${contract.baseSalary.toLocaleString()}</span>
+        <div className="bg-card rounded-xl p-4 shadow-sm">
+          {contract ? (
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span className="text-body text-muted-foreground">{t['salary.start_date'] || 'Employment Start Date'}</span>
+                <span className="text-body text-foreground">
+                  {new Date(contract.employmentStartDate).toLocaleDateString(langCode, { day: 'numeric', month: 'short', year: 'numeric' })}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-body text-muted-foreground">{t['salary.base_salary'] || 'Base Salary'}</span>
+                <span className="text-body text-foreground">HK${contract.baseSalary.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-body text-muted-foreground">{t['salary.food_allowance'] || 'Food Allowance'}</span>
+                <span className="text-body text-foreground">HK${contract.foodAllowance.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between pt-2 border-t border-border">
+                <span className="text-body font-bold text-foreground">{t['salary.monthly_total'] || 'Monthly Total'}</span>
+                <span className="text-body font-bold text-foreground">HK${(contract.baseSalary + contract.foodAllowance).toLocaleString()}</span>
+              </div>
             </div>
-            <div className="flex justify-between">
-              <span className="text-body text-muted-foreground">{t['salary.food_allowance'] || 'Food Allowance'}</span>
-              <span className="text-body text-foreground">HK${contract.foodAllowance.toLocaleString()}</span>
+          ) : (
+            <div className="text-center py-4">
+              <p className="text-body text-muted-foreground mb-3">
+                {t['salary.no_contract'] || 'No details set up yet'}
+              </p>
+              {canManage && (
+                <button
+                  onClick={openContractSheet}
+                  className="px-4 py-2 bg-primary text-primary-foreground rounded-lg transition-colors"
+                >
+                  {t['salary.setup_contract'] || 'Set Up Details'}
+                </button>
+              )}
             </div>
-            <div className="flex justify-between pt-2 border-t border-border">
-              <span className="text-body font-bold text-foreground">{t['salary.monthly_total'] || 'Monthly Total'}</span>
-              <span className="text-body font-bold text-foreground">HK${(contract.baseSalary + contract.foodAllowance).toLocaleString()}</span>
-            </div>
-          </div>
-        ) : (
-          <div className="text-center py-4">
-            <p className="text-body text-muted-foreground mb-3">
-              {t['salary.no_contract'] || 'No details set up yet'}
-            </p>
-            {canManage && (
-              <button
-                onClick={openContractSheet}
-                className="px-4 py-2 bg-primary text-primary-foreground rounded-lg transition-colors"
-              >
-                {t['salary.setup_contract'] || 'Set Up Details'}
-              </button>
-            )}
-          </div>
-        )}
+          )}
+        </div>
       </div>
       
       {/* ═══════════════════════════════════════════════════════════════ */}
@@ -850,73 +853,110 @@ export const HelperManagementContent: React.FC<Props> = ({
       {/* ═══════════════════════════════════════════════════════════════ */}
       {/* CONTRACT SHEET */}
       {/* ═══════════════════════════════════════════════════════════════ */}
-      <BottomSheet isOpen={showContractSheet} onClose={() => setShowContractSheet(false)}>
-        <BottomSheet.Header>
-          <h2 className="text-title text-foreground">
+      <BottomSheet isOpen={showContractSheet} onClose={() => setShowContractSheet(false)} showCloseButton={false}>
+        {/* Header with X left, Title center, ✓ right */}
+        <div className="flex items-center justify-between px-5 pt-5 pb-4 shrink-0">
+          {/* X Close Button (left) */}
+          <button
+            onClick={() => setShowContractSheet(false)}
+            className="w-10 h-10 rounded-full flex items-center justify-center text-muted-foreground"
+            aria-label={t['common.close'] || 'Close'}
+          >
+            <X size={20} />
+          </button>
+          
+          {/* Title (center) */}
+          <h2 className="text-title font-semibold text-foreground text-center flex-1">
             {contract ? (t['salary.edit_contract'] || 'Edit Details') : (t['salary.setup_contract'] || 'Set Up Details')}
           </h2>
-        </BottomSheet.Header>
-        <BottomSheet.Body>
-          <div className="space-y-4">
-            {/* Employment Start Date */}
-            <div>
-              <label className="block text-caption text-muted-foreground mb-2">
-                {t['salary.start_date'] || 'Employment Start Date'} *
-              </label>
+          
+          {/* ✓ Save Button (right) */}
+          <button
+            onClick={handleContractSubmit}
+            disabled={isLoading || !contractForm.employmentStartDate || !contractForm.baseSalary}
+            className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+              contractForm.employmentStartDate && contractForm.baseSalary && !isLoading
+                ? 'bg-primary text-primary-foreground shadow-sm'
+                : 'bg-muted text-muted-foreground'
+            }`}
+            aria-label={t['common.save'] || 'Save'}
+          >
+            {isLoading ? (
+              <Loader2 size={18} className="animate-spin" />
+            ) : (
+              <Check size={20} strokeWidth={3} />
+            )}
+          </button>
+        </div>
+        
+        {/* Header separator */}
+        <div className="px-5"><div className="h-px bg-border w-full"></div></div>
+        
+        {/* Scrollable Form Content */}
+        <div className="flex-1 overflow-y-auto p-5 space-y-4">
+          {/* Employment Start Date */}
+          <div>
+            <label className="block text-caption text-muted-foreground mb-2">
+              {t['salary.start_date'] || 'Employment Start Date'} *
+            </label>
+            <input
+              type="date"
+              value={contractForm.employmentStartDate}
+              onChange={(e) => setContractForm(prev => ({ ...prev, employmentStartDate: e.target.value }))}
+              className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
+            />
+          </div>
+          
+          {/* Base Salary */}
+          <div>
+            <label className="block text-caption text-muted-foreground mb-2">
+              {t['salary.base_salary'] || 'Base Salary'} *
+            </label>
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg font-semibold text-muted-foreground">
+                HK$
+              </span>
               <input
-                type="date"
-                value={contractForm.employmentStartDate}
-                onChange={(e) => setContractForm(prev => ({ ...prev, employmentStartDate: e.target.value }))}
-                className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
-              />
-            </div>
-            
-            {/* Base Salary */}
-            <div>
-              <label className="block text-caption text-muted-foreground mb-2">
-                {t['salary.base_salary'] || 'Base Salary'} (HK$) *
-              </label>
-              <input
-                type="number"
+                type="text"
+                autoComplete="one-time-code"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 value={contractForm.baseSalary}
-                onChange={(e) => setContractForm(prev => ({ ...prev, baseSalary: e.target.value }))}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/[^\d]/g, '');
+                  setContractForm(prev => ({ ...prev, baseSalary: value }));
+                }}
                 placeholder="5100"
-                className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
+                className="w-full pl-16 pr-4 py-3 bg-muted rounded-xl text-lg font-semibold text-foreground outline-none border border-transparent focus:border-primary transition-colors text-right"
               />
             </div>
-            
-            {/* Food Allowance */}
-            <div>
-              <label className="block text-caption text-muted-foreground mb-2">
-                {t['salary.food_allowance'] || 'Food Allowance'} (HK$)
-              </label>
+          </div>
+          
+          {/* Food Allowance */}
+          <div>
+            <label className="block text-caption text-muted-foreground mb-2">
+              {t['salary.food_allowance'] || 'Food Allowance'}
+            </label>
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg font-semibold text-muted-foreground">
+                HK$
+              </span>
               <input
-                type="number"
+                type="text"
+                autoComplete="one-time-code"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 value={contractForm.foodAllowance}
-                onChange={(e) => setContractForm(prev => ({ ...prev, foodAllowance: e.target.value }))}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/[^\d]/g, '');
+                  setContractForm(prev => ({ ...prev, foodAllowance: value }));
+                }}
                 placeholder="1236"
-                className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
+                className="w-full pl-16 pr-4 py-3 bg-muted rounded-xl text-lg font-semibold text-foreground outline-none border border-transparent focus:border-primary transition-colors text-right"
               />
             </div>
           </div>
-        </BottomSheet.Body>
-        <BottomSheet.Footer>
-          <div className="flex gap-3">
-            <button
-              onClick={() => setShowContractSheet(false)}
-              className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body"
-            >
-              {t['common.cancel'] || 'Cancel'}
-            </button>
-            <button
-              onClick={handleContractSubmit}
-              disabled={isLoading}
-              className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body font-semibold disabled:opacity-50"
-            >
-              {isLoading ? <Loader2 size={18} className="animate-spin mx-auto" /> : (t['common.save'] || 'Save')}
-            </button>
-          </div>
-        </BottomSheet.Footer>
+        </div>
       </BottomSheet>
       
       {/* ═══════════════════════════════════════════════════════════════ */}

@@ -7,48 +7,53 @@ import {
   ClipboardList,
   Utensils,
   DollarSign,
-  Info,
-  HeartHandshake,
-  Quote
+  BookUser,
+  HeartHandshake
 } from "lucide-react";
 
 export default function FeaturesContent() {
   const featureItems = [
     {
       icon: Home,
-      title: "Home Dashboard",
-      body: "Experience a calm home organization tool that brings all your plans and reminders into one clear overview."
+      title: "Home",
+      body: "Discover a serene dashboard that unites your family's plans, reminders, and essential tools into a single, intuitive overview for effortless home management.",
+      features: "Family Board, Widgets with quick action buttons, App Translations"
     },
     {
       icon: ClipboardList,
-      title: "To Do & Shopping",
-      body: "Keep everyone in sync with a shared shopping list app that doubles as a household chore app for stress-free coordination."
+      title: "To Do",
+      body: "Keep everyone in sync with a shared task and shopping list.",
+      features: "Task list with due dates and recurring settings. Shopping list with Shopping Mode"
     },
     {
       icon: Utensils,
       title: "Meals",
-      body: "Finally, a meal planning app for families that works. Use our family meal scheduler to organize the week and guide your helper."
+      body: "Family meal scheduler to organize the week and guide your helper.",
+      features: "Meal planner for adults and kids. Quick recipe search on YouTube. RSVP system to join the meal. PDF export for printing."
     },
     {
       icon: DollarSign,
-      title: "Expense Tracking",
-      body: "Stay on budget with a simple family expense tracker. It works as a household expense manager that lets you snap and track receipts in seconds."
+      title: "Expenses",
+      body: "Stay on budget with a simple family expense tracker. It works as a household expense manager that lets you snap and track receipts in seconds.",
+      features: "Expenses list and summary. AI receipt scanner"
     },
     {
-      icon: Info,
-      title: "Family Info",
-      body: "Store important details in one family notes app. It serves as a family profile manager for all your contacts, routines, and house rules."
+      icon: BookUser,
+      title: "Family",
+      body: "A \"Family Book\" storing all of the important information about the family for everyone to know. Important and common places that you often visit (such as school, doctors, etc.), and how to do things your way, all on one page.",
+      features: "Places and practices list, including contact details and instructions, and notes."
     },
     {
       icon: HeartHandshake,
-      title: "Helper Management",
-      body: "Stay aligned with your domestic helper on holidays and pay. Track statutory holidays, manage overtime compensation, and confirm monthly payslips together with a dual-signature system."
+      title: "Helper",
+      body: "Nestled in the Family page. Managing salary slips has never been easier! Generate the slip in one click and sign it digitally!",
+      features: "Helper's start date, salary, and salary slip"
     }
   ];
 
   return (
     <div className="px-4 py-10 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-6xl space-y-20">
+      <div className="mx-auto max-w-6xl space-y-8 sm:space-y-12 lg:space-y-20">
         {/* Split Hero Section */}
         <section className="grid gap-12 lg:grid-cols-2 lg:items-start">
           {/* Left: Text Content */}
@@ -76,34 +81,20 @@ export default function FeaturesContent() {
             </a>
           </motion.div>
 
-          {/* Right: Hero Image with Colored Shadow */}
+          {/* Right: Hero Image */}
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.4, delay: 0.1 }}
             className="relative mx-auto w-full aspect-[4/3]"
           >
-            {/* The "Glow" Image (Behind) */}
-            <div className="absolute inset-0 translate-y-4 scale-95 opacity-60 blur-2xl">
-              <Image
-                src="/features-hero.jpg"
-                alt=""
-                fill
-                className="object-cover rounded-3xl"
-                aria-hidden="true"
-              />
-            </div>
-
-            {/* The Main Image (Front) */}
-            <div className="relative h-full w-full overflow-hidden rounded-3xl bg-secondary shadow-sm">
-              <Image
-                src="/features-hero.jpg"
-                alt="Family using Helpy home management app to organize household tasks together"
-                fill
-                className="object-cover"
-                priority
-              />
-            </div>
+            <Image
+              src="/features-mobile-screens.png"
+              alt="Helpy app screens showing dashboard, tasks, meals, expenses, and family book features"
+              fill
+              className="object-contain"
+              priority
+            />
           </motion.div>
         </section>
 
@@ -119,69 +110,24 @@ export default function FeaturesContent() {
             return (
               <div
                 key={idx}
-                className="relative flex flex-col gap-3 rounded-2xl bg-card p-6 shadow-soft hover:shadow-md transition-shadow"
+                className="relative flex flex-col rounded-2xl bg-card p-6 shadow-soft"
               >
                 <div className="absolute right-6 top-6 text-primary">
                   <Icon className="h-6 w-6" />
                 </div>
-                <h3 className="pr-8 text-base font-semibold text-foreground">
+                <h3 className="pr-8 text-base font-semibold text-foreground mb-2">
                   {item.title}
                 </h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">
+                <p className="text-sm text-muted-foreground leading-relaxed mb-4">
                   {item.body}
+                </p>
+                <div className="border-t border-border mb-4" />
+                <p className="text-sm text-primary leading-relaxed">
+                  {item.features}
                 </p>
               </div>
             );
           })}
-        </motion.section>
-
-        {/* Testimonials Section */}
-        <motion.section
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35, delay: 0.3 }}
-          className="space-y-8"
-        >
-          <div className="border-t border-border pt-12">
-            <p className="helpy-logo text-4xl font-normal tracking-tight mb-8">
-              Their Stories
-            </p>
-            <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-              {[
-                {
-                  quote:
-                    "Helpy turned our busy home into a team effort. I don't have to repeat myself, and our helper feels much more confident.",
-                  name: "Michelle, mom of two",
-                  role: "Hong Kong"
-                },
-                {
-                  quote:
-                    "I used to worry I would forget details about the kids' routines. Now I just open Helpy and follow the guides. It feels respectful and clear.",
-                  name: "Marites, live-in helper",
-                  role: "Hong Kong"
-                },
-                {
-                  quote:
-                    "We both work long hours, so coordinating with our helper was always a challenge. Helpy keeps everyone on the same page, even when we're not home.",
-                  name: "David and Karen",
-                  role: "Hong Kong"
-                }
-              ].map((item, idx) => (
-                <div key={idx} className={`${idx === 0 ? '' : 'border-l border-border'} pl-6 py-2`}>
-                  <Quote className="h-8 w-8 text-primary fill-current mb-4" />
-                  <p className="text-base text-foreground leading-relaxed">
-                    &quot;{item.quote}&quot;
-                  </p>
-                  <div className="mt-4">
-                    <p className="text-sm font-semibold text-foreground">
-                      {item.name}
-                    </p>
-                    <p className="text-xs text-muted-foreground">{item.role}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
         </motion.section>
       </div>
     </div>

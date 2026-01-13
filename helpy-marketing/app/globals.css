@@ -55,6 +55,12 @@
   --radius: 0.75rem;
 }
 
+html,
+body {
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
+}
+
 body {
   font-family: var(--font-sans);
   background-color: hsl(var(--background));

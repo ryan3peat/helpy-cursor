@@ -1,11 +1,14 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  assetPrefix: 'https://helpy-cursor-website.vercel.app',
+  assetPrefix: process.env.NODE_ENV === 'production' ? 'https://helpy-cursor-website.vercel.app' : undefined,
   images: {
-    domains: ["images.unsplash.com"]
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
+      },
+    ],
   }
 };
 
 export default nextConfig;
-
-

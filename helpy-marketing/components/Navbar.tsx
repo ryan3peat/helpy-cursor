@@ -18,15 +18,15 @@ export const Navbar = () => {
   ];
 
   return (
-    <header className="sticky top-0 z-20 border-b border-border bg-background/80 backdrop-blur">
-      <nav className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-20 border-b border-border bg-[#fafafa] px-4 sm:px-6 lg:px-8">
+      <nav className="mx-auto flex max-w-6xl items-center justify-between py-3">
         <Link href="/home" className="flex items-center gap-2">
           <Image
-            src="/helpy-logo-text.png"
+            src="/helpy-logo-text.PNG"
             alt="helpy"
-            width={80}
-            height={28}
-            className="h-7 w-auto"
+            width={75}
+            height={36}
+            className="h-9 w-auto"
             priority
           />
         </Link>
@@ -63,7 +63,7 @@ export const Navbar = () => {
 
       {/* Mobile Menu Dropdown */}
       {mobileMenuOpen && (
-        <div className="sm:hidden border-t border-border bg-background/95 backdrop-blur">
+        <div className="sm:hidden border-t border-border bg-[#fafafa]">
           <div className="flex flex-col px-4 py-3 space-y-1">
             {navItems.map((item) => {
               const isActive =

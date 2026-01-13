@@ -37,6 +37,8 @@ import ErrorBoundary from './components/ui/ErrorBoundary';
 import NotificationPrompt from './components/NotificationPrompt';
 import type { Place, CreatePlace } from '@src/types/place';
 import type { Practice, CreatePractice } from '@src/types/practice';
+import type { HelperContract, SalarySlip } from '@src/types/helperManagement';
+import { getHelperContracts, getAllSalarySlips } from './services/salarySlipService';
 import { 
   subscribeToPlaces,
   createPlace,
@@ -381,6 +383,8 @@ const AppContent: React.FC = () => {
       localStorage.removeItem('helpy_cached_family_notes');
       localStorage.removeItem('helpy_cached_family_notes_lang');
       localStorage.removeItem('helpy_cached_family_notes_translations');
+      localStorage.removeItem('helpy_cached_helper_contracts');
+      localStorage.removeItem('helpy_cached_salary_slips');
     };
 
     const resetState = () => {
@@ -395,6 +399,8 @@ const AppContent: React.FC = () => {
       setFamilyNotes('');
       setFamilyNotesLang(null);
       setFamilyNotesTranslations({});
+      setHelperContracts([]);
+      setSalarySlips([]);
     };
 
     try {
@@ -530,6 +536,14 @@ const AppContent: React.FC = () => {
   });
   const [places, setPlaces] = useState<Place[]>([]);
   const [practices, setPractices] = useState<Practice[]>([]);
+  const [helperContracts, setHelperContracts] = useState<HelperContract[]>(() => {
+    const cached = localStorage.getItem('helpy_cached_helper_contracts');
+    return cached ? JSON.parse(cached) : [];
+  });
+  const [salarySlips, setSalarySlips] = useState<SalarySlip[]>(() => {
+    const cached = localStorage.getItem('helpy_cached_salary_slips');
+    return cached ? JSON.parse(cached) : [];
+  });
   
   // Household limits for family member quota (used by Home)
   const [householdLimits, setHouseholdLimits] = useState<{ maxFamily: number; maxHelpers: number }>({ maxFamily: 3, maxHelpers: 1 });
@@ -579,6 +593,18 @@ const AppContent: React.FC = () => {
     }
   }, [familyNotes, familyNotesLang, familyNotesTranslations, currentUser?.householdId]);
 
+  useEffect(() => {
+    if (helperContracts.length > 0 && currentUser?.householdId) {
+      localStorage.setItem('helpy_cached_helper_contracts', JSON.stringify(helperContracts));
+    }
+  }, [helperContracts, currentUser?.householdId]);
+
+  useEffect(() => {
+    if (salarySlips.length > 0 && currentUser?.householdId) {
+      localStorage.setItem('helpy_cached_salary_slips', JSON.stringify(salarySlips));
+    }
+  }, [salarySlips, currentUser?.householdId]);
+
   // Sync function for periodic backup fetching
   const syncAllData = useCallback(async () => {
     if (!currentUser?.householdId) return;
@@ -588,12 +614,14 @@ const AppContent: React.FC = () => {
     
     try {
       // Fetch all collections in parallel (including household limits AND family notes)
-      const [usersData, todoData, mealsData, expensesData, householdData] = await Promise.all([
+      const [usersData, todoData, mealsData, expensesData, householdData, contractsData, slipsData] = await Promise.all([
         fetchCollection(hid, 'users'),
         fetchCollection(hid, 'todo_items'),
         fetchCollection(hid, 'meals'),
         fetchCollection(hid, 'expenses'),
         supabase.from('households').select('max_family_members, max_helpers, family_notes, family_notes_lang, family_notes_translations').eq('id', hid).maybeSingle(),
+        getHelperContracts(hid),
+        getAllSalarySlips(hid),
       ]);
       
       // Update state with fresh data - only if data exists (don't wipe cache with empty results)
@@ -604,6 +632,10 @@ const AppContent: React.FC = () => {
       if (todoData && todoData.length > 0) setTodoItems(todoData as ToDoItem[]);
       if (mealsData && mealsData.length > 0) setMeals(mealsData as Meal[]);
       if (expensesData && expensesData.length > 0) setExpenses(expensesData as Expense[]);
+      
+      // Update helper contracts and salary slips
+      if (contractsData && contractsData.length > 0) setHelperContracts(contractsData);
+      if (slipsData && slipsData.length > 0) setSalarySlips(slipsData);
       
       // Update household limits AND family notes (Family Board)
       if (householdData.data) {
@@ -1808,6 +1840,10 @@ const AppContent: React.FC = () => {
             onAddPractice={handleAddPractice}
             onUpdatePractice={handleUpdatePractice}
             onDeletePractice={handleDeletePractice}
+            helperContracts={helperContracts}
+            salarySlips={salarySlips}
+            onHelperContractsChange={setHelperContracts}
+            onSalarySlipsChange={setSalarySlips}
             t={translations}
             currentLang={lang}
             onNavigateToProfile={() => handleNavigate('profile')}

@@ -506,8 +506,8 @@ const Meals: React.FC<MealsProps> = ({
       
       const pageWidth = doc.internal.pageSize.getWidth();
       
-      // Format date range with year for PDF
-      const pdfDateRange = `${weekDays[0].toLocaleDateString(langCode, { day: 'numeric', month: 'short', year: 'numeric' })} - ${weekDays[6].toLocaleDateString(langCode, { day: 'numeric', month: 'short', year: 'numeric' })}`;
+      // Format date range with year for PDF (always English for PDF compatibility)
+      const pdfDateRange = `${weekDays[0].toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })} - ${weekDays[6].toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`;
       
       // Load and resize logo to prevent huge file size
       // Original is 4096x1889px, we resize to ~200px wide
@@ -578,10 +578,10 @@ const Meals: React.FC<MealsProps> = ({
         doc.setFont('helvetica', 'normal');
       };
       
-      // Build table data with participant counts
+      // Build table data with participant counts (always English for PDF compatibility)
       const tableData = weekDays.map(day => {
         const dateStr = formatDateStr(day);
-        const dateLabel = `${day.toLocaleDateString(langCode, { weekday: 'short' })}, ${day.getDate()} ${day.toLocaleDateString(langCode, { month: 'short' })}`;
+        const dateLabel = `${day.toLocaleDateString('en-GB', { weekday: 'short' })}, ${day.getDate()} ${day.toLocaleDateString('en-GB', { month: 'short' })}`;
         
         return [
           dateLabel,
@@ -624,15 +624,15 @@ const Meals: React.FC<MealsProps> = ({
       // Add initial header
       addHeader();
       
-      // Generate table with running headers
+      // Generate table with running headers (always English for PDF compatibility)
       autoTable(doc, {
         startY: 34,
         head: [[
-          t['common.date'] || 'Date',
-          t['meal.type.breakfast'] || 'Breakfast',
-          t['meal.type.lunch'] || 'Lunch',
-          t['meal.type.dinner'] || 'Dinner',
-          t['meal.type.snacks'] || 'Snacks'
+          'Date',
+          'Breakfast',
+          'Lunch',
+          'Dinner',
+          'Snacks'
         ]],
         body: tableData,
         theme: 'grid',
@@ -805,8 +805,8 @@ const Meals: React.FC<MealsProps> = ({
         );
       }
       
-      // Generate filename: "Helpy Meal Planning 12 Jan - 18 Jan 2026"
-      const filenameDateRange = `${weekDays[0].toLocaleDateString(langCode, { day: 'numeric', month: 'short' })} - ${weekDays[6].toLocaleDateString(langCode, { day: 'numeric', month: 'short', year: 'numeric' })}`;
+      // Generate filename: "Helpy Meal Planning 12 Jan - 18 Jan 2026" (always English)
+      const filenameDateRange = `${weekDays[0].toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} - ${weekDays[6].toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`;
       const safeFilename = `Helpy Meal Planning ${filenameDateRange}.pdf`;
       
       // Save/Share using Web Share API

@@ -516,10 +516,10 @@ const CreateSalarySlipSheet: React.FC<Props> = ({
                 </div>
               </div>
               
-              {/* Total Payout (calculated) */}
+              {/* Total Salary (calculated) */}
               <div>
                 <label className="block text-caption text-muted-foreground mb-2">
-                  {t['salary.total_payout'] || 'Total Payout'}
+                  {t['salary.total_salary'] || 'Total Salary'}
                 </label>
                 <div className="relative bg-primary/10 rounded-xl">
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg font-semibold text-primary">
@@ -605,7 +605,7 @@ const CreateSalarySlipSheet: React.FC<Props> = ({
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-body text-muted-foreground">{t['salary.total_payout'] || 'Total Payout'}</span>
+                    <span className="text-body text-muted-foreground">{t['salary.total_salary'] || 'Total Salary'}</span>
                     <span className="text-body font-bold text-primary">HK${totalPayout.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between">

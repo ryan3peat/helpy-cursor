@@ -51,12 +51,19 @@ interface Props {
   helper: User;
   currentUser: User;
   users: User[];
+  // Cached data from App.tsx (for instant load)
+  cachedContracts: HelperContract[];
+  cachedSlips: SalarySlip[];
+  onContractsChange: (contracts: HelperContract[]) => void;
+  onSlipsChange: (slips: SalarySlip[]) => void;
   t: TranslationDictionary;
   currentLang: string;
   onNavigateToProfile: () => void;
   onEditHelper?: (helperId: string) => void;
   // Callback when FAB is clicked (for creating salary slips)
   onCreateSlipClick?: () => void;
+  // Increment this to trigger a data refresh (e.g., after creating a slip from outside)
+  refreshKey?: number;
 }
 
 export const HelperManagementContent: React.FC<Props> = ({
@@ -65,18 +72,35 @@ export const HelperManagementContent: React.FC<Props> = ({
   helper,
   currentUser,
   users,
+  cachedContracts,
+  cachedSlips,
+  onContractsChange,
+  onSlipsChange,
   t,
   currentLang,
   onNavigateToProfile,
   onEditHelper,
   onCreateSlipClick,
+  refreshKey,
 }) => {
   // ─────────────────────────────────────────────────────────────────
-  // State
+  // State - Initialize from cached data for instant display
   // ─────────────────────────────────────────────────────────────────
-  const [contract, setContract] = useState<HelperContract | null>(null);
-  const [salarySlips, setSalarySlips] = useState<SalarySlip[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // Find this helper's contract from cached contracts
+  const cachedContract = useMemo(() => 
+    cachedContracts.find(c => c.userId === helperId) || null,
+    [cachedContracts, helperId]
+  );
+  // Filter this helper's slips from cached slips
+  const cachedHelperSlips = useMemo(() => 
+    cachedSlips.filter(s => s.helperId === helperId),
+    [cachedSlips, helperId]
+  );
+  
+  const [contract, setContract] = useState<HelperContract | null>(cachedContract);
+  const [salarySlips, setSalarySlips] = useState<SalarySlip[]>(cachedHelperSlips);
+  // Only show loading if we have no cached data
+  const [isLoading, setIsLoading] = useState(cachedContract === null && cachedHelperSlips.length === 0);
   const [error, setError] = useState<string | null>(null);
   
   // Modal states
@@ -126,20 +150,40 @@ export const HelperManagementContent: React.FC<Props> = ({
   const langCode = currentLang === 'en' ? 'en-GB' : currentLang;
 
   // ─────────────────────────────────────────────────────────────────
-  // Data Loading
+  // Data Loading - Use cached data for instant display, refresh in background
   // ─────────────────────────────────────────────────────────────────
+  
+  // Sync local state when cached props change (e.g., from another component's updates)
+  useEffect(() => {
+    if (cachedContract) {
+      setContract(cachedContract);
+    }
+  }, [cachedContract]);
+  
+  useEffect(() => {
+    if (cachedHelperSlips.length > 0) {
+      setSalarySlips(cachedHelperSlips);
+    }
+  }, [cachedHelperSlips]);
+  
+  // Fetch fresh data on mount (background refresh if we have cached data)
+  // Also refresh when refreshKey changes (e.g., after creating a slip from outside)
   useEffect(() => {
     loadData();
-  }, [helperId, householdId]);
+  }, [helperId, householdId, refreshKey]);
   
   const loadData = async () => {
-    setIsLoading(true);
+    // Only show loading spinner if we have NO cached data
+    const hasCachedData = cachedContract !== null || cachedHelperSlips.length > 0;
+    if (!hasCachedData) {
+      setIsLoading(true);
+    }
     setError(null);
     
     try {
       if (isDemoMode) {
         // Demo data
-        setContract({
+        const demoContract: HelperContract = {
           id: 'demo-contract',
           userId: helperId,
           householdId,
@@ -147,9 +191,9 @@ export const HelperManagementContent: React.FC<Props> = ({
           employmentStartDate: '2024-03-15',
           baseSalary: 5100,
           foodAllowance: 1236,
-        });
+        };
         // 6 months of salary history with mix of signed/unsigned
-        setSalarySlips([
+        const demoSlips: SalarySlip[] = [
           // January 2026 - Current month, employer signed, helper not signed
           {
             id: 'demo-slip-1',
@@ -283,18 +327,30 @@ export const HelperManagementContent: React.FC<Props> = ({
             employerSignedAt: '2025-08-29T10:00:00Z',
             helperSignedAt: '2025-08-29T11:00:00Z',
           },
-        ]);
+        ];
+        setContract(demoContract);
+        setSalarySlips(demoSlips);
         setIsLoading(false);
         return;
       }
       
-      // Load contract
+      // Load fresh data from database
       const contractData = await getHelperContract(helperId, householdId);
-      setContract(contractData);
-      
-      // Load salary slips
       const slipsData = await getSalarySlips(helperId, householdId);
+      
+      // Update local state
+      setContract(contractData);
       setSalarySlips(slipsData);
+      
+      // Sync back to parent cache (merge with existing data for other helpers)
+      if (contractData) {
+        const updatedContracts = cachedContracts.filter(c => c.userId !== helperId);
+        updatedContracts.push(contractData);
+        onContractsChange(updatedContracts);
+      }
+      // Always sync slips back (even if empty, to clear old cache for this helper)
+      const otherSlips = cachedSlips.filter(s => s.helperId !== helperId);
+      onSlipsChange([...otherSlips, ...slipsData]);
     } catch (err) {
       console.error('Failed to load helper data:', err);
       setError(t['error.load_data'] || 'Failed to load data. Please try again.');
@@ -337,7 +393,7 @@ export const HelperManagementContent: React.FC<Props> = ({
       setError(t['error.required_fields'] || 'Please fill in all required fields');
         return;
       }
-      
+    
     setIsLoading(true);
     try {
       if (contract) {
@@ -511,11 +567,11 @@ export const HelperManagementContent: React.FC<Props> = ({
       
       y += 20;
       
-      // Title
+      // Title (always English for PDF compatibility)
       doc.setFontSize(18);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor('#1a1a1a');
-      doc.text(t['salary.slip_title'] || 'Salary Slip', margin, y);
+      doc.text('Salary Slip', margin, y);
       y += 12;
       
       // Helper info box
@@ -533,7 +589,7 @@ export const HelperManagementContent: React.FC<Props> = ({
       if (contract?.employmentStartDate) {
         const startDate = new Date(contract.employmentStartDate);
         doc.text(
-          `${t['salary.started'] || 'Started'}: ${startDate.toLocaleDateString(langCode, { day: 'numeric', month: 'short', year: 'numeric' })}`,
+          `Started: ${startDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`,
           margin + 5,
           y + 16
         );
@@ -542,26 +598,26 @@ export const HelperManagementContent: React.FC<Props> = ({
       const periodStart = new Date(slip.paymentPeriodStart);
       const periodEnd = new Date(slip.paymentPeriodEnd);
       doc.text(
-        `${t['salary.payment_period'] || 'Payment Period'}: ${periodStart.toLocaleDateString(langCode, { day: 'numeric', month: 'short', year: 'numeric' })} - ${periodEnd.toLocaleDateString(langCode, { day: 'numeric', month: 'short', year: 'numeric' })}`,
+        `Payment Period: ${periodStart.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })} - ${periodEnd.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`,
         margin + 5,
         y + 24
       );
       
       y += 40;
       
-      // Salary breakdown
+      // Salary breakdown (always English for PDF compatibility)
       doc.setTextColor('#1a1a1a');
       doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
-      doc.text(t['salary.breakdown'] || 'Salary Breakdown', margin, y);
+      doc.text('Salary Breakdown', margin, y);
       y += 8;
       
       // Table
       const tableData = [
-        [t['salary.base_salary'] || 'Base Salary', `HK$${slip.baseSalary.toLocaleString()}`],
-        [t['salary.food_allowance'] || 'Food Allowance', `HK$${slip.foodAllowance.toLocaleString()}`],
-        [t['salary.extra_salary'] || 'Additional Pay', `HK$${slip.extraSalary.toLocaleString()}`],
-        [t['salary.deduction'] || 'Pay Deduction', `HK$${slip.salaryDeduction.toLocaleString()}`],
+        ['Base Salary', `HK$${slip.baseSalary.toLocaleString()}`],
+        ['Food Allowance', `HK$${slip.foodAllowance.toLocaleString()}`],
+        ['Additional Pay', `HK$${slip.extraSalary.toLocaleString()}`],
+        ['Pay Deduction', `HK$${slip.salaryDeduction.toLocaleString()}`],
       ];
       
       doc.setFontSize(11);
@@ -581,7 +637,7 @@ export const HelperManagementContent: React.FC<Props> = ({
       
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(14);
-      doc.text(t['salary.total_payout'] || 'Total Payout', margin, y);
+      doc.text('Total Salary', margin, y);
       doc.setTextColor('#3EAFD2');
       doc.text(`HK$${slip.totalPayout.toLocaleString()}`, pageWidth - margin, y, { align: 'right' });
       
@@ -592,7 +648,7 @@ export const HelperManagementContent: React.FC<Props> = ({
         doc.setTextColor('#1a1a1a');
         doc.setFontSize(12);
         doc.setFont('helvetica', 'bold');
-        doc.text(t['salary.note'] || 'Note', margin, y);
+        doc.text('Note', margin, y);
         y += 7;
         
         doc.setFontSize(10);
@@ -603,12 +659,12 @@ export const HelperManagementContent: React.FC<Props> = ({
         y += noteLines.length * 5 + 10;
       }
       
-      // Signatures section
+      // Signatures section (always English for PDF compatibility)
       y += 10;
       doc.setTextColor('#1a1a1a');
       doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
-      doc.text(t['salary.signatures'] || 'Signatures', margin, y);
+      doc.text('Signatures', margin, y);
       y += 10;
       
       const sigBoxWidth = (pageWidth - margin * 2 - 10) / 2;
@@ -622,7 +678,7 @@ export const HelperManagementContent: React.FC<Props> = ({
       doc.setFontSize(10);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor('#1a1a1a');
-      doc.text(t['salary.employer'] || 'Employer', margin + 5, y + 8);
+      doc.text('Employer', margin + 5, y + 8);
       
       if (slip.employerSignedAt) {
         doc.setFont('helvetica', 'normal');
@@ -631,11 +687,11 @@ export const HelperManagementContent: React.FC<Props> = ({
         doc.setFontSize(8);
         doc.setTextColor('#666666');
         const signDate = new Date(slip.employerSignedAt);
-        doc.text(signDate.toLocaleDateString(langCode, { day: 'numeric', month: 'short', year: 'numeric' }), margin + 5, y + 25);
+        doc.text(signDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }), margin + 5, y + 25);
       } else {
         doc.setFont('helvetica', 'normal');
         doc.setTextColor('#999999');
-        doc.text(t['salary.not_signed'] || 'Not signed', margin + 5, y + 20);
+        doc.text('Not signed', margin + 5, y + 20);
       }
       
       // Helper signature box
@@ -646,7 +702,7 @@ export const HelperManagementContent: React.FC<Props> = ({
       doc.setFontSize(10);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor('#1a1a1a');
-      doc.text(t['salary.helper'] || 'Helper', margin + sigBoxWidth + 15, y + 8);
+      doc.text('Helper', margin + sigBoxWidth + 15, y + 8);
       
       if (slip.helperSignedAt) {
         doc.setFont('helvetica', 'normal');
@@ -655,11 +711,11 @@ export const HelperManagementContent: React.FC<Props> = ({
         doc.setFontSize(8);
         doc.setTextColor('#666666');
         const signDate = new Date(slip.helperSignedAt);
-        doc.text(signDate.toLocaleDateString(langCode, { day: 'numeric', month: 'short', year: 'numeric' }), margin + sigBoxWidth + 15, y + 25);
+        doc.text(signDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }), margin + sigBoxWidth + 15, y + 25);
       } else {
         doc.setFont('helvetica', 'normal');
         doc.setTextColor('#999999');
-        doc.text(t['salary.not_signed'] || 'Not signed', margin + sigBoxWidth + 15, y + 20);
+        doc.text('Not signed', margin + sigBoxWidth + 15, y + 20);
       }
       
       // Footer
@@ -673,9 +729,9 @@ export const HelperManagementContent: React.FC<Props> = ({
         { align: 'center' }
       );
       
-      // Generate filename
+      // Generate filename (always English)
       const helperName = helper.firstName || helper.name?.split(' ')[0] || 'Helper';
-      const periodStr = `${periodStart.toLocaleDateString(langCode, { month: 'short', year: 'numeric' })}`;
+      const periodStr = `${periodStart.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}`;
       const safeFilename = `Salary Slip - ${helperName} - ${periodStr}.pdf`;
       
       // Share or download
@@ -764,11 +820,11 @@ export const HelperManagementContent: React.FC<Props> = ({
     
     y += 20;
     
-    // Title
+    // Title (always English for PDF compatibility)
     doc.setFontSize(18);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor('#1a1a1a');
-    doc.text(t['salary.slip_title'] || 'Salary Slip', margin, y);
+    doc.text('Salary Slip', margin, y);
     y += 12;
     
     // Helper info box
@@ -786,7 +842,7 @@ export const HelperManagementContent: React.FC<Props> = ({
     if (contract?.employmentStartDate) {
       const startDate = new Date(contract.employmentStartDate);
       doc.text(
-        `${t['salary.started'] || 'Started'}: ${startDate.toLocaleDateString(langCode, { day: 'numeric', month: 'short', year: 'numeric' })}`,
+        `Started: ${startDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`,
         margin + 5,
         y + 16
       );
@@ -795,26 +851,26 @@ export const HelperManagementContent: React.FC<Props> = ({
     const periodStart = new Date(slip.paymentPeriodStart);
     const periodEnd = new Date(slip.paymentPeriodEnd);
     doc.text(
-      `${t['salary.payment_period'] || 'Payment Period'}: ${periodStart.toLocaleDateString(langCode, { day: 'numeric', month: 'short', year: 'numeric' })} - ${periodEnd.toLocaleDateString(langCode, { day: 'numeric', month: 'short', year: 'numeric' })}`,
+      `Payment Period: ${periodStart.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })} - ${periodEnd.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`,
       margin + 5,
       y + 24
     );
     
     y += 40;
     
-    // Salary breakdown
+    // Salary breakdown (always English for PDF compatibility)
     doc.setTextColor('#1a1a1a');
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
-    doc.text(t['salary.breakdown'] || 'Salary Breakdown', margin, y);
+    doc.text('Salary Breakdown', margin, y);
     y += 8;
     
     // Table
     const tableData = [
-      [t['salary.base_salary'] || 'Base Salary', `HK$${slip.baseSalary.toLocaleString()}`],
-      [t['salary.food_allowance'] || 'Food Allowance', `HK$${slip.foodAllowance.toLocaleString()}`],
-      [t['salary.extra_salary'] || 'Additional Pay', `HK$${slip.extraSalary.toLocaleString()}`],
-      [t['salary.deduction'] || 'Pay Deduction', `HK$${slip.salaryDeduction.toLocaleString()}`],
+      ['Base Salary', `HK$${slip.baseSalary.toLocaleString()}`],
+      ['Food Allowance', `HK$${slip.foodAllowance.toLocaleString()}`],
+      ['Additional Pay', `HK$${slip.extraSalary.toLocaleString()}`],
+      ['Pay Deduction', `HK$${slip.salaryDeduction.toLocaleString()}`],
     ];
     
     doc.setFontSize(11);
@@ -834,7 +890,7 @@ export const HelperManagementContent: React.FC<Props> = ({
     
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(14);
-    doc.text(t['salary.total_payout'] || 'Total Payout', margin, y);
+    doc.text('Total Payout', margin, y);
     doc.setTextColor('#3EAFD2');
     doc.text(`HK$${slip.totalPayout.toLocaleString()}`, pageWidth - margin, y, { align: 'right' });
     
@@ -845,7 +901,7 @@ export const HelperManagementContent: React.FC<Props> = ({
       doc.setTextColor('#1a1a1a');
       doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
-      doc.text(t['salary.note'] || 'Note', margin, y);
+      doc.text('Note', margin, y);
       y += 7;
       
       doc.setFontSize(10);
@@ -856,12 +912,12 @@ export const HelperManagementContent: React.FC<Props> = ({
       y += noteLines.length * 5 + 10;
     }
     
-    // Signatures section
+    // Signatures section (always English for PDF compatibility)
     y += 10;
     doc.setTextColor('#1a1a1a');
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
-    doc.text(t['salary.signatures'] || 'Signatures', margin, y);
+    doc.text('Signatures', margin, y);
     y += 10;
     
     const sigBoxWidth = (pageWidth - margin * 2 - 10) / 2;
@@ -875,7 +931,7 @@ export const HelperManagementContent: React.FC<Props> = ({
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor('#1a1a1a');
-    doc.text(t['salary.employer'] || 'Employer', margin + 5, y + 8);
+    doc.text('Employer', margin + 5, y + 8);
     
     if (slip.employerSignedAt) {
       doc.setFont('helvetica', 'normal');
@@ -884,11 +940,11 @@ export const HelperManagementContent: React.FC<Props> = ({
       doc.setFontSize(8);
       doc.setTextColor('#666666');
       const signDate = new Date(slip.employerSignedAt);
-      doc.text(signDate.toLocaleDateString(langCode, { day: 'numeric', month: 'short', year: 'numeric' }), margin + 5, y + 25);
+      doc.text(signDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }), margin + 5, y + 25);
     } else {
       doc.setFont('helvetica', 'normal');
       doc.setTextColor('#999999');
-      doc.text(t['salary.not_signed'] || 'Not signed', margin + 5, y + 20);
+      doc.text('Not signed', margin + 5, y + 20);
     }
     
     // Helper signature box
@@ -899,7 +955,7 @@ export const HelperManagementContent: React.FC<Props> = ({
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor('#1a1a1a');
-    doc.text(t['salary.helper'] || 'Helper', margin + sigBoxWidth + 15, y + 8);
+    doc.text('Helper', margin + sigBoxWidth + 15, y + 8);
     
     if (slip.helperSignedAt) {
       doc.setFont('helvetica', 'normal');
@@ -908,11 +964,11 @@ export const HelperManagementContent: React.FC<Props> = ({
       doc.setFontSize(8);
       doc.setTextColor('#666666');
       const signDate = new Date(slip.helperSignedAt);
-      doc.text(signDate.toLocaleDateString(langCode, { day: 'numeric', month: 'short', year: 'numeric' }), margin + sigBoxWidth + 15, y + 25);
+      doc.text(signDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }), margin + sigBoxWidth + 15, y + 25);
     } else {
       doc.setFont('helvetica', 'normal');
       doc.setTextColor('#999999');
-      doc.text(t['salary.not_signed'] || 'Not signed', margin + sigBoxWidth + 15, y + 20);
+      doc.text('Not signed', margin + sigBoxWidth + 15, y + 20);
     }
     
     // Footer
@@ -1092,9 +1148,9 @@ export const HelperManagementContent: React.FC<Props> = ({
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <FilePenLine size={20} className="text-primary" />
-            <h3 className="text-title font-semibold">
+          <h3 className="text-title font-semibold">
               {t['salary.slips'] || 'Salary Slips'}
-            </h3>
+          </h3>
             <button
               onClick={() => setShowSalaryInfo(true)}
               className="text-destructive p-0.5"
@@ -1102,9 +1158,9 @@ export const HelperManagementContent: React.FC<Props> = ({
             >
               <Info size={16} />
             </button>
-          </div>
+        </div>
           {salarySlips.length > 0 && (
-            <button
+              <button
               onClick={handleExportAllPDFs}
               disabled={isExportingAll}
               className="flex items-center gap-2 text-body text-muted-foreground disabled:opacity-50"
@@ -1115,8 +1171,8 @@ export const HelperManagementContent: React.FC<Props> = ({
                 <Download size={16} />
               )}
               {t['salary.export_all'] || 'Export All'}
-            </button>
-          )}
+              </button>
+            )}
         </div>
         
         {salarySlips.length === 0 ? (
@@ -1220,8 +1276,8 @@ export const HelperManagementContent: React.FC<Props> = ({
           {/* Title (center) */}
           <h2 className="text-title font-semibold text-foreground text-center flex-1">
             {contract ? (t['salary.edit_contract'] || 'Edit Details') : (t['salary.setup_contract'] || 'Set Up Details')}
-          </h2>
-          
+              </h2>
+
           {/* ✓ Save Button (right) */}
               <button
             onClick={handleContractSubmit}
@@ -1240,7 +1296,7 @@ export const HelperManagementContent: React.FC<Props> = ({
             )}
               </button>
             </div>
-        
+
         {/* Header separator */}
         <div className="px-5"><div className="h-px bg-border w-full"></div></div>
         
@@ -1250,7 +1306,7 @@ export const HelperManagementContent: React.FC<Props> = ({
             <p className="text-caption text-muted-foreground">
               {t['salary.edit_note'] || 'Changes to salary and food allowance will only apply to new salary slips. Existing slips are not affected.'}
             </p>
-          </div>
+            </div>
         )}
         
         {/* Scrollable Form Content */}
@@ -1479,7 +1535,7 @@ const SalarySlipCard: React.FC<SalarySlipCardProps> = ({
   
   const formatDate = (date: Date) => date.toLocaleDateString(langCode, { day: 'numeric', month: 'short' });
   const formatFullDate = (date: Date) => date.toLocaleDateString(langCode, { day: 'numeric', month: 'short', year: 'numeric' });
-
+  
   return (
     <div className="bg-card rounded-xl shadow-sm overflow-hidden">
       {/* Collapsed Header */}
@@ -1491,10 +1547,10 @@ const SalarySlipCard: React.FC<SalarySlipCardProps> = ({
           <span className="text-body font-bold text-foreground">
             {formatFullDate(periodStart)} - {formatFullDate(periodEnd)}
           </span>
-        {isBothSigned && (
+          {isBothSigned && (
             <Signature size={16} className="text-green-600" />
           )}
-          </div>
+        </div>
         <div className="flex items-center gap-2">
           <span className="text-body font-semibold text-foreground">
             HK${slip.totalPayout.toLocaleString()}
@@ -1503,8 +1559,8 @@ const SalarySlipCard: React.FC<SalarySlipCardProps> = ({
             <ChevronDown size={18} className="text-muted-foreground" />
           ) : (
             <ChevronRight size={18} className="text-muted-foreground" />
-        )}
-      </div>
+          )}
+        </div>
       </button>
       
       {/* Expanded Content */}
@@ -1518,30 +1574,30 @@ const SalarySlipCard: React.FC<SalarySlipCardProps> = ({
             <div className="flex justify-between">
               <span className="text-body text-muted-foreground">{t['salary.base_salary'] || 'Base Salary'}</span>
               <span className="text-body tabular-nums">HK${slip.baseSalary.toLocaleString()}</span>
-        </div>
+            </div>
             <div className="flex justify-between">
               <span className="text-body text-muted-foreground">{t['salary.food_allowance'] || 'Food Allowance'}</span>
               <span className="text-body tabular-nums">HK${slip.foodAllowance.toLocaleString()}</span>
-        </div>
+            </div>
             <div className="flex justify-between">
               <span className="text-body text-muted-foreground">{t['salary.extra_salary'] || 'Additional Pay'}</span>
               <span className="text-body tabular-nums">HK${slip.extraSalary.toLocaleString()}</span>
-        </div>
+            </div>
             <div className="flex justify-between">
               <span className="text-body text-muted-foreground">{t['salary.deduction'] || 'Pay Deduction'}</span>
               <span className="text-body text-destructive tabular-nums">HK${slip.salaryDeduction.toLocaleString()}</span>
             </div>
             <div className="flex justify-between pt-2 border-t border-border">
-              <span className="text-body font-bold">{t['salary.total_payout'] || 'Total Payout'}</span>
+              <span className="text-body font-bold">{t['salary.total_salary'] || 'Total Salary'}</span>
               <span className="text-body font-bold text-primary tabular-nums">HK${slip.totalPayout.toLocaleString()}</span>
+          </div>
         </div>
-      </div>
       
           {/* Note */}
           {slip.note && (
             <div className="mb-4 p-3 bg-secondary/50 rounded-lg">
               <p className="text-body text-muted-foreground">{slip.note}</p>
-            </div>
+    </div>
       )}
       
       {/* Signature Section */}
@@ -1575,20 +1631,20 @@ const SalarySlipCard: React.FC<SalarySlipCardProps> = ({
                       </option>
                     ))}
                   </select>
-            <button
+        <button 
                     onClick={onSignEmployer}
                     disabled={!selectedSigner}
                     className="w-full px-4 py-2 rounded-xl bg-secondary text-foreground text-body disabled:opacity-50"
                   >
                     {t['salary.sign'] || 'Sign'}
-            </button>
-                </div>
+        </button>
+      </div>
               ) : (
                 <div className="rounded-xl p-3 bg-muted">
                   <p className="text-body text-muted-foreground">{t['salary.not_signed'] || 'Not signed'}</p>
                 </div>
-          )}
-        </div>
+                    )}
+                  </div>
         
             {/* Helper Signature */}
         <div>
@@ -1598,14 +1654,14 @@ const SalarySlipCard: React.FC<SalarySlipCardProps> = ({
               <div className="flex items-center gap-1 text-green-600">
                 <Signature size={16} />
                     <span className="text-body font-medium">{t['salary.signed'] || 'Signed'}</span>
-              </div>
+                </div>
                   <p className="text-body text-muted-foreground mt-1">
                     {helper.firstName || helper.name?.split(' ')[0]}
                   </p>
                   <p className="text-body text-muted-foreground">
                     {formatFullDate(new Date(slip.helperSignedAt))}
                   </p>
-            </div>
+                </div>
               ) : canSignAsHelper ? (
             <button
                   onClick={onSignHelper}
@@ -1616,9 +1672,9 @@ const SalarySlipCard: React.FC<SalarySlipCardProps> = ({
               ) : (
                 <div className="rounded-xl p-3 bg-muted">
                   <p className="text-body text-muted-foreground">{t['salary.awaiting_signature'] || 'Awaiting signature'}</p>
-                </div>
+              </div>
           )}
-        </div>
+          </div>
       </div>
           
           {/* Separator */}
@@ -1642,10 +1698,10 @@ const SalarySlipCard: React.FC<SalarySlipCardProps> = ({
               <Download size={16} />
               {t['salary.export_pdf'] || 'Export PDF'}
       </button>
-          </div>
-        </div>
-      )}
+      </div>
     </div>
+      )}
+  </div>
   );
 };
 

@@ -79,6 +79,7 @@ import haptics from "@/utils/haptics";
 // Helper Management
 import HelperManagementContent from "./HelperManagementContent";
 import CreateSalarySlipSheet from "./CreateSalarySlipSheet";
+import type { HelperContract, SalarySlip } from "@src/types/helperManagement";
 
 interface FamilyProps extends BaseViewProps {
   householdId: string;
@@ -94,6 +95,11 @@ interface FamilyProps extends BaseViewProps {
   onAddPractice: (item: CreatePractice) => Promise<void>;
   onUpdatePractice: (id: string, data: Partial<CreatePractice>) => Promise<void>;
   onDeletePractice: (id: string) => Promise<void>;
+  // Helper Management (with caching in App.tsx)
+  helperContracts: HelperContract[];
+  salarySlips: SalarySlip[];
+  onHelperContractsChange: (contracts: HelperContract[]) => void;
+  onSalarySlipsChange: (slips: SalarySlip[]) => void;
   // Section control for onboarding
   initialSection?: 'places' | 'practice';
   onSectionChange?: (section: string) => void;
@@ -529,6 +535,10 @@ const Family: React.FC<FamilyProps> = ({
   onAddPractice,
   onUpdatePractice,
   onDeletePractice,
+  helperContracts,
+  salarySlips,
+  onHelperContractsChange,
+  onSalarySlipsChange,
   t,
   currentLang,
   initialSection,
@@ -544,6 +554,7 @@ const Family: React.FC<FamilyProps> = ({
   // ─────────────────────────────────────────────────────────────────
   const [activeSection, setActiveSection] = useState<ActiveSection>(initialSection || "places");
   const [selectedHelperId, setSelectedHelperId] = useState<string | null>(null);
+  const [helperRefreshKey, setHelperRefreshKey] = useState(0);
   
   // Filter helpers from users
   const helpers = users.filter(u => u.role === UserRole.HELPER && u.status === 'active');
@@ -1409,11 +1420,16 @@ const Family: React.FC<FamilyProps> = ({
                       helper={selectedHelper}
                       currentUser={currentUser}
                       users={users}
+                      cachedContracts={helperContracts}
+                      cachedSlips={salarySlips}
+                      onContractsChange={onHelperContractsChange}
+                      onSlipsChange={onSalarySlipsChange}
                       t={t}
                       currentLang={currentLang}
                       onNavigateToProfile={onNavigateToProfile || (() => {})}
                       onEditHelper={onEditHelper}
                       onCreateSlipClick={() => setShowCreateSlipSheet(true)}
+                      refreshKey={helperRefreshKey}
                     />
                   );
                 })()}
@@ -1526,8 +1542,8 @@ const Family: React.FC<FamilyProps> = ({
         currentLang={currentLang}
         preSelectedHelperId={selectedHelperId}
         onSuccess={() => {
-          // Reload helper data after creating a slip
-          // The HelperManagementContent will re-fetch on mount
+          // Trigger a refresh in HelperManagementContent
+          setHelperRefreshKey(k => k + 1);
         }}
       />
 

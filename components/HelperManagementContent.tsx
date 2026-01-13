@@ -1,35 +1,58 @@
 // components/HelperManagementContent.tsx
+// ============================================================================
+// Salary Slip Management for Helpers
+// ============================================================================
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { Calendar, FileText, Check, X, AlertTriangle, ChevronDown, ChevronRight } from 'lucide-react';
+import { 
+  FileText, 
+  Check, 
+  X, 
+  AlertTriangle, 
+  ChevronDown, 
+  ChevronRight,
+  Download,
+  Trash2,
+  Loader2,
+  Plus,
+  Pencil,
+} from 'lucide-react';
+import jsPDF from 'jspdf';
 import ErrorBanner from './ui/ErrorBanner';
+import BottomSheet from './ui/BottomSheet';
 import type { User, TranslationDictionary } from '@/types';
 import { UserRole } from '@/types';
-import type { HKStatutoryHoliday, HelperHolidayRecord, HelperPayslipConfirmation, CompensationType } from '@src/types/helperManagement';
+import type { HelperContract, SalarySlip } from '@src/types/helperManagement';
 import { useDemoMode } from '../contexts/DemoModeContext';
+import { useScrollLock } from '../hooks/useScrollLock';
+import { useSheetTheme } from '../hooks/useSheetTheme';
+import { haptics } from '../utils/haptics';
+import { getCachedSupabaseUuid } from '../services/supabaseService';
 import {
-  getUpcomingHolidays,
-  getHelperHolidayRecord,
-  upsertHelperHolidayRecord,
-  getCurrentPayslip,
-  createOrGetCurrentPayslip,
-  signPayslip,
-  isHelperSalaryConfigured,
-  getPastHolidays,
-  getPastPayslips,
-  getOvertimeTotalForMonth,
-  updatePayslipAmount,
-} from '../services/helperManagementService';
+  getHelperContract,
+  getSalarySlips,
+  createHelperContract,
+  updateHelperContract,
+  createSalarySlip,
+  deleteSalarySlip,
+  signAsEmployer,
+  signAsHelper,
+  canManageSalarySlips,
+} from '../services/salarySlipService';
 
 interface Props {
   householdId: string;
   helperId: string;
   helper: User;
   currentUser: User;
+  users: User[];
   t: TranslationDictionary;
+  currentLang: string;
   onNavigateToProfile: () => void;
-  onEditHelper?: (helperId: string) => void; // Direct edit modal callback
+  onEditHelper?: (helperId: string) => void;
+  // Callback when FAB is clicked (for creating salary slips)
+  onCreateSlipClick?: () => void;
 }
 
 export const HelperManagementContent: React.FC<Props> = ({
@@ -37,316 +60,508 @@ export const HelperManagementContent: React.FC<Props> = ({
   helperId,
   helper,
   currentUser,
+  users,
   t,
+  currentLang,
   onNavigateToProfile,
   onEditHelper,
+  onCreateSlipClick,
 }) => {
+  // ─────────────────────────────────────────────────────────────────
   // State
-  const [upcomingHolidays, setUpcomingHolidays] = useState<HKStatutoryHoliday[]>([]);
-  const [holidayRecords, setHolidayRecords] = useState<Map<string, HelperHolidayRecord>>(new Map());
-  const [currentPayslip, setCurrentPayslip] = useState<HelperPayslipConfirmation | null>(null);
-  const [showCompensationModal, setShowCompensationModal] = useState<{ holiday: HKStatutoryHoliday } | null>(null);
-  const [showOvertimeModal, setShowOvertimeModal] = useState<{ holiday: HKStatutoryHoliday } | null>(null);
-  const [overtimeAmount, setOvertimeAmount] = useState('');
-  const [addToPayslip, setAddToPayslip] = useState(true);
-  const [showSignConfirmModal, setShowSignConfirmModal] = useState<'employer' | 'helper' | null>(null);
-  const [showPastHolidays, setShowPastHolidays] = useState(false);
-  const [showPastPayslips, setShowPastPayslips] = useState(false);
-  const [pastHolidays, setPastHolidays] = useState<HelperHolidayRecord[]>([]);
-  const [pastPayslips, setPastPayslips] = useState<HelperPayslipConfirmation[]>([]);
-  const [overtimeTotal, setOvertimeTotal] = useState(0);
-  const [isLoading, setIsLoading] = useState(false);
-  const [showChangeAmountModal, setShowChangeAmountModal] = useState(false);
-  const [customAmount, setCustomAmount] = useState('');
+  // ─────────────────────────────────────────────────────────────────
+  const [contract, setContract] = useState<HelperContract | null>(null);
+  const [salarySlips, setSalarySlips] = useState<SalarySlip[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  const { isDemoMode, demoPastPayslips, isViewingAsHelper } = useDemoMode();
+  // Modal states
+  const [showContractSheet, setShowContractSheet] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+  const [showSignConfirm, setShowSignConfirm] = useState<{ slipId: string; type: 'employer' | 'helper' } | null>(null);
+  const [selectedSignerForSlip, setSelectedSignerForSlip] = useState<Record<string, string>>({});
   
+  // Contract form state
+  const [contractForm, setContractForm] = useState({
+    employmentStartDate: '',
+    baseSalary: '',
+    foodAllowance: '',
+  });
+  
+  // Expanded slips state
+  const [expandedSlips, setExpandedSlips] = useState<Set<string>>(new Set());
+  const [showPastSlips, setShowPastSlips] = useState(false);
+  
+  const { isDemoMode } = useDemoMode();
+  
+  // Role checks
   const isSuperAdmin = currentUser.role === UserRole.SUPERADMIN;
-  // isHelper: true if actual Helper OR SuperAdmin viewing as Helper
-  const isHelper = currentUser.role === UserRole.HELPER || (isSuperAdmin && isViewingAsHelper);
   const isAdmin = currentUser.role === UserRole.MASTER;
-  const salaryConfigured = isHelperSalaryConfigured(helper);
+  const isSpouse = currentUser.role === UserRole.SPOUSE;
+  const isHelper = currentUser.role === UserRole.HELPER;
+  const canManage = canManageSalarySlips(currentUser.role);
   
-  // Calculate total salary: Base + Other Allowances (incl. food) + Overtime
-  const baseSalary = helper.helperBaseSalary || 0;
-  const foodAllowance = helper.helperFoodAllowance || 0;
-  const otherAllowancesFromProfile = (helper.helperOtherAllowances || []).reduce((sum, a) => sum + a.amount, 0);
-  const otherAllowances = foodAllowance + otherAllowancesFromProfile;
-  const calculatedTotal = baseSalary + otherAllowances + overtimeTotal;
-  const totalSalary = calculatedTotal;
+  // Get eligible signers (SuperAdmin, Admin, Spouse)
+  const eligibleSigners = useMemo(() => {
+    return users.filter(u => 
+      u.role === UserRole.SUPERADMIN || 
+      u.role === UserRole.MASTER || 
+      u.role === UserRole.SPOUSE
+    );
+  }, [users]);
   
-  // Check if admin has overridden the calculated amount
-  const isAmountOverridden = currentPayslip && currentPayslip.salaryAmount !== calculatedTotal;
+  // Scroll lock and sheet theme for modals
+  useScrollLock(showContractSheet || showDeleteConfirm !== null || showSignConfirm !== null);
+  useSheetTheme(showContractSheet || showDeleteConfirm !== null || showSignConfirm !== null);
+  
+  // Language code for date formatting
+  const langCode = currentLang === 'en' ? 'en-GB' : currentLang;
 
-  // Load data
+  // ─────────────────────────────────────────────────────────────────
+  // Data Loading
+  // ─────────────────────────────────────────────────────────────────
   useEffect(() => {
-    loadHolidays();
-    if (salaryConfigured) {
-      loadPayslip();
-      // Also load past payslips to show unsigned ones immediately
-      loadPastPayslipsQuietly();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [helperId, householdId, salaryConfigured]);
-
-  // Load past payslips without showing the expanded section (to find unsigned ones)
-  const loadPastPayslipsQuietly = async () => {
+    loadData();
+  }, [helperId, householdId]);
+  
+  const loadData = async () => {
+    setIsLoading(true);
+    setError(null);
+    
     try {
       if (isDemoMode) {
-        setPastPayslips(demoPastPayslips);
-        return;
-      }
-      const past = await getPastPayslips(helperId, householdId);
-      setPastPayslips(past);
-    } catch (error) {
-      console.error('Failed to load past payslips:', error);
-    }
-  };
-
-  const loadHolidays = async () => {
-    try {
-      const holidays = await getUpcomingHolidays(3);
-      setUpcomingHolidays(holidays);
-      
-      // Load records for each holiday
-      const records = new Map<string, HelperHolidayRecord>();
-      for (const h of holidays) {
-        const record = await getHelperHolidayRecord(helperId, householdId, h.holidayDate);
-        if (record) {
-          records.set(h.holidayDate, record);
-        }
-      }
-      setHolidayRecords(records);
-    } catch (error) {
-      console.error('Failed to load holidays:', error);
-    }
-  };
-
-  const loadPayslip = async () => {
-    try {
-      // In demo mode, create a mock current payslip (unsigned)
-      if (isDemoMode) {
-        const now = new Date();
-        // Demo: Base 4870 + Other Allowance (food 1236 + transport 500) 1736 = 6606
-        const mockCurrentPayslip: HelperPayslipConfirmation = {
-          id: 'demo-payslip-current',
-          householdId: 'demo-household',
-          helperId: 'demo-helper-004',
-          month: now.getMonth() + 1,
-          year: now.getFullYear(),
-          salaryAmount: 6606,  // Total: base + other allowances
-          baseSalary: 4870,
-          otherAllowancesTotal: 1736,
-          overtimeTotal: 0,
-          employerSignedAt: null,
-          employerUserId: null,
-          helperSignedAt: null,
-          createdAt: new Date().toISOString(),
-        };
-        setCurrentPayslip(mockCurrentPayslip);
-        setOvertimeTotal(0);
+        // Demo data
+        setContract({
+          id: 'demo-contract',
+          userId: helperId,
+          householdId,
+          status: 'active',
+          employmentStartDate: '2024-03-15',
+          baseSalary: 5100,
+          foodAllowance: 1236,
+        });
+        setSalarySlips([
+          {
+            id: 'demo-slip-1',
+            householdId,
+            helperId,
+            paymentPeriodStart: '2026-01-01',
+            paymentPeriodEnd: '2026-01-31',
+            baseSalary: 5100,
+            extraSalary: 500,
+            salaryDeduction: -200,
+            totalPayout: 5400,
+            note: 'January salary',
+            employerSignerName: 'David',
+            employerSignedAt: '2026-01-28T10:00:00Z',
+            helperSignedAt: null,
+          },
+        ]);
+        setIsLoading(false);
         return;
       }
       
-      // Get overtime total for current month
-      const now = new Date();
-      const overtime = await getOvertimeTotalForMonth(helperId, householdId, now.getMonth() + 1, now.getFullYear());
-      setOvertimeTotal(overtime);
+      // Load contract
+      const contractData = await getHelperContract(helperId, householdId);
+      setContract(contractData);
       
-      const payslip = await getCurrentPayslip(helperId, householdId);
-      if (!payslip) {
-        // Create one with calculated salary
-        const calculatedSalary = baseSalary + otherAllowances + overtime;
-        const newPayslip = await createOrGetCurrentPayslip(helperId, householdId, calculatedSalary);
-        setCurrentPayslip(newPayslip);
-      } else {
-        setCurrentPayslip(payslip);
-      }
-    } catch (error) {
-      console.error('Failed to load payslip:', error);
+      // Load salary slips
+      const slipsData = await getSalarySlips(helperId, householdId);
+      setSalarySlips(slipsData);
+    } catch (err) {
+      console.error('Failed to load helper data:', err);
+      setError(t['error.load_data'] || 'Failed to load data. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleToggleWorking = async (holiday: HKStatutoryHoliday) => {
-    const existing = holidayRecords.get(holiday.holidayDate);
-    const currentlyWorking = existing?.isWorking || false;
-    
-    if (!currentlyWorking) {
-      // Turning ON - show compensation modal
-      setShowCompensationModal({ holiday });
-    } else {
-      // Turning OFF - clear record
-      try {
-        await upsertHelperHolidayRecord(
-          householdId,
-          helperId,
-          holiday.holidayDate,
-          holiday.holidayName,
-          false,
-          null,
-          0,
-          false
-        );
-        loadHolidays();
-        loadPayslip(); // Refresh overtime totals
-      } catch (error) {
-        console.error('Failed to update holiday record:', error);
-      }
+  // ─────────────────────────────────────────────────────────────────
+  // Contract Handlers
+  // ─────────────────────────────────────────────────────────────────
+  const handleContractSubmit = async () => {
+    if (!contractForm.employmentStartDate || !contractForm.baseSalary) {
+      setError(t['error.required_fields'] || 'Please fill in all required fields');
+      return;
     }
-  };
-
-  const handleCompensationSelect = async (type: CompensationType) => {
-    if (!showCompensationModal) return;
-    
-    if (type === 'lieu') {
-      // Time in Lieu - save immediately
-      const { holiday } = showCompensationModal;
-      try {
-        await upsertHelperHolidayRecord(
-          householdId,
-          helperId,
-          holiday.holidayDate,
-          holiday.holidayName,
-          true,
-          'lieu',
-          0,
-          false
-        );
-        setShowCompensationModal(null);
-        loadHolidays();
-      } catch (error) {
-        console.error('Failed to save compensation:', error);
-      }
-    } else {
-      // Overtime - show amount input modal
-      setShowOvertimeModal(showCompensationModal);
-      setShowCompensationModal(null);
-      setOvertimeAmount('');
-      setAddToPayslip(true);
-    }
-  };
-
-  const handleOvertimeSave = async () => {
-    if (!showOvertimeModal) return;
-    const { holiday } = showOvertimeModal;
-    const amount = parseInt(overtimeAmount) || 0;
     
     setIsLoading(true);
     try {
-      await upsertHelperHolidayRecord(
-        householdId,
-        helperId,
-        holiday.holidayDate,
-        holiday.holidayName,
-        true,
-        'overtime',
-        amount,
-        addToPayslip
+      if (contract) {
+        // Update existing
+        await updateHelperContract(contract.id, {
+          employmentStartDate: contractForm.employmentStartDate,
+          baseSalary: parseInt(contractForm.baseSalary) || 0,
+          foodAllowance: parseInt(contractForm.foodAllowance) || 0,
+        });
+      } else {
+        // Create new
+        await createHelperContract({
+          userId: helperId,
+          householdId,
+          employmentStartDate: contractForm.employmentStartDate,
+          baseSalary: parseInt(contractForm.baseSalary) || 0,
+          foodAllowance: parseInt(contractForm.foodAllowance) || 0,
+        });
+      }
+      
+      haptics.success();
+      setShowContractSheet(false);
+      loadData();
+    } catch (err) {
+      console.error('Failed to save contract:', err);
+      setError(t['error.save_contract'] || 'Failed to save contract. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  const openContractSheet = () => {
+    if (contract) {
+      setContractForm({
+        employmentStartDate: contract.employmentStartDate,
+        baseSalary: contract.baseSalary.toString(),
+        foodAllowance: contract.foodAllowance.toString(),
+      });
+    } else {
+      setContractForm({
+        employmentStartDate: '',
+        baseSalary: '5100',
+        foodAllowance: '1236',
+      });
+    }
+    setShowContractSheet(true);
+  };
+
+  // ─────────────────────────────────────────────────────────────────
+  // Salary Slip Handlers
+  // ─────────────────────────────────────────────────────────────────
+  const handleDeleteSlip = async (slipId: string) => {
+    setIsLoading(true);
+    try {
+      await deleteSalarySlip(slipId);
+      haptics.success();
+      setShowDeleteConfirm(null);
+      loadData();
+    } catch (err) {
+      console.error('Failed to delete slip:', err);
+      setError(t['error.delete_slip'] || 'Failed to delete salary slip. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  const handleSign = async () => {
+    if (!showSignConfirm) return;
+    
+    const { slipId, type } = showSignConfirm;
+    setIsLoading(true);
+    
+    try {
+      if (type === 'employer') {
+        const signerId = selectedSignerForSlip[slipId] || currentUser.id;
+        const signer = users.find(u => u.id === signerId);
+        const signerName = signer ? (signer.firstName || signer.name?.split(' ')[0] || 'Employer') : 'Employer';
+        await signAsEmployer(slipId, signerId, signerName);
+      } else {
+        await signAsHelper(slipId);
+      }
+      
+      haptics.success();
+      setShowSignConfirm(null);
+      loadData();
+    } catch (err: any) {
+      console.error('Failed to sign slip:', err);
+      setError(err.message || t['error.sign_slip'] || 'Failed to sign. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  const toggleSlipExpanded = (slipId: string) => {
+    setExpandedSlips(prev => {
+      const next = new Set(prev);
+      if (next.has(slipId)) {
+        next.delete(slipId);
+      } else {
+        next.add(slipId);
+      }
+      return next;
+    });
+  };
+
+  // ─────────────────────────────────────────────────────────────────
+  // PDF Export
+  // ─────────────────────────────────────────────────────────────────
+  const handleExportPDF = async (slip: SalarySlip) => {
+    haptics.medium();
+    
+    try {
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+      });
+      
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const margin = 20;
+      let y = 20;
+      
+      // Load logo
+      let logoDataUrl: string | null = null;
+      try {
+        const logoImg = new Image();
+        logoImg.crossOrigin = 'anonymous';
+        logoImg.src = '/helpy-logo-blue.png';
+        
+        await new Promise<void>((resolve) => {
+          logoImg.onload = () => {
+            const canvas = document.createElement('canvas');
+            const targetWidth = 200;
+            const aspectRatio = logoImg.height / logoImg.width;
+            const targetHeight = Math.round(targetWidth * aspectRatio);
+            canvas.width = targetWidth;
+            canvas.height = targetHeight;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+              ctx.fillStyle = '#FFFFFF';
+              ctx.fillRect(0, 0, targetWidth, targetHeight);
+              ctx.drawImage(logoImg, 0, 0, targetWidth, targetHeight);
+              logoDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+            }
+            resolve();
+          };
+          logoImg.onerror = () => resolve();
+          setTimeout(() => resolve(), 2000);
+        });
+      } catch {
+        // Logo loading failed
+      }
+      
+      // Header
+      if (logoDataUrl) {
+        const logoWidth = 24;
+        const logoHeight = logoWidth * (1889 / 4096);
+        doc.addImage(logoDataUrl, 'JPEG', margin, y, logoWidth, logoHeight);
+      } else {
+        doc.setFontSize(20);
+        doc.setTextColor('#3EAFD2');
+        doc.setFont('helvetica', 'bold');
+        doc.text('helpy', margin, y + 6);
+      }
+      
+      doc.setFontSize(10);
+      doc.setTextColor('#3EAFD2');
+      doc.setFont('helvetica', 'normal');
+      doc.text('www.helpyfam.com', pageWidth - margin, y + 6, { align: 'right' });
+      
+      y += 20;
+      
+      // Title
+      doc.setFontSize(18);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor('#1a1a1a');
+      doc.text(t['salary.slip_title'] || 'Salary Slip', margin, y);
+      y += 12;
+      
+      // Helper info box
+      doc.setFillColor('#f5f5f5');
+      doc.roundedRect(margin, y, pageWidth - margin * 2, 30, 3, 3, 'F');
+      
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.text(helper.firstName || helper.name?.split(' ')[0] || 'Helper', margin + 5, y + 8);
+      
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor('#666666');
+      
+      if (contract?.employmentStartDate) {
+        const startDate = new Date(contract.employmentStartDate);
+        doc.text(
+          `${t['salary.started'] || 'Started'}: ${startDate.toLocaleDateString(langCode, { day: 'numeric', month: 'short', year: 'numeric' })}`,
+          margin + 5,
+          y + 16
+        );
+      }
+      
+      const periodStart = new Date(slip.paymentPeriodStart);
+      const periodEnd = new Date(slip.paymentPeriodEnd);
+      doc.text(
+        `${t['salary.payment_period'] || 'Payment Period'}: ${periodStart.toLocaleDateString(langCode, { day: 'numeric', month: 'short', year: 'numeric' })} - ${periodEnd.toLocaleDateString(langCode, { day: 'numeric', month: 'short', year: 'numeric' })}`,
+        margin + 5,
+        y + 24
       );
       
-      setShowOvertimeModal(null);
-      loadHolidays();
-      loadPayslip(); // Refresh to update overtime totals
-    } catch (error) {
-      console.error('Failed to save overtime:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleSignClick = (type: 'employer' | 'helper') => {
-    // Validate role-based permissions
-    if (type === 'employer' && !isAdmin) {
-      setError(t['error.only_admin_sign'] || 'Only Admin users can sign the employer side');
-      return;
-    }
-    if (type === 'helper' && !isHelper) {
-      setError(t['error.only_helper_sign'] || 'Only the Helper can sign their side');
-      return;
-    }
-    // Show confirmation modal
-    setShowSignConfirmModal(type);
-  };
-
-  const handleChangeAmount = () => {
-    if (!currentPayslip) return;
-    setCustomAmount(currentPayslip.salaryAmount.toString());
-    setShowChangeAmountModal(true);
-  };
-
-  const handleSaveCustomAmount = async () => {
-    if (!currentPayslip) return;
-    const newAmount = parseInt(customAmount) || 0;
-    
-    setIsLoading(true);
-    try {
-      await updatePayslipAmount(currentPayslip.id, newAmount);
-      setShowChangeAmountModal(false);
-      loadPayslip();
-    } catch (err: any) {
-      console.error('Failed to update amount:', err);
-      setError(t['error.update_amount'] || 'Could not update amount. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleSignConfirm = async () => {
-    if (!showSignConfirmModal || !currentPayslip) return;
-    
-    setIsLoading(true);
-    try {
-      await signPayslip(currentPayslip.id, showSignConfirmModal, currentUser.id);
-      setShowSignConfirmModal(null);
-      loadPayslip();
-    } catch (err) {
-      console.error('Failed to sign payslip:', err);
-      setError(t['error.sign_payslip'] || 'Failed to sign payslip. It may have already been signed.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const loadPastHolidays = async () => {
-    try {
-      const past = await getPastHolidays(helperId, householdId);
-      setPastHolidays(past);
-      setShowPastHolidays(true);
-    } catch (error) {
-      console.error('Failed to load past holidays:', error);
-    }
-  };
-
-  const loadPastPayslips = async () => {
-    try {
-      // In demo mode, use demo payslips
-      if (isDemoMode) {
-        setPastPayslips(demoPastPayslips);
-        setShowPastPayslips(true);
-        return;
+      y += 40;
+      
+      // Salary breakdown
+      doc.setTextColor('#1a1a1a');
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text(t['salary.breakdown'] || 'Salary Breakdown', margin, y);
+      y += 8;
+      
+      // Table
+      const tableData = [
+        [t['salary.base_salary'] || 'Base Salary', `HK$${slip.baseSalary.toLocaleString()}`],
+        [t['salary.extra_salary'] || 'Extra Salary', `HK$${slip.extraSalary.toLocaleString()}`],
+        [t['salary.deduction'] || 'Salary Deduction', `HK$${slip.salaryDeduction.toLocaleString()}`],
+      ];
+      
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'normal');
+      
+      tableData.forEach(([label, value]) => {
+        doc.text(label, margin, y);
+        doc.text(value, pageWidth - margin, y, { align: 'right' });
+        y += 7;
+      });
+      
+      // Total line
+      y += 3;
+      doc.setDrawColor('#1a1a1a');
+      doc.line(margin, y, pageWidth - margin, y);
+      y += 8;
+      
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(14);
+      doc.text(t['salary.total_payout'] || 'Total Payout', margin, y);
+      doc.setTextColor('#3EAFD2');
+      doc.text(`HK$${slip.totalPayout.toLocaleString()}`, pageWidth - margin, y, { align: 'right' });
+      
+      y += 15;
+      
+      // Note
+      if (slip.note) {
+        doc.setTextColor('#1a1a1a');
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text(t['salary.note'] || 'Note', margin, y);
+        y += 7;
+        
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor('#666666');
+        const noteLines = doc.splitTextToSize(slip.note, pageWidth - margin * 2);
+        doc.text(noteLines, margin, y);
+        y += noteLines.length * 5 + 10;
       }
       
-      const past = await getPastPayslips(helperId, householdId);
-      setPastPayslips(past);
-      setShowPastPayslips(true);
-    } catch (error) {
-      console.error('Failed to load past payslips:', error);
+      // Signatures section
+      y += 10;
+      doc.setTextColor('#1a1a1a');
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text(t['salary.signatures'] || 'Signatures', margin, y);
+      y += 10;
+      
+      const sigBoxWidth = (pageWidth - margin * 2 - 10) / 2;
+      const sigBoxHeight = 40;
+      
+      // Employer signature box
+      doc.setDrawColor('#cccccc');
+      doc.setFillColor('#fafafa');
+      doc.roundedRect(margin, y, sigBoxWidth, sigBoxHeight, 2, 2, 'FD');
+      
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor('#1a1a1a');
+      doc.text(t['salary.employer'] || 'Employer', margin + 5, y + 8);
+      
+      if (slip.employerSignedAt) {
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor('#22c55e');
+        doc.text(slip.employerSignerName || 'Signed', margin + 5, y + 18);
+        doc.setFontSize(8);
+        doc.setTextColor('#666666');
+        const signDate = new Date(slip.employerSignedAt);
+        doc.text(signDate.toLocaleDateString(langCode, { day: 'numeric', month: 'short', year: 'numeric' }), margin + 5, y + 25);
+      } else {
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor('#999999');
+        doc.text(t['salary.not_signed'] || 'Not signed', margin + 5, y + 20);
+      }
+      
+      // Helper signature box
+      doc.setDrawColor('#cccccc');
+      doc.setFillColor('#fafafa');
+      doc.roundedRect(margin + sigBoxWidth + 10, y, sigBoxWidth, sigBoxHeight, 2, 2, 'FD');
+      
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor('#1a1a1a');
+      doc.text(t['salary.helper'] || 'Helper', margin + sigBoxWidth + 15, y + 8);
+      
+      if (slip.helperSignedAt) {
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor('#22c55e');
+        doc.text(helper.firstName || helper.name?.split(' ')[0] || 'Signed', margin + sigBoxWidth + 15, y + 18);
+        doc.setFontSize(8);
+        doc.setTextColor('#666666');
+        const signDate = new Date(slip.helperSignedAt);
+        doc.text(signDate.toLocaleDateString(langCode, { day: 'numeric', month: 'short', year: 'numeric' }), margin + sigBoxWidth + 15, y + 25);
+      } else {
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor('#999999');
+        doc.text(t['salary.not_signed'] || 'Not signed', margin + sigBoxWidth + 15, y + 20);
+      }
+      
+      // Footer
+      const footerY = doc.internal.pageSize.getHeight() - 15;
+      doc.setFontSize(9);
+      doc.setTextColor('#999999');
+      doc.text(
+        `Generated by Helpy | ${new Date().toLocaleDateString(langCode, { day: 'numeric', month: 'short', year: 'numeric' })}`,
+        pageWidth / 2,
+        footerY,
+        { align: 'center' }
+      );
+      
+      // Generate filename
+      const helperName = helper.firstName || helper.name?.split(' ')[0] || 'Helper';
+      const periodStr = `${periodStart.toLocaleDateString(langCode, { month: 'short', year: 'numeric' })}`;
+      const safeFilename = `Salary Slip - ${helperName} - ${periodStr}.pdf`;
+      
+      // Share or download
+      const pdfBlob = doc.output('blob');
+      const file = new File([pdfBlob], safeFilename, { type: 'application/pdf' });
+      
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        haptics.success();
+        await navigator.share({
+          files: [file],
+          title: safeFilename,
+        });
+      } else {
+        haptics.success();
+        doc.save(safeFilename);
+      }
+    } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') {
+        return; // User cancelled
+      }
+      console.error('Failed to export PDF:', err);
+      setError(t['error.export_pdf'] || 'Failed to export PDF. Please try again.');
     }
   };
 
-  // Separate past payslips into unsigned (need attention) and signed (completed)
-  const unsignedPastPayslips = pastPayslips.filter(
-    p => !p.employerSignedAt || !p.helperSignedAt
-  );
-  const signedPastPayslips = pastPayslips.filter(
-    p => p.employerSignedAt && p.helperSignedAt
-  );
+  // ─────────────────────────────────────────────────────────────────
+  // Separate slips into unsigned and signed
+  // ─────────────────────────────────────────────────────────────────
+  const unsignedSlips = salarySlips.filter(s => !s.employerSignedAt || !s.helperSignedAt);
+  const signedSlips = salarySlips.filter(s => s.employerSignedAt && s.helperSignedAt);
 
-  const currentMonth = new Date().toLocaleDateString('en-US', { 
-    month: 'long', 
-    year: 'numeric' 
-  });
+  // ─────────────────────────────────────────────────────────────────
+  // Render
+  // ─────────────────────────────────────────────────────────────────
+  if (isLoading && !contract && salarySlips.length === 0) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 size={24} className="animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -357,835 +572,387 @@ export const HelperManagementContent: React.FC<Props> = ({
         title={t['common.error'] || 'Error'}
       />
       
-      {/* Helper Info Header */}
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      {/* HELPER INFO HEADER */}
+      {/* ═══════════════════════════════════════════════════════════════ */}
       <div className="pb-2">
         <p className="text-body font-bold text-foreground" style={{ fontSize: '20px' }}>
           {helper.firstName || helper.name?.split(' ')[0] || 'Helper'}
         </p>
-        {helper.helperStartDate && (
+        {contract?.employmentStartDate && (
           <p className="text-caption text-muted-foreground" style={{ fontSize: '14px' }}>
-            {t['helper.started'] || 'Started'}: {new Date(helper.helperStartDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+            {t['helper.started'] || 'Started'}: {new Date(contract.employmentStartDate).toLocaleDateString(langCode, { day: 'numeric', month: 'short', year: 'numeric' })}
           </p>
         )}
       </div>
       
       {/* ═══════════════════════════════════════════════════════════════ */}
-      {/* TILE 1: Statutory Holidays */}
+      {/* CONTRACT SECTION */}
       {/* ═══════════════════════════════════════════════════════════════ */}
       <div className="bg-card rounded-xl p-4 shadow-sm">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <Calendar size={20} className="text-primary" />
+            <FileText size={20} className="text-primary" />
             <h3 className="text-title font-semibold">
-              {t['helper.statutory_holidays'] || 'Statutory Holidays'}
+              {t['salary.contract'] || 'Employment Contract'}
             </h3>
           </div>
-          <button
-            onClick={loadPastHolidays}
-            className="text-caption text-primary"
-          >
-            {t['common.past'] || 'Past'}
-          </button>
-        </div>
-        
-        <div className="space-y-3">
-          {upcomingHolidays.map(holiday => {
-            const record = holidayRecords.get(holiday.holidayDate);
-            const isWorking = record?.isWorking || false;
-            const compensationType = record?.compensationType;
-            
-            return (
-              <div 
-                key={holiday.id}
-                className="flex items-center justify-between py-2 border-b border-border last:border-0"
-              >
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <p className="text-body font-medium">{holiday.holidayName}</p>
-                    {/* TIL Tag */}
-                    {isWorking && compensationType === 'lieu' && (
-                      <span className="px-1.5 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 rounded">
-                        {t['helper.til_badge'] || 'TIL'}
-                      </span>
-                    )}
-                    {/* OT Tag with amount */}
-                    {isWorking && compensationType === 'overtime' && (
-                      <span className="px-1.5 py-0.5 text-xs font-medium bg-orange-100 text-orange-700 rounded">
-                        OT {record?.overtimeAmount ? `$${record.overtimeAmount}` : ''}
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-caption text-muted-foreground">
-                    {new Date(holiday.holidayDate).toLocaleDateString('en-GB', {
-                      weekday: 'short',
-                      day: 'numeric',
-                      month: 'short',
-                      year: 'numeric',
-                    })}
-                  </p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-caption text-muted-foreground">
-                    {t['helper.working'] || 'Working?'}
-                  </span>
-                  <button
-                    onClick={() => handleToggleWorking(holiday)}
-                    disabled={isHelper}
-                    className={`w-12 h-6 rounded-full transition-colors relative ${
-                      isWorking ? 'bg-primary' : 'bg-muted'
-                    } ${isHelper ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  >
-                    <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${
-                      isWorking ? 'translate-x-7' : 'translate-x-1'
-                    }`} />
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-          
-          {upcomingHolidays.length === 0 && (
-            <p className="text-center text-muted-foreground py-4">
-              {t['helper.no_upcoming_holidays'] || 'No upcoming holidays'}
-            </p>
+          {canManage && (
+            <button
+              onClick={openContractSheet}
+              className="text-caption text-primary flex items-center gap-1"
+            >
+              {contract ? <Pencil size={14} /> : <Plus size={14} />}
+              {contract ? (t['common.edit'] || 'Edit') : (t['common.setup'] || 'Set Up')}
+            </button>
           )}
         </div>
+        
+        {contract ? (
+          <div className="space-y-2">
+            <div className="flex justify-between">
+              <span className="text-body text-muted-foreground">{t['salary.base_salary'] || 'Base Salary'}</span>
+              <span className="text-body text-foreground">HK${contract.baseSalary.toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-body text-muted-foreground">{t['salary.food_allowance'] || 'Food Allowance'}</span>
+              <span className="text-body text-foreground">HK${contract.foodAllowance.toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between pt-2 border-t border-border">
+              <span className="text-body font-bold text-foreground">{t['salary.monthly_total'] || 'Monthly Total'}</span>
+              <span className="text-body font-bold text-foreground">HK${(contract.baseSalary + contract.foodAllowance).toLocaleString()}</span>
+            </div>
+          </div>
+        ) : (
+          <div className="text-center py-4">
+            <p className="text-body text-muted-foreground mb-3">
+              {t['salary.no_contract'] || 'No contract set up yet'}
+            </p>
+            {canManage && (
+              <button
+                onClick={openContractSheet}
+                className="px-4 py-2 bg-primary text-primary-foreground rounded-lg transition-colors"
+              >
+                {t['salary.setup_contract'] || 'Set Up Contract'}
+              </button>
+            )}
+          </div>
+        )}
       </div>
-
+      
       {/* ═══════════════════════════════════════════════════════════════ */}
-      {/* TILE 2: Payslip Section */}
+      {/* SALARY SLIPS SECTION */}
       {/* ═══════════════════════════════════════════════════════════════ */}
       <div>
-        {/* Section Title */}
         <div className="flex items-center gap-2 mb-4">
           <FileText size={20} className="text-primary" />
           <h3 className="text-title font-semibold">
-            {t['helper.payslip'] || 'Payslip'}
+            {t['salary.slips'] || 'Salary Slips'}
           </h3>
         </div>
         
-        {!salaryConfigured ? (
-          /* Salary not configured - show Input button */
+        {salarySlips.length === 0 ? (
           <div className="bg-card rounded-xl p-4 shadow-sm text-center py-6">
-            <p className="text-body text-muted-foreground mb-3">
-              {!helper.helperStartDate && !helper.helperBaseSalary
-                ? (t['helper.missing_start_and_salary'] || 'Set the start date and salary to generate payslips')
-                : !helper.helperStartDate
-                ? (t['helper.missing_start_date'] || 'Set the start date to generate payslips')
-                : (t['helper.missing_salary'] || 'Set the salary to generate payslips')
-              }
+            <p className="text-body text-muted-foreground">
+              {t['salary.no_slips'] || 'No salary slips yet'}
             </p>
-            {!isHelper && (
+            {canManage && contract && onCreateSlipClick && (
               <button
-                onClick={() => {
-                  if (onEditHelper) {
-                    onEditHelper(helperId);
-                  } else {
-                    onNavigateToProfile();
-                  }
-                }}
-                className="px-4 py-2 bg-primary text-primary-foreground rounded-lg transition-colors"
+                onClick={onCreateSlipClick}
+                className="mt-3 px-4 py-2 bg-primary text-primary-foreground rounded-lg transition-colors"
               >
-                {t['helper.input_salary'] || 'Set Up'}
+                {t['salary.create_slip'] || 'Create Salary Slip'}
               </button>
             )}
           </div>
         ) : (
-          /* Salary configured - show payslip cards */
           <div className="space-y-3">
-            {/* Current Month Payslip Card */}
-            <PayslipCard
-              payslip={currentPayslip}
-              isCurrentMonth={true}
-              baseSalary={baseSalary}
-              otherAllowances={otherAllowances}
-              overtimeTotal={overtimeTotal}
-              totalSalary={totalSalary}
-              isAmountOverridden={isAmountOverridden || false}
-              isAdmin={isAdmin}
-              isHelper={isHelper}
-              helper={helper}
-              users={[]} // Will be passed from parent if needed
-              onSignClick={handleSignClick}
-              onChangeAmount={handleChangeAmount}
-              t={t}
-            />
-            
-            {/* Unsigned Past Payslips - Show in current area until signed */}
-            {unsignedPastPayslips.map(payslip => (
-              <PayslipCard
-                key={payslip.id}
-                payslip={payslip}
-                isCurrentMonth={false}
-                baseSalary={payslip.baseSalary || 0}
-                otherAllowances={payslip.otherAllowancesTotal || 0}
-                overtimeTotal={payslip.overtimeTotal || 0}
-                totalSalary={payslip.salaryAmount}
-                isAmountOverridden={false}
-                isAdmin={isAdmin}
-                isHelper={isHelper}
+            {/* Unsigned Slips */}
+            {unsignedSlips.map(slip => (
+              <SalarySlipCard
+                key={slip.id}
+                slip={slip}
                 helper={helper}
-                users={[]}
-                onSignClick={handleSignClick}
-                onChangeAmount={() => {}}
+                contract={contract}
+                isExpanded={expandedSlips.has(slip.id)}
+                onToggle={() => toggleSlipExpanded(slip.id)}
+                canManage={canManage}
+                isHelper={isHelper}
+                eligibleSigners={eligibleSigners}
+                selectedSigner={selectedSignerForSlip[slip.id]}
+                onSignerChange={(signerId) => setSelectedSignerForSlip(prev => ({ ...prev, [slip.id]: signerId }))}
+                onSignEmployer={() => setShowSignConfirm({ slipId: slip.id, type: 'employer' })}
+                onSignHelper={() => setShowSignConfirm({ slipId: slip.id, type: 'helper' })}
+                onDelete={() => setShowDeleteConfirm(slip.id)}
+                onExportPDF={() => handleExportPDF(slip)}
                 t={t}
+                langCode={langCode}
               />
             ))}
             
-            {/* Past & Signed Salary Toggle Button */}
-            <button
-              onClick={() => {
-                if (showPastPayslips) {
-                  setShowPastPayslips(false);
-                } else {
-                  loadPastPayslips();
-                }
-              }}
-              className="w-full flex items-center justify-start gap-2 py-3 text-body font-medium text-foreground"
-            >
-              {showPastPayslips ? (
-                <>
-                  <ChevronDown size={18} />
-                  {t['helper.hide_past_signed_salary'] || 'Hide Past & Signed Salary'}
-                </>
-              ) : (
-                <>
-                  <ChevronRight size={18} />
-                  {t['helper.show_past_signed_salary'] || 'Past & Signed Salary'}
-                </>
-              )}
-            </button>
-            
-            {/* Past & Signed Payslips (Expanded) - Only show fully signed */}
-            {showPastPayslips && signedPastPayslips.length > 0 && (
-              <PastPayslipsSection
-                payslips={signedPastPayslips}
-                helper={helper}
-                t={t}
-              />
-            )}
-            
-            {/* Message if no signed payslips */}
-            {showPastPayslips && signedPastPayslips.length === 0 && (
-              <div className="text-center py-4 text-caption text-muted-foreground">
-                {t['helper.no_signed_payslips'] || 'No signed payslips yet'}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* ═══════════════════════════════════════════════════════════════ */}
-      {/* MODALS */}
-      {/* ═══════════════════════════════════════════════════════════════ */}
-      
-      {/* Compensation Type Modal - Bottom Sheet */}
-      {showCompensationModal && createPortal(
-        <div 
-          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
-          onClick={(e) => { if (e.target === e.currentTarget) setShowCompensationModal(false); }}
-        >
-          {/* Safe area bottom cover */}
-          <div 
-            className="absolute bottom-0 left-0 right-0 bg-card"
-            style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
-          />
-          <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
-            {/* Header */}
-            <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
-              <h2 className="text-title text-foreground">
-                {t['helper.select_compensation'] || 'Select Compensation Type'}
-              </h2>
-              <p className="text-body text-muted-foreground mt-1">
-                {showCompensationModal.holiday.holidayName}
-              </p>
-            </div>
-
-            {/* Content */}
-            <div className="p-5 space-y-3">
-              <button
-                onClick={() => handleCompensationSelect('lieu')}
-                className="w-full py-3 px-4 bg-secondary rounded-xl text-left transition-colors"
-              >
-                <span className="text-body font-medium">
-                  {t['helper.time_in_lieu'] || 'Time-in-lieu (1 day off)'}
-                </span>
-              </button>
-              <button
-                onClick={() => handleCompensationSelect('overtime')}
-                className="w-full py-3 px-4 bg-secondary rounded-xl text-left transition-colors"
-              >
-                <span className="text-body font-medium">
-                  {t['helper.overtime_pay'] || 'Overtime Pay'}
-                </span>
-              </button>
-            </div>
-
-            {/* Footer */}
-            <div className="p-5 pb-8 border-t border-border shrink-0">
-              <button
-                onClick={() => setShowCompensationModal(null)}
-                className="w-full py-3.5 rounded-xl bg-secondary text-foreground text-body"
-              >
-                {t['common.cancel'] || 'Cancel'}
-              </button>
-            </div>
-          </div>
-        </div>
-      , document.body)}
-
-      {/* Overtime Amount Modal - Bottom Sheet */}
-      {showOvertimeModal && createPortal(
-        <div 
-          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
-          onClick={(e) => { if (e.target === e.currentTarget) setShowOvertimeModal(false); }}
-        >
-          {/* Safe area bottom cover */}
-          <div 
-            className="absolute bottom-0 left-0 right-0 bg-card"
-            style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
-          />
-          <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
-            {/* Header */}
-            <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
-              <h2 className="text-title text-foreground">
-                {t['helper.overtime_amount'] || 'Overtime Pay Amount'}
-              </h2>
-              <p className="text-body text-muted-foreground mt-1">
-                {showOvertimeModal.holiday.holidayName}
-              </p>
-            </div>
-
-            {/* Content */}
-            <div className="p-5">
-              {/* Amount input */}
-              <div className="mb-4">
-                <label className="block text-caption text-muted-foreground mb-1.5">
-                  {t['helper.amount'] || 'Amount (HK$)'}
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
-                  <input
-                    type="number"
-                    autoComplete="one-time-code"
-                    value={overtimeAmount}
-                    onChange={(e) => setOvertimeAmount(e.target.value)}
-                    placeholder="0"
-                    className="w-full pl-8 pr-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
-                  />
-                </div>
-              </div>
-              
-              {/* Add to payslip question */}
-              <div className="p-3 bg-secondary rounded-lg">
-                <p className="text-body mb-3">
-                  {t['helper.add_to_payslip_question'] || "Add this amount to their monthly payslip?"}
-                </p>
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => setAddToPayslip(true)}
-                    className={`flex-1 py-2 rounded-xl transition-colors ${
-                      addToPayslip 
-                        ? 'bg-primary text-primary-foreground' 
-                        : 'bg-muted text-muted-foreground'
-                    }`}
-                  >
-                    {t['common.yes'] || 'Yes'}
-                  </button>
-                  <button
-                    onClick={() => setAddToPayslip(false)}
-                    className={`flex-1 py-2 rounded-xl transition-colors ${
-                      !addToPayslip 
-                        ? 'bg-primary text-primary-foreground' 
-                        : 'bg-muted text-muted-foreground'
-                    }`}
-                  >
-                    {t['common.no'] || 'No'}
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div className="p-5 pb-8 border-t border-border shrink-0 flex gap-3">
-              <button
-                onClick={() => setShowOvertimeModal(null)}
-                className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body"
-              >
-                {t['common.cancel'] || 'Cancel'}
-              </button>
-              <button
-                onClick={handleOvertimeSave}
-                disabled={isLoading}
-                className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body disabled:opacity-50"
-              >
-                {isLoading ? '...' : (t['common.save'] || 'Save')}
-              </button>
-            </div>
-          </div>
-        </div>
-      , document.body)}
-
-      {/* Change Amount Modal - Bottom Sheet */}
-      {showChangeAmountModal && currentPayslip && createPortal(
-        <div 
-          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
-          onClick={(e) => { if (e.target === e.currentTarget) setShowChangeAmountModal(false); }}
-        >
-          {/* Safe area bottom cover */}
-          <div 
-            className="absolute bottom-0 left-0 right-0 bg-card"
-            style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
-          />
-          <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
-            {/* Header */}
-            <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
-              <h2 className="text-title text-foreground">
-                {t['helper.change_amount'] || 'Change Amount'}
-              </h2>
-            </div>
-
-            {/* Content */}
-            <div className="p-5">
-              {/* Current breakdown (read-only) */}
-              <div className="bg-secondary/50 rounded-lg p-3 mb-4 space-y-1 text-caption">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">{t['helper.breakdown_base_salary'] || 'Base Salary'}</span>
-                  <span>${baseSalary.toLocaleString()}</span>
-                </div>
-                {otherAllowances > 0 && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">{t['helper.breakdown_other_allowances'] || 'Other Allowances'}</span>
-                    <span>${otherAllowances.toLocaleString()}</span>
-                  </div>
-                )}
-                {overtimeTotal > 0 && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">{t['helper.breakdown_overtime'] || 'Overtime'}</span>
-                    <span>${overtimeTotal.toLocaleString()}</span>
-                  </div>
-                )}
-                <div className="flex justify-between pt-2 border-t border-border text-body">
-                  <span className="text-muted-foreground">{t['helper.breakdown_calculated_total'] || 'Calculated Total'}</span>
-                  <span className="font-medium">${totalSalary.toLocaleString()}</span>
-                </div>
-              </div>
-              
-              {/* New amount input */}
-              <div className="mb-4">
-                <label className="block text-caption text-muted-foreground mb-1.5">
-                  {t['helper.new_amount'] || 'New Total Amount (HK$)'}
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
-                  <input
-                    type="number"
-                    autoComplete="one-time-code"
-                    value={customAmount}
-                    onChange={(e) => setCustomAmount(e.target.value)}
-                    className="w-full pl-8 pr-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
-                  />
-                </div>
-              </div>
-              
-              {/* Revert button - show only if amount differs from calculated */}
-              {parseInt(customAmount) !== calculatedTotal && (
+            {/* Past & Signed Toggle */}
+            {signedSlips.length > 0 && (
+              <>
                 <button
-                  onClick={() => setCustomAmount(calculatedTotal.toString())}
-                  className="w-full py-2 text-caption text-primary"
+                  onClick={() => setShowPastSlips(!showPastSlips)}
+                  className="w-full flex items-center justify-start gap-2 py-3 text-body font-medium text-foreground"
                 >
-                  {t['helper.revert_to_calculated'] || 'Revert to Calculated Amount'} (${calculatedTotal.toLocaleString()})
+                  {showPastSlips ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+                  {showPastSlips 
+                    ? (t['salary.hide_signed'] || 'Hide Signed Slips')
+                    : (t['salary.show_signed'] || 'Past & Signed Slips')
+                  } ({signedSlips.length})
                 </button>
-              )}
-            </div>
-
-            {/* Footer */}
-            <div className="p-5 pb-8 border-t border-border shrink-0 flex gap-3">
-              <button
-                onClick={() => setShowChangeAmountModal(false)}
-                className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body"
-              >
-                {t['common.cancel'] || 'Cancel'}
-              </button>
-              <button
-                onClick={handleSaveCustomAmount}
-                disabled={isLoading}
-                className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body disabled:opacity-50"
-              >
-                {isLoading ? '...' : (t['common.save'] || 'Save')}
-              </button>
-            </div>
-          </div>
-        </div>
-      , document.body)}
-
-      {/* Sign Confirmation Modal - Bottom Sheet */}
-      {showSignConfirmModal && createPortal(
-        <div 
-          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
-          onClick={(e) => { if (e.target === e.currentTarget) setShowSignConfirmModal(false); }}
-        >
-          {/* Safe area bottom cover */}
-          <div 
-            className="absolute bottom-0 left-0 right-0 bg-card"
-            style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
-          />
-          <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
-            {/* Header */}
-            <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
-                  <AlertTriangle size={20} className="text-amber-600" />
-                </div>
-                <h2 className="text-title text-foreground">
-                  {t['helper.confirm_signature'] || 'Confirm Signature'}
-                </h2>
-              </div>
-            </div>
-
-            {/* Content */}
-            <div className="p-5">
-              <p className="text-body text-muted-foreground mb-4">
-                {t['helper.sign_warning'] || "Press to confirm this month's salary. This action CANNOT be reversed."}
-              </p>
-              
-              <div className="p-3 bg-secondary rounded-lg">
-                <div className="flex justify-between items-center">
-                  <span className="text-caption text-muted-foreground">{currentMonth}</span>
-                  <span className="text-title font-bold text-primary">${totalSalary.toLocaleString()}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div className="p-5 pb-8 border-t border-border shrink-0 flex gap-3">
-              <button
-                onClick={() => setShowSignConfirmModal(null)}
-                className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body"
-              >
-                {t['common.cancel'] || 'Cancel'}
-              </button>
-              <button
-                onClick={handleSignConfirm}
-                disabled={isLoading}
-                className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body disabled:opacity-50"
-              >
-                {isLoading ? '...' : (t['helper.confirm_sign'] || 'Confirm & Sign')}
-              </button>
-            </div>
-          </div>
-        </div>
-      , document.body)}
-
-      {/* Past Holidays Modal */}
-      {showPastHolidays && (
-        <PastHolidaysModal
-          records={pastHolidays}
-          onClose={() => setShowPastHolidays(false)}
-          t={t}
-        />
-      )}
-
-      {/* Past Payslips are now shown inline, not in modal */}
-    </div>
-  );
-};
-
-// ═══════════════════════════════════════════════════════════════════════════
-// NEW PAYSLIP COMPONENTS
-// ═══════════════════════════════════════════════════════════════════════════
-
-// Helper function to format signed date
-const formatSignedDate = (dateString: string | null | undefined): string => {
-  if (!dateString) return '';
-  const date = new Date(dateString);
-  return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-};
-
-// Current Month Payslip Card Component
-const PayslipCard: React.FC<{
-  payslip: HelperPayslipConfirmation | null;
-  isCurrentMonth: boolean;
-  baseSalary: number;
-  otherAllowances: number;
-  overtimeTotal: number;
-  totalSalary: number;
-  isAmountOverridden: boolean;
-  isAdmin: boolean;
-  isHelper: boolean;
-  helper: User;
-  users: User[];
-  onSignClick: (role: 'employer' | 'helper') => void;
-  onChangeAmount: () => void;
-  t: TranslationDictionary;
-}> = ({
-  payslip,
-  isCurrentMonth,
-  baseSalary,
-  otherAllowances,
-  overtimeTotal,
-  totalSalary,
-  isAmountOverridden,
-  isAdmin,
-  isHelper,
-  helper,
-  onSignClick,
-  onChangeAmount,
-  t,
-}) => {
-  const isBothSigned = payslip?.employerSignedAt && payslip?.helperSignedAt;
-  const now = new Date();
-  const monthYear = payslip 
-    ? new Date(payslip.year, payslip.month - 1).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })
-    : now.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
-
-  return (
-    <div className="bg-card rounded-xl p-4 shadow-sm">
-      {/* Header: Month + Year with optional checkmark */}
-      <div className="flex items-center justify-between mb-1">
-        <h4 className="text-foreground font-bold" style={{ fontSize: '20px' }}>{monthYear}</h4>
-        {isBothSigned && (
-          <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center">
-            <Check size={14} className="text-green-600" />
+                
+                {showPastSlips && (
+                  <div className="space-y-3">
+                    {signedSlips.map(slip => (
+                      <SalarySlipCard
+                        key={slip.id}
+                        slip={slip}
+                        helper={helper}
+                        contract={contract}
+                        isExpanded={expandedSlips.has(slip.id)}
+                        onToggle={() => toggleSlipExpanded(slip.id)}
+                        canManage={canManage}
+                        isHelper={isHelper}
+                        eligibleSigners={eligibleSigners}
+                        selectedSigner={selectedSignerForSlip[slip.id]}
+                        onSignerChange={(signerId) => setSelectedSignerForSlip(prev => ({ ...prev, [slip.id]: signerId }))}
+                        onSignEmployer={() => setShowSignConfirm({ slipId: slip.id, type: 'employer' })}
+                        onSignHelper={() => setShowSignConfirm({ slipId: slip.id, type: 'helper' })}
+                        onDelete={() => setShowDeleteConfirm(slip.id)}
+                        onExportPDF={() => handleExportPDF(slip)}
+                        t={t}
+                        langCode={langCode}
+                      />
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
           </div>
         )}
       </div>
-      <p className="text-caption text-muted-foreground mb-4">{t['helper.payslip'] || 'Payslip'}</p>
       
-      {/* Salary Breakdown */}
-      <div className="space-y-1 mb-4">
-        <div className="flex items-center justify-between">
-          <span className="text-body text-muted-foreground">{t['helper.base_salary'] || 'Base Salary'}</span>
-          <span className="text-body text-foreground">
-            HK${baseSalary.toLocaleString()}
-          </span>
-        </div>
-        <div className="flex items-center justify-between">
-          <span className="text-body text-muted-foreground">{t['helper.other_allowance'] || 'Other Allowance'}</span>
-          <span className="text-body text-foreground">
-            HK${otherAllowances.toLocaleString()}
-          </span>
-        </div>
-        <div className="flex items-center justify-between">
-          <span className="text-body text-muted-foreground">{t['helper.overtime'] || 'Overtime'}</span>
-          <span className="text-body text-foreground">
-            HK${overtimeTotal.toLocaleString()}
-          </span>
-        </div>
-        <div className="flex items-center justify-between pt-1">
-          <span className="text-body text-foreground font-bold">{t['helper.total'] || 'Total'}</span>
-          <span className="text-title font-bold text-foreground">
-            HK${(payslip?.salaryAmount || totalSalary).toLocaleString()}
-          </span>
-        </div>
-      </div>
-      
-      {/* Separator Line */}
-      <div className="border-t border-border mb-4"></div>
-      
-      {/* Change Amount button - only for Admin and only if no signatures */}
-      {isCurrentMonth && isAdmin && !payslip?.employerSignedAt && !payslip?.helperSignedAt && (
-        <button
-          onClick={onChangeAmount}
-          className="w-full text-caption text-primary mb-4"
-        >
-          {t['helper.change_amount'] || 'Change Amount'}
-        </button>
-      )}
-      
-      {/* Signature Section */}
-      <div className="grid grid-cols-2 gap-4">
-        {/* Employer */}
-        <div className="text-center">
-          <div className="text-caption text-muted-foreground mb-2">
-            {t['helper.employer'] || 'Employer'}
-          </div>
-          {payslip?.employerSignedAt ? (
-            <div className={`rounded-xl p-3 ${isCurrentMonth ? 'bg-green-50 dark:bg-green-900/20' : ''}`}>
-              <div className="flex items-center justify-center gap-1 text-green-600">
-                <Check size={16} />
-                <span className="text-caption font-medium">{t['helper.signed'] || 'Signed'}</span>
-              </div>
-              <p className="text-caption text-muted-foreground mt-1">David</p>
-              <p className="text-micro text-muted-foreground">{formatSignedDate(payslip.employerSignedAt)}</p>
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      {/* CONTRACT SHEET */}
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      <BottomSheet isOpen={showContractSheet} onClose={() => setShowContractSheet(false)}>
+        <BottomSheet.Header>
+          <h2 className="text-title text-foreground">
+            {contract ? (t['salary.edit_contract'] || 'Edit Contract') : (t['salary.setup_contract'] || 'Set Up Contract')}
+          </h2>
+        </BottomSheet.Header>
+        <BottomSheet.Body>
+          <div className="space-y-4">
+            {/* Employment Start Date */}
+            <div>
+              <label className="block text-caption text-muted-foreground mb-2">
+                {t['salary.start_date'] || 'Employment Start Date'} *
+              </label>
+              <input
+                type="date"
+                value={contractForm.employmentStartDate}
+                onChange={(e) => setContractForm(prev => ({ ...prev, employmentStartDate: e.target.value }))}
+                className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
+              />
             </div>
-          ) : (
-            <button
-              onClick={() => onSignClick('employer')}
-              disabled={!isAdmin}
-              className={`w-full px-4 py-3 rounded-xl transition-colors ${
-                !isAdmin 
-                  ? 'bg-muted text-muted-foreground cursor-not-allowed'
-                  : 'bg-secondary text-foreground'
-              }`}
-            >
-              {t['helper.sign'] || 'Sign'}
-            </button>
-          )}
-        </div>
-        
-        {/* Helper */}
-        <div className="text-center">
-          <div className="text-caption text-muted-foreground mb-2">
-            {t['helper.helper'] || 'Helper'}
-          </div>
-          {payslip?.helperSignedAt ? (
-            <div className={`rounded-xl p-3 ${isCurrentMonth ? 'bg-green-50 dark:bg-green-900/20' : ''}`}>
-              <div className="flex items-center justify-center gap-1 text-green-600">
-                <Check size={16} />
-                <span className="text-caption font-medium">{t['helper.signed'] || 'Signed'}</span>
-              </div>
-              <p className="text-caption text-muted-foreground mt-1">{helper.firstName || helper.name?.split(' ')[0] || 'Helper'}</p>
-              <p className="text-micro text-muted-foreground">{formatSignedDate(payslip.helperSignedAt)}</p>
+            
+            {/* Base Salary */}
+            <div>
+              <label className="block text-caption text-muted-foreground mb-2">
+                {t['salary.base_salary'] || 'Base Salary'} (HK$) *
+              </label>
+              <input
+                type="number"
+                value={contractForm.baseSalary}
+                onChange={(e) => setContractForm(prev => ({ ...prev, baseSalary: e.target.value }))}
+                placeholder="5100"
+                className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
+              />
             </div>
-          ) : (
+            
+            {/* Food Allowance */}
+            <div>
+              <label className="block text-caption text-muted-foreground mb-2">
+                {t['salary.food_allowance'] || 'Food Allowance'} (HK$)
+              </label>
+              <input
+                type="number"
+                value={contractForm.foodAllowance}
+                onChange={(e) => setContractForm(prev => ({ ...prev, foodAllowance: e.target.value }))}
+                placeholder="1236"
+                className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
+              />
+            </div>
+          </div>
+        </BottomSheet.Body>
+        <BottomSheet.Footer>
+          <div className="flex gap-3">
             <button
-              onClick={() => onSignClick('helper')}
-              disabled={!isHelper}
-              className={`w-full px-4 py-3 rounded-xl transition-colors ${
-                !isHelper 
-                  ? 'bg-muted text-muted-foreground cursor-not-allowed'
-                  : 'bg-secondary text-foreground'
-              }`}
+              onClick={() => setShowContractSheet(false)}
+              className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body"
             >
-              {t['helper.sign'] || 'Sign'}
+              {t['common.cancel'] || 'Cancel'}
             </button>
-          )}
-        </div>
-      </div>
+            <button
+              onClick={handleContractSubmit}
+              disabled={isLoading}
+              className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body font-semibold disabled:opacity-50"
+            >
+              {isLoading ? <Loader2 size={18} className="animate-spin mx-auto" /> : (t['common.save'] || 'Save')}
+            </button>
+          </div>
+        </BottomSheet.Footer>
+      </BottomSheet>
+      
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      {/* DELETE CONFIRMATION */}
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      <BottomSheet isOpen={showDeleteConfirm !== null} onClose={() => setShowDeleteConfirm(null)}>
+        <BottomSheet.Header>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-destructive/10 flex items-center justify-center">
+              <AlertTriangle size={20} className="text-destructive" />
+            </div>
+            <h2 className="text-title text-foreground">
+              {t['salary.delete_confirm_title'] || 'Delete Salary Slip?'}
+            </h2>
+          </div>
+        </BottomSheet.Header>
+        <BottomSheet.Body>
+          <p className="text-body text-muted-foreground">
+            {t['salary.delete_confirm_message'] || 'This action cannot be undone. The salary slip will be permanently deleted.'}
+          </p>
+        </BottomSheet.Body>
+        <BottomSheet.Footer>
+          <div className="flex gap-3">
+            <button
+              onClick={() => setShowDeleteConfirm(null)}
+              className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body"
+            >
+              {t['common.cancel'] || 'Cancel'}
+            </button>
+            <button
+              onClick={() => showDeleteConfirm && handleDeleteSlip(showDeleteConfirm)}
+              disabled={isLoading}
+              className="flex-1 py-3.5 rounded-xl bg-destructive text-white text-body font-semibold disabled:opacity-50"
+            >
+              {isLoading ? <Loader2 size={18} className="animate-spin mx-auto" /> : (t['common.delete'] || 'Delete')}
+            </button>
+          </div>
+        </BottomSheet.Footer>
+      </BottomSheet>
+      
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      {/* SIGN CONFIRMATION */}
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      <BottomSheet isOpen={showSignConfirm !== null} onClose={() => setShowSignConfirm(null)}>
+        <BottomSheet.Header>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
+              <AlertTriangle size={20} className="text-amber-600" />
+            </div>
+            <h2 className="text-title text-foreground">
+              {t['salary.sign_confirm_title'] || 'Confirm Signature'}
+            </h2>
+          </div>
+        </BottomSheet.Header>
+        <BottomSheet.Body>
+          <p className="text-body text-muted-foreground">
+            {t['salary.sign_confirm_message'] || 'This action CANNOT be reversed. Please make sure you have checked everything before signing.'}
+          </p>
+        </BottomSheet.Body>
+        <BottomSheet.Footer>
+          <div className="flex gap-3">
+            <button
+              onClick={() => setShowSignConfirm(null)}
+              className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body"
+            >
+              {t['common.cancel'] || 'Cancel'}
+            </button>
+            <button
+              onClick={handleSign}
+              disabled={isLoading}
+              className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body font-semibold disabled:opacity-50"
+            >
+              {isLoading ? <Loader2 size={18} className="animate-spin mx-auto" /> : (t['salary.confirm_sign'] || 'Confirm & Sign')}
+            </button>
+          </div>
+        </BottomSheet.Footer>
+      </BottomSheet>
     </div>
   );
 };
 
-// Past Payslips Section with Year Grouping
-const PastPayslipsSection: React.FC<{
-  payslips: HelperPayslipConfirmation[];
-  helper: User;
-  t: TranslationDictionary;
-}> = ({ payslips, helper, t }) => {
-  const [expandedYears, setExpandedYears] = useState<Set<number>>(new Set());
-  const [expandedPayslips, setExpandedPayslips] = useState<Set<string>>(new Set());
-  
-  // Group payslips by year
-  const currentYear = new Date().getFullYear();
-  const groupedByYear = useMemo(() => {
-    const groups: Record<number, HelperPayslipConfirmation[]> = {};
-    payslips.forEach(slip => {
-      if (!groups[slip.year]) groups[slip.year] = [];
-      groups[slip.year].push(slip);
-    });
-    // Sort each group by month descending
-    Object.keys(groups).forEach(year => {
-      groups[parseInt(year)].sort((a, b) => b.month - a.month);
-    });
-    return groups;
-  }, [payslips]);
-  
-  const years = Object.keys(groupedByYear).map(Number).sort((a, b) => b - a);
-  const currentYearPayslips = groupedByYear[currentYear] || [];
-  const previousYears = years.filter(y => y < currentYear);
-  
-  const toggleYear = (year: number) => {
-    setExpandedYears(prev => {
-      const next = new Set(prev);
-      if (next.has(year)) next.delete(year);
-      else next.add(year);
-      return next;
-    });
-  };
-  
-  const togglePayslip = (id: string) => {
-    setExpandedPayslips(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-  
-  if (payslips.length === 0) {
-    return (
-      <div className="text-center py-6 text-muted-foreground">
-        {t['helper.no_past_payslips'] || 'No past payslips'}
-      </div>
-    );
-  }
-  
-  return (
-    <div className="space-y-2">
-      {/* Current Year Payslips (shown directly) */}
-      {currentYearPayslips.map(slip => (
-        <PastPayslipCard
-          key={slip.id}
-          payslip={slip}
-          helper={helper}
-          isExpanded={expandedPayslips.has(slip.id)}
-          onToggle={() => togglePayslip(slip.id)}
-          t={t}
-        />
-      ))}
-      
-      {/* Previous Years (collapsed by default) */}
-      {previousYears.map(year => (
-        <div key={year} className="w-full">
-          <button
-            onClick={() => toggleYear(year)}
-            className="w-full flex items-center justify-start gap-2 py-3"
-          >
-            {expandedYears.has(year) ? (
-              <ChevronDown size={18} className="text-primary" strokeWidth={2.5} />
-            ) : (
-              <ChevronRight size={18} className="text-primary" strokeWidth={2.5} />
-            )}
-            <span className="text-body font-bold text-primary">{year}</span>
-          </button>
-          
-          {expandedYears.has(year) && (
-            <div className="mt-2 space-y-2 pl-2">
-              {groupedByYear[year].map(slip => (
-                <PastPayslipCard
-                  key={slip.id}
-                  payslip={slip}
-                  helper={helper}
-                  isExpanded={expandedPayslips.has(slip.id)}
-                  onToggle={() => togglePayslip(slip.id)}
-                  t={t}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      ))}
-    </div>
-  );
-};
+// ═══════════════════════════════════════════════════════════════════════════
+// SALARY SLIP CARD COMPONENT
+// ═══════════════════════════════════════════════════════════════════════════
 
-// Individual Past Payslip Card (Expandable)
-const PastPayslipCard: React.FC<{
-  payslip: HelperPayslipConfirmation;
+interface SalarySlipCardProps {
+  slip: SalarySlip;
   helper: User;
+  contract: HelperContract | null;
   isExpanded: boolean;
   onToggle: () => void;
+  canManage: boolean;
+  isHelper: boolean;
+  eligibleSigners: User[];
+  selectedSigner?: string;
+  onSignerChange: (signerId: string) => void;
+  onSignEmployer: () => void;
+  onSignHelper: () => void;
+  onDelete: () => void;
+  onExportPDF: () => void;
   t: TranslationDictionary;
-}> = ({ payslip, helper, isExpanded, onToggle, t }) => {
-  const isBothSigned = payslip.employerSignedAt && payslip.helperSignedAt;
-  const monthYear = new Date(payslip.year, payslip.month - 1).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
+  langCode: string;
+}
+
+const SalarySlipCard: React.FC<SalarySlipCardProps> = ({
+  slip,
+  helper,
+  contract,
+  isExpanded,
+  onToggle,
+  canManage,
+  isHelper,
+  eligibleSigners,
+  selectedSigner,
+  onSignerChange,
+  onSignEmployer,
+  onSignHelper,
+  onDelete,
+  onExportPDF,
+  t,
+  langCode,
+}) => {
+  const isBothSigned = slip.employerSignedAt && slip.helperSignedAt;
+  const periodStart = new Date(slip.paymentPeriodStart);
+  const periodEnd = new Date(slip.paymentPeriodEnd);
+  
+  const formatDate = (date: Date) => date.toLocaleDateString(langCode, { day: 'numeric', month: 'short' });
+  const formatFullDate = (date: Date) => date.toLocaleDateString(langCode, { day: 'numeric', month: 'short', year: 'numeric' });
   
   return (
     <div className="bg-card rounded-xl shadow-sm overflow-hidden">
-      {/* Collapsed View */}
+      {/* Collapsed Header */}
       <button
         onClick={onToggle}
         className="w-full flex items-center justify-between p-4"
       >
         <div className="flex items-center gap-3">
-          <span className="text-body font-bold text-foreground">{monthYear}</span>
+          <span className="text-body font-bold text-foreground">
+            {formatDate(periodStart)} - {formatDate(periodEnd)}
+          </span>
           {isBothSigned && (
             <Check size={16} className="text-green-600" />
           )}
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-body font-semibold text-foreground">HK${payslip.salaryAmount.toLocaleString()}</span>
+          <span className="text-body font-semibold text-foreground">
+            HK${slip.totalPayout.toLocaleString()}
+          </span>
           {isExpanded ? (
             <ChevronDown size={18} className="text-muted-foreground" />
           ) : (
@@ -1194,135 +961,138 @@ const PastPayslipCard: React.FC<{
         </div>
       </button>
       
-      {/* Expanded Details */}
+      {/* Expanded Content */}
       {isExpanded && (
-        <div className="px-4 pb-4 pt-0">
-          {/* Separator - inset from card edges */}
-          <div className="border-t border-border mb-3"></div>
-          <div className="space-y-2 text-caption">
-            {/* Base Salary */}
+        <div className="px-4 pb-4">
+          {/* Separator */}
+          <div className="border-t border-border mb-4"></div>
+          
+          {/* Salary Breakdown */}
+          <div className="space-y-2 mb-4">
             <div className="flex justify-between">
-              <span className="text-muted-foreground">{t['helper.base_salary'] || 'Base Salary'}</span>
-              <span>HK${(payslip.baseSalary || ((payslip.salaryAmount || 0) - (payslip.overtimeTotal || 0) - (payslip.otherAllowancesTotal || 0))).toLocaleString()}</span>
-            </div>
-            {/* Other Allowance */}
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">{t['helper.other_allowance'] || 'Other Allowance'}</span>
-              <span>HK${(payslip.otherAllowancesTotal || 0).toLocaleString()}</span>
-            </div>
-            {/* Overtime */}
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">{t['helper.overtime'] || 'Overtime'}</span>
-              <span>HK${(payslip.overtimeTotal || 0).toLocaleString()}</span>
-            </div>
-            {/* Total */}
-            <div className="flex justify-between pt-1">
-              <span className="text-foreground font-bold">{t['helper.total'] || 'Total'}</span>
-              <span className="font-bold">HK${payslip.salaryAmount.toLocaleString()}</span>
-            </div>
-            {/* Signature details */}
-            <div className="flex justify-between pt-2 border-t border-border mt-2">
-              <span className="text-muted-foreground">{t['helper.employer'] || 'Employer'}</span>
-              <span className={payslip.employerSignedAt ? 'text-green-600' : 'text-muted-foreground'}>
-                {payslip.employerSignedAt 
-                  ? `Signed by David, ${formatSignedDate(payslip.employerSignedAt)}`
-                  : 'Not signed'
-                }
-              </span>
+              <span className="text-body text-muted-foreground">{t['salary.base_salary'] || 'Base Salary'}</span>
+              <span className="text-body">HK${slip.baseSalary.toLocaleString()}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">{t['helper.helper'] || 'Helper'}</span>
-              <span className={payslip.helperSignedAt ? 'text-green-600' : 'text-muted-foreground'}>
-                {payslip.helperSignedAt 
-                  ? `Signed by ${helper.firstName || helper.name?.split(' ')[0] || 'Helper'}, ${formatSignedDate(payslip.helperSignedAt)}`
-                  : 'Not signed'
-                }
-              </span>
+              <span className="text-body text-muted-foreground">{t['salary.extra_salary'] || 'Extra Salary'}</span>
+              <span className="text-body">HK${slip.extraSalary.toLocaleString()}</span>
             </div>
+            <div className="flex justify-between">
+              <span className="text-body text-muted-foreground">{t['salary.deduction'] || 'Deduction'}</span>
+              <span className="text-body text-destructive">HK${slip.salaryDeduction.toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between pt-2 border-t border-border">
+              <span className="text-body font-bold">{t['salary.total_payout'] || 'Total Payout'}</span>
+              <span className="text-body font-bold text-primary">HK${slip.totalPayout.toLocaleString()}</span>
+            </div>
+          </div>
+          
+          {/* Note */}
+          {slip.note && (
+            <div className="mb-4 p-3 bg-secondary/50 rounded-lg">
+              <p className="text-caption text-muted-foreground">{slip.note}</p>
+            </div>
+          )}
+          
+          {/* Signature Section */}
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            {/* Employer Signature */}
+            <div className="text-center">
+              <p className="text-caption text-muted-foreground mb-2">{t['salary.employer'] || 'Employer'}</p>
+              {slip.employerSignedAt ? (
+                <div className="rounded-xl p-3 bg-green-50 dark:bg-green-900/20">
+                  <div className="flex items-center justify-center gap-1 text-green-600">
+                    <Check size={16} />
+                    <span className="text-caption font-medium">{t['salary.signed'] || 'Signed'}</span>
+                  </div>
+                  <p className="text-caption text-muted-foreground mt-1">{slip.employerSignerName}</p>
+                  <p className="text-micro text-muted-foreground">
+                    {formatFullDate(new Date(slip.employerSignedAt))}
+                  </p>
+                </div>
+              ) : canManage ? (
+                <div className="space-y-2">
+                  {/* Signer Dropdown */}
+                  <select
+                    value={selectedSigner || ''}
+                    onChange={(e) => onSignerChange(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-caption"
+                  >
+                    <option value="">{t['salary.select_signer'] || 'Select signer'}</option>
+                    {eligibleSigners.map(signer => (
+                      <option key={signer.id} value={signer.id}>
+                        {signer.firstName || signer.name?.split(' ')[0]}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={onSignEmployer}
+                    disabled={!selectedSigner}
+                    className="w-full px-4 py-2 rounded-xl bg-secondary text-foreground disabled:opacity-50"
+                  >
+                    {t['salary.sign'] || 'Sign'}
+                  </button>
+                </div>
+              ) : (
+                <div className="rounded-xl p-3 bg-muted">
+                  <p className="text-caption text-muted-foreground">{t['salary.not_signed'] || 'Not signed'}</p>
+                </div>
+              )}
+            </div>
+            
+            {/* Helper Signature */}
+            <div className="text-center">
+              <p className="text-caption text-muted-foreground mb-2">{t['salary.helper'] || 'Helper'}</p>
+              {slip.helperSignedAt ? (
+                <div className="rounded-xl p-3 bg-green-50 dark:bg-green-900/20">
+                  <div className="flex items-center justify-center gap-1 text-green-600">
+                    <Check size={16} />
+                    <span className="text-caption font-medium">{t['salary.signed'] || 'Signed'}</span>
+                  </div>
+                  <p className="text-caption text-muted-foreground mt-1">
+                    {helper.firstName || helper.name?.split(' ')[0]}
+                  </p>
+                  <p className="text-micro text-muted-foreground">
+                    {formatFullDate(new Date(slip.helperSignedAt))}
+                  </p>
+                </div>
+              ) : isHelper ? (
+                <button
+                  onClick={onSignHelper}
+                  className="w-full px-4 py-2 rounded-xl bg-secondary text-foreground"
+                >
+                  {t['salary.sign'] || 'Sign'}
+                </button>
+              ) : (
+                <div className="rounded-xl p-3 bg-muted">
+                  <p className="text-caption text-muted-foreground">{t['salary.not_signed'] || 'Not signed'}</p>
+                </div>
+              )}
+            </div>
+          </div>
+          
+          {/* Action Buttons */}
+          <div className="flex gap-3">
+            <button
+              onClick={onExportPDF}
+              className="flex-1 py-2.5 rounded-xl bg-secondary text-foreground flex items-center justify-center gap-2"
+            >
+              <Download size={16} />
+              {t['salary.export_pdf'] || 'Export PDF'}
+            </button>
+            {canManage && (
+              <button
+                onClick={onDelete}
+                className="py-2.5 px-4 rounded-xl bg-destructive/10 text-destructive flex items-center justify-center gap-2"
+              >
+                <Trash2 size={16} />
+              </button>
+            )}
           </div>
         </div>
       )}
     </div>
   );
 };
-
-// ═══════════════════════════════════════════════════════════════════════════
-// OLD MODAL COMPONENTS (kept for holidays)
-// ═══════════════════════════════════════════════════════════════════════════
-
-// Sub-components for modals
-const PastHolidaysModal: React.FC<{
-  records: HelperHolidayRecord[];
-  onClose: () => void;
-  t: TranslationDictionary;
-}> = ({ records, onClose, t }) => createPortal(
-  <div 
-    className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
-    onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-  >
-    {/* Safe area bottom cover */}
-    <div 
-      className="fixed bottom-0 left-0 right-0 bg-card"
-      style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
-    />
-    <div 
-      className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content"
-      style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)', maxHeight: '70vh' }}
-    >
-      {/* Header */}
-      <div className="relative pt-6 pb-4 px-5 border-b border-border" style={{ marginLeft: '1.25rem', marginRight: '1.25rem', paddingLeft: 0, paddingRight: 0, borderColor: 'var(--border)' }}>
-        <button 
-          onClick={onClose}
-          className="absolute z-10 w-10 h-10 rounded-full flex items-center justify-center right-0 -top-1 text-muted-foreground"
-          aria-label="Close"
-        >
-          <X size={20} />
-        </button>
-        <h2 className="text-title text-foreground">{t['helper.past_holidays'] || 'Past Holidays'}</h2>
-      </div>
-      {/* Body */}
-      <div className="p-5 overflow-y-auto" style={{ maxHeight: 'calc(70vh - 100px)' }}>
-        {records.length === 0 ? (
-          <p className="text-center text-muted-foreground py-8">
-            {t['helper.no_past_records'] || 'No past records'}
-          </p>
-        ) : (
-          <div className="space-y-3">
-            {records.map(record => (
-              <div key={record.id} className="flex items-center justify-between py-2 border-b border-border">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <p className="text-body font-medium">{record.holidayName}</p>
-                    {record.isWorking && record.compensationType === 'lieu' && (
-                      <span className="px-1.5 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 rounded">{t['helper.til_badge'] || 'TIL'}</span>
-                    )}
-                    {record.isWorking && record.compensationType === 'overtime' && (
-                      <span className="px-1.5 py-0.5 text-xs font-medium bg-orange-100 text-orange-700 rounded">
-                        OT {record.overtimeAmount ? `$${record.overtimeAmount}` : ''}
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-caption text-muted-foreground">
-                    {new Date(record.holidayDate).toLocaleDateString('en-GB', {
-                      weekday: 'short',
-                      day: 'numeric',
-                      month: 'short',
-                      year: 'numeric',
-                    })}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className={`text-body ${record.isWorking ? 'text-orange-500' : 'text-green-500'}`}>
-                    {record.isWorking ? 'Worked' : 'Off'}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  </div>
-, document.body);
 
 export default HelperManagementContent;

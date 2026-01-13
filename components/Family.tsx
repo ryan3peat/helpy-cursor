@@ -78,6 +78,7 @@ import haptics from "@/utils/haptics";
 
 // Helper Management
 import HelperManagementContent from "./HelperManagementContent";
+import CreateSalarySlipSheet from "./CreateSalarySlipSheet";
 
 interface FamilyProps extends BaseViewProps {
   householdId: string;
@@ -613,6 +614,9 @@ const Family: React.FC<FamilyProps> = ({
   // Helper upgrade modal state
   const [showHelperUpgradeModal, setShowHelperUpgradeModal] = useState(false);
   
+  // Create Salary Slip sheet state
+  const [showCreateSlipSheet, setShowCreateSlipSheet] = useState(false);
+  
   // Maps choice modal state (when Google Maps not installed on iOS)
   const [showMapsChoiceModal, setShowMapsChoiceModal] = useState(false);
   const [pendingMapsAddress, setPendingMapsAddress] = useState<string>('');
@@ -666,10 +670,10 @@ const Family: React.FC<FamilyProps> = ({
   ) as PracticeCategory[];
   
   // Lock body scroll when any modal is open
-  useScrollLock(isPlaceModalOpen || isPracticeModalOpen || !!viewingPracticeItem || showMapsChoiceModal || isPracticeIdeasModalOpen || showAddPresetsConfirm);
+  useScrollLock(isPlaceModalOpen || isPracticeModalOpen || !!viewingPracticeItem || showMapsChoiceModal || isPracticeIdeasModalOpen || showAddPresetsConfirm || showCreateSlipSheet);
   
   // Dim status bar when sheet is open (iOS)
-  useSheetTheme(isPlaceModalOpen || isPracticeModalOpen || !!viewingPracticeItem || showHelperUpgradeModal || showMapsChoiceModal || isPracticeIdeasModalOpen || showAddPresetsConfirm);
+  useSheetTheme(isPlaceModalOpen || isPracticeModalOpen || !!viewingPracticeItem || showHelperUpgradeModal || showMapsChoiceModal || isPracticeIdeasModalOpen || showAddPresetsConfirm || showCreateSlipSheet);
 
   // ─────────────────────────────────────────────────────────────────
   // Scroll State for Header Animation (using reusable hook)
@@ -1404,9 +1408,12 @@ const Family: React.FC<FamilyProps> = ({
                       helperId={selectedHelperId}
                       helper={selectedHelper}
                       currentUser={currentUser}
+                      users={users}
                       t={t}
+                      currentLang={currentLang}
                       onNavigateToProfile={onNavigateToProfile || (() => {})}
                       onEditHelper={onEditHelper}
+                      onCreateSlipClick={() => setShowCreateSlipSheet(true)}
                     />
                   );
                 })()}
@@ -1438,11 +1445,30 @@ const Family: React.FC<FamilyProps> = ({
       {/* ─────────────────────────────────────────────────────────────── */}
       {!isHelper && (
         <button
-          onClick={activeSection === "places" ? handleAddPlaceClick : handleAddPracticeClick}
+          onClick={() => {
+            if (activeSection === "helper") {
+              // On helper tab, open Create Salary Slip sheet
+              haptics.medium();
+              setShowCreateSlipSheet(true);
+            } else if (activeSection === "places") {
+              handleAddPlaceClick();
+            } else {
+              handleAddPracticeClick();
+            }
+          }}
           className={`fixed bottom-28 right-6 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg  flex items-center justify-center z-30 ${
-            (isPlaceModalOpen || isPracticeModalOpen || viewingPracticeItem || activeSection === "helper") ? 'fab-hiding' : ''
+            (isPlaceModalOpen || isPracticeModalOpen || viewingPracticeItem || showCreateSlipSheet) ? 'fab-hiding' : ''
+          } ${
+            // Hide FAB on helper section if no helpers or no contract access
+            (activeSection === "helper" && (!hasHelperManagementAccess || helpers.length === 0)) ? 'fab-hiding' : ''
           }`}
-          aria-label={activeSection === "places" ? "Add Place" : "Add Practice"}
+          aria-label={
+            activeSection === "helper" 
+              ? "Create Salary Slip" 
+              : activeSection === "places" 
+                ? "Add Place" 
+                : "Add Practice"
+          }
         >
           <Plus size={24} />
         </button>
@@ -1488,6 +1514,22 @@ const Family: React.FC<FamilyProps> = ({
           t={t}
         />
       )}
+
+      {/* Create Salary Slip Sheet */}
+      <CreateSalarySlipSheet
+        isOpen={showCreateSlipSheet}
+        onClose={() => setShowCreateSlipSheet(false)}
+        householdId={householdId}
+        currentUser={currentUser}
+        users={users}
+        t={t}
+        currentLang={currentLang}
+        preSelectedHelperId={selectedHelperId}
+        onSuccess={() => {
+          // Reload helper data after creating a slip
+          // The HelperManagementContent will re-fetch on mount
+        }}
+      />
 
       {/* Helper Upgrade Modal - Bottom Sheet */}
       {showHelperUpgradeModal && createPortal(

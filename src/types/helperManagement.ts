@@ -1,54 +1,83 @@
 // src/types/helperManagement.ts
+// ============================================================================
+// Salary Slip System Types
+// ============================================================================
 
-export interface HelperSalaryInfo {
-  helperStartDate?: string | null;       // ISO date string
-  helperBaseSalary: number;              // Default: 5100
-  helperFoodAllowance: number;           // Default: 1236
-  helperOtherAllowances: OtherAllowance[];
-}
-
-export interface OtherAllowance {
-  name: string;
-  amount: number;
-}
-
-export interface HKStatutoryHoliday {
+/**
+ * Helper Contract - Employment agreement terms
+ * One contract per helper in a household
+ */
+export interface HelperContract {
   id: string;
-  year: number;
-  holidayName: string;
-  holidayDate: string;  // ISO date string
-  isActive: boolean;
-}
-
-export interface HelperHolidayRecord {
-  id: string;
+  userId: string;           // Supabase UUID of the helper user
   householdId: string;
-  helperId: string;
-  holidayDate: string;
-  holidayName: string;
-  isWorking: boolean;
-  compensationType: 'lieu' | 'overtime' | null;
-  overtimeAmount?: number;           // Amount in HKD for overtime pay
-  addOvertimeToPayslip?: boolean;    // Whether to add overtime to that month's payslip
+  status: 'active' | 'terminated';
+  employmentStartDate: string;  // ISO date string (YYYY-MM-DD)
+  baseSalary: number;           // Monthly base salary in HKD
+  foodAllowance: number;        // Food allowance in HKD
   createdAt?: string;
   updatedAt?: string;
 }
 
-export interface HelperPayslipConfirmation {
-  id: string;
+/**
+ * Create/Update contract payload
+ */
+export interface CreateHelperContract {
+  userId: string;
   householdId: string;
-  helperId: string;
-  month: number;        // 1-12
-  year: number;
-  salaryAmount: number;
-  baseSalary?: number;           // Base salary component
-  otherAllowancesTotal?: number; // Other allowances component
-  overtimeTotal?: number;        // Total overtime added to this payslip
-  employerSignedAt?: string | null;
-  employerUserId?: string | null;
-  helperSignedAt?: string | null;
-  createdAt?: string;
+  status?: 'active' | 'terminated';
+  employmentStartDate: string;
+  baseSalary: number;
+  foodAllowance?: number;
 }
 
-export type CompensationType = 'lieu' | 'overtime';
+/**
+ * Salary Slip - Individual payment record
+ * Created for each payment period, signed by employer and helper
+ */
+export interface SalarySlip {
+  id: string;
+  householdId: string;
+  helperId: string;             // Supabase UUID of the helper user
+  contractId?: string | null;   // Reference to helper_contracts
+  paymentPeriodStart: string;   // ISO date string (YYYY-MM-DD)
+  paymentPeriodEnd: string;     // ISO date string (YYYY-MM-DD)
+  baseSalary: number;           // Base salary from contract at time of slip
+  extraSalary: number;          // One-time additions
+  salaryDeduction: number;      // One-time deductions (stored as negative)
+  totalPayout: number;          // Calculated: base + extra + deduction
+  note?: string | null;
+  employerSignerId?: string | null;   // UUID of employer who will sign
+  employerSignerName?: string | null; // Name snapshot for display/PDF
+  employerSignedAt?: string | null;   // ISO timestamp
+  helperSignedAt?: string | null;     // ISO timestamp
+  createdAt?: string;
+  createdBy?: string | null;    // UUID of user who created the slip
+}
 
+/**
+ * Create salary slip payload
+ */
+export interface CreateSalarySlip {
+  householdId: string;
+  helperId: string;             // Can be Clerk ID - service will convert
+  contractId?: string;
+  paymentPeriodStart: string;
+  paymentPeriodEnd: string;
+  baseSalary: number;
+  extraSalary: number;
+  salaryDeduction: number;      // Should be negative or zero
+  totalPayout: number;
+  note?: string;
+  employerSignerId?: string;    // Can be Clerk ID - service will convert
+  employerSignerName?: string;
+  createdBy?: string;           // Can be Clerk ID - service will convert
+}
+
+/**
+ * Salary slip with helper name for display
+ */
+export interface SalarySlipWithHelper extends SalarySlip {
+  helperName?: string;
+  helperStartDate?: string;
+}

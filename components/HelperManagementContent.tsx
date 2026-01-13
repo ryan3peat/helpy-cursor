@@ -98,13 +98,14 @@ export const HelperManagementContent: React.FC<Props> = ({
   const [isExportingAll, setIsExportingAll] = useState(false);
   const [showSalaryInfo, setShowSalaryInfo] = useState(false);
   
-  const { isDemoMode } = useDemoMode();
+  const { isDemoMode, isViewingAsHelper } = useDemoMode();
   
   // Role checks
   const isSuperAdmin = currentUser.role === UserRole.SUPERADMIN;
   const isAdmin = currentUser.role === UserRole.MASTER;
   const isSpouse = currentUser.role === UserRole.SPOUSE;
-  const isHelper = currentUser.role === UserRole.HELPER || currentUser.role === 'Helper';
+  // isHelper: true if actual Helper OR SuperAdmin viewing as Helper
+  const isHelper = currentUser.role === UserRole.HELPER || currentUser.role === 'Helper' || (isSuperAdmin && isViewingAsHelper);
   // Helpers can ONLY view - they cannot edit or delete anything
   const canManage = !isHelper && canManageSalarySlips(currentUser.role);
   

@@ -4,7 +4,8 @@
 // ============================================================================
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Check, Loader2, AlertTriangle } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { X, Check, Loader2, ChevronLeft, AlertTriangle } from 'lucide-react';
 import BottomSheet from './ui/BottomSheet';
 import type { User, TranslationDictionary } from '@/types';
 import { UserRole } from '@/types';
@@ -99,21 +100,12 @@ const CreateSalarySlipSheet: React.FC<Props> = ({
   // Effects
   // ─────────────────────────────────────────────────────────────────
   
-  // Reset form when sheet opens/closes
+  // Reset form when sheet opens
   useEffect(() => {
     if (isOpen) {
       setStep('form');
       setError(null);
-      
-      // Pre-select helper if provided
-      if (preSelectedHelperId) {
-        setSelectedHelperId(preSelectedHelperId);
-      } else if (helpers.length === 1) {
-        // Auto-select if only one helper
-        setSelectedHelperId(helpers[0].id);
-      } else {
-        setSelectedHelperId('');
-      }
+      setContract(null);
       
       // Set default payment period (current month)
       const now = new Date();
@@ -127,16 +119,25 @@ const CreateSalarySlipSheet: React.FC<Props> = ({
       setExtraSalary('0');
       setSalaryDeduction('0');
       setNote('');
-      setContract(null);
+      
+      // Pre-select helper if provided
+      if (preSelectedHelperId) {
+        setSelectedHelperId(preSelectedHelperId);
+      } else if (helpers.length === 1) {
+        // Auto-select if only one helper
+        setSelectedHelperId(helpers[0].id);
+      } else {
+        setSelectedHelperId('');
+      }
     }
-  }, [isOpen, preSelectedHelperId, helpers]);
+  }, [isOpen]); // Only depend on isOpen, not helpers or preSelectedHelperId
   
   // Load contract when helper is selected
   useEffect(() => {
-    if (selectedHelperId && householdId) {
+    if (isOpen && selectedHelperId && householdId) {
       loadContract();
     }
-  }, [selectedHelperId, householdId]);
+  }, [isOpen, selectedHelperId, householdId]);
   
   const loadContract = async () => {
     if (!selectedHelperId) return;
@@ -241,17 +242,60 @@ const CreateSalarySlipSheet: React.FC<Props> = ({
     });
   };
   
-  return (
-    <BottomSheet isOpen={isOpen} onClose={onClose} maxHeight="90vh">
-      {step === 'form' ? (
-        <>
-          <BottomSheet.Header>
-            <h2 className="text-title text-foreground">
-              {t['salary.create_slip'] || 'Create Salary Slip'}
-            </h2>
-          </BottomSheet.Header>
-          <BottomSheet.Body>
-            <div className="space-y-4">
+  if (!isOpen) return null;
+
+  return createPortal(
+    <div 
+      className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      {/* Safe area bottom cover */}
+      <div 
+        className="absolute bottom-0 left-0 right-0 bg-card"
+        style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
+      />
+      <div 
+        className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col"
+        style={{ maxHeight: '90vh', marginBottom: 'env(safe-area-inset-bottom, 34px)' }}
+      >
+        {step === 'form' ? (
+          <>
+            {/* Header with X left, Title center, ✓ right */}
+            <div className="flex items-center justify-between px-5 pt-5 pb-4 shrink-0">
+              {/* X Close Button (left) */}
+              <button
+                onClick={onClose}
+                className="w-10 h-10 rounded-full flex items-center justify-center text-muted-foreground"
+                aria-label={t['common.close'] || 'Close'}
+              >
+                <X size={20} />
+              </button>
+              
+              {/* Title (center) */}
+              <h2 className="text-title font-semibold text-foreground text-center flex-1">
+                {t['salary.create_slip'] || 'Create Salary Slip'}
+              </h2>
+              
+              {/* ✓ Proceed Button (right) */}
+              <button
+                onClick={handleProceed}
+                disabled={!selectedHelperId || !baseSalary || !paymentPeriodStart || !paymentPeriodEnd}
+                className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+                  selectedHelperId && baseSalary && paymentPeriodStart && paymentPeriodEnd
+                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    : 'bg-muted text-muted-foreground'
+                }`}
+                aria-label={t['common.proceed'] || 'Proceed'}
+              >
+                <Check size={20} strokeWidth={3} />
+              </button>
+            </div>
+            
+            {/* Header separator */}
+            <div className="px-5"><div className="h-px bg-border w-full"></div></div>
+            
+            {/* Scrollable Form Content */}
+            <div className="flex-1 overflow-y-auto p-5 space-y-4">
               {/* Error display */}
               {error && (
                 <div className="p-3 bg-destructive/10 text-destructive rounded-lg text-caption">
@@ -278,18 +322,52 @@ const CreateSalarySlipSheet: React.FC<Props> = ({
                 </select>
               </div>
               
+              {/* Payment Period */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-caption text-muted-foreground mb-2">
+                    {t['salary.period_start'] || 'For Payment From'} *
+                  </label>
+                  <input
+                    type="date"
+                    value={paymentPeriodStart}
+                    onChange={(e) => setPaymentPeriodStart(e.target.value)}
+                    className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
+                  />
+                </div>
+                <div>
+                  <label className="block text-caption text-muted-foreground mb-2">
+                    {t['salary.period_end'] || 'For Payment To'} *
+                  </label>
+                  <input
+                    type="date"
+                    value={paymentPeriodEnd}
+                    onChange={(e) => setPaymentPeriodEnd(e.target.value)}
+                    className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
+                  />
+                </div>
+              </div>
+              
               {/* Base Salary (from contract) */}
               <div>
                 <label className="block text-caption text-muted-foreground mb-2">
-                  {t['salary.base_salary'] || 'Base Salary'} (HK$) *
+                  {t['salary.base_salary'] || 'Base Salary'} *
                 </label>
                 <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg font-semibold text-muted-foreground">
+                    HK$
+                  </span>
                   <input
-                    type="number"
+                    type="text"
+                    autoComplete="one-time-code"
+                    inputMode="decimal"
                     value={baseSalary}
-                    onChange={(e) => setBaseSalary(e.target.value)}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/[^\d.]/g, '');
+                      setBaseSalary(value);
+                    }}
                     placeholder={contract ? contract.baseSalary.toString() : '0'}
-                    className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
+                    className="w-full pl-16 pr-4 py-3 bg-muted rounded-xl text-lg font-semibold text-foreground outline-none border border-transparent focus:border-primary transition-colors text-right"
                   />
                   {loadingContract && (
                     <div className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -299,42 +377,62 @@ const CreateSalarySlipSheet: React.FC<Props> = ({
                 </div>
                 {contract && (
                   <p className="text-caption text-muted-foreground mt-1">
-                    {t['salary.from_contract'] || 'From contract'}: HK${contract.baseSalary.toLocaleString()}
+                    {t['salary.from_contract'] || 'From employment details'}: HK${contract.baseSalary.toLocaleString()}
                   </p>
                 )}
                 {!contract && selectedHelperId && !loadingContract && (
-                  <p className="text-caption text-amber-600 mt-1">
-                    {t['salary.no_contract_warning'] || 'No contract found. Please set up contract first.'}
+                  <p className="text-caption text-destructive mt-1">
+                    {t['salary.no_contract_warning'] || 'No employment details found. Please set up details first.'}
                   </p>
                 )}
               </div>
               
-              {/* Extra Salary */}
+              {/* Extra Payout */}
               <div>
                 <label className="block text-caption text-muted-foreground mb-2">
-                  {t['salary.extra_salary'] || 'Extra Salary'} (HK$)
+                  {t['salary.extra_salary'] || 'Extra Payout'}
                 </label>
-                <input
-                  type="number"
-                  value={extraSalary}
-                  onChange={(e) => setExtraSalary(e.target.value)}
-                  placeholder="0"
-                  className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
-                />
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg font-semibold text-muted-foreground">
+                    HK$
+                  </span>
+                  <input
+                    type="text"
+                    autoComplete="one-time-code"
+                    inputMode="decimal"
+                    value={extraSalary}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/[^\d.]/g, '');
+                      setExtraSalary(value);
+                    }}
+                    placeholder="0"
+                    className="w-full pl-16 pr-4 py-3 bg-muted rounded-xl text-lg font-semibold text-foreground outline-none border border-transparent focus:border-primary transition-colors text-right"
+                  />
+                </div>
               </div>
               
-              {/* Salary Deduction */}
+              {/* Payout Deduction */}
               <div>
                 <label className="block text-caption text-muted-foreground mb-2">
-                  {t['salary.deduction'] || 'Salary Deduction'} (HK$)
+                  {t['salary.deduction'] || 'Payout Deduction'}
                 </label>
-                <input
-                  type="number"
-                  value={salaryDeduction}
-                  onChange={(e) => setSalaryDeduction(e.target.value)}
-                  placeholder="0"
-                  className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
-                />
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg font-semibold text-muted-foreground">
+                    HK$
+                  </span>
+                  <input
+                    type="text"
+                    autoComplete="one-time-code"
+                    inputMode="decimal"
+                    value={salaryDeduction}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/[^\d.]/g, '');
+                      setSalaryDeduction(value);
+                    }}
+                    placeholder="0"
+                    className="w-full pl-16 pr-4 py-3 bg-muted rounded-xl text-lg font-semibold text-foreground outline-none border border-transparent focus:border-primary transition-colors text-right"
+                  />
+                </div>
                 <p className="text-caption text-muted-foreground mt-1">
                   {t['salary.deduction_hint'] || 'Enter as positive number, will be subtracted'}
                 </p>
@@ -352,32 +450,6 @@ const CreateSalarySlipSheet: React.FC<Props> = ({
                 </div>
               </div>
               
-              {/* Payment Period */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-caption text-muted-foreground mb-2">
-                    {t['salary.period_start'] || 'Period Start'} *
-                  </label>
-                  <input
-                    type="date"
-                    value={paymentPeriodStart}
-                    onChange={(e) => setPaymentPeriodStart(e.target.value)}
-                    className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
-                  />
-                </div>
-                <div>
-                  <label className="block text-caption text-muted-foreground mb-2">
-                    {t['salary.period_end'] || 'Period End'} *
-                  </label>
-                  <input
-                    type="date"
-                    value={paymentPeriodEnd}
-                    onChange={(e) => setPaymentPeriodEnd(e.target.value)}
-                    className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
-                  />
-                </div>
-              </div>
-              
               {/* Note */}
               <div>
                 <label className="block text-caption text-muted-foreground mb-2">
@@ -392,40 +464,45 @@ const CreateSalarySlipSheet: React.FC<Props> = ({
                 />
               </div>
             </div>
-          </BottomSheet.Body>
-          <BottomSheet.Footer>
-            <div className="flex gap-3">
+          </>
+        ) : (
+          <>
+            {/* Confirmation Step - Header with Back left, Title center, ✓ right */}
+            <div className="flex items-center justify-between px-5 pt-5 pb-4 shrink-0">
+              {/* Back Button (left) */}
               <button
-                onClick={onClose}
-                className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body"
+                onClick={handleBack}
+                className="w-10 h-10 rounded-full flex items-center justify-center text-muted-foreground"
+                aria-label={t['common.back'] || 'Back'}
               >
-                {t['common.cancel'] || 'Cancel'}
+                <ChevronLeft size={24} />
               </button>
-              <button
-                onClick={handleProceed}
-                className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body font-semibold flex items-center justify-center gap-2"
-              >
-                <Check size={18} />
-                {t['common.proceed'] || 'Proceed'}
-              </button>
-            </div>
-          </BottomSheet.Footer>
-        </>
-      ) : (
-        <>
-          {/* Confirmation Step */}
-          <BottomSheet.Header>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                <Check size={20} className="text-primary" />
-              </div>
-              <h2 className="text-title text-foreground">
+              
+              {/* Title (center) */}
+              <h2 className="text-title font-semibold text-foreground text-center flex-1">
                 {t['salary.confirm_slip'] || 'Confirm Salary Slip'}
               </h2>
+              
+              {/* ✓ Confirm Button (right) */}
+              <button
+                onClick={handleConfirm}
+                disabled={isLoading}
+                className="w-10 h-10 rounded-full flex items-center justify-center bg-primary text-primary-foreground shadow-sm disabled:opacity-50"
+                aria-label={t['common.confirm'] || 'Confirm'}
+              >
+                {isLoading ? (
+                  <Loader2 size={18} className="animate-spin" />
+                ) : (
+                  <Check size={20} strokeWidth={3} />
+                )}
+              </button>
             </div>
-          </BottomSheet.Header>
-          <BottomSheet.Body>
-            <div className="space-y-4">
+            
+            {/* Header separator */}
+            <div className="px-5"><div className="h-px bg-border w-full"></div></div>
+            
+            {/* Scrollable Content */}
+            <div className="flex-1 overflow-y-auto p-5 space-y-4">
               {/* Error display */}
               {error && (
                 <div className="p-3 bg-destructive/10 text-destructive rounded-lg text-caption">
@@ -483,31 +560,11 @@ const CreateSalarySlipSheet: React.FC<Props> = ({
                 </div>
               )}
             </div>
-          </BottomSheet.Body>
-          <BottomSheet.Footer>
-            <div className="flex gap-3">
-              <button
-                onClick={handleBack}
-                className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body"
-              >
-                {t['common.back'] || 'Back'}
-              </button>
-              <button
-                onClick={handleConfirm}
-                disabled={isLoading}
-                className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body font-semibold disabled:opacity-50"
-              >
-                {isLoading ? (
-                  <Loader2 size={18} className="animate-spin mx-auto" />
-                ) : (
-                  t['common.confirm'] || 'Confirm'
-                )}
-              </button>
-            </div>
-          </BottomSheet.Footer>
-        </>
-      )}
-    </BottomSheet>
+          </>
+        )}
+      </div>
+    </div>,
+    document.body
   );
 };
 

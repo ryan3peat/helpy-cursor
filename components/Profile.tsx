@@ -4,7 +4,7 @@ import {
   AlertCircle, AlertTriangle, Heart, Settings, Plus, Trash2, X, Save, Camera,
   Image as ImageIcon, LogOut, Copy, Check, ChevronLeft, ChevronRight, ArrowLeft,
   Shield, Lock, Crown, Mail, Share2, Bell, BellOff, Phone, CheckCircle, Loader2, GraduationCap,
-  MessageCircleQuestionMark, Palette, Monitor, BookOpen, Pencil, CalendarCheck, HandCoins, CircleStar,
+  MessageCircleQuestionMark, Palette, Monitor, BookOpen, Pencil, CircleStar,
   MoreVertical, Globe
 } from 'lucide-react';
 import FeedbackSection from './FeedbackSection';
@@ -133,10 +133,6 @@ const Profile: React.FC<ProfileProps> = ({
   const [newAllergyInput, setNewAllergyInput] = useState('');
   const [newPreferenceInput, setNewPreferenceInput] = useState('');
   
-  // Helper salary edit state
-  const [editHelperStartDate, setEditHelperStartDate] = useState<string | null>(null);
-  const [editHelperBaseSalary, setEditHelperBaseSalary] = useState(5100);
-  const [editHelperOtherAllowances, setEditHelperOtherAllowances] = useState<Array<{name: string; amount: number}>>([]);
 
   // Add User Form State
   const [newName, setNewName] = useState('');
@@ -276,13 +272,6 @@ const Profile: React.FC<ProfileProps> = ({
         setEditRole(userToEdit.role);
         setEditAllergies([...(userToEdit.allergies || [])]);
         setEditPreferences([...(userToEdit.preferences || [])]);
-        
-        // Load helper salary fields if Helper role
-        if (userToEdit.role === UserRole.HELPER) {
-          setEditHelperStartDate(userToEdit.helperStartDate || null);
-          setEditHelperBaseSalary(userToEdit.helperBaseSalary || 5100);
-          setEditHelperOtherAllowances(userToEdit.helperOtherAllowances || []);
-        }
         
         setIsEditModalOpen(true);
         setInitialEditHandled(true); // Mark as handled to prevent re-opening
@@ -1085,13 +1074,6 @@ const Profile: React.FC<ProfileProps> = ({
     setEditAllergies([...(selectedUser.allergies || [])]);
     setEditPreferences([...(selectedUser.preferences || [])]);
     
-    // Load helper salary fields if Helper role
-    if (selectedUser.role === UserRole.HELPER) {
-      setEditHelperStartDate(selectedUser.helperStartDate || null);
-      setEditHelperBaseSalary(selectedUser.helperBaseSalary || 5100);
-      setEditHelperOtherAllowances(selectedUser.helperOtherAllowances || []);
-    }
-    
     setIsEditModalOpen(true);
   };
 
@@ -1103,31 +1085,10 @@ const Profile: React.FC<ProfileProps> = ({
       preferences: editPreferences,
     };
     
-    // Include helper salary fields if Helper role
-    if (editRole === UserRole.HELPER) {
-      updates.helperStartDate = editHelperStartDate;
-      updates.helperBaseSalary = editHelperBaseSalary;
-      updates.helperOtherAllowances = editHelperOtherAllowances;
-    }
-    
     onUpdate(selectedUser.id, updates);
     setIsEditModalOpen(false);
   };
 
-  // Helper functions for other allowances
-  const addOtherAllowance = () => {
-    setEditHelperOtherAllowances(prev => [...prev, { name: '', amount: 0 }]);
-  };
-
-  const removeOtherAllowance = (index: number) => {
-    setEditHelperOtherAllowances(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const updateOtherAllowance = (index: number, field: 'name' | 'amount', value: string | number) => {
-    setEditHelperOtherAllowances(prev => prev.map((a, i) => 
-      i === index ? { ...a, [field]: value } : a
-    ));
-  };
 
   const handleAvatarChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -1477,46 +1438,6 @@ const Profile: React.FC<ProfileProps> = ({
                     </div>
                   </div>
 
-                  {/* Helper-specific info: Start Date & Total Monthly Salary */}
-                  {(selectedUser.role === UserRole.HELPER || selectedUser.role === 'Helper') && (
-                    <>
-                      {/* Start Date */}
-                      <div className="mt-4">
-                        <div className="flex items-center gap-2 mb-2">
-                          <CalendarCheck size={16} className="text-primary" />
-                          <h4 className="text-body font-bold text-foreground">{t['profile.start_date'] || 'Start Date'}</h4>
-                        </div>
-                        {selectedUser.helperStartDate ? (
-                          <span className="text-body text-foreground">
-                            {new Date(selectedUser.helperStartDate).toLocaleDateString(
-                              currentLang === 'en' ? 'en-GB' : currentLang,
-                              { day: 'numeric', month: 'short', year: 'numeric' }
-                            )}
-                          </span>
-                        ) : (
-                          <span className="text-caption text-muted-foreground">{t['common.not_set'] || 'Not set'}</span>
-                        )}
-                      </div>
-
-                      {/* Total Monthly Salary */}
-                      <div className="mt-4">
-                        <div className="flex items-center gap-2 mb-2">
-                          <HandCoins size={16} className="text-primary" />
-                          <h4 className="text-body font-bold text-foreground">{t['profile.total_salary'] || 'Total Monthly Salary'}</h4>
-                        </div>
-                        {selectedUser.helperBaseSalary ? (
-                          <span className="text-title font-bold text-primary">
-                            HK${(
-                              (selectedUser.helperBaseSalary || 0) +
-                              (selectedUser.helperOtherAllowances || []).reduce((sum, a) => sum + a.amount, 0)
-                            ).toLocaleString()}
-                          </span>
-                        ) : (
-                          <span className="text-caption text-muted-foreground">{t['profile.salary_not_set'] || 'Not configured'}</span>
-                        )}
-                      </div>
-                    </>
-                  )}
                 </div>
               </div>
             )}
@@ -2173,101 +2094,6 @@ const Profile: React.FC<ProfileProps> = ({
                       ))}
                     </div>
                   </div>
-
-                {/* Helper Salary Fields - Only show when editing a Helper */}
-                {selectedUser?.role === UserRole.HELPER && (
-                  <div className="space-y-3 pt-4 border-t border-border">
-                    <h4 className="text-body font-semibold text-foreground">
-                      {t['profile.helper_salary_info'] || 'Salary Information'}
-                    </h4>
-                    
-                    {/* Start Date */}
-                    <div>
-                      <label className="block text-caption text-muted-foreground mb-1.5">
-                        {t['profile.helper_start_date'] || 'Start Date'}
-                      </label>
-                      <input
-                        type="date"
-                        value={editHelperStartDate || ''}
-                        onChange={(e) => setEditHelperStartDate(e.target.value || null)}
-                        className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
-                      />
-                    </div>
-                    
-                    {/* Base Salary */}
-                    <div>
-                      <label className="block text-caption text-muted-foreground mb-1.5">
-                        {t['profile.helper_base_salary'] || 'Base Salary (HK$/month)'}
-                      </label>
-                      <input
-                        type="text"
-                        autoComplete="one-time-code"
-                        inputMode="numeric"
-                        value={editHelperBaseSalary || ''}
-                        onChange={(e) => {
-                          const val = e.target.value.replace(/[^0-9]/g, '');
-                          setEditHelperBaseSalary(val === '' ? 0 : parseInt(val, 10));
-                        }}
-                        className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
-                        placeholder="5100"
-                      />
-                    </div>
-                    
-                    {/* Other Allowances */}
-                    <div>
-                      <label className="block text-caption text-muted-foreground mb-1.5">
-                        {t['profile.helper_other_allowances'] || 'Other Allowances'}
-                      </label>
-                      {editHelperOtherAllowances.map((allowance, index) => (
-                        <div key={index} className="flex gap-2 mb-2">
-                          <input
-                            type="text"
-                            autoComplete="one-time-code"
-                            value={allowance.name}
-                            onChange={(e) => updateOtherAllowance(index, 'name', e.target.value)}
-                            placeholder={t['profile.allowance_name_placeholder'] || 'Allowance name'}
-                            className="flex-1 px-3 py-2 rounded-lg bg-secondary border border-border"
-                          />
-                          <input
-                            type="text"
-                            autoComplete="one-time-code"
-                            inputMode="numeric"
-                            value={allowance.amount || ''}
-                            onChange={(e) => {
-                              const val = e.target.value.replace(/[^0-9]/g, '');
-                              updateOtherAllowance(index, 'amount', val === '' ? 0 : parseInt(val, 10));
-                            }}
-                            placeholder="0"
-                            className="w-24 px-3 py-2 rounded-lg bg-secondary border border-border"
-                          />
-                          <button
-                            onClick={() => removeOtherAllowance(index)}
-                            className="p-2 text-red-500 rounded-lg"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      ))}
-                      <button
-                        onClick={addOtherAllowance}
-                        className="text-primary text-caption"
-                      >
-                        + {t['profile.add_allowance'] || 'Add Allowance'}
-                      </button>
-                    </div>
-                    
-                    {/* Total Display */}
-                    <div className="p-3 bg-primary/10 rounded-lg">
-                      <div className="flex justify-between items-center">
-                        <span className="text-body">{t['profile.total_salary'] || 'Total Monthly Salary'}</span>
-                        <span className="text-title font-bold text-primary">
-                          HK${(editHelperBaseSalary +
-                               editHelperOtherAllowances.reduce((sum, a) => sum + a.amount, 0)).toLocaleString()}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                )}
 
                 </div>
 

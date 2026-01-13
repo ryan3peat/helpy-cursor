@@ -140,11 +140,14 @@ export const HelperManagementContent: React.FC<Props> = ({
           baseSalary: 5100,
           foodAllowance: 1236,
         });
+        // 6 months of salary history with mix of signed/unsigned
         setSalarySlips([
+          // January 2026 - Current month, employer signed, helper not signed
           {
             id: 'demo-slip-1',
             householdId,
             helperId,
+            contractId: 'demo-contract',
             paymentPeriodStart: '2026-01-01',
             paymentPeriodEnd: '2026-01-31',
             baseSalary: 5100,
@@ -152,9 +155,100 @@ export const HelperManagementContent: React.FC<Props> = ({
             salaryDeduction: -200,
             totalPayout: 5400,
             note: 'January salary',
+            employerSignerId: 'demo-employer',
             employerSignerName: 'David',
             employerSignedAt: '2026-01-28T10:00:00Z',
             helperSignedAt: null,
+          },
+          // December 2025 - Both signed
+          {
+            id: 'demo-slip-2',
+            householdId,
+            helperId,
+            contractId: 'demo-contract',
+            paymentPeriodStart: '2025-12-01',
+            paymentPeriodEnd: '2025-12-31',
+            baseSalary: 5100,
+            extraSalary: 800,
+            salaryDeduction: 0,
+            totalPayout: 5900,
+            note: 'December salary + Christmas bonus',
+            employerSignerId: 'demo-employer',
+            employerSignerName: 'David',
+            employerSignedAt: '2025-12-28T10:00:00Z',
+            helperSignedAt: '2025-12-28T14:30:00Z',
+          },
+          // November 2025 - Both signed
+          {
+            id: 'demo-slip-3',
+            householdId,
+            helperId,
+            contractId: 'demo-contract',
+            paymentPeriodStart: '2025-11-01',
+            paymentPeriodEnd: '2025-11-30',
+            baseSalary: 5100,
+            extraSalary: 0,
+            salaryDeduction: -150,
+            totalPayout: 4950,
+            note: 'November salary',
+            employerSignerId: 'demo-employer',
+            employerSignerName: 'David',
+            employerSignedAt: '2025-11-28T10:00:00Z',
+            helperSignedAt: '2025-11-29T09:00:00Z',
+          },
+          // October 2025 - Both signed
+          {
+            id: 'demo-slip-4',
+            householdId,
+            helperId,
+            contractId: 'demo-contract',
+            paymentPeriodStart: '2025-10-01',
+            paymentPeriodEnd: '2025-10-31',
+            baseSalary: 5100,
+            extraSalary: 300,
+            salaryDeduction: 0,
+            totalPayout: 5400,
+            note: 'October salary',
+            employerSignerId: 'demo-employer',
+            employerSignerName: 'Sarah',
+            employerSignedAt: '2025-10-30T10:00:00Z',
+            helperSignedAt: '2025-10-30T15:00:00Z',
+          },
+          // September 2025 - Both signed
+          {
+            id: 'demo-slip-5',
+            householdId,
+            helperId,
+            contractId: 'demo-contract',
+            paymentPeriodStart: '2025-09-01',
+            paymentPeriodEnd: '2025-09-30',
+            baseSalary: 5100,
+            extraSalary: 0,
+            salaryDeduction: 0,
+            totalPayout: 5100,
+            note: null,
+            employerSignerId: 'demo-employer',
+            employerSignerName: 'David',
+            employerSignedAt: '2025-09-28T10:00:00Z',
+            helperSignedAt: '2025-09-28T16:00:00Z',
+          },
+          // August 2025 - Both signed
+          {
+            id: 'demo-slip-6',
+            householdId,
+            helperId,
+            contractId: 'demo-contract',
+            paymentPeriodStart: '2025-08-01',
+            paymentPeriodEnd: '2025-08-31',
+            baseSalary: 5100,
+            extraSalary: 200,
+            salaryDeduction: -100,
+            totalPayout: 5200,
+            note: 'August salary',
+            employerSignerId: 'demo-employer',
+            employerSignerName: 'David',
+            employerSignedAt: '2025-08-29T10:00:00Z',
+            helperSignedAt: '2025-08-29T11:00:00Z',
           },
         ]);
         setIsLoading(false);
@@ -175,6 +269,32 @@ export const HelperManagementContent: React.FC<Props> = ({
       setIsLoading(false);
     }
   };
+
+  // Auto-expand slips that are not fully signed OR the most recent slip
+  useEffect(() => {
+    if (salarySlips.length > 0) {
+      const toExpand = new Set<string>();
+      
+      // Sort slips by date (most recent first)
+      const sortedSlips = [...salarySlips].sort((a, b) => 
+        new Date(b.paymentPeriodEnd).getTime() - new Date(a.paymentPeriodEnd).getTime()
+      );
+      
+      // Always expand the most recent slip
+      if (sortedSlips[0]) {
+        toExpand.add(sortedSlips[0].id);
+      }
+      
+      // Also expand any slip that is not signed by both parties
+      salarySlips.forEach(slip => {
+        if (!slip.employerSignedAt || !slip.helperSignedAt) {
+          toExpand.add(slip.id);
+        }
+      });
+      
+      setExpandedSlips(toExpand);
+    }
+  }, [salarySlips]);
 
   // ─────────────────────────────────────────────────────────────────
   // Contract Handlers
@@ -210,7 +330,7 @@ export const HelperManagementContent: React.FC<Props> = ({
       loadData();
     } catch (err) {
       console.error('Failed to save contract:', err);
-      setError(t['error.save_contract'] || 'Failed to save contract. Please try again.');
+      setError(t['error.save_contract'] || 'Failed to save employment details. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -594,7 +714,7 @@ export const HelperManagementContent: React.FC<Props> = ({
           <div className="flex items-center gap-2">
             <FileText size={20} className="text-primary" />
             <h3 className="text-title font-semibold">
-              {t['salary.contract'] || 'Employment Contract'}
+              {t['salary.contract'] || 'Employment Details'}
             </h3>
           </div>
           {canManage && (
@@ -626,14 +746,14 @@ export const HelperManagementContent: React.FC<Props> = ({
         ) : (
           <div className="text-center py-4">
             <p className="text-body text-muted-foreground mb-3">
-              {t['salary.no_contract'] || 'No contract set up yet'}
+              {t['salary.no_contract'] || 'No details set up yet'}
             </p>
             {canManage && (
               <button
                 onClick={openContractSheet}
                 className="px-4 py-2 bg-primary text-primary-foreground rounded-lg transition-colors"
               >
-                {t['salary.setup_contract'] || 'Set Up Contract'}
+                {t['salary.setup_contract'] || 'Set Up Details'}
               </button>
             )}
           </div>
@@ -656,14 +776,6 @@ export const HelperManagementContent: React.FC<Props> = ({
             <p className="text-body text-muted-foreground">
               {t['salary.no_slips'] || 'No salary slips yet'}
             </p>
-            {canManage && contract && onCreateSlipClick && (
-              <button
-                onClick={onCreateSlipClick}
-                className="mt-3 px-4 py-2 bg-primary text-primary-foreground rounded-lg transition-colors"
-              >
-                {t['salary.create_slip'] || 'Create Salary Slip'}
-              </button>
-            )}
           </div>
         ) : (
           <div className="space-y-3">
@@ -741,7 +853,7 @@ export const HelperManagementContent: React.FC<Props> = ({
       <BottomSheet isOpen={showContractSheet} onClose={() => setShowContractSheet(false)}>
         <BottomSheet.Header>
           <h2 className="text-title text-foreground">
-            {contract ? (t['salary.edit_contract'] || 'Edit Contract') : (t['salary.setup_contract'] || 'Set Up Contract')}
+            {contract ? (t['salary.edit_contract'] || 'Edit Details') : (t['salary.setup_contract'] || 'Set Up Details')}
           </h2>
         </BottomSheet.Header>
         <BottomSheet.Body>
@@ -943,7 +1055,7 @@ const SalarySlipCard: React.FC<SalarySlipCardProps> = ({
       >
         <div className="flex items-center gap-3">
           <span className="text-body font-bold text-foreground">
-            {formatDate(periodStart)} - {formatDate(periodEnd)}
+            {formatFullDate(periodStart)} - {formatFullDate(periodEnd)}
           </span>
           {isBothSigned && (
             <Check size={16} className="text-green-600" />
@@ -968,22 +1080,22 @@ const SalarySlipCard: React.FC<SalarySlipCardProps> = ({
           <div className="border-t border-border mb-4"></div>
           
           {/* Salary Breakdown */}
-          <div className="space-y-2 mb-4">
+          <div className="space-y-2 mb-4 pr-6">
             <div className="flex justify-between">
               <span className="text-body text-muted-foreground">{t['salary.base_salary'] || 'Base Salary'}</span>
-              <span className="text-body">HK${slip.baseSalary.toLocaleString()}</span>
+              <span className="text-body tabular-nums">HK${slip.baseSalary.toLocaleString()}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-body text-muted-foreground">{t['salary.extra_salary'] || 'Extra Salary'}</span>
-              <span className="text-body">HK${slip.extraSalary.toLocaleString()}</span>
+              <span className="text-body text-muted-foreground">{t['salary.extra_salary'] || 'Extra Payout'}</span>
+              <span className="text-body tabular-nums">HK${slip.extraSalary.toLocaleString()}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-body text-muted-foreground">{t['salary.deduction'] || 'Deduction'}</span>
-              <span className="text-body text-destructive">HK${slip.salaryDeduction.toLocaleString()}</span>
+              <span className="text-body text-muted-foreground">{t['salary.deduction'] || 'Payout Deduction'}</span>
+              <span className="text-body text-destructive tabular-nums">HK${slip.salaryDeduction.toLocaleString()}</span>
             </div>
             <div className="flex justify-between pt-2 border-t border-border">
               <span className="text-body font-bold">{t['salary.total_payout'] || 'Total Payout'}</span>
-              <span className="text-body font-bold text-primary">HK${slip.totalPayout.toLocaleString()}</span>
+              <span className="text-body font-bold text-primary tabular-nums">HK${slip.totalPayout.toLocaleString()}</span>
             </div>
           </div>
           
@@ -1073,13 +1185,6 @@ const SalarySlipCard: React.FC<SalarySlipCardProps> = ({
           
           {/* Action Buttons */}
           <div className="flex gap-3">
-            <button
-              onClick={onExportPDF}
-              className="flex-1 py-2.5 rounded-xl bg-secondary text-foreground flex items-center justify-center gap-2"
-            >
-              <Download size={16} />
-              {t['salary.export_pdf'] || 'Export PDF'}
-            </button>
             {canManage && (
               <button
                 onClick={onDelete}
@@ -1088,6 +1193,13 @@ const SalarySlipCard: React.FC<SalarySlipCardProps> = ({
                 <Trash2 size={16} />
               </button>
             )}
+            <button
+              onClick={onExportPDF}
+              className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground font-semibold flex items-center justify-center gap-2 shadow-sm text-body"
+            >
+              <Download size={16} />
+              {t['salary.export_pdf'] || 'Export PDF'}
+            </button>
           </div>
         </div>
       )}

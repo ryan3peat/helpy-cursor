@@ -10,44 +10,49 @@ import {
   BookUser,
   HeartHandshake
 } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { translations } from "@/translations";
 
 export default function FeaturesContent() {
+  const { language } = useLanguage();
+  const t = translations[language];
+
   const featureItems = [
     {
       icon: Home,
-      title: "Home",
-      body: "Discover a serene dashboard that unites your family's plans, reminders, and essential tools into a single, intuitive overview for effortless home management.",
-      features: "Family Board, Widgets with quick action buttons, App Translations"
+      title: t.features.cards.home.title,
+      body: t.features.cards.home.body,
+      features: t.features.cards.home.features
     },
     {
       icon: ClipboardList,
-      title: "To Do",
-      body: "Keep everyone in sync with a shared task and shopping list.",
-      features: "Task list with due dates and recurring settings. Shopping list with Shopping Mode"
+      title: t.features.cards.todo.title,
+      body: t.features.cards.todo.body,
+      features: t.features.cards.todo.features
     },
     {
       icon: Utensils,
-      title: "Meals",
-      body: "Family meal scheduler to organize the week and guide your helper.",
-      features: "Meal planner for adults and kids. Quick recipe search on YouTube. RSVP system to join the meal. PDF export for printing."
+      title: t.features.cards.meals.title,
+      body: t.features.cards.meals.body,
+      features: t.features.cards.meals.features
     },
     {
       icon: DollarSign,
-      title: "Expenses",
-      body: "Stay on budget with a simple family expense tracker. It works as a household expense manager that lets you snap and track receipts in seconds.",
-      features: "Expenses list and summary. AI receipt scanner"
+      title: t.features.cards.expenses.title,
+      body: t.features.cards.expenses.body,
+      features: t.features.cards.expenses.features
     },
     {
       icon: BookUser,
-      title: "Family",
-      body: "A \"Family Book\" storing all of the important information about the family for everyone to know. Important and common places that you often visit (such as school, doctors, etc.), and how to do things your way, all on one page.",
-      features: "Places and practices list, including contact details and instructions, and notes."
+      title: t.features.cards.family.title,
+      body: t.features.cards.family.body,
+      features: t.features.cards.family.features
     },
     {
       icon: HeartHandshake,
-      title: "Helper",
-      body: "Nestled in the Family page. Managing salary slips has never been easier! Generate the slip in one click and sign it digitally!",
-      features: "Helper's start date, salary, and salary slip"
+      title: t.features.cards.helper.title,
+      body: t.features.cards.helper.body,
+      features: t.features.cards.helper.features
     }
   ];
 
@@ -64,20 +69,18 @@ export default function FeaturesContent() {
             className="space-y-6"
           >
             <h1 className="text-3xl font-semibold tracking-tight text-primary sm:text-4xl lg:text-5xl">
-              A household planner app
+              {t.features.title1}
               <br />
-              made for real homes
+              {t.features.title2}
             </h1>
             <p className="text-base text-muted-foreground sm:text-lg leading-relaxed max-w-lg">
-              Helpy is the home management app that simplifies daily life.
-              It gathers meals, tasks, and spending in one spot.
-              The ideal family collaboration app for families and helpers to work as a team.
+              {t.features.description}
             </p>
             <a
               href="https://app.helpyfam.com"
               className="inline-flex items-center justify-center rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-soft transition-colors"
             >
-              Get Started
+              {t.features.getStarted}
             </a>
           </motion.div>
 

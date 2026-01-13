@@ -4,8 +4,12 @@ import Image from "next/image";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { Users, HeartHandshake } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { translations } from "@/translations";
 
 export default function HomeContent() {
+  const { language } = useLanguage();
+  const t = translations[language];
   return (
     <div className="relative min-h-screen">
       {/* Full-width background wallpaper */}
@@ -42,7 +46,7 @@ export default function HomeContent() {
               />
               <span className="block mt-2 sm:mt-3">
                 <span className="text-2xl sm:text-3xl lg:text-4xl font-semibold text-white">
-                  The home management app that brings families and helpers closer.
+                  {t.home.headline}
                 </span>
               </span>
             </h1>
@@ -53,13 +57,13 @@ export default function HomeContent() {
                 href="/features"
                 className="inline-flex items-center justify-center rounded-full border border-white bg-white/10 backdrop-blur-md px-6 py-3 text-sm font-semibold text-white transition-colors flex-1 sm:flex-initial"
               >
-                See All Features
+                {t.home.seeAllFeatures}
               </Link>
               <a
                 href="https://app.helpyfam.com"
                 className="inline-flex items-center justify-center rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-soft transition-colors flex-1 sm:flex-initial"
               >
-                Get the App
+                {t.home.getTheApp}
               </a>
             </div>
 
@@ -69,11 +73,10 @@ export default function HomeContent() {
                   <div className="rounded-full bg-primary/10 p-3">
                     <Users className="h-6 w-6 text-primary" />
                   </div>
-                  <h3 className="text-xl font-semibold text-foreground">For families</h3>
+                  <h3 className="text-xl font-semibold text-foreground">{t.home.forFamilies}</h3>
                 </div>
                 <p className="text-base text-muted-foreground leading-relaxed">
-                  Your all-in-one family task manager to
-                  keep meals, shared family tasks, and expenses in one calm, shared space.
+                  {t.home.forFamiliesDesc}
                 </p>
               </div>
               <div className="rounded-2xl bg-card p-6 sm:p-8 shadow-soft hover:shadow-md transition-shadow">
@@ -81,19 +84,18 @@ export default function HomeContent() {
                   <div className="rounded-full bg-primary/10 p-3">
                     <HeartHandshake className="h-6 w-6 text-primary" />
                   </div>
-                  <h3 className="text-xl font-semibold text-foreground">For helpers</h3>
+                  <h3 className="text-xl font-semibold text-foreground">{t.home.forHelpers}</h3>
                 </div>
                 <p className="text-base text-muted-foreground leading-relaxed">
-                  Clear routines, written in simple steps and in your language.
-                  This home helper app makes work feel poised and assured.
+                  {t.home.forHelpersDesc}
                 </p>
               </div>
             </div>
 
             <p className="text-xs text-white -mt-4">
-              "I just want you to know I'm real grateful you're here"
+              {t.home.quote}
               <br />
-              Aibileen Clark, The Help
+              {t.home.quoteAuthor}
             </p>
           </motion.div>
         </section>

@@ -1,87 +1,91 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { Check, X, Star } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { translations } from "@/translations";
 
 // Helpy brand colors
 const HELPY_BLUE = '#3EAFD2';
 const HELPY_PINK = '#F06292';
 
-// Feature sections
-const featureSections = [
-  {
-    id: 'users',
-    title: 'Users',
-    features: [
-      { 
-        id: 'family', 
-        name: 'Family members',
-        isLimit: true 
-      },
-      { 
-        id: 'helpers', 
-        name: 'Helpers',
-        isLimit: true 
-      },
-    ]
-  },
-  {
-    id: 'basic_features',
-    title: 'Basic Features',
-    features: [
-      { id: 'home', name: 'Home (Family Board & Widgets)', isLimit: false },
-      { id: 'todo', name: 'To Do (Tasks & Shopping)', isLimit: false },
-      { id: 'meal_planning', name: 'Meal Planning', isLimit: false },
-      { id: 'family_info', name: 'Family Info', isLimit: false },
-      { id: 'ai_translations', name: 'AI Translations', isLimit: false },
-    ]
-  },
-  {
-    id: 'expenses',
-    title: 'Expenses',
-    features: [
-      { 
-        id: 'manual_expenses', 
-        name: 'Add expenses manually',
-        description: 'Enter amount, category, shop, and date quickly.',
-        isLimit: false 
-      },
-      { 
-        id: 'ai_scan', 
-        name: 'AI receipt scanning',
-        description: 'Take or upload receipt photo and automatically capture the details.',
-        isLimit: false 
-      },
-      { 
-        id: 'spending_summary', 
-        name: 'Monthly Spending Summary',
-        description: 'Pie charts show category totals and percentages.',
-        isLimit: false 
-      },
-    ]
-  },
-  {
-    id: 'helper_management',
-    title: 'Helper Management',
-    features: [
-      { 
-        id: 'helper_records', 
-        name: 'Helper payslips & holiday records',
-        description: 'Track overtime/holidays; generate signed payslips easily.',
-        isLimit: false 
-      },
-    ]
-  }
-];
-
 export default function PricingContent() {
+  const { language } = useLanguage();
+  const t = translations[language];
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
 
-  const plans = [
+  // Feature sections with translations
+  const featureSections = useMemo(() => [
+    {
+      id: 'users',
+      title: t.pricing.sections.users,
+      features: [
+        { 
+          id: 'family', 
+          name: t.pricing.sections.familyMembers,
+          isLimit: true 
+        },
+        { 
+          id: 'helpers', 
+          name: t.pricing.sections.helpers,
+          isLimit: true 
+        },
+      ]
+    },
+    {
+      id: 'basic_features',
+      title: t.pricing.sections.basicFeatures,
+      features: [
+        { id: 'home', name: t.pricing.sections.home, isLimit: false },
+        { id: 'todo', name: t.pricing.sections.todo, isLimit: false },
+        { id: 'meal_planning', name: t.pricing.sections.mealPlanning, isLimit: false },
+        { id: 'family_info', name: t.pricing.sections.familyInfo, isLimit: false },
+        { id: 'ai_translations', name: t.pricing.sections.aiTranslations, isLimit: false },
+      ]
+    },
+    {
+      id: 'expenses',
+      title: t.pricing.sections.expenses,
+      features: [
+        { 
+          id: 'manual_expenses', 
+          name: t.pricing.sections.addExpensesManually,
+          description: t.pricing.sections.addExpensesDesc,
+          isLimit: false 
+        },
+        { 
+          id: 'ai_scan', 
+          name: t.pricing.sections.aiReceiptScanning,
+          description: t.pricing.sections.aiReceiptDesc,
+          isLimit: false 
+        },
+        { 
+          id: 'spending_summary', 
+          name: t.pricing.sections.monthlySpendingSummary,
+          description: t.pricing.sections.spendingSummaryDesc,
+          isLimit: false 
+        },
+      ]
+    },
+    {
+      id: 'helper_management',
+      title: t.pricing.sections.helperManagement,
+      features: [
+        { 
+          id: 'helper_records', 
+          name: t.pricing.sections.helperPayslips,
+          description: t.pricing.sections.payslipsDesc,
+          isLimit: false 
+        },
+      ]
+    }
+  ], [t]);
+
+  const plans = useMemo(() => [
     {
       id: 'free',
-      name: "Free",
+      name: t.pricing.free,
       monthlyPrice: 0,
       yearlyPrice: 0,
       accentColor: null,
@@ -103,7 +107,7 @@ export default function PricingContent() {
     },
     {
       id: 'core',
-      name: "Core",
+      name: t.pricing.core,
       monthlyPrice: 88,
       yearlyPrice: 845,
       accentColor: HELPY_BLUE,
@@ -125,7 +129,7 @@ export default function PricingContent() {
     },
     {
       id: 'pro',
-      name: "Pro",
+      name: t.pricing.pro,
       monthlyPrice: 118,
       yearlyPrice: 1133,
       accentColor: HELPY_PINK,
@@ -145,7 +149,7 @@ export default function PricingContent() {
       badge: true,
       isFree: false
     }
-  ];
+  ], [t]);
 
   return (
     <div className="px-4 py-10 sm:px-6 lg:px-8">
@@ -157,11 +161,10 @@ export default function PricingContent() {
           className="text-center space-y-4"
         >
           <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-            Simple pricing for your home management app
+            {t.pricing.title}
           </h1>
           <p className="mx-auto max-w-2xl text-sm text-muted-foreground sm:text-base">
-            Begin with what you need today. You can always grow into more
-            features later, when your routines are ready.
+            {t.pricing.subtitle}
           </p>
         </motion.section>
 
@@ -176,7 +179,7 @@ export default function PricingContent() {
                   : 'text-muted-foreground hover:text-foreground'
               }`}
             >
-              Monthly
+              {t.pricing.monthly}
             </button>
             <button
               onClick={() => setBillingPeriod('yearly')}
@@ -186,8 +189,8 @@ export default function PricingContent() {
                   : 'text-muted-foreground hover:text-foreground'
               }`}
             >
-              Yearly
-              <span className="ml-1.5 text-xs font-semibold" style={{ color: HELPY_BLUE }}>Save 20%</span>
+              {t.pricing.yearly}
+              <span className="ml-1.5 text-xs font-semibold" style={{ color: HELPY_BLUE }}>{t.pricing.save20}</span>
             </button>
           </div>
         </div>
@@ -224,10 +227,10 @@ export default function PricingContent() {
                     {plan.name}
                   </p>
                   <p className="mt-3 text-3xl font-semibold">
-                    {price === 0 ? 'Free' : `HK$${price}`}
+                    {price === 0 ? t.pricing.free : `HK$${price}`}
                     {price > 0 && (
                       <span className="text-sm font-normal" style={{ color: hasColoredBg ? 'rgba(255,255,255,0.8)' : 'hsl(var(--muted-foreground))' }}>
-                        {billingPeriod === 'monthly' ? ' / mo' : ' / yr'}
+                        {billingPeriod === 'monthly' ? t.pricing.perMonth : t.pricing.perYear}
                       </span>
                     )}
                   </p>

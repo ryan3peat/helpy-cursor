@@ -1,0 +1,138 @@
+NAVIGATION (Navbar)
+1. Home
+2. Features
+3. Subscription
+4. FAQ
+5. Close menu
+6. Open menu
+
+FOOTER
+7. © {year} Helpy. All rights reserved.
+
+HOME PAGE
+8. The home management app that brings families and helpers closer.
+9. See All Features
+10. Get the App
+11. For families
+12. Your all-in-one family task manager to keep meals, shared family tasks, and expenses in one calm, shared space.
+13. For helpers
+14. Clear routines, written in simple steps and in your language. This home helper app makes work feel poised and assured.
+15. "I just want you to know I'm real grateful you're here"
+16. Aibileen Clark, The Help
+
+FEATURES PAGE
+17. A household planner app
+18. made for real homes
+19. Helpy is the home management app that simplifies daily life. It gathers meals, tasks, and spending in one spot. The ideal family collaboration app for families and helpers to work as a team.
+20. Get Started
+
+Feature Cards:
+21. Home
+22. Discover a serene dashboard that unites your family's plans, reminders, and essential tools into a single, intuitive overview for effortless home management.
+23. Family Board, Widgets with quick action buttons, App Translations
+
+24. To Do
+25. Keep everyone in sync with a shared task and shopping list.
+26. Task list with due dates and recurring settings. Shopping list with Shopping Mode
+
+27. Meals
+28. Family meal scheduler to organize the week and guide your helper.
+29. Meal planner for adults and kids. Quick recipe search on YouTube. RSVP system to join the meal. PDF export for printing.
+
+30. Expenses
+31. Stay on budget with a simple family expense tracker. It works as a household expense manager that lets you snap and track receipts in seconds.
+32. Expenses list and summary. AI receipt scanner
+
+33. Family
+34. A "Family Book" storing all of the important information about the family for everyone to know. Important and common places that you often visit (such as school, doctors, etc.), and how to do things your way, all on one page.
+35. Places and practices list, including contact details and instructions, and notes.
+
+36. Helper
+37. Nestled in the Family page. Managing salary slips has never been easier! Generate the slip in one click and sign it digitally!
+38. Helper's start date, salary, and salary slip
+
+PRICING/SUBSCRIPTION PAGE
+39. Simple pricing for your home management app
+40. Begin with what you need today. You can always grow into more features later, when your routines are ready.
+41. Monthly
+42. Yearly
+43. Save 20%
+44. Free
+45. Core
+46. Pro
+47. / mo
+48. / yr
+
+Feature Sections:
+49. Users
+50. Family members
+51. Helpers
+52. Basic Features
+53. Home (Family Board & Widgets)
+54. To Do (Tasks & Shopping)
+55. Meal Planning
+56. Family Info
+57. AI Translations
+58. Expenses
+59. Add expenses manually
+60. Enter amount, category, shop, and date quickly.
+61. AI receipt scanning
+62. Take or upload receipt photo and automatically capture the details.
+63. Monthly Spending Summary
+64. Pie charts show category totals and percentages.
+65. Helper Management
+66. Helper payslips & holiday records
+67. Track overtime/holidays; generate signed payslips easily.
+
+FAQ PAGE
+68. Common Questions
+69. Everything you need to know about setting up your Helpy home.
+
+FAQ Items:
+70. What is Helpy?
+71. Helpy is the home management app that simplifies daily life. It gathers meals, tasks, and spending in one spot. The ideal family collaboration app for families and helpers to work as a team.
+
+72. My partner and I juggle chores. Can this family task manager help?
+73. We built Helpy to be the ultimate family task manager. You can assign tasks, set reminders, and see when things are done. It's a family collaboration app designed to stop the 'nagging' and start the teamwork.
+
+74. I'm about to hire a domestic helper in Hong Kong. Is this app for me?
+75. Absolutely. While we aren't a recruitment agency, Helpy is the essential domestic helper app to use after you hire a domestic helper in Hong Kong. It bridges the communication gap from day one with built-in training guides, making it the perfect home helper app to set your new relationship up for success.
+
+76. How does the shared shopping list app feature work?
+77. It's a real-time shared shopping list app where anyone can add items instantly. It seamlessly connects with our household chore app features, so you can manage 'buy milk' and 'clean windows' in the same easy flow.
+
+78. We struggle with dinner. Is Helpy a good meal planning app for families?
+79. Helpy makes decisions easy. As a dedicated meal planning app for families, it lets you organize favorite recipes for the week. Use our family meal scheduler to assign them to specific days, so your helper knows exactly what to prep.
+
+80. Can I use Helpy as a family expense tracker for petty cash?
+81. Definitely. Helpy includes a built-in family expense tracker. It works as a shared household expense manager where your helper can snap photos of receipts, and you can approve them instantly. No more lost paper receipts.
+
+82. My helper doesn't speak English well. Can she use it?
+83. Yes. Helpy translates to many common languages with one click, making it an accessible home helper app for helpers of any background.
+
+84. Can I set daily schedules for my kids and the house?
+85. You can. Helpy acts as a detailed daily routine planner for families. You can create morning routines, cleaning schedules, or bedtime checklists. It turns complex days into simple, followable steps.
+
+86. Can I create step-by-step instructions for my helper?
+87. Yes. Helpy works as a daily routine planner for families where you can write simple guides for any task. From how to fold laundry to the school pickup routine, your helper can follow along at their own pace.
+
+88. How do I share household info with my spouse or helper?
+89. Just invite them to your digital home in the app. Helpy is a family collaboration app where everyone shares the same view of tasks, meals, and notes. No more forwarding screenshots.
+
+90. How does the family meal scheduler help plan the whole week?
+91. Our family meal scheduler covers everything from breakfast to snacks. You can map out the entire week at once, ensuring your helper always knows the plan without needing to ask.
+
+METADATA/SEO (layout.tsx)
+92. Helpy - Home Management App & Household Planner
+93. Helpy is the home management app that simplifies daily life. A household planner app for meals, tasks, and spending. The ideal family collaboration app.
+94. Helpy is the home management app that simplifies daily life for families and domestic helpers. A household planner app for meals, tasks, expenses, and training guides.
+95. Free starter plan available
+
+Feature List (SEO):
+96. Meal planning and family meal scheduler
+97. Shared shopping lists and household chore management
+98. Family expense tracker and receipt management
+99. Daily routine planner for families
+100. Training guides for domestic helpers
+101. Multi-language support
+

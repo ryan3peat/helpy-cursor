@@ -243,6 +243,7 @@ export async function createSalarySlip(
       payment_period_start: slip.paymentPeriodStart,
       payment_period_end: slip.paymentPeriodEnd,
       base_salary: slip.baseSalary,
+      food_allowance: slip.foodAllowance,
       extra_salary: slip.extraSalary,
       salary_deduction: slip.salaryDeduction,
       total_payout: slip.totalPayout,
@@ -271,6 +272,7 @@ export async function updateSalarySlip(
   if (updates.paymentPeriodStart !== undefined) updateData.payment_period_start = updates.paymentPeriodStart;
   if (updates.paymentPeriodEnd !== undefined) updateData.payment_period_end = updates.paymentPeriodEnd;
   if (updates.baseSalary !== undefined) updateData.base_salary = updates.baseSalary;
+  if (updates.foodAllowance !== undefined) updateData.food_allowance = updates.foodAllowance;
   if (updates.extraSalary !== undefined) updateData.extra_salary = updates.extraSalary;
   if (updates.salaryDeduction !== undefined) updateData.salary_deduction = updates.salaryDeduction;
   if (updates.totalPayout !== undefined) updateData.total_payout = updates.totalPayout;
@@ -343,14 +345,25 @@ export async function signAsEmployer(
 
 /**
  * Sign a salary slip as helper
+ * @param slipId - The salary slip ID
+ * @param currentUserId - The current user's ID (Clerk ID or Supabase UUID)
  */
-export async function signAsHelper(slipId: string): Promise<SalarySlip> {
-  // First check if already signed
-  const { data: existing } = await supabase
+export async function signAsHelper(slipId: string, currentUserId: string): Promise<SalarySlip> {
+  const currentUserUuid = toSupabaseUuid(currentUserId);
+  
+  // First check if already signed AND verify the current user is the helper for this slip
+  const { data: existing, error: fetchError } = await supabase
     .from('salary_slips')
-    .select('helper_signed_at')
+    .select('helper_signed_at, helper_id')
     .eq('id', slipId)
     .single();
+  
+  if (fetchError) throw fetchError;
+  
+  // SECURITY: Verify the current user IS the helper for this salary slip
+  if (existing?.helper_id !== currentUserUuid) {
+    throw new Error('Only the assigned helper can sign their own salary slip');
+  }
     
   if (existing?.helper_signed_at) {
     throw new Error('Salary slip already signed by helper');
@@ -416,6 +429,7 @@ function mapSlipFromDb(row: any): SalarySlip {
     paymentPeriodStart: row.payment_period_start,
     paymentPeriodEnd: row.payment_period_end,
     baseSalary: row.base_salary,
+    foodAllowance: row.food_allowance || 0,
     extraSalary: row.extra_salary,
     salaryDeduction: row.salary_deduction,
     totalPayout: row.total_payout,

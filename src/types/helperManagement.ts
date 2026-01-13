@@ -43,9 +43,10 @@ export interface SalarySlip {
   paymentPeriodStart: string;   // ISO date string (YYYY-MM-DD)
   paymentPeriodEnd: string;     // ISO date string (YYYY-MM-DD)
   baseSalary: number;           // Base salary from contract at time of slip
+  foodAllowance: number;        // Food allowance from contract at time of slip
   extraSalary: number;          // One-time additions
   salaryDeduction: number;      // One-time deductions (stored as negative)
-  totalPayout: number;          // Calculated: base + extra + deduction
+  totalPayout: number;          // Calculated: base + food + extra + deduction
   note?: string | null;
   employerSignerId?: string | null;   // UUID of employer who will sign
   employerSignerName?: string | null; // Name snapshot for display/PDF
@@ -65,6 +66,7 @@ export interface CreateSalarySlip {
   paymentPeriodStart: string;
   paymentPeriodEnd: string;
   baseSalary: number;
+  foodAllowance: number;        // Food allowance from contract
   extraSalary: number;
   salaryDeduction: number;      // Should be negative or zero
   totalPayout: number;

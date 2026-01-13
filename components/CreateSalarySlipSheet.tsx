@@ -55,6 +55,7 @@ const CreateSalarySlipSheet: React.FC<Props> = ({
   const [paymentPeriodStart, setPaymentPeriodStart] = useState<string>('');
   const [paymentPeriodEnd, setPaymentPeriodEnd] = useState<string>('');
   const [baseSalary, setBaseSalary] = useState<string>('');
+  const [foodAllowance, setFoodAllowance] = useState<string>('');
   const [extraSalary, setExtraSalary] = useState<string>('0');
   const [salaryDeduction, setSalaryDeduction] = useState<string>('0');
   const [note, setNote] = useState<string>('');
@@ -83,12 +84,13 @@ const CreateSalarySlipSheet: React.FC<Props> = ({
   // Calculate total payout
   const totalPayout = useMemo(() => {
     const base = parseInt(baseSalary) || 0;
+    const food = parseInt(foodAllowance) || 0;
     const extra = parseInt(extraSalary) || 0;
     const deduction = parseInt(salaryDeduction) || 0;
     // Deduction should be negative or zero
     const actualDeduction = deduction > 0 ? -deduction : deduction;
-    return base + extra + actualDeduction;
-  }, [baseSalary, extraSalary, salaryDeduction]);
+    return base + food + extra + actualDeduction;
+  }, [baseSalary, foodAllowance, extraSalary, salaryDeduction]);
   
   // Get selected helper details
   const selectedHelper = useMemo(() => {
@@ -99,6 +101,36 @@ const CreateSalarySlipSheet: React.FC<Props> = ({
   // Effects
   // ─────────────────────────────────────────────────────────────────
   
+  // Helper to format date as YYYY-MM-DD in Hong Kong timezone
+  const formatDateForInput = (date: Date): string => {
+    // Use Intl.DateTimeFormat to get date parts in Hong Kong timezone
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Hong_Kong',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+    // en-CA locale gives us YYYY-MM-DD format directly
+    return formatter.format(date);
+  };
+
+  // Helper to get current date parts in Hong Kong timezone
+  const getHongKongDateParts = (): { year: number; month: number; day: number } => {
+    const now = new Date();
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Asia/Hong_Kong',
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+    });
+    const parts = formatter.formatToParts(now);
+    return {
+      year: parseInt(parts.find(p => p.type === 'year')?.value || '2026'),
+      month: parseInt(parts.find(p => p.type === 'month')?.value || '1') - 1, // 0-indexed
+      day: parseInt(parts.find(p => p.type === 'day')?.value || '1'),
+    };
+  };
+
   // Reset form when sheet opens
   useEffect(() => {
     if (isOpen) {
@@ -106,15 +138,25 @@ const CreateSalarySlipSheet: React.FC<Props> = ({
       setError(null);
       setContract(null);
       
-      // Set default payment period (current month)
-      const now = new Date();
-      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-      const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-      setPaymentPeriodStart(firstDay.toISOString().split('T')[0]);
-      setPaymentPeriodEnd(lastDay.toISOString().split('T')[0]);
+      // Set default payment period to PREVIOUS month in Hong Kong timezone
+      const hkDate = getHongKongDateParts();
+      // Calculate previous month
+      let prevMonth = hkDate.month - 1;
+      let prevYear = hkDate.year;
+      if (prevMonth < 0) {
+        prevMonth = 11; // December
+        prevYear -= 1;
+      }
+      // First day of previous month
+      const firstDay = new Date(prevYear, prevMonth, 1);
+      // Last day of previous month (day 0 of current month)
+      const lastDay = new Date(prevYear, prevMonth + 1, 0);
+      setPaymentPeriodStart(formatDateForInput(firstDay));
+      setPaymentPeriodEnd(formatDateForInput(lastDay));
       
       // Reset other fields
       setBaseSalary('');
+      setFoodAllowance('');
       setExtraSalary('0');
       setSalaryDeduction('0');
       setNote('');
@@ -146,11 +188,13 @@ const CreateSalarySlipSheet: React.FC<Props> = ({
       const contractData = await getHelperContract(selectedHelperId, householdId);
       setContract(contractData);
       
-      // Auto-fill base salary from contract
+      // Auto-fill base salary and food allowance from contract
       if (contractData) {
         setBaseSalary(contractData.baseSalary.toString());
+        setFoodAllowance(contractData.foodAllowance.toString());
       } else {
         setBaseSalary('');
+        setFoodAllowance('');
       }
     } catch (err) {
       console.error('Failed to load contract:', err);
@@ -204,6 +248,7 @@ const CreateSalarySlipSheet: React.FC<Props> = ({
         paymentPeriodStart,
         paymentPeriodEnd,
         baseSalary: parseInt(baseSalary) || 0,
+        foodAllowance: parseInt(foodAllowance) || 0,
         extraSalary: parseInt(extraSalary) || 0,
         salaryDeduction: actualDeduction,
         totalPayout,
@@ -305,7 +350,7 @@ const CreateSalarySlipSheet: React.FC<Props> = ({
               {/* Helper Selection */}
               <div>
                 <label className="block text-caption text-muted-foreground mb-2">
-                  {t['salary.helper_name'] || 'Helper Name'} *
+                  {t['salary.helper_name'] || "Helper's Name"} *
                 </label>
                 <select
                   value={selectedHelperId}
@@ -366,6 +411,7 @@ const CreateSalarySlipSheet: React.FC<Props> = ({
                       const value = e.target.value.replace(/[^\d]/g, '');
                       setBaseSalary(value);
                     }}
+                    onFocus={(e) => e.target.select()}
                     placeholder={contract ? contract.baseSalary.toString() : '0'}
                     className="w-full pl-16 pr-4 py-3 bg-muted rounded-xl text-lg font-semibold text-foreground outline-none border border-transparent focus:border-primary transition-colors text-right"
                   />
@@ -387,10 +433,41 @@ const CreateSalarySlipSheet: React.FC<Props> = ({
                 )}
               </div>
               
-              {/* Extra Payout */}
+              {/* Food Allowance (from contract) */}
               <div>
                 <label className="block text-caption text-muted-foreground mb-2">
-                  {t['salary.extra_salary'] || 'Extra Payout'}
+                  {t['salary.food_allowance'] || 'Food Allowance'}
+                </label>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg font-semibold text-muted-foreground">
+                    HK$
+                  </span>
+                  <input
+                    type="text"
+                    autoComplete="one-time-code"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={foodAllowance}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/[^\d]/g, '');
+                      setFoodAllowance(value);
+                    }}
+                    onFocus={(e) => e.target.select()}
+                    placeholder={contract ? contract.foodAllowance.toString() : '0'}
+                    className="w-full pl-16 pr-4 py-3 bg-muted rounded-xl text-lg font-semibold text-foreground outline-none border border-transparent focus:border-primary transition-colors text-right"
+                  />
+                </div>
+                {contract && (
+                  <p className="text-caption text-muted-foreground mt-1">
+                    {t['salary.from_contract'] || 'From employment details'}: HK${contract.foodAllowance.toLocaleString()}
+                  </p>
+                )}
+              </div>
+              
+              {/* Additional Pay */}
+              <div>
+                <label className="block text-caption text-muted-foreground mb-2">
+                  {t['salary.extra_salary'] || 'Additional Pay'}
                 </label>
                 <div className="relative">
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg font-semibold text-muted-foreground">
@@ -406,16 +483,17 @@ const CreateSalarySlipSheet: React.FC<Props> = ({
                       const value = e.target.value.replace(/[^\d]/g, '');
                       setExtraSalary(value);
                     }}
+                    onFocus={(e) => e.target.select()}
                     placeholder="0"
                     className="w-full pl-16 pr-4 py-3 bg-muted rounded-xl text-lg font-semibold text-foreground outline-none border border-transparent focus:border-primary transition-colors text-right"
                   />
                 </div>
               </div>
               
-              {/* Payout Deduction */}
+              {/* Pay Deduction */}
               <div>
                 <label className="block text-caption text-muted-foreground mb-2">
-                  {t['salary.deduction'] || 'Payout Deduction'}
+                  {t['salary.deduction'] || 'Pay Deduction'}
                 </label>
                 <div className="relative">
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg font-semibold text-destructive">
@@ -431,6 +509,7 @@ const CreateSalarySlipSheet: React.FC<Props> = ({
                       const value = e.target.value.replace(/[^\d]/g, '');
                       setSalaryDeduction(value);
                     }}
+                    onFocus={(e) => e.target.select()}
                     placeholder="0"
                     className="w-full pl-[4.5rem] pr-4 py-3 bg-muted rounded-xl text-lg font-semibold text-destructive outline-none border border-transparent focus:border-primary transition-colors text-right"
                   />
@@ -438,14 +517,17 @@ const CreateSalarySlipSheet: React.FC<Props> = ({
               </div>
               
               {/* Total Payout (calculated) */}
-              <div className="p-4 bg-primary/10 rounded-xl">
-                <div className="flex justify-between items-center">
-                  <span className="text-body font-semibold text-foreground">
-                    {t['salary.total_payout'] || 'Total Payout'}
+              <div>
+                <label className="block text-caption text-muted-foreground mb-2">
+                  {t['salary.total_payout'] || 'Total Payout'}
+                </label>
+                <div className="relative bg-primary/10 rounded-xl">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg font-semibold text-primary">
+                    HK$
                   </span>
-                  <span className="text-title font-bold text-primary">
-                    HK${totalPayout.toLocaleString()}
-                  </span>
+                  <div className="w-full pl-16 pr-4 py-3 text-lg font-bold text-primary text-right tabular-nums">
+                    {totalPayout.toLocaleString()}
+                  </div>
                 </div>
               </div>
               
@@ -539,15 +621,19 @@ const CreateSalarySlipSheet: React.FC<Props> = ({
               <div className="space-y-2">
                 <div className="flex justify-between">
                   <span className="text-caption text-muted-foreground">{t['salary.base_salary'] || 'Base Salary'}</span>
-                  <span className="text-caption">HK${(parseInt(baseSalary) || 0).toLocaleString()}</span>
+                  <span className="text-caption tabular-nums">HK${(parseInt(baseSalary) || 0).toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-caption text-muted-foreground">{t['salary.extra_salary'] || 'Extra Salary'}</span>
-                  <span className="text-caption">HK${(parseInt(extraSalary) || 0).toLocaleString()}</span>
+                  <span className="text-caption text-muted-foreground">{t['salary.food_allowance'] || 'Food Allowance'}</span>
+                  <span className="text-caption tabular-nums">HK${(parseInt(foodAllowance) || 0).toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-caption text-muted-foreground">{t['salary.deduction'] || 'Deduction'}</span>
-                  <span className="text-caption text-destructive">
+                  <span className="text-caption text-muted-foreground">{t['salary.extra_salary'] || 'Additional Pay'}</span>
+                  <span className="text-caption tabular-nums">HK${(parseInt(extraSalary) || 0).toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-caption text-muted-foreground">{t['salary.deduction'] || 'Pay Deduction'}</span>
+                  <span className="text-caption text-destructive tabular-nums">
                     -HK${Math.abs(parseInt(salaryDeduction) || 0).toLocaleString()}
                   </span>
                 </div>

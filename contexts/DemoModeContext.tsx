@@ -106,10 +106,6 @@ const createDemoUsers = (): User[] => [
     status: 'active',
     notificationsEnabled: true,
     hasPushSubscription: true,
-    helperStartDate: '2024-06-01',
-    helperBaseSalary: 4870,
-    helperFoodAllowance: 1236,
-    helperOtherAllowances: [{ name: 'Transport', amount: 500 }],
   },
   {
     id: 'demo-grandma-005',

@@ -840,8 +840,7 @@ export async function updateItem(
     // Note: phone_number column does NOT exist in the database - remove if present
     const validUserFields = [
       'name', 'email', 'role', 'avatar', 'allergies', 'preferences', 
-      'status', 'expires_at', 'notifications_enabled',
-      'helper_start_date', 'helper_base_salary', 'helper_food_allowance', 'helper_other_allowances'
+      'status', 'expires_at', 'notifications_enabled'
     ];
     const filteredUpdates: Record<string, any> = {};
     for (const key of Object.keys(snakeCaseUpdates)) {

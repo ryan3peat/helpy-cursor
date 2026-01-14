@@ -7,6 +7,11 @@
  *   - Imports BASE_TRANSLATIONS from constants.ts (single source of truth)
  *   - Incremental mode: only translates NEW keys (default behavior)
  *   - Force mode: re-translates everything (--force flag)
+ *   - Pagination: Properly handles >1000 translations (CRITICAL - see getExistingKeys/getEnglishTranslations)
+ * 
+ * IMPORTANT: The pagination logic in getExistingKeys() and getEnglishTranslations() is CRITICAL.
+ * Without it, Supabase's 1000-row default limit causes the script to miss existing translations,
+ * resulting in unnecessary re-translations. DO NOT remove or simplify these functions!
  * 
  * USAGE:
  *   1. Make sure you have run the migration (021_ui_translations.sql) first
@@ -77,36 +82,93 @@ const LANGUAGES_TO_TRANSLATE = SUPPORTED_LANGUAGES.filter(l => l.code !== 'en');
 
 /**
  * Get existing translation keys for a language from Supabase
+ * 
+ * CRITICAL: This function MUST use pagination to fetch ALL keys.
+ * 
+ * Without pagination, Supabase queries default to a 1000-row limit.
+ * If we have more than 1000 translations (we currently have 1123+),
+ * the script would only see the first 1000 and incorrectly think
+ * the remaining keys are missing, causing unnecessary re-translations.
+ * 
+ * This pagination logic MUST be preserved - do not remove it!
+ * 
+ * @param langCode - Language code to fetch keys for
+ * @returns Set of all existing translation keys for the language
  */
 async function getExistingKeys(langCode: string): Promise<Set<string>> {
-  const { data, error } = await supabase
-    .from('ui_translations')
-    .select('key')
-    .eq('lang_code', langCode);
+  const allKeys: string[] = [];
+  let from = 0;
+  const pageSize = 1000;
+  let hasMore = true;
 
-  if (error) {
-    console.error(`Error fetching existing keys for ${langCode}:`, error);
-    return new Set();
+  while (hasMore) {
+    const { data, error } = await supabase
+      .from('ui_translations')
+      .select('key')
+      .eq('lang_code', langCode)
+      .range(from, from + pageSize - 1);
+
+    if (error) {
+      console.error(`Error fetching existing keys for ${langCode}:`, error);
+      return new Set();
+    }
+
+    if (data && data.length > 0) {
+      allKeys.push(...data.map(row => row.key));
+      hasMore = data.length === pageSize;
+      from += pageSize;
+    } else {
+      hasMore = false;
+    }
   }
 
-  return new Set(data?.map(row => row.key) || []);
+  return new Set(allKeys);
 }
 
 /**
  * Get existing English translations with their values
+ * 
+ * CRITICAL: This function MUST use pagination to fetch ALL translations.
+ * 
+ * Without pagination, Supabase queries default to a 1000-row limit.
+ * If we have more than 1000 English translations, the script would only
+ * see the first 1000 and incorrectly think the remaining keys are missing,
+ * causing unnecessary re-translations.
+ * 
+ * This pagination logic MUST be preserved - do not remove it!
+ * 
+ * @returns Map of all existing English translation keys and values
  */
 async function getEnglishTranslations(): Promise<Map<string, string>> {
-  const { data, error } = await supabase
-    .from('ui_translations')
-    .select('key, value')
-    .eq('lang_code', 'en');
+  const translations = new Map<string, string>();
+  let from = 0;
+  const pageSize = 1000;
+  let hasMore = true;
 
-  if (error) {
-    console.error('Error fetching English translations:', error);
-    return new Map();
+  while (hasMore) {
+    const { data, error } = await supabase
+      .from('ui_translations')
+      .select('key, value')
+      .eq('lang_code', 'en')
+      .range(from, from + pageSize - 1);
+
+    if (error) {
+      console.error('Error fetching English translations:', error);
+      return new Map();
+    }
+
+    if (data && data.length > 0) {
+      data.forEach(row => {
+        translations.set(row.key, row.value);
+      });
+      hasMore = data.length === pageSize;
+      from += pageSize;
+    } else {
+      hasMore = false;
+    }
   }
 
-  return new Map(data?.map(row => [row.key, row.value]) || []);
+  return translations;
 }
 
 /**

@@ -99,8 +99,8 @@ export const HelperManagementContent: React.FC<Props> = ({
   
   const [contract, setContract] = useState<HelperContract | null>(cachedContract);
   const [salarySlips, setSalarySlips] = useState<SalarySlip[]>(cachedHelperSlips);
-  // Only show loading if we have no cached data
-  const [isLoading, setIsLoading] = useState(cachedContract === null && cachedHelperSlips.length === 0);
+  // isLoading is only for async operations (save, delete, sign), not for initial display
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
   // Modal states
@@ -157,14 +157,12 @@ export const HelperManagementContent: React.FC<Props> = ({
   useEffect(() => {
     if (cachedContract) {
       setContract(cachedContract);
-      setIsLoading(false); // Hide loading when cached data arrives
     }
   }, [cachedContract]);
   
   useEffect(() => {
     if (cachedHelperSlips.length > 0) {
       setSalarySlips(cachedHelperSlips);
-      setIsLoading(false); // Hide loading when cached data arrives
     }
   }, [cachedHelperSlips]);
   
@@ -175,11 +173,8 @@ export const HelperManagementContent: React.FC<Props> = ({
   }, [helperId, householdId, refreshKey]);
   
   const loadData = async () => {
-    // Only show loading spinner if we have NO cached data
-    const hasCachedData = cachedContract !== null || cachedHelperSlips.length > 0;
-    if (!hasCachedData) {
-      setIsLoading(true);
-    }
+    // No loading spinner for initial display - content appears instantly from cache
+    // isLoading is only used for user-initiated actions (save, delete, sign)
     setError(null);
     
     try {
@@ -332,7 +327,6 @@ export const HelperManagementContent: React.FC<Props> = ({
         ];
         setContract(demoContract);
         setSalarySlips(demoSlips);
-        setIsLoading(false);
         return;
       }
       
@@ -358,8 +352,6 @@ export const HelperManagementContent: React.FC<Props> = ({
     } catch (err) {
       console.error('Failed to load helper data:', err);
       setError(t['error.load_data'] || 'Failed to load data. Please try again.');
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -1101,15 +1093,7 @@ export const HelperManagementContent: React.FC<Props> = ({
         </div>
         
         <div className="bg-card rounded-xl p-4 shadow-sm">
-          {isLoading && !contract ? (
-            // Show subtle loading state when fetching data (prevents flash of empty state)
-            <div className="text-center py-4">
-              <Loader2 size={20} className="animate-spin mx-auto text-muted-foreground mb-2" />
-              <p className="text-body text-muted-foreground">
-                {t['common.loading'] || 'Loading...'}
-              </p>
-            </div>
-          ) : contract ? (
+          {contract ? (
             <div className="space-y-2">
               <div className="flex justify-between">
                 <span className="text-body text-muted-foreground">{t['salary.start_date'] || 'Employment Start Date'}</span>

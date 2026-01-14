@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useLayoutEffect } from 'react';
 import {
   Coffee,
   Sun,
@@ -157,6 +157,8 @@ const MealTableV3: React.FC<MealTableV3Props> = ({
   const headerRef = useRef<HTMLDivElement>(null);
   const headerContentRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
+  const bodyRowRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const [rowHeights, setRowHeights] = useState<number[]>([]);
 
   // Transform-based scroll sync (GPU accelerated, smooth)
   const handleBodyScroll = () => {
@@ -164,6 +166,28 @@ const MealTableV3: React.FC<MealTableV3Props> = ({
     const scrollLeft = bodyRef.current.scrollLeft;
     headerContentRef.current.style.transform = `translateX(-${scrollLeft}px)`;
   };
+
+  // Measure body row heights and sync to date column
+  useLayoutEffect(() => {
+    const measureHeights = () => {
+      const heights: number[] = [];
+      bodyRowRefs.current.forEach((rowEl, idx) => {
+        if (rowEl) {
+          heights[idx] = Math.max(rowEl.offsetHeight, MIN_ROW_HEIGHT);
+        } else {
+          heights[idx] = MIN_ROW_HEIGHT;
+        }
+      });
+      setRowHeights(heights);
+    };
+    
+    // Measure after render
+    measureHeights();
+    
+    // Re-measure after a short delay to catch any async content
+    const timer = setTimeout(measureHeights, 100);
+    return () => clearTimeout(timer);
+  }, [meals, weekDays]);
 
   // Cell dimensions
   const DATE_COL_WIDTH = 75;
@@ -255,20 +279,24 @@ const MealTableV3: React.FC<MealTableV3Props> = ({
               }}
             >
               {/* ═══════════════════════════════════════════════════════════ */}
-              {/* TOP-LEFT: Corner Cell (Fixed) */}
+              {/* TOP-LEFT: Corner Cell (Sticky - stays below page header) */}
               {/* ═══════════════════════════════════════════════════════════ */}
-              <div className="bg-muted border-b border-r border-border flex items-center justify-center">
+              <div 
+                className="bg-muted border-b border-r border-border flex items-center justify-center sticky z-30"
+                style={{ top: '170px' }}
+              >
                 <span className="text-caption font-semibold text-muted-foreground">
                   {t['meals.date'] ?? 'Date'}
                 </span>
               </div>
 
               {/* ═══════════════════════════════════════════════════════════ */}
-              {/* TOP-RIGHT: Header Row (Frozen, syncs with body) */}
+              {/* TOP-RIGHT: Header Row (Sticky - stays below page header, syncs with body) */}
               {/* ═══════════════════════════════════════════════════════════ */}
               <div 
                 ref={headerRef}
-                className="bg-muted border-b border-border overflow-hidden"
+                className="bg-muted border-b border-border overflow-hidden sticky z-30"
+                style={{ top: '170px' }}
               >
                 <div 
                   ref={headerContentRef}
@@ -296,12 +324,13 @@ const MealTableV3: React.FC<MealTableV3Props> = ({
               </div>
 
               {/* ═══════════════════════════════════════════════════════════ */}
-              {/* BOTTOM-LEFT: Date Column (Fixed) */}
+              {/* BOTTOM-LEFT: Date Column (Fixed, heights synced with body) */}
               {/* ═══════════════════════════════════════════════════════════ */}
               <div className="border-r border-border">
                 {weekDays.map((day, dayIdx) => {
                   const isToday = day.toDateString() === new Date().toDateString();
                   const isLastRow = dayIdx === weekDays.length - 1;
+                  const rowHeight = rowHeights[dayIdx] || MIN_ROW_HEIGHT;
                   
                   return (
                     <div
@@ -309,7 +338,7 @@ const MealTableV3: React.FC<MealTableV3Props> = ({
                       className={`flex flex-col items-center justify-center ${
                         !isLastRow ? 'border-b border-border' : ''
                       } ${isToday ? 'bg-primary' : 'bg-card'}`}
-                      style={{ minHeight: `${MIN_ROW_HEIGHT}px`, width: `${DATE_COL_WIDTH}px` }}
+                      style={{ height: `${rowHeight}px`, width: `${DATE_COL_WIDTH}px` }}
                     >
                       <span className={`text-caption font-semibold ${isToday ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
                         {day.toLocaleDateString(langCode, { weekday: 'short' })}
@@ -338,6 +367,7 @@ const MealTableV3: React.FC<MealTableV3Props> = ({
                     return (
                       <div 
                         key={formatDateStr(day)}
+                        ref={el => bodyRowRefs.current[dayIdx] = el}
                         className={`flex ${!isLastRow ? 'border-b border-border' : ''}`}
                         style={{ minHeight: `${MIN_ROW_HEIGHT}px` }}
                       >

@@ -16,6 +16,9 @@ const SupabaseContext = createContext<SupabaseContextValue | null>(null);
 // Global reference for services to access authenticated client (outside React)
 let globalAuthenticatedClient: SupabaseClient | null = null;
 
+// Global flag to track if the authenticated client is ready (has valid JWT)
+let globalIsAuthClientReady: boolean = false;
+
 // Global token refresh callback for error handling
 let globalTokenRefreshCallback: (() => Promise<void>) | null = null;
 
@@ -101,6 +104,14 @@ export const useSupabaseReady = (): boolean => {
   return !!context?.isAuthClient;
 };
 
+/**
+ * Check if Supabase auth client is ready from outside React components
+ * Used by services that need to verify auth is available before making queries
+ */
+export const isSupabaseAuthReady = (): boolean => {
+  return globalIsAuthClientReady;
+};
+
 interface SupabaseProviderProps {
   children: React.ReactNode;
 }
@@ -160,6 +171,7 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
         console.error('[SupabaseContext] ❌ Token refresh failed - no token received');
         // Only reset auth state on actual failure to get a token
         setIsAuthClient(false);
+        globalIsAuthClientReady = false;
         return;
       }
 
@@ -171,9 +183,11 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
       globalAuthenticatedClient = authenticatedClient;
       // isAuthClient stays true (or becomes true) - no interruption to subscriptions
       setIsAuthClient(true);
+      globalIsAuthClientReady = true;
     } catch (error: any) {
       console.error('[SupabaseContext] ❌ Token refresh error:', error);
       setIsAuthClient(false);
+      globalIsAuthClientReady = false;
     }
   }, [getToken, isSignedIn]);
 
@@ -275,6 +289,7 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
                 setClient(supabase);
                 globalAuthenticatedClient = supabase;
                 setIsAuthClient(false);
+                globalIsAuthClientReady = false;
                 return;
               }
             } catch (basicError) {
@@ -283,6 +298,7 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
               setClient(supabase);
               globalAuthenticatedClient = supabase;
               setIsAuthClient(false);
+              globalIsAuthClientReady = false;
               return;
             }
           }
@@ -326,6 +342,7 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
           globalAuthenticatedClient = authenticatedClient;
           console.log('[SupabaseContext] ✅ Authenticated Supabase client created');
           setIsAuthClient(true);
+          globalIsAuthClientReady = true;
         } catch (error: any) {
           console.error('[SupabaseContext] Failed to create authenticated client:', error);
           
@@ -349,6 +366,7 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
           setClient(supabase);
           globalAuthenticatedClient = supabase;
           setIsAuthClient(false);
+          globalIsAuthClientReady = false;
         }
       } else {
         // User not signed in, use default client (will fail RLS checks, but that's expected)
@@ -357,6 +375,7 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
         setClient(supabase);
         globalAuthenticatedClient = supabase;
         setIsAuthClient(false);
+        globalIsAuthClientReady = false;
       }
     };
     

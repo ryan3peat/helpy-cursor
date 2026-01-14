@@ -16,7 +16,8 @@ import {
   getHelperContract,
   createSalarySlip,
 } from '../services/salarySlipService';
-import { getCachedSupabaseUuid } from '../services/supabaseService';
+import { getCachedSupabaseUuid, isUserCachePopulated } from '../services/supabaseService';
+import { useSupabaseReady } from '../contexts/SupabaseContext';
 
 interface Props {
   isOpen: boolean;
@@ -102,18 +103,38 @@ const CreateSalarySlipSheet: React.FC<Props> = ({
   }, [users, selectedHelperId]);
 
   // ─────────────────────────────────────────────────────────────────
+  // Supabase Auth Status
+  // ─────────────────────────────────────────────────────────────────
+  // Wait for Supabase auth to be ready - this means the user ID cache is populated
+  const isAuthReady = useSupabaseReady();
+  
+  // ─────────────────────────────────────────────────────────────────
   // Cached Contract Lookup (for instant display)
   // ─────────────────────────────────────────────────────────────────
   // Convert helperId (Clerk ID) to Supabase UUID for comparison
   // Contracts store userId as Supabase UUID, but helperId is Clerk ID
-  const helperUuid = useMemo(() => getCachedSupabaseUuid(selectedHelperId), [selectedHelperId]);
+  // Only attempt UUID resolution when auth is ready (cache is populated)
+  const helperUuid = useMemo(() => {
+    if (!selectedHelperId) return '';
+    // Check if cache is populated before trying to resolve
+    if (!isUserCachePopulated()) {
+      // Cache not ready - return empty to avoid false match
+      console.log('[CreateSalarySlipSheet] User cache not ready, will retry when auth is ready');
+      return '';
+    }
+    return getCachedSupabaseUuid(selectedHelperId);
+  }, [selectedHelperId, isAuthReady]); // Re-compute when auth becomes ready
   
   // Find cached contract for instant display
   // CRITICAL: Compare UUID to UUID (contract.userId is UUID, helperId is Clerk ID)
-  const cachedContract = useMemo(() => 
-    cachedContracts.find(c => c.userId === helperUuid) || null,
-    [cachedContracts, helperUuid]
-  );
+  // Only try to match if helperUuid is a valid UUID (not empty, not a Clerk ID)
+  const cachedContract = useMemo(() => {
+    if (!helperUuid || helperUuid.startsWith('user_')) {
+      // helperUuid is still a Clerk ID (cache not populated) - skip matching
+      return null;
+    }
+    return cachedContracts.find(c => c.userId === helperUuid) || null;
+  }, [cachedContracts, helperUuid]);
 
   // ─────────────────────────────────────────────────────────────────
   // Effects
@@ -207,14 +228,21 @@ const CreateSalarySlipSheet: React.FC<Props> = ({
   }, [selectedHelperId, cachedContract]);
 
   // Load fresh contract data in background (after cached data is shown)
+  // Wait for auth to be ready before making database queries
   useEffect(() => {
-    if (isOpen && selectedHelperId && householdId) {
+    if (isOpen && selectedHelperId && householdId && isAuthReady) {
       loadContract();
     }
-  }, [isOpen, selectedHelperId, householdId]);
+  }, [isOpen, selectedHelperId, householdId, isAuthReady]);
   
   const loadContract = async () => {
     if (!selectedHelperId) return;
+    
+    // Wait for auth to be ready (ensures RLS-compliant queries)
+    if (!isAuthReady) {
+      console.log('[CreateSalarySlipSheet] Waiting for auth before loading contract...');
+      return;
+    }
     
     // Only show loading spinner if we don't have cached data
     if (!cachedContract) {

@@ -33,6 +33,7 @@ import { useScrollLock } from '../hooks/useScrollLock';
 import { useSheetTheme } from '../hooks/useSheetTheme';
 import { haptics } from '../utils/haptics';
 import { getCachedSupabaseUuid, isUserCachePopulated } from '../services/supabaseService';
+import { useSupabaseReady } from '../contexts/SupabaseContext';
 import {
   getHelperContract,
   getSalarySlips,
@@ -137,6 +138,10 @@ export const HelperManagementContent: React.FC<Props> = ({
   
   const { isDemoMode, isViewingAsHelper } = useDemoMode();
   
+  // Wait for Supabase auth to be ready before making database queries
+  // This ensures the authenticated client is available for RLS-compliant queries
+  const isAuthReady = useSupabaseReady();
+  
   // Role checks
   const isSuperAdmin = currentUser.role === UserRole.SUPERADMIN;
   const isAdmin = currentUser.role === UserRole.MASTER;
@@ -169,35 +174,52 @@ export const HelperManagementContent: React.FC<Props> = ({
   // Track if fresh data has been loaded successfully
   const [freshDataLoaded, setFreshDataLoaded] = useState(false);
   
-  // Fetch fresh data on mount (background refresh)
-  // Also refresh when refreshKey changes (e.g., after creating a slip from outside)
+  // Fetch fresh data when:
+  // 1. Auth is ready (Supabase client has JWT for RLS)
+  // 2. Helper/household changes
+  // 3. refreshKey changes (e.g., after creating a slip from outside)
   useEffect(() => {
-    loadData();
-  }, [helperId, householdId, refreshKey]);
+    // Wait for auth to be ready before making database queries
+    // This ensures RLS policies can properly authenticate the user
+    if (isAuthReady || isDemoMode) {
+      console.log('[HelperManagementContent] Auth ready, loading data...');
+      loadData();
+    } else {
+      console.log('[HelperManagementContent] Waiting for Supabase auth to be ready...');
+    }
+  }, [helperId, householdId, refreshKey, isAuthReady, isDemoMode]);
   
-  // Retry loading if cache wasn't populated on first attempt
-  // This handles the race condition where users load from localStorage before DB
+  // Retry loading if cache wasn't populated even after auth is ready
+  // This handles edge cases where users table data hasn't arrived yet
   useEffect(() => {
-    if (!freshDataLoaded && !isDemoMode) {
+    if (!freshDataLoaded && !isDemoMode && isAuthReady) {
+      let retryCount = 0;
+      const maxRetries = 20; // 20 retries * 500ms = 10 seconds max
+      
       const retryInterval = setInterval(() => {
-        if (isUserCachePopulated()) {
-          console.log('[HelperManagementContent] User cache now populated, retrying load...');
+        retryCount++;
+        const cachePopulated = isUserCachePopulated();
+        
+        if (cachePopulated) {
+          console.log(`[HelperManagementContent] User cache populated after ${retryCount} attempts, loading data...`);
           loadData();
           clearInterval(retryInterval);
+        } else if (retryCount >= maxRetries) {
+          console.warn(`[HelperManagementContent] Cache not populated after ${maxRetries} retries. Using fallback query.`);
+          // Try one more time - the database fallback in salarySlipService should work now
+          loadData();
+          clearInterval(retryInterval);
+        } else if (retryCount % 4 === 0) {
+          // Log every 2 seconds (4 * 500ms) to show progress
+          console.log(`[HelperManagementContent] Waiting for user cache... (attempt ${retryCount}/${maxRetries})`);
         }
       }, 500);
       
-      // Stop retrying after 5 seconds
-      const timeout = setTimeout(() => {
-        clearInterval(retryInterval);
-      }, 5000);
-      
       return () => {
         clearInterval(retryInterval);
-        clearTimeout(timeout);
       };
     }
-  }, [freshDataLoaded, isDemoMode]);
+  }, [freshDataLoaded, isDemoMode, isAuthReady]);
   
   const loadData = async () => {
     // No loading spinner for initial display - content appears instantly from cache
@@ -1098,7 +1120,7 @@ export const HelperManagementContent: React.FC<Props> = ({
   // Empty states are handled in the JSX below
 
   return (
-    <div className="space-y-4">
+    <div>
       {/* Error Banner */}
       <ErrorBanner 
         error={error} 
@@ -1109,7 +1131,7 @@ export const HelperManagementContent: React.FC<Props> = ({
       {/* ═══════════════════════════════════════════════════════════════ */}
       {/* HELPER INFO HEADER */}
       {/* ═══════════════════════════════════════════════════════════════ */}
-      <div className="mb-12">
+      <div className="pb-2">
         <p className="text-body font-bold text-foreground" style={{ fontSize: '20px' }}>
           {helper.firstName || helper.name?.split(' ')[0] || 'Helper'}
         </p>
@@ -1118,7 +1140,7 @@ export const HelperManagementContent: React.FC<Props> = ({
       {/* ═══════════════════════════════════════════════════════════════ */}
       {/* EMPLOYMENT DETAILS SECTION */}
       {/* ═══════════════════════════════════════════════════════════════ */}
-      <div className="mb-12">
+      <div className="mt-4 mb-12">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <FileText size={20} className="text-primary" />
@@ -1218,36 +1240,38 @@ export const HelperManagementContent: React.FC<Props> = ({
             </p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <>
             {/* Unsigned Slips */}
-            {unsignedSlips.map(slip => (
-              <SalarySlipCard
-                key={slip.id}
-                slip={slip}
-              helper={helper}
-                contract={contract}
-                isExpanded={expandedSlips.has(slip.id)}
-                onToggle={() => toggleSlipExpanded(slip.id)}
-                canManage={canManage}
-                isHelper={isHelper}
-                canSignAsHelper={isHelper && currentUser.id === helper.id}
-                eligibleSigners={eligibleSigners}
-                selectedSigner={selectedSignerForSlip[slip.id]}
-                onSignerChange={(signerId) => setSelectedSignerForSlip(prev => ({ ...prev, [slip.id]: signerId }))}
-                onSignEmployer={() => setShowSignConfirm({ slipId: slip.id, type: 'employer' })}
-                onSignHelper={() => setShowSignConfirm({ slipId: slip.id, type: 'helper' })}
-                onDelete={() => setShowDeleteConfirm(slip.id)}
-                onExportPDF={() => handleExportPDF(slip)}
-                t={t}
-                langCode={langCode}
-              />
-            ))}
+            <div className="space-y-3">
+              {unsignedSlips.map(slip => (
+                <SalarySlipCard
+                  key={slip.id}
+                  slip={slip}
+                  helper={helper}
+                  contract={contract}
+                  isExpanded={expandedSlips.has(slip.id)}
+                  onToggle={() => toggleSlipExpanded(slip.id)}
+                  canManage={canManage}
+                  isHelper={isHelper}
+                  canSignAsHelper={isHelper && currentUser.id === helper.id}
+                  eligibleSigners={eligibleSigners}
+                  selectedSigner={selectedSignerForSlip[slip.id]}
+                  onSignerChange={(signerId) => setSelectedSignerForSlip(prev => ({ ...prev, [slip.id]: signerId }))}
+                  onSignEmployer={() => setShowSignConfirm({ slipId: slip.id, type: 'employer' })}
+                  onSignHelper={() => setShowSignConfirm({ slipId: slip.id, type: 'helper' })}
+                  onDelete={() => setShowDeleteConfirm(slip.id)}
+                  onExportPDF={() => handleExportPDF(slip)}
+                  t={t}
+                  langCode={langCode}
+                />
+              ))}
+            </div>
             
-            {/* Past & Signed Toggle */}
+            {/* Past & Signed Toggle - OUTSIDE space-y-3 for proper mt-12 */}
             {signedSlips.length > 0 && (
               <div className="mt-12">
                 <div className="flex items-center justify-between mb-2 px-2">
-            <button
+                  <button
                     onClick={() => setShowPastSlips(!showPastSlips)}
                     className="flex items-center gap-2"
                   >
@@ -1259,7 +1283,7 @@ export const HelperManagementContent: React.FC<Props> = ({
                     <span className="text-body text-muted-foreground">
                       {t['salary.past_signed'] || 'Past & Signed Slips'} ({signedSlips.length})
                     </span>
-            </button>
+                  </button>
                 </div>
                 
                 {showPastSlips && (
@@ -1268,7 +1292,7 @@ export const HelperManagementContent: React.FC<Props> = ({
                       <SalarySlipCard
                         key={slip.id}
                         slip={slip}
-                helper={helper}
+                        helper={helper}
                         contract={contract}
                         isExpanded={expandedSlips.has(slip.id)}
                         onToggle={() => toggleSlipExpanded(slip.id)}
@@ -1282,15 +1306,15 @@ export const HelperManagementContent: React.FC<Props> = ({
                         onSignHelper={() => setShowSignConfirm({ slipId: slip.id, type: 'helper' })}
                         onDelete={() => setShowDeleteConfirm(slip.id)}
                         onExportPDF={() => handleExportPDF(slip)}
-                t={t}
+                        t={t}
                         langCode={langCode}
-              />
+                      />
                     ))}
                   </div>
-            )}
+                )}
               </div>
             )}
-          </div>
+          </>
         )}
       </div>
 

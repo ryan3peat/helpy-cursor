@@ -11,7 +11,7 @@ function getSupabaseClient() {
   if (authClient) {
     return authClient;
   }
-  console.warn('[supabaseService] No authenticated client available, using default (may fail RLS)');
+  console.warn('[supabaseService] No authenticated client, using default (RLS may block queries)');
   return supabase;
 }
 
@@ -209,31 +209,39 @@ function removeSubscriptionStatus(channelName: string) {
 export async function getSupabaseUserId(id: string, householdId: string): Promise<string | null> {
   // Check cache first
   if (userIdCache[id]) {
-    console.log(`🔄 Found cached UUID for ${id}: ${userIdCache[id]}`);
+    console.warn(`[getSupabaseUserId] Cache hit: ${id} -> ${userIdCache[id]}`);
     return userIdCache[id];
   }
   
-  console.log(`🔍 Looking up Supabase UUID for id: ${id}`);
+  console.warn(`[getSupabaseUserId] Looking up UUID for id: ${id}, householdId: ${householdId}`);
   
   // Use authenticated client for RLS compliance
   const client = getSupabaseClient();
   
+  if (!client) {
+    console.error('[getSupabaseUserId] No Supabase client available!');
+    return null;
+  }
+  
   // Query all users in household
+  console.warn('[getSupabaseUserId] Querying users table...');
   const { data, error } = await client
     .from('users')
     .select('id, clerk_id, status')
     .eq('household_id', householdId);
   
   if (error) {
-    console.error('❌ Error querying users:', error);
-    console.error('❌ Error details:', { code: error.code, message: error.message, hint: error.hint });
+    console.error('[getSupabaseUserId] Query error:', error);
+    console.error('[getSupabaseUserId] Error details:', { code: error.code, message: error.message, hint: error.hint });
     return null;
   }
+  
+  console.warn(`[getSupabaseUserId] Query returned ${data?.length ?? 0} users`);
   
   // First, check if this ID matches a clerk_id (active users)
   const userByClerkId = data?.find(u => String(u.clerk_id) === String(id));
   if (userByClerkId) {
-    console.log(`✅ Found UUID ${userByClerkId.id} for clerk_id ${id}`);
+    console.warn(`[getSupabaseUserId] Found: clerk_id ${id} -> UUID ${userByClerkId.id}`);
     userIdCache[id] = userByClerkId.id;
     return userByClerkId.id;
   }
@@ -241,14 +249,14 @@ export async function getSupabaseUserId(id: string, householdId: string): Promis
   // Second, check if this ID is already a Supabase UUID (pending users)
   const userByUuid = data?.find(u => String(u.id) === String(id));
   if (userByUuid) {
-    console.log(`✅ ID ${id} is already a Supabase UUID (status: ${userByUuid.status})`);
+    console.warn(`[getSupabaseUserId] ID ${id} is already a UUID (status: ${userByUuid.status})`);
     // Cache it mapped to itself for consistency
     userIdCache[id] = id;
     return id;
   }
   
-  console.error('❌ Could not find user with id:', id);
-  console.log('📋 Available users:', data);
+  console.error(`[getSupabaseUserId] User not found: ${id}`);
+  console.warn('[getSupabaseUserId] Available clerk_ids:', data?.map(u => u.clerk_id).join(', ') || 'none');
   return null;
 }
 

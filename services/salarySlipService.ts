@@ -67,15 +67,22 @@ async function toSupabaseUuid(userId: string, householdId: string): Promise<stri
   }
   
   // If cache didn't have it (or returned Clerk ID), query database
-  console.log(`[salarySlipService] Cache miss for ${userId}, querying database...`);
-  const uuid = await getSupabaseUserId(userId, householdId);
+  console.warn(`[salarySlipService] Cache miss for ${userId}, attempting database lookup...`);
   
-  if (!uuid) {
-    console.warn(`[salarySlipService] Could not resolve user ID to UUID: ${userId}. User cache may not be populated yet.`);
+  try {
+    const uuid = await getSupabaseUserId(userId, householdId);
+    
+    if (!uuid) {
+      console.warn(`[salarySlipService] Database lookup returned null for ${userId}. Cache may not be populated yet.`);
+      return null;
+    }
+    
+    console.warn(`[salarySlipService] Successfully resolved ${userId} to UUID ${uuid}`);
+    return uuid;
+  } catch (err) {
+    console.error(`[salarySlipService] Database lookup error for ${userId}:`, err);
     return null;
   }
-  
-  return uuid;
 }
 
 // ============================================================================

@@ -203,8 +203,10 @@ function removeSubscriptionStatus(channelName: string) {
  * 
  * FIXED: Uses authenticated client (getSupabaseClient) for RLS compliance.
  * The default supabase client doesn't have JWT tokens, causing RLS failures.
+ * 
+ * EXPORTED: Can be used as a fallback when cache lookup fails.
  */
-async function getSupabaseUserId(id: string, householdId: string): Promise<string | null> {
+export async function getSupabaseUserId(id: string, householdId: string): Promise<string | null> {
   // Check cache first
   if (userIdCache[id]) {
     console.log(`🔄 Found cached UUID for ${id}: ${userIdCache[id]}`);

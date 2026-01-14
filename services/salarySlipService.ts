@@ -5,7 +5,7 @@
 
 import { supabase as defaultSupabase } from './supabase';
 import { getAuthenticatedSupabaseClient, refreshSupabaseToken } from '../contexts/SupabaseContext';
-import { getCachedSupabaseUuid } from './supabaseService';
+import { getCachedSupabaseUuid, getSupabaseUserId } from './supabaseService';
 import type { 
   HelperContract, 
   CreateHelperContract,
@@ -52,9 +52,29 @@ const supabase = {
 /**
  * Convert a user ID (Clerk ID or UUID) to Supabase UUID
  * All database operations require UUIDs, not Clerk IDs
+ * 
+ * FIXED: Now uses database lookup as fallback if cache is not populated yet.
+ * This prevents UUID errors when helper contracts are queried before users are loaded.
  */
-function toSupabaseUuid(userId: string): string {
-  return getCachedSupabaseUuid(userId);
+async function toSupabaseUuid(userId: string, householdId: string): Promise<string> {
+  // First try cache (fast path)
+  const cached = getCachedSupabaseUuid(userId);
+  
+  // If cache returned a valid UUID, use it
+  const isValidUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cached);
+  if (isValidUuid) {
+    return cached;
+  }
+  
+  // If cache didn't have it (or returned Clerk ID), query database
+  console.log(`[salarySlipService] Cache miss for ${userId}, querying database...`);
+  const uuid = await getSupabaseUserId(userId, householdId);
+  
+  if (!uuid) {
+    throw new Error(`Could not resolve user ID to UUID: ${userId}. User may not exist in household.`);
+  }
+  
+  return uuid;
 }
 
 // ============================================================================
@@ -68,7 +88,7 @@ export async function getHelperContract(
   helperId: string,
   householdId: string
 ): Promise<HelperContract | null> {
-  const helperUuid = toSupabaseUuid(helperId);
+  const helperUuid = await toSupabaseUuid(helperId, householdId);
   
   const { data, error } = await supabase
     .from('helper_contracts')
@@ -106,7 +126,7 @@ export async function getHelperContracts(
 export async function createHelperContract(
   contract: CreateHelperContract
 ): Promise<HelperContract> {
-  const helperUuid = toSupabaseUuid(contract.userId);
+  const helperUuid = await toSupabaseUuid(contract.userId, contract.householdId);
   
   const { data, error } = await supabase
     .from('helper_contracts')
@@ -177,7 +197,7 @@ export async function getSalarySlips(
   helperId: string,
   householdId: string
 ): Promise<SalarySlip[]> {
-  const helperUuid = toSupabaseUuid(helperId);
+  const helperUuid = await toSupabaseUuid(helperId, householdId);
   
   const { data, error } = await supabase
     .from('salary_slips')
@@ -230,9 +250,9 @@ export async function getSalarySlip(slipId: string): Promise<SalarySlip | null> 
 export async function createSalarySlip(
   slip: CreateSalarySlip
 ): Promise<SalarySlip> {
-  const helperUuid = toSupabaseUuid(slip.helperId);
-  const creatorUuid = slip.createdBy ? toSupabaseUuid(slip.createdBy) : null;
-  const signerUuid = slip.employerSignerId ? toSupabaseUuid(slip.employerSignerId) : null;
+  const helperUuid = await toSupabaseUuid(slip.helperId, slip.householdId);
+  const creatorUuid = slip.createdBy ? await toSupabaseUuid(slip.createdBy, slip.householdId) : null;
+  const signerUuid = slip.employerSignerId ? await toSupabaseUuid(slip.employerSignerId, slip.householdId) : null;
   
   const { data, error } = await supabase
     .from('salary_slips')
@@ -267,6 +287,16 @@ export async function updateSalarySlip(
   slipId: string,
   updates: Partial<CreateSalarySlip>
 ): Promise<SalarySlip> {
+  // Fetch the slip first to get householdId for UUID conversion
+  const { data: existingSlip, error: fetchError } = await supabase
+    .from('salary_slips')
+    .select('household_id')
+    .eq('id', slipId)
+    .single();
+  
+  if (fetchError) throw fetchError;
+  if (!existingSlip) throw new Error(`Salary slip ${slipId} not found`);
+  
   const updateData: Record<string, any> = {};
   
   if (updates.paymentPeriodStart !== undefined) updateData.payment_period_start = updates.paymentPeriodStart;
@@ -278,7 +308,7 @@ export async function updateSalarySlip(
   if (updates.totalPayout !== undefined) updateData.total_payout = updates.totalPayout;
   if (updates.note !== undefined) updateData.note = updates.note;
   if (updates.employerSignerId !== undefined) {
-    updateData.employer_signer_id = updates.employerSignerId ? toSupabaseUuid(updates.employerSignerId) : null;
+    updateData.employer_signer_id = updates.employerSignerId ? await toSupabaseUuid(updates.employerSignerId, existingSlip.household_id) : null;
   }
   if (updates.employerSignerName !== undefined) updateData.employer_signer_name = updates.employerSignerName;
   
@@ -314,18 +344,20 @@ export async function signAsEmployer(
   signerId: string,
   signerName: string
 ): Promise<SalarySlip> {
-  const signerUuid = toSupabaseUuid(signerId);
-  
-  // First check if already signed
-  const { data: existing } = await supabase
+  // First check if already signed and get householdId
+  const { data: existing, error: fetchError } = await supabase
     .from('salary_slips')
-    .select('employer_signed_at')
+    .select('employer_signed_at, household_id')
     .eq('id', slipId)
     .single();
+  
+  if (fetchError) throw fetchError;
     
   if (existing?.employer_signed_at) {
     throw new Error('Salary slip already signed by employer');
   }
+  
+  const signerUuid = await toSupabaseUuid(signerId, existing.household_id);
   
   const { data, error } = await supabase
     .from('salary_slips')
@@ -349,16 +381,16 @@ export async function signAsEmployer(
  * @param currentUserId - The current user's ID (Clerk ID or Supabase UUID)
  */
 export async function signAsHelper(slipId: string, currentUserId: string): Promise<SalarySlip> {
-  const currentUserUuid = toSupabaseUuid(currentUserId);
-  
   // First check if already signed AND verify the current user is the helper for this slip
   const { data: existing, error: fetchError } = await supabase
     .from('salary_slips')
-    .select('helper_signed_at, helper_id')
+    .select('helper_signed_at, helper_id, household_id')
     .eq('id', slipId)
     .single();
   
   if (fetchError) throw fetchError;
+  
+  const currentUserUuid = await toSupabaseUuid(currentUserId, existing.household_id);
   
   // SECURITY: Verify the current user IS the helper for this salary slip
   if (existing?.helper_id !== currentUserUuid) {

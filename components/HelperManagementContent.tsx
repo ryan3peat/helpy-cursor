@@ -1075,7 +1075,7 @@ export const HelperManagementContent: React.FC<Props> = ({
       {/* ═══════════════════════════════════════════════════════════════ */}
       {/* EMPLOYMENT DETAILS SECTION */}
       {/* ═══════════════════════════════════════════════════════════════ */}
-      <div className="mb-12">
+      <div className="mb-12" style={{ backgroundColor: '#ff000020' }}>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <FileText size={20} className="text-primary" />
@@ -1094,7 +1094,7 @@ export const HelperManagementContent: React.FC<Props> = ({
           )}
         </div>
         
-        <div className="bg-card rounded-xl p-4 shadow-sm">
+        <div className="bg-card rounded-xl p-4 shadow-sm" style={{ backgroundColor: '#ff999950' }}>
           {contract ? (
             <div className="space-y-2">
               <div className="flex justify-between">
@@ -1135,15 +1135,15 @@ export const HelperManagementContent: React.FC<Props> = ({
       </div>
 
       {/* Line separator */}
-      <div className="mx-4 mt-0 my-12">
-        <div className="h-px bg-border"></div>
+      <div className="mx-4 mt-0 my-12" style={{ backgroundColor: '#ffaa0020' }}>
+        <div className="h-px bg-border" style={{ backgroundColor: '#ff8800', height: '2px' }}></div>
       </div>
 
       {/* ═══════════════════════════════════════════════════════════════ */}
       {/* SALARY SLIPS SECTION */}
       {/* ═══════════════════════════════════════════════════════════════ */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
+      <div style={{ backgroundColor: '#0000ff20' }}>
+        <div className="flex items-center justify-between mb-4" style={{ backgroundColor: '#9999ff50' }}>
           <div className="flex items-center gap-2">
             <FilePenLine size={20} className="text-primary" />
           <h3 className="text-title font-semibold">
@@ -1180,7 +1180,7 @@ export const HelperManagementContent: React.FC<Props> = ({
             </p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-3" style={{ backgroundColor: '#00ff0020' }}>
             {/* Unsigned Slips */}
             {unsignedSlips.map(slip => (
               <SalarySlipCard
@@ -1225,7 +1225,7 @@ export const HelperManagementContent: React.FC<Props> = ({
                 </div>
                 
                 {showPastSlips && (
-                  <div className="space-y-3">
+                  <div className="space-y-3" style={{ backgroundColor: '#00ff0020' }}>
                     {signedSlips.map(slip => (
                       <SalarySlipCard
                         key={slip.id}
@@ -1542,7 +1542,7 @@ const SalarySlipCard: React.FC<SalarySlipCardProps> = ({
   const formatFullDate = (date: Date) => date.toLocaleDateString(langCode, { day: 'numeric', month: 'short', year: 'numeric' });
   
   return (
-    <div className="bg-card rounded-xl shadow-sm overflow-hidden">
+    <div className="bg-card rounded-xl shadow-sm overflow-hidden" style={{ backgroundColor: '#00cc0050' }}>
       {/* Collapsed Header */}
       <button
         onClick={onToggle}

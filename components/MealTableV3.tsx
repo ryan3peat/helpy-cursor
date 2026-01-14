@@ -141,6 +141,7 @@ const MealTableV3: React.FC<MealTableV3Props> = ({
       case MealType.LUNCH: return <Sun size={16} className={colorClass} />;
       case MealType.DINNER: return <Moon size={16} className={colorClass} />;
       case MealType.SNACKS: return <Cookie size={16} className={colorClass} />;
+      default: return null;
     }
   };
 

@@ -1311,7 +1311,7 @@ export const HelperManagementContent: React.FC<Props> = ({
         <div className="flex-1 overflow-y-auto p-5 space-y-4">
           {/* Helper Name */}
           <div>
-            <p className="text-black" style={{ fontSize: '20px' }}>
+            <p className="text-black font-bold" style={{ fontSize: '20px' }}>
               {helper.firstName || helper.name?.split(' ')[0] || 'Helper'}
             </p>
           </div>

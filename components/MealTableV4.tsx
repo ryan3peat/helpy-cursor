@@ -26,16 +26,12 @@ import {
   Loader2,
   ArrowLeft
 } from 'lucide-react';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import Avatar from './ui/Avatar';
 import ErrorBanner from './ui/ErrorBanner';
-import { useScrollHeader } from '@/hooks/useScrollHeader';
 import { useTranslatedContent } from '@/hooks/useTranslatedContent';
 import { useScrollLock } from '@/hooks/useScrollLock';
 import { useSheetTheme } from '@/hooks/useSheetTheme';
 import { Meal, MealType, MealAudience, User, UserRole, BaseViewProps } from '../types';
-import { suggestMeal } from '../services/geminiService';
 import { detectInputLanguage } from '../services/languageDetectionService';
 import { haptics } from '../utils/haptics';
 import { useDemoMode } from '../contexts/DemoModeContext';
@@ -93,12 +89,12 @@ const MealTableV4: React.FC<MealTableV4Props> = ({
   const { isViewingAsHelper } = useDemoMode();
   const isHelper = currentUser.role === UserRole.HELPER || (isSuperAdmin && isViewingAsHelper);
 
-  const [loadingAi, setLoadingAi] = useState(false);
-  const [exportingPdf, setExportingPdf] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  // Scroll header hook for animation
-  const { isScrolled } = useScrollHeader({ collapseThreshold: 20 });
+  // Table scroll state for shadow effects
+  const [isScrolledVertically, setIsScrolledVertically] = useState(false);
+  const [isScrolledHorizontally, setIsScrolledHorizontally] = useState(false);
+  const tableContainerRef = useRef<HTMLDivElement>(null);
 
   // Date Navigation State
   const [currentViewDate, setCurrentViewDate] = useState(new Date());
@@ -188,6 +184,15 @@ const MealTableV4: React.FC<MealTableV4Props> = ({
   };
   const goToToday = () => {
     setCurrentViewDate(new Date());
+  };
+
+  // --- Handle table scroll for shadow effects ---
+  const handleTableScroll = () => {
+    if (tableContainerRef.current) {
+      const { scrollTop, scrollLeft } = tableContainerRef.current;
+      setIsScrolledVertically(scrollTop > 0);
+      setIsScrolledHorizontally(scrollLeft > 0);
+    }
   };
 
   // --- Icons ---
@@ -334,101 +339,103 @@ const MealTableV4: React.FC<MealTableV4Props> = ({
   const dateRangeStr = `${weekDays[0].toLocaleDateString(langCode, { day: 'numeric', month: 'short' })} - ${weekDays[6].toLocaleDateString(langCode, { day: 'numeric', month: 'short' })}`;
 
   // ─────────────────────────────────────────────────────────────────
-  // 4-PANE TABLE ARCHITECTURE
+  // FULL-SCREEN 4-PANE LAYOUT
   // ─────────────────────────────────────────────────────────────────
-  // Pane 1: Corner (top-left) - fixed
-  // Pane 2: Header row (meal types) - frozen horizontally (sticky top)
-  // Pane 3: Date column - frozen vertically (sticky left)
-  // Pane 4: Main content - scrolls both directions
+  // - Page does NOT scroll
+  // - Only the table container scrolls (both X and Y)
+  // - Header and navigation are fixed at top
+  // - Table fills remaining viewport height
 
   return (
-    <div className="min-h-screen bg-background pb-40">
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
-        {/* ─────────────────────────────────────────────────────────────── */}
-        {/* STICKY HEADER */}
-        {/* ─────────────────────────────────────────────────────────────── */}
-        <header 
-          className="sticky top-0 z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 pb-3 flex items-end" 
-          style={{ height: '120px' }}
-        >
-          <div className="flex items-center justify-between w-full">
-            <div className="flex items-center gap-3">
-              <button
-                onClick={onBack}
-                className="p-2 -ml-2 rounded-full text-muted-foreground"
-              >
-                <ArrowLeft size={20} />
-              </button>
-              <h1 className="text-display text-foreground">
-                {t['meals.title']} V4
-              </h1>
-            </div>
-          </div>
-        </header>
-
-        {/* Error Banner */}
-        <ErrorBanner 
-          error={error} 
-          onDismiss={() => setError(null)} 
-          title={t['common.error'] || 'Error'}
-        />
-
-        {/* ─────────────────────────────────────────────────────────────── */}
-        {/* WEEK NAVIGATION */}
-        {/* ─────────────────────────────────────────────────────────────── */}
-        <div 
-          className="sticky z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 py-5 transition-shadow duration-200"
-          style={{ 
-            top: '120px',
-            boxShadow: isScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none'
-          }}
-        >
+    <div 
+      className="h-screen bg-background flex flex-col overflow-hidden"
+      style={{ 
+        paddingTop: 'env(safe-area-inset-top)',
+        paddingBottom: 'env(safe-area-inset-bottom)'
+      }}
+    >
+      {/* ─────────────────────────────────────────────────────────────── */}
+      {/* FIXED HEADER - Does not scroll */}
+      {/* ─────────────────────────────────────────────────────────────── */}
+      <header className="shrink-0 bg-background px-4 sm:px-6 pb-3 pt-4">
+        <div className="flex items-center justify-between w-full max-w-2xl mx-auto">
           <div className="flex items-center gap-3">
-            {/* Week Selector */}
-            <div className="relative flex-1 flex items-center justify-between px-2 rounded-xl h-12 overflow-hidden bg-muted">
-              <button
-                onClick={prevWeek}
-                className="p-2 rounded-lg text-muted-foreground z-10"
-              >
-                <ChevronLeft size={20} />
-              </button>
-              <span className={`text-body font-semibold tabular-nums z-10 ${isCurrentWeek ? 'text-primary' : 'text-foreground'}`}>{dateRangeStr}</span>
-              <button
-                onClick={nextWeek}
-                className="p-2 rounded-lg text-muted-foreground z-10"
-              >
-                <ChevronRight size={20} />
-              </button>
-              <div className="absolute inset-0 rounded-xl pointer-events-none shadow-[inset_0_2px_4px_rgba(0,0,0,0.06)]" />
-            </div>
-
-            {/* Today Button */}
             <button
-              onClick={goToToday}
-              disabled={isCurrentWeek}
-              className={`px-4 rounded-xl font-semibold text-body h-12 ${
-                isCurrentWeek
-                  ? 'bg-muted text-muted-foreground cursor-default'
-                  : 'bg-primary text-primary-foreground shadow-sm'
-              }`}
+              onClick={onBack}
+              className="p-2 -ml-2 rounded-full text-muted-foreground"
             >
-              {t['meals.today'] ?? 'Today'}
+              <ArrowLeft size={20} />
             </button>
+            <h1 className="text-display text-foreground">
+              {t['meals.title']} V4
+            </h1>
           </div>
         </div>
+      </header>
 
-        {/* ─────────────────────────────────────────────────────────────── */}
-        {/* 4-PANE TABLE */}
-        {/* ─────────────────────────────────────────────────────────────── */}
-        <div className="pt-1">
-          <div className="rounded-xl bg-card shadow-sm overflow-hidden">
-            {/* Scrollable container */}
+      {/* ─────────────────────────────────────────────────────────────── */}
+      {/* FIXED WEEK NAVIGATION - Does not scroll */}
+      {/* ─────────────────────────────────────────────────────────────── */}
+      <div className="shrink-0 bg-background px-4 sm:px-6 pb-4">
+        <div className="flex items-center gap-3 max-w-2xl mx-auto">
+          {/* Week Selector */}
+          <div className="relative flex-1 flex items-center justify-between px-2 rounded-xl h-12 overflow-hidden bg-muted">
+            <button
+              onClick={prevWeek}
+              className="p-2 rounded-lg text-muted-foreground z-10"
+            >
+              <ChevronLeft size={20} />
+            </button>
+            <span className={`text-body font-semibold tabular-nums z-10 ${isCurrentWeek ? 'text-primary' : 'text-foreground'}`}>{dateRangeStr}</span>
+            <button
+              onClick={nextWeek}
+              className="p-2 rounded-lg text-muted-foreground z-10"
+            >
+              <ChevronRight size={20} />
+            </button>
+            <div className="absolute inset-0 rounded-xl pointer-events-none shadow-[inset_0_2px_4px_rgba(0,0,0,0.06)]" />
+          </div>
+
+          {/* Today Button */}
+          <button
+            onClick={goToToday}
+            disabled={isCurrentWeek}
+            className={`px-4 rounded-xl font-semibold text-body h-12 ${
+              isCurrentWeek
+                ? 'bg-muted text-muted-foreground cursor-default'
+                : 'bg-primary text-primary-foreground shadow-sm'
+            }`}
+          >
+            {t['meals.today'] ?? 'Today'}
+          </button>
+        </div>
+      </div>
+
+      {/* Error Banner */}
+      {error && (
+        <div className="shrink-0 px-4 sm:px-6">
+          <div className="max-w-2xl mx-auto">
+            <ErrorBanner 
+              error={error} 
+              onDismiss={() => setError(null)} 
+              title={t['common.error'] || 'Error'}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* ─────────────────────────────────────────────────────────────── */}
+      {/* TABLE CONTAINER - This is the ONLY scrollable area */}
+      {/* ─────────────────────────────────────────────────────────────── */}
+      <div className="flex-1 min-h-0 px-4 sm:px-6 pb-4">
+        <div className="max-w-2xl mx-auto h-full">
+          <div className="rounded-xl bg-card shadow-sm overflow-hidden h-full">
+            {/* Scrollable table wrapper */}
             <div 
-              className="overflow-auto"
-              style={{ 
-                maxHeight: 'calc(100vh - 320px)',
-                overscrollBehavior: 'none'
-              }}
+              ref={tableContainerRef}
+              onScroll={handleTableScroll}
+              className="overflow-auto h-full"
+              style={{ overscrollBehavior: 'contain' }}
             >
               <table 
                 className="w-full"
@@ -455,8 +462,11 @@ const MealTableV4: React.FC<MealTableV4Props> = ({
                         position: 'sticky',
                         top: 0,
                         left: 0,
-                        zIndex: 30, // Highest z-index for corner
-                        minWidth: '90px'
+                        zIndex: 30,
+                        minWidth: '90px',
+                        boxShadow: isScrolledHorizontally 
+                          ? '4px 0 8px -4px rgba(0,0,0,0.15)' 
+                          : undefined
                       }}
                     />
                     {/* MEAL TYPE HEADERS - Sticky top */}
@@ -469,7 +479,7 @@ const MealTableV4: React.FC<MealTableV4Props> = ({
                           style={{
                             position: 'sticky',
                             top: 0,
-                            zIndex: 20 // Below corner but above content
+                            zIndex: 20
                           }}
                         >
                           <div className="flex flex-col items-center gap-0.5">
@@ -500,8 +510,11 @@ const MealTableV4: React.FC<MealTableV4Props> = ({
                           style={{ 
                             position: 'sticky',
                             left: 0,
-                            zIndex: 10, // Below header but above content
-                            minWidth: '90px'
+                            zIndex: 10,
+                            minWidth: '90px',
+                            boxShadow: isScrolledHorizontally 
+                              ? '4px 0 8px -4px rgba(0,0,0,0.1)' 
+                              : undefined
                           }}
                         >
                           <span className={`text-caption font-semibold block ${isToday ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
@@ -589,15 +602,6 @@ const MealTableV4: React.FC<MealTableV4Props> = ({
             </div>
           </div>
         </div>
-
-        {/* Footer */}
-        <div className="helpy-footer">
-          <span className="helpy-logo">helpy</span>
-          <p className="text-caption text-muted-foreground mt-2">
-            Meal Table V4 - 4-Pane Architecture Test
-          </p>
-        </div>
-
       </div>
 
       {/* ─────────────────────────────────────────────────────────────── */}

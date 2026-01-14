@@ -385,6 +385,8 @@ const AppContent: React.FC = () => {
       localStorage.removeItem('helpy_cached_family_notes_translations');
       localStorage.removeItem('helpy_cached_helper_contracts');
       localStorage.removeItem('helpy_cached_salary_slips');
+      localStorage.removeItem('helpy_cached_places');
+      localStorage.removeItem('helpy_cached_practices');
     };
 
     const resetState = () => {
@@ -401,6 +403,8 @@ const AppContent: React.FC = () => {
       setFamilyNotesTranslations({});
       setHelperContracts([]);
       setSalarySlips([]);
+      setPlaces([]);
+      setPractices([]);
     };
 
     try {
@@ -534,8 +538,14 @@ const AppContent: React.FC = () => {
     const cached = localStorage.getItem('helpy_cached_family_notes_translations');
     return cached ? JSON.parse(cached) : {};
   });
-  const [places, setPlaces] = useState<Place[]>([]);
-  const [practices, setPractices] = useState<Practice[]>([]);
+  const [places, setPlaces] = useState<Place[]>(() => {
+    const cached = localStorage.getItem('helpy_cached_places');
+    return cached ? JSON.parse(cached) : [];
+  });
+  const [practices, setPractices] = useState<Practice[]>(() => {
+    const cached = localStorage.getItem('helpy_cached_practices');
+    return cached ? JSON.parse(cached) : [];
+  });
   const [helperContracts, setHelperContracts] = useState<HelperContract[]>(() => {
     const cached = localStorage.getItem('helpy_cached_helper_contracts');
     return cached ? JSON.parse(cached) : [];
@@ -583,27 +593,66 @@ const AppContent: React.FC = () => {
     if (currentUser?.householdId) {
       if (familyNotes) {
         localStorage.setItem('helpy_cached_family_notes', familyNotes);
+      } else {
+        // Clear cache when notes are empty to prevent stale cached notes from flashing on next app open
+        localStorage.removeItem('helpy_cached_family_notes');
       }
       if (familyNotesLang) {
         localStorage.setItem('helpy_cached_family_notes_lang', familyNotesLang);
+      } else {
+        localStorage.removeItem('helpy_cached_family_notes_lang');
       }
       if (Object.keys(familyNotesTranslations).length > 0) {
         localStorage.setItem('helpy_cached_family_notes_translations', JSON.stringify(familyNotesTranslations));
+      } else {
+        localStorage.removeItem('helpy_cached_family_notes_translations');
       }
     }
   }, [familyNotes, familyNotesLang, familyNotesTranslations, currentUser?.householdId]);
 
   useEffect(() => {
-    if (helperContracts.length > 0 && currentUser?.householdId) {
-      localStorage.setItem('helpy_cached_helper_contracts', JSON.stringify(helperContracts));
+    if (currentUser?.householdId) {
+      if (helperContracts.length > 0) {
+        localStorage.setItem('helpy_cached_helper_contracts', JSON.stringify(helperContracts));
+      } else {
+        // Clear cache when contracts are empty to prevent stale cached data from flashing on next app open
+        localStorage.removeItem('helpy_cached_helper_contracts');
+      }
     }
   }, [helperContracts, currentUser?.householdId]);
 
   useEffect(() => {
-    if (salarySlips.length > 0 && currentUser?.householdId) {
-      localStorage.setItem('helpy_cached_salary_slips', JSON.stringify(salarySlips));
+    if (currentUser?.householdId) {
+      if (salarySlips.length > 0) {
+        localStorage.setItem('helpy_cached_salary_slips', JSON.stringify(salarySlips));
+      } else {
+        // Clear cache when slips are empty to prevent stale cached data from flashing on next app open
+        localStorage.removeItem('helpy_cached_salary_slips');
+      }
     }
   }, [salarySlips, currentUser?.householdId]);
+
+  useEffect(() => {
+    if (currentUser?.householdId) {
+      if (places.length > 0) {
+        localStorage.setItem('helpy_cached_places', JSON.stringify(places));
+      } else {
+        // Clear cache when places are empty to prevent stale cached data from flashing on next app open
+        localStorage.removeItem('helpy_cached_places');
+      }
+    }
+  }, [places, currentUser?.householdId]);
+
+  useEffect(() => {
+    if (currentUser?.householdId) {
+      if (practices.length > 0) {
+        localStorage.setItem('helpy_cached_practices', JSON.stringify(practices));
+      } else {
+        // Clear cache when practices are empty to prevent stale cached data from flashing on next app open
+        localStorage.removeItem('helpy_cached_practices');
+      }
+    }
+  }, [practices, currentUser?.householdId]);
 
   // Sync function for periodic backup fetching
   const syncAllData = useCallback(async () => {
@@ -633,9 +682,21 @@ const AppContent: React.FC = () => {
       if (mealsData && mealsData.length > 0) setMeals(mealsData as Meal[]);
       if (expensesData && expensesData.length > 0) setExpenses(expensesData as Expense[]);
       
-      // Update helper contracts and salary slips
-      if (contractsData && contractsData.length > 0) setHelperContracts(contractsData);
-      if (slipsData && slipsData.length > 0) setSalarySlips(slipsData);
+      // Update helper contracts and salary slips - always update (even if empty) to clear stale cache
+      if (contractsData) {
+        setHelperContracts(contractsData);
+        // Clear cache if empty to prevent stale data from flashing on next app open
+        if (contractsData.length === 0) {
+          localStorage.removeItem('helpy_cached_helper_contracts');
+        }
+      }
+      if (slipsData) {
+        setSalarySlips(slipsData);
+        // Clear cache if empty to prevent stale data from flashing on next app open
+        if (slipsData.length === 0) {
+          localStorage.removeItem('helpy_cached_salary_slips');
+        }
+      }
       
       // Update household limits AND family notes (Family Board)
       if (householdData.data) {
@@ -644,9 +705,20 @@ const AppContent: React.FC = () => {
           maxHelpers: householdData.data.max_helpers ?? 1,
         });
         // Sync family notes - fixes Android PWA delay issue where real-time updates were missed
-        setFamilyNotes(householdData.data.family_notes || '');
-        setFamilyNotesLang(householdData.data.family_notes_lang || null);
-        setFamilyNotesTranslations(householdData.data.family_notes_translations || {});
+        const syncedNotes = householdData.data.family_notes || '';
+        const syncedNotesLang = householdData.data.family_notes_lang || null;
+        const syncedNotesTranslations = householdData.data.family_notes_translations || {};
+        
+        setFamilyNotes(syncedNotes);
+        setFamilyNotesLang(syncedNotesLang);
+        setFamilyNotesTranslations(syncedNotesTranslations);
+        
+        // Clear cache when notes are empty to prevent stale cached notes from flashing on next app open
+        if (!syncedNotes) {
+          localStorage.removeItem('helpy_cached_family_notes');
+          localStorage.removeItem('helpy_cached_family_notes_lang');
+          localStorage.removeItem('helpy_cached_family_notes_translations');
+        }
       }
       
       console.log('[App] Periodic sync completed');
@@ -982,9 +1054,20 @@ const AppContent: React.FC = () => {
       });
     });
     const unsubNotes = subscribeToNotes(hid, (notesData) => {
-      setFamilyNotes(notesData.notes);
-      setFamilyNotesLang(notesData.notesLang || null);
-      setFamilyNotesTranslations(notesData.notesTranslations || {});
+      const notes = notesData.notes || '';
+      const notesLang = notesData.notesLang || null;
+      const notesTranslations = notesData.notesTranslations || {};
+      
+      setFamilyNotes(notes);
+      setFamilyNotesLang(notesLang);
+      setFamilyNotesTranslations(notesTranslations);
+      
+      // Clear cache when notes are empty to prevent stale cached notes from flashing on next app open
+      if (!notes) {
+        localStorage.removeItem('helpy_cached_family_notes');
+        localStorage.removeItem('helpy_cached_family_notes_lang');
+        localStorage.removeItem('helpy_cached_family_notes_translations');
+      }
     });
     const unsubPlaces = subscribeToPlaces(hid, (data) => {
       // Protect cached data: don't replace existing places with empty results

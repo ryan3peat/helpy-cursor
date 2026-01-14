@@ -345,11 +345,13 @@ export const HelperManagementContent: React.FC<Props> = ({
       setSalarySlips(slipsData);
       
       // Sync back to parent cache (merge with existing data for other helpers)
+      // Always sync contracts back (even if null, to clear old cache for this helper)
+      const updatedContracts = cachedContracts.filter(c => c.userId !== helperId);
       if (contractData) {
-        const updatedContracts = cachedContracts.filter(c => c.userId !== helperId);
         updatedContracts.push(contractData);
-        onContractsChange(updatedContracts);
       }
+      onContractsChange(updatedContracts);
+      
       // Always sync slips back (even if empty, to clear old cache for this helper)
       const otherSlips = cachedSlips.filter(s => s.helperId !== helperId);
       onSlipsChange([...otherSlips, ...slipsData]);
@@ -1099,7 +1101,15 @@ export const HelperManagementContent: React.FC<Props> = ({
         </div>
         
         <div className="bg-card rounded-xl p-4 shadow-sm">
-          {contract ? (
+          {isLoading && !contract ? (
+            // Show subtle loading state when fetching data (prevents flash of empty state)
+            <div className="text-center py-4">
+              <Loader2 size={20} className="animate-spin mx-auto text-muted-foreground mb-2" />
+              <p className="text-body text-muted-foreground">
+                {t['common.loading'] || 'Loading...'}
+              </p>
+            </div>
+          ) : contract ? (
             <div className="space-y-2">
               <div className="flex justify-between">
                 <span className="text-body text-muted-foreground">{t['salary.start_date'] || 'Employment Start Date'}</span>

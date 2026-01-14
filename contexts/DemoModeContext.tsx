@@ -371,16 +371,16 @@ const createDemoExpenses = (): Expense[] => {
     { id: 'demo-exp-019', amount: 380, currency: 'HKD', category: 'Health & Personal Care', date: '2026-01-11', merchant: 'Watsons', createdBy: 'demo-mom-002' },
     { id: 'demo-exp-020', amount: 1200, currency: 'HKD', category: 'Health & Personal Care', date: '2026-01-16', merchant: 'Union Hospital - Dr. Lee', createdBy: 'demo-mom-002' },
     
-    // Fun & Lifestyle
-    { id: 'demo-exp-021', amount: 580, currency: 'HKD', category: 'Fun & Lifestyle', date: '2026-01-09', merchant: 'Tim Ho Wan', createdBy: 'demo-dad-001' },
-    { id: 'demo-exp-022', amount: 450, currency: 'HKD', category: 'Fun & Lifestyle', date: '2026-01-14', merchant: 'Ocean Park', createdBy: 'demo-dad-001' },
-    { id: 'demo-exp-023', amount: 320, currency: 'HKD', category: 'Fun & Lifestyle', date: '2026-01-19', merchant: 'Broadway Cinema', createdBy: 'demo-mom-002' },
-    { id: 'demo-exp-024', amount: 880, currency: 'HKD', category: 'Fun & Lifestyle', date: '2026-01-22', merchant: 'Yum Cha Restaurant', createdBy: 'demo-dad-001' },
+    // Lifestyle
+    { id: 'demo-exp-021', amount: 580, currency: 'HKD', category: 'Lifestyle', date: '2026-01-09', merchant: 'Tim Ho Wan', createdBy: 'demo-dad-001' },
+    { id: 'demo-exp-022', amount: 450, currency: 'HKD', category: 'Lifestyle', date: '2026-01-14', merchant: 'Ocean Park', createdBy: 'demo-dad-001' },
+    { id: 'demo-exp-023', amount: 320, currency: 'HKD', category: 'Lifestyle', date: '2026-01-19', merchant: 'Broadway Cinema', createdBy: 'demo-mom-002' },
+    { id: 'demo-exp-024', amount: 880, currency: 'HKD', category: 'Lifestyle', date: '2026-01-22', merchant: 'Yum Cha Restaurant', createdBy: 'demo-dad-001' },
     
-    // Miscellaneous
-    { id: 'demo-exp-025', amount: 180, currency: 'HKD', category: 'Miscellaneous', date: '2026-01-13', merchant: 'MUJI', createdBy: 'demo-mom-002' },
-    { id: 'demo-exp-026', amount: 250, currency: 'HKD', category: 'Miscellaneous', date: '2026-01-21', merchant: 'IKEA', createdBy: 'demo-mom-002' },
-    { id: 'demo-exp-027', amount: 150, currency: 'HKD', category: 'Miscellaneous', date: '2026-01-24', merchant: 'Japan Home Centre', createdBy: 'demo-helper-004' },
+    // Misc
+    { id: 'demo-exp-025', amount: 180, currency: 'HKD', category: 'Misc', date: '2026-01-13', merchant: 'MUJI', createdBy: 'demo-mom-002' },
+    { id: 'demo-exp-026', amount: 250, currency: 'HKD', category: 'Misc', date: '2026-01-21', merchant: 'IKEA', createdBy: 'demo-mom-002' },
+    { id: 'demo-exp-027', amount: 150, currency: 'HKD', category: 'Misc', date: '2026-01-24', merchant: 'Japan Home Centre', createdBy: 'demo-helper-004' },
   ];
   
   return expenses;

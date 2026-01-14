@@ -6,8 +6,8 @@ export const EXPENSE_CATEGORIES = [
   'Food & Daily Needs',
   'Transport & Travel',
   'Health & Personal Care',
-  'Fun & Lifestyle',
-  'Miscellaneous'
+  'Lifestyle',
+  'Misc'
 ];
 
 // Colors based on brand palette: #3EAFD2, #FF9800, #7E57C2, #4CAF50, #F06292, #757575
@@ -415,8 +415,8 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'expenses.category.food_daily': 'Food & Daily Needs',
   'expenses.category.transport_travel': 'Transport & Travel',
   'expenses.category.health_personal': 'Health & Personal Care',
-  'expenses.category.fun_lifestyle': 'Fun & Lifestyle',
-  'expenses.category.miscellaneous': 'Miscellaneous',
+  'expenses.category.fun_lifestyle': 'Lifestyle',
+  'expenses.category.miscellaneous': 'Misc',
   'info.category.home': 'Home',
   'info.category.school': 'School',
   'info.category.doctor': 'Doctor',

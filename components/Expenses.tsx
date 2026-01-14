@@ -17,7 +17,7 @@ import {
   ShoppingCart,
   Car,
   Heart,
-  PartyPopper,
+  Handbag,
   Stone,
   ChevronLeft,
   ChevronRight,
@@ -61,12 +61,12 @@ const EXPENSE_CATEGORY_CONFIG: Record<string, ExpenseCategoryConfig> = {
   'Food & Daily Needs': { color: '#FF9800', bgColor: '#FFF3E0', icon: <ShoppingCart size={18} /> },
   'Transport & Travel': { color: '#7E57C2', bgColor: '#EDE7F6', icon: <Car size={18} /> },
   'Health & Personal Care': { color: '#4CAF50', bgColor: '#E8F5E9', icon: <Heart size={18} /> },
-  'Fun & Lifestyle': { color: '#F06292', bgColor: '#FCE4EC', icon: <PartyPopper size={18} /> },
-  'Miscellaneous': { color: '#757575', bgColor: '#F5F5F5', icon: <Stone size={18} /> },
+  'Lifestyle': { color: '#F06292', bgColor: '#FCE4EC', icon: <Handbag size={18} /> },
+  'Misc': { color: '#757575', bgColor: '#F5F5F5', icon: <Stone size={18} /> },
 };
 
 const getExpenseCategoryConfig = (category: string): ExpenseCategoryConfig => {
-  return EXPENSE_CATEGORY_CONFIG[category] || EXPENSE_CATEGORY_CONFIG['Miscellaneous'];
+  return EXPENSE_CATEGORY_CONFIG[category] || EXPENSE_CATEGORY_CONFIG['Misc'];
 };
 
 // Get today's date as YYYY-MM-DD string in LOCAL timezone (not UTC)
@@ -888,7 +888,7 @@ const Expenses: React.FC<ExpensesProps> = ({
       amount: amount,
       currency: DEFAULT_CURRENCY,
       merchant: editMerchant.trim() || 'Unknown',
-      category: editCategory || 'Miscellaneous',
+      category: editCategory || 'Misc',
       date: normalizedDate,
       receiptUrl: pendingReceipt?.imageUrl || undefined,
       createdBy: currentUser.id,
@@ -1106,8 +1106,8 @@ const Expenses: React.FC<ExpensesProps> = ({
       'Food & Daily Needs': t['expenses.category.food_daily'] || category,
       'Transport & Travel': t['expenses.category.transport_travel'] || category,
       'Health & Personal Care': t['expenses.category.health_personal'] || category,
-      'Fun & Lifestyle': t['expenses.category.fun_lifestyle'] || category,
-      'Miscellaneous': t['expenses.category.miscellaneous'] || category,
+      'Lifestyle': t['expenses.category.fun_lifestyle'] || category,
+      'Misc': t['expenses.category.miscellaneous'] || category,
     };
     return categoryMap[category] || category;
   };

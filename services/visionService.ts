@@ -125,7 +125,7 @@ export function parseReceiptText(rawText: string, options?: ProcessReceiptOption
     let total = 0;
     let merchant = 'Unknown';
     let date = new Date().toISOString().split('T')[0];
-    let category = 'Miscellaneous';
+    let category = 'Misc';
     let confidence = 0.5;
     const lineItems: Array<{ name: string; price: number }> = [];
   
@@ -344,7 +344,7 @@ export function parseReceiptText(rawText: string, options?: ProcessReceiptOption
       'Transport & Travel': ['gas', 'fuel', 'petrol', 'uber', 'grab', 'taxi', 'parking', 'transit'],
       'Housing & Utilities': ['electric', 'water', 'internet', 'phone', 'rent', 'maintenance'],
       'Health & Personal Care': ['pharmacy', 'clinic', 'hospital', 'doctor', 'dental', 'medical'],
-      'Fun & Lifestyle': ['cinema', 'movie', 'entertainment', 'gym', 'spa', 'hobby'],
+      'Lifestyle': ['cinema', 'movie', 'entertainment', 'gym', 'spa', 'hobby'],
     };
   
     const lowerText = rawText.toLowerCase();

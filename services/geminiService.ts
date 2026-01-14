@@ -84,7 +84,7 @@ export const parseReceipt = async (base64Image: string): Promise<{ total: number
             },
           },
           {
-            text: "Analyze this receipt. Return a JSON object with 'total' (number), 'merchant' (string), 'date' (YYYY-MM-DD string), and 'category' (one of: Housing & Utilities, Food & Daily Needs, Transport & Travel, Health & Personal Care, Fun & Lifestyle, Miscellaneous).",
+            text: "Analyze this receipt. Return a JSON object with 'total' (number), 'merchant' (string), 'date' (YYYY-MM-DD string), and 'category' (one of: Housing & Utilities, Food & Daily Needs, Transport & Travel, Health & Personal Care, Lifestyle, Misc).",
           },
         ],
       },
@@ -108,7 +108,7 @@ export const parseReceipt = async (base64Image: string): Promise<{ total: number
     return JSON.parse(text);
   } catch (error) {
     console.error("Receipt parsing failed:", error);
-    return { total: 0, merchant: "Unknown", date: "", category: "Miscellaneous" };
+    return { total: 0, merchant: "Unknown", date: "", category: "Misc" };
   }
 };
 

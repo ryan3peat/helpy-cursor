@@ -32,7 +32,7 @@ import { useDemoMode } from '../contexts/DemoModeContext';
 import { useScrollLock } from '../hooks/useScrollLock';
 import { useSheetTheme } from '../hooks/useSheetTheme';
 import { haptics } from '../utils/haptics';
-import { getCachedSupabaseUuid } from '../services/supabaseService';
+import { getCachedSupabaseUuid, isUserCachePopulated } from '../services/supabaseService';
 import {
   getHelperContract,
   getSalarySlips,
@@ -166,11 +166,38 @@ export const HelperManagementContent: React.FC<Props> = ({
   // Data Loading - Cached data shows instantly, fresh data fetched in background
   // ─────────────────────────────────────────────────────────────────
   
+  // Track if fresh data has been loaded successfully
+  const [freshDataLoaded, setFreshDataLoaded] = useState(false);
+  
   // Fetch fresh data on mount (background refresh)
   // Also refresh when refreshKey changes (e.g., after creating a slip from outside)
   useEffect(() => {
     loadData();
   }, [helperId, householdId, refreshKey]);
+  
+  // Retry loading if cache wasn't populated on first attempt
+  // This handles the race condition where users load from localStorage before DB
+  useEffect(() => {
+    if (!freshDataLoaded && !isDemoMode) {
+      const retryInterval = setInterval(() => {
+        if (isUserCachePopulated()) {
+          console.log('[HelperManagementContent] User cache now populated, retrying load...');
+          loadData();
+          clearInterval(retryInterval);
+        }
+      }, 500);
+      
+      // Stop retrying after 5 seconds
+      const timeout = setTimeout(() => {
+        clearInterval(retryInterval);
+      }, 5000);
+      
+      return () => {
+        clearInterval(retryInterval);
+        clearTimeout(timeout);
+      };
+    }
+  }, [freshDataLoaded, isDemoMode]);
   
   const loadData = async () => {
     // No loading spinner for initial display - content appears instantly from cache
@@ -327,6 +354,7 @@ export const HelperManagementContent: React.FC<Props> = ({
         ];
         setFreshContract(demoContract);
         setFreshSlips(demoSlips);
+        setFreshDataLoaded(true);
         return;
       }
       
@@ -334,23 +362,38 @@ export const HelperManagementContent: React.FC<Props> = ({
       const contractData = await getHelperContract(helperId, householdId);
       const slipsData = await getSalarySlips(helperId, householdId);
       
+      // Check if UUID resolution succeeded (cache was populated)
+      // If both return null/empty AND cache isn't populated, retry will happen
+      const cacheReady = isUserCachePopulated();
+      
       // Update local state
       setFreshContract(contractData);
       setFreshSlips(slipsData);
       
-      // Sync back to parent cache (merge with existing data for other helpers)
-      // Always sync contracts back (even if null, to clear old cache for this helper)
-      // CRITICAL: Use helperUuid (not helperId) since contract.userId is UUID
-      const updatedContracts = cachedContracts.filter(c => c.userId !== helperUuid);
-      if (contractData) {
-        updatedContracts.push(contractData);
+      // Only sync and mark as loaded if cache was ready (data is valid)
+      if (cacheReady) {
+        setFreshDataLoaded(true);
+        
+        // Get fresh UUID now that cache is populated
+        // (useMemo helperUuid might still have old value from before cache was ready)
+        const actualHelperUuid = getCachedSupabaseUuid(helperId);
+        
+        // Sync back to parent cache (merge with existing data for other helpers)
+        // Always sync contracts back (even if null, to clear old cache for this helper)
+        // CRITICAL: Use actualHelperUuid (fresh from cache) since contract.userId is UUID
+        const updatedContracts = cachedContracts.filter(c => c.userId !== actualHelperUuid);
+        if (contractData) {
+          updatedContracts.push(contractData);
+        }
+        onContractsChange(updatedContracts);
+        
+        // Always sync slips back (even if empty, to clear old cache for this helper)
+        // CRITICAL: Use actualHelperUuid (fresh from cache) since slip.helperId is UUID
+        const otherSlips = cachedSlips.filter(s => s.helperId !== actualHelperUuid);
+        onSlipsChange([...otherSlips, ...slipsData]);
+      } else {
+        console.log('[HelperManagementContent] Cache not ready, will retry...');
       }
-      onContractsChange(updatedContracts);
-      
-      // Always sync slips back (even if empty, to clear old cache for this helper)
-      // CRITICAL: Use helperUuid (not helperId) since slip.helperId is UUID
-      const otherSlips = cachedSlips.filter(s => s.helperId !== helperUuid);
-      onSlipsChange([...otherSlips, ...slipsData]);
     } catch (err) {
       console.error('Failed to load helper data:', err);
       setError(t['error.load_data'] || 'Failed to load data. Please try again.');
@@ -1066,7 +1109,7 @@ export const HelperManagementContent: React.FC<Props> = ({
       {/* ═══════════════════════════════════════════════════════════════ */}
       {/* HELPER INFO HEADER */}
       {/* ═══════════════════════════════════════════════════════════════ */}
-      <div className="pb-2">
+      <div className="mb-12">
         <p className="text-body font-bold text-foreground" style={{ fontSize: '20px' }}>
           {helper.firstName || helper.name?.split(' ')[0] || 'Helper'}
         </p>
@@ -1075,7 +1118,7 @@ export const HelperManagementContent: React.FC<Props> = ({
       {/* ═══════════════════════════════════════════════════════════════ */}
       {/* EMPLOYMENT DETAILS SECTION */}
       {/* ═══════════════════════════════════════════════════════════════ */}
-      <div className="mb-24">
+      <div className="mb-12">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <FileText size={20} className="text-primary" />
@@ -1202,7 +1245,7 @@ export const HelperManagementContent: React.FC<Props> = ({
             
             {/* Past & Signed Toggle */}
             {signedSlips.length > 0 && (
-              <div className="mt-8">
+              <div className="mt-12">
                 <div className="flex items-center justify-between mb-2 px-2">
             <button
                     onClick={() => setShowPastSlips(!showPastSlips)}

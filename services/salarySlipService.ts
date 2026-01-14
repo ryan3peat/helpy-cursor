@@ -54,9 +54,9 @@ const supabase = {
  * All database operations require UUIDs, not Clerk IDs
  * 
  * FIXED: Now uses database lookup as fallback if cache is not populated yet.
- * This prevents UUID errors when helper contracts are queried before users are loaded.
+ * Returns null if resolution fails (caller should handle gracefully).
  */
-async function toSupabaseUuid(userId: string, householdId: string): Promise<string> {
+async function toSupabaseUuid(userId: string, householdId: string): Promise<string | null> {
   // First try cache (fast path)
   const cached = getCachedSupabaseUuid(userId);
   
@@ -71,7 +71,8 @@ async function toSupabaseUuid(userId: string, householdId: string): Promise<stri
   const uuid = await getSupabaseUserId(userId, householdId);
   
   if (!uuid) {
-    throw new Error(`Could not resolve user ID to UUID: ${userId}. User may not exist in household.`);
+    console.warn(`[salarySlipService] Could not resolve user ID to UUID: ${userId}. User cache may not be populated yet.`);
+    return null;
   }
   
   return uuid;
@@ -83,12 +84,19 @@ async function toSupabaseUuid(userId: string, householdId: string): Promise<stri
 
 /**
  * Get helper contract for a specific helper
+ * Returns null if helper UUID cannot be resolved (cache not populated yet)
  */
 export async function getHelperContract(
   helperId: string,
   householdId: string
 ): Promise<HelperContract | null> {
   const helperUuid = await toSupabaseUuid(helperId, householdId);
+  
+  // If UUID resolution failed, return null (cache not ready yet)
+  if (!helperUuid) {
+    console.log('[salarySlipService] getHelperContract: UUID resolution failed, returning null');
+    return null;
+  }
   
   const { data, error } = await supabase
     .from('helper_contracts')
@@ -127,6 +135,10 @@ export async function createHelperContract(
   contract: CreateHelperContract
 ): Promise<HelperContract> {
   const helperUuid = await toSupabaseUuid(contract.userId, contract.householdId);
+  
+  if (!helperUuid) {
+    throw new Error('Could not resolve helper user ID. Please try again.');
+  }
   
   const { data, error } = await supabase
     .from('helper_contracts')
@@ -192,12 +204,19 @@ export async function deleteHelperContract(contractId: string): Promise<void> {
 
 /**
  * Get all salary slips for a helper
+ * Returns empty array if helper UUID cannot be resolved (cache not populated yet)
  */
 export async function getSalarySlips(
   helperId: string,
   householdId: string
 ): Promise<SalarySlip[]> {
   const helperUuid = await toSupabaseUuid(helperId, householdId);
+  
+  // If UUID resolution failed, return empty (cache not ready yet)
+  if (!helperUuid) {
+    console.log('[salarySlipService] getSalarySlips: UUID resolution failed, returning empty');
+    return [];
+  }
   
   const { data, error } = await supabase
     .from('salary_slips')
@@ -251,8 +270,28 @@ export async function createSalarySlip(
   slip: CreateSalarySlip
 ): Promise<SalarySlip> {
   const helperUuid = await toSupabaseUuid(slip.helperId, slip.householdId);
-  const creatorUuid = slip.createdBy ? await toSupabaseUuid(slip.createdBy, slip.householdId) : null;
-  const signerUuid = slip.employerSignerId ? await toSupabaseUuid(slip.employerSignerId, slip.householdId) : null;
+  
+  if (!helperUuid) {
+    throw new Error('Could not resolve helper user ID. Please try again.');
+  }
+  
+  // Resolve creator UUID if provided
+  let creatorUuid: string | null = null;
+  if (slip.createdBy) {
+    creatorUuid = await toSupabaseUuid(slip.createdBy, slip.householdId);
+    if (!creatorUuid) {
+      throw new Error('Could not resolve creator user ID. Please try again.');
+    }
+  }
+  
+  // Resolve signer UUID if provided
+  let signerUuid: string | null = null;
+  if (slip.employerSignerId) {
+    signerUuid = await toSupabaseUuid(slip.employerSignerId, slip.householdId);
+    if (!signerUuid) {
+      throw new Error('Could not resolve signer user ID. Please try again.');
+    }
+  }
   
   const { data, error } = await supabase
     .from('salary_slips')
@@ -308,7 +347,15 @@ export async function updateSalarySlip(
   if (updates.totalPayout !== undefined) updateData.total_payout = updates.totalPayout;
   if (updates.note !== undefined) updateData.note = updates.note;
   if (updates.employerSignerId !== undefined) {
-    updateData.employer_signer_id = updates.employerSignerId ? await toSupabaseUuid(updates.employerSignerId, existingSlip.household_id) : null;
+    if (updates.employerSignerId) {
+      const signerUuid = await toSupabaseUuid(updates.employerSignerId, existingSlip.household_id);
+      if (!signerUuid) {
+        throw new Error('Could not resolve signer user ID. Please try again.');
+      }
+      updateData.employer_signer_id = signerUuid;
+    } else {
+      updateData.employer_signer_id = null;
+    }
   }
   if (updates.employerSignerName !== undefined) updateData.employer_signer_name = updates.employerSignerName;
   
@@ -359,6 +406,10 @@ export async function signAsEmployer(
   
   const signerUuid = await toSupabaseUuid(signerId, existing.household_id);
   
+  if (!signerUuid) {
+    throw new Error('Could not resolve signer user ID. Please try again.');
+  }
+  
   const { data, error } = await supabase
     .from('salary_slips')
     .update({
@@ -391,6 +442,10 @@ export async function signAsHelper(slipId: string, currentUserId: string): Promi
   if (fetchError) throw fetchError;
   
   const currentUserUuid = await toSupabaseUuid(currentUserId, existing.household_id);
+  
+  if (!currentUserUuid) {
+    throw new Error('Could not resolve user ID. Please try again.');
+  }
   
   // SECURITY: Verify the current user IS the helper for this salary slip
   if (existing?.helper_id !== currentUserUuid) {

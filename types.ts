@@ -99,6 +99,7 @@ export interface ToDoItem {
   completedAt?: string; // When item was marked complete (for sorting suggestions)
   assigneeId?: string; // Single assignee user ID
   createdBy?: string; // User ID who created this item (for notifications)
+  lastModifiedBy?: string; // User ID who last modified this item (for notification attribution)
   createdAt?: string;
   // Shopping-specific
   quantity?: string;
@@ -156,6 +157,7 @@ export interface Meal {
   forUserIds: string[];
   audience: MealAudience;
   createdBy?: string; // User ID who created this meal (for notifications)
+  lastModifiedBy?: string; // User ID who last modified this meal (for notification attribution)
   // Translation fields
   descriptionLang?: string | null; // Language code of the description field (null if undetectable)
   descriptionTranslations?: Record<string, string>; // Translations: { "en": "original", "zh-CN": "translated", ... }
@@ -175,6 +177,7 @@ export interface Expense {
   merchant: string;
   receiptUrl?: string;
   createdBy?: string; // User ID who created this expense
+  lastModifiedBy?: string; // User ID who last modified this expense (for notification attribution)
   lineItems?: ExpenseLineItem[]; // Individual items extracted from receipt OCR
   // Translation fields
   merchantLang?: string | null; // Language code of the merchant field (null if undetectable)

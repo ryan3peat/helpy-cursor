@@ -571,7 +571,7 @@ export async function addItem(
   // Convert empty strings to null ONLY for specific field types
   // PostgreSQL doesn't accept empty strings for DATE, TIME, UUID columns
   // But text fields like 'description' should keep empty strings (NOT NULL constraint)
-  const fieldsToConvertToNull = ['due_date', 'due_time', 'assignee_id', 'created_by', 'completed_at', 'start_date', 'end_date'];
+  const fieldsToConvertToNull = ['due_date', 'due_time', 'assignee_id', 'created_by', 'last_modified_by', 'completed_at', 'start_date', 'end_date'];
   for (const key of fieldsToConvertToNull) {
     if (finalData[key] === '') {
       finalData[key] = null;
@@ -601,18 +601,21 @@ export async function addItem(
     console.log('✅ Converted for_user_ids:', finalData.for_user_ids);
   }
   
-  // For todo_items and recurring_series: convert assignee_id and created_by IN PARALLEL
-  // Both conversions are independent, so we can await them together
+  // For todo_items and recurring_series: convert assignee_id, created_by, and last_modified_by IN PARALLEL
+  // All conversions are independent, so we can await them together
   if (collection === 'todo_items' || collection === 'recurring_series') {
     console.log(`🔍 [DEBUG] ${collection} created_by before conversion:`, {
       created_by: finalData.created_by,
+      last_modified_by: finalData.last_modified_by,
       has_created_by: 'created_by' in finalData,
+      has_last_modified_by: 'last_modified_by' in finalData,
       all_keys: Object.keys(finalData)
     });
     
-    const [assigneeUuid, createdByUuid] = await Promise.all([
+    const [assigneeUuid, createdByUuid, lastModifiedByUuid] = await Promise.all([
       finalData.assignee_id ? getSupabaseUserId(finalData.assignee_id, householdId) : Promise.resolve(null),
       finalData.created_by ? getSupabaseUserId(finalData.created_by, householdId) : Promise.resolve(null),
+      finalData.last_modified_by ? getSupabaseUserId(finalData.last_modified_by, householdId) : Promise.resolve(null),
     ]);
     
     // Apply assignee_id conversion
@@ -635,26 +638,64 @@ export async function addItem(
       console.warn(`⚠️ Could not resolve created_by ID: ${finalData.created_by} - setting to null`);
       finalData.created_by = null;
     }
+    
+    // Apply last_modified_by conversion with validation
+    if (lastModifiedByUuid) {
+      const isValidUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(lastModifiedByUuid);
+      if (isValidUuid) {
+        console.log(`🔄 Converting last_modified_by ${finalData.last_modified_by} to UUID ${lastModifiedByUuid}`);
+        finalData.last_modified_by = lastModifiedByUuid;
+      } else {
+        console.warn(`⚠️ getSupabaseUserId returned invalid UUID for last_modified_by: ${lastModifiedByUuid} - setting to null`);
+        finalData.last_modified_by = null;
+      }
+    } else if (finalData.last_modified_by) {
+      console.warn(`⚠️ Could not resolve last_modified_by ID: ${finalData.last_modified_by} - setting to null`);
+      finalData.last_modified_by = null;
+    }
   }
   
-  // For meals and expenses: convert created_by from Clerk ID to Supabase UUID
-  // IMPORTANT: The edge function for notifications needs created_by to be a valid UUID
-  if (finalData.created_by && ['meals', 'expenses'].includes(collection)) {
-    const originalCreatedBy = finalData.created_by;
-    const uuid = await getSupabaseUserId(finalData.created_by, householdId);
-    
-    if (uuid) {
-      const isValidUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(uuid);
-      if (isValidUuid) {
-        console.log(`🔄 Converting created_by ${originalCreatedBy} to UUID ${uuid}`);
-        finalData.created_by = uuid;
+  // For meals and expenses: convert created_by and last_modified_by from Clerk ID to Supabase UUID
+  // IMPORTANT: The edge function for notifications needs these to be valid UUIDs
+  if (['meals', 'expenses'].includes(collection)) {
+    // Convert created_by
+    if (finalData.created_by) {
+      const originalCreatedBy = finalData.created_by;
+      const uuid = await getSupabaseUserId(finalData.created_by, householdId);
+      
+      if (uuid) {
+        const isValidUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(uuid);
+        if (isValidUuid) {
+          console.log(`🔄 Converting created_by ${originalCreatedBy} to UUID ${uuid}`);
+          finalData.created_by = uuid;
+        } else {
+          console.warn(`⚠️ getSupabaseUserId returned invalid UUID for created_by: ${uuid} - setting to null`);
+          finalData.created_by = null;
+        }
       } else {
-        console.warn(`⚠️ getSupabaseUserId returned invalid UUID for created_by: ${uuid} - setting to null`);
+        console.warn(`⚠️ Could not resolve created_by ID: ${originalCreatedBy} - setting to null`);
         finalData.created_by = null;
       }
-    } else {
-      console.warn(`⚠️ Could not resolve created_by ID: ${originalCreatedBy} - setting to null`);
-      finalData.created_by = null;
+    }
+    
+    // Convert last_modified_by
+    if (finalData.last_modified_by) {
+      const originalLastModifiedBy = finalData.last_modified_by;
+      const uuid = await getSupabaseUserId(finalData.last_modified_by, householdId);
+      
+      if (uuid) {
+        const isValidUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(uuid);
+        if (isValidUuid) {
+          console.log(`🔄 Converting last_modified_by ${originalLastModifiedBy} to UUID ${uuid}`);
+          finalData.last_modified_by = uuid;
+        } else {
+          console.warn(`⚠️ getSupabaseUserId returned invalid UUID for last_modified_by: ${uuid} - setting to null`);
+          finalData.last_modified_by = null;
+        }
+      } else {
+        console.warn(`⚠️ Could not resolve last_modified_by ID: ${originalLastModifiedBy} - setting to null`);
+        finalData.last_modified_by = null;
+      }
     }
   }
 
@@ -801,7 +842,7 @@ export async function updateItem(
   // Convert empty strings to null ONLY for specific field types
   // PostgreSQL doesn't accept empty strings for DATE, TIME, UUID columns
   // But text fields like 'description' should keep empty strings (NOT NULL constraint)
-  const fieldsToConvertToNull = ['due_date', 'due_time', 'assignee_id', 'created_by', 'completed_at', 'start_date', 'end_date'];
+  const fieldsToConvertToNull = ['due_date', 'due_time', 'assignee_id', 'created_by', 'last_modified_by', 'completed_at', 'start_date', 'end_date'];
   for (const key of fieldsToConvertToNull) {
     if (snakeCaseUpdates[key] === '') {
       snakeCaseUpdates[key] = null;
@@ -821,6 +862,25 @@ export async function updateItem(
     if (uuid) {
       console.log(`🔄 Converting assignee_id ${snakeCaseUpdates.assignee_id} to UUID ${uuid}`);
       snakeCaseUpdates.assignee_id = uuid;
+    }
+  }
+  
+  // For todo_items, meals, expenses: convert last_modified_by from Clerk ID to Supabase UUID
+  // IMPORTANT: This is used for notification attribution (who performed the action)
+  if (['todo_items', 'meals', 'expenses'].includes(collection) && snakeCaseUpdates.last_modified_by) {
+    const uuid = await getSupabaseUserId(snakeCaseUpdates.last_modified_by, householdId);
+    if (uuid) {
+      const isValidUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(uuid);
+      if (isValidUuid) {
+        console.log(`🔄 Converting last_modified_by ${snakeCaseUpdates.last_modified_by} to UUID ${uuid}`);
+        snakeCaseUpdates.last_modified_by = uuid;
+      } else {
+        console.warn(`⚠️ getSupabaseUserId returned invalid UUID for last_modified_by: ${uuid} - setting to null`);
+        snakeCaseUpdates.last_modified_by = null;
+      }
+    } else {
+      console.warn(`⚠️ Could not resolve last_modified_by ID: ${snakeCaseUpdates.last_modified_by} - setting to null`);
+      snakeCaseUpdates.last_modified_by = null;
     }
   }
   
@@ -944,15 +1004,19 @@ export async function updateItem(
  * Delete an item
  * Why: Remove records (e.g., delete completed task)
  * Note: todo_items uses soft delete (sets deleted_at), other tables use hard delete
+ * 
+ * @param lastModifiedBy - Optional user ID (Clerk ID) who performed the delete. 
+ *                         Used for notification attribution on soft deletes.
  */
 export async function deleteItem(
   householdId: string,
   collection: string,
-  id: string
+  id: string,
+  lastModifiedBy?: string
 ): Promise<void> {
   const tableName = COLLECTION_MAP[collection];
   
-  console.log(`🗑️ Deleting ${collection} item:`, id);
+  console.log(`🗑️ Deleting ${collection} item:`, id, lastModifiedBy ? `by ${lastModifiedBy}` : '');
   
   let actualId = id;
   
@@ -972,9 +1036,26 @@ export async function deleteItem(
   
   // Soft delete for todo_items (preserve shopping/task history)
   if (collection === 'todo_items') {
+    // Build soft delete update object
+    const softDeleteUpdate: Record<string, any> = { 
+      deleted_at: new Date().toISOString() 
+    };
+    
+    // Convert lastModifiedBy from Clerk ID to Supabase UUID for notification attribution
+    if (lastModifiedBy) {
+      const lastModifiedByUuid = await getSupabaseUserId(lastModifiedBy, householdId);
+      if (lastModifiedByUuid) {
+        const isValidUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(lastModifiedByUuid);
+        if (isValidUuid) {
+          console.log(`🔄 Converting lastModifiedBy ${lastModifiedBy} to UUID ${lastModifiedByUuid} for soft delete`);
+          softDeleteUpdate.last_modified_by = lastModifiedByUuid;
+        }
+      }
+    }
+    
     let { error, count } = await client
       .from(tableName)
-      .update({ deleted_at: new Date().toISOString() })
+      .update(softDeleteUpdate)
       .eq('id', actualId)
       .eq('household_id', householdId)
       .select();
@@ -988,7 +1069,7 @@ export async function deleteItem(
         
         const retryResult = await client
           .from(tableName)
-          .update({ deleted_at: new Date().toISOString() })
+          .update(softDeleteUpdate)
           .eq('id', actualId)
           .eq('household_id', householdId)
           .select();
@@ -1017,6 +1098,23 @@ export async function deleteItem(
       console.log('✅ Soft delete successful (deleted_at set)');
     }
     return;
+  }
+  
+  // For meals and expenses: update last_modified_by BEFORE hard delete for notification attribution
+  // The trigger reads OLD.last_modified_by for delete notifications
+  if (lastModifiedBy && ['meals', 'expenses'].includes(collection)) {
+    const lastModifiedByUuid = await getSupabaseUserId(lastModifiedBy, householdId);
+    if (lastModifiedByUuid) {
+      const isValidUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(lastModifiedByUuid);
+      if (isValidUuid) {
+        console.log(`🔄 Setting last_modified_by to ${lastModifiedByUuid} before hard delete`);
+        await client
+          .from(tableName)
+          .update({ last_modified_by: lastModifiedByUuid })
+          .eq('id', actualId)
+          .eq('household_id', householdId);
+      }
+    }
   }
   
   // Hard delete for other tables
@@ -1431,13 +1529,16 @@ function convertSupabaseData(data: any[], collection?: string): DataItem[] {
       converted.forUserIds = convertUuidsToAppUserIds(item.for_user_ids);
     }
     
-    // For todo_items: convert assignee_id and created_by from Supabase UUID to app user ID
+    // For todo_items: convert assignee_id, created_by, and last_modified_by from Supabase UUID to app user ID
     if (collection === 'todo_items') {
       if (item.assignee_id) {
         converted.assigneeId = getAppUserIdFromUuid(item.assignee_id);
       }
       if (item.created_by) {
         converted.createdBy = getAppUserIdFromUuid(item.created_by);
+      }
+      if (item.last_modified_by) {
+        converted.lastModifiedBy = getAppUserIdFromUuid(item.last_modified_by);
       }
     }
     
@@ -1489,11 +1590,20 @@ function convertSupabaseData(data: any[], collection?: string): DataItem[] {
       if (item.created_by) {
         converted.createdBy = getAppUserIdFromUuid(item.created_by);
       }
+      // Convert last_modified_by from Supabase UUID to app user ID
+      if (item.last_modified_by) {
+        converted.lastModifiedBy = getAppUserIdFromUuid(item.last_modified_by);
+      }
     }
     
-    // For meals: convert created_by from Supabase UUID to app user ID
-    if (collection === 'meals' && item.created_by) {
-      converted.createdBy = getAppUserIdFromUuid(item.created_by);
+    // For meals: convert created_by and last_modified_by from Supabase UUID to app user ID
+    if (collection === 'meals') {
+      if (item.created_by) {
+        converted.createdBy = getAppUserIdFromUuid(item.created_by);
+      }
+      if (item.last_modified_by) {
+        converted.lastModifiedBy = getAppUserIdFromUuid(item.last_modified_by);
+      }
     }
     
     return converted;

@@ -1296,6 +1296,10 @@ const AppContent: React.FC = () => {
       enhancedData.completedAt = null; // Clear when uncompleting (null explicitly clears in DB)
     }
     
+    // Set lastModifiedBy to current user for correct notification attribution
+    // This ensures "bought by" / "done by" shows who performed the action
+    enhancedData.lastModifiedBy = currentUser?.id;
+    
     // Optimistically update UI
     setTodoItems(prev => prev.map(item => 
       item.id === id ? { ...item, ...enhancedData } : item
@@ -1377,12 +1381,14 @@ const AppContent: React.FC = () => {
         }
         
         // Delete ALL items in the series (including the one user clicked)
+        // Pass currentUser.id for notification attribution
         for (const itemId of allSeriesItemIds) {
-          await deleteItem(hid, 'todo_items', itemId);
+          await deleteItem(hid, 'todo_items', itemId, currentUser?.id);
         }
       } else {
         // Non-recurring: just delete the single item
-        await deleteItem(hid, 'todo_items', id);
+        // Pass currentUser.id for notification attribution
+        await deleteItem(hid, 'todo_items', id, currentUser?.id);
       }
       
       // Clear from pending deletions after success + buffer for real-time sync
@@ -1422,13 +1428,16 @@ const AppContent: React.FC = () => {
       return;
     }
     
-    setMeals(prev => prev.map(m => m.id === id ? { ...m, ...data } : m));  // Optimistic
+    // Set lastModifiedBy to current user for correct notification attribution
+    const enhancedData = { ...data, lastModifiedBy: currentUser?.id };
+    
+    setMeals(prev => prev.map(m => m.id === id ? { ...m, ...enhancedData } : m));  // Optimistic
     // Skip database call for temp IDs - real-time sync will handle it
     if (isTempId(id)) {
       console.warn('⚠️ Skipping update for temp meal - waiting for real ID:', id);
       return;
     }
-    await updateItem(hid, 'meals', id, data);
+    await updateItem(hid, 'meals', id, enhancedData);
   };
 
   const handleDeleteMeal = async (id: string) => {
@@ -1446,7 +1455,8 @@ const AppContent: React.FC = () => {
       console.warn('⚠️ Skipping delete for temp meal - not yet saved:', id);
       return;
     }
-    await deleteItem(hid, 'meals', id);
+    // Pass currentUser.id for notification attribution
+    await deleteItem(hid, 'meals', id, currentUser?.id);
   };
 
   // Expense CRUD Handlers (with optimistic updates for instant UI)
@@ -1486,14 +1496,16 @@ const AppContent: React.FC = () => {
     
     // Exclude createdBy from update - it's a Clerk ID in the app but needs to be UUID in DB
     // The created_by field shouldn't change after creation anyway
-    const { id, createdBy, ...data } = expense;
-    setExpenses(prev => prev.map(e => e.id === id ? { ...e, ...data } : e));  // Optimistic
+    // But include lastModifiedBy for notification attribution
+    const { id, createdBy, lastModifiedBy, ...data } = expense;
+    const enhancedData = { ...data, lastModifiedBy: currentUser?.id };
+    setExpenses(prev => prev.map(e => e.id === id ? { ...e, ...enhancedData } : e));  // Optimistic
     // Skip database call for temp IDs - real-time sync will handle it
     if (isTempId(id)) {
       console.warn('⚠️ Skipping update for temp expense - waiting for real ID:', id);
       return;
     }
-    await updateItem(hid, 'expenses', id, data);
+    await updateItem(hid, 'expenses', id, enhancedData);
   };
 
   const handleDeleteExpense = async (id: string) => {
@@ -1511,7 +1523,8 @@ const AppContent: React.FC = () => {
       console.warn('⚠️ Skipping delete for temp expense - not yet saved:', id);
       return;
     }
-    await deleteItem(hid, 'expenses', id);
+    // Pass currentUser.id for notification attribution
+    await deleteItem(hid, 'expenses', id, currentUser?.id);
   };
 
   // User CRUD Handlers (with optimistic updates for instant UI)

@@ -210,6 +210,10 @@ const Profile: React.FC<ProfileProps> = ({
   const [pushPermission, setPushPermission] = useState<NotificationPermission>('default');
   const [pushSupported, setPushSupported] = useState(true);
 
+  // Carousel scroll state
+  const carouselScrollRef = useRef<HTMLDivElement>(null);
+  const [activeCarouselDot, setActiveCarouselDot] = useState(0);
+
   // Household Name State - initialize from localStorage cache for instant display
   const [householdName, setHouseholdName] = useState<string>(() => {
     const cached = localStorage.getItem(HOUSEHOLD_NAME_CACHE_KEY);
@@ -256,6 +260,37 @@ const Profile: React.FC<ProfileProps> = ({
   
   // Dim status bar when sheet is open (iOS)
   useSheetTheme(isAddModalOpen || isEditModalOpen || deleteConfirmOpen || showPhotoOptions || subscriptionCanceled || isPlanConfirmOpen || isDeleteAccountModalOpen || isFinalDeleteConfirmOpen || showDowngradeModal || showCancelSubConfirm || alertModal.isOpen);
+
+  // Handle carousel scroll to update pagination dots
+  useEffect(() => {
+    const scrollContainer = carouselScrollRef.current;
+    if (!scrollContainer) return;
+
+    const handleScroll = () => {
+      const { scrollLeft, scrollWidth, clientWidth } = scrollContainer;
+      // Calculate total items (Add button + users)
+      const totalItems = (!isHelper ? 1 : 0) + validUsers.length;
+      if (totalItems <= 1) return;
+      
+      // Each item is roughly 80px (64px avatar + 16px gap)
+      const itemWidth = 80;
+      const visibleItems = Math.floor(clientWidth / itemWidth);
+      const totalDots = Math.max(1, totalItems - visibleItems + 1);
+      
+      // Calculate which dot should be active based on scroll position
+      const maxScroll = scrollWidth - clientWidth;
+      const scrollProgress = maxScroll > 0 ? scrollLeft / maxScroll : 0;
+      const activeDot = Math.min(Math.round(scrollProgress * (totalDots - 1)), totalDots - 1);
+      
+      setActiveCarouselDot(activeDot);
+    };
+
+    scrollContainer.addEventListener('scroll', handleScroll);
+    // Initial calculation
+    handleScroll();
+    
+    return () => scrollContainer.removeEventListener('scroll', handleScroll);
+  }, [validUsers.length, isHelper]);
 
   // Track if we've handled the initial edit (to prevent re-opening on data refresh)
   const [initialEditHandled, setInitialEditHandled] = useState(false);
@@ -1222,7 +1257,7 @@ const Profile: React.FC<ProfileProps> = ({
                 <h2 className="text-title font-bold text-foreground mb-1">{householdName}</h2>
               )}
               <p className="text-title text-muted-foreground mb-3">{t['profile.familyMembers']}</p>
-              <div className="flex gap-4 overflow-x-auto pt-2 pb-1 scrollbar-hide">
+              <div ref={carouselScrollRef} className="flex gap-4 overflow-x-auto pt-2 pb-1 scrollbar-hide">
                 {/* Add button first - Hidden for Helper */}
                 {!isHelper && (
                 <div
@@ -1272,6 +1307,34 @@ const Profile: React.FC<ProfileProps> = ({
                   );
                 })}
               </div>
+              
+              {/* Carousel pagination dots */}
+              {(() => {
+                const totalItems = (!isHelper ? 1 : 0) + validUsers.length;
+                const scrollContainer = carouselScrollRef.current;
+                const clientWidth = scrollContainer?.clientWidth || 300;
+                const itemWidth = 80;
+                const visibleItems = Math.floor(clientWidth / itemWidth);
+                const totalDots = Math.max(1, totalItems - visibleItems + 1);
+                
+                // Only show dots if there are more items than can fit
+                if (totalDots <= 1) return null;
+                
+                return (
+                  <div className="flex justify-center gap-1.5 mt-3">
+                    {Array.from({ length: totalDots }).map((_, index) => (
+                      <div
+                        key={index}
+                        className={`w-2 h-2 rounded-full transition-all duration-200 ${
+                          index === activeCarouselDot 
+                            ? 'bg-primary w-4' 
+                            : 'bg-border'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Selected User Profile Card */}

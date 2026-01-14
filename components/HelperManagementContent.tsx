@@ -97,8 +97,15 @@ export const HelperManagementContent: React.FC<Props> = ({
     [cachedSlips, helperId]
   );
   
-  const [contract, setContract] = useState<HelperContract | null>(cachedContract);
-  const [salarySlips, setSalarySlips] = useState<SalarySlip[]>(cachedHelperSlips);
+  // State for fresh data fetched from database (null/empty until fetched)
+  const [freshContract, setFreshContract] = useState<HelperContract | null>(null);
+  const [freshSlips, setFreshSlips] = useState<SalarySlip[]>([]);
+  
+  // INSTANT DISPLAY: Use cached data immediately, override with fresh when available
+  // This ensures content shows on FIRST render without waiting for any useEffect
+  const contract = freshContract ?? cachedContract;
+  const salarySlips = freshSlips.length > 0 ? freshSlips : cachedHelperSlips;
+  
   // isLoading is only for async operations (save, delete, sign), not for initial display
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -150,23 +157,10 @@ export const HelperManagementContent: React.FC<Props> = ({
   const langCode = currentLang === 'en' ? 'en-GB' : currentLang;
 
   // ─────────────────────────────────────────────────────────────────
-  // Data Loading - Use cached data for instant display, refresh in background
+  // Data Loading - Cached data shows instantly, fresh data fetched in background
   // ─────────────────────────────────────────────────────────────────
   
-  // Sync local state when cached props change (e.g., from another component's updates)
-  useEffect(() => {
-    if (cachedContract) {
-      setContract(cachedContract);
-    }
-  }, [cachedContract]);
-  
-  useEffect(() => {
-    if (cachedHelperSlips.length > 0) {
-      setSalarySlips(cachedHelperSlips);
-    }
-  }, [cachedHelperSlips]);
-  
-  // Fetch fresh data on mount (background refresh if we have cached data)
+  // Fetch fresh data on mount (background refresh)
   // Also refresh when refreshKey changes (e.g., after creating a slip from outside)
   useEffect(() => {
     loadData();
@@ -325,8 +319,8 @@ export const HelperManagementContent: React.FC<Props> = ({
             helperSignedAt: '2025-08-29T11:00:00Z',
           },
         ];
-        setContract(demoContract);
-        setSalarySlips(demoSlips);
+        setFreshContract(demoContract);
+        setFreshSlips(demoSlips);
         return;
       }
       
@@ -335,8 +329,8 @@ export const HelperManagementContent: React.FC<Props> = ({
       const slipsData = await getSalarySlips(helperId, householdId);
       
       // Update local state
-      setContract(contractData);
-      setSalarySlips(slipsData);
+      setFreshContract(contractData);
+      setFreshSlips(slipsData);
       
       // Sync back to parent cache (merge with existing data for other helpers)
       // Always sync contracts back (even if null, to clear old cache for this helper)

@@ -66,6 +66,7 @@ const MealTableV3: React.FC<MealTableV3Props> = ({
 
   // Row heights state - will be measured after render
   const [rowHeights, setRowHeights] = useState<number[]>([]);
+  const [heightsReady, setHeightsReady] = useState(false);
 
   const mealTypes = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER, MealType.SNACKS];
   const langCode = currentLang === 'en' ? 'en-GB' : currentLang;
@@ -155,28 +156,36 @@ const MealTableV3: React.FC<MealTableV3Props> = ({
   // SPLIT-PANE TABLE REFS (Google Calendar approach)
   // ─────────────────────────────────────────────────────────────────
   const headerRef = useRef<HTMLDivElement>(null);
-  const headerContentRef = useRef<HTMLDivElement>(null);
   const leftColRef = useRef<HTMLDivElement>(null);
-  const leftColContentRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
   const bodyRowRefs = useRef<(HTMLDivElement | null)[]>([]);
 
-  // Sync scroll positions using GPU-accelerated transforms
-  // This provides smoother sync than scrollLeft/scrollTop which lag behind
+  // Track which element is being scrolled to prevent infinite loop
+  const isScrolling = useRef<'header' | 'body' | null>(null);
+
+  // Sync header and body scroll positions (both are scrollable)
   const handleBodyScroll = () => {
-    if (!bodyRef.current) return;
+    if (isScrolling.current === 'header') return;
+    isScrolling.current = 'body';
     
-    const scrollLeft = bodyRef.current.scrollLeft;
-    const scrollTop = bodyRef.current.scrollTop;
-    
-    // Use transform for GPU-accelerated sync (renders in same frame as body scroll)
-    if (headerContentRef.current) {
-      headerContentRef.current.style.transform = `translateX(-${scrollLeft}px)`;
+    if (headerRef.current && bodyRef.current) {
+      headerRef.current.scrollLeft = bodyRef.current.scrollLeft;
     }
     
-    if (leftColContentRef.current) {
-      leftColContentRef.current.style.transform = `translateY(-${scrollTop}px)`;
+    // Reset after frame
+    requestAnimationFrame(() => { isScrolling.current = null; });
+  };
+
+  const handleHeaderScroll = () => {
+    if (isScrolling.current === 'body') return;
+    isScrolling.current = 'header';
+    
+    if (headerRef.current && bodyRef.current) {
+      bodyRef.current.scrollLeft = headerRef.current.scrollLeft;
     }
+    
+    // Reset after frame
+    requestAnimationFrame(() => { isScrolling.current = null; });
   };
 
   // Cell dimensions
@@ -185,11 +194,13 @@ const MealTableV3: React.FC<MealTableV3Props> = ({
   const MIN_ROW_HEIGHT = 70; // Minimum row height
 
   // Measure row heights after render and sync left column
+  // Use offsetHeight (actual rendered height) not scrollHeight
   const measureRowHeights = useCallback(() => {
     const heights: number[] = [];
     bodyRowRefs.current.forEach((rowEl, idx) => {
       if (rowEl) {
-        const height = Math.max(rowEl.scrollHeight, MIN_ROW_HEIGHT);
+        // offsetHeight = actual rendered height (what browser calculated)
+        const height = Math.max(rowEl.offsetHeight, MIN_ROW_HEIGHT);
         heights[idx] = height;
       } else {
         heights[idx] = MIN_ROW_HEIGHT;
@@ -201,7 +212,11 @@ const MealTableV3: React.FC<MealTableV3Props> = ({
     if (heightsChanged) {
       setRowHeights(heights);
     }
-  }, [rowHeights]);
+    // Mark heights as ready (removes invisible state)
+    if (!heightsReady) {
+      setHeightsReady(true);
+    }
+  }, [rowHeights, heightsReady]);
 
   // Measure after initial render and when meals change
   useLayoutEffect(() => {
@@ -320,20 +335,17 @@ const MealTableV3: React.FC<MealTableV3Props> = ({
               </div>
 
               {/* ═══════════════════════════════════════════════════════════ */}
-              {/* HEADER ROW (Fixed container, content moves via transform) */}
+              {/* HEADER ROW (Scrolls horizontally, synced with body) */}
               {/* ═══════════════════════════════════════════════════════════ */}
               <div 
                 ref={headerRef}
-                className="bg-muted border-b border-border overflow-hidden"
+                className="bg-muted border-b border-border overflow-x-auto scrollbar-hide"
                 style={{ height: '50px' }}
+                onScroll={handleHeaderScroll}
               >
                 <div 
-                  ref={headerContentRef}
                   className="flex h-full"
-                  style={{ 
-                    width: `${MEAL_COL_WIDTH * mealTypes.length}px`,
-                    willChange: 'transform' // GPU optimization
-                  }}
+                  style={{ width: `${MEAL_COL_WIDTH * mealTypes.length}px` }}
                 >
                   {mealTypes.map((type, idx) => (
                     <div 
@@ -353,17 +365,13 @@ const MealTableV3: React.FC<MealTableV3Props> = ({
               </div>
 
               {/* ═══════════════════════════════════════════════════════════ */}
-              {/* LEFT COLUMN (Fixed container, content moves via transform) */}
+              {/* LEFT COLUMN (Scrolls with page vertically) */}
               {/* ═══════════════════════════════════════════════════════════ */}
               <div 
                 ref={leftColRef}
-                className="border-r border-border overflow-hidden"
+                className="border-r border-border"
               >
-                <div 
-                  ref={leftColContentRef}
-                  className="flex flex-col"
-                  style={{ willChange: 'transform' }} // GPU optimization
-                >
+                <div className="flex flex-col">
                   {weekDays.map((day, dayIdx) => {
                     const isToday = day.toDateString() === new Date().toDateString();
                     const isLastRow = dayIdx === weekDays.length - 1;
@@ -390,14 +398,14 @@ const MealTableV3: React.FC<MealTableV3Props> = ({
               </div>
 
               {/* ═══════════════════════════════════════════════════════════ */}
-              {/* BODY (Scrolls both directions) */}
+              {/* BODY (Scrolls horizontally, page handles vertical) */}
               {/* ═══════════════════════════════════════════════════════════ */}
               <div 
                 ref={bodyRef}
-                className="overflow-auto scrollbar-hide"
+                className="overflow-x-auto overflow-y-visible scrollbar-hide"
                 onScroll={handleBodyScroll}
                 style={{ 
-                  overscrollBehavior: 'none',
+                  overscrollBehaviorX: 'none', // Contain horizontal scroll (no rubber band)
                   scrollSnapType: 'x mandatory' // Snap to columns horizontally
                 }}
               >
@@ -407,14 +415,13 @@ const MealTableV3: React.FC<MealTableV3Props> = ({
                 >
                   {weekDays.map((day, dayIdx) => {
                     const isLastRow = dayIdx === weekDays.length - 1;
-                    const rowHeight = rowHeights[dayIdx] || MIN_ROW_HEIGHT;
                     
                     return (
                       <div 
                         key={formatDateStr(day)}
                         ref={el => bodyRowRefs.current[dayIdx] = el}
                         className={`flex shrink-0 ${!isLastRow ? 'border-b border-border' : ''}`}
-                        style={{ minHeight: `${MIN_ROW_HEIGHT}px`, height: rowHeights.length > 0 ? `${rowHeight}px` : 'auto' }}
+                        style={{ minHeight: `${MIN_ROW_HEIGHT}px` }}
                       >
                         {mealTypes.map((type, typeIdx) => {
                           const slotMeals = getMealsForSlot(day, type);

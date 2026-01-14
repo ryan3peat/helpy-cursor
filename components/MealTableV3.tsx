@@ -165,7 +165,7 @@ const MealTableV3: React.FC<MealTableV3Props> = ({
   // Cell dimensions
   const DATE_COL_WIDTH = 90;
   const MEAL_COL_WIDTH = 110;
-  const MIN_ROW_HEIGHT = 56; // Minimum row height (fits 7 days on mobile)
+  const MIN_ROW_HEIGHT = 60; // Minimum row height (content can make it taller)
 
   // Measure row heights after render and sync left column
   // Use offsetHeight (actual rendered height) not scrollHeight
@@ -295,10 +295,10 @@ const MealTableV3: React.FC<MealTableV3Props> = ({
               {/* LEFT SIDE: Corner + Date Column (Fixed) */}
               {/* ═══════════════════════════════════════════════════════════ */}
               <div ref={leftColRef} className="border-r border-border">
-                {/* Corner cell */}
+                {/* Corner cell - STICKY when page scrolls */}
                 <div 
-                  className="bg-muted border-b border-border flex items-center justify-center"
-                  style={{ height: '50px' }}
+                  className="bg-muted border-b border-border flex items-center justify-center sticky z-10"
+                  style={{ height: '50px', top: '120px' }}
                 >
                   <span className="text-caption font-semibold text-muted-foreground">
                     {t['meals.date'] ?? 'Date'}
@@ -343,10 +343,10 @@ const MealTableV3: React.FC<MealTableV3Props> = ({
                 }}
               >
                 <div style={{ width: `${MEAL_COL_WIDTH * mealTypes.length}px` }}>
-                  {/* Header row (inside scroll container) */}
+                  {/* Header row - STICKY when page scrolls */}
                   <div 
-                    className="flex bg-muted border-b border-border"
-                    style={{ height: '50px' }}
+                    className="flex bg-muted border-b border-border sticky z-10"
+                    style={{ height: '50px', top: '120px' }}
                   >
                     {mealTypes.map((type, idx) => (
                       <div 

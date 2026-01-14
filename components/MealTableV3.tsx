@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useLayoutEffect, useCallback } from 'react';
 import {
   Coffee,
   Sun,
@@ -63,6 +63,9 @@ const MealTableV3: React.FC<MealTableV3Props> = ({
 
   // Date Navigation State
   const [currentViewDate, setCurrentViewDate] = useState(new Date());
+
+  // Row heights state - will be measured after render
+  const [rowHeights, setRowHeights] = useState<number[]>([]);
 
   const mealTypes = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER, MealType.SNACKS];
   const langCode = currentLang === 'en' ? 'en-GB' : currentLang;
@@ -154,6 +157,7 @@ const MealTableV3: React.FC<MealTableV3Props> = ({
   const headerRef = useRef<HTMLDivElement>(null);
   const leftColRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
+  const bodyRowRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   // Sync scroll positions between panes
   const handleBodyScroll = () => {
@@ -170,10 +174,46 @@ const MealTableV3: React.FC<MealTableV3Props> = ({
     }
   };
 
-  // Cell dimensions (must match between all panes)
+  // Cell dimensions
   const DATE_COL_WIDTH = 90;
   const MEAL_COL_WIDTH = 110;
-  const ROW_HEIGHT = 100;
+  const MIN_ROW_HEIGHT = 70; // Minimum row height
+
+  // Measure row heights after render and sync left column
+  const measureRowHeights = useCallback(() => {
+    const heights: number[] = [];
+    bodyRowRefs.current.forEach((rowEl, idx) => {
+      if (rowEl) {
+        const height = Math.max(rowEl.scrollHeight, MIN_ROW_HEIGHT);
+        heights[idx] = height;
+      } else {
+        heights[idx] = MIN_ROW_HEIGHT;
+      }
+    });
+    
+    // Only update if heights changed
+    const heightsChanged = heights.some((h, i) => h !== rowHeights[i]) || heights.length !== rowHeights.length;
+    if (heightsChanged) {
+      setRowHeights(heights);
+    }
+  }, [rowHeights]);
+
+  // Measure after initial render and when meals change
+  useLayoutEffect(() => {
+    measureRowHeights();
+  }, [meals, weekDays, currentViewDate]);
+
+  // Re-measure after a short delay to catch any async content
+  useEffect(() => {
+    const timer = setTimeout(measureRowHeights, 100);
+    return () => clearTimeout(timer);
+  }, [meals, weekDays, measureRowHeights]);
+
+  // Calculate total body height for container
+  const totalBodyHeight = useMemo(() => {
+    if (rowHeights.length === 0) return MIN_ROW_HEIGHT * 7;
+    return rowHeights.reduce((sum, h) => sum + h, 0);
+  }, [rowHeights]);
 
   return (
     <div className="min-h-screen bg-background pb-40">
@@ -251,14 +291,15 @@ const MealTableV3: React.FC<MealTableV3Props> = ({
         <div className="pt-1">
           <div 
             className="rounded-xl bg-card shadow-sm overflow-hidden border border-border"
-            style={{ height: `${Math.min(ROW_HEIGHT * 7 + 60, 500)}px` }}
+            style={{ maxHeight: '500px' }}
           >
             {/* Grid Layout: 4 panes */}
             <div 
               className="grid h-full"
               style={{ 
                 gridTemplateColumns: `${DATE_COL_WIDTH}px 1fr`,
-                gridTemplateRows: 'auto 1fr'
+                gridTemplateRows: 'auto 1fr',
+                maxHeight: '500px'
               }}
             >
               {/* ═══════════════════════════════════════════════════════════ */}
@@ -279,7 +320,7 @@ const MealTableV3: React.FC<MealTableV3Props> = ({
               <div 
                 ref={headerRef}
                 className="bg-muted border-b border-border overflow-hidden"
-                style={{ height: '50px' }}
+                style={{ height: '50px', overscrollBehavior: 'none' }}
               >
                 <div 
                   className="flex h-full"
@@ -308,11 +349,13 @@ const MealTableV3: React.FC<MealTableV3Props> = ({
               <div 
                 ref={leftColRef}
                 className="border-r border-border overflow-hidden"
+                style={{ overscrollBehavior: 'none' }}
               >
                 <div className="flex flex-col">
                   {weekDays.map((day, dayIdx) => {
                     const isToday = day.toDateString() === new Date().toDateString();
                     const isLastRow = dayIdx === weekDays.length - 1;
+                    const rowHeight = rowHeights[dayIdx] || MIN_ROW_HEIGHT;
                     
                     return (
                       <div
@@ -320,7 +363,7 @@ const MealTableV3: React.FC<MealTableV3Props> = ({
                         className={`flex flex-col items-center justify-center shrink-0 ${
                           !isLastRow ? 'border-b border-border' : ''
                         } ${isToday ? 'bg-primary' : 'bg-card'}`}
-                        style={{ height: `${ROW_HEIGHT}px`, width: `${DATE_COL_WIDTH}px` }}
+                        style={{ height: `${rowHeight}px`, width: `${DATE_COL_WIDTH}px` }}
                       >
                         <span className={`text-caption font-semibold ${isToday ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
                           {day.toLocaleDateString(langCode, { weekday: 'short' })}
@@ -341,6 +384,7 @@ const MealTableV3: React.FC<MealTableV3Props> = ({
                 ref={bodyRef}
                 className="overflow-auto"
                 onScroll={handleBodyScroll}
+                style={{ overscrollBehavior: 'none' }}
               >
                 <div 
                   className="flex flex-col"
@@ -348,12 +392,14 @@ const MealTableV3: React.FC<MealTableV3Props> = ({
                 >
                   {weekDays.map((day, dayIdx) => {
                     const isLastRow = dayIdx === weekDays.length - 1;
+                    const rowHeight = rowHeights[dayIdx] || MIN_ROW_HEIGHT;
                     
                     return (
                       <div 
-                        key={formatDateStr(day)} 
+                        key={formatDateStr(day)}
+                        ref={el => bodyRowRefs.current[dayIdx] = el}
                         className={`flex shrink-0 ${!isLastRow ? 'border-b border-border' : ''}`}
-                        style={{ height: `${ROW_HEIGHT}px` }}
+                        style={{ minHeight: `${MIN_ROW_HEIGHT}px`, height: rowHeights.length > 0 ? `${rowHeight}px` : 'auto' }}
                       >
                         {mealTypes.map((type, typeIdx) => {
                           const slotMeals = getMealsForSlot(day, type);
@@ -381,7 +427,7 @@ const MealTableV3: React.FC<MealTableV3Props> = ({
                                         className="px-1.5 py-1 rounded-md bg-muted/50"
                                       >
                                         {hasDish ? (
-                                          <span className="text-caption font-semibold text-foreground leading-tight block break-words line-clamp-2">
+                                          <span className="text-caption font-semibold text-foreground leading-tight block break-words">
                                             <TranslatedMealDescription meal={meal} currentLang={currentLang} onUpdate={onUpdate} />
                                           </span>
                                         ) : (
@@ -409,7 +455,7 @@ const MealTableV3: React.FC<MealTableV3Props> = ({
                                   })}
                                 </div>
                               ) : (
-                                <div className="flex items-center justify-center h-full">
+                                <div className="flex items-center justify-center" style={{ minHeight: `${MIN_ROW_HEIGHT - 16}px` }}>
                                   <span className="text-muted-foreground/30 text-lg">·</span>
                                 </div>
                               )}

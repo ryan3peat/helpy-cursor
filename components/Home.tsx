@@ -1565,21 +1565,6 @@ const Home: React.FC<HomeProps> = ({
                 </button>
               )}
               
-              {/* Meal Table V3 - SuperAdmin Only */}
-              <button
-                onClick={() => {
-                  haptics.light();
-                  onNavigate('mealtablev3');
-                }}
-                className="w-full mt-3 px-4 py-3 rounded-xl bg-primary/10 border border-primary/30 text-left"
-              >
-                <span className="text-body font-medium text-primary block">
-                  Meal Table V3
-                </span>
-                <span className="text-caption text-muted-foreground">
-                  Test split-pane table with frozen header + column
-                </span>
-              </button>
             </div>
           )}
         </div>

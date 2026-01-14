@@ -5,7 +5,6 @@ import Layout from './components/Layout';
 import Home from './components/Home';
 import ToDo from './components/ToDo';
 import Meals from './components/Meals';
-import MealTableV3 from './components/MealTableV3';
 import Expenses from './components/Expenses';
 import Profile from './components/Profile';
 import Family from './components/Family';
@@ -1924,18 +1923,6 @@ const AppContent: React.FC = () => {
           />
         );
 
-      case 'mealtablev3':
-        return (
-          <MealTableV3
-            meals={isDemoMode ? demoMeals : meals}
-            users={isDemoMode ? demoUsers : users}
-            currentUser={isDemoMode ? demoUsers[0] : currentUser!}
-            onUpdate={handleUpdateMeal}
-            onBack={() => setActiveView('dashboard')}
-            t={translations}
-            currentLang={lang}
-          />
-        );
 
       case 'expenses':
         return (

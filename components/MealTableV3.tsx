@@ -446,6 +446,7 @@ const MealTableV3: React.FC<MealTableV3Props> = ({
                       </div>
                     );
                   })}
+                  </div>
                 </div>
               </div>
             </div>

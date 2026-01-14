@@ -261,37 +261,6 @@ const Profile: React.FC<ProfileProps> = ({
   // Dim status bar when sheet is open (iOS)
   useSheetTheme(isAddModalOpen || isEditModalOpen || deleteConfirmOpen || showPhotoOptions || subscriptionCanceled || isPlanConfirmOpen || isDeleteAccountModalOpen || isFinalDeleteConfirmOpen || showDowngradeModal || showCancelSubConfirm || alertModal.isOpen);
 
-  // Handle carousel scroll to update pagination dots
-  useEffect(() => {
-    const scrollContainer = carouselScrollRef.current;
-    if (!scrollContainer) return;
-
-    const handleScroll = () => {
-      const { scrollLeft, scrollWidth, clientWidth } = scrollContainer;
-      // Calculate total items (Add button + users)
-      const totalItems = (!isHelper ? 1 : 0) + validUsers.length;
-      if (totalItems <= 1) return;
-      
-      // Each item is roughly 80px (64px avatar + 16px gap)
-      const itemWidth = 80;
-      const visibleItems = Math.floor(clientWidth / itemWidth);
-      const totalDots = Math.max(1, totalItems - visibleItems + 1);
-      
-      // Calculate which dot should be active based on scroll position
-      const maxScroll = scrollWidth - clientWidth;
-      const scrollProgress = maxScroll > 0 ? scrollLeft / maxScroll : 0;
-      const activeDot = Math.min(Math.round(scrollProgress * (totalDots - 1)), totalDots - 1);
-      
-      setActiveCarouselDot(activeDot);
-    };
-
-    scrollContainer.addEventListener('scroll', handleScroll);
-    // Initial calculation
-    handleScroll();
-    
-    return () => scrollContainer.removeEventListener('scroll', handleScroll);
-  }, [validUsers.length, isHelper]);
-
   // Track if we've handled the initial edit (to prevent re-opening on data refresh)
   const [initialEditHandled, setInitialEditHandled] = useState(false);
   
@@ -617,6 +586,37 @@ const Profile: React.FC<ProfileProps> = ({
         return a.name.localeCompare(b.name);
       });
   }, [users]);
+
+  // Handle carousel scroll to update pagination dots
+  useEffect(() => {
+    const scrollContainer = carouselScrollRef.current;
+    if (!scrollContainer) return;
+
+    const handleScroll = () => {
+      const { scrollLeft, scrollWidth, clientWidth } = scrollContainer;
+      // Calculate total items (Add button + users)
+      const totalItems = (!isHelper ? 1 : 0) + validUsers.length;
+      if (totalItems <= 1) return;
+      
+      // Each item is roughly 80px (64px avatar + 16px gap)
+      const itemWidth = 80;
+      const visibleItems = Math.floor(clientWidth / itemWidth);
+      const totalDots = Math.max(1, totalItems - visibleItems + 1);
+      
+      // Calculate which dot should be active based on scroll position
+      const maxScroll = scrollWidth - clientWidth;
+      const scrollProgress = maxScroll > 0 ? scrollLeft / maxScroll : 0;
+      const activeDot = Math.min(Math.round(scrollProgress * (totalDots - 1)), totalDots - 1);
+      
+      setActiveCarouselDot(activeDot);
+    };
+
+    scrollContainer.addEventListener('scroll', handleScroll);
+    // Initial calculation
+    handleScroll();
+    
+    return () => scrollContainer.removeEventListener('scroll', handleScroll);
+  }, [validUsers.length, isHelper]);
 
   // Calculate total member count for quota display (family + helpers combined)
   // Count ALL users (active + pending) since pending invites also consume quota slots

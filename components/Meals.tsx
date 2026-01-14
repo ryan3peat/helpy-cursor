@@ -1492,7 +1492,7 @@ const Meals: React.FC<MealsProps> = ({
           <div className="rounded-xl bg-card shadow-sm overflow-hidden">
             <div 
               ref={weekScrollRef}
-              className="overflow-x-auto"
+              className="overflow-x-auto scrollbar-hide"
               style={{ overscrollBehavior: 'none' }}
             >
               <table style={{ 

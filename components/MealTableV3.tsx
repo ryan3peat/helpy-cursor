@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo, useLayoutEffect, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Coffee,
   Sun,
@@ -65,8 +65,6 @@ const MealTableV3: React.FC<MealTableV3Props> = ({
   const [currentViewDate, setCurrentViewDate] = useState(new Date());
 
   // Row heights state - will be measured after render
-  const [rowHeights, setRowHeights] = useState<number[]>([]);
-  const [heightsReady, setHeightsReady] = useState(false);
 
   const mealTypes = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER, MealType.SNACKS];
   const langCode = currentLang === 'en' ? 'en-GB' : currentLang;
@@ -154,79 +152,16 @@ const MealTableV3: React.FC<MealTableV3Props> = ({
   const dateRangeStr = `${weekDays[0].toLocaleDateString(langCode, { day: 'numeric', month: 'short' })} - ${weekDays[6].toLocaleDateString(langCode, { day: 'numeric', month: 'short' })}`;
 
   // ─────────────────────────────────────────────────────────────────
-  // SPLIT-PANE TABLE REFS (4-pane Google Calendar approach)
+  // SINGLE SCROLL CONTAINER (True Google Calendar approach)
+  // No JS sync needed - CSS sticky handles everything!
   // ─────────────────────────────────────────────────────────────────
-  const headerRef = useRef<HTMLDivElement>(null);
-  const bodyRef = useRef<HTMLDivElement>(null);
-  const bodyRowRefs = useRef<(HTMLDivElement | null)[]>([]);
-
-  // Bidirectional scroll sync between header and body
-  const isScrolling = useRef<'header' | 'body' | null>(null);
-
-  const handleBodyScroll = () => {
-    if (isScrolling.current === 'header') return;
-    isScrolling.current = 'body';
-    if (headerRef.current && bodyRef.current) {
-      headerRef.current.scrollLeft = bodyRef.current.scrollLeft;
-    }
-    requestAnimationFrame(() => { isScrolling.current = null; });
-  };
-
-  const handleHeaderScroll = () => {
-    if (isScrolling.current === 'body') return;
-    isScrolling.current = 'header';
-    if (headerRef.current && bodyRef.current) {
-      bodyRef.current.scrollLeft = headerRef.current.scrollLeft;
-    }
-    requestAnimationFrame(() => { isScrolling.current = null; });
-  };
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // Cell dimensions
-  const DATE_COL_WIDTH = 90;
-  const MEAL_COL_WIDTH = 110;
-  const MIN_ROW_HEIGHT = 60; // Minimum row height (content can make it taller)
-
-  // Measure row heights after render and sync left column
-  // Use offsetHeight (actual rendered height) not scrollHeight
-  const measureRowHeights = useCallback(() => {
-    const heights: number[] = [];
-    bodyRowRefs.current.forEach((rowEl, idx) => {
-      if (rowEl) {
-        // offsetHeight = actual rendered height (what browser calculated)
-        const height = Math.max(rowEl.offsetHeight, MIN_ROW_HEIGHT);
-        heights[idx] = height;
-      } else {
-        heights[idx] = MIN_ROW_HEIGHT;
-      }
-    });
-    
-    // Only update if heights changed
-    const heightsChanged = heights.some((h, i) => h !== rowHeights[i]) || heights.length !== rowHeights.length;
-    if (heightsChanged) {
-      setRowHeights(heights);
-    }
-    // Mark heights as ready (removes invisible state)
-    if (!heightsReady) {
-      setHeightsReady(true);
-    }
-  }, [rowHeights, heightsReady]);
-
-  // Measure after initial render and when meals change
-  useLayoutEffect(() => {
-    measureRowHeights();
-  }, [meals, weekDays, currentViewDate]);
-
-  // Re-measure after a short delay to catch any async content
-  useEffect(() => {
-    const timer = setTimeout(measureRowHeights, 100);
-    return () => clearTimeout(timer);
-  }, [meals, weekDays, measureRowHeights]);
-
-  // Calculate total body height for container
-  const totalBodyHeight = useMemo(() => {
-    if (rowHeights.length === 0) return MIN_ROW_HEIGHT * 7;
-    return rowHeights.reduce((sum, h) => sum + h, 0);
-  }, [rowHeights]);
+  const DATE_COL_WIDTH = 70;
+  const MEAL_COL_WIDTH = 100;
+  const HEADER_HEIGHT = 50;
+  const MIN_ROW_HEIGHT = 60;
 
   return (
     <div className="min-h-screen bg-background pb-40">
@@ -299,191 +234,151 @@ const MealTableV3: React.FC<MealTableV3Props> = ({
         </div>
 
         {/* ─────────────────────────────────────────────────────────────── */}
-        {/* SPLIT-PANE TABLE - 4-Pane Grid (Google Calendar Approach) */}
+        {/* GOOGLE CALENDAR STYLE - Single Scroll Container + CSS Sticky */}
         {/* ─────────────────────────────────────────────────────────────── */}
         <div className="pt-1">
-          <div className="rounded-xl bg-card shadow-sm border border-border overflow-hidden">
-            {/* Grid Layout: 4 panes (2x2) */}
+          {/* Single scroll container - handles BOTH horizontal and vertical scroll */}
+          <div 
+            ref={scrollContainerRef}
+            className="rounded-xl bg-card shadow-sm border border-border overflow-auto"
+            style={{ 
+              maxHeight: '70vh',
+              scrollSnapType: 'x proximity' // Natural horizontal snap
+            }}
+          >
+            {/* CSS Grid table - sticky positioning for frozen header + column */}
             <div 
               className="grid"
               style={{ 
-                gridTemplateColumns: `${DATE_COL_WIDTH}px 1fr`,
-                gridTemplateRows: 'auto 1fr'
+                gridTemplateColumns: `${DATE_COL_WIDTH}px repeat(${mealTypes.length}, ${MEAL_COL_WIDTH}px)`,
+                width: `${DATE_COL_WIDTH + MEAL_COL_WIDTH * mealTypes.length}px`
               }}
             >
               {/* ═══════════════════════════════════════════════════════════ */}
-              {/* TOP-LEFT: Corner (Fixed) */}
+              {/* ROW 0: HEADER (Corner + Meal Types) */}
               {/* ═══════════════════════════════════════════════════════════ */}
+              
+              {/* Corner cell - sticky BOTH top and left */}
               <div 
-                className="bg-muted border-b border-r border-border flex items-center justify-center"
-                style={{ height: '50px' }}
+                className="bg-muted border-b border-r border-border flex items-center justify-center sticky top-0 left-0 z-20"
+                style={{ height: `${HEADER_HEIGHT}px` }}
               >
                 <span className="text-caption font-semibold text-muted-foreground">
                   {t['meals.date'] ?? 'Date'}
                 </span>
               </div>
+              
+              {/* Header cells - sticky top only + snap align */}
+              {mealTypes.map((type, idx) => (
+                <div 
+                  key={type}
+                  className={`bg-muted border-b border-border flex flex-col items-center justify-center gap-0.5 sticky top-0 z-10 ${
+                    idx < mealTypes.length - 1 ? 'border-r' : ''
+                  }`}
+                  style={{ height: `${HEADER_HEIGHT}px`, scrollSnapAlign: 'start' }}
+                >
+                  {getMealIcon(type)}
+                  <span className="text-caption font-semibold text-muted-foreground">
+                    {getMealLabel(type)}
+                  </span>
+                </div>
+              ))}
 
               {/* ═══════════════════════════════════════════════════════════ */}
-              {/* TOP-RIGHT: Header Row (Scrolls horizontally, synced) */}
+              {/* ROWS 1-7: Data rows (Date + Meal Cells) */}
               {/* ═══════════════════════════════════════════════════════════ */}
-              <div 
-                ref={headerRef}
-                className="bg-muted border-b border-border overflow-x-auto scrollbar-hide"
-                style={{ height: '50px', overscrollBehaviorX: 'none' }}
-                onScroll={handleHeaderScroll}
-              >
-                <div 
-                  className="flex h-full"
-                  style={{ width: `${MEAL_COL_WIDTH * mealTypes.length}px` }}
-                >
-                  {mealTypes.map((type, idx) => (
-                    <div 
-                      key={type}
-                      className={`flex flex-col items-center justify-center gap-1 shrink-0 ${
-                        idx < mealTypes.length - 1 ? 'border-r border-border' : ''
-                      }`}
-                      style={{ width: `${MEAL_COL_WIDTH}px` }}
+              {weekDays.map((day, dayIdx) => {
+                const isToday = day.toDateString() === new Date().toDateString();
+                const isLastRow = dayIdx === weekDays.length - 1;
+                
+                return (
+                  <React.Fragment key={formatDateStr(day)}>
+                    {/* Date cell - sticky left only */}
+                    <div
+                      className={`flex flex-col items-center justify-center sticky left-0 z-10 ${
+                        !isLastRow ? 'border-b border-border' : ''
+                      } border-r border-border ${isToday ? 'bg-primary' : 'bg-card'}`}
+                      style={{ minHeight: `${MIN_ROW_HEIGHT}px` }}
                     >
-                      {getMealIcon(type)}
-                      <span className="text-caption font-semibold text-muted-foreground">
-                        {getMealLabel(type)}
+                      <span className={`text-caption font-semibold ${isToday ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
+                        {day.toLocaleDateString(langCode, { weekday: 'short' })}
+                      </span>
+                      <span className={`text-body font-bold ${isToday ? 'text-primary-foreground' : 'text-foreground'}`}>
+                        {day.getDate()}
                       </span>
                     </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* ═══════════════════════════════════════════════════════════ */}
-              {/* BOTTOM-LEFT: Date Column (Fixed horizontally) */}
-              {/* ═══════════════════════════════════════════════════════════ */}
-              <div className="border-r border-border">
-                <div className="flex flex-col">
-                  {weekDays.map((day, dayIdx) => {
-                    const isToday = day.toDateString() === new Date().toDateString();
-                    const isLastRow = dayIdx === weekDays.length - 1;
-                    const rowHeight = rowHeights[dayIdx] || MIN_ROW_HEIGHT;
                     
-                    return (
-                      <div
-                        key={formatDateStr(day)}
-                        className={`flex flex-col items-center justify-center shrink-0 ${
-                          !isLastRow ? 'border-b border-border' : ''
-                        } ${isToday ? 'bg-primary' : 'bg-card'}`}
-                        style={{ height: `${rowHeight}px`, width: `${DATE_COL_WIDTH}px` }}
-                      >
-                        <span className={`text-caption font-semibold ${isToday ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
-                          {day.toLocaleDateString(langCode, { weekday: 'short' })}
-                        </span>
-                        <span className={`text-body font-bold ${isToday ? 'text-primary-foreground' : 'text-foreground'}`}>
-                          {day.getDate()} {day.toLocaleDateString(langCode, { month: 'short' })}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* ═══════════════════════════════════════════════════════════ */}
-              {/* BOTTOM-RIGHT: Body (Scrolls horizontally, synced) */}
-              {/* ═══════════════════════════════════════════════════════════ */}
-              <div 
-                ref={bodyRef}
-                className="overflow-x-auto scrollbar-hide"
-                style={{ 
-                  overscrollBehaviorX: 'none',
-                  scrollSnapType: 'x mandatory'
-                }}
-                onScroll={handleBodyScroll}
-              >
-                <div 
-                  className="flex flex-col"
-                  style={{ width: `${MEAL_COL_WIDTH * mealTypes.length}px` }}
-                >
-                  {weekDays.map((day, dayIdx) => {
-                    const isLastRow = dayIdx === weekDays.length - 1;
-                    
-                    return (
-                      <div 
-                        key={formatDateStr(day)}
-                        ref={el => bodyRowRefs.current[dayIdx] = el}
-                        className={`flex shrink-0 ${!isLastRow ? 'border-b border-border' : ''}`}
-                        style={{ minHeight: `${MIN_ROW_HEIGHT}px` }}
-                      >
-                        {mealTypes.map((type, typeIdx) => {
-                          const slotMeals = getMealsForSlot(day, type);
-                          const isLastCol = typeIdx === mealTypes.length - 1;
-                          
-                          return (
-                            <div
-                              key={`${formatDateStr(day)}-${type}`}
-                              className={`p-2 shrink-0 ${!isLastCol ? 'border-r border-border' : ''}`}
-                              style={{ 
-                                width: `${MEAL_COL_WIDTH}px`,
-                                scrollSnapAlign: 'start' // Snap point at each column
-                              }}
-                            >
-                              {slotMeals.length > 0 ? (
-                                <div className="space-y-1">
-                                  {slotMeals.map(meal => {
-                                    const hasDish = meal.description.trim().length > 0;
-                                    const mealUsers = meal.forUserIds
-                                      .map(uid => users.find(u => u.id === uid))
-                                      .filter((u): u is User => !!u);
-                                    const adultCount = mealUsers.filter(u => u.role !== UserRole.CHILD).length;
-                                    const kidCount = mealUsers.filter(u => u.role === UserRole.CHILD).length;
-                                    
-                                    return (
-                                      <div
-                                        key={meal.id}
-                                        className="px-1.5 py-1 rounded-md bg-muted/50"
-                                      >
-                                        {hasDish ? (
-                                          <span className="text-caption font-semibold text-foreground leading-tight block break-words">
-                                            <TranslatedMealDescription meal={meal} currentLang={currentLang} onUpdate={onUpdate} />
-                                          </span>
-                                        ) : (
-                                          <span className="text-caption font-semibold text-muted-foreground block">
-                                            RSVP
-                                          </span>
-                                        )}
-                                        {/* RSVP counts */}
-                                        <div className="flex items-center gap-1 text-caption text-muted-foreground mt-0.5">
-                                          {adultCount > 0 && (
-                                            <span className="flex items-center gap-0.5">
-                                              <UserIcon size={10} />
-                                              {adultCount}
-                                            </span>
-                                          )}
-                                          {kidCount > 0 && (
-                                            <span className="flex items-center gap-0.5">
-                                              <Baby size={10} />
-                                              {kidCount}
-                                            </span>
-                                          )}
-                                        </div>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              ) : (
-                                <div className="flex items-center justify-center" style={{ minHeight: `${MIN_ROW_HEIGHT - 16}px` }}>
-                                  <span className="text-muted-foreground/30 text-lg">·</span>
-                                </div>
-                              )}
+                    {/* Meal cells - normal (not sticky) */}
+                    {mealTypes.map((type, typeIdx) => {
+                      const slotMeals = getMealsForSlot(day, type);
+                      const isLastCol = typeIdx === mealTypes.length - 1;
+                      
+                      return (
+                        <div
+                          key={`${formatDateStr(day)}-${type}`}
+                          className={`p-2 bg-card ${!isLastRow ? 'border-b border-border' : ''} ${!isLastCol ? 'border-r border-border' : ''}`}
+                          style={{ minHeight: `${MIN_ROW_HEIGHT}px` }}
+                        >
+                          {slotMeals.length > 0 ? (
+                            <div className="space-y-1">
+                              {slotMeals.map(meal => {
+                                const hasDish = meal.description.trim().length > 0;
+                                const mealUsers = meal.forUserIds
+                                  .map(uid => users.find(u => u.id === uid))
+                                  .filter((u): u is User => !!u);
+                                const adultCount = mealUsers.filter(u => u.role !== UserRole.CHILD).length;
+                                const kidCount = mealUsers.filter(u => u.role === UserRole.CHILD).length;
+                                
+                                return (
+                                  <div
+                                    key={meal.id}
+                                    className="px-1.5 py-1 rounded-md bg-muted/50"
+                                  >
+                                    {hasDish ? (
+                                      <span className="text-caption font-semibold text-foreground leading-tight block break-words">
+                                        <TranslatedMealDescription meal={meal} currentLang={currentLang} onUpdate={onUpdate} />
+                                      </span>
+                                    ) : (
+                                      <span className="text-caption font-semibold text-muted-foreground block">
+                                        RSVP
+                                      </span>
+                                    )}
+                                    {/* RSVP counts */}
+                                    <div className="flex items-center gap-1 text-caption text-muted-foreground mt-0.5">
+                                      {adultCount > 0 && (
+                                        <span className="flex items-center gap-0.5">
+                                          <UserIcon size={10} />
+                                          {adultCount}
+                                        </span>
+                                      )}
+                                      {kidCount > 0 && (
+                                        <span className="flex items-center gap-0.5">
+                                          <Baby size={10} />
+                                          {kidCount}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
                             </div>
-                          );
-                        })}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
+                          ) : (
+                            <div className="flex items-center justify-center h-full">
+                              <span className="text-muted-foreground/30 text-lg">·</span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </React.Fragment>
+                );
+              })}
             </div>
           </div>
 
           {/* Info text */}
           <p className="text-caption text-muted-foreground text-center mt-4">
-            Split-pane table with frozen header row and first column (Google Calendar approach)
+            Google Calendar style: single scroll container + CSS sticky
           </p>
         </div>
 

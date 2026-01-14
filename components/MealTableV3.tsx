@@ -155,43 +155,16 @@ const MealTableV3: React.FC<MealTableV3Props> = ({
   // ─────────────────────────────────────────────────────────────────
   // SPLIT-PANE TABLE REFS (Google Calendar approach)
   // ─────────────────────────────────────────────────────────────────
-  const headerRef = useRef<HTMLDivElement>(null);
   const leftColRef = useRef<HTMLDivElement>(null);
-  const bodyRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const bodyRowRefs = useRef<(HTMLDivElement | null)[]>([]);
 
-  // Track which element is being scrolled to prevent infinite loop
-  const isScrolling = useRef<'header' | 'body' | null>(null);
-
-  // Sync header and body scroll positions (both are scrollable)
-  const handleBodyScroll = () => {
-    if (isScrolling.current === 'header') return;
-    isScrolling.current = 'body';
-    
-    if (headerRef.current && bodyRef.current) {
-      headerRef.current.scrollLeft = bodyRef.current.scrollLeft;
-    }
-    
-    // Reset after frame
-    requestAnimationFrame(() => { isScrolling.current = null; });
-  };
-
-  const handleHeaderScroll = () => {
-    if (isScrolling.current === 'body') return;
-    isScrolling.current = 'header';
-    
-    if (headerRef.current && bodyRef.current) {
-      bodyRef.current.scrollLeft = headerRef.current.scrollLeft;
-    }
-    
-    // Reset after frame
-    requestAnimationFrame(() => { isScrolling.current = null; });
-  };
+  // No scroll sync needed - header and body are in the SAME scroll container!
 
   // Cell dimensions
   const DATE_COL_WIDTH = 90;
   const MEAL_COL_WIDTH = 110;
-  const MIN_ROW_HEIGHT = 70; // Minimum row height
+  const MIN_ROW_HEIGHT = 56; // Minimum row height (fits 7 days on mobile)
 
   // Measure row heights after render and sync left column
   // Use offsetHeight (actual rendered height) not scrollHeight
@@ -306,71 +279,31 @@ const MealTableV3: React.FC<MealTableV3Props> = ({
         </div>
 
         {/* ─────────────────────────────────────────────────────────────── */}
-        {/* SPLIT-PANE TABLE - Google Calendar Approach */}
+        {/* SPLIT-PANE TABLE - Single Scroll Container Approach */}
         {/* ─────────────────────────────────────────────────────────────── */}
         <div className="pt-1">
           <div 
-            className="rounded-xl bg-card shadow-sm overflow-hidden border border-border"
-            style={{ maxHeight: '500px' }}
+            className="rounded-xl bg-card shadow-sm border border-border overflow-x-hidden"
           >
-            {/* Grid Layout: 4 panes */}
+            {/* Grid Layout: 2 columns (left fixed, right scrolls) */}
             <div 
-              className="grid h-full"
-              style={{ 
-                gridTemplateColumns: `${DATE_COL_WIDTH}px 1fr`,
-                gridTemplateRows: 'auto 1fr',
-                maxHeight: '500px'
-              }}
+              className="grid"
+              style={{ gridTemplateColumns: `${DATE_COL_WIDTH}px 1fr` }}
             >
               {/* ═══════════════════════════════════════════════════════════ */}
-              {/* TOP-LEFT CORNER (Fixed) */}
+              {/* LEFT SIDE: Corner + Date Column (Fixed) */}
               {/* ═══════════════════════════════════════════════════════════ */}
-              <div 
-                className="bg-muted border-b border-r border-border flex items-center justify-center"
-                style={{ height: '50px' }}
-              >
-                <span className="text-caption font-semibold text-muted-foreground">
-                  {t['meals.date'] ?? 'Date'}
-                </span>
-              </div>
-
-              {/* ═══════════════════════════════════════════════════════════ */}
-              {/* HEADER ROW (Scrolls horizontally, synced with body) */}
-              {/* ═══════════════════════════════════════════════════════════ */}
-              <div 
-                ref={headerRef}
-                className="bg-muted border-b border-border overflow-x-auto scrollbar-hide"
-                style={{ height: '50px' }}
-                onScroll={handleHeaderScroll}
-              >
+              <div ref={leftColRef} className="border-r border-border">
+                {/* Corner cell */}
                 <div 
-                  className="flex h-full"
-                  style={{ width: `${MEAL_COL_WIDTH * mealTypes.length}px` }}
+                  className="bg-muted border-b border-border flex items-center justify-center"
+                  style={{ height: '50px' }}
                 >
-                  {mealTypes.map((type, idx) => (
-                    <div 
-                      key={type}
-                      className={`flex flex-col items-center justify-center gap-1 shrink-0 ${
-                        idx < mealTypes.length - 1 ? 'border-r border-border' : ''
-                      }`}
-                      style={{ width: `${MEAL_COL_WIDTH}px` }}
-                    >
-                      {getMealIcon(type)}
-                      <span className="text-caption font-semibold text-muted-foreground">
-                        {getMealLabel(type)}
-                      </span>
-                    </div>
-                  ))}
+                  <span className="text-caption font-semibold text-muted-foreground">
+                    {t['meals.date'] ?? 'Date'}
+                  </span>
                 </div>
-              </div>
-
-              {/* ═══════════════════════════════════════════════════════════ */}
-              {/* LEFT COLUMN (Scrolls with page vertically) */}
-              {/* ═══════════════════════════════════════════════════════════ */}
-              <div 
-                ref={leftColRef}
-                className="border-r border-border"
-              >
+                {/* Date cells */}
                 <div className="flex flex-col">
                   {weekDays.map((day, dayIdx) => {
                     const isToday = day.toDateString() === new Date().toDateString();
@@ -398,31 +331,53 @@ const MealTableV3: React.FC<MealTableV3Props> = ({
               </div>
 
               {/* ═══════════════════════════════════════════════════════════ */}
-              {/* BODY (Scrolls horizontally, page handles vertical) */}
+              {/* RIGHT SIDE: Header + Body in SAME scroll container */}
               {/* ═══════════════════════════════════════════════════════════ */}
               <div 
-                ref={bodyRef}
+                ref={scrollContainerRef}
                 className="overflow-x-auto overflow-y-visible scrollbar-hide"
-                onScroll={handleBodyScroll}
                 style={{ 
-                  overscrollBehaviorX: 'none', // Contain horizontal scroll (no rubber band)
-                  scrollSnapType: 'x mandatory' // Snap to columns horizontally
+                  overscrollBehaviorX: 'none',
+                  scrollSnapType: 'x mandatory'
                 }}
               >
-                <div 
-                  className="flex flex-col"
-                  style={{ width: `${MEAL_COL_WIDTH * mealTypes.length}px` }}
-                >
-                  {weekDays.map((day, dayIdx) => {
-                    const isLastRow = dayIdx === weekDays.length - 1;
-                    
-                    return (
+                <div style={{ width: `${MEAL_COL_WIDTH * mealTypes.length}px` }}>
+                  {/* Header row (inside scroll container) */}
+                  <div 
+                    className="flex bg-muted border-b border-border"
+                    style={{ height: '50px' }}
+                  >
+                    {mealTypes.map((type, idx) => (
                       <div 
-                        key={formatDateStr(day)}
-                        ref={el => bodyRowRefs.current[dayIdx] = el}
-                        className={`flex shrink-0 ${!isLastRow ? 'border-b border-border' : ''}`}
-                        style={{ minHeight: `${MIN_ROW_HEIGHT}px` }}
+                        key={type}
+                        className={`flex flex-col items-center justify-center gap-1 shrink-0 ${
+                          idx < mealTypes.length - 1 ? 'border-r border-border' : ''
+                        }`}
+                        style={{ 
+                          width: `${MEAL_COL_WIDTH}px`,
+                          scrollSnapAlign: 'start'
+                        }}
                       >
+                        {getMealIcon(type)}
+                        <span className="text-caption font-semibold text-muted-foreground">
+                          {getMealLabel(type)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {/* Body rows */}
+                  <div className="flex flex-col">
+                    {weekDays.map((day, dayIdx) => {
+                      const isLastRow = dayIdx === weekDays.length - 1;
+                      
+                      return (
+                        <div 
+                          key={formatDateStr(day)}
+                          ref={el => bodyRowRefs.current[dayIdx] = el}
+                          className={`flex shrink-0 ${!isLastRow ? 'border-b border-border' : ''}`}
+                          style={{ minHeight: `${MIN_ROW_HEIGHT}px` }}
+                        >
                         {mealTypes.map((type, typeIdx) => {
                           const slotMeals = getMealsForSlot(day, type);
                           const isLastCol = typeIdx === mealTypes.length - 1;

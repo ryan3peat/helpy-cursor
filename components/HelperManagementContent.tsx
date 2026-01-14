@@ -1259,7 +1259,7 @@ export const HelperManagementContent: React.FC<Props> = ({
       {/* ═══════════════════════════════════════════════════════════════ */}
       {/* CONTRACT SHEET */}
       {/* ═══════════════════════════════════════════════════════════════ */}
-      <BottomSheet isOpen={showContractSheet} onClose={() => setShowContractSheet(false)} showCloseButton={false}>
+      <BottomSheet isOpen={showContractSheet} onClose={() => setShowContractSheet(false)} showCloseButton={false} maxHeight="85vh">
         {/* Header with X left, Title center, ✓ right */}
         <div className="flex items-center justify-between px-5 pt-5 pb-4 shrink-0">
           {/* X Close Button (left) */}
@@ -1309,6 +1309,13 @@ export const HelperManagementContent: React.FC<Props> = ({
         
         {/* Scrollable Form Content */}
         <div className="flex-1 overflow-y-auto p-5 space-y-4">
+          {/* Helper Name */}
+          <div>
+            <p className="text-black" style={{ fontSize: '20px' }}>
+              {helper.firstName || helper.name?.split(' ')[0] || 'Helper'}
+            </p>
+          </div>
+          
           {/* Employment Start Date */}
           <div>
             <label className="block text-caption text-muted-foreground mb-2">

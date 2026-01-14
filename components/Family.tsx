@@ -1541,6 +1541,7 @@ const Family: React.FC<FamilyProps> = ({
         t={t}
         currentLang={currentLang}
         preSelectedHelperId={selectedHelperId}
+        cachedContracts={helperContracts}
         onSuccess={() => {
           // Trigger a refresh in HelperManagementContent
           setHelperRefreshKey(k => k + 1);

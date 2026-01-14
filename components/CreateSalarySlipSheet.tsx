@@ -16,6 +16,7 @@ import {
   getHelperContract,
   createSalarySlip,
 } from '../services/salarySlipService';
+import { getCachedSupabaseUuid } from '../services/supabaseService';
 
 interface Props {
   isOpen: boolean;
@@ -28,6 +29,8 @@ interface Props {
   onSuccess?: () => void;
   // Pre-selected helper (optional)
   preSelectedHelperId?: string;
+  // Cached contracts from App.tsx (for instant display)
+  cachedContracts?: HelperContract[];
 }
 
 const CreateSalarySlipSheet: React.FC<Props> = ({
@@ -40,6 +43,7 @@ const CreateSalarySlipSheet: React.FC<Props> = ({
   currentLang,
   onSuccess,
   preSelectedHelperId,
+  cachedContracts = [],
 }) => {
   // ─────────────────────────────────────────────────────────────────
   // State
@@ -96,6 +100,20 @@ const CreateSalarySlipSheet: React.FC<Props> = ({
   const selectedHelper = useMemo(() => {
     return users.find(u => u.id === selectedHelperId);
   }, [users, selectedHelperId]);
+
+  // ─────────────────────────────────────────────────────────────────
+  // Cached Contract Lookup (for instant display)
+  // ─────────────────────────────────────────────────────────────────
+  // Convert helperId (Clerk ID) to Supabase UUID for comparison
+  // Contracts store userId as Supabase UUID, but helperId is Clerk ID
+  const helperUuid = useMemo(() => getCachedSupabaseUuid(selectedHelperId), [selectedHelperId]);
+  
+  // Find cached contract for instant display
+  // CRITICAL: Compare UUID to UUID (contract.userId is UUID, helperId is Clerk ID)
+  const cachedContract = useMemo(() => 
+    cachedContracts.find(c => c.userId === helperUuid) || null,
+    [cachedContracts, helperUuid]
+  );
 
   // ─────────────────────────────────────────────────────────────────
   // Effects
@@ -173,7 +191,22 @@ const CreateSalarySlipSheet: React.FC<Props> = ({
     }
   }, [isOpen]); // Only depend on isOpen, not helpers or preSelectedHelperId
   
-  // Load contract when helper is selected
+  // Use cached contract immediately when helper is selected
+  useEffect(() => {
+    if (selectedHelperId && cachedContract) {
+      // INSTANT: Use cached contract for immediate display
+      setContract(cachedContract);
+      setBaseSalary(cachedContract.baseSalary.toString());
+      setFoodAllowance(cachedContract.foodAllowance.toString());
+    } else if (selectedHelperId && !cachedContract) {
+      // No cached contract - clear fields
+      setContract(null);
+      setBaseSalary('');
+      setFoodAllowance('');
+    }
+  }, [selectedHelperId, cachedContract]);
+
+  // Load fresh contract data in background (after cached data is shown)
   useEffect(() => {
     if (isOpen && selectedHelperId && householdId) {
       loadContract();
@@ -183,12 +216,17 @@ const CreateSalarySlipSheet: React.FC<Props> = ({
   const loadContract = async () => {
     if (!selectedHelperId) return;
     
-    setLoadingContract(true);
+    // Only show loading spinner if we don't have cached data
+    if (!cachedContract) {
+      setLoadingContract(true);
+    }
+    
     try {
       const contractData = await getHelperContract(selectedHelperId, householdId);
       setContract(contractData);
       
-      // Auto-fill base salary and food allowance from contract
+      // Auto-fill base salary and food allowance from fresh contract
+      // (only update if different from cached, to avoid unnecessary re-renders)
       if (contractData) {
         setBaseSalary(contractData.baseSalary.toString());
         setFoodAllowance(contractData.foodAllowance.toString());

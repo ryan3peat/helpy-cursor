@@ -20,10 +20,13 @@ import { getDeviceId } from '../utils/pwaUtils';
 // ============================================================================
 // HELPER: Get authenticated Supabase client (for RLS) or fallback to default
 // ============================================================================
+let hasWarnedAboutNoAuthClient = false; // Only warn once to reduce console noise
+
 function getSupabaseClient() {
   const authClient = getAuthenticatedSupabaseClient();
-  if (!authClient) {
+  if (!authClient && !hasWarnedAboutNoAuthClient) {
     console.warn('[pushNotificationService] ⚠️ No authenticated client available, using default (may fail RLS)');
+    hasWarnedAboutNoAuthClient = true;
   }
   return authClient || supabase;
 }

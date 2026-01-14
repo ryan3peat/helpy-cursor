@@ -3,14 +3,27 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
+// Memory-only storage implementation to prevent "Multiple GoTrueClient instances" warning
+// This ensures the default client uses a separate storage key from the authenticated client
+const memoryStorage: Storage = {
+  getItem: () => null,
+  setItem: () => {},
+  removeItem: () => {},
+  clear: () => {},
+  get length() { return 0; },
+  key: () => null,
+};
+
 // Default client (for backward compatibility during migration)
 // Note: This client won't have JWT tokens, so RLS policies won't work until migration is complete
-// Auth is disabled to prevent "Multiple GoTrueClient instances" warning - auth is handled by authenticated client only
+// Uses memory-only storage to prevent "Multiple GoTrueClient instances" warning
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: false,
     autoRefreshToken: false,
     detectSessionInUrl: false,
+    storage: memoryStorage, // Use memory-only storage to prevent conflicts
+    storageKey: 'helpy-default-client-auth', // Unique storage key
   },
 });
 
@@ -236,6 +249,9 @@ export const createAuthenticatedClient = async (clerkToken: string | null, token
   const client = createClient(supabaseUrl, supabaseAnonKey, {
     global: {
       fetch: customFetch,
+    },
+    auth: {
+      storageKey: 'helpy-authenticated-client-auth', // Unique storage key to prevent conflicts
     },
   });
   

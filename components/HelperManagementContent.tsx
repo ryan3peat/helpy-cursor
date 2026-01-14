@@ -86,15 +86,21 @@ export const HelperManagementContent: React.FC<Props> = ({
   // ─────────────────────────────────────────────────────────────────
   // State - Initialize from cached data for instant display
   // ─────────────────────────────────────────────────────────────────
+  // Convert helperId (Clerk ID) to Supabase UUID for comparison
+  // Contracts store userId as Supabase UUID, but helperId prop is Clerk ID
+  const helperUuid = useMemo(() => getCachedSupabaseUuid(helperId), [helperId]);
+  
   // Find this helper's contract from cached contracts
+  // CRITICAL: Compare UUID to UUID (contract.userId is UUID, helperId is Clerk ID)
   const cachedContract = useMemo(() => 
-    cachedContracts.find(c => c.userId === helperId) || null,
-    [cachedContracts, helperId]
+    cachedContracts.find(c => c.userId === helperUuid) || null,
+    [cachedContracts, helperUuid]
   );
   // Filter this helper's slips from cached slips
+  // CRITICAL: Compare UUID to UUID (slip.helperId is UUID, helperId is Clerk ID)
   const cachedHelperSlips = useMemo(() => 
-    cachedSlips.filter(s => s.helperId === helperId),
-    [cachedSlips, helperId]
+    cachedSlips.filter(s => s.helperId === helperUuid),
+    [cachedSlips, helperUuid]
   );
   
   // State for fresh data fetched from database (null/empty until fetched)
@@ -334,14 +340,16 @@ export const HelperManagementContent: React.FC<Props> = ({
       
       // Sync back to parent cache (merge with existing data for other helpers)
       // Always sync contracts back (even if null, to clear old cache for this helper)
-      const updatedContracts = cachedContracts.filter(c => c.userId !== helperId);
+      // CRITICAL: Use helperUuid (not helperId) since contract.userId is UUID
+      const updatedContracts = cachedContracts.filter(c => c.userId !== helperUuid);
       if (contractData) {
         updatedContracts.push(contractData);
       }
       onContractsChange(updatedContracts);
       
       // Always sync slips back (even if empty, to clear old cache for this helper)
-      const otherSlips = cachedSlips.filter(s => s.helperId !== helperId);
+      // CRITICAL: Use helperUuid (not helperId) since slip.helperId is UUID
+      const otherSlips = cachedSlips.filter(s => s.helperId !== helperUuid);
       onSlipsChange([...otherSlips, ...slipsData]);
     } catch (err) {
       console.error('Failed to load helper data:', err);

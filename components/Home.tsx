@@ -1565,22 +1565,6 @@ const Home: React.FC<HomeProps> = ({
                 </button>
               )}
               
-              {/* Meal Table V4 Test - SuperAdmin Only */}
-              <button
-                onClick={() => {
-                  haptics.light();
-                  onNavigate('mealv4');
-                }}
-                className="w-full mt-3 px-4 py-3 rounded-xl bg-primary/10 border border-primary/30 text-left"
-              >
-                <span className="text-body font-medium text-primary block">
-                  🧪 Test Meal Table V4
-                </span>
-                <span className="text-caption text-muted-foreground">
-                  4-pane architecture with frozen header/column
-                </span>
-              </button>
-              
             </div>
           )}
         </div>

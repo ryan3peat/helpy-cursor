@@ -1,3 +1,21 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * BACKUP: Meals.tsx - Created 2026-01-14
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 
+ * This is a complete backup of the original Meals.tsx before migrating 
+ * the week view table to the 4-pane architecture.
+ * 
+ * RESTORE INSTRUCTIONS:
+ * If migration fails, copy the content below (starting from the import) 
+ * to components/Meals.tsx
+ * 
+ * DELETE INSTRUCTIONS:
+ * If migration succeeds, delete this backup file.
+ * 
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import {
@@ -131,9 +149,8 @@ const Meals: React.FC<MealsProps> = ({
   // Ref: Day view container for auto-scroll to current day
   const dayViewRef = useRef<HTMLDivElement | null>(null);
   
-  // Track horizontal scroll for shadow effect on frozen column (4-pane architecture)
-  const [isScrolledHorizontally, setIsScrolledHorizontally] = useState(false);
-  const tableContainerRef = useRef<HTMLDivElement>(null);
+  // Ref: Week view horizontal scroll container for auto-scroll to today column
+  const weekScrollRef = useRef<HTMLDivElement | null>(null);
 
   // ─────────────────────────────────────────────────────────────────
   // AUTO-SCROLL TO TODAY - Only on initial mount
@@ -853,13 +870,6 @@ const Meals: React.FC<MealsProps> = ({
     setView('day');
   };
 
-  // Handle table scroll for 4-pane shadow effect
-  const handleTableScroll = () => {
-    if (tableContainerRef.current) {
-      setIsScrolledHorizontally(tableContainerRef.current.scrollLeft > 0);
-    }
-  };
-
   // ─────────────────────────────────────────────────────────────────
   // AUTO-SCROLL TO TODAY - On initial mount AND when switching to day view
   // ─────────────────────────────────────────────────────────────────
@@ -1496,100 +1506,84 @@ const Meals: React.FC<MealsProps> = ({
             })}
         </div>
       ) : (
-          /* Week View - 4-Pane Architecture with frozen header/column */
+          /* Week View - Simple HTML Table */
           <div className="rounded-xl bg-card shadow-sm overflow-hidden">
-            {/* 
-              Fixed height container - only this scrolls
-              Height: viewport - header(120) - nav(~72) - padding(~100) - bottom nav(~80)
-            */}
-            <div
-              ref={tableContainerRef}
-              onScroll={handleTableScroll}
-              className="overflow-auto scrollbar-hide"
-              style={{
-                height: 'calc(100vh - 380px)',
-                minHeight: '300px',
-                overscrollBehavior: 'none'
-              }}
+            <div 
+              ref={weekScrollRef}
+              className="overflow-x-auto scrollbar-hide"
+              style={{ overscrollBehavior: 'none' }}
             >
-              <table 
-                style={{ 
-                  borderCollapse: 'separate', 
-                  borderSpacing: 0,
-                  minWidth: '490px',
-                  width: '100%'
-                }}
-              >
+              <table style={{ 
+                borderCollapse: 'separate', 
+                borderSpacing: 0, 
+                tableLayout: 'auto',
+                minWidth: '490px',
+                width: '100%'
+              }}>
+                {/* Define column minimum widths - 90px for date, 100px for each meal type */}
                 <colgroup>
                   <col style={{ minWidth: '90px', width: '90px' }} />
                   {mealTypes.map((type) => (
                     <col key={type} style={{ minWidth: '100px', width: '100px' }} />
                   ))}
                 </colgroup>
-
-                {/* HEADER ROW - Sticky within scroll container */}
+                {/* Table Header - Meal type names */}
                 <thead>
                   <tr>
-                    {/* CORNER - Sticky top + left */}
+                    {/* Corner cell - sticky horizontally */}
                     <th 
-                      className="p-2 bg-muted border-b border-r border-border"
+                      className="p-2 bg-muted sticky left-0 z-10 border-b border-border"
                       style={{ 
-                        position: 'sticky',
-                        top: 0,
-                        left: 0,
-                        zIndex: 3,
-                        minWidth: '90px',
-                        boxShadow: isScrolledHorizontally ? '4px 0 8px -4px rgba(0,0,0,0.15)' : undefined
+                        boxShadow: '1px 0 0 0 #d1d5db',
+                        minWidth: '90px'
                       }}
                     />
-                    {/* MEAL TYPE HEADERS - Sticky top */}
-                    {mealTypes.map((type, i) => (
-                      <th 
-                        key={type}
-                        className={`p-2 text-center border-b border-border ${i < mealTypes.length - 1 ? 'border-r' : ''} bg-muted`}
-                        style={{ position: 'sticky', top: 0, zIndex: 2 }}
-                      >
-                        <div className="flex flex-col items-center gap-0.5">
-                          {getMealIcon(type)}
-                          <span className="text-caption font-semibold text-muted-foreground leading-tight text-center">
-                            {getMealLabel(type)}
+                    {/* Meal type headers - no sticky, scrolls with content */}
+                    {mealTypes.map((type, typeIndex) => {
+                      const isLastCol = typeIndex === mealTypes.length - 1;
+                      return (
+                        <th 
+                          key={type}
+                          className={`p-2 text-center border-b border-border ${!isLastCol ? 'border-r' : ''} bg-muted`}
+                        >
+                          <div className="flex flex-col items-center gap-0.5">
+                            {getMealIcon(type)}
+                            <span className="text-caption font-semibold text-muted-foreground leading-tight text-center break-words">
+                              {getMealLabel(type)}
                           </span>
-                        </div>
-                      </th>
-                    ))}
+                          </div>
+                        </th>
+                      );
+                    })}
                   </tr>
                 </thead>
                 
-                {/* TABLE BODY */}
+                {/* Table Body - Date rows */}
                 <tbody>
                   {weekDays.map((day, dayIndex) => {
                     const dateStr = formatDateStr(day);
                     const isToday = day.toDateString() === new Date().toDateString();
                     const isLastRow = dayIndex === weekDays.length - 1;
-
                     return (
                       <tr key={dateStr} id={`week-row-${dateStr}`}>
-                        {/* DATE COLUMN - Sticky left */}
+                        {/* Date label cell - sticky horizontally */}
                         <td 
                           onClick={() => handleWeekCellClick(day)}
-                          className={`p-2 text-center align-middle cursor-pointer border-r border-border ${!isLastRow ? 'border-b border-border' : ''} ${isToday ? 'bg-primary' : 'bg-card'}`}
+                          className={`p-2 text-center align-middle sticky left-0 z-10 cursor-pointer border-r border-border ${!isLastRow ? 'border-b border-border' : ''} ${isToday ? 'bg-primary' : 'bg-card'}`}
                           style={{ 
-                            position: 'sticky',
-                            left: 0,
-                            zIndex: 1,
-                            minWidth: '90px',
-                            boxShadow: isScrolledHorizontally ? '4px 0 8px -4px rgba(0,0,0,0.1)' : undefined
+                            boxShadow: '1px 0 0 0 #d1d5db',
+                            minWidth: '90px'
                           }}
                         >
                           <span className={`text-caption font-semibold block ${isToday ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
                             {day.toLocaleDateString(langCode, { weekday: 'short' })}
-                          </span>
+                            </span>
                           <span className={`text-body font-bold block ${isToday ? 'text-primary-foreground' : 'text-foreground'}`}>
                             {day.getDate()} {day.toLocaleDateString(langCode, { month: 'short' })}
                           </span>
                         </td>
                         
-                        {/* MEAL CELLS */}
+                        {/* Meal type cells for this date */}
                         {mealTypes.map((type, typeIndex) => {
                           const slotMeals = getMealsForSlot(day, type);
                           const isLastCol = typeIndex === mealTypes.length - 1;

@@ -5,7 +5,6 @@ import Layout from './components/Layout';
 import Home from './components/Home';
 import ToDo from './components/ToDo';
 import Meals from './components/Meals';
-import MealTableV4 from './components/MealTableV4';
 import Expenses from './components/Expenses';
 import Profile from './components/Profile';
 import Family from './components/Family';
@@ -1963,21 +1962,6 @@ const AppContent: React.FC = () => {
             currentLang={lang}
             onNavigateToProfile={() => handleNavigate('profile')}
             onEditHelper={handleEditHelper}
-          />
-        );
-
-      case 'mealv4':
-        return (
-          <MealTableV4
-            meals={isDemoMode ? demoMeals : meals}
-            users={isDemoMode ? demoUsers : users}
-            currentUser={isDemoMode ? demoUsers[0] : currentUser!}
-            onAdd={handleAddMeal}
-            onUpdate={handleUpdateMeal}
-            onDelete={handleDeleteMeal}
-            onBack={() => setActiveView('dashboard')}
-            t={translations}
-            currentLang={lang}
           />
         );
 

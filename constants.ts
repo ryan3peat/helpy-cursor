@@ -829,7 +829,7 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'plan.section.users': 'Users',
   'plan.section.basic_features': 'Basic Features',
   'plan.section.expenses': 'Expenses',
-  'plan.section.helper_management': 'Helper Management',
+  'plan.section.helper_management': 'Helper',
   
   // Basic Features
   'plan.feature.home': 'Home (Family Board & Widgets)',
@@ -847,8 +847,8 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'plan.feature.ai_scan_desc': 'Take or upload receipt photo and automatically capture the details.',
   'plan.feature.spending_summary': 'Monthly Spending Summary',
   'plan.feature.spending_summary_desc': 'Pie charts show category totals and percentages.',
-  'plan.feature.helper_records': 'Helper payslips & holiday records',
-  'plan.feature.helper_records_desc': 'Track overtime/holidays; generate signed payslips easily.',
+  'plan.feature.helper_records': 'Helper details & salary slip',
+  'plan.feature.helper_records_desc': 'Manage the helper\'s salary details and generate digital payslips.',
   
   // Plan Features - Test (for Stripe testing)
   'plan.feature.test_desc': 'Test plan for payment testing',
@@ -938,7 +938,7 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'guide.routines_title': 'Practice',
   'guide.routines_desc': 'Document house rules, schedules, cleaning instructions, and emergency procedures.',
   'guide.helper_mgmt_title': 'Helper',
-  'guide.helper_mgmt_desc': 'Track helper salary, holiday records, and generate payslips with digital signatures.',
+  'guide.helper_mgmt_desc': 'Manage the helper\'s salary details and generate digital payslips.',
   
   // User Guide - Languages
   'guide.languages_title': 'Multi-Language Support',

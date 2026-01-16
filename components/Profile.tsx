@@ -2466,12 +2466,12 @@ const Profile: React.FC<ProfileProps> = ({
       },
       {
         id: 'helper_management',
-        title: t['plan.section.helper_management'] || 'Helper Management',
+        title: t['plan.section.helper_management'] || 'Helper',
         features: [
           { 
             id: 'helper_records', 
-            name: t['plan.feature.helper_records'] || 'Helper payslips & holiday records',
-            description: t['plan.feature.helper_records_desc'] || 'Track overtime/holidays; generate signed payslips easily.',
+            name: t['plan.feature.helper_records'] || 'Helper details & salary slip',
+            description: t['plan.feature.helper_records_desc'] || 'Manage the helper\'s salary details and generate digital payslips.',
             isLimit: false 
           },
         ]

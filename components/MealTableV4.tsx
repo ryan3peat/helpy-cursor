@@ -351,11 +351,11 @@ const MealTableV4: React.FC<MealTableV4Props> = ({
               Fixed height container - only this scrolls
               Height: viewport - header(120) - nav(~72) - padding(~100) - bottom nav(~80)
             */}
-            <div 
+            <div
               ref={tableContainerRef}
               onScroll={handleTableScroll}
-              className="overflow-auto"
-              style={{ 
+              className="overflow-auto scrollbar-hide"
+              style={{
                 height: 'calc(100vh - 380px)',
                 minHeight: '300px',
                 overscrollBehavior: 'contain'

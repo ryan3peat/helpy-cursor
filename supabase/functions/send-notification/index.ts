@@ -61,7 +61,9 @@ function buildNotificationMessage(
   record: Record<string, unknown>,
   creatorName: string,
   event: 'INSERT' | 'UPDATE' | 'DELETE' = 'INSERT',
-  oldRecord?: Record<string, unknown>
+  oldRecord?: Record<string, unknown>,
+  creatorId?: string,  // Actor's Supabase UUID - for detecting self-actions
+  householdUsers?: Array<{ id: string; name: string; clerk_id?: string }> // For looking up removed user names
 ): { title: string; body: string; type: string } {
   
   switch (table) {
@@ -208,11 +210,35 @@ function buildNotificationMessage(
         
         // If someone left (and it's a pure RSVP action)
         if (leftUsers.length > 0 && joinedUsers.length === 0 && onlyRsvpChanged) {
-          return {
-            title: '🍽️ Meals',
-            body: `${mealLabel}\n${creatorName} will not join`,
-            type: 'meal'
-          };
+          // CRITICAL FIX: Check if creator removed THEMSELVES vs removing someone else
+          // All IDs here are Supabase UUIDs (for_user_ids and creatorId)
+          const creatorRemovedSelf = creatorId && leftUsers.includes(creatorId);
+          
+          if (creatorRemovedSelf) {
+            // Self-removal: "Liko will not join"
+            return {
+              title: '🍽️ Meals',
+              body: `${mealLabel}\n${creatorName} will not join`,
+              type: 'meal'
+            };
+          } else {
+            // Removing someone else: "Liko removed Chaeyoung"
+            // Look up the removed user's name from the household users list
+            let removedUserName = 'someone';
+            if (householdUsers && leftUsers.length > 0) {
+              // leftUsers[0] is a Supabase UUID, match against user.id (also UUID)
+              const removedUser = householdUsers.find(u => u.id === leftUsers[0]);
+              if (removedUser) {
+                // Use first name only for cleaner notification (consistent with other notifications)
+                removedUserName = removedUser.name?.split(' ')[0] || 'someone';
+              }
+            }
+            return {
+              title: '🍽️ Meals',
+              body: `${mealLabel}\n${creatorName} removed ${removedUserName}`,
+              type: 'meal'
+            };
+          }
         }
         
         // Default: generic "changed" for other updates
@@ -330,7 +356,9 @@ function buildBatchedNotificationMessage(
   items: Array<{ id: string; record: Record<string, unknown>; old_record?: Record<string, unknown> }>,
   creatorName: string,
   event: 'INSERT' | 'UPDATE' | 'DELETE',
-  itemType?: string // 'shopping' or 'task' for todo_items
+  itemType?: string, // 'shopping' or 'task' for todo_items
+  creatorId?: string,  // Actor's Supabase UUID - for detecting self-actions
+  householdUsers?: Array<{ id: string; name: string; clerk_id?: string }> // For looking up removed user names
 ): { title: string; body: string; type: string } {
   
   const count = items.length;
@@ -446,7 +474,7 @@ function buildBatchedNotificationMessage(
     case 'meals': {
       // If only 1 item, use single notification logic which has proper RSVP detection
       if (count === 1) {
-        return buildNotificationMessage(table, items[0].record, creatorName, event, items[0].old_record);
+        return buildNotificationMessage(table, items[0].record, creatorName, event, items[0].old_record, creatorId, householdUsers);
       }
       
       // For multiple meals, check if this is a batch of quick RSVPs (joining empty meal slots)
@@ -1135,10 +1163,10 @@ serve(async (req: Request) => {
       let refId: string;
       
       if (is_batch && items && items.length > 0) {
-        msgForHistory = buildBatchedNotificationMessage(table, items, creatorName, event, item_type);
+        msgForHistory = buildBatchedNotificationMessage(table, items, creatorName, event, item_type, creatorId, users);
         refId = items[0].id;
       } else {
-        msgForHistory = buildNotificationMessage(table, record, creatorName, event, old_record);
+        msgForHistory = buildNotificationMessage(table, record, creatorName, event, old_record, creatorId, users);
         refId = record.id as string;
       }
       
@@ -1178,12 +1206,12 @@ serve(async (req: Request) => {
     
     if (is_batch && items && items.length > 0) {
       // BATCHED notification
-      message = buildBatchedNotificationMessage(table, items, creatorName, event, item_type);
+      message = buildBatchedNotificationMessage(table, items, creatorName, event, item_type, creatorId, users);
       referenceId = items[0].id; // Use first item's ID for reference
       console.log(`[Push] 📦 Building BATCHED notification for ${items.length} items`);
     } else {
       // Single item notification (backwards compatible)
-      message = buildNotificationMessage(table, record, creatorName, event, old_record);
+      message = buildNotificationMessage(table, record, creatorName, event, old_record, creatorId, users);
       referenceId = record.id as string;
     }
 

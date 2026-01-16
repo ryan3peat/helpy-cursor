@@ -866,7 +866,11 @@ const Meals: React.FC<MealsProps> = ({
   // ─────────────────────────────────────────────────────────────────
   useEffect(() => {
     // Skip if not in day view
-    if (view !== 'day') return;
+    if (view !== 'day') {
+      // Reset flag when leaving day view so it scrolls when switching back
+      hasInitiallyScrolled.current = false;
+      return;
+    }
     
     // Skip if already scrolled in this day view session
     if (hasInitiallyScrolled.current) return;
@@ -875,8 +879,9 @@ const Meals: React.FC<MealsProps> = ({
     const headerOffset = 230;
     const targetDateStr = formatDateStr(new Date());
     
-    // Use multiple attempts for reliability
-    const scrollAttempts = [0, 50, 150];
+    // Use longer delays when switching views to let DOM settle (prevents flicker)
+    // Initial mount can use shorter delays, but longer delays work for both
+    const scrollAttempts = [100, 200, 300];
     scrollAttempts.forEach(delay => {
       setTimeout(() => {
         const targetEl = document.getElementById(`day-${targetDateStr}`);
@@ -889,16 +894,14 @@ const Meals: React.FC<MealsProps> = ({
     });
   }, [view]);
 
-  // Note: No reset logic needed - refs reset naturally on component remount
-  // This prevents flicker when switching views while maintaining smooth scroll on navigation
-
   // ─────────────────────────────────────────────────────────────────
   // AUTO-SCROLL TO TODAY ROW IN WEEK VIEW
   // Uses useEffect + multiple timed attempts to prevent iOS flicker
   // ─────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (view !== 'week') {
-      // Don't reset - let it reset naturally on component remount
+      // Reset flag when leaving week view so it scrolls when switching back
+      hasScrolledWeekView.current = false;
       return;
     }
     
@@ -917,8 +920,8 @@ const Meals: React.FC<MealsProps> = ({
       return;
     }
     
-    // Use multiple attempts for reliability (DOM needs time to render)
-    const scrollAttempts = [0, 50, 150, 300];
+    // Use longer delays when switching views to let DOM settle (prevents flicker)
+    const scrollAttempts = [100, 200, 300, 400];
     scrollAttempts.forEach(delay => {
       setTimeout(() => {
         // Find the table row for today's date

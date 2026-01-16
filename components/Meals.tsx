@@ -136,10 +136,9 @@ const Meals: React.FC<MealsProps> = ({
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
   // ─────────────────────────────────────────────────────────────────
-  // AUTO-SCROLL TO TODAY - Only on initial mount
+  // AUTO-SCROLL TO TODAY - Only on initial mount (day view only)
   // ─────────────────────────────────────────────────────────────────
   const hasInitiallyScrolled = useRef(false);
-  const hasScrolledWeekView = useRef(false);
 
   const mealTypes = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER, MealType.SNACKS];
   const langCode = currentLang === 'en' ? 'en-GB' : currentLang;
@@ -894,52 +893,8 @@ const Meals: React.FC<MealsProps> = ({
     });
   }, [view]);
 
-  // ─────────────────────────────────────────────────────────────────
-  // AUTO-SCROLL TO TODAY ROW IN WEEK VIEW
-  // Uses useEffect + multiple timed attempts to prevent iOS flicker
-  // ─────────────────────────────────────────────────────────────────
-  useEffect(() => {
-    if (view !== 'week') {
-      // Reset flag when leaving week view so it scrolls when switching back
-      hasScrolledWeekView.current = false;
-      return;
-    }
-    
-    // Only scroll once per week view entry
-    if (hasScrolledWeekView.current) return;
-    hasScrolledWeekView.current = true;
-    
-    // Find today's index in the week (0-6)
-    const today = new Date();
-    const todayIndex = weekDays.findIndex(d => d.toDateString() === today.toDateString());
-    
-    // Only scroll vertically if today is in the current week
-    if (todayIndex === -1) {
-      // Still scroll to top to show table header
-      window.scrollTo({ top: 0, behavior: 'auto' });
-      return;
-    }
-    
-    // Use longer delays when switching views to let DOM settle (prevents flicker)
-    const scrollAttempts = [100, 200, 300, 400];
-    scrollAttempts.forEach(delay => {
-      setTimeout(() => {
-        // Find the table row for today's date
-        const dateStr = formatDateStr(weekDays[todayIndex]);
-        const targetRow = document.getElementById(`week-row-${dateStr}`);
-        if (!targetRow) return;
-        
-        // Calculate scroll position to center today's row
-        const headerOffset = 250; // Approximate header height
-        const rect = targetRow.getBoundingClientRect();
-        const elementPosition = rect.top + window.scrollY;
-        const targetScroll = elementPosition - headerOffset - (window.innerHeight / 2) + (rect.height / 2);
-        
-        // Use 'auto' for instant scroll (no visible animation)
-        window.scrollTo({ top: Math.max(0, targetScroll), behavior: 'auto' });
-      }, delay);
-    });
-  }, [view, weekDays]);
+  // NOTE: No auto-scroll for week/table view - the table has its own internal scroll container
+  // (4-pane architecture). Page scroll would be wrong here.
 
   // Close quick join popover when clicking outside
   useEffect(() => {
@@ -1140,6 +1095,18 @@ const Meals: React.FC<MealsProps> = ({
 
   return (
     <div className="min-h-screen bg-background pb-40">
+      {/* ─────────────────────────────────────────────────────────────── */}
+      {/* iOS SAFARI ANTI-FLICKER SHIELD                                 */}
+      {/* Fixed background that covers header area to prevent flash      */}
+      {/* during view switches and page navigation on iOS Safari.        */}
+      {/* Must be z-[19] so sticky headers (z-20) render above it.       */}
+      {/* ─────────────────────────────────────────────────────────────── */}
+      <div 
+        className="fixed top-0 left-0 right-0 z-[19] bg-background pointer-events-none" 
+        style={{ height: '200px' }} 
+        aria-hidden="true"
+      />
+      
       <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
         {/* ─────────────────────────────────────────────────────────────── */}
         {/* STICKY HEADER - matches Family */}

@@ -201,11 +201,35 @@ function buildNotificationMessage(
         
         // If someone joined (and it's a pure RSVP action)
         if (joinedUsers.length > 0 && leftUsers.length === 0 && onlyRsvpChanged) {
-          return {
-            title: '🍽️ Meals',
-            body: `${mealLabel}\n${creatorName} is joining`,
-            type: 'meal'
-          };
+          // CRITICAL FIX: Check if creator added THEMSELVES vs adding someone else
+          // All IDs here are Supabase UUIDs (for_user_ids and creatorId)
+          const creatorJoinedSelf = creatorId && joinedUsers.includes(creatorId);
+          
+          if (creatorJoinedSelf) {
+            // Self-joining: "Liko is joining"
+            return {
+              title: '🍽️ Meals',
+              body: `${mealLabel}\n${creatorName} is joining`,
+              type: 'meal'
+            };
+          } else {
+            // Adding someone else: "Liko added Chaeyoung"
+            // Look up the added user's name from the household users list
+            let addedUserName = 'someone';
+            if (householdUsers && joinedUsers.length > 0) {
+              // joinedUsers[0] is a Supabase UUID, match against user.id (also UUID)
+              const addedUser = householdUsers.find(u => u.id === joinedUsers[0]);
+              if (addedUser) {
+                // Use first name only for cleaner notification (consistent with other notifications)
+                addedUserName = addedUser.name?.split(' ')[0] || 'someone';
+              }
+            }
+            return {
+              title: '🍽️ Meals',
+              body: `${mealLabel}\n${creatorName} added ${addedUserName}`,
+              type: 'meal'
+            };
+          }
         }
         
         // If someone left (and it's a pure RSVP action)

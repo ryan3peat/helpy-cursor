@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useLayoutEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Sparkles,
@@ -862,33 +862,31 @@ const Meals: React.FC<MealsProps> = ({
 
   // ─────────────────────────────────────────────────────────────────
   // AUTO-SCROLL TO TODAY - On initial mount AND when switching to day view
-  // Uses useLayoutEffect + single requestAnimationFrame to prevent iOS flicker
+  // Uses useEffect + multiple timed attempts to prevent iOS flicker
   // ─────────────────────────────────────────────────────────────────
-  useLayoutEffect(() => {
+  useEffect(() => {
     // Skip if not in day view
     if (view !== 'day') return;
     
     // Skip if already scrolled in this day view session
     if (hasInitiallyScrolled.current) return;
+    hasInitiallyScrolled.current = true;
 
     const headerOffset = 230;
     const targetDateStr = formatDateStr(new Date());
     
-    // Single requestAnimationFrame - no race conditions, no flicker
-    const frameId = requestAnimationFrame(() => {
-      const targetEl = document.getElementById(`day-${targetDateStr}`);
-      if (!targetEl) {
-        hasInitiallyScrolled.current = true;
-        return;
-      }
-      
-      const rect = targetEl.getBoundingClientRect();
-      const elementPosition = rect.top + window.scrollY;
-      window.scrollTo({ top: elementPosition - headerOffset, behavior: 'auto' });
-      hasInitiallyScrolled.current = true;
+    // Use multiple attempts for reliability
+    const scrollAttempts = [0, 50, 150];
+    scrollAttempts.forEach(delay => {
+      setTimeout(() => {
+        const targetEl = document.getElementById(`day-${targetDateStr}`);
+        if (!targetEl) return;
+        
+        const rect = targetEl.getBoundingClientRect();
+        const elementPosition = rect.top + window.scrollY;
+        window.scrollTo({ top: elementPosition - headerOffset, behavior: 'auto' });
+      }, delay);
     });
-
-    return () => cancelAnimationFrame(frameId);
   }, [view]);
 
   // Reset day scroll flag when leaving day view
@@ -900,10 +898,9 @@ const Meals: React.FC<MealsProps> = ({
 
   // ─────────────────────────────────────────────────────────────────
   // AUTO-SCROLL TO TODAY ROW IN WEEK VIEW
-  // Uses useLayoutEffect + single requestAnimationFrame to prevent iOS flicker
+  // Uses useEffect + multiple timed attempts to prevent iOS flicker
   // ─────────────────────────────────────────────────────────────────
-  useLayoutEffect(() => {
-    // Reset flag when leaving week view
+  useEffect(() => {
     if (view !== 'week') {
       hasScrolledWeekView.current = false;
       return;
@@ -911,39 +908,38 @@ const Meals: React.FC<MealsProps> = ({
     
     // Only scroll once per week view entry
     if (hasScrolledWeekView.current) return;
+    hasScrolledWeekView.current = true;
     
     // Find today's index in the week (0-6)
     const today = new Date();
     const todayIndex = weekDays.findIndex(d => d.toDateString() === today.toDateString());
     
-    // Single requestAnimationFrame - no race conditions, no flicker
-    const frameId = requestAnimationFrame(() => {
-      // If today is not in the current week, scroll to top
-      if (todayIndex === -1) {
-        window.scrollTo({ top: 0, behavior: 'auto' });
-        hasScrolledWeekView.current = true;
-        return;
-      }
-      
-      // Find the table row for today's date
-      const dateStr = formatDateStr(weekDays[todayIndex]);
-      const targetRow = document.getElementById(`week-row-${dateStr}`);
-      if (!targetRow) {
-        hasScrolledWeekView.current = true;
-        return;
-      }
-      
-      // Calculate scroll position to center today's row
-      const headerOffset = 250;
-      const rect = targetRow.getBoundingClientRect();
-      const elementPosition = rect.top + window.scrollY;
-      const targetScroll = elementPosition - headerOffset - (window.innerHeight / 2) + (rect.height / 2);
-      
-      window.scrollTo({ top: Math.max(0, targetScroll), behavior: 'auto' });
-      hasScrolledWeekView.current = true;
+    // Only scroll vertically if today is in the current week
+    if (todayIndex === -1) {
+      // Still scroll to top to show table header
+      window.scrollTo({ top: 0, behavior: 'auto' });
+      return;
+    }
+    
+    // Use multiple attempts for reliability (DOM needs time to render)
+    const scrollAttempts = [0, 50, 150, 300];
+    scrollAttempts.forEach(delay => {
+      setTimeout(() => {
+        // Find the table row for today's date
+        const dateStr = formatDateStr(weekDays[todayIndex]);
+        const targetRow = document.getElementById(`week-row-${dateStr}`);
+        if (!targetRow) return;
+        
+        // Calculate scroll position to center today's row
+        const headerOffset = 250; // Approximate header height
+        const rect = targetRow.getBoundingClientRect();
+        const elementPosition = rect.top + window.scrollY;
+        const targetScroll = elementPosition - headerOffset - (window.innerHeight / 2) + (rect.height / 2);
+        
+        // Use 'auto' for instant scroll (no visible animation)
+        window.scrollTo({ top: Math.max(0, targetScroll), behavior: 'auto' });
+      }, delay);
     });
-
-    return () => cancelAnimationFrame(frameId);
   }, [view, weekDays]);
 
   // Close quick join popover when clicking outside

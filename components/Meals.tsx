@@ -889,12 +889,8 @@ const Meals: React.FC<MealsProps> = ({
     });
   }, [view]);
 
-  // Reset day scroll flag when leaving day view
-  useEffect(() => {
-    if (view !== 'day') {
-      hasInitiallyScrolled.current = false;
-    }
-  }, [view]);
+  // Note: No reset logic needed - refs reset naturally on component remount
+  // This prevents flicker when switching views while maintaining smooth scroll on navigation
 
   // ─────────────────────────────────────────────────────────────────
   // AUTO-SCROLL TO TODAY ROW IN WEEK VIEW
@@ -902,7 +898,7 @@ const Meals: React.FC<MealsProps> = ({
   // ─────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (view !== 'week') {
-      hasScrolledWeekView.current = false;
+      // Don't reset - let it reset naturally on component remount
       return;
     }
     

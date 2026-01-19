@@ -51,7 +51,7 @@ export default async function handler(req: any, res: any) {
       const { data: requester } = await supabase
         .from('users')
         .select('id, household_id, role, clerk_id')
-        .or(`clerk_id.eq.${requesterId},id.eq.${requesterId}`)
+        .eq('clerk_id', requesterId)
         .eq('household_id', householdId)
         .maybeSingle();
 

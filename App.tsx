@@ -8,6 +8,7 @@ import Meals from './components/Meals';
 import Expenses from './components/Expenses';
 import Profile from './components/Profile';
 import Family from './components/Family';
+import Analytics from './components/Analytics';
 // IntroAnimation removed - replaced by iOS splash screen + simple fade-in
 import { initBadgeTracking, updateBadgeFromData, markAppAsSeen } from './services/appBadgeService';
 import Auth from './components/Auth';
@@ -21,7 +22,7 @@ import { getStaticTranslations } from './services/translationService';
 import { TranslationProvider, useTranslationContext } from './contexts/TranslationContext';
 import { DemoModeProvider, useDemoMode } from './contexts/DemoModeContext';
 import { supabase } from './services/supabase';
-import { useSupabaseReady } from './contexts/SupabaseContext';
+import { useSupabaseReady, getAuthenticatedSupabaseClient } from './contexts/SupabaseContext';
 import {
   subscribeToCollection,
   addItem,
@@ -279,6 +280,10 @@ const AppContent: React.FC = () => {
     const saved = localStorage.getItem('helpy_current_session_user');
     return saved ? JSON.parse(saved) : null;
   });
+  
+  // Session verification state - ensures we verify session BEFORE showing content
+  // This is the "at the door" check to catch stale sessions early
+  const [sessionVerified, setSessionVerified] = useState(false);
 
   // Onboarding State
   const [onboardingStep, setOnboardingStep] = useState<number>(() => {
@@ -1143,6 +1148,105 @@ const AppContent: React.FC = () => {
     }
   }, [users]);
 
+  // "At the door" session verification - runs BEFORE showing any app content
+  // Makes an actual database query to verify the JWT/session works
+  // This catches stale sessions (like Ryan's bug) at app startup, not during operations
+  const sessionVerificationRef = useRef(false);
+  useEffect(() => {
+    // Reset verification state when user logs out
+    if (!currentUser) {
+      setSessionVerified(false);
+      sessionVerificationRef.current = false;
+      return;
+    }
+    
+    // Skip if already verified this session
+    if (sessionVerified || sessionVerificationRef.current) return;
+    
+    // Demo mode: skip verification
+    if (isDemoMode) {
+      console.log('[Session Verification] Demo mode - skipping verification');
+      setSessionVerified(true);
+      sessionVerificationRef.current = true;
+      return;
+    }
+    
+    // Wait for authenticated Supabase client
+    if (!isSupabaseReady) {
+      console.log('[Session Verification] ⏳ Waiting for authenticated client...');
+      return;
+    }
+    
+    // Mark as in-progress to prevent duplicate runs
+    sessionVerificationRef.current = true;
+    
+    const verifySession = async (): Promise<'verified' | 'stale'> => {
+      console.log('[Session Verification] 🔍 Verifying session at the door...');
+      console.log('[Session Verification] currentUser.id:', currentUser.id);
+      console.log('[Session Verification] householdId:', currentUser.householdId);
+      
+      const client = getAuthenticatedSupabaseClient();
+      if (!client) {
+        throw new Error('No authenticated Supabase client available');
+      }
+      
+      // Quick test query: verify we can access this user's data
+      // For active users, currentUser.id is the clerk_id (user_xxx format)
+      const isClerkId = currentUser.id.startsWith('user_');
+      
+      const { data, error } = await client
+        .from('users')
+        .select('id, clerk_id, household_id')
+        .eq(isClerkId ? 'clerk_id' : 'id', currentUser.id)
+        .maybeSingle();
+      
+      if (error) {
+        console.error('[Session Verification] ❌ Query error:', error.message);
+        return 'stale';
+      }
+      
+      if (!data) {
+        console.error('[Session Verification] ❌ User not found in database');
+        return 'stale';
+      }
+      
+      // Verify household matches
+      if (data.household_id !== currentUser.householdId) {
+        console.warn('[Session Verification] ⚠️ Household mismatch - cached:', currentUser.householdId, 'actual:', data.household_id);
+        return 'stale';
+      }
+      
+      console.log('[Session Verification] ✅ Session verified successfully');
+      return 'verified';
+    };
+    
+    // Timeout promise - auto-continue after 5 seconds to prevent stuck loading
+    const timeout = new Promise<'timeout'>((resolve) => {
+      setTimeout(() => resolve('timeout'), 5000);
+    });
+    
+    // Race verification against timeout
+    Promise.race([verifySession().catch(() => 'stale' as const), timeout])
+      .then((result) => {
+        if (result === 'verified') {
+          setSessionVerified(true);
+        } else if (result === 'timeout') {
+          // Timeout reached - continue optimistically
+          // Most likely cause is slow network, not stale session
+          console.warn('[Session Verification] ⏰ Timeout reached (5s) - continuing optimistically');
+          setSessionVerified(true);
+        } else {
+          // Stale session detected
+          console.warn('[Session Verification] ⚠️ Session invalid');
+          console.log('[Session Verification] 🔄 Triggering silent refresh via Auth');
+          localStorage.removeItem('helpy_current_session_user');
+          setCurrentUser(null);
+          setSessionVerified(false);
+          sessionVerificationRef.current = false;
+        }
+      });
+  }, [currentUser, isSupabaseReady, sessionVerified, isDemoMode]);
+
   const hid = currentUser?.householdId ?? '';
 
   // Helper to detect temporary/optimistic IDs that haven't been saved to database yet
@@ -1990,6 +2094,14 @@ const AppContent: React.FC = () => {
           />
         );
 
+      case 'analytics':
+        return (
+          <Analytics
+            onBack={() => setActiveView('dashboard')}
+            t={translations}
+          />
+        );
+
       default:
         return null;
     }
@@ -2069,6 +2181,14 @@ const AppContent: React.FC = () => {
         <Auth onLogin={handleLogin} t={translations} />
       </div>
     );
+  }
+
+  // "At the door" check: Don't show app content until session is verified
+  // This ensures we catch stale sessions BEFORE the user tries to do anything
+  // User sees the loading bar briefly (~200-500ms for valid sessions)
+  if (!sessionVerified && !isDemoMode) {
+    console.log('🔐 [App] Session not yet verified, showing loading...');
+    return <AppLoading />;
   }
 
   return (

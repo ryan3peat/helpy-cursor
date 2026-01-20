@@ -9,9 +9,10 @@ import { TranslationDictionary } from '../types';
 // In-memory cache for translations (survives within session)
 const translationCache: Record<string, TranslationDictionary> = {};
 
-// Cache version - increment this when BASE_TRANSLATIONS changes significantly
-// This will invalidate old localStorage caches
-const CACHE_VERSION = 'v2';
+// Cache version - AUTO-INVALIDATES when new keys are added to BASE_TRANSLATIONS
+// No more manual version bumping needed!
+const BASE_KEY_COUNT = Object.keys(BASE_TRANSLATIONS).length;
+const CACHE_VERSION = `v6-${BASE_KEY_COUNT}`;
 
 /**
  * Get static translations from Supabase
@@ -36,8 +37,9 @@ export async function getStaticTranslations(lang: string): Promise<TranslationDi
     return BASE_TRANSLATIONS;
   }
 
-  // Check memory cache first (instant)
-  if (translationCache[lang]) {
+  // Check memory cache first (instant) - but validate it has all keys
+  // This prevents using incomplete cached data from earlier in the session
+  if (translationCache[lang] && Object.keys(translationCache[lang]).length >= BASE_KEY_COUNT) {
     return translationCache[lang];
   }
 
@@ -47,8 +49,8 @@ export async function getStaticTranslations(lang: string): Promise<TranslationDi
   if (cached) {
     try {
       const parsed = JSON.parse(cached) as TranslationDictionary;
-      // Verify cache has reasonable number of keys
-      if (Object.keys(parsed).length >= Object.keys(BASE_TRANSLATIONS).length * 0.8) {
+      // Verify cache has ALL keys (strict check - cache version already handles invalidation)
+      if (Object.keys(parsed).length >= BASE_KEY_COUNT) {
         translationCache[lang] = parsed;
         return parsed;
       }
@@ -57,27 +59,46 @@ export async function getStaticTranslations(lang: string): Promise<TranslationDi
     }
   }
 
-  // Fetch from Supabase
+  // Fetch from Supabase WITH PAGINATION
+  // CRITICAL: Supabase defaults to 1000 row limit. We have 1100+ translations,
+  // so we MUST paginate to fetch all of them. Without this, ~147 translations
+  // would be missing (including salary.* keys).
   try {
-    const { data, error } = await supabase
-      .from('ui_translations')
-      .select('key, value')
-      .eq('lang_code', lang);
+    const allTranslations: { key: string; value: string }[] = [];
+    let from = 0;
+    const pageSize = 1000;
+    let hasMore = true;
 
-    if (error) {
-      console.error('Error fetching translations:', error);
-      return BASE_TRANSLATIONS;
+    while (hasMore) {
+      const { data, error } = await supabase
+        .from('ui_translations')
+        .select('key, value')
+        .eq('lang_code', lang)
+        .range(from, from + pageSize - 1);
+
+      if (error) {
+        console.error('Error fetching translations:', error);
+        return BASE_TRANSLATIONS;
+      }
+
+      if (data && data.length > 0) {
+        allTranslations.push(...data);
+        hasMore = data.length === pageSize;
+        from += pageSize;
+      } else {
+        hasMore = false;
+      }
     }
 
     // If no translations found, return base (maybe seed hasn't run yet)
-    if (!data || data.length === 0) {
+    if (allTranslations.length === 0) {
       console.warn(`No translations found for "${lang}", using English`);
       return BASE_TRANSLATIONS;
     }
 
     // Convert array to dictionary, merging with base for any missing keys
     const translations: TranslationDictionary = { ...BASE_TRANSLATIONS };
-    data.forEach(row => {
+    allTranslations.forEach(row => {
       translations[row.key] = row.value;
     });
 

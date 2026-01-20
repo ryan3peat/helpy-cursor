@@ -449,10 +449,12 @@ const AcceptInvite: React.FC<AcceptInviteProps> = ({ onComplete }) => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              minLength={8}
               className="w-full px-4 py-3.5 rounded-xl bg-white border border-border text-foreground placeholder:text-muted-foreground focus:border-primary outline-none transition-all text-body"
-              placeholder="Min. 8 characters"
+              placeholder="Enter password"
             />
+            <p className="text-caption text-muted-foreground mt-2 ml-1">
+              Min. 8 characters, 1 lowercase, 1 uppercase, 1 special character
+            </p>
           </div>
 
           <button

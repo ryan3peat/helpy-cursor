@@ -2,7 +2,7 @@
 // Provides authenticated Supabase client with Clerk JWT token for RLS policies
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { useAuth } from '@clerk/clerk-react';
+import { useAuth, useUser } from '@clerk/clerk-react';
 import { createAuthenticatedClient, SupabaseClient, supabase, updateCurrentToken, setFreshTokenGetter } from '../services/supabase';
 
 type SupabaseContextValue = {
@@ -123,9 +123,15 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
   const authResult = useAuth();
   const { getToken, isSignedIn } = authResult;
   
+  // FIX: Use useUser to get isLoaded - this tells us when Clerk is fully initialized
+  // Without this, on iOS PWA cold start, isSignedIn might be undefined (not false)
+  // and we'd skip token fetching, causing the 5-second timeout to always fire
+  const { isLoaded: clerkLoaded } = useUser();
+  
   console.log('[SupabaseContext] useAuth result:', {
     hasGetToken: !!getToken,
     isSignedIn,
+    clerkLoaded,
     authKeys: Object.keys(authResult)
   });
   const [client, setClient] = useState<SupabaseClient | null>(null);
@@ -133,7 +139,8 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
   // Note: refreshIntervalRef removed - no longer needed with fresh token on every request
 
   console.log('[SupabaseContext] 📊 Current state:', { 
-    isSignedIn, 
+    isSignedIn,
+    clerkLoaded,
     hasGetToken: !!getToken,
     hasClient: !!client,
     isAuthClient
@@ -234,10 +241,20 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
 
   useEffect(() => {
     console.log('[SupabaseContext] 🔄 useEffect triggered', { 
-      isSignedIn, 
+      isSignedIn,
+      clerkLoaded,
       hasGetToken: !!getToken,
       getTokenType: typeof getToken
     });
+    
+    // FIX: Don't run until Clerk is fully loaded
+    // On iOS PWA cold start, isSignedIn is undefined while Clerk loads
+    // Without this check, we'd skip token fetching and isAuthClient stays false
+    // This caused the 5-second timeout to always fire on iOS PWA
+    if (!clerkLoaded) {
+      console.log('[SupabaseContext] ⏳ Waiting for Clerk to load...');
+      return;
+    }
     
     const initClient = async () => {
       // NOTE: Do NOT call setIsAuthClient(false) here!
@@ -246,7 +263,7 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
       // 2. Then setting true restarts them with fresh fetch
       // 3. User sees cached data → empty → fresh data
       // Only set to false on actual failure (see error handlers below)
-      console.log('[SupabaseContext] 🚀 initClient called', { isSignedIn });
+      console.log('[SupabaseContext] 🚀 initClient called', { isSignedIn, clerkLoaded });
       
       if (isSignedIn) {
         try {
@@ -380,7 +397,7 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
     };
     
     initClient();
-  }, [getToken, isSignedIn]);
+  }, [getToken, isSignedIn, clerkLoaded]);
 
   // REMOVED: Periodic token refresh is no longer needed!
   // We now call getFreshClerkToken() on every Supabase request, which:

@@ -5,8 +5,9 @@
  * 
  * FEATURES:
  *   - Imports BASE_TRANSLATIONS from constants.ts (single source of truth)
- *   - Incremental mode: only translates NEW keys (default behavior)
+ *   - Incremental mode (default): translates NEW + CHANGED + SUSPICIOUS keys
  *   - Force mode: re-translates everything (--force flag)
+ *   - Suspicious detection: Finds translations identical to English (failed API calls)
  *   - Pagination: Properly handles >1000 translations (CRITICAL - see getExistingKeys/getEnglishTranslations)
  * 
  * IMPORTANT: The pagination logic in getExistingKeys() and getEnglishTranslations() is CRITICAL.
@@ -75,6 +76,23 @@ const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/
 
 // Languages to translate (filter out English which is the base)
 const LANGUAGES_TO_TRANSLATE = SUPPORTED_LANGUAGES.filter(l => l.code !== 'en');
+
+// Key prefixes that should ALWAYS remain in English (intentionally not translated)
+// These are legal/official content or auth screens that must stay in English
+const ENGLISH_ONLY_PREFIXES = [
+  'auth.',        // Auth screens
+  'signIn.',      // Sign in flow
+  'signUp.',      // Sign up flow  
+  'invite.',      // Invite flow
+  'pdf.',         // PDF content (legal/official documents)
+];
+
+/**
+ * Check if a key should remain in English (not translated)
+ */
+function shouldRemainEnglish(key: string): boolean {
+  return ENGLISH_ONLY_PREFIXES.some(prefix => key.startsWith(prefix));
+}
 
 // ============================================
 // Helper Functions
@@ -200,6 +218,100 @@ async function getMissingKeys(langCode: string): Promise<string[]> {
 }
 
 /**
+ * Get all existing translations for a language (key + value)
+ * 
+ * CRITICAL: Uses pagination to fetch ALL translations (>1000 rows)
+ * 
+ * @param langCode - Language code to fetch translations for
+ * @returns Map of translation keys to their values
+ */
+async function getExistingTranslations(langCode: string): Promise<Map<string, string>> {
+  const translations = new Map<string, string>();
+  let from = 0;
+  const pageSize = 1000;
+  let hasMore = true;
+
+  while (hasMore) {
+    const { data, error } = await supabase
+      .from('ui_translations')
+      .select('key, value')
+      .eq('lang_code', langCode)
+      .range(from, from + pageSize - 1);
+
+    if (error) {
+      console.error(`Error fetching translations for ${langCode}:`, error);
+      return new Map();
+    }
+
+    if (data && data.length > 0) {
+      data.forEach(row => {
+        translations.set(row.key, row.value);
+      });
+      hasMore = data.length === pageSize;
+      from += pageSize;
+    } else {
+      hasMore = false;
+    }
+  }
+
+  return translations;
+}
+
+/**
+ * Find "suspicious" translations where the translated value is IDENTICAL to the English source.
+ * This indicates a failed translation (API returned English instead of translating).
+ * 
+ * Excludes keys that are legitimately the same in both languages:
+ * - Single characters (day abbreviations like "M", "T", etc.)
+ * - Technical terms (HK$, URLs, etc.)
+ * - Placeholders that contain only {variables}
+ * - Keys that should ALWAYS remain in English (auth, sign in/up, invite, PDF content)
+ * 
+ * @param langCode - Language code to check
+ * @returns Array of keys that need re-translation
+ */
+async function getSuspiciousTranslations(langCode: string): Promise<string[]> {
+  const existingTranslations = await getExistingTranslations(langCode);
+  const suspiciousKeys: string[] = [];
+  
+  for (const [key, englishValue] of Object.entries(BASE_TRANSLATIONS)) {
+    const translatedValue = existingTranslations.get(key);
+    
+    // Skip if no translation exists (will be caught by getMissingKeys)
+    if (translatedValue === undefined) continue;
+    
+    // Skip if the translation is different from English (it's fine)
+    if (translatedValue !== englishValue) continue;
+    
+    // At this point, translation === English. Check if it's legitimately the same:
+    
+    // 0. Skip keys that should ALWAYS remain in English
+    if (shouldRemainEnglish(key)) continue;
+    
+    // 1. Skip single characters (day abbreviations, etc.)
+    if (englishValue.length <= 2) continue;
+    
+    // 2. Skip purely numeric or symbolic values (HK$, %, etc.)
+    if (/^[0-9$%HK\s.,]+$/.test(englishValue)) continue;
+    
+    // 3. Skip values that are only placeholders like {name} or {count}
+    if (/^\{[^}]+\}$/.test(englishValue)) continue;
+    
+    // 4. Skip URLs and technical strings
+    if (englishValue.startsWith('http') || englishValue.includes('://')) continue;
+    
+    // 5. Skip common words that might legitimately be the same
+    const commonSameWords = ['OK', 'Email', 'ID', 'PDF', 'URL', 'PIN', 'SMS', 'WiFi', 'App'];
+    if (commonSameWords.includes(englishValue)) continue;
+    
+    // This translation is suspicious - English string stored as "translation"
+    suspiciousKeys.push(key);
+  }
+  
+  return suspiciousKeys;
+}
+
+/**
  * Call Gemini API to translate text
  */
 async function translateWithGemini(
@@ -297,8 +409,11 @@ async function main() {
   console.log(`  Supabase URL: ${SUPABASE_URL}`);
   console.log(`  Languages: ${LANGUAGES_TO_TRANSLATE.map(l => l.code).join(', ')}`);
   console.log(`  Total strings in BASE_TRANSLATIONS: ${Object.keys(BASE_TRANSLATIONS).length}`);
-  console.log(`  Mode: ${forceOverwrite ? 'FORCE (re-translate all)' : 'INCREMENTAL (new + changed keys)'}`);
+  console.log(`  Mode: ${forceOverwrite ? 'FORCE (re-translate all)' : 'INCREMENTAL (new + changed + suspicious)'}`);
   console.log(`  Dry run: ${dryRun}`);
+  if (!forceOverwrite) {
+    console.log(`  Note: Suspicious = translations identical to English (failed API calls)`);
+  }
   console.log('========================================\n');
 
   let totalNewKeys = 0;
@@ -342,11 +457,12 @@ async function main() {
         keysToTranslate = Object.keys(BASE_TRANSLATIONS);
         console.log(`  Force mode: will translate all ${keysToTranslate.length} keys`);
       } else {
-        // Incremental mode: translate missing keys + changed keys
+        // Incremental mode: translate missing keys + changed keys + suspicious keys
         const missingKeys = await getMissingKeys(code);
+        const suspiciousKeys = await getSuspiciousTranslations(code);
         
-        // Combine missing keys with changed keys (deduplicated)
-        const keysSet = new Set([...missingKeys, ...changedKeys]);
+        // Combine all keys that need translation (deduplicated)
+        const keysSet = new Set([...missingKeys, ...changedKeys, ...suspiciousKeys]);
         keysToTranslate = Array.from(keysSet);
         
         if (keysToTranslate.length === 0) {
@@ -360,29 +476,52 @@ async function main() {
         if (changedKeys.length > 0) {
           console.log(`  Found ${changedKeys.length} changed keys to re-translate`);
         }
+        if (suspiciousKeys.length > 0) {
+          console.log(`  Found ${suspiciousKeys.length} suspicious keys (English stored as translation)`);
+          // Show a few examples
+          suspiciousKeys.slice(0, 3).forEach(key => {
+            console.log(`    - ${key}: "${BASE_TRANSLATIONS[key]}"`);
+          });
+          if (suspiciousKeys.length > 3) {
+            console.log(`    ... and ${suspiciousKeys.length - 3} more`);
+          }
+        }
         totalNewKeys += keysToTranslate.length;
       }
 
+      // Filter out keys that should remain in English (auth, sign in/up, invite, PDF)
+      const keysToActuallyTranslate = keysToTranslate.filter(key => !shouldRemainEnglish(key));
+      const skippedEnglishOnly = keysToTranslate.length - keysToActuallyTranslate.length;
+      
+      if (skippedEnglishOnly > 0) {
+        console.log(`  Skipping ${skippedEnglishOnly} keys that must remain in English`);
+      }
+      
+      if (keysToActuallyTranslate.length === 0) {
+        console.log(`  No keys need translation after filtering`);
+        continue;
+      }
+      
       // Build dictionary of only the keys we need to translate
       const dictionaryToTranslate: Record<string, string> = {};
-      for (const key of keysToTranslate) {
+      for (const key of keysToActuallyTranslate) {
         dictionaryToTranslate[key] = BASE_TRANSLATIONS[key];
       }
 
       // Show preview in dry-run mode
       if (dryRun) {
         console.log(`  Would translate these keys:`);
-        keysToTranslate.slice(0, 5).forEach(key => {
+        keysToActuallyTranslate.slice(0, 5).forEach(key => {
           console.log(`    - ${key}: "${BASE_TRANSLATIONS[key]}"`);
         });
-        if (keysToTranslate.length > 5) {
-          console.log(`    ... and ${keysToTranslate.length - 5} more`);
+        if (keysToActuallyTranslate.length > 5) {
+          console.log(`    ... and ${keysToActuallyTranslate.length - 5} more`);
         }
         continue;
       }
 
       // Translate with Gemini
-      console.log(`  Translating ${keysToTranslate.length} strings...`);
+      console.log(`  Translating ${keysToActuallyTranslate.length} strings...`);
       const startTime = Date.now();
       const translations = await translateWithGemini(code, name, dictionaryToTranslate);
       const translateTime = Date.now() - startTime;
@@ -390,8 +529,8 @@ async function main() {
 
       // Verify we got all keys
       const translatedKeys = Object.keys(translations).length;
-      if (translatedKeys < keysToTranslate.length * 0.9) {
-        console.warn(`  Warning: Only got ${translatedKeys}/${keysToTranslate.length} keys`);
+      if (translatedKeys < keysToActuallyTranslate.length * 0.9) {
+        console.warn(`  Warning: Only got ${translatedKeys}/${keysToActuallyTranslate.length} keys`);
       }
 
       // Save to Supabase

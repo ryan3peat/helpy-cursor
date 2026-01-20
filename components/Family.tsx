@@ -55,8 +55,7 @@ import type {
   PlaceCategory,
 } from "@src/types/place";
 import { COUNTRY_CODES, PLACE_CATEGORY_CONFIG } from "@src/types/place";
-// Keep updatePlace for translation updates in card components
-import { updatePlace } from "@/services/placeService";
+// Note: updatePlace removed - use onUpdatePlace prop for translation caching
 
 // Practice Types & Services
 import type {
@@ -68,8 +67,7 @@ import {
   PRACTICE_CATEGORIES,
   PRACTICE_CATEGORY_CONFIG,
 } from "@src/types/practice";
-// Keep updatePractice for translation updates in card components
-import { updatePractice } from "@/services/practiceService";
+// Note: updatePractice removed - use onUpdatePractice prop for translation caching
 
 // Practice Presets (Suggested Practice Ideas)
 import { PRACTICE_PRESETS, getPresetCategories } from "@src/data/practicePresets";
@@ -417,32 +415,8 @@ const FamilyProfileCarousel: React.FC<FamilyProfileCarouselProps> = ({ users, cu
   );
 };
 
-// Component for displaying translated Place name
-const TranslatedPlaceName: React.FC<{
-  info: Place;
-  currentLang: string;
-  onUpdate?: (id: string, data: Partial<Place>) => void;
-}> = ({ info, currentLang, onUpdate }) => {
-  if (!info.name) return <>{info.name || "Unnamed"}</>;
-  
-  const translatedName = useTranslatedContent({
-    content: info.name,
-    contentLang: info.nameLang,
-    currentLang,
-    translations: info.nameTranslations || {},
-    onTranslationUpdate: async (translation) => {
-      if (onUpdate) {
-        const updatedTranslations = {
-          ...(info.nameTranslations || {}),
-          [currentLang]: translation,
-        };
-        await onUpdate(info.id, { nameTranslations: updatedTranslations });
-      }
-    },
-  });
-
-  return <>{translatedName}</>;
-};
+// NOTE: Place names are NOT translated (proper names / business names)
+// Only the note field is translated
 
 // Component for displaying translated Place note
 const TranslatedPlaceNote: React.FC<{
@@ -1341,6 +1315,7 @@ const Family: React.FC<FamilyProps> = ({
                     currentLang={currentLang}
                     householdId={householdId}
                     t={t}
+                    onUpdatePlace={onUpdatePlace}
                   />
                 ))
               )}
@@ -1376,6 +1351,7 @@ const Family: React.FC<FamilyProps> = ({
                     currentLang={currentLang}
                     householdId={householdId}
                     t={t}
+                    onUpdatePractice={onUpdatePractice}
                   />
                 ))
               )}
@@ -1763,8 +1739,8 @@ const Family: React.FC<FamilyProps> = ({
                                   {isSelected && <Check size={14} className="text-primary-foreground" strokeWidth={3} />}
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <p className="text-body font-semibold text-foreground">{preset.name}</p>
-                                  <p className="text-caption text-muted-foreground mt-1">{preset.note}</p>
+                                  <p className="text-body font-semibold text-foreground">{t[`practice.preset.${preset.id}.name`] || preset.name}</p>
+                                  <p className="text-caption text-muted-foreground mt-1">{t[`practice.preset.${preset.id}.note`] || preset.note}</p>
                                 </div>
                               </div>
                             </button>
@@ -1870,6 +1846,7 @@ interface PlaceCardProps {
   currentLang: string;
   householdId: string;
   t: TranslationDictionary;
+  onUpdatePlace: (id: string, data: Partial<Place>) => void;
 }
 
 const PlaceCard: React.FC<PlaceCardProps> = ({
@@ -1881,6 +1858,7 @@ const PlaceCard: React.FC<PlaceCardProps> = ({
   currentLang,
   householdId,
   t,
+  onUpdatePlace,
 }) => {
   const config = PLACE_CATEGORY_CONFIG[item.category];
 
@@ -1909,11 +1887,7 @@ const PlaceCard: React.FC<PlaceCardProps> = ({
           </div>
           <div>
             <h3 className="text-title text-foreground">
-              <TranslatedPlaceName 
-                info={item} 
-                currentLang={currentLang} 
-                onUpdate={(id, data) => updatePlace(householdId, id, data as any)} 
-              />
+              {item.name || 'Unnamed'}
             </h3>
             <span
               className="text-caption px-2 py-0.5 rounded-full"
@@ -1965,7 +1939,7 @@ const PlaceCard: React.FC<PlaceCardProps> = ({
             <TranslatedPlaceNote 
               info={item} 
               currentLang={currentLang} 
-              onUpdate={(id, data) => updatePlace(householdId, id, data as any)} 
+              onUpdate={(id, data) => onUpdatePlace(id, data)} 
             />
           </span>
         </div>
@@ -1985,6 +1959,7 @@ interface PracticeCardProps {
   currentLang: string;
   householdId: string;
   t: TranslationDictionary;
+  onUpdatePractice: (id: string, data: Partial<Practice>) => void;
 }
 
 const PracticeCard: React.FC<PracticeCardProps> = ({
@@ -1995,6 +1970,7 @@ const PracticeCard: React.FC<PracticeCardProps> = ({
   currentLang,
   householdId,
   t,
+  onUpdatePractice,
 }) => {
   const config = PRACTICE_CATEGORY_CONFIG[item.category];
 
@@ -2039,7 +2015,7 @@ const PracticeCard: React.FC<PracticeCardProps> = ({
               <TranslatedPracticeName 
                 item={item} 
                 currentLang={currentLang} 
-                onUpdate={(id, data) => updatePractice(householdId, id, data as any)} 
+                onUpdate={(id, data) => onUpdatePractice(id, data)} 
               />
             </h3>
             <span
@@ -2070,7 +2046,7 @@ const PracticeCard: React.FC<PracticeCardProps> = ({
             <TranslatedPracticeNote 
               item={item} 
               currentLang={currentLang} 
-              onUpdate={(id, data) => updatePractice(householdId, id, data as any)} 
+              onUpdate={(id, data) => onUpdatePractice(id, data)} 
             />
           </p>
         </div>
@@ -2620,7 +2596,7 @@ const PracticeViewModal: React.FC<PracticeViewModalProps> = ({
               <TranslatedPracticeName 
                 item={item} 
                 currentLang={currentLang} 
-                onUpdate={(id, data) => updatePractice(householdId, id, data as any)} 
+                onUpdate={(id, data) => onUpdatePractice(id, data)} 
               />
             </h2>
           </div>
@@ -2631,7 +2607,7 @@ const PracticeViewModal: React.FC<PracticeViewModalProps> = ({
                 <TranslatedPracticeNote 
                   item={item} 
                   currentLang={currentLang} 
-                  onUpdate={(id, data) => updatePractice(householdId, id, data as any)} 
+                  onUpdate={(id, data) => onUpdatePractice(id, data)} 
                 />
               </div>
             ) : (

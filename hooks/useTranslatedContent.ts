@@ -25,7 +25,19 @@ export const useTranslatedContent = ({
   translations = {},
   onTranslationUpdate,
 }: UseTranslatedContentOptions): string => {
-  const [translatedText, setTranslatedText] = useState<string>(content);
+  // Initialize with cached translation if available (prevents flash from original to translated)
+  const [translatedText, setTranslatedText] = useState<string>(() => {
+    // If languages match or no contentLang, use original
+    if (!contentLang || contentLang === currentLang) {
+      return content;
+    }
+    // If we have a cached translation, use it immediately
+    if (translations[currentLang]) {
+      return translations[currentLang];
+    }
+    // Fallback to original (will be translated by useEffect)
+    return content;
+  });
   const [isTranslating, setIsTranslating] = useState(false);
   
   // Get translation context (optional - may be null if not wrapped in provider)

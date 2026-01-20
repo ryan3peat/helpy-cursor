@@ -1,4 +1,5 @@
 // components/SignUp.tsx
+// NOTE: Auth screen error messages are always displayed in English regardless of user language preference
 import React, { useState, useEffect } from 'react';
 import { useSignUp, useSignIn } from '@clerk/clerk-react';
 import { Loader2, ArrowLeft } from 'lucide-react';
@@ -6,39 +7,39 @@ import ErrorBanner from './ui/ErrorBanner';
 
 interface SignUpProps {
   onBackToSignIn: () => void;
-  t?: Record<string, string>;
 }
 
 // Helper function to get user-friendly error message from Clerk errors
-function getClerkErrorMessage(err: any, t?: Record<string, string>): string {
+// NOTE: Auth screen errors are always in English regardless of user language preference
+function getClerkErrorMessage(err: any): string {
   const errorCode = err.errors?.[0]?.code;
   const errorMessage = err.errors?.[0]?.longMessage || err.errors?.[0]?.message || err.message || '';
   
-  // Map Clerk error codes to user-friendly messages
+  // Map Clerk error codes to user-friendly messages (always English)
   if (errorCode === 'form_identifier_exists' || errorMessage.toLowerCase().includes('email address is taken')) {
-    return t?.['error.email_already_registered'] || 'This email is already registered. Please sign in instead.';
+    return 'This email is already registered. Please sign in instead.';
   }
   if (errorCode === 'form_password_pwned' || errorMessage.toLowerCase().includes('data breach')) {
-    return t?.['error.weak_password'] || 'Please choose a stronger password.';
+    return 'Password must contain at least 8 characters, 1 lowercase, 1 uppercase, 1 special character';
   }
   if (errorCode === 'form_password_length_too_short' || errorMessage.toLowerCase().includes('password')) {
-    return t?.['error.weak_password'] || 'Please choose a stronger password.';
+    return 'Password must contain at least 8 characters, 1 lowercase, 1 uppercase, 1 special character';
   }
   if (errorCode === 'form_code_incorrect' || errorMessage.toLowerCase().includes('incorrect code')) {
-    return t?.['error.incorrect_code'] || 'Incorrect code. Please check your email and enter the correct 6-digit code.';
+    return 'Incorrect code. Please check your email and enter the correct 6-digit code.';
   }
   if (errorCode === 'verification_expired' || errorMessage.toLowerCase().includes('expired')) {
-    return t?.['error.code_expired'] || 'Code expired. Please request a new one.';
+    return 'Code expired. Please request a new one.';
   }
   if (errorCode === 'too_many_requests' || errorMessage.toLowerCase().includes('too many')) {
-    return t?.['error.too_many_attempts'] || 'Too many attempts. Please wait a few minutes before trying again.';
+    return 'Too many attempts. Please wait a few minutes before trying again.';
   }
   
   // Default fallback - don't show raw technical error
-  return t?.['error.signup_failed'] || 'Sign up failed. Please try again.';
+  return 'Sign up failed. Please try again.';
 }
 
-const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn, t }) => {
+const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
   const { signUp, setActive, isLoaded } = useSignUp();
   const { signIn, setActive: setActiveSignIn, isLoaded: signInLoaded } = useSignIn();
   
@@ -251,7 +252,7 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn, t }) => {
       }
     } catch (err: any) {
       console.error('Signup error:', err);
-      setError(getClerkErrorMessage(err, t));
+      setError(getClerkErrorMessage(err));
     } finally {
       setIsSubmitting(false);
     }
@@ -304,7 +305,7 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn, t }) => {
       }
     } catch (err: any) {
       console.error('Verification error:', err);
-      setError(getClerkErrorMessage(err, t));
+      setError(getClerkErrorMessage(err));
     } finally {
       setIsSubmitting(false);
     }
@@ -568,11 +569,13 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn, t }) => {
               autoComplete="new-password"
               value={formData.password}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              placeholder="Min. 8 characters"
+              placeholder="Enter password"
               required
-              minLength={8}
               className="w-full px-4 py-3.5 rounded-2xl bg-white border border-border text-foreground placeholder:text-muted-foreground focus:border-primary outline-none transition-all text-body"
             />
+            <p className="text-caption text-muted-foreground mt-2 ml-1">
+              Min. 8 characters, 1 lowercase, 1 uppercase, 1 special character
+            </p>
           </div>
 
           {/* Clerk CAPTCHA widget container */}

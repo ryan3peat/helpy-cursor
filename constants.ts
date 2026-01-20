@@ -51,6 +51,18 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'dashboard.eating': 'eating',
   'dashboard.language': 'Language',
   'dashboard.need_help': 'Need Help Getting Started?',
+  'dashboard.tell_others': 'Tell Others',
+  'share.app_title': 'Check out Helpy!',
+  'share.app_text': `Hey! I found this great app called Helpy - it's a home management app that helps families and helpers stay organized together.
+
+It handles:
+- Meal planning
+- Tasks & shopping lists
+- Expense tracking
+- Family practices & routines
+- Helper salary slips
+
+Give it a try:`,
   'dashboard.slots': 'slots',
   'dashboard.member_slots_used': 'member slots used',
 
@@ -1252,7 +1264,7 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
 
   // User-friendly error messages (replacing technical gibberish)
   'error.email_already_registered': 'This email is already registered. Please sign in instead.',
-  'error.weak_password': 'Please choose a stronger password.',
+  'error.weak_password': 'Password must contain at least 8 characters, 1 lowercase, 1 uppercase, 1 special character',
   'error.incorrect_code': 'Incorrect code. Please check your email and enter the correct 6-digit code.',
   'error.code_expired': 'Code expired. Please request a new one.',
   'error.too_many_attempts': 'Too many attempts. Please wait a few minutes before trying again.',
@@ -1371,4 +1383,94 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'info.practice_ideas_selected': 'selected',
   'info.practice_ideas_confirm_title': 'Add {count} Practice Ideas?',
   'info.practice_ideas_confirm_desc': 'You can edit or delete them anytime after adding.',
+
+  // Practice Ideas - Preset Names
+  'practice.preset.hk-rules-phone.name': 'Phone Usage',
+  'practice.preset.hk-rules-visitor.name': 'Visitor Policy',
+  'practice.preset.hk-rules-privacy.name': 'Social Media & Privacy',
+  'practice.preset.hk-rules-leaving.name': 'Leaving the House',
+  'practice.preset.hk-rules-keys.name': 'Key Security',
+  'practice.preset.hk-safety-window.name': 'Window Cleaning Safety',
+  'practice.preset.hk-safety-door.name': 'Door Security',
+  'practice.preset.hk-safety-cooking.name': 'Cooking Safety',
+  'practice.preset.hk-safety-chemicals.name': 'Chemical Storage',
+  'practice.preset.hk-clean-cloths.name': 'Color-Coded Cloths',
+  'practice.preset.hk-clean-trash.name': 'Trash Disposal',
+  'practice.preset.hk-clean-deepclean.name': 'Deep Cleaning Areas',
+  'practice.preset.hk-clean-linen.name': 'Bedding & Towels',
+  'practice.preset.hk-cook-hygiene.name': 'Food Hygiene',
+  'practice.preset.hk-cook-grocery.name': 'Grocery Alerts',
+  'practice.preset.hk-cook-leftovers.name': 'Leftover Labeling',
+  'practice.preset.hk-cook-kitchen.name': 'Kitchen Hygiene',
+  'practice.preset.hk-child-supervision.name': 'Child Supervision',
+  'practice.preset.hk-child-diet.name': 'Dietary Restrictions',
+  'practice.preset.hk-child-hygiene.name': 'Hand Hygiene',
+  'practice.preset.hk-child-reporting.name': 'Health Reporting',
+  'practice.preset.hk-laundry-sorting.name': 'Laundry Sorting',
+  'practice.preset.hk-laundry-delicates.name': 'Delicate Items',
+  'practice.preset.hk-laundry-ironing.name': 'Ironing Guidelines',
+  'practice.preset.hk-helper-health.name': 'Health First',
+  'practice.preset.hk-helper-feedback.name': 'Open Communication',
+  'practice.preset.hk-helper-rest.name': 'Rest Period',
+  'practice.preset.hk-helper-wifi.name': 'WiFi Access',
+  'practice.preset.hk-routine-priority.name': 'Task Priorities',
+  'practice.preset.hk-routine-endofday.name': 'End of Day Checklist',
+
+  // Practice Ideas - Preset Notes
+  'practice.preset.hk-rules-phone.note': 'Personal mobile phone usage is restricted to break times and emergencies. Please avoid using it while performing active tasks or caring for children.',
+  'practice.preset.hk-rules-visitor.note': 'No friends or relatives are allowed to enter the home without explicit permission from the employer.',
+  'practice.preset.hk-rules-privacy.note': "Do not post photos or videos of the home, family members, or children on social media platforms to protect the family's privacy.",
+  'practice.preset.hk-rules-leaving.note': 'Always inform the employer before leaving the flat. Please return home by the agreed curfew on rest days.',
+  'practice.preset.hk-rules-keys.note': 'Household keys are for your personal use only. Do not duplicate them or lend them to anyone else.',
+  'practice.preset.hk-safety-window.note': 'Only clean the interior of windows. Exterior cleaning is strictly prohibited unless there are fixed grilles and you remain on the floor.',
+  'practice.preset.hk-safety-door.note': 'Keep the main door locked at all times. Do not open the door for strangers, delivery people, or technicians unless pre-arranged by the employer.',
+  'practice.preset.hk-safety-cooking.note': 'Never leave the stove unattended while it is on. Ensure the gas/electricity is switched off immediately after use.',
+  'practice.preset.hk-safety-chemicals.note': "Store all cleaning detergents and chemicals in the designated high cabinet, away from food and out of children's reach.",
+  'practice.preset.hk-clean-cloths.note': 'Use specific colored cloths for different areas: Red for toilets, Blue for the kitchen, and White for dining surfaces.',
+  'practice.preset.hk-clean-trash.note': 'Empty all household trash bins before finishing work. Separate recyclables (paper, plastic, metal) from general waste.',
+  'practice.preset.hk-clean-deepclean.note': 'Areas that need regular deep cleaning: under beds and sofas, inside microwave and oven, behind furniture, and inside the fridge.',
+  'practice.preset.hk-clean-linen.note': 'Bedsheets, pillowcases, and towels should be changed regularly. Use hot water for white linens and cold water for colored items.',
+  'practice.preset.hk-cook-hygiene.note': 'Use separate cutting boards and knives for raw meat and vegetables to prevent cross-contamination.',
+  'practice.preset.hk-cook-grocery.note': 'Please update the Shopping List in Helpy when staples (rice, oil, milk) are about 20% remaining.',
+  'practice.preset.hk-cook-leftovers.note': 'Store leftovers in airtight containers. Label them with the date before putting them in the fridge.',
+  'practice.preset.hk-cook-kitchen.note': 'Clean the sink and wipe down the stovetop immediately after every meal preparation.',
+  'practice.preset.hk-child-supervision.note': 'Never leave children unattended, especially in the bathroom, on high chairs, or at the public playground.',
+  'practice.preset.hk-child-diet.note': 'Do not give the children candy, chocolate, or juice without checking with the parents first.',
+  'practice.preset.hk-child-hygiene.note': 'Ensure children wash their hands immediately upon returning home from school or the park.',
+  'practice.preset.hk-child-reporting.note': 'Inform parents immediately if a child has a fever, a fall/injury, or displays unusual behavior.',
+  'practice.preset.hk-laundry-sorting.note': 'Separate whites, darks, and colors before washing. Check all pockets before loading the machine.',
+  'practice.preset.hk-laundry-delicates.note': 'Hand wash delicate items or use laundry bags. Do not put wool, silk, or items with beading in the dryer.',
+  'practice.preset.hk-laundry-ironing.note': 'Work shirts and school uniforms should be ironed and hung ready before they are needed. Check care labels for temperature settings.',
+  'practice.preset.hk-helper-health.note': 'Please inform us immediately if you feel unwell or are injured so we can arrange medical care.',
+  'practice.preset.hk-helper-feedback.note': 'We value open communication. Please feel free to discuss any concerns, questions, or suggestions with us at any time.',
+  'practice.preset.hk-helper-rest.note': 'We respect your 8 hours of uninterrupted sleep. Unless it is an emergency, we will not call for you after 10:00 PM.',
+  'practice.preset.hk-helper-wifi.note': 'You are welcome to use the home WiFi during your rest periods and breaks. Ask us for the password.',
+  'practice.preset.hk-routine-priority.note': 'Priority order: Child safety first, then meal preparation, followed by cleaning tasks. Urgent requests from employers take precedence.',
+  'practice.preset.hk-routine-endofday.note': 'Before finishing work: ensure kitchen is clean, trash is emptied, doors are locked, and children have completed their evening routine.',
+
+  // Error Messages - Family (Places/Practice)
+  'error.save_place': 'Failed to save. Please try again.',
+  'error.delete_place': 'Failed to delete. Please try again.',
+  'error.save_practice': 'Failed to save. Please try again.',
+  'error.delete_practice': 'Failed to delete. Please try again.',
+
+  // Error Messages - Helper/Salary
+  'error.load_data': 'Failed to load data. Please try again.',
+  'error.required_fields': 'Please fill in all required fields',
+  'error.delete_slip': 'Failed to delete salary slip. Please try again.',
+  'error.sign_slip': 'Failed to sign. Please try again.',
+  'error.select_helper': 'Please select a helper',
+  'error.select_dates': 'Please select payment period dates',
+  'error.enter_salary': 'Please enter a valid base salary',
+  'error.invalid_dates': 'End date must be after start date',
+  'error.create_slip': 'Failed to create salary slip. Please try again.',
+
+  // Common - Additional
+  'common.proceed': 'Proceed',
+  'common.view_plans': 'View Plans',
+  'common.upgrade_required': 'Upgrade',
+
+  // Helper Section - Upgrade Messages
+  'helper.upgrade_required_title': 'Helper Management',
+  'helper.upgrade_required_desc': 'Upgrade to Core or Pro to access Helper Management features',
 };

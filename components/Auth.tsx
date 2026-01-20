@@ -1,4 +1,5 @@
 // components/Auth.tsx
+// NOTE: Auth screen error messages are always displayed in English regardless of user language preference
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { SignIn, useUser, useClerk } from '@clerk/clerk-react';
@@ -11,7 +12,10 @@ import RemovedFromHousehold from './RemovedFromHousehold';
 
 // Loading component for auth states
 const AuthLoading = () => (
-  <div className="min-h-screen w-full flex flex-col items-center justify-center p-6 page-fade-in auth-gradient-bg">
+  <div 
+    className="fixed inset-0 flex flex-col items-center justify-center p-6 page-fade-in auth-gradient-bg overflow-hidden"
+    style={{ touchAction: 'none' }}
+  >
     {/* Loading bar only - no logo/text to avoid jarring transition from iOS splash */}
     <div className="auth-loading-bar mx-auto">
       <div className="auth-loading-bar-fill" />
@@ -89,7 +93,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
                   : 'bg-secondary text-foreground'
               }`}
             >
-              {t['common.ok'] || 'OK'}
+              OK
             </button>
           </div>
         </div>
@@ -277,8 +281,8 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
           } else if (result.expired) {
             console.log('⏰ Invitation expired');
             showAlert(
-              t['error.invite_expired_title'] || 'Invitation Expired',
-              t['error.invite_expired'] || 'This invitation has expired. Please ask for a new invite link.',
+              'Invitation Expired',
+              'This invitation has expired. Please ask for a new invite link.',
               'error'
             );
             window.history.replaceState({}, '', window.location.pathname);
@@ -298,8 +302,8 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
             // Email already used by another account
             console.log('📧 [Auth] Email conflict - another account has this email');
             showAlert(
-              t['error.email_conflict_title'] || 'Email Already Used',
-              t['error.email_conflict'] || 'This email is already associated with another Helpy account. If you already have an account, please sign in instead of signing up. Or use a different email address.',
+              'Email Already Used',
+              'This email is already associated with another Helpy account. If you already have an account, please sign in instead of signing up. Or use a different email address.',
               'error'
             );
             window.history.replaceState({}, '', window.location.pathname);
@@ -488,8 +492,8 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
         console.error('❌ [Auth] Invite params detected but not processed - NOT creating new household');
         console.error('❌ [Auth] Invite details:', { hid: finalHid, uid: finalUid });
         showAlert(
-          t['error.invite_processing_title'] || 'Invitation Error',
-          t['error.invite_processing'] || 'There was a problem processing your invitation. Please try clicking the invite link again or contact the household admin for a new link.',
+          'Invitation Error',
+          'There was a problem processing your invitation. Please try clicking the invite link again or contact the household admin for a new link.',
           'error'
         );
         window.history.replaceState({}, '', window.location.pathname);
@@ -566,8 +570,8 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
     } catch (error: any) {
       console.error('❌ Failed to create user:', error);
       showAlert(
-        t['error.account_setup_title'] || 'Account Setup Failed',
-        t['error.account_setup'] || 'Account setup failed. Please try again or contact support.',
+        'Account Setup Failed',
+        'Account setup failed. Please try again or contact support.',
         'error'
       );
       
@@ -681,8 +685,8 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
     } catch (error: any) {
       console.error('❌ Failed to create new household:', error);
       showAlert(
-        t['error.create_household_title'] || 'Household Creation Failed',
-        t['error.household_create'] || 'Could not create your household. Please try again.',
+        'Household Creation Failed',
+        'Could not create your household. Please try again.',
         'error'
       );
       setIsCreatingUser(false);
@@ -843,10 +847,10 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
                                error.message?.toLowerCase().includes('expired') ||
                                error.message?.toLowerCase().includes('token');
       showAlert(
-        t['error.switch_household_title'] || 'Household Switch Failed',
+        'Household Switch Failed',
         isSessionExpired 
-          ? (t['error.session_expired'] || 'Session expired. Please sign in again.')
-          : (t['error.switch_household'] || 'Failed to switch household. Please try again.'),
+          ? 'Session expired. Please sign in again.'
+          : 'Failed to switch household. Please try again.',
         'error'
       );
       setIsCreatingUser(false);
@@ -870,7 +874,6 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
   if (showRemovedFromHousehold) {
     return (
       <RemovedFromHousehold
-        t={t}
         onDeleteAccount={handleDeleteAccountFromRemoved}
         onCreateNewHousehold={handleCreateNewHousehold}
         isLoading={isCreatingUser}
@@ -880,7 +883,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
 
   // Show custom signup page
   if (showSignUp) {
-    return <SignUp onBackToSignIn={() => setShowSignUp(false)} t={t} />;
+    return <SignUp onBackToSignIn={() => setShowSignUp(false)} />;
   }
 
   // CRITICAL: Show loading while Clerk is initializing (after OAuth redirect)
@@ -937,7 +940,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
         }
       };
       
-      return <SignUp onBackToSignIn={handleBackToSignIn} t={t} />;
+      return <SignUp onBackToSignIn={handleBackToSignIn} />;
     }
     
     // Wait for SignIn component to be ready (prevents flash of container without form)

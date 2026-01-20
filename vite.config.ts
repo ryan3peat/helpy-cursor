@@ -16,6 +16,11 @@ export default defineConfig({
   },
   build: {
     sourcemap: true,
+    // Remove console.log and debugger statements in production builds
+    minify: 'esbuild',
+    esbuild: {
+      drop: ['console', 'debugger'],
+    },
   },
   server: {
     proxy: {

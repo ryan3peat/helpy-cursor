@@ -655,11 +655,30 @@ function setupUpdateDetection(registration: ServiceWorkerRegistration): void {
     });
   });
   
-  // Safety net: if the service worker controller changes mid-session, reload cleanly
-  // This handles the case where user clicks Update or browser decides to activate new SW
+  // Track if we've already reloaded for this session to prevent infinite loop
+  // The controllerchange event fires when a new SW takes over, which can happen:
+  // 1. On first page load (SW activates and claims)
+  // 2. When user clicks "Update" button
+  // We only want to reload in case #2 (actual update), not case #1 (initial load)
+  let hasReloadedForUpdate = false;
+  
   navigator.serviceWorker.addEventListener('controllerchange', () => {
-    console.log('[SW Update] Controller changed - reloading for clean state...');
-    window.location.reload();
+    // Prevent infinite reload loop: only reload ONCE per session
+    // After first reload, the SW should be stable
+    if (hasReloadedForUpdate) {
+      console.log('[SW Update] Controller changed again - ignoring to prevent loop');
+      return;
+    }
+    
+    // Only reload if there was already a controller (meaning this is an UPDATE, not initial load)
+    // On first page load, navigator.serviceWorker.controller is null until SW activates
+    if (navigator.serviceWorker.controller) {
+      console.log('[SW Update] Controller changed (update detected) - reloading for clean state...');
+      hasReloadedForUpdate = true;
+      window.location.reload();
+    } else {
+      console.log('[SW Update] Controller set for first time - no reload needed');
+    }
   });
 }
 
@@ -690,6 +709,7 @@ export function applyServiceWorkerUpdate(registration: ServiceWorkerRegistration
 /**
  * Check for service worker updates
  * Call this periodically or on visibility change
+ * Also checks for already-waiting workers (in case we missed the updatefound event)
  */
 export async function checkForUpdates(): Promise<void> {
   if (!('serviceWorker' in navigator)) return;
@@ -697,6 +717,13 @@ export async function checkForUpdates(): Promise<void> {
   try {
     const registration = await navigator.serviceWorker.getRegistration('/');
     if (registration) {
+      // First, check if there's already a waiting worker (update ready but we missed the event)
+      if (registration.waiting) {
+        console.log('[SW Update] Found waiting worker - dispatching update event');
+        dispatchUpdateAvailable(registration);
+        return; // No need to call update() - already have one waiting
+      }
+      
       console.log('[SW Update] Checking for updates...');
       await registration.update();
     }

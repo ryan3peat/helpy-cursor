@@ -1,24 +1,20 @@
 // components/RemovedFromHousehold.tsx
+// NOTE: This auth screen always displays in English regardless of user language preference
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useUser } from '@clerk/clerk-react';
 import { UserX, Home, Trash2, AlertTriangle } from 'lucide-react';
-import { TranslationDictionary } from '@/types';
 
 interface RemovedFromHouseholdProps {
-  t: TranslationDictionary;
   onDeleteAccount: () => Promise<void>;
   onCreateNewHousehold: () => Promise<void>;
   isLoading?: boolean;
 }
 
 const RemovedFromHousehold: React.FC<RemovedFromHouseholdProps> = ({
-  t,
   onDeleteAccount,
   onCreateNewHousehold,
   isLoading = false
 }) => {
-  const { user } = useUser();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
@@ -62,10 +58,10 @@ const RemovedFromHousehold: React.FC<RemovedFromHouseholdProps> = ({
             <UserX size={28} className="text-orange-600" />
           </div>
           <h1 className="text-display font-bold text-foreground mb-2">
-            {t['removed.title'] || 'Removed from Household'}
+            Removed from Household
           </h1>
           <p className="text-body text-muted-foreground">
-            {t['removed.subtitle'] || 'You have been removed from your household'}
+            You have been removed from your household
           </p>
         </div>
 
@@ -75,17 +71,16 @@ const RemovedFromHousehold: React.FC<RemovedFromHouseholdProps> = ({
             <AlertTriangle size={20} className="text-orange-500 mt-0.5 flex-shrink-0" />
             <div>
               <h3 className="text-body font-semibold text-foreground mb-1">
-                {t['removed.explanation_title'] || 'What happened?'}
+                What happened?
               </h3>
               <p className="text-caption text-muted-foreground">
-                {t['removed.explanation'] ||
-                  'The household administrator has removed you from the household. Your Helpy account is still active, but you are no longer part of any household.'}
+                The household administrator has removed you from the household. Your Helpy account is still active, but you are no longer part of any household.
               </p>
             </div>
           </div>
 
           <h4 className="text-body font-semibold text-foreground mb-4">
-            {t['removed.options_title'] || 'What would you like to do?'}
+            What would you like to do?
           </h4>
 
           <div className="space-y-3">
@@ -104,13 +99,10 @@ const RemovedFromHousehold: React.FC<RemovedFromHouseholdProps> = ({
               </div>
               <div className="text-left flex-1">
                 <p className="text-body font-medium text-foreground">
-                  {isCreating 
-                    ? (t['removed.creating'] || 'Creating household...')
-                    : (t['removed.create_new'] || 'Create a new household')
-                  }
+                  {isCreating ? 'Creating household...' : 'Create a new household'}
                 </p>
                 <p className="text-caption text-muted-foreground">
-                  {t['removed.create_new_desc'] || 'Start fresh with your own household'}
+                  Start fresh with your own household
                 </p>
               </div>
             </button>
@@ -126,10 +118,10 @@ const RemovedFromHousehold: React.FC<RemovedFromHouseholdProps> = ({
               </div>
               <div className="text-left flex-1">
                 <p className="text-body font-medium text-foreground">
-                  {t['removed.delete_account'] || 'Delete my account permanently'}
+                  Delete my account permanently
                 </p>
                 <p className="text-caption text-muted-foreground">
-                  {t['removed.delete_account_desc'] || 'Remove all your data from Helpy'}
+                  Remove all your data from Helpy
                 </p>
               </div>
             </button>
@@ -138,8 +130,7 @@ const RemovedFromHousehold: React.FC<RemovedFromHouseholdProps> = ({
 
         {/* Footer */}
         <p className="text-caption text-muted-foreground">
-          {t['removed.contact_admin'] ||
-            'If you believe this was done in error, please contact your household administrator.'}
+          If you believe this was done in error, please contact your household administrator.
         </p>
       </div>
 
@@ -162,7 +153,7 @@ const RemovedFromHousehold: React.FC<RemovedFromHouseholdProps> = ({
                   <AlertTriangle size={20} className="text-destructive" />
                 </div>
                 <h2 className="text-title text-destructive">
-                  {t['removed.delete_confirm_title'] || 'Delete Account?'}
+                  Delete Account?
                 </h2>
               </div>
             </div>
@@ -170,8 +161,7 @@ const RemovedFromHousehold: React.FC<RemovedFromHouseholdProps> = ({
             {/* Content */}
             <div className="p-5">
               <p className="text-body text-muted-foreground">
-                {t['removed.delete_confirm_message'] || 
-                  'This action cannot be undone. Your account and all associated data will be permanently deleted.'}
+                This action cannot be undone. Your account and all associated data will be permanently deleted.
               </p>
             </div>
 
@@ -182,7 +172,7 @@ const RemovedFromHousehold: React.FC<RemovedFromHouseholdProps> = ({
                 disabled={isDeleting}
                 className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body disabled:opacity-50"
               >
-                {t['common.cancel'] || 'Cancel'}
+                Cancel
               </button>
               <button
                 onClick={handleDeleteAccount}
@@ -192,10 +182,10 @@ const RemovedFromHousehold: React.FC<RemovedFromHouseholdProps> = ({
                 {isDeleting ? (
                   <>
                     <div className="w-4 h-4 border-2 border-destructive border-t-transparent rounded-full animate-spin" />
-                    {t['common.deleting'] || 'Deleting...'}
+                    Deleting...
                   </>
                 ) : (
-                  t['removed.delete_permanently'] || 'Delete Permanently'
+                  'Delete Permanently'
                 )}
               </button>
             </div>

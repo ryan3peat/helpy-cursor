@@ -642,11 +642,13 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
                   autoComplete="new-password"
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  placeholder="Min. 8 characters"
+                  placeholder="Enter password"
                   required
-                  minLength={8}
                   className="w-full px-4 py-3.5 rounded-xl bg-white border border-border text-foreground placeholder:text-muted-foreground focus:border-primary outline-none transition-all text-body"
                 />
+                <p className="text-caption text-muted-foreground mt-2 ml-1">
+                  Min. 8 characters, 1 lowercase, 1 uppercase, 1 special character
+                </p>
               </div>
 
               {/* Clerk CAPTCHA widget container */}

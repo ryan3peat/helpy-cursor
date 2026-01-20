@@ -618,10 +618,24 @@ export async function addItem(
       finalData.last_modified_by ? getSupabaseUserId(finalData.last_modified_by, householdId) : Promise.resolve(null),
     ]);
     
-    // Apply assignee_id conversion
+    // Apply assignee_id conversion with validation
     if (assigneeUuid) {
-      console.log(`🔄 Converting assignee_id ${finalData.assignee_id} to UUID ${assigneeUuid}`);
-      finalData.assignee_id = assigneeUuid;
+      const isValidUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(assigneeUuid);
+      if (isValidUuid) {
+        console.log(`🔄 Converting assignee_id ${finalData.assignee_id} to UUID ${assigneeUuid}`);
+        finalData.assignee_id = assigneeUuid;
+      } else {
+        console.warn(`⚠️ getSupabaseUserId returned invalid UUID for assignee_id: ${assigneeUuid} - setting to null`);
+        finalData.assignee_id = null;
+      }
+    } else if (finalData.assignee_id) {
+      // Safety net: if UUID lookup failed and it's not already a valid UUID, set to null
+      // This prevents FK constraint violations from Clerk IDs being left in place
+      const isAlreadyValidUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(finalData.assignee_id);
+      if (!isAlreadyValidUuid) {
+        console.warn(`⚠️ Could not resolve assignee_id: ${finalData.assignee_id} - setting to null`);
+        finalData.assignee_id = null;
+      }
     }
     
     // Apply created_by conversion with validation
@@ -1103,21 +1117,33 @@ export async function deleteItem(
   // For meals and expenses: update last_modified_by BEFORE hard delete for notification attribution
   // The trigger reads OLD.last_modified_by for delete notifications
   if (lastModifiedBy && ['meals', 'expenses'].includes(collection)) {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/a848de4d-66f4-4490-8d69-77a8eaa34e52',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'supabaseService.ts:deleteItem',message:'ABOUT TO UPDATE last_modified_by before DELETE',data:{collection,id:actualId,lastModifiedBy},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
     const lastModifiedByUuid = await getSupabaseUserId(lastModifiedBy, householdId);
     if (lastModifiedByUuid) {
       const isValidUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(lastModifiedByUuid);
       if (isValidUuid) {
         console.log(`🔄 Setting last_modified_by to ${lastModifiedByUuid} before hard delete`);
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/a848de4d-66f4-4490-8d69-77a8eaa34e52',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'supabaseService.ts:deleteItem:UPDATE',message:'EXECUTING UPDATE to set last_modified_by - THIS TRIGGERS NOTIFICATION!',data:{collection,id:actualId,lastModifiedByUuid},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A'})}).catch(()=>{});
+        // #endregion
         await client
           .from(tableName)
           .update({ last_modified_by: lastModifiedByUuid })
           .eq('id', actualId)
           .eq('household_id', householdId);
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/a848de4d-66f4-4490-8d69-77a8eaa34e52',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'supabaseService.ts:deleteItem:UPDATE_DONE',message:'UPDATE completed - trigger has fired for UPDATE event',data:{collection,id:actualId},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A'})}).catch(()=>{});
+        // #endregion
       }
     }
   }
   
   // Hard delete for other tables
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/a848de4d-66f4-4490-8d69-77a8eaa34e52',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'supabaseService.ts:deleteItem:DELETE',message:'EXECUTING DELETE - THIS TRIGGERS NOTIFICATION!',data:{collection,id:actualId},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A'})}).catch(()=>{});
+  // #endregion
   let { error, count } = await client
     .from(tableName)
     .delete({ count: 'exact' })

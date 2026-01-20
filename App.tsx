@@ -141,6 +141,7 @@ const AppContent: React.FC = () => {
   }, []);
 
   // Periodic update checks: on visibility change + every 60 minutes
+  // NOTE: Initial check is done AFTER initializePushNotifications() to avoid race condition
   useEffect(() => {
     // Check for updates when app comes to foreground
     const handleVisibilityChange = () => {
@@ -149,9 +150,6 @@ const AppContent: React.FC = () => {
         checkForUpdates();
       }
     };
-
-    // Check immediately on mount
-    checkForUpdates();
 
     // Check every 60 minutes while app is open
     const intervalId = setInterval(() => {
@@ -778,9 +776,18 @@ const AppContent: React.FC = () => {
 
   // Initialize push notifications service worker and batch processing
   useEffect(() => {
-    initializePushNotifications().catch(err => {
-      console.warn('[App] Failed to initialize push notifications:', err);
-    });
+    initializePushNotifications()
+      .then(() => {
+        // Check for updates AFTER service worker is registered and listeners are set up
+        // This prevents the race condition where we check before we're listening
+        console.log('[App] SW initialized - checking for updates...');
+        checkForUpdates();
+      })
+      .catch(err => {
+        console.warn('[App] Failed to initialize push notifications:', err);
+        // Still check for updates even if push init fails (SW might still be registered)
+        checkForUpdates();
+      });
     
     // Start periodic batch processing as a backup mechanism
     // This ensures notification batches are sent even if pg_cron isn't available
@@ -1152,6 +1159,43 @@ const AppContent: React.FC = () => {
   // Makes an actual database query to verify the JWT/session works
   // This catches stale sessions (like Ryan's bug) at app startup, not during operations
   const sessionVerificationRef = useRef(false);
+  const masterTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  
+  // MASTER TIMEOUT - starts IMMEDIATELY, independent of Supabase readiness
+  // This is the safety net that prevents users from being stuck on loading forever
+  // Even if Clerk/Supabase is slow, users get through after 5 seconds
+  useEffect(() => {
+    // Only run for logged-in, non-demo users who haven't been verified yet
+    if (!currentUser || sessionVerified || isDemoMode) {
+      // Clear any existing timeout
+      if (masterTimeoutRef.current) {
+        clearTimeout(masterTimeoutRef.current);
+        masterTimeoutRef.current = null;
+      }
+      return;
+    }
+    
+    // Start master timeout IMMEDIATELY
+    if (!masterTimeoutRef.current) {
+      console.log('[Session Verification] ⏱️ Starting 5s master timeout...');
+      masterTimeoutRef.current = setTimeout(() => {
+        if (!sessionVerified) {
+          console.warn('[Session Verification] ⏰ MASTER TIMEOUT - letting user through after 5s wait');
+          setSessionVerified(true);
+        }
+        masterTimeoutRef.current = null;
+      }, 5000);
+    }
+    
+    return () => {
+      if (masterTimeoutRef.current) {
+        clearTimeout(masterTimeoutRef.current);
+        masterTimeoutRef.current = null;
+      }
+    };
+  }, [currentUser, sessionVerified, isDemoMode]);
+  
+  // Session verification logic - runs when Supabase is ready
   useEffect(() => {
     // Reset verification state when user logs out
     if (!currentUser) {
@@ -1171,7 +1215,7 @@ const AppContent: React.FC = () => {
       return;
     }
     
-    // Wait for authenticated Supabase client
+    // Wait for authenticated Supabase client (master timeout will save us if this takes too long)
     if (!isSupabaseReady) {
       console.log('[Session Verification] ⏳ Waiting for authenticated client...');
       return;
@@ -1220,30 +1264,39 @@ const AppContent: React.FC = () => {
       return 'verified';
     };
     
-    // Timeout promise - auto-continue after 5 seconds to prevent stuck loading
-    const timeout = new Promise<'timeout'>((resolve) => {
-      setTimeout(() => resolve('timeout'), 5000);
-    });
-    
-    // Race verification against timeout
-    Promise.race([verifySession().catch(() => 'stale' as const), timeout])
+    // Run verification (master timeout is already running as safety net)
+    verifySession()
       .then((result) => {
+        // Clear master timeout since we got a result
+        if (masterTimeoutRef.current) {
+          clearTimeout(masterTimeoutRef.current);
+          masterTimeoutRef.current = null;
+        }
+        
         if (result === 'verified') {
-          setSessionVerified(true);
-        } else if (result === 'timeout') {
-          // Timeout reached - continue optimistically
-          // Most likely cause is slow network, not stale session
-          console.warn('[Session Verification] ⏰ Timeout reached (5s) - continuing optimistically');
           setSessionVerified(true);
         } else {
           // Stale session detected
           console.warn('[Session Verification] ⚠️ Session invalid');
+          
+          // On localhost, skip session invalidation (JWT template may be missing)
+          const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+          if (isLocalDev) {
+            console.log('[Session Verification] ⚠️ Skipping invalidation on localhost - marking as verified');
+            setSessionVerified(true);
+            return;
+          }
+          
           console.log('[Session Verification] 🔄 Triggering silent refresh via Auth');
           localStorage.removeItem('helpy_current_session_user');
           setCurrentUser(null);
           setSessionVerified(false);
           sessionVerificationRef.current = false;
         }
+      })
+      .catch((err) => {
+        console.error('[Session Verification] ❌ Unexpected error:', err);
+        // On error, let master timeout handle it (or it already did)
       });
   }, [currentUser, isSupabaseReady, sessionVerified, isDemoMode]);
 
@@ -1545,6 +1598,9 @@ const AppContent: React.FC = () => {
   };
 
   const handleDeleteMeal = async (id: string) => {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/a848de4d-66f4-4490-8d69-77a8eaa34e52',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.tsx:handleDeleteMeal',message:'handleDeleteMeal called',data:{mealId:id,householdId:hid},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'D'})}).catch(()=>{});
+    // #endregion
     if (!hid) return;
     
     // Demo mode: skip database operation
@@ -1560,6 +1616,9 @@ const AppContent: React.FC = () => {
       return;
     }
     // Pass currentUser.id for notification attribution
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/a848de4d-66f4-4490-8d69-77a8eaa34e52',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.tsx:handleDeleteMeal:beforeDelete',message:'About to call deleteItem for meal',data:{mealId:id,userId:currentUser?.id},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'D'})}).catch(()=>{});
+    // #endregion
     await deleteItem(hid, 'meals', id, currentUser?.id);
   };
 
@@ -1918,9 +1977,10 @@ const AppContent: React.FC = () => {
       return;
     }
     try {
-      const updated = await updatePractice(hid, id, data);
-      // Ensure state reflects server-mapped data (translations, etc.)
-      setPractices(prev => prev.map(i => i.id === id ? updated : i));
+      // Fire and forget - rely on optimistic update + real-time sync merge
+      // DO NOT update state with DB result here! It can overwrite optimistic
+      // translations if DB hasn't committed yet. This matches handleUpdatePlace.
+      await updatePractice(hid, id, data);
     } catch (error) {
       console.error('Failed to update practice:', error);
       setPractices(previousItems);  // Rollback
@@ -2186,7 +2246,9 @@ const AppContent: React.FC = () => {
   // "At the door" check: Don't show app content until session is verified
   // This ensures we catch stale sessions BEFORE the user tries to do anything
   // User sees the loading bar briefly (~200-500ms for valid sessions)
-  if (!sessionVerified && !isDemoMode) {
+  // Skip on localhost to allow development without JWT template
+  const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  if (!sessionVerified && !isDemoMode && !isLocalhost) {
     console.log('🔐 [App] Session not yet verified, showing loading...');
     return <AppLoading />;
   }

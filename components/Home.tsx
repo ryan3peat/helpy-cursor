@@ -36,7 +36,8 @@ import {
   EyeOff,
   Lock,
   Smartphone,
-  UserCog
+  UserCog,
+  MessageSquareShare
 } from 'lucide-react';
 import Avatar from './ui/Avatar';
 import ErrorBanner from './ui/ErrorBanner';
@@ -786,6 +787,49 @@ const Home: React.FC<HomeProps> = ({
     setIsEditingNotes(false);
   };
 
+  // Share app handler using Web Share API
+  const handleShareApp = async () => {
+    haptics.light();
+    
+    const shareTitle = t['share.app_title'] || 'Check out Helpy!';
+    const shareText = t['share.app_text'] || `Hey! I found this great app called Helpy - it's a home management app that helps families and helpers stay organized together.
+
+It handles:
+- Meal planning
+- Tasks & shopping lists
+- Expense tracking
+- Family practices & routines
+- Helper salary slips
+
+Give it a try:`;
+    const shareUrl = 'https://app.helpyfam.com';
+    const learnMoreUrl = 'https://www.helpyfam.com';
+    
+    // Use Web Share API if available (most mobile browsers)
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: shareTitle,
+          text: `${shareText}\n\nLearn more: ${learnMoreUrl}`,
+          url: shareUrl,
+        });
+      } catch (error) {
+        // User cancelled - no action needed
+        if ((error as Error).name !== 'AbortError') {
+          console.error('Share failed:', error);
+        }
+      }
+    } else {
+      // Fallback: copy to clipboard for desktop
+      const fullText = `${shareText}\n${shareUrl}\n\nLearn more: ${learnMoreUrl}`;
+      try {
+        await navigator.clipboard.writeText(fullText);
+      } catch (error) {
+        console.error('Copy failed:', error);
+      }
+    }
+  };
+
   const handleDeleteNotes = async () => {
     setIsDeletingNotes(true);
     try {
@@ -1392,6 +1436,14 @@ const Home: React.FC<HomeProps> = ({
               <span className="text-body font-medium text-foreground mt-2">{t['guide.title'] || 'User Guide'}</span>
             </button>
           )}
+          {/* Tell Others - Share app */}
+          <div className="w-px bg-border mx-4 self-stretch"></div>
+          <button onClick={handleShareApp} className="flex-1 flex flex-col items-center">
+            <div className="h-8 flex items-center justify-center">
+              <MessageSquareShare size={24} className="text-primary" />
+            </div>
+            <span className="text-body font-medium text-foreground mt-2">{t['dashboard.tell_others'] || 'Tell Others'}</span>
+          </button>
           {/* Add to Homescreen - Only show on mobile when not installed */}
           {isMobile && !isPwaInstalled && (
             <>

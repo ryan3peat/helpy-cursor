@@ -52,7 +52,6 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'dashboard.language': 'Language',
   'dashboard.need_help': 'Need Help Getting Started?',
   'dashboard.tell_others': 'Tell Others',
-  'share.app_title': 'Check out Helpy!',
   'share.app_text': `Hey! I found this great app called Helpy - it's a home management app that helps families and helpers stay organized together.
 
 It handles:

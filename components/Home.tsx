@@ -791,7 +791,6 @@ const Home: React.FC<HomeProps> = ({
   const handleShareApp = async () => {
     haptics.light();
     
-    const shareTitle = t['share.app_title'] || 'Check out Helpy!';
     const shareText = t['share.app_text'] || `Hey! I found this great app called Helpy - it's a home management app that helps families and helpers stay organized together.
 
 It handles:
@@ -805,13 +804,15 @@ Give it a try:`;
     const shareUrl = 'https://app.helpyfam.com';
     const learnMoreUrl = 'https://www.helpyfam.com';
     
+    // Embed URLs in text (WhatsApp ignores separate url param and only shows link preview)
+    const fullShareText = `${shareText}\n${shareUrl}\n\nLearn more: ${learnMoreUrl}`;
+    
     // Use Web Share API if available (most mobile browsers)
     if (navigator.share) {
       try {
+        // Only pass text - no separate url param (WhatsApp compatibility)
         await navigator.share({
-          title: shareTitle,
-          text: `${shareText}\n\nLearn more: ${learnMoreUrl}`,
-          url: shareUrl,
+          text: fullShareText,
         });
       } catch (error) {
         // User cancelled - no action needed
@@ -821,9 +822,8 @@ Give it a try:`;
       }
     } else {
       // Fallback: copy to clipboard for desktop
-      const fullText = `${shareText}\n${shareUrl}\n\nLearn more: ${learnMoreUrl}`;
       try {
-        await navigator.clipboard.writeText(fullText);
+        await navigator.clipboard.writeText(fullShareText);
       } catch (error) {
         console.error('Copy failed:', error);
       }

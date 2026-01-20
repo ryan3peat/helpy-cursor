@@ -138,13 +138,18 @@ const createDemoTodoItems = (): ToDoItem[] => {
     return getLocalDateString(d);
   };
   
-  // Shopping Items
+  // Shopping Items (10 total)
   const shoppingItems: Partial<ToDoItem>[] = [
     { name: 'Fresh Salmon', category: ShoppingCategory.WET_MARKET, quantity: '500', unit: 'g' },
     { name: 'Bok Choy', category: ShoppingCategory.WET_MARKET, quantity: '2', unit: 'bunches' },
+    { name: 'Spring Onions', category: ShoppingCategory.WET_MARKET, quantity: '3', unit: 'bunches' },
+    { name: 'Fresh Tofu', category: ShoppingCategory.WET_MARKET, quantity: '2', unit: 'packs' },
     { name: 'Vitasoy Soy Milk', category: ShoppingCategory.SUPERMARKET, quantity: '6', unit: 'boxes', brand: 'Vitasoy' },
     { name: 'Lee Kum Kee Oyster Sauce', category: ShoppingCategory.SUPERMARKET, quantity: '1', unit: 'bottle', brand: 'Lee Kum Kee', completed: true },
     { name: 'Jasmine Rice', category: ShoppingCategory.SUPERMARKET, quantity: '5', unit: 'kg' },
+    { name: 'Eggs', category: ShoppingCategory.SUPERMARKET, quantity: '2', unit: 'dozen' },
+    { name: 'Frozen Dumplings', category: ShoppingCategory.SUPERMARKET, quantity: '2', unit: 'packs', brand: 'Wei Chuan' },
+    { name: 'Cooking Oil', category: ShoppingCategory.SUPERMARKET, quantity: '1', unit: 'bottle' },
   ];
   
   shoppingItems.forEach((item, i) => {
@@ -162,7 +167,7 @@ const createDemoTodoItems = (): ToDoItem[] => {
     });
   });
   
-  // Tasks spread across a month for calendar view testing
+  // Tasks spread across a month for calendar view testing (16 total)
   const taskList: { name: string; category: string; daysOffset: number; time?: string; assignee?: string; recurrence?: any }[] = [
     // Today
     { name: 'Pick up Ethan from school', category: TaskCategory.FAMILY_CARE, daysOffset: 0, time: '15:30', recurrence: { frequency: 'WEEKLY', dayOfWeek: today.getDay() } },
@@ -174,83 +179,38 @@ const createDemoTodoItems = (): ToDoItem[] => {
     
     // Day 2
     { name: 'Grocery shopping at Wellcome', category: TaskCategory.HOME_CARE, daysOffset: 2, time: '09:00' },
-    { name: 'Pay electricity bill', category: TaskCategory.OTHERS, daysOffset: 2 },
     
     // Day 3
     { name: 'Ethan swimming class', category: TaskCategory.FAMILY_CARE, daysOffset: 3, time: '16:00', assignee: 'demo-mom-002' },
-    { name: 'Vacuum living room', category: TaskCategory.HOME_CARE, daysOffset: 3 },
-    
-    // Day 4
-    { name: 'Pick up dry cleaning', category: TaskCategory.OTHERS, daysOffset: 4, time: '11:00' },
     
     // Day 5
     { name: 'Water plants', category: TaskCategory.HOME_CARE, daysOffset: 5, recurrence: { frequency: 'WEEKLY', dayOfWeek: (today.getDay() + 5) % 7 } },
-    { name: 'Call insurance company', category: TaskCategory.OTHERS, daysOffset: 5, time: '14:00', assignee: 'demo-dad-001' },
     
     // Day 6
     { name: 'Deep clean kitchen', category: TaskCategory.HOME_CARE, daysOffset: 6, time: '09:00' },
-    { name: 'Ethan piano lesson', category: TaskCategory.FAMILY_CARE, daysOffset: 6, time: '15:00' },
     
     // Day 7 (1 week)
-    { name: 'Organize pantry', category: TaskCategory.HOME_CARE, daysOffset: 7 },
     { name: 'Family dim sum brunch', category: TaskCategory.FAMILY_CARE, daysOffset: 7, time: '10:30', assignee: 'demo-dad-001' },
-    
-    // Day 8
-    { name: 'Iron school uniforms', category: TaskCategory.HOME_CARE, daysOffset: 8, time: '08:00' },
-    
-    // Day 9
-    { name: 'Renew library books', category: TaskCategory.OTHERS, daysOffset: 9 },
-    { name: 'Prepare lunch boxes', category: TaskCategory.HOME_CARE, daysOffset: 9, time: '07:00' },
     
     // Day 10
     { name: 'Parent-teacher meeting', category: TaskCategory.FAMILY_CARE, daysOffset: 10, time: '14:00', assignee: 'demo-mom-002' },
-    { name: 'Change bed sheets', category: TaskCategory.HOME_CARE, daysOffset: 10 },
-    
-    // Day 12
-    { name: 'Take car for service', category: TaskCategory.OTHERS, daysOffset: 12, time: '09:00', assignee: 'demo-dad-001' },
-    { name: 'Ethan dentist appointment', category: TaskCategory.FAMILY_CARE, daysOffset: 12, time: '16:00', assignee: 'demo-mom-002' },
     
     // Day 14 (2 weeks)
     { name: 'Grocery run - wet market', category: TaskCategory.HOME_CARE, daysOffset: 14, time: '07:30' },
-    { name: 'Clean windows', category: TaskCategory.HOME_CARE, daysOffset: 14, time: '10:00' },
-    
-    // Day 15
-    { name: 'Pay credit card bill', category: TaskCategory.OTHERS, daysOffset: 15, assignee: 'demo-dad-001' },
     
     // Day 16
-    { name: 'Grandma birthday preparation', category: TaskCategory.FAMILY_CARE, daysOffset: 16 },
     { name: 'Order birthday cake', category: TaskCategory.OTHERS, daysOffset: 16, time: '11:00', assignee: 'demo-mom-002' },
     
     // Day 17
     { name: 'Birthday party', category: TaskCategory.FAMILY_CARE, daysOffset: 17, time: '12:00' },
     
-    // Day 18
-    { name: 'Return borrowed items', category: TaskCategory.OTHERS, daysOffset: 18 },
-    
-    // Day 20
-    { name: 'Schedule helper medical checkup', category: TaskCategory.OTHERS, daysOffset: 20, assignee: 'demo-mom-002' },
-    { name: 'Restock medicine cabinet', category: TaskCategory.HOME_CARE, daysOffset: 20 },
-    
     // Day 21 (3 weeks)
     { name: 'Deep clean refrigerator', category: TaskCategory.HOME_CARE, daysOffset: 21, time: '09:00' },
-    { name: 'Weekend family outing', category: TaskCategory.FAMILY_CARE, daysOffset: 21, time: '14:00', assignee: 'demo-dad-001' },
-    
-    // Day 23
-    { name: 'Prepare school project materials', category: TaskCategory.FAMILY_CARE, daysOffset: 23, assignee: 'demo-mom-002' },
     
     // Day 25
     { name: 'Pay rent', category: TaskCategory.OTHERS, daysOffset: 25, assignee: 'demo-dad-001' },
-    { name: 'Monthly deep clean', category: TaskCategory.HOME_CARE, daysOffset: 25, time: '08:00', recurrence: { frequency: 'MONTHLY', dayOfMonth: 25 } },
-    
-    // Day 27
-    { name: 'Sort donation items', category: TaskCategory.HOME_CARE, daysOffset: 27 },
-    
-    // Day 28 (4 weeks)
-    { name: 'Ethan report card day', category: TaskCategory.FAMILY_CARE, daysOffset: 28, time: '15:00', assignee: 'demo-mom-002' },
-    { name: 'Plan next month meals', category: TaskCategory.HOME_CARE, daysOffset: 28 },
     
     // Day 30
-    { name: 'End of month grocery inventory', category: TaskCategory.HOME_CARE, daysOffset: 30 },
     { name: 'Review household expenses', category: TaskCategory.OTHERS, daysOffset: 30, time: '20:00', assignee: 'demo-dad-001' },
   ];
   
@@ -342,45 +302,42 @@ const createDemoMeals = (): Meal[] => {
 // ============================================================================
 
 const createDemoExpenses = (): Expense[] => {
-  // Common Hong Kong merchants
+  // Common Hong Kong merchants (Total: 6,880 HKD)
   const expenses: Expense[] = [
-    // Housing & Utilities
-    { id: 'demo-exp-002', amount: 850, currency: 'HKD', category: 'Housing & Utilities', date: '2026-01-05', merchant: 'CLP Power', createdBy: 'demo-dad-001' },
-    { id: 'demo-exp-003', amount: 380, currency: 'HKD', category: 'Housing & Utilities', date: '2026-01-05', merchant: 'Towngas', createdBy: 'demo-dad-001' },
-    { id: 'demo-exp-004', amount: 298, currency: 'HKD', category: 'Housing & Utilities', date: '2026-01-10', merchant: 'PCCW Broadband', createdBy: 'demo-dad-001' },
+    // Housing & Utilities (750)
+    { id: 'demo-exp-002', amount: 450, currency: 'HKD', category: 'Housing & Utilities', date: '2026-01-05', merchant: 'CLP Power', createdBy: 'demo-dad-001' },
+    { id: 'demo-exp-003', amount: 180, currency: 'HKD', category: 'Housing & Utilities', date: '2026-01-05', merchant: 'Towngas', createdBy: 'demo-dad-001' },
+    { id: 'demo-exp-004', amount: 120, currency: 'HKD', category: 'Housing & Utilities', date: '2026-01-10', merchant: 'PCCW Broadband', createdBy: 'demo-dad-001' },
     
-    // Food & Daily Needs
-    { id: 'demo-exp-005', amount: 1580, currency: 'HKD', category: 'Food & Daily Needs', date: '2026-01-03', merchant: 'Wellcome Supermarket', createdBy: 'demo-helper-004' },
-    { id: 'demo-exp-006', amount: 890, currency: 'HKD', category: 'Food & Daily Needs', date: '2026-01-07', merchant: 'ParknShop', createdBy: 'demo-helper-004' },
-    { id: 'demo-exp-007', amount: 320, currency: 'HKD', category: 'Food & Daily Needs', date: '2026-01-08', merchant: 'Tai Po Wet Market', createdBy: 'demo-helper-004' },
-    { id: 'demo-exp-008', amount: 156, currency: 'HKD', category: 'Food & Daily Needs', date: '2026-01-10', merchant: '7-Eleven', createdBy: 'demo-mom-002' },
-    { id: 'demo-exp-009', amount: 420, currency: 'HKD', category: 'Food & Daily Needs', date: '2026-01-12', merchant: 'AEON Supermarket', createdBy: 'demo-helper-004' },
-    { id: 'demo-exp-010', amount: 680, currency: 'HKD', category: 'Food & Daily Needs', date: '2026-01-15', merchant: 'City Super', createdBy: 'demo-mom-002' },
-    { id: 'demo-exp-011', amount: 450, currency: 'HKD', category: 'Food & Daily Needs', date: '2026-01-18', merchant: 'Wellcome Supermarket', createdBy: 'demo-helper-004' },
-    { id: 'demo-exp-012', amount: 285, currency: 'HKD', category: 'Food & Daily Needs', date: '2026-01-20', merchant: 'Tai Po Wet Market', createdBy: 'demo-helper-004' },
-    { id: 'demo-exp-013', amount: 780, currency: 'HKD', category: 'Food & Daily Needs', date: '2026-01-25', merchant: 'ParknShop', createdBy: 'demo-helper-004' },
+    // Food & Daily Needs (3,000)
+    { id: 'demo-exp-005', amount: 980, currency: 'HKD', category: 'Food & Daily Needs', date: '2026-01-03', merchant: 'Wellcome Supermarket', createdBy: 'demo-helper-004' },
+    { id: 'demo-exp-006', amount: 650, currency: 'HKD', category: 'Food & Daily Needs', date: '2026-01-07', merchant: 'ParknShop', createdBy: 'demo-helper-004' },
+    { id: 'demo-exp-007', amount: 280, currency: 'HKD', category: 'Food & Daily Needs', date: '2026-01-08', merchant: 'Tai Po Wet Market', createdBy: 'demo-helper-004' },
+    { id: 'demo-exp-008', amount: 120, currency: 'HKD', category: 'Food & Daily Needs', date: '2026-01-10', merchant: '7-Eleven', createdBy: 'demo-mom-002' },
+    { id: 'demo-exp-009', amount: 350, currency: 'HKD', category: 'Food & Daily Needs', date: '2026-01-12', merchant: 'AEON Supermarket', createdBy: 'demo-helper-004' },
+    { id: 'demo-exp-010', amount: 420, currency: 'HKD', category: 'Food & Daily Needs', date: '2026-01-15', merchant: 'City Super', createdBy: 'demo-mom-002' },
+    { id: 'demo-exp-011', amount: 200, currency: 'HKD', category: 'Food & Daily Needs', date: '2026-01-18', merchant: 'Wellcome Supermarket', createdBy: 'demo-helper-004' },
     
-    // Transport & Travel
-    { id: 'demo-exp-014', amount: 500, currency: 'HKD', category: 'Transport & Travel', date: '2026-01-02', merchant: 'Octopus Top-up', createdBy: 'demo-dad-001' },
-    { id: 'demo-exp-015', amount: 300, currency: 'HKD', category: 'Transport & Travel', date: '2026-01-06', merchant: 'Uber Hong Kong', createdBy: 'demo-mom-002' },
-    { id: 'demo-exp-016', amount: 500, currency: 'HKD', category: 'Transport & Travel', date: '2026-01-15', merchant: 'Octopus Top-up', createdBy: 'demo-dad-001' },
-    { id: 'demo-exp-017', amount: 180, currency: 'HKD', category: 'Transport & Travel', date: '2026-01-20', merchant: 'Shell Petrol Station', createdBy: 'demo-dad-001' },
+    // Transport & Travel (800)
+    { id: 'demo-exp-014', amount: 400, currency: 'HKD', category: 'Transport & Travel', date: '2026-01-02', merchant: 'Octopus Top-up', createdBy: 'demo-dad-001' },
+    { id: 'demo-exp-015', amount: 200, currency: 'HKD', category: 'Transport & Travel', date: '2026-01-06', merchant: 'Uber Hong Kong', createdBy: 'demo-mom-002' },
+    { id: 'demo-exp-016', amount: 200, currency: 'HKD', category: 'Transport & Travel', date: '2026-01-15', merchant: 'Octopus Top-up', createdBy: 'demo-dad-001' },
     
-    // Health & Personal Care
-    { id: 'demo-exp-018', amount: 650, currency: 'HKD', category: 'Health & Personal Care', date: '2026-01-04', merchant: 'Mannings', createdBy: 'demo-mom-002' },
-    { id: 'demo-exp-019', amount: 380, currency: 'HKD', category: 'Health & Personal Care', date: '2026-01-11', merchant: 'Watsons', createdBy: 'demo-mom-002' },
-    { id: 'demo-exp-020', amount: 1200, currency: 'HKD', category: 'Health & Personal Care', date: '2026-01-16', merchant: 'Union Hospital - Dr. Lee', createdBy: 'demo-mom-002' },
+    // Health & Personal Care (900)
+    { id: 'demo-exp-018', amount: 350, currency: 'HKD', category: 'Health & Personal Care', date: '2026-01-04', merchant: 'Mannings', createdBy: 'demo-mom-002' },
+    { id: 'demo-exp-019', amount: 250, currency: 'HKD', category: 'Health & Personal Care', date: '2026-01-11', merchant: 'Watsons', createdBy: 'demo-mom-002' },
+    { id: 'demo-exp-020', amount: 300, currency: 'HKD', category: 'Health & Personal Care', date: '2026-01-16', merchant: 'Union Hospital - Dr. Lee', createdBy: 'demo-mom-002' },
     
-    // Lifestyle
-    { id: 'demo-exp-021', amount: 580, currency: 'HKD', category: 'Lifestyle', date: '2026-01-09', merchant: 'Tim Ho Wan', createdBy: 'demo-dad-001' },
-    { id: 'demo-exp-022', amount: 450, currency: 'HKD', category: 'Lifestyle', date: '2026-01-14', merchant: 'Ocean Park', createdBy: 'demo-dad-001' },
-    { id: 'demo-exp-023', amount: 320, currency: 'HKD', category: 'Lifestyle', date: '2026-01-19', merchant: 'Broadway Cinema', createdBy: 'demo-mom-002' },
-    { id: 'demo-exp-024', amount: 880, currency: 'HKD', category: 'Lifestyle', date: '2026-01-22', merchant: 'Yum Cha Restaurant', createdBy: 'demo-dad-001' },
+    // Lifestyle (1,000)
+    { id: 'demo-exp-021', amount: 380, currency: 'HKD', category: 'Lifestyle', date: '2026-01-09', merchant: 'Tim Ho Wan', createdBy: 'demo-dad-001' },
+    { id: 'demo-exp-022', amount: 320, currency: 'HKD', category: 'Lifestyle', date: '2026-01-14', merchant: 'Ocean Park', createdBy: 'demo-dad-001' },
+    { id: 'demo-exp-023', amount: 150, currency: 'HKD', category: 'Lifestyle', date: '2026-01-19', merchant: 'Broadway Cinema', createdBy: 'demo-mom-002' },
+    { id: 'demo-exp-024', amount: 150, currency: 'HKD', category: 'Lifestyle', date: '2026-01-22', merchant: 'Yum Cha Restaurant', createdBy: 'demo-dad-001' },
     
-    // Misc
-    { id: 'demo-exp-025', amount: 180, currency: 'HKD', category: 'Misc', date: '2026-01-13', merchant: 'MUJI', createdBy: 'demo-mom-002' },
-    { id: 'demo-exp-026', amount: 250, currency: 'HKD', category: 'Misc', date: '2026-01-21', merchant: 'IKEA', createdBy: 'demo-mom-002' },
-    { id: 'demo-exp-027', amount: 150, currency: 'HKD', category: 'Misc', date: '2026-01-24', merchant: 'Japan Home Centre', createdBy: 'demo-helper-004' },
+    // Misc (430)
+    { id: 'demo-exp-025', amount: 150, currency: 'HKD', category: 'Misc', date: '2026-01-13', merchant: 'MUJI', createdBy: 'demo-mom-002' },
+    { id: 'demo-exp-026', amount: 180, currency: 'HKD', category: 'Misc', date: '2026-01-21', merchant: 'IKEA', createdBy: 'demo-mom-002' },
+    { id: 'demo-exp-027', amount: 100, currency: 'HKD', category: 'Misc', date: '2026-01-24', merchant: 'Japan Home Centre', createdBy: 'demo-helper-004' },
   ];
   
   return expenses;

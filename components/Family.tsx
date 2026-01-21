@@ -538,8 +538,8 @@ const Family: React.FC<FamilyProps> = ({
   const [selectedHelperId, setSelectedHelperId] = useState<string | null>(null);
   const [helperRefreshKey, setHelperRefreshKey] = useState(0);
   
-  // Filter helpers from users
-  const helpers = users.filter(u => u.role === UserRole.HELPER && u.status === 'active');
+  // Filter helpers from users (include both active and pending for admins to manage)
+  const helpers = users.filter(u => u.role === UserRole.HELPER && (u.status === 'active' || u.status === 'pending'));
   
   // Auto-select first helper when switching to helper tab
   useEffect(() => {
@@ -1291,13 +1291,18 @@ const Family: React.FC<FamilyProps> = ({
                   <button
                     key={helper.id}
                     onClick={() => setSelectedHelperId(helper.id)}
-                    className={`px-4 py-2 rounded-full text-body whitespace-nowrap transition-all ${
+                    className={`px-4 py-2 rounded-full text-body whitespace-nowrap transition-all flex items-center gap-1.5 ${
                       selectedHelperId === helper.id
                         ? "bg-card text-primary shadow-sm"
                         : "text-muted-foreground"
                     }`}
                   >
                     {helper.name}
+                    {helper.status === 'pending' && (
+                      <span className={`text-caption ${selectedHelperId === helper.id ? 'text-muted-foreground' : 'text-muted-foreground/70'}`}>
+                        ({t['common.pending'] || 'Pending'})
+                      </span>
+                    )}
                   </button>
                 ))}
               </div>

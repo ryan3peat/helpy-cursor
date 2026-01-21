@@ -1169,9 +1169,16 @@ export const HelperManagementContent: React.FC<Props> = ({
       {/* HELPER INFO HEADER */}
       {/* ═══════════════════════════════════════════════════════════════ */}
       <div className="pb-2">
-        <p className="text-body font-bold text-foreground" style={{ fontSize: '20px' }}>
-          {helper.firstName || helper.name?.split(' ')[0] || 'Helper'}
-        </p>
+        <div className="flex items-center gap-2">
+          <p className="text-body font-bold text-foreground" style={{ fontSize: '20px' }}>
+            {helper.firstName || helper.name?.split(' ')[0] || 'Helper'}
+          </p>
+          {helper.status === 'pending' && (
+            <span className="text-caption px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+              {t['common.pending'] || 'Pending'}
+            </span>
+          )}
+        </div>
       </div>
       
       {/* ═══════════════════════════════════════════════════════════════ */}
@@ -1409,10 +1416,15 @@ export const HelperManagementContent: React.FC<Props> = ({
         {/* Scrollable Form Content */}
         <div className="flex-1 overflow-y-auto p-5 space-y-4">
           {/* Helper Name */}
-          <div>
+          <div className="flex items-center gap-2">
             <p className="text-black font-bold" style={{ fontSize: '20px' }}>
               {helper.firstName || helper.name?.split(' ')[0] || 'Helper'}
             </p>
+            {helper.status === 'pending' && (
+              <span className="text-caption px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                {t['common.pending'] || 'Pending'}
+              </span>
+            )}
           </div>
           
           {/* Employment Start Date */}

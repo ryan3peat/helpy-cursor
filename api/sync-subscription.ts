@@ -81,16 +81,24 @@ export default async function handler(req: any, res: any) {
       stripeCustomerId = household?.stripe_customer_id || stripeCustomerId;
       if (household?.stripe_subscription_id) {
         console.log('[sync-subscription] Retrieving subscription from Stripe:', household.stripe_subscription_id);
-        const sub = await stripe.subscriptions.retrieve(household.stripe_subscription_id);
-        console.log('[sync-subscription] Raw Stripe subscription data:', {
-          id: sub.id,
-          status: sub.status,
-          cancel_at_period_end: sub.cancel_at_period_end,
-          cancel_at: sub.cancel_at,
-          canceled_at: sub.canceled_at,
-          trial_end: sub.trial_end,
-          current_period_end: sub.current_period_end,
-        });
+        try {
+          const sub = await stripe.subscriptions.retrieve(household.stripe_subscription_id);
+          console.log('[sync-subscription] Raw Stripe subscription data:', {
+            id: sub.id,
+            status: sub.status,
+            cancel_at_period_end: sub.cancel_at_period_end,
+            cancel_at: sub.cancel_at,
+            canceled_at: sub.canceled_at,
+            trial_end: sub.trial_end,
+            current_period_end: sub.current_period_end,
+            current_period_start: sub.current_period_start,
+          });
+        } catch (stripeError: any) {
+          console.error('[sync-subscription] Error retrieving subscription from Stripe:', stripeError.message);
+          console.log('[sync-subscription] This might mean the subscription ID is invalid or the subscription was deleted');
+          // Continue without updating subscription data
+          return res.status(200).json({ success: false, error: 'Subscription not found in Stripe' });
+        }
         subscriptionId = sub.id;
         status = sub.status;
         periodEnd = sub.current_period_end || null;

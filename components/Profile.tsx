@@ -424,38 +424,59 @@ const Profile: React.FC<ProfileProps> = ({
         try {
           console.log('[Profile] ====== PORTAL RETURN SYNC START ======');
           console.log('[Profile] Syncing subscription after portal return for household:', currentUser.householdId);
-          
-          // Call sync-subscription to get latest from Stripe FIRST
-          const syncResult = await syncSubscription(currentUser.householdId);
-          console.log('[Profile] Sync API result:', JSON.stringify(syncResult));
-          
+
+          // Wait for Stripe to process the cancellation - try multiple times with increasing delays
+          console.log('[Profile] Waiting for Stripe to process cancellation...');
+          let syncResult;
+          let attempts = 0;
+          const maxAttempts = 3;
+
+          while (attempts < maxAttempts) {
+            console.log(`[Profile] Sync attempt ${attempts + 1}/${maxAttempts}`);
+            syncResult = await syncSubscription(currentUser.householdId);
+            console.log('[Profile] Sync API result:', JSON.stringify(syncResult));
+
+            // If we successfully got cancelAtPeriodEnd: true, we're done
+            if (syncResult.success && syncResult.cancelAtPeriodEnd) {
+              console.log('[Profile] Successfully detected cancellation in Stripe');
+              break;
+            }
+
+            attempts++;
+            if (attempts < maxAttempts) {
+              const delay = attempts * 1000; // 1s, 2s, 3s delays
+              console.log(`[Profile] Cancellation not detected yet, waiting ${delay}ms before retry...`);
+              await new Promise(resolve => setTimeout(resolve, delay));
+            }
+          }
+
           // Small delay to ensure database update is committed
           await new Promise(resolve => setTimeout(resolve, 500));
-          
+
           // NOW fetch updated subscription info from database (with loading = false to not show spinner)
           console.log('[Profile] Fetching updated subscription info from database...');
           await fetchSubscriptionInfo(0, false);
-          
+
           // Check if subscription was fully canceled (status changed)
           if (!supabase) {
             console.log('[Profile] No supabase client available');
             return;
           }
-          
+
           const { data, error } = await supabase
             .from('households')
             .select('subscription_status, subscription_plan, cancel_at_period_end, is_trial')
             .eq('id', currentUser.householdId)
             .maybeSingle();
-          
+
           console.log('[Profile] Direct database query result:', JSON.stringify(data));
           if (error) {
             console.error('[Profile] Database query error:', error);
           }
-          
+
           console.log('[Profile] cancel_at_period_end value:', data?.cancel_at_period_end);
           console.log('[Profile] subscription_status value:', data?.subscription_status);
-          
+
           if (data) {
             // Show canceled modal if subscription is fully canceled (not just cancel_at_period_end)
             if (data.subscription_status === 'canceled' || data.subscription_status === 'inactive') {
@@ -463,7 +484,7 @@ const Profile: React.FC<ProfileProps> = ({
               setSubscriptionCanceled(true);
             }
           }
-          
+
           console.log('[Profile] ====== PORTAL RETURN SYNC END ======');
         } catch (error) {
           console.error('[Profile] Error syncing after portal return:', error);
@@ -2728,7 +2749,7 @@ const Profile: React.FC<ProfileProps> = ({
                         className="text-caption mb-1"
                         style={{ color: currentPlanColors.textMuted }}
                       >
-                        {subscriptionInfo?.cancelAtPeriodEnd ? (t['subscription.access_until'] || 'Access Until') : (t['common.expires_on'] || 'Expires On')}
+                        {(subscriptionInfo?.cancelAtPeriodEnd || subscriptionInfo?.status === 'canceled') ? (t['subscription.access_until'] || 'Access Until') : (t['common.expires_on'] || 'Expires On')}
                       </p>
                       <p className="text-body font-semibold">{formatDate(subscriptionInfo.periodEnd)}</p>
                     </div>
@@ -2737,10 +2758,10 @@ const Profile: React.FC<ProfileProps> = ({
                         className="text-caption mb-1"
                         style={{ color: currentPlanColors.textMuted }}
                       >
-                        {subscriptionInfo?.cancelAtPeriodEnd ? (t['common.status'] || 'Status') : (t['common.next_payment'] || 'Next Payment')}
+                        {(subscriptionInfo?.cancelAtPeriodEnd || subscriptionInfo?.status === 'canceled') ? (t['common.status'] || 'Status') : (t['common.next_payment'] || 'Next Payment')}
                       </p>
                       <p className="text-body font-semibold">
-                        {subscriptionInfo?.cancelAtPeriodEnd
+                        {(subscriptionInfo?.cancelAtPeriodEnd || subscriptionInfo?.status === 'canceled')
                           ? (t['subscription.cancelled'] || 'Cancelled')
                           : (getNextPaymentDate(subscriptionInfo.periodEnd, subscriptionInfo.period) || (t['common.na'] || 'N/A'))}
                       </p>
@@ -2775,55 +2796,34 @@ const Profile: React.FC<ProfileProps> = ({
                   </div>
                 )}
 
-                {/* Show cancel button for active paid subscriptions OR subscriptions set to cancel at period end */}
-                {((isSubscriptionActive && subscriptionInfo?.plan && subscriptionInfo.plan !== 'free') || subscriptionInfo?.cancelAtPeriodEnd) && isAdmin && (
+                {/* Show cancel button for active paid subscriptions, subscriptions set to cancel at period end, OR cancelled subscriptions */}
+                {((isSubscriptionActive && subscriptionInfo?.plan && subscriptionInfo.plan !== 'free') || subscriptionInfo?.cancelAtPeriodEnd || subscriptionInfo?.status === 'canceled') && isAdmin && (
                   <>
-                    <div className="space-y-2">
-                      <button
-                        onClick={handleCancelSubscription}
-                        disabled={isLoading || subscriptionInfo?.cancelAtPeriodEnd}
-                        className="w-full py-3 rounded-xl font-semibold disabled:opacity-50"
-                        style={{
-                          backgroundColor: subscriptionInfo?.cancelAtPeriodEnd
-                            ? 'rgba(128,128,128,0.3)'
-                            : subscriptionInfo?.plan ? 'rgba(255,255,255,0.2)' : 'hsl(var(--secondary))',
-                          color: subscriptionInfo?.cancelAtPeriodEnd ? 'rgba(255,255,255,0.6)' : currentPlanColors.text
-                        }}
-                      >
-                        {isLoading
-                          ? (t['common.processing'] || 'Processing...')
-                          : subscriptionInfo?.cancelAtPeriodEnd
-                            ? (t['subscription.cancelled'] || 'Cancelled')
-                            : (t['common.cancel_subscription'] || 'Cancel Subscription')}
-                      </button>
-                      {/* Temporary debug button to manually sync */}
-                      <button
-                        onClick={async () => {
-                          console.log('[DEBUG] Manual sync triggered');
-                          try {
-                            const syncResult = await syncSubscription(currentUser.householdId);
-                            console.log('[DEBUG] Manual sync result:', syncResult);
-                            await fetchSubscriptionInfo(0, false);
-                            console.log('[DEBUG] Manual fetch completed');
-                          } catch (error) {
-                            console.error('[DEBUG] Manual sync error:', error);
-                          }
-                        }}
-                        className="w-full py-2 rounded-xl font-semibold text-xs"
-                        style={{
-                          backgroundColor: 'rgba(255,255,255,0.1)',
-                          color: 'rgba(255,255,255,0.8)'
-                        }}
-                      >
-                        Debug: Manual Sync
-                      </button>
-                    </div>
-                    {subscriptionInfo?.cancelAtPeriodEnd && subscriptionInfo?.periodEnd && (
+                    <button
+                      onClick={handleCancelSubscription}
+                      disabled={isLoading || subscriptionInfo?.cancelAtPeriodEnd || subscriptionInfo?.status === 'canceled'}
+                      className="w-full py-3 rounded-xl font-semibold disabled:opacity-50"
+                      style={{
+                        backgroundColor: (subscriptionInfo?.cancelAtPeriodEnd || subscriptionInfo?.status === 'canceled')
+                          ? 'rgba(128,128,128,0.3)'
+                          : subscriptionInfo?.plan ? 'rgba(255,255,255,0.2)' : 'hsl(var(--secondary))',
+                        color: (subscriptionInfo?.cancelAtPeriodEnd || subscriptionInfo?.status === 'canceled') ? 'rgba(255,255,255,0.6)' : currentPlanColors.text
+                      }}
+                    >
+                      {isLoading
+                        ? (t['common.processing'] || 'Processing...')
+                        : (subscriptionInfo?.cancelAtPeriodEnd || subscriptionInfo?.status === 'canceled')
+                          ? (t['subscription.cancelled'] || 'Cancelled')
+                          : (t['common.cancel_subscription'] || 'Cancel Subscription')}
+                    </button>
+                    {(subscriptionInfo?.cancelAtPeriodEnd || subscriptionInfo?.status === 'canceled') && subscriptionInfo?.periodEnd && (
                       <p
                         className="text-caption text-center mt-2"
                         style={{ color: currentPlanColors.textMuted }}
                       >
-                        {t['subscription.access_until'] || 'You have access until'} {formatDate(subscriptionInfo.periodEnd)}
+                        {subscriptionInfo?.status === 'canceled'
+                          ? (t['subscription.cancelled'] || 'Subscription cancelled')
+                          : (t['subscription.access_until'] || 'You have access until') + ' ' + formatDate(subscriptionInfo.periodEnd)}
                       </p>
                     )}
                   </>

@@ -288,6 +288,18 @@ const Profile: React.FC<ProfileProps> = ({
   // Pre-fetch subscription info on component mount (for admins)
   // This eliminates latency when navigating to the Plan page
   React.useEffect(() => {
+    // Skip if we're handling Stripe return (that handler will fetch after sync)
+    const urlParams = new URLSearchParams(window.location.search);
+    const hashParams = new URLSearchParams(window.location.hash.split('?')[1] || '');
+    const portalReturn = urlParams.get('portal_return') || hashParams.get('portal_return');
+    const sessionId = urlParams.get('session_id') || hashParams.get('session_id');
+    const success = urlParams.get('success') || hashParams.get('success');
+    
+    if (portalReturn === 'true' || sessionId || success === 'true') {
+      // Let the Stripe return handler manage the fetch after sync
+      return;
+    }
+    
     if (currentUser?.householdId && (currentUser?.role === UserRole.MASTER || currentUser?.role === UserRole.SUPERADMIN)) {
       fetchSubscriptionInfo();
     } else {
@@ -396,6 +408,9 @@ const Profile: React.FC<ProfileProps> = ({
       // Mark that we're handling Stripe return to prevent double-fetch
       isHandlingStripeReturnRef.current = true;
       
+      // Show loading state while syncing from Stripe
+      setIsLoadingSubscription(true);
+      
       // Clear URL parameters first to prevent re-triggering
       const newUrl = window.location.pathname + (window.location.hash.split('?')[0] || '');
       window.history.replaceState({}, document.title, newUrl);
@@ -404,19 +419,20 @@ const Profile: React.FC<ProfileProps> = ({
       setActiveSection('plan');
 
       // Sync subscription from Stripe to get latest status (including cancel_at_period_end)
+      // IMPORTANT: Sync FIRST, then fetch - to ensure we get the latest cancel_at_period_end value
       const syncAfterPortal = async () => {
         try {
           console.log('[Profile] ====== PORTAL RETURN SYNC START ======');
           console.log('[Profile] Syncing subscription after portal return for household:', currentUser.householdId);
           
-          // Call sync-subscription to get latest from Stripe
+          // Call sync-subscription to get latest from Stripe FIRST
           const syncResult = await syncSubscription(currentUser.householdId);
           console.log('[Profile] Sync API result:', JSON.stringify(syncResult));
           
           // Small delay to ensure database update is committed
           await new Promise(resolve => setTimeout(resolve, 500));
           
-          // Fetch updated subscription info from database (with loading = false to not show spinner)
+          // NOW fetch updated subscription info from database (with loading = false to not show spinner)
           console.log('[Profile] Fetching updated subscription info from database...');
           await fetchSubscriptionInfo(0, false);
           
@@ -456,16 +472,10 @@ const Profile: React.FC<ProfileProps> = ({
         }
       };
       
-      // Immediately fetch existing data to show content, then sync in background
-      fetchSubscriptionInfo(0, false).then(() => {
-        // After showing current data, sync from Stripe for updates
-        setTimeout(() => {
-          syncAfterPortal().finally(() => {
-            // Reset the flag after sync is complete
-            isHandlingStripeReturnRef.current = false;
-          });
-        }, 1000);
-      }).catch(() => {
+      // Sync from Stripe FIRST, then fetch - ensures we have the latest cancel_at_period_end value
+      // Don't fetch stale data first, as it shows the wrong button state
+      syncAfterPortal().finally(() => {
+        // Reset the flag after sync is complete
         isHandlingStripeReturnRef.current = false;
       });
       

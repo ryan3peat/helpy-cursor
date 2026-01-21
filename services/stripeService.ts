@@ -204,7 +204,7 @@ export async function changeSubscription(
  * This is a backup mechanism when webhooks don't fire properly
  */
 export async function syncSubscription(
-  householdId: string, 
+  householdId: string,
   sessionId?: string
 ): Promise<{ success: boolean; plan?: string; status?: string; error?: string }> {
   try {

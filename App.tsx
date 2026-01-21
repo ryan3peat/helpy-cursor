@@ -1598,9 +1598,6 @@ const AppContent: React.FC = () => {
   };
 
   const handleDeleteMeal = async (id: string) => {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/a848de4d-66f4-4490-8d69-77a8eaa34e52',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.tsx:handleDeleteMeal',message:'handleDeleteMeal called',data:{mealId:id,householdId:hid},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'D'})}).catch(()=>{});
-    // #endregion
     if (!hid) return;
     
     // Demo mode: skip database operation
@@ -1616,9 +1613,6 @@ const AppContent: React.FC = () => {
       return;
     }
     // Pass currentUser.id for notification attribution
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/a848de4d-66f4-4490-8d69-77a8eaa34e52',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.tsx:handleDeleteMeal:beforeDelete',message:'About to call deleteItem for meal',data:{mealId:id,userId:currentUser?.id},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'D'})}).catch(()=>{});
-    // #endregion
     await deleteItem(hid, 'meals', id, currentUser?.id);
   };
 

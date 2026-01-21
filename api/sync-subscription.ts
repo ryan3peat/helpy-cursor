@@ -80,16 +80,27 @@ export default async function handler(req: any, res: any) {
 
       stripeCustomerId = household?.stripe_customer_id || stripeCustomerId;
       if (household?.stripe_subscription_id) {
+        console.log('[sync-subscription] Retrieving subscription from Stripe:', household.stripe_subscription_id);
         const sub = await stripe.subscriptions.retrieve(household.stripe_subscription_id);
+        console.log('[sync-subscription] Raw Stripe subscription data:', {
+          id: sub.id,
+          status: sub.status,
+          cancel_at_period_end: sub.cancel_at_period_end,
+          cancel_at: sub.cancel_at,
+          canceled_at: sub.canceled_at,
+          trial_end: sub.trial_end,
+          current_period_end: sub.current_period_end,
+        });
         subscriptionId = sub.id;
         status = sub.status;
         periodEnd = sub.current_period_end || null;
         trialEnd = sub.trial_end || null;
-        cancelAtPeriodEnd = sub.cancel_at_period_end || false;
+        cancelAtPeriodEnd = sub.cancel_at_period_end === true; // Explicit boolean check
         const priceId = sub.items?.data?.[0]?.price?.id;
         plan = priceIdToPlan(priceId);
         const interval = sub.items?.data?.[0]?.price?.recurring?.interval;
         period = interval === 'year' ? 'yearly' : 'monthly';
+        console.log('[sync-subscription] Parsed values:', { plan, status, cancelAtPeriodEnd, periodEnd, trialEnd });
       }
     }
 

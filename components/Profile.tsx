@@ -884,24 +884,29 @@ const Profile: React.FC<ProfileProps> = ({
 
   // Execute the actual downgrade to Free (called after modal confirmation)
   const executeDowngradeToFree = async () => {
+    console.log('[Profile] executeDowngradeToFree started');
     try {
       setLoadingPlan('core'); // Use 'core' as a loading indicator for downgrade
+      console.log('[Profile] Calling downgradeToFree API...');
       await downgradeToFree(currentUser.householdId, currentUser.id);
+      console.log('[Profile] downgradeToFree API completed, refreshing subscription info...');
       // Refresh subscription info
       await fetchSubscriptionInfo(0, false);
+      console.log('[Profile] Subscription info refreshed, showing success alert');
       showAlert(
         t['subscription.downgrade_success_title'] || 'Subscription Canceled',
         t['subscription.downgrade_success'] || 'Your subscription has been canceled. You are now on the Free plan.',
         'success'
       );
-      setLoadingPlan(null);
     } catch (error) {
-      console.error('Downgrade error:', error);
+      console.error('[Profile] Downgrade error:', error);
       showAlert(
         t['error.downgrade_title'] || 'Downgrade Failed',
         t['error.plan_change_failed'] || 'Could not change your plan. Please try again or contact support.',
         'error'
       );
+    } finally {
+      console.log('[Profile] executeDowngradeToFree finished, resetting loadingPlan');
       setLoadingPlan(null);
     }
   };
@@ -911,15 +916,22 @@ const Profile: React.FC<ProfileProps> = ({
     if (!pendingDowngrade) return;
     
     setShowDowngradeModal(false);
+    const downgradeType = pendingDowngrade.type;
+    const targetPlan = pendingDowngrade.targetPlan;
+    const targetPeriod = pendingDowngrade.targetPeriod;
+    setPendingDowngrade(null); // Clear immediately to prevent double-clicks
     
-    if (pendingDowngrade.type === 'paid_to_free') {
-      await executeDowngradeToFree();
-    } else if (pendingDowngrade.type === 'paid_to_paid' && pendingDowngrade.targetPlan && pendingDowngrade.targetPeriod) {
-      // Call handleSelectPlan with skipConfirmation=true to bypass the modal
-      await handleSelectPlan(pendingDowngrade.targetPlan, pendingDowngrade.targetPeriod, undefined, undefined, true);
+    try {
+      if (downgradeType === 'paid_to_free') {
+        await executeDowngradeToFree();
+      } else if (downgradeType === 'paid_to_paid' && targetPlan && targetPeriod) {
+        // Call handleSelectPlan with skipConfirmation=true to bypass the modal
+        await handleSelectPlan(targetPlan, targetPeriod, undefined, undefined, true);
+      }
+    } catch (error) {
+      console.error('Downgrade confirmation error:', error);
+      setLoadingPlan(null); // Ensure loading is reset on error
     }
-    
-    setPendingDowngrade(null);
   };
 
   // Handle cancel from downgrade modal

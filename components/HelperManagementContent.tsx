@@ -25,8 +25,9 @@ import jsPDF from 'jspdf';
 import JSZip from 'jszip';
 import ErrorBanner from './ui/ErrorBanner';
 import BottomSheet from './ui/BottomSheet';
-import type { User, TranslationDictionary } from '@/types';
+import type { User, TranslationDictionary, UsageStatus } from '@/types';
 import { UserRole } from '@/types';
+import { incrementSalarySignCount, calculateUsageStatus } from '../services/trialService';
 import type { HelperContract, SalarySlip } from '@src/types/helperManagement';
 import { useDemoMode } from '../contexts/DemoModeContext';
 import { useScrollLock } from '../hooks/useScrollLock';
@@ -65,6 +66,10 @@ interface Props {
   onCreateSlipClick?: () => void;
   // Increment this to trigger a data refresh (e.g., after creating a slip from outside)
   refreshKey?: number;
+  // Usage-based limits support
+  usageStatus?: UsageStatus;
+  onShowUsageLimitModal?: () => void;
+  onUsageStatusChange?: (usageStatus: UsageStatus) => void;
 }
 
 export const HelperManagementContent: React.FC<Props> = ({
@@ -83,6 +88,9 @@ export const HelperManagementContent: React.FC<Props> = ({
   onEditHelper,
   onCreateSlipClick,
   refreshKey,
+  usageStatus,
+  onShowUsageLimitModal,
+  onUsageStatusChange,
 }) => {
   // ─────────────────────────────────────────────────────────────────
   // State - Initialize from cached data for instant display
@@ -527,6 +535,20 @@ export const HelperManagementContent: React.FC<Props> = ({
     if (!showSignConfirm) return;
     
     const { slipId, type } = showSignConfirm;
+    
+    // Check if user has paid subscription or remaining free signatures
+    const hasPaidSub = usageStatus?.hasPaidSubscription ?? false;
+    const canSign = usageStatus?.canUseSalarySign ?? true;
+    
+    if (!hasPaidSub && !canSign) {
+      // Show usage limit modal
+      if (onShowUsageLimitModal) {
+        onShowUsageLimitModal();
+      }
+      setShowSignConfirm(null);
+      return;
+    }
+    
     setIsLoading(true);
     
     try {
@@ -538,6 +560,21 @@ export const HelperManagementContent: React.FC<Props> = ({
       } else {
         // Pass current user ID for security verification
         await signAsHelper(slipId, currentUser.id);
+      }
+      
+      // Increment signature count for free users after successful signature
+      if (!hasPaidSub && onUsageStatusChange && usageStatus) {
+        const newCount = await incrementSalarySignCount(householdId);
+        if (newCount >= 0) {
+          // Update usage status with new count
+          const newUsageStatus = calculateUsageStatus(
+            usageStatus.aiScanCount,
+            newCount,
+            usageStatus.trialStartedAt,
+            usageStatus.hasPaidSubscription
+          );
+          onUsageStatusChange(newUsageStatus);
+        }
       }
       
       haptics.success();

@@ -31,7 +31,8 @@ import { useScrollHeader } from '@/hooks/useScrollHeader';
 import { useTranslatedContent } from '@/hooks/useTranslatedContent';
 import { useScrollLock } from '@/hooks/useScrollLock';
 import { useSheetTheme } from '@/hooks/useSheetTheme';
-import { Expense, BaseViewProps, User, UserRole, HouseholdPlan } from '../types';
+import { Expense, BaseViewProps, User, UserRole, HouseholdPlan, UsageStatus } from '../types';
+import { FREE_AI_SCAN_LIMIT } from '../services/trialService';
 import { EXPENSE_CATEGORIES } from '../constants';
 import { detectInputLanguage } from '../services/languageDetectionService';
 import { haptics } from '../utils/haptics';
@@ -381,6 +382,10 @@ interface ExpensesProps extends BaseViewProps {
   onUpdate?: (expense: Expense) => Promise<void> | void;
   onDelete?: (id: string) => Promise<void> | void;
   autoOpenSheet?: boolean; // Auto-open add sheet when navigating from Home (+) button
+  // Usage-based limits support
+  usageStatus?: UsageStatus;
+  onShowUsageLimitModal?: (feature: 'aiScan' | 'salarySign' | 'spendingSummary') => void;
+  onIncrementAiScan?: () => Promise<void>;
 }
 
 interface PendingReceipt {
@@ -434,6 +439,9 @@ const Expenses: React.FC<ExpensesProps> = ({
   t,
   currentLang,
   autoOpenSheet,
+  usageStatus,
+  onShowUsageLimitModal,
+  onIncrementAiScan,
 }) => {
   // ─────────────────────────────────────────────────────────────────
   // Role-based permissions
@@ -448,9 +456,37 @@ const Expenses: React.FC<ExpensesProps> = ({
 
   const planKey = (householdPlan?.plan || 'free') as 'free' | 'core' | 'pro' | 'test';
   // SuperAdmin bypasses plan restrictions UNLESS simulating free user
-  const isFreePlan = planKey === 'free' && (!isSuperAdmin || isSimulatingFreeUser);
+  const isOnFreePlan = planKey === 'free' && (!isSuperAdmin || isSimulatingFreeUser);
+  
+  // Usage-based access checks
+  const canUseAiScan = usageStatus?.canUseAiScan ?? true;
+  const canUseSpendingSummary = usageStatus?.canUseSpendingSummary ?? true;
+  const hasPaidSubscription = usageStatus?.hasPaidSubscription ?? false;
+  
+  // AI scan is restricted if: on free plan AND no scans remaining
+  const isAiScanRestricted = isOnFreePlan && !canUseAiScan && !hasPaidSubscription;
+  
+  // Spending summary is restricted if: on free plan AND trial expired
+  const isSpendingSummaryRestricted = isOnFreePlan && !canUseSpendingSummary && !hasPaidSubscription;
+  
+  // For backwards compatibility with existing code
+  const isFreePlan = isOnFreePlan && !hasPaidSubscription;
+  
   const planLabel =
     planKey === 'core' ? 'Core' : planKey === 'pro' ? 'Pro' : planKey === 'test' ? 'Test' : 'Free';
+  
+  // Helper function to show usage limit modal when limits are reached
+  const showAiScanLimitModal = () => {
+    if (onShowUsageLimitModal) {
+      onShowUsageLimitModal('aiScan');
+    }
+  };
+  
+  const showSpendingSummaryLimitModal = () => {
+    if (onShowUsageLimitModal) {
+      onShowUsageLimitModal('spendingSummary');
+    }
+  };
 
   const [view, setView] = useState<'list' | 'chart'>('list');
   const [isScanning, setIsScanning] = useState(false);
@@ -753,8 +789,14 @@ const Expenses: React.FC<ExpensesProps> = ({
     setEditDate(getLocalDateString());
     setPendingReceipt(null);
     setError(null); // Clear any previous errors
-    setShowFreeUpgradeBanner(isFreePlan);
-    setAddExpenseStage(isFreePlan ? 'manual' : 'options');
+    
+    // Show upgrade banner if AI scan limit reached, otherwise show scan options
+    const showUpgradeBanner = isAiScanRestricted;
+    setShowFreeUpgradeBanner(showUpgradeBanner);
+    
+    // If user can still scan (has remaining scans or paid plan), show options
+    // Otherwise, go straight to manual entry
+    setAddExpenseStage(showUpgradeBanner ? 'manual' : 'options');
   };
 
   // Auto-open add sheet when navigating from Home (+) button
@@ -797,6 +839,14 @@ const Expenses: React.FC<ExpensesProps> = ({
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    
+    // Check if AI scan is restricted (limit reached)
+    if (isAiScanRestricted) {
+      showAiScanLimitModal();
+      e.target.value = '';
+      return;
+    }
+    
     setAddExpenseStage('closed'); // Close sheet while scanning
     setIsScanning(true);
     setError(null);
@@ -826,6 +876,12 @@ const Expenses: React.FC<ExpensesProps> = ({
         lineItemsCount: parsed.lineItems?.length || 0,
         lineItems: parsed.lineItems,
       });
+      
+      // Increment AI scan count after successful scan (for free plan users)
+      if (!hasPaidSubscription && onIncrementAiScan) {
+        onIncrementAiScan();
+      }
+      
       setPendingReceipt({ receiptId, imageUrl: url, thumbnailBase64, parsed });
       setEditAmount(parsed.total.toFixed(2));
       setEditMerchant(parsed.merchant);
@@ -1186,19 +1242,19 @@ const Expenses: React.FC<ExpensesProps> = ({
           </button>
           <button
                 onClick={() => {
-                  if (isFreePlan) {
-                    setShowSummaryUpgradeModal(true);
+                  if (isSpendingSummaryRestricted) {
+                    showSpendingSummaryLimitModal();
                   } else {
                     setView('chart');
                   }
                 }}
                 className={`flex-1 px-4 py-2 rounded-full text-body whitespace-nowrap transition-all flex items-center justify-center gap-2 ${
-                  view === 'chart' && !isFreePlan
+                  view === 'chart' && !isSpendingSummaryRestricted
                     ? 'bg-card text-primary shadow-sm'
                     : 'text-muted-foreground'
                 }`}
               >
-                {isFreePlan ? <Lock size={18} /> : <PieIcon size={18} />}
+                {isSpendingSummaryRestricted ? <Lock size={18} /> : <PieIcon size={18} />}
                 {t['common.summary']}
           </button>
             </div>
@@ -1503,25 +1559,33 @@ const Expenses: React.FC<ExpensesProps> = ({
             {/* ─────────────────────────────────────────────────────────────── */}
             {(addExpenseStage === 'manual' || addExpenseStage === 'options') && (
               <div className="p-5 space-y-4 flex-1 overflow-y-auto">
-                {/* OCR Options for Paid Users */}
-                {!isFreePlan && (
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                      className="px-4 py-3.5 rounded-xl bg-primary flex items-center justify-center gap-2 text-primary-foreground shadow-sm"
-                  >
-                      <ImageIcon size={18} />
-                      <span className="text-body font-semibold">{t['expenses.from_photos'] || 'From Photos'}</span>
-                  </button>
-                  <button
-                    onClick={() => cameraInputRef.current?.click()}
-                      className="px-4 py-3.5 rounded-xl bg-primary flex items-center justify-center gap-2 text-primary-foreground shadow-sm"
-                    >
-                      <Camera size={18} />
-                      <span className="text-body font-semibold">{t['expenses.scan_receipt'] || 'Scan Receipt'}</span>
-                </button>
-        </div>
-      )}
+                {/* OCR Options - Show if user has scans available */}
+                {!isAiScanRestricted && (
+                  <>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        onClick={() => fileInputRef.current?.click()}
+                        className="px-4 py-3.5 rounded-xl bg-primary flex items-center justify-center gap-2 text-primary-foreground shadow-sm"
+                      >
+                        <ImageIcon size={18} />
+                        <span className="text-body font-semibold">{t['expenses.from_photos'] || 'From Photos'}</span>
+                      </button>
+                      <button
+                        onClick={() => cameraInputRef.current?.click()}
+                        className="px-4 py-3.5 rounded-xl bg-primary flex items-center justify-center gap-2 text-primary-foreground shadow-sm"
+                      >
+                        <Camera size={18} />
+                        <span className="text-body font-semibold">{t['expenses.scan_receipt'] || 'Scan Receipt'}</span>
+                      </button>
+                    </div>
+                    {/* Show remaining scans badge for free users */}
+                    {!hasPaidSubscription && usageStatus && usageStatus.aiScanRemaining < FREE_AI_SCAN_LIMIT && (
+                      <p className="text-caption text-center text-muted-foreground">
+                        {(t['trial.ai_scan_badge'] || '{count} of 5 free').replace('{count}', usageStatus.aiScanRemaining.toString())}
+                      </p>
+                    )}
+                  </>
+                )}
 
                 {/* Upgrade Banner for Free Users */}
                   {showFreeUpgradeBanner && (

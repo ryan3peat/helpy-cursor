@@ -1475,4 +1475,38 @@ Give it a try:`,
   // Helper Section - Upgrade Messages
   'helper.upgrade_required_title': 'Helper Management',
   'helper.upgrade_required_desc': 'Upgrade to Core or Pro to access Helper Management features',
+
+  // Trial Period Messages (Time-based - Spending Summary)
+  'trial.warning_title': 'Trial Ending Soon',
+  'trial.warning_day13': 'Your spending summary trial ends tomorrow!',
+  'trial.warning_day14': 'Your spending summary trial ends today.',
+  'trial.expiring_today_title': 'Trial Ends Today',
+  'trial.expired_title': 'Trial Ended',
+  'trial.expired': 'Your free trial has ended.',
+  'trial.expired_upgrade_prompt': 'Upgrade to Core or Pro to unlock spending summaries.',
+  'trial.upgrade_prompt': 'Subscribe to continue viewing spending summaries.',
+  'trial.continue_button': 'Continue',
+  'trial.upgrade_button': 'View Plans',
+  'trial.days_remaining': '{days} days remaining',
+  'trial.banner_message': 'Free trial: {days} days left',
+
+  // Usage-Based Trial Messages - AI Scanner
+  'trial.ai_scan_remaining': '{count} free scans remaining',
+  'trial.ai_scan_limit_reached': 'You\'ve used all 5 free scans',
+  'trial.ai_scan_upgrade_title': 'Scan Limit Reached',
+  'trial.ai_scan_upgrade_desc': 'Upgrade to Core or Pro for unlimited receipt scanning.',
+  'trial.ai_scan_badge': '{count} of 5 free',
+
+  // Usage-Based Trial Messages - Salary Slip Signature
+  'trial.salary_sign_free': 'First signature is free',
+  'trial.salary_sign_limit_reached': 'Free signature used',
+  'trial.salary_sign_upgrade_title': 'Upgrade Required',
+  'trial.salary_sign_upgrade_desc': 'Upgrade to Core or Pro to sign more salary slips.',
+  'trial.salary_sign_first_free': 'Your first signature is free!',
+
+  // Usage-Based Trial Messages - Spending Summary
+  'trial.spending_summary_days': '{days} days remaining',
+  'trial.spending_summary_expired': 'Spending summary trial ended',
+  'trial.spending_summary_upgrade_title': 'Trial Ended',
+  'trial.spending_summary_upgrade_desc': 'Upgrade to Core or Pro to view monthly spending summaries.',
 };

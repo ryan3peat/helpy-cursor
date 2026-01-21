@@ -15,7 +15,10 @@ import Auth from './components/Auth';
 import OnboardingOverlay, { OnboardingAction } from './components/OnboardingOverlay';
 import InviteSetup from './components/InviteSetup';
 // InviteWelcome removed - using Option 2 flow (direct to SignUp via Auth.tsx)
-import { ToDoItem, Meal, Expense, User, TranslationDictionary, UserRole } from './types';
+import { ToDoItem, Meal, Expense, User, TranslationDictionary, UserRole, TrialStatus, UsageStatus } from './types';
+import { calculateTrialStatus, calculateUsageStatus, incrementAiScanCount } from './services/trialService';
+import TrialWarningModal from './components/TrialWarningModal';
+import UsageLimitModal from './components/UsageLimitModal';
 import { BASE_TRANSLATIONS } from './constants';
 import { detectDeviceLanguage } from './services/languageDetectionService';
 import { getStaticTranslations } from './services/translationService';
@@ -390,6 +393,7 @@ const AppContent: React.FC = () => {
       localStorage.removeItem('helpy_cached_salary_slips');
       localStorage.removeItem('helpy_cached_places');
       localStorage.removeItem('helpy_cached_practices');
+      localStorage.removeItem('helpy_cached_usage_status');
     };
 
     const resetState = () => {
@@ -398,6 +402,20 @@ const AppContent: React.FC = () => {
       clearAllCaches();
       setActiveView('dashboard');
       setUsers([]);
+      // Reset usage status
+      setUsageStatus({
+        aiScanCount: 0,
+        aiScanRemaining: 5,
+        canUseAiScan: true,
+        salarySignCount: 0,
+        salarySignRemaining: 1,
+        canUseSalarySign: true,
+        trialStartedAt: null,
+        spendingSummaryDaysRemaining: 14,
+        canUseSpendingSummary: true,
+        hasPaidSubscription: false,
+      });
+      trialWarningShownRef.current = null;
       setTodoItems([]);
       setMeals([]);
       setExpenses([]);
@@ -561,6 +579,43 @@ const AppContent: React.FC = () => {
   // Household limits for family member quota (used by Home)
   const [householdLimits, setHouseholdLimits] = useState<{ maxFamily: number; maxHelpers: number }>({ maxFamily: 3, maxHelpers: 1 });
   
+  // Usage status for usage-based and time-based trial limits
+  const [usageStatus, setUsageStatus] = useState<UsageStatus>(() => {
+    const cached = localStorage.getItem('helpy_cached_usage_status');
+    return cached ? JSON.parse(cached) : {
+      aiScanCount: 0,
+      aiScanRemaining: 5,
+      canUseAiScan: true,
+      salarySignCount: 0,
+      salarySignRemaining: 1,
+      canUseSalarySign: true,
+      trialStartedAt: null,
+      spendingSummaryDaysRemaining: 14,
+      canUseSpendingSummary: true,
+      hasPaidSubscription: false,
+    };
+  });
+  
+  // Legacy trialStatus for backwards compatibility with TrialWarningModal
+  const trialStatus: TrialStatus = {
+    isInTrial: usageStatus.canUseSpendingSummary && !usageStatus.hasPaidSubscription,
+    daysRemaining: usageStatus.spendingSummaryDaysRemaining,
+    trialStartedAt: usageStatus.trialStartedAt,
+    trialEndsAt: null,
+    shouldShowWarning: usageStatus.spendingSummaryDaysRemaining === 2,
+    shouldShowExpired: usageStatus.spendingSummaryDaysRemaining === 1,
+    isExpired: usageStatus.spendingSummaryDaysRemaining === 0 && !usageStatus.hasPaidSubscription,
+  };
+  
+  // Usage limit modal state (for AI scan and salary sign limits)
+  const [showUsageLimitModal, setShowUsageLimitModal] = useState(false);
+  const [usageLimitFeature, setUsageLimitFeature] = useState<'aiScan' | 'salarySign' | 'spendingSummary'>('aiScan');
+  
+  // Trial warning modal state (for spending summary time-based warnings)
+  const [showTrialWarningModal, setShowTrialWarningModal] = useState(false);
+  const [trialWarningVariant, setTrialWarningVariant] = useState<'warning' | 'expired' | 'full_expired'>('warning');
+  const trialWarningShownRef = useRef<string | null>(null); // Track which warning was shown this session
+  
   // Track pending deletions to prevent "ghost returns" from real-time sync
   // Using a ref so it persists across renders without causing re-renders
   const pendingTodoDeletions = useRef<Set<string>>(new Set());
@@ -657,6 +712,13 @@ const AppContent: React.FC = () => {
     }
   }, [practices, currentUser?.householdId]);
 
+  // Cache usage status for instant load on next app open
+  useEffect(() => {
+    if (currentUser?.householdId) {
+      localStorage.setItem('helpy_cached_usage_status', JSON.stringify(usageStatus));
+    }
+  }, [usageStatus, currentUser?.householdId]);
+
   // Sync function for periodic backup fetching
   const syncAllData = useCallback(async () => {
     if (!currentUser?.householdId) return;
@@ -665,13 +727,13 @@ const AppContent: React.FC = () => {
     console.log('[App] Running periodic sync...');
     
     try {
-      // Fetch all collections in parallel (including household limits AND family notes)
+      // Fetch all collections in parallel (including household limits AND family notes AND usage info)
       const [usersData, todoData, mealsData, expensesData, householdData, contractsData, slipsData] = await Promise.all([
         fetchCollection(hid, 'users'),
         fetchCollection(hid, 'todo_items'),
         fetchCollection(hid, 'meals'),
         fetchCollection(hid, 'expenses'),
-        supabase.from('households').select('max_family_members, max_helpers, family_notes, family_notes_lang, family_notes_translations').eq('id', hid).maybeSingle(),
+        supabase.from('households').select('max_family_members, max_helpers, family_notes, family_notes_lang, family_notes_translations, trial_started_at, ai_scan_count, salary_slip_sign_count, subscription_plan, subscription_status').eq('id', hid).maybeSingle(),
         getHelperContracts(hid),
         getAllSalarySlips(hid),
       ]);
@@ -701,7 +763,7 @@ const AppContent: React.FC = () => {
         }
       }
       
-      // Update household limits AND family notes (Family Board)
+      // Update household limits AND family notes (Family Board) AND trial status
       if (householdData.data) {
         setHouseholdLimits({
           maxFamily: householdData.data.max_family_members ?? 3,
@@ -722,6 +784,20 @@ const AppContent: React.FC = () => {
           localStorage.removeItem('helpy_cached_family_notes_lang');
           localStorage.removeItem('helpy_cached_family_notes_translations');
         }
+        
+        // Update usage status - check subscription and calculate limits
+        const hasPaidSubscription = 
+          householdData.data.subscription_status === 'active' && 
+          householdData.data.subscription_plan && 
+          householdData.data.subscription_plan !== 'free';
+        
+        const newUsageStatus = calculateUsageStatus(
+          householdData.data.ai_scan_count ?? 0,
+          householdData.data.salary_slip_sign_count ?? 0,
+          householdData.data.trial_started_at,
+          hasPaidSubscription
+        );
+        setUsageStatus(newUsageStatus);
       }
       
       console.log('[App] Periodic sync completed');
@@ -2088,13 +2164,33 @@ const AppContent: React.FC = () => {
             expenses={isDemoMode ? demoExpenses : expenses}
             householdId={hid}
             currentUser={isDemoMode ? demoUsers[0] : currentUser}
-            onNavigateToPlan={() => handleNavigate('profile')}
+            onNavigateToPlan={() => {
+              localStorage.setItem('helpy_profile_target_section', 'plan');
+              handleNavigate('profile');
+            }}
             onAdd={handleAddExpense}
             onUpdate={handleUpdateExpense}
             onDelete={handleDeleteExpense}
             t={translations}
             currentLang={lang}
             autoOpenSheet={navData?.openAddSheet}
+            usageStatus={usageStatus}
+            onShowUsageLimitModal={(feature) => {
+              setUsageLimitFeature(feature);
+              setShowUsageLimitModal(true);
+            }}
+            onIncrementAiScan={async () => {
+              const newCount = await incrementAiScanCount(hid);
+              if (newCount >= 0) {
+                // Update local state with new count
+                setUsageStatus(prev => calculateUsageStatus(
+                  newCount,
+                  prev.salarySignCount,
+                  prev.trialStartedAt,
+                  prev.hasPaidSubscription
+                ));
+              }
+            }}
           />
         );
 
@@ -2118,8 +2214,17 @@ const AppContent: React.FC = () => {
             onSalarySlipsChange={setSalarySlips}
             t={translations}
             currentLang={lang}
-            onNavigateToProfile={() => handleNavigate('profile')}
+            onNavigateToProfile={() => {
+              localStorage.setItem('helpy_profile_target_section', 'plan');
+              handleNavigate('profile');
+            }}
             onEditHelper={handleEditHelper}
+            usageStatus={usageStatus}
+            onShowUsageLimitModal={(feature) => {
+              setUsageLimitFeature(feature);
+              setShowUsageLimitModal(true);
+            }}
+            onUsageStatusChange={setUsageStatus}
           />
         );
 
@@ -2293,6 +2398,32 @@ const AppContent: React.FC = () => {
         isVisible={showUpdateToast && !(onboardingStep > 0 && pwaModalHandled) && !isNotifPromptVisible}
         onUpdate={handleUpdateApp}
         onDismiss={handleDismissUpdate}
+        t={translations}
+      />
+
+      {/* Trial Warning Modal - shows on day 13 and 14 of spending summary trial */}
+      <TrialWarningModal
+        isOpen={showTrialWarningModal}
+        onClose={() => setShowTrialWarningModal(false)}
+        onUpgrade={() => {
+          localStorage.setItem('helpy_profile_target_section', 'plan');
+          handleNavigate('profile');
+        }}
+        trialStatus={trialStatus}
+        t={translations}
+        variant={trialWarningVariant}
+      />
+
+      {/* Usage Limit Modal - shows when usage-based limits are reached */}
+      <UsageLimitModal
+        isOpen={showUsageLimitModal}
+        onClose={() => setShowUsageLimitModal(false)}
+        onUpgrade={() => {
+          localStorage.setItem('helpy_profile_target_section', 'plan');
+          handleNavigate('profile');
+        }}
+        usageStatus={usageStatus}
+        feature={usageLimitFeature}
         t={translations}
       />
 

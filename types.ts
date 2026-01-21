@@ -188,6 +188,37 @@ export interface HouseholdPlan {
   plan: 'free' | 'core' | 'pro' | 'test';
   status: string;
   periodEnd?: string;
+  trialStartedAt?: string;
+}
+
+export interface TrialStatus {
+  isInTrial: boolean;           // True if within 14-day trial period
+  daysRemaining: number;        // Days left in trial (0-14)
+  trialStartedAt: string | null; // ISO timestamp when trial started
+  trialEndsAt: string | null;   // ISO timestamp when trial ends
+  shouldShowWarning: boolean;   // True on day 13 (1 day remaining)
+  shouldShowExpired: boolean;   // True on day 14 (0 days remaining, last day)
+  isExpired: boolean;           // True after day 14 (trial fully over)
+}
+
+export interface UsageStatus {
+  // AI Receipt Scanner (5 free scans)
+  aiScanCount: number;
+  aiScanRemaining: number;
+  canUseAiScan: boolean;
+  
+  // Salary Slip E-sign (1 free signature)
+  salarySignCount: number;
+  salarySignRemaining: number;
+  canUseSalarySign: boolean;
+  
+  // Spending Summary (14 days)
+  trialStartedAt: string | null;
+  spendingSummaryDaysRemaining: number;
+  canUseSpendingSummary: boolean;
+  
+  // Whether user has paid subscription (bypasses all limits)
+  hasPaidSubscription: boolean;
 }
 
 export interface NavItem {

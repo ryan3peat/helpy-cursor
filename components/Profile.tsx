@@ -150,8 +150,6 @@ const Profile: React.FC<ProfileProps> = ({
   // Plan confirmation modal state (for promo/referral codes)
   const [isPlanConfirmOpen, setIsPlanConfirmOpen] = useState(false);
   const [pendingPlan, setPendingPlan] = useState<{ plan: 'core' | 'pro' | 'test'; period: 'monthly' | 'yearly' } | null>(null);
-  const [promoCodeInput, setPromoCodeInput] = useState('');
-  const [promoCodeError, setPromoCodeError] = useState<string | null>(null);
   const [referralCodeInput, setReferralCodeInput] = useState('');
   const [referralCodeError, setReferralCodeError] = useState<string | null>(null);
   const [referralCodeValid, setReferralCodeValid] = useState(false);
@@ -778,11 +776,9 @@ const Profile: React.FC<ProfileProps> = ({
     }
   };
 
-  // Open plan confirmation modal (for new subscriptions with promo/referral codes)
+  // Open plan confirmation modal (for new subscriptions with referral codes)
   const handleOpenPlanConfirm = (plan: 'core' | 'pro' | 'test', period: 'monthly' | 'yearly') => {
     setPendingPlan({ plan, period });
-    setPromoCodeInput('');
-    setPromoCodeError(null);
     setReferralCodeInput('');
     setReferralCodeError(null);
     setReferralCodeValid(false);
@@ -793,17 +789,16 @@ const Profile: React.FC<ProfileProps> = ({
   const handleConfirmPlan = async () => {
     if (!pendingPlan) return;
     await handleSelectPlan(
-      pendingPlan.plan, 
-      pendingPlan.period, 
-      referralCodeValid ? undefined : promoCodeInput, 
+      pendingPlan.plan,
+      pendingPlan.period,
+      undefined,
       referralCodeValid ? referralCodeInput : undefined
     );
   };
 
   // Stripe Checkout Handler - handles both new subscriptions and plan changes
-  const handleSelectPlan = async (plan: 'core' | 'pro' | 'test', period: 'monthly' | 'yearly', promoCode?: string, referralCode?: string, skipConfirmation?: boolean) => {
+  const handleSelectPlan = async (plan: 'core' | 'pro' | 'test', period: 'monthly' | 'yearly', referralCode?: string, skipConfirmation?: boolean) => {
     try {
-      setPromoCodeError(null);
       setLoadingPlan(plan);
       
       // Check if user has an active paid subscription (includes 'trialing' status)
@@ -855,7 +850,7 @@ const Profile: React.FC<ProfileProps> = ({
           plan,
           period,
           currentUser.email || '',
-          promoCode,
+          undefined,
           referralCode,
           currentUser.id
         );
@@ -865,13 +860,11 @@ const Profile: React.FC<ProfileProps> = ({
       }
     } catch (error) {
       console.error('Checkout error:', error);
-      // Check for promo code errors
-      const errorMsg = error instanceof Error ? error.message.toLowerCase() : '';
-      if (errorMsg.includes('coupon') || errorMsg.includes('promo')) {
-        setPromoCodeError(t['error.invalid_promo_code'] || 'Invalid promo code. Please check and try again.');
-      } else {
-        setPromoCodeError(t['error.plan_change_failed'] || 'Could not change your plan. Please try again or contact support.');
-      }
+      showAlert(
+        t['error.plan_change_failed'] || 'Could not change your plan. Please try again or contact support.',
+        '',
+        'error'
+      );
       setLoadingPlan(null);
     }
   };
@@ -926,7 +919,7 @@ const Profile: React.FC<ProfileProps> = ({
         await executeDowngradeToFree();
       } else if (downgradeType === 'paid_to_paid' && targetPlan && targetPeriod) {
         // Call handleSelectPlan with skipConfirmation=true to bypass the modal
-        await handleSelectPlan(targetPlan, targetPeriod, undefined, undefined, true);
+        await handleSelectPlan(targetPlan, targetPeriod, undefined, true);
       }
     } catch (error) {
       console.error('Downgrade confirmation error:', error);
@@ -3214,38 +3207,6 @@ const Profile: React.FC<ProfileProps> = ({
                     )}
                   </div>
 
-                  {/* Divider between referral and promo code */}
-                  {!referralCodeValid && (
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <div className="flex-1 h-px bg-border" />
-                      <span className="text-caption">{t['common.or'] || 'or'}</span>
-                      <div className="flex-1 h-px bg-border" />
-                    </div>
-                  )}
-
-                  {/* Promo Code Section */}
-                  <div className={`space-y-2 ${referralCodeValid ? 'opacity-50 pointer-events-none' : ''}`}>
-                    <label className="text-caption font-bold text-muted-foreground ml-1">
-                      {t['subscription.promo_code'] || 'Promo code (optional)'}
-                    </label>
-                    <input
-                      type="text"
-                      autoComplete="one-time-code"
-                      value={promoCodeInput}
-                      onChange={(e) => {
-                        setPromoCodeInput(e.target.value);
-                        setPromoCodeError(null);
-                      }}
-                      placeholder={t['subscription.promo_code_placeholder'] || 'Enter promo code'}
-                      className="w-full bg-muted border border-border rounded-xl px-4 py-3 text-foreground font-medium focus:border-primary outline-none transition-colors text-body"
-                    />
-                    {promoCodeError && (
-                      <p className="text-caption text-destructive">{promoCodeError}</p>
-                    )}
-                    <p className="text-caption text-muted-foreground">
-                      {t['subscription.promo_code_hint'] || 'We will apply this code on the Stripe checkout page.'}
-                    </p>
-                  </div>
                 </div>
                 </div>
 
@@ -3256,8 +3217,6 @@ const Profile: React.FC<ProfileProps> = ({
                       if (loadingPlan !== null) return;
                       setIsPlanConfirmOpen(false);
                       setPendingPlan(null);
-                      setPromoCodeInput('');
-                      setPromoCodeError(null);
                       setReferralCodeInput('');
                       setReferralCodeError(null);
                       setReferralCodeValid(false);

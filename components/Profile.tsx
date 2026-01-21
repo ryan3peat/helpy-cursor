@@ -408,8 +408,13 @@ const Profile: React.FC<ProfileProps> = ({
       // Sync subscription from Stripe to get latest status (including cancel_at_period_end)
       const syncAfterPortal = async () => {
         try {
+          console.log('[Profile] Syncing subscription after portal return...');
           // Call sync-subscription to get latest from Stripe
-          await syncSubscription(currentUser.householdId);
+          const syncResult = await syncSubscription(currentUser.householdId);
+          console.log('[Profile] Sync result:', syncResult);
+          
+          // Small delay to ensure database update is committed
+          await new Promise(resolve => setTimeout(resolve, 500));
           
           // Fetch updated subscription info from database (with loading = false to not show spinner)
           await fetchSubscriptionInfo(0, false);
@@ -421,6 +426,8 @@ const Profile: React.FC<ProfileProps> = ({
             .select('subscription_status, cancel_at_period_end')
             .eq('id', currentUser.householdId)
             .maybeSingle();
+          
+          console.log('[Profile] Post-sync subscription data:', data);
           
           if (data) {
             // Show canceled modal if subscription is fully canceled (not just cancel_at_period_end)

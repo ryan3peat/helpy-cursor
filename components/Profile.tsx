@@ -891,7 +891,8 @@ const Profile: React.FC<ProfileProps> = ({
     try {
       setLoadingPlan('core'); // Use 'core' as a loading indicator for downgrade
       console.log('[Profile] Calling downgradeToFree API...');
-      await downgradeToFree(currentUser.householdId, currentUser.id);
+      const result = await downgradeToFree(currentUser.householdId, currentUser.id);
+      console.log('[Profile] downgradeToFree API result:', result);
       console.log('[Profile] downgradeToFree API completed, refreshing subscription info...');
       // Refresh subscription info
       await fetchSubscriptionInfo(0, false);
@@ -2717,28 +2718,32 @@ const Profile: React.FC<ProfileProps> = ({
                   </div>
                 </div>
                 
-                {isSubscriptionActive && subscriptionInfo?.periodEnd ? (
-                  <div 
+                {subscriptionInfo?.periodEnd ? (
+                  <div
                     className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t"
                     style={{ borderColor: currentPlanColors.border }}
                   >
                     <div>
-                      <p 
+                      <p
                         className="text-caption mb-1"
                         style={{ color: currentPlanColors.textMuted }}
                       >
-                        {t['common.expires_on'] || 'Expires On'}
+                        {subscriptionInfo?.cancelAtPeriodEnd ? (t['subscription.access_until'] || 'Access Until') : (t['common.expires_on'] || 'Expires On')}
                       </p>
                       <p className="text-body font-semibold">{formatDate(subscriptionInfo.periodEnd)}</p>
                     </div>
                     <div>
-                      <p 
+                      <p
                         className="text-caption mb-1"
                         style={{ color: currentPlanColors.textMuted }}
                       >
-                        {t['common.next_payment'] || 'Next Payment'}
+                        {subscriptionInfo?.cancelAtPeriodEnd ? (t['common.status'] || 'Status') : (t['common.next_payment'] || 'Next Payment')}
                       </p>
-                      <p className="text-body font-semibold">{getNextPaymentDate(subscriptionInfo.periodEnd, subscriptionInfo.period) || (t['common.na'] || 'N/A')}</p>
+                      <p className="text-body font-semibold">
+                        {subscriptionInfo?.cancelAtPeriodEnd
+                          ? (t['subscription.cancelled'] || 'Cancelled')
+                          : (getNextPaymentDate(subscriptionInfo.periodEnd, subscriptionInfo.period) || (t['common.na'] || 'N/A'))}
+                      </p>
                     </div>
                   </div>
                 ) : !isSubscriptionActive && (
@@ -2773,23 +2778,46 @@ const Profile: React.FC<ProfileProps> = ({
                 {/* Show cancel button for active paid subscriptions OR subscriptions set to cancel at period end */}
                 {((isSubscriptionActive && subscriptionInfo?.plan && subscriptionInfo.plan !== 'free') || subscriptionInfo?.cancelAtPeriodEnd) && isAdmin && (
                   <>
-                    <button
-                      onClick={handleCancelSubscription}
-                      disabled={isLoading || subscriptionInfo?.cancelAtPeriodEnd}
-                      className="w-full mt-4 py-3 rounded-xl font-semibold disabled:opacity-50"
-                      style={{
-                        backgroundColor: subscriptionInfo?.cancelAtPeriodEnd
-                          ? 'rgba(128,128,128,0.3)'
-                          : subscriptionInfo?.plan ? 'rgba(255,255,255,0.2)' : 'hsl(var(--secondary))',
-                        color: subscriptionInfo?.cancelAtPeriodEnd ? 'rgba(255,255,255,0.6)' : currentPlanColors.text
-                      }}
-                    >
-                      {isLoading
-                        ? (t['common.processing'] || 'Processing...')
-                        : subscriptionInfo?.cancelAtPeriodEnd
-                          ? (t['subscription.cancelled'] || 'Cancelled')
-                          : (t['common.cancel_subscription'] || 'Cancel Subscription')}
-                    </button>
+                    <div className="space-y-2">
+                      <button
+                        onClick={handleCancelSubscription}
+                        disabled={isLoading || subscriptionInfo?.cancelAtPeriodEnd}
+                        className="w-full py-3 rounded-xl font-semibold disabled:opacity-50"
+                        style={{
+                          backgroundColor: subscriptionInfo?.cancelAtPeriodEnd
+                            ? 'rgba(128,128,128,0.3)'
+                            : subscriptionInfo?.plan ? 'rgba(255,255,255,0.2)' : 'hsl(var(--secondary))',
+                          color: subscriptionInfo?.cancelAtPeriodEnd ? 'rgba(255,255,255,0.6)' : currentPlanColors.text
+                        }}
+                      >
+                        {isLoading
+                          ? (t['common.processing'] || 'Processing...')
+                          : subscriptionInfo?.cancelAtPeriodEnd
+                            ? (t['subscription.cancelled'] || 'Cancelled')
+                            : (t['common.cancel_subscription'] || 'Cancel Subscription')}
+                      </button>
+                      {/* Temporary debug button to manually sync */}
+                      <button
+                        onClick={async () => {
+                          console.log('[DEBUG] Manual sync triggered');
+                          try {
+                            const syncResult = await syncSubscription(currentUser.householdId);
+                            console.log('[DEBUG] Manual sync result:', syncResult);
+                            await fetchSubscriptionInfo(0, false);
+                            console.log('[DEBUG] Manual fetch completed');
+                          } catch (error) {
+                            console.error('[DEBUG] Manual sync error:', error);
+                          }
+                        }}
+                        className="w-full py-2 rounded-xl font-semibold text-xs"
+                        style={{
+                          backgroundColor: 'rgba(255,255,255,0.1)',
+                          color: 'rgba(255,255,255,0.8)'
+                        }}
+                      >
+                        Debug: Manual Sync
+                      </button>
+                    </div>
                     {subscriptionInfo?.cancelAtPeriodEnd && subscriptionInfo?.periodEnd && (
                       <p
                         className="text-caption text-center mt-2"

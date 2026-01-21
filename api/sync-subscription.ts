@@ -102,6 +102,15 @@ export default async function handler(req: any, res: any) {
     const trialEndISO = trialEnd ? new Date(trialEnd * 1000).toISOString() : null;
     const isTrial = status === 'trialing' && !!trialEnd;
 
+    console.log('[sync-subscription] Updating database with:', {
+      householdId,
+      plan,
+      status,
+      cancelAtPeriodEnd,
+      isTrial,
+      periodEndISO,
+    });
+
     const { error: updateError } = await supabase
       .from('households')
       .update({

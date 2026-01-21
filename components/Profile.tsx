@@ -408,33 +408,49 @@ const Profile: React.FC<ProfileProps> = ({
       // Sync subscription from Stripe to get latest status (including cancel_at_period_end)
       const syncAfterPortal = async () => {
         try {
-          console.log('[Profile] Syncing subscription after portal return...');
+          console.log('[Profile] ====== PORTAL RETURN SYNC START ======');
+          console.log('[Profile] Syncing subscription after portal return for household:', currentUser.householdId);
+          
           // Call sync-subscription to get latest from Stripe
           const syncResult = await syncSubscription(currentUser.householdId);
-          console.log('[Profile] Sync result:', syncResult);
+          console.log('[Profile] Sync API result:', JSON.stringify(syncResult));
           
           // Small delay to ensure database update is committed
           await new Promise(resolve => setTimeout(resolve, 500));
           
           // Fetch updated subscription info from database (with loading = false to not show spinner)
+          console.log('[Profile] Fetching updated subscription info from database...');
           await fetchSubscriptionInfo(0, false);
           
           // Check if subscription was fully canceled (status changed)
-          if (!supabase) return;
-          const { data } = await supabase
+          if (!supabase) {
+            console.log('[Profile] No supabase client available');
+            return;
+          }
+          
+          const { data, error } = await supabase
             .from('households')
-            .select('subscription_status, cancel_at_period_end')
+            .select('subscription_status, subscription_plan, cancel_at_period_end, is_trial')
             .eq('id', currentUser.householdId)
             .maybeSingle();
           
-          console.log('[Profile] Post-sync subscription data:', data);
+          console.log('[Profile] Direct database query result:', JSON.stringify(data));
+          if (error) {
+            console.error('[Profile] Database query error:', error);
+          }
+          
+          console.log('[Profile] cancel_at_period_end value:', data?.cancel_at_period_end);
+          console.log('[Profile] subscription_status value:', data?.subscription_status);
           
           if (data) {
             // Show canceled modal if subscription is fully canceled (not just cancel_at_period_end)
             if (data.subscription_status === 'canceled' || data.subscription_status === 'inactive') {
+              console.log('[Profile] Showing subscription canceled modal');
               setSubscriptionCanceled(true);
             }
           }
+          
+          console.log('[Profile] ====== PORTAL RETURN SYNC END ======');
         } catch (error) {
           console.error('[Profile] Error syncing after portal return:', error);
           // Still try to fetch local data

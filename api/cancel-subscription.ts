@@ -78,6 +78,9 @@ export default async function handler(req: any, res: any) {
         stripe_subscription_id: null,
         max_family_members: 3,
         max_helpers: 1,
+        cancel_at_period_end: false, // Not pending, it's done
+        is_trial: false,
+        trial_ends_at: null,
       })
       .eq('id', householdId);
 

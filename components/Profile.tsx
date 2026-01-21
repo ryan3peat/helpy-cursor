@@ -2267,20 +2267,8 @@ const Profile: React.FC<ProfileProps> = ({
   
   const confirmCancelSubscription = async () => {
     setShowCancelSubConfirm(false);
-    
-    try {
-      setIsLoading(true);
-      // Redirect to Stripe portal for cancellation
-      await handleManageSubscription();
-    } catch (error) {
-      console.error('Error canceling subscription:', error);
-      showAlert(
-        t['error.cancel_subscription_title'] || 'Cancellation Failed',
-        t['error.cancel_subscription'] || 'Failed to cancel subscription. Please try again.',
-        'error'
-      );
-      setIsLoading(false);
-    }
+    // handleManageSubscription already handles loading state and errors internally
+    await handleManageSubscription();
   };
 
   const formatDate = (dateString?: string) => {

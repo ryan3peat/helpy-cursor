@@ -2826,8 +2826,13 @@ const Profile: React.FC<ProfileProps> = ({
 
                   // Determine if this is an upgrade or downgrade
                   // Plan hierarchy: free (0) < core (1) < pro (2)
+                  // IMPORTANT: Use effectivePlan (which considers subscription status), not subscriptionInfo.plan
+                  // This ensures that inactive/canceled subscriptions are treated as Free
                   const planRank = { free: 0, core: 1, pro: 2 };
-                  const currentPlanRank = planRank[subscriptionInfo?.plan as keyof typeof planRank] ?? 0;
+                  const currentEffectivePlan = isSubscriptionActive && subscriptionInfo?.plan && subscriptionInfo.plan !== 'free'
+                    ? subscriptionInfo.plan
+                    : 'free';
+                  const currentPlanRank = planRank[currentEffectivePlan as keyof typeof planRank] ?? 0;
                   const targetPlanRank = planRank[p.id as keyof typeof planRank] ?? 0;
                   const isUpgrade = targetPlanRank > currentPlanRank;
                   const isDowngrade = targetPlanRank < currentPlanRank;

@@ -164,6 +164,7 @@ const Profile: React.FC<ProfileProps> = ({
     period?: string;
     isTrial?: boolean;
     trialEndsAt?: string;
+    cancelAtPeriodEnd?: boolean;
   } | null>(null);
   
   // Household limits for family member quota
@@ -314,7 +315,7 @@ const Profile: React.FC<ProfileProps> = ({
       }
       const { data, error } = await supabase
         .from('households')
-        .select('name, subscription_plan, subscription_status, subscription_current_period_end, subscription_period, max_family_members, max_helpers, is_trial, trial_ends_at')
+        .select('name, subscription_plan, subscription_status, subscription_current_period_end, subscription_period, max_family_members, max_helpers, is_trial, trial_ends_at, cancel_at_period_end')
         .eq('id', currentUser.householdId)
         .maybeSingle();
 
@@ -343,7 +344,8 @@ const Profile: React.FC<ProfileProps> = ({
           periodEnd: data.subscription_current_period_end,
           period: data.subscription_period || 'monthly',
           isTrial: data.is_trial || false,
-          trialEndsAt: data.trial_ends_at || undefined
+          trialEndsAt: data.trial_ends_at || undefined,
+          cancelAtPeriodEnd: data.cancel_at_period_end || false
         };
         
         console.log('[Profile] Updating subscriptionInfo state:', newSubscriptionInfo);
@@ -389,7 +391,7 @@ const Profile: React.FC<ProfileProps> = ({
     const success = urlParams.get('success') || hashParams.get('success');
     const portalReturn = urlParams.get('portal_return') || hashParams.get('portal_return');
 
-    // If we just returned from Stripe portal, check if subscription was canceled
+    // If we just returned from Stripe portal, sync and check subscription status
     if (portalReturn === 'true') {
       // Navigate to subscription page
       setActiveSection('settings');
@@ -399,27 +401,38 @@ const Profile: React.FC<ProfileProps> = ({
       const newUrl = window.location.pathname + (window.location.hash.split('?')[0] || '');
       window.history.replaceState({}, document.title, newUrl);
 
-      // Check subscription status after a short delay (webhook might need time)
-      setTimeout(async () => {
-        if (!supabase) {
-          console.warn('[Profile] No Supabase client available for portal return check');
-          return;
+      // Sync subscription from Stripe to get latest status (including cancel_at_period_end)
+      const syncAfterPortal = async () => {
+        try {
+          // Call sync-subscription to get latest from Stripe
+          await syncSubscription(currentUser.householdId);
+          
+          // Fetch updated subscription info from database
+          await fetchSubscriptionInfo(0, false);
+          
+          // Check if subscription was fully canceled (status changed)
+          if (!supabase) return;
+          const { data } = await supabase
+            .from('households')
+            .select('subscription_status, cancel_at_period_end')
+            .eq('id', currentUser.householdId)
+            .maybeSingle();
+          
+          if (data) {
+            // Show canceled modal if subscription is fully canceled (not just cancel_at_period_end)
+            if (data.subscription_status === 'canceled' || data.subscription_status === 'inactive') {
+              setSubscriptionCanceled(true);
+            }
+          }
+        } catch (error) {
+          console.error('[Profile] Error syncing after portal return:', error);
+          // Still try to fetch local data
+          fetchSubscriptionInfo();
         }
-        // Fetch subscription info and check if it's no longer active
-        const { data } = await supabase
-          .from('households')
-          .select('subscription_status')
-          .eq('id', currentUser.householdId)
-          .maybeSingle();
-        
-        if (data && data.subscription_status !== 'active') {
-          // Subscription was canceled or is no longer active
-          setSubscriptionCanceled(true);
-        }
-        
-        // Also refresh the full subscription info
-        fetchSubscriptionInfo();
-      }, 2000);
+      };
+      
+      // Small delay to allow Stripe webhooks to process
+      setTimeout(syncAfterPortal, 1500);
     }
 
     // If we just returned from Stripe checkout
@@ -2695,17 +2708,33 @@ const Profile: React.FC<ProfileProps> = ({
                 )}
 
                 {isSubscriptionActive && isAdmin && (
-                  <button
-                    onClick={handleCancelSubscription}
-                    disabled={isLoading}
-                    className="w-full mt-4 py-3 rounded-xl font-semibold disabled:opacity-50"
-                    style={{ 
-                      backgroundColor: subscriptionInfo?.plan ? 'rgba(255,255,255,0.2)' : 'hsl(var(--secondary))',
-                      color: currentPlanColors.text
-                    }}
-                  >
-                    {isLoading ? (t['common.processing'] || 'Processing...') : (t['common.cancel_subscription'] || 'Cancel Subscription')}
-                  </button>
+                  <>
+                    <button
+                      onClick={handleCancelSubscription}
+                      disabled={isLoading || subscriptionInfo?.cancelAtPeriodEnd}
+                      className="w-full mt-4 py-3 rounded-xl font-semibold disabled:opacity-50"
+                      style={{ 
+                        backgroundColor: subscriptionInfo?.cancelAtPeriodEnd 
+                          ? 'rgba(128,128,128,0.3)' 
+                          : subscriptionInfo?.plan ? 'rgba(255,255,255,0.2)' : 'hsl(var(--secondary))',
+                        color: subscriptionInfo?.cancelAtPeriodEnd ? 'rgba(255,255,255,0.6)' : currentPlanColors.text
+                      }}
+                    >
+                      {isLoading 
+                        ? (t['common.processing'] || 'Processing...') 
+                        : subscriptionInfo?.cancelAtPeriodEnd 
+                          ? (t['subscription.cancelled'] || 'Cancelled')
+                          : (t['common.cancel_subscription'] || 'Cancel Subscription')}
+                    </button>
+                    {subscriptionInfo?.cancelAtPeriodEnd && subscriptionInfo?.periodEnd && (
+                      <p 
+                        className="text-caption text-center mt-2"
+                        style={{ color: currentPlanColors.textMuted }}
+                      >
+                        {t['subscription.access_until'] || 'You have access until'} {formatDate(subscriptionInfo.periodEnd)}
+                      </p>
+                    )}
+                  </>
                 )}
               </div>
             )}

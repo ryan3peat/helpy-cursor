@@ -45,6 +45,7 @@ export default async function handler(req: any, res: any) {
     let stripeCustomerId: string | null = null;
     let status: string | null = null;
     let trialEnd: number | null = null;
+    let cancelAtPeriodEnd: boolean = false;
 
     if (sessionId) {
       try {
@@ -58,6 +59,7 @@ export default async function handler(req: any, res: any) {
           status = sub.status;
           periodEnd = sub.current_period_end || null;
           trialEnd = sub.trial_end || null;
+          cancelAtPeriodEnd = sub.cancel_at_period_end || false;
           const priceId = sub.items?.data?.[0]?.price?.id;
           plan = priceIdToPlan(priceId);
           const interval = sub.items?.data?.[0]?.price?.recurring?.interval;
@@ -83,6 +85,7 @@ export default async function handler(req: any, res: any) {
         status = sub.status;
         periodEnd = sub.current_period_end || null;
         trialEnd = sub.trial_end || null;
+        cancelAtPeriodEnd = sub.cancel_at_period_end || false;
         const priceId = sub.items?.data?.[0]?.price?.id;
         plan = priceIdToPlan(priceId);
         const interval = sub.items?.data?.[0]?.price?.recurring?.interval;
@@ -112,6 +115,7 @@ export default async function handler(req: any, res: any) {
         max_helpers: limits.maxHelpers,
         is_trial: isTrial,
         ...(trialEndISO && { trial_ends_at: trialEndISO }),
+        cancel_at_period_end: cancelAtPeriodEnd,
       })
       .eq('id', householdId);
 
@@ -120,7 +124,7 @@ export default async function handler(req: any, res: any) {
       return res.status(500).json({ error: 'Failed to update subscription' });
     }
 
-    return res.status(200).json({ success: true, plan, status });
+    return res.status(200).json({ success: true, plan, status, cancelAtPeriodEnd });
   } catch (error: any) {
     console.error('sync-subscription error:', error);
     return res.status(500).json({ error: error.message || 'Server error' });

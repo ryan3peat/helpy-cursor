@@ -2770,27 +2770,28 @@ const Profile: React.FC<ProfileProps> = ({
                   </div>
                 )}
 
-                {isSubscriptionActive && isAdmin && (
+                {/* Show cancel button for active paid subscriptions OR subscriptions set to cancel at period end */}
+                {((isSubscriptionActive && subscriptionInfo?.plan && subscriptionInfo.plan !== 'free') || subscriptionInfo?.cancelAtPeriodEnd) && isAdmin && (
                   <>
                     <button
                       onClick={handleCancelSubscription}
                       disabled={isLoading || subscriptionInfo?.cancelAtPeriodEnd}
                       className="w-full mt-4 py-3 rounded-xl font-semibold disabled:opacity-50"
-                      style={{ 
-                        backgroundColor: subscriptionInfo?.cancelAtPeriodEnd 
-                          ? 'rgba(128,128,128,0.3)' 
+                      style={{
+                        backgroundColor: subscriptionInfo?.cancelAtPeriodEnd
+                          ? 'rgba(128,128,128,0.3)'
                           : subscriptionInfo?.plan ? 'rgba(255,255,255,0.2)' : 'hsl(var(--secondary))',
                         color: subscriptionInfo?.cancelAtPeriodEnd ? 'rgba(255,255,255,0.6)' : currentPlanColors.text
                       }}
                     >
-                      {isLoading 
-                        ? (t['common.processing'] || 'Processing...') 
-                        : subscriptionInfo?.cancelAtPeriodEnd 
+                      {isLoading
+                        ? (t['common.processing'] || 'Processing...')
+                        : subscriptionInfo?.cancelAtPeriodEnd
                           ? (t['subscription.cancelled'] || 'Cancelled')
                           : (t['common.cancel_subscription'] || 'Cancel Subscription')}
                     </button>
                     {subscriptionInfo?.cancelAtPeriodEnd && subscriptionInfo?.periodEnd && (
-                      <p 
+                      <p
                         className="text-caption text-center mt-2"
                         style={{ color: currentPlanColors.textMuted }}
                       >

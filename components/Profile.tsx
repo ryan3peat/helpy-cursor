@@ -174,6 +174,7 @@ const Profile: React.FC<ProfileProps> = ({
   }>({ maxFamily: 3, maxHelpers: 1 }); // Default to free plan limits
   const [isLoadingSubscription, setIsLoadingSubscription] = useState(true);
   const hasLoadedSubscriptionRef = useRef(false); // Track if we've loaded subscription info at least once
+  const isHandlingStripeReturnRef = useRef(false); // Prevent double-fetch when returning from Stripe
   const [isDeleteAccountModalOpen, setIsDeleteAccountModalOpen] = useState(false);
   const [isFinalDeleteConfirmOpen, setIsFinalDeleteConfirmOpen] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
@@ -305,6 +306,7 @@ const Profile: React.FC<ProfileProps> = ({
     // Ensure we have an authenticated client
     if (!supabase) {
       console.warn('[Profile] No Supabase client available for fetching subscription info');
+      setIsLoadingSubscription(false);
       return false;
     }
     
@@ -393,13 +395,15 @@ const Profile: React.FC<ProfileProps> = ({
 
     // If we just returned from Stripe portal, sync and check subscription status
     if (portalReturn === 'true') {
-      // Navigate to subscription page
-      setActiveSection('settings');
-      setTimeout(() => setActiveSection('plan'), 100);
-
-      // Clear URL parameters
+      // Mark that we're handling Stripe return to prevent double-fetch
+      isHandlingStripeReturnRef.current = true;
+      
+      // Clear URL parameters first to prevent re-triggering
       const newUrl = window.location.pathname + (window.location.hash.split('?')[0] || '');
       window.history.replaceState({}, document.title, newUrl);
+      
+      // Navigate to subscription page
+      setActiveSection('plan');
 
       // Sync subscription from Stripe to get latest status (including cancel_at_period_end)
       const syncAfterPortal = async () => {
@@ -407,7 +411,7 @@ const Profile: React.FC<ProfileProps> = ({
           // Call sync-subscription to get latest from Stripe
           await syncSubscription(currentUser.householdId);
           
-          // Fetch updated subscription info from database
+          // Fetch updated subscription info from database (with loading = false to not show spinner)
           await fetchSubscriptionInfo(0, false);
           
           // Check if subscription was fully canceled (status changed)
@@ -427,16 +431,31 @@ const Profile: React.FC<ProfileProps> = ({
         } catch (error) {
           console.error('[Profile] Error syncing after portal return:', error);
           // Still try to fetch local data
-          fetchSubscriptionInfo();
+          await fetchSubscriptionInfo(0, false);
         }
       };
       
-      // Small delay to allow Stripe webhooks to process
-      setTimeout(syncAfterPortal, 1500);
+      // Immediately fetch existing data to show content, then sync in background
+      fetchSubscriptionInfo(0, false).then(() => {
+        // After showing current data, sync from Stripe for updates
+        setTimeout(() => {
+          syncAfterPortal().finally(() => {
+            // Reset the flag after sync is complete
+            isHandlingStripeReturnRef.current = false;
+          });
+        }, 1000);
+      }).catch(() => {
+        isHandlingStripeReturnRef.current = false;
+      });
+      
+      return; // Don't process other URL params
     }
 
     // If we just returned from Stripe checkout
     if (sessionId || success === 'true') {
+      // Mark that we're handling Stripe return to prevent double-fetch
+      isHandlingStripeReturnRef.current = true;
+      
       // Navigate to subscription page
       setActiveSection('settings');
       // Small delay to allow settings to render, then navigate to plan
@@ -470,10 +489,12 @@ const Profile: React.FC<ProfileProps> = ({
           console.log('[Profile] Verifying subscription info state...');
           await fetchSubscriptionInfo(0, false);
           setTimeout(() => setSubscriptionSuccess(false), 3000);
+          isHandlingStripeReturnRef.current = false;
           return;
         }
         
         console.warn('[Profile] Sync failed, falling back to polling:', syncResult.error);
+        isHandlingStripeReturnRef.current = false;
         
         // Fallback: poll for webhook to update (legacy behavior)
         const retryFetch = async (attempt: number = 0) => {
@@ -511,6 +532,10 @@ const Profile: React.FC<ProfileProps> = ({
 
   // Fetch subscription info when navigating to plan/security sections (only if missing)
   React.useEffect(() => {
+    // Skip if we're handling Stripe return (that handler will fetch)
+    if (isHandlingStripeReturnRef.current) {
+      return;
+    }
     if ((activeSection === 'plan' || activeSection === 'security') && !subscriptionInfo) {
       fetchSubscriptionInfo();
     }

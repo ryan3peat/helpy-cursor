@@ -873,7 +873,18 @@ const Profile: React.FC<ProfileProps> = ({
     try {
       setIsLoading(true);
       const portalUrl = await createPortalSession(currentUser.householdId);
+      
+      if (!portalUrl) {
+        throw new Error('No portal URL returned');
+      }
+      
+      // Redirect to Stripe portal
       window.location.href = portalUrl;
+      
+      // Safety: reset loading after a delay in case redirect doesn't happen
+      setTimeout(() => {
+        setIsLoading(false);
+      }, 5000);
     } catch (error) {
       console.error('Portal error:', error);
       showAlert(
@@ -3239,6 +3250,49 @@ const Profile: React.FC<ProfileProps> = ({
             </div>
           , document.body)}
 
+          {/* Cancel Subscription Confirmation Modal */}
+          {showCancelSubConfirm && createPortal(
+            <div 
+              className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
+              onClick={(e) => { if (e.target === e.currentTarget) setShowCancelSubConfirm(false); }}
+            >
+              {/* Safe area bottom cover */}
+              <div 
+                className="absolute bottom-0 left-0 right-0 bg-card"
+                style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
+              />
+              <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
+                {/* Header */}
+                <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
+                  <h2 className="text-title text-foreground">{t['subscription.cancel_title'] || 'Cancel Subscription'}</h2>
+                </div>
+
+                {/* Content */}
+                <div className="p-5">
+                  <p className="text-body text-muted-foreground">
+                    {t['subscription.confirm_cancel'] || 'Are you sure you want to cancel your subscription? You will lose access to premium features at the end of your billing period.'}
+                  </p>
+                </div>
+
+                {/* Footer */}
+                <div className="p-5 pb-8 border-t border-border flex gap-3 shrink-0">
+                  <button
+                    onClick={() => setShowCancelSubConfirm(false)}
+                    className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body"
+                  >
+                    {t['common.keep_subscription'] || 'Keep Subscription'}
+                  </button>
+                  <button
+                    onClick={confirmCancelSubscription}
+                    className="flex-1 py-3.5 rounded-xl bg-destructive/10 text-destructive text-body"
+                  >
+                    {t['common.cancel_subscription'] || 'Cancel'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          , document.body)}
+
           {/* Footer */}
           <div className="helpy-footer">
             <span className="helpy-logo">helpy</span>
@@ -4041,49 +4095,6 @@ const Profile: React.FC<ProfileProps> = ({
             <span className="helpy-logo">helpy</span>
           </div>
         </div>
-
-        {/* Cancel Subscription Confirmation Modal */}
-        {showCancelSubConfirm && createPortal(
-          <div 
-            className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
-            onClick={(e) => { if (e.target === e.currentTarget) setShowCancelSubConfirm(false); }}
-          >
-            {/* Safe area bottom cover */}
-            <div 
-              className="absolute bottom-0 left-0 right-0 bg-card"
-              style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
-            />
-            <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
-              {/* Header */}
-              <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
-                <h2 className="text-title text-foreground">{t['subscription.cancel_title'] || 'Cancel Subscription'}</h2>
-              </div>
-
-              {/* Content */}
-              <div className="p-5">
-                <p className="text-body text-muted-foreground">
-                  {t['subscription.confirm_cancel'] || 'Are you sure you want to cancel your subscription? You will lose access to premium features at the end of your billing period.'}
-                </p>
-              </div>
-
-              {/* Footer */}
-              <div className="p-5 pb-8 border-t border-border flex gap-3 shrink-0">
-                <button
-                  onClick={() => setShowCancelSubConfirm(false)}
-                  className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body"
-                >
-                  {t['common.keep_subscription'] || 'Keep Subscription'}
-                </button>
-                <button
-                  onClick={confirmCancelSubscription}
-                  className="flex-1 py-3.5 rounded-xl bg-destructive/10 text-destructive text-body"
-                >
-                  {t['common.cancel_subscription'] || 'Cancel'}
-                </button>
-              </div>
-            </div>
-          </div>
-        , document.body)}
 
         {/* Generic Alert Modal (replaces native alert()) */}
         {alertModal.isOpen && createPortal(

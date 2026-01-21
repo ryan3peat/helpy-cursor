@@ -1157,6 +1157,7 @@ Give it a try:`,
 
   // Subscription - Additional (Translation Audit)
   'subscription.trial_banner': 'Free Trial',
+  'subscription.trial_ends': 'Free trial ends',
   'subscription.days_remaining': 'days remaining',
   'subscription.referral_code': 'Referral Code (for free trial)',
   'subscription.referral_code_placeholder': 'e.g., PROMOCODE',

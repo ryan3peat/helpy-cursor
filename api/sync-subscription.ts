@@ -44,6 +44,7 @@ export default async function handler(req: any, res: any) {
     let periodEnd: number | null = null;
     let stripeCustomerId: string | null = null;
     let status: string | null = null;
+    let trialEnd: number | null = null;
 
     if (sessionId) {
       try {
@@ -56,6 +57,7 @@ export default async function handler(req: any, res: any) {
           subscriptionId = sub.id;
           status = sub.status;
           periodEnd = sub.current_period_end || null;
+          trialEnd = sub.trial_end || null;
           const priceId = sub.items?.data?.[0]?.price?.id;
           plan = priceIdToPlan(priceId);
           const interval = sub.items?.data?.[0]?.price?.recurring?.interval;
@@ -80,6 +82,7 @@ export default async function handler(req: any, res: any) {
         subscriptionId = sub.id;
         status = sub.status;
         periodEnd = sub.current_period_end || null;
+        trialEnd = sub.trial_end || null;
         const priceId = sub.items?.data?.[0]?.price?.id;
         plan = priceIdToPlan(priceId);
         const interval = sub.items?.data?.[0]?.price?.recurring?.interval;
@@ -93,6 +96,8 @@ export default async function handler(req: any, res: any) {
 
     const limits = PLAN_LIMITS[plan];
     const periodEndISO = periodEnd ? new Date(periodEnd * 1000).toISOString() : null;
+    const trialEndISO = trialEnd ? new Date(trialEnd * 1000).toISOString() : null;
+    const isTrial = status === 'trialing' && !!trialEnd;
 
     const { error: updateError } = await supabase
       .from('households')
@@ -105,6 +110,8 @@ export default async function handler(req: any, res: any) {
         ...(periodEndISO && { subscription_current_period_end: periodEndISO }),
         max_family_members: limits.maxFamily,
         max_helpers: limits.maxHelpers,
+        is_trial: isTrial,
+        ...(trialEndISO && { trial_ends_at: trialEndISO }),
       })
       .eq('id', householdId);
 

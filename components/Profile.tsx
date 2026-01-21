@@ -162,6 +162,8 @@ const Profile: React.FC<ProfileProps> = ({
     status: string;
     periodEnd?: string;
     period?: string;
+    isTrial?: boolean;
+    trialEndsAt?: string;
   } | null>(null);
   
   // Household limits for family member quota
@@ -312,7 +314,7 @@ const Profile: React.FC<ProfileProps> = ({
       }
       const { data, error } = await supabase
         .from('households')
-        .select('name, subscription_plan, subscription_status, subscription_current_period_end, subscription_period, max_family_members, max_helpers')
+        .select('name, subscription_plan, subscription_status, subscription_current_period_end, subscription_period, max_family_members, max_helpers, is_trial, trial_ends_at')
         .eq('id', currentUser.householdId)
         .maybeSingle();
 
@@ -339,7 +341,9 @@ const Profile: React.FC<ProfileProps> = ({
           plan: data.subscription_plan || 'free',
           status: data.subscription_status || 'inactive',
           periodEnd: data.subscription_current_period_end,
-          period: data.subscription_period || 'monthly'
+          period: data.subscription_period || 'monthly',
+          isTrial: data.is_trial || false,
+          trialEndsAt: data.trial_ends_at || undefined
         };
         
         console.log('[Profile] Updating subscriptionInfo state:', newSubscriptionInfo);
@@ -741,8 +745,9 @@ const Profile: React.FC<ProfileProps> = ({
       setPromoCodeError(null);
       setLoadingPlan(plan);
       
-      // Check if user has an active paid subscription
-      const hasActivePaidSubscription = subscriptionInfo?.status === 'active' && 
+      // Check if user has an active paid subscription (includes 'trialing' status)
+      const isSubscriptionActive = subscriptionInfo?.status === 'active' || subscriptionInfo?.status === 'trialing';
+      const hasActivePaidSubscription = isSubscriptionActive && 
         subscriptionInfo?.plan && 
         subscriptionInfo.plan !== 'free';
       
@@ -2548,21 +2553,27 @@ const Profile: React.FC<ProfileProps> = ({
     ];
 
     const isAdmin = currentUser.role === UserRole.MASTER || currentUser.role === UserRole.SUPERADMIN;
-    const currentPlanName = subscriptionInfo?.plan === 'core' 
+    // Check if subscription is active (includes 'trialing' status for free trial subscriptions)
+    const isSubscriptionActive = subscriptionInfo?.status === 'active' || subscriptionInfo?.status === 'trialing';
+    // Determine the current plan - if subscription is active/trialing, use the plan, otherwise it's free
+    const effectivePlan = isSubscriptionActive && subscriptionInfo?.plan && subscriptionInfo.plan !== 'free' 
+      ? subscriptionInfo.plan 
+      : 'free';
+    const currentPlanName = effectivePlan === 'core' 
       ? (t['common.core'] || 'Core') 
-      : subscriptionInfo?.plan === 'pro' 
+      : effectivePlan === 'pro' 
       ? (t['common.pro'] || 'Pro') 
       : (t['common.free'] || 'Free');
-    const planPrice = subscriptionInfo?.plan === 'core' 
+    const planPrice = effectivePlan === 'core' 
       ? (subscriptionInfo?.period === 'yearly' ? 845 : 88)
-      : subscriptionInfo?.plan === 'pro'
+      : effectivePlan === 'pro'
       ? (subscriptionInfo?.period === 'yearly' ? 1133 : 118)
       : 0;
     
     // Current plan card colors based on plan
-    const currentPlanColors = subscriptionInfo?.plan === 'core'
+    const currentPlanColors = effectivePlan === 'core'
       ? { bg: HELPY_BLUE, text: 'white', textMuted: 'rgba(255,255,255,0.8)', border: 'rgba(255,255,255,0.2)', badgeBg: 'white', badgeBorder: 'white', badgeText: HELPY_BLUE }
-      : subscriptionInfo?.plan === 'pro'
+      : effectivePlan === 'pro'
       ? { bg: HELPY_PINK, text: 'white', textMuted: 'rgba(255,255,255,0.8)', border: 'rgba(255,255,255,0.2)', badgeBg: 'white', badgeBorder: 'white', badgeText: HELPY_PINK }
       : { bg: 'hsl(var(--card))', text: 'hsl(var(--foreground))', textMuted: 'hsl(var(--muted-foreground))', border: 'hsl(var(--border))', badgeBg: 'white', badgeBorder: HELPY_BLUE, badgeText: HELPY_BLUE };
 
@@ -2631,7 +2642,7 @@ const Profile: React.FC<ProfileProps> = ({
                   </div>
                 </div>
                 
-                {subscriptionInfo?.status === 'active' && subscriptionInfo?.periodEnd ? (
+                {isSubscriptionActive && subscriptionInfo?.periodEnd ? (
                   <div 
                     className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t"
                     style={{ borderColor: currentPlanColors.border }}
@@ -2655,7 +2666,7 @@ const Profile: React.FC<ProfileProps> = ({
                       <p className="text-body font-semibold">{getNextPaymentDate(subscriptionInfo.periodEnd, subscriptionInfo.period) || (t['common.na'] || 'N/A')}</p>
                     </div>
                   </div>
-                ) : subscriptionInfo?.status !== 'active' && (
+                ) : !isSubscriptionActive && (
                   <div 
                     className="mt-4 pt-4 border-t"
                     style={{ borderColor: currentPlanColors.border }}
@@ -2669,7 +2680,22 @@ const Profile: React.FC<ProfileProps> = ({
                   </div>
                 )}
 
-                {subscriptionInfo?.status === 'active' && isAdmin && (
+                {/* Trial End Date Display */}
+                {subscriptionInfo?.isTrial && subscriptionInfo?.trialEndsAt && (
+                  <div 
+                    className="mt-4 pt-4 border-t"
+                    style={{ borderColor: currentPlanColors.border }}
+                  >
+                    <p 
+                      className="text-body"
+                      style={{ color: currentPlanColors.textMuted }}
+                    >
+                      {t['subscription.trial_ends'] || 'Free trial ends'}: <span className="font-semibold" style={{ color: currentPlanColors.text }}>{formatDate(subscriptionInfo.trialEndsAt)}</span>
+                    </p>
+                  </div>
+                )}
+
+                {isSubscriptionActive && isAdmin && (
                   <button
                     onClick={handleCancelSubscription}
                     disabled={isLoading}
@@ -2688,7 +2714,7 @@ const Profile: React.FC<ProfileProps> = ({
             {/* Upgrade/Change Plan Section */}
             <div id="plan-section" className="mb-6">
               <h3 className="text-title font-bold text-foreground mb-4">
-                {subscriptionInfo && subscriptionInfo.status === 'active' ? (t['subscription.change_plan'] || 'Change Plan') : (t['subscription.choose_plan'] || 'Choose Your Plan')}
+                {isSubscriptionActive && effectivePlan !== 'free' ? (t['subscription.change_plan'] || 'Change Plan') : (t['subscription.choose_plan'] || 'Choose Your Plan')}
               </h3>
 
               {!isAdmin && (
@@ -2738,10 +2764,12 @@ const Profile: React.FC<ProfileProps> = ({
               <div className="space-y-4">
                 {plans.map((p) => {
                   const price = billingPeriod === 'monthly' ? p.monthlyPrice : p.yearlyPrice;
+                  // Check if subscription is active (includes 'trialing' status for free trial subscriptions)
+                  const isSubscriptionActive = subscriptionInfo?.status === 'active' || subscriptionInfo?.status === 'trialing';
                   // For free plan, check if user has no active paid subscription
                   const isCurrentPlan = p.isFree 
-                    ? (!subscriptionInfo?.plan || subscriptionInfo?.plan === 'free' || subscriptionInfo?.status !== 'active')
-                    : (subscriptionInfo?.plan === p.id && subscriptionInfo?.status === 'active');
+                    ? (!subscriptionInfo?.plan || subscriptionInfo?.plan === 'free' || !isSubscriptionActive)
+                    : (subscriptionInfo?.plan === p.id && isSubscriptionActive);
 
                   // Determine if this is an upgrade or downgrade
                   // Plan hierarchy: free (0) < core (1) < pro (2)
@@ -2752,7 +2780,7 @@ const Profile: React.FC<ProfileProps> = ({
                   const isDowngrade = targetPlanRank < currentPlanRank;
                   
                   // Check if user has an active paid subscription (for showing downgrade to Free)
-                  const hasActivePaidSubscription = subscriptionInfo?.status === 'active' && 
+                  const hasActivePaidSubscription = isSubscriptionActive && 
                     subscriptionInfo?.plan && 
                     subscriptionInfo.plan !== 'free';
 

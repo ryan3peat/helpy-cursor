@@ -1144,6 +1144,18 @@ const Meals: React.FC<MealsProps> = ({
         className="fixed top-0 left-0 right-0 z-[19] bg-background pointer-events-none"
         style={{ height: '210px' }}
       />
+      <div
+        className="fixed top-0 left-0 right-0 z-[21] pointer-events-none"
+        aria-hidden="true"
+      >
+        <div className="max-w-2xl mx-auto px-4 sm:px-6">
+          <div className="flex items-end pb-3" style={{ height: '120px' }}>
+            <h1 className="text-display text-foreground header-title-stable">
+              {mealsTitle}
+            </h1>
+          </div>
+        </div>
+      </div>
       <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
         {/* ─────────────────────────────────────────────────────────────── */}
         {/* STICKY HEADER - matches Family */}
@@ -1153,7 +1165,7 @@ const Meals: React.FC<MealsProps> = ({
           style={{ height: '120px' }}
         >
           <div className="flex items-center justify-between w-full">
-            <h1 className="text-display text-foreground header-title-stable">
+            <h1 className="text-display text-foreground header-title-stable opacity-0">
               {mealsTitle}
             </h1>
             

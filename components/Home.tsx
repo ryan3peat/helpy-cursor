@@ -1291,9 +1291,9 @@ Give it a try:`;
         onClick={() => onNavigate('meals')}
         className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden cursor-pointer"
       >
-        <div className="bg-primary px-4 py-2.5 flex justify-between items-center">
-          <h2 className="text-title text-white">{t['dashboard.todays_menu']}</h2>
-          <span className="text-body text-white">
+        <div className="bg-card px-4 py-2.5 flex justify-between items-center">
+          <h2 className="text-title text-primary">{t['dashboard.todays_menu']}</h2>
+          <span className="text-body text-primary">
             {(() => {
               const d = new Date();
               const locale = currentLang === 'en' ? 'en-GB' : currentLang;
@@ -1388,7 +1388,7 @@ Give it a try:`;
         {todayTasks.length > 0 && (
           <>
             <div className="mx-4 border-t border-border"></div>
-            <div className="px-4 py-3">
+            <div className="px-4 py-3 pl-7">
               <span className="text-title text-primary mb-2 block">
                 {t['dashboard.today'] || 'Today'} ({todayTasks.length})
               </span>
@@ -1408,7 +1408,7 @@ Give it a try:`;
         {overdueTasks.length > 0 && (
           <>
             <div className="mx-4 border-t border-border"></div>
-            <div className="px-4 py-3">
+            <div className="px-4 py-3 pl-7">
               <span className="text-title text-destructive mb-2 block">
                 {t['dashboard.overdue'] || 'Overdue'} ({overdueTasks.length})
               </span>
@@ -1433,7 +1433,7 @@ Give it a try:`;
         {tomorrowTasks.length > 0 && (
           <>
             <div className="mx-4 border-t border-border"></div>
-            <div className="px-4 py-3">
+            <div className="px-4 py-3 pl-7">
               <span className="text-title text-muted-foreground mb-2 block">
                 {t['dashboard.tomorrow'] || 'Tomorrow'} ({tomorrowTasks.length})
               </span>
@@ -1453,7 +1453,7 @@ Give it a try:`;
         {todayTasks.length === 0 && overdueTasks.length === 0 && tomorrowTasks.length === 0 && (
           <>
             <div className="mx-4 border-t border-border"></div>
-            <div className="px-4 py-3 flex justify-between items-center">
+            <div className="px-4 py-3 pl-7 flex justify-between items-center">
               <span className="text-body text-muted-foreground">{t['dashboard.no_tasks'] || 'No tasks'}</span>
               <div
                 onClick={(e) => {

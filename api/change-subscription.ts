@@ -2,6 +2,7 @@
 // Handles upgrading/downgrading between paid plans (Core <-> Pro)
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
+import { logger } from './_logger';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-11-17.clover',
@@ -174,7 +175,7 @@ export default async function handler(req: any, res: any) {
       .eq('id', householdId);
 
     if (updateError) {
-      console.error('Database update error:', updateError);
+      logger.error('Database update error:', updateError);
       // Continue anyway - Stripe is the source of truth
     }
 
@@ -187,7 +188,7 @@ export default async function handler(req: any, res: any) {
         : 'Subscription updated successfully',
     });
   } catch (error: any) {
-    console.error('Change subscription error:', error);
+    logger.error('Change subscription error:', error);
     return res.status(500).json({ error: error.message || 'Failed to change subscription' });
   }
 }

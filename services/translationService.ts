@@ -3,6 +3,7 @@
 // This is much faster and costs nothing after initial seed
 
 import { supabase } from './supabase';
+import { logger } from '../utils/logger';
 import { BASE_TRANSLATIONS, SUPPORTED_LANGUAGES } from '../constants';
 import { TranslationDictionary } from '../types';
 
@@ -33,7 +34,7 @@ export async function getStaticTranslations(lang: string): Promise<TranslationDi
   // Check if this is a supported language
   const isSupported = SUPPORTED_LANGUAGES.some(l => l.code === lang);
   if (!isSupported) {
-    console.warn(`Language "${lang}" is not supported, falling back to English`);
+    logger.warn(`Language "${lang}" is not supported, falling back to English`);
     return BASE_TRANSLATIONS;
   }
 
@@ -55,7 +56,7 @@ export async function getStaticTranslations(lang: string): Promise<TranslationDi
         return parsed;
       }
     } catch (e) {
-      console.warn('Invalid translation cache, fetching from database');
+      logger.warn('Invalid translation cache, fetching from database');
     }
   }
 
@@ -77,7 +78,7 @@ export async function getStaticTranslations(lang: string): Promise<TranslationDi
         .range(from, from + pageSize - 1);
 
       if (error) {
-        console.error('Error fetching translations:', error);
+        logger.error('Error fetching translations:', error);
         return BASE_TRANSLATIONS;
       }
 
@@ -92,7 +93,7 @@ export async function getStaticTranslations(lang: string): Promise<TranslationDi
 
     // If no translations found, return base (maybe seed hasn't run yet)
     if (allTranslations.length === 0) {
-      console.warn(`No translations found for "${lang}", using English`);
+      logger.warn(`No translations found for "${lang}", using English`);
       return BASE_TRANSLATIONS;
     }
 
@@ -110,7 +111,7 @@ export async function getStaticTranslations(lang: string): Promise<TranslationDi
 
     return translations;
   } catch (error) {
-    console.error('Failed to load translations:', error);
+    logger.error('Failed to load translations:', error);
     return BASE_TRANSLATIONS;
   }
 }
@@ -160,7 +161,7 @@ export function isTranslationCached(lang: string): boolean {
 export function preloadTranslations(lang: string): void {
   if (lang !== 'en' && !translationCache[lang]) {
     getStaticTranslations(lang).catch(err => {
-      console.warn(`Failed to preload translations for ${lang}:`, err);
+      logger.warn(`Failed to preload translations for ${lang}:`, err);
     });
   }
 }

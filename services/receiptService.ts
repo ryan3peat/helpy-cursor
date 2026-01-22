@@ -3,6 +3,7 @@
 
 import { supabase as defaultSupabase } from './supabase';
 import { getAuthenticatedSupabaseClient, refreshSupabaseToken } from '../contexts/SupabaseContext';
+import { logger } from '../utils/logger';
 import { ParsedReceipt, processReceipt } from './visionService';
 
 /**
@@ -12,7 +13,7 @@ import { ParsedReceipt, processReceipt } from './visionService';
 function getSupabase() {
   const authClient = getAuthenticatedSupabaseClient();
   if (!authClient) {
-    console.warn('[receiptService] ⚠️ No authenticated client available, using default (may fail RLS)');
+    logger.warn('[receiptService] ⚠️ No authenticated client available, using default (may fail RLS)');
   }
   return authClient || defaultSupabase;
 }
@@ -51,7 +52,7 @@ export async function getKnownMerchants(householdId: string): Promise<string[]> 
 
   // SELF-HEALING: If JWT error, refresh token and retry ONCE
   if (error && isJwtError(error)) {
-    console.warn('[receiptService] ⚠️ JWT error on getKnownMerchants, refreshing token...');
+    logger.warn('[receiptService] ⚠️ JWT error on getKnownMerchants, refreshing token...');
     try {
       await refreshSupabaseToken();
       const retryResult = await getSupabase()
@@ -62,17 +63,17 @@ export async function getKnownMerchants(householdId: string): Promise<string[]> 
         .neq('merchant', '')
         .limit(500);
       if (!retryResult.error) {
-        console.log('[receiptService] ✅ Retry successful');
+        logger.log('[receiptService] ✅ Retry successful');
         data = retryResult.data;
         error = null;
       }
     } catch (refreshError) {
-      console.error('[receiptService] ❌ Token refresh failed:', refreshError);
+      logger.error('[receiptService] ❌ Token refresh failed:', refreshError);
     }
   }
 
   if (error) {
-    console.warn('[ReceiptService] Failed to fetch known merchants (non-fatal):', error.message);
+    logger.warn('[ReceiptService] Failed to fetch known merchants (non-fatal):', error.message);
     return [];
   }
 
@@ -141,7 +142,7 @@ export async function uploadReceiptImage(
     .createSignedUrl(filePath, 60 * 60 * 24 * 7); // 7 days
 
   if (signedError && !publicUrl) {
-    console.warn('[ReceiptService] Signed URL generation failed:', signedError.message);
+    logger.warn('[ReceiptService] Signed URL generation failed:', signedError.message);
   }
 
   return {
@@ -234,7 +235,7 @@ export async function linkReceiptToExpense(
     .single();
 
   if (fetchError) {
-    console.error('[ReceiptService] Failed to fetch receipt for linking:', {
+    logger.error('[ReceiptService] Failed to fetch receipt for linking:', {
       receiptId,
       error: fetchError.message,
     });
@@ -256,7 +257,7 @@ export async function linkReceiptToExpense(
     .eq('id', receiptId);
 
   if (linkError) {
-    console.error('[ReceiptService] Failed to link receipt to expense:', {
+    logger.error('[ReceiptService] Failed to link receipt to expense:', {
       receiptId,
       expenseId,
       error: linkError.message,
@@ -275,13 +276,13 @@ export async function linkReceiptToExpense(
       .eq('id', expenseId);
 
     if (updateError) {
-      console.warn('[ReceiptService] Failed to update expenses.receipt_url (non-fatal):', {
+      logger.warn('[ReceiptService] Failed to update expenses.receipt_url (non-fatal):', {
         expenseId,
         error: updateError.message,
       });
       // Non-fatal: the receipt is linked, just the denormalized field isn't set
     } else {
-      console.log('[ReceiptService] Successfully updated expenses.receipt_url for expense:', expenseId);
+      logger.log('[ReceiptService] Successfully updated expenses.receipt_url for expense:', expenseId);
     }
   }
 }
@@ -341,7 +342,7 @@ export async function deleteReceiptByExpenseId(expenseId: string): Promise<void>
     const { error: storageError } = await supabase.storage.from('receipts').remove(paths);
     if (storageError) {
       // Non-fatal: log but continue to delete DB rows
-      console.warn('Storage remove warning:', storageError.message);
+      logger.warn('Storage remove warning:', storageError.message);
     }
   }
 

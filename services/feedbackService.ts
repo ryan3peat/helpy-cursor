@@ -1,5 +1,6 @@
 import { getAuthenticatedSupabaseClient, refreshSupabaseToken } from '../contexts/SupabaseContext';
 import { supabase } from './supabase';
+import { logger } from '../utils/logger';
 
 // ─────────────────────────────────────────────────────────────────
 // Types
@@ -37,7 +38,7 @@ export interface SupportTicket {
 function getSupabaseClient() {
   const authClient = getAuthenticatedSupabaseClient();
   if (!authClient) {
-    console.warn('[feedbackService] ⚠️ No authenticated client available, using default (may fail RLS)');
+    logger.warn('[feedbackService] ⚠️ No authenticated client available, using default (may fail RLS)');
   }
   return authClient || supabase;
 }
@@ -124,7 +125,7 @@ export function subscribeToTickets(
     
     // SELF-HEALING: If JWT error, refresh token and retry ONCE
     if (error && isJwtError(error)) {
-      console.warn('[feedbackService] ⚠️ JWT error on fetchTickets, refreshing token...');
+      logger.warn('[feedbackService] ⚠️ JWT error on fetchTickets, refreshing token...');
       try {
         await refreshSupabaseToken();
         let retryQuery = getSupabaseClient()
@@ -135,18 +136,18 @@ export function subscribeToTickets(
         }
         const retryResult = await retryQuery.order('updated_at', { ascending: false });
         if (!retryResult.error) {
-          console.log('[feedbackService] ✅ Retry successful');
+          logger.log('[feedbackService] ✅ Retry successful');
           data = retryResult.data;
           error = null;
         }
       } catch (refreshError) {
-        console.error('[feedbackService] ❌ Token refresh failed:', refreshError);
+        logger.error('[feedbackService] ❌ Token refresh failed:', refreshError);
       }
     }
     
     if (error) {
-      console.error('[feedbackService] Error fetching tickets:', error);
-      console.error('[feedbackService] Error details:', {
+      logger.error('[feedbackService] Error fetching tickets:', error);
+      logger.error('[feedbackService] Error details:', {
         code: error.code,
         message: error.message,
         details: error.details,
@@ -155,7 +156,7 @@ export function subscribeToTickets(
       return;
     }
     
-    console.log('[feedbackService] Fetched tickets:', {
+    logger.log('[feedbackService] Fetched tickets:', {
       count: data?.length || 0,
       isAdmin,
       isSuperAdmin,
@@ -186,7 +187,7 @@ export function subscribeToTickets(
       }
     )
     .subscribe((status) => {
-      console.log('[feedbackService] Subscription status:', status);
+      logger.log('[feedbackService] Subscription status:', status);
     });
   
   return () => {
@@ -231,7 +232,7 @@ export async function createTicket(
     .single();
   
   if (error) {
-    console.error('[feedbackService] Error creating ticket:', error);
+    logger.error('[feedbackService] Error creating ticket:', error);
     throw error;
   }
   
@@ -259,7 +260,7 @@ export async function addMessageToTicket(
     .single();
   
   if (fetchError) {
-    console.error('[feedbackService] Error fetching ticket:', fetchError);
+    logger.error('[feedbackService] Error fetching ticket:', fetchError);
     throw fetchError;
   }
   
@@ -290,7 +291,7 @@ export async function addMessageToTicket(
     .eq('id', ticketId);
   
   if (updateError) {
-    console.error('[feedbackService] Error adding message:', updateError);
+    logger.error('[feedbackService] Error adding message:', updateError);
     throw updateError;
   }
 }
@@ -310,7 +311,7 @@ export async function updateTicketStatus(
     .eq('id', ticketId);
   
   if (error) {
-    console.error('[feedbackService] Error updating status:', error);
+    logger.error('[feedbackService] Error updating status:', error);
     throw error;
   }
 }
@@ -327,7 +328,7 @@ export async function deleteTicket(ticketId: string): Promise<void> {
     .eq('id', ticketId);
   
   if (error) {
-    console.error('[feedbackService] Error deleting ticket:', error);
+    logger.error('[feedbackService] Error deleting ticket:', error);
     throw error;
   }
 }
@@ -345,7 +346,7 @@ export async function getOpenTicketCount(householdId: string): Promise<number> {
     .in('status', ['open', 'in_progress']);
   
   if (error) {
-    console.error('[feedbackService] Error getting ticket count:', error);
+    logger.error('[feedbackService] Error getting ticket count:', error);
     return 0;
   }
   

@@ -1,5 +1,6 @@
 // services/userService.ts
 import type { User } from "../types";
+import { logger } from '../utils/logger';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
 
@@ -21,7 +22,7 @@ export async function getUser(
     const result = await response.json();
     
     if (!response.ok || !result.isValid) {
-      console.error('getUser API error:', result.error);
+      logger.error('getUser API error:', result.error);
       return null;
     }
 
@@ -56,7 +57,7 @@ export async function getUser(
       expiresAt: result.expiresAt
     };
   } catch (error) {
-    console.error('getUser fetch error:', error);
+    logger.error('getUser fetch error:', error);
     return null;
   }
 }
@@ -102,7 +103,7 @@ export async function completeInviteRegistration(
       expiresAt: null
     };
   } catch (error: any) {
-    console.error('completeInviteRegistration error:', error);
+    logger.error('completeInviteRegistration error:', error);
     throw new Error(error?.message || 'Failed to activate user');
   }
 }

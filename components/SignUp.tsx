@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useSignUp, useSignIn } from '@clerk/clerk-react';
 import { Loader2, ArrowLeft } from 'lucide-react';
 import ErrorBanner from './ui/ErrorBanner';
+import { logger } from '../utils/logger';
 
 interface SignUpProps {
   onBackToSignIn: () => void;
@@ -113,14 +114,14 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
           // Clerk will automatically show CAPTCHA in the #clerk-captcha container
           // Reset processing state so user can interact with CAPTCHA
           setIsOAuthProcessing(false);
-          console.log('OAuth completed but missing requirements - CAPTCHA should appear');
+          logger.log('OAuth completed but missing requirements - CAPTCHA should appear');
         } else if (signUp.status === 'abandoned') {
           // OAuth was cancelled or failed
           setIsOAuthProcessing(false);
           setHasCheckedOAuthRedirect(false);
         }
       } catch (error: any) {
-        console.error('OAuth redirect handling error:', error);
+        logger.error('OAuth redirect handling error:', error);
         
         // Check for external_account_exists error (Clerk's way of saying user already exists)
         const hasExternalAccountError = error.errors?.some(
@@ -132,7 +133,7 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
         if (hasExternalAccountError && signInLoaded && signIn) {
           // Use Clerk's transfer mechanism to switch to sign-in
           try {
-            console.log('Existing account detected, transferring to sign-in...');
+            logger.log('Existing account detected, transferring to sign-in...');
             
             // Transfer the OAuth flow from sign-up to sign-in
             await signIn.create({ transfer: true });
@@ -147,7 +148,7 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
             });
             return;
           } catch (transferError: any) {
-            console.error('Transfer to sign-in failed:', transferError);
+            logger.error('Transfer to sign-in failed:', transferError);
             // Fallback: try direct sign-in OAuth
             try {
               const redirectUrl = getRedirectUrl();
@@ -159,7 +160,7 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
               });
               return;
             } catch (signInError: any) {
-              console.error('Sign-in OAuth error:', signInError);
+              logger.error('Sign-in OAuth error:', signInError);
               setError('Account already exists. Please use Sign In instead.');
             }
           }
@@ -189,7 +190,7 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
           return;
         }
       } catch (error: any) {
-        console.error('Sign-in OAuth redirect handling error:', error);
+        logger.error('Sign-in OAuth redirect handling error:', error);
         setError('Failed to sign in. Please try again.');
         setIsOAuthProcessing(false);
       }
@@ -251,7 +252,7 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
         setError('Account creation completed but requires additional setup. Please try signing in.');
       }
     } catch (err: any) {
-      console.error('Signup error:', err);
+      logger.error('Signup error:', err);
       setError(getClerkErrorMessage(err));
     } finally {
       setIsSubmitting(false);
@@ -304,7 +305,7 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
         }
       }
     } catch (err: any) {
-      console.error('Verification error:', err);
+      logger.error('Verification error:', err);
       setError(getClerkErrorMessage(err));
     } finally {
       setIsSubmitting(false);
@@ -338,7 +339,7 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
         redirectUrlComplete: redirectUrl,
       });
     } catch (error: any) {
-      console.error('Google OAuth error:', error);
+      logger.error('Google OAuth error:', error);
       
       // Check for external_account_exists error BEFORE redirect
       const hasExternalAccountError = error.errors?.some(
@@ -350,7 +351,7 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
       if (hasExternalAccountError && signInLoaded && signIn) {
         // Use Clerk's transfer mechanism
         try {
-          console.log('Existing account detected before redirect, transferring to sign-in...');
+          logger.log('Existing account detected before redirect, transferring to sign-in...');
           await signIn.create({ transfer: true });
           
           const redirectUrl = getRedirectUrl();
@@ -362,7 +363,7 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
           });
           return;
         } catch (signInError: any) {
-          console.error('Sign-in OAuth error:', signInError);
+          logger.error('Sign-in OAuth error:', signInError);
           setError('Account already exists. Please use Sign In instead.');
         }
       } else {

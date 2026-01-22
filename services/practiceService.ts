@@ -2,6 +2,7 @@
 // Renamed from houseRoutineService.ts - "Practice" is the user-facing name
 import { supabase as defaultSupabase } from './supabase';
 import { getAuthenticatedSupabaseClient, refreshSupabaseToken } from '../contexts/SupabaseContext';
+import { logger } from '../utils/logger';
 import type { Practice, CreatePractice, PracticeCategory } from '@src/types/practice';
 
 // Table renamed from 'house_routine' to 'practices' (see migration 060)
@@ -15,7 +16,7 @@ const TABLE_NAME = 'practices';
 function getSupabase() {
   const authClient = getAuthenticatedSupabaseClient();
   if (!authClient) {
-    console.warn('[practiceService] ⚠️ No authenticated client - RLS may fail');
+    logger.warn('[practiceService] ⚠️ No authenticated client - RLS may fail');
   }
   return authClient || defaultSupabase;
 }
@@ -90,7 +91,7 @@ export async function listPractices(householdId: string): Promise<Practice[]> {
 
   // SELF-HEALING: If JWT error, refresh token and retry ONCE
   if (error && isJwtError(error)) {
-    console.warn('[practiceService] ⚠️ JWT error on listPractices, refreshing token and retrying...');
+    logger.warn('[practiceService] ⚠️ JWT error on listPractices, refreshing token and retrying...');
     try {
       await refreshSupabaseToken();
       
@@ -102,20 +103,20 @@ export async function listPractices(householdId: string): Promise<Practice[]> {
         .order('created_at', { ascending: false });
       
       if (!retryResult.error) {
-        console.log('[practiceService] ✅ Retry successful after token refresh');
+        logger.log('[practiceService] ✅ Retry successful after token refresh');
         data = retryResult.data;
         error = null;
       } else {
-        console.error('[practiceService] ❌ Retry also failed:', retryResult.error);
+        logger.error('[practiceService] ❌ Retry also failed:', retryResult.error);
         error = retryResult.error;
       }
     } catch (refreshError) {
-      console.error('[practiceService] ❌ Token refresh failed:', refreshError);
+      logger.error('[practiceService] ❌ Token refresh failed:', refreshError);
     }
   }
 
   if (error) {
-    console.error('Failed to fetch practices:', error);
+    logger.error('Failed to fetch practices:', error);
     throw error;
   }
 
@@ -137,7 +138,7 @@ export async function listPracticesByCategory(
     .order('created_at', { ascending: false });
 
   if (error) {
-    console.error('Failed to fetch practices by category:', error);
+    logger.error('Failed to fetch practices by category:', error);
     throw error;
   }
 
@@ -163,7 +164,7 @@ export async function createPractice(
     .single();
 
   if (error) {
-    console.error('Failed to create practice:', error);
+    logger.error('Failed to create practice:', error);
     throw error;
   }
 
@@ -187,7 +188,7 @@ export async function updatePractice(
     .single();
 
   if (error) {
-    console.error('Failed to update practice:', error);
+    logger.error('Failed to update practice:', error);
     throw error;
   }
 
@@ -208,7 +209,7 @@ export async function deletePractice(
     .eq('household_id', householdId);
 
   if (error) {
-    console.error('Failed to delete practice:', error);
+    logger.error('Failed to delete practice:', error);
     throw error;
   }
 }
@@ -221,7 +222,7 @@ export function subscribeToPractices(
   callback: (data: Practice[]) => void
 ): () => void {
   // Initial fetch
-  listPractices(householdId).then(callback).catch(console.error);
+  listPractices(householdId).then(callback).catch(logger.error);
 
   // Subscribe to changes
   const channelName = `practices-${householdId}`;
@@ -238,7 +239,7 @@ export function subscribeToPractices(
       },
       () => {
         // Refetch on any change
-        listPractices(householdId).then(callback).catch(console.error);
+        listPractices(householdId).then(callback).catch(logger.error);
       }
     )
     .subscribe();

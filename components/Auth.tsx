@@ -9,6 +9,7 @@ import { User, TranslationDictionary } from '../types';
 import SignUp from './SignUp';
 import HouseholdSwitchModal from './HouseholdSwitchModal';
 import RemovedFromHousehold from './RemovedFromHousehold';
+import { logger } from '../utils/logger';
 
 // Loading component for auth states
 const AuthLoading = () => (
@@ -142,7 +143,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
   }, [isLoaded, user]);
 
   React.useEffect(() => {
-    console.log('🔵 [Auth] useEffect triggered:', { 
+    logger.log('🔵 [Auth] useEffect triggered:', { 
       isLoaded, 
       user: !!user, 
       isCreatingUser, 
@@ -151,11 +152,11 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
     });
     // Also wait for Supabase client to be ready (JWT fetched)
     if (isLoaded && user && !isCreatingUser && !hasCheckedUser.current && isSupabaseReady) {
-      console.log('✅ [Auth] Conditions met, calling checkOrCreateUser');
+      logger.log('✅ [Auth] Conditions met, calling checkOrCreateUser');
       hasCheckedUser.current = true;
       checkOrCreateUser(user);
     } else {
-      console.log('⚠️ [Auth] Conditions not met:', {
+      logger.log('⚠️ [Auth] Conditions not met:', {
         isLoaded,
         hasUser: !!user,
         isCreatingUser,
@@ -177,36 +178,36 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
     
     // If no authenticated client yet, wait a bit and retry (shouldn't happen due to useEffect check)
     if (!clientToUse) {
-      console.log('[Auth] Waiting for authenticated Supabase client...');
+      logger.log('[Auth] Waiting for authenticated Supabase client...');
       await new Promise(resolve => setTimeout(resolve, 500));
       clientToUse = getAuthenticatedSupabaseClient();
     }
     
     // Final fallback to context value or default (shouldn't be needed)
     if (!clientToUse) {
-      console.warn('[Auth] ⚠️ Using context supabase client (JWT may not be ready)');
+      logger.warn('[Auth] ⚠️ Using context supabase client (JWT may not be ready)');
       clientToUse = supabaseFromContext || defaultSupabase;
     }
     
     // Log client status for debugging
-    console.log('[Auth] Supabase client status:', {
+    logger.log('[Auth] Supabase client status:', {
       hasClient: !!clientToUse,
       clientType: clientToUse === defaultSupabase ? 'Default (no JWT)' : 'Authenticated (with JWT)'
     });
     
     if (!clientToUse) {
-      console.error('[Auth] ❌ Supabase client is NULL - this should not happen!');
-      console.error('[Auth] SupabaseProvider might not be initialized');
+      logger.error('[Auth] ❌ Supabase client is NULL - this should not happen!');
+      logger.error('[Auth] SupabaseProvider might not be initialized');
       setIsCreatingUser(false);
       return;
     }
     
     try {
-      console.log('🔍 [Auth] checkOrCreateUser started for Clerk user:', clerkUser.id);
-      console.log('🔍 [Auth] Clerk email:', clerkEmail);
-      console.log('🔍 [Auth] Full URL:', window.location.href);
-      console.log('🔍 [Auth] Search params:', window.location.search);
-      console.log('🔍 [Auth] Hash:', window.location.hash);
+      logger.log('🔍 [Auth] checkOrCreateUser started for Clerk user:', clerkUser.id);
+      logger.log('🔍 [Auth] Clerk email:', clerkEmail);
+      logger.log('🔍 [Auth] Full URL:', window.location.href);
+      logger.log('🔍 [Auth] Search params:', window.location.search);
+      logger.log('🔍 [Auth] Hash:', window.location.hash);
       
       // ============================================================
       // STEP 1: PRIORITY - Check URL for invite parameters FIRST
@@ -226,11 +227,11 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
       const hid = urlParams.get('hid') || hashParams.get('hid') || (hidMatch ? decodeURIComponent(hidMatch[1]) : null);
       const uid = urlParams.get('uid') || hashParams.get('uid') || (uidMatch ? decodeURIComponent(uidMatch[1]) : null);
       
-      console.log('🔍 [Auth] Invite params check:', { isInvite, hid, uid });
-      console.log('🔍 [Auth] URL params:', { urlParams: Object.fromEntries(urlParams), hashParams: Object.fromEntries(hashParams) });
+      logger.log('🔍 [Auth] Invite params check:', { isInvite, hid, uid });
+      logger.log('🔍 [Auth] URL params:', { urlParams: Object.fromEntries(urlParams), hashParams: Object.fromEntries(hashParams) });
 
       if (isInvite && hid && uid) {
-        console.log('🔗 Invite URL detected (PRIORITY):', { hid, uid });
+        logger.log('🔗 Invite URL detected (PRIORITY):', { hid, uid });
 
         // Use API endpoint to accept invite (bypasses RLS issues with new users)
         try {
@@ -249,11 +250,11 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
           });
 
           const result = await response.json();
-          console.log('🔗 [Auth] Accept invite API response:', result);
+          logger.log('🔗 [Auth] Accept invite API response:', result);
 
           if (response.ok && result.success && result.user) {
             const activatedUser = result.user;
-            console.log('✅ [Auth] Invited user activated via API:', activatedUser);
+            logger.log('✅ [Auth] Invited user activated via API:', activatedUser);
             
             // Clear the invite params from URL
             window.history.replaceState({}, '', window.location.pathname);
@@ -276,10 +277,10 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
             
             // Reset state after successful login
             setIsCreatingUser(false);
-            console.log('✅ [Auth] onLogin() called successfully, resetting isCreatingUser');
+            logger.log('✅ [Auth] onLogin() called successfully, resetting isCreatingUser');
             return;
           } else if (result.expired) {
-            console.log('⏰ Invitation expired');
+            logger.log('⏰ Invitation expired');
             showAlert(
               'Invitation Expired',
               'This invitation has expired. Please ask for a new invite link.',
@@ -287,20 +288,20 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
             );
             window.history.replaceState({}, '', window.location.pathname);
           } else if (result.notFound) {
-            console.log('⚠️ [Auth] Invitation not found, may already be activated');
+            logger.log('⚠️ [Auth] Invitation not found, may already be activated');
             // Don't clear URL yet - continue to check if user exists by email
           } else if (result.requiresSwitch) {
             // User already belongs to another household - need to handle switch
-            console.log('🔄 [Auth] User belongs to different household, requires switch');
-            console.log('🔄 [Auth] Existing household:', result.existingHouseholdId);
-            console.log('🔄 [Auth] Invited household:', result.invitedHouseholdId);
+            logger.log('🔄 [Auth] User belongs to different household, requires switch');
+            logger.log('🔄 [Auth] Existing household:', result.existingHouseholdId);
+            logger.log('🔄 [Auth] Invited household:', result.invitedHouseholdId);
             
             // Don't clear URL - let App.tsx/InviteSetup handle the household switch
             // The user needs to see the household switch modal
             // For now, continue to check existing user - they'll see the switch modal
           } else if (result.emailConflict) {
             // Email already used by another account
-            console.log('📧 [Auth] Email conflict - another account has this email');
+            logger.log('📧 [Auth] Email conflict - another account has this email');
             showAlert(
               'Email Already Used',
               'This email is already associated with another Helpy account. If you already have an account, please sign in instead of signing up. Or use a different email address.',
@@ -310,16 +311,16 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
             setIsCreatingUser(false);
             return;
           } else {
-            console.error('❌ [Auth] Failed to activate via API:', result.error);
+            logger.error('❌ [Auth] Failed to activate via API:', result.error);
           }
         } catch (error) {
-          console.error('❌ [Auth] Accept invite API error:', error);
+          logger.error('❌ [Auth] Accept invite API error:', error);
         }
         
         // DON'T clear URL params yet - let the flow continue
         // The invite might still be processable by later steps
         // Only clear after STEP 4 (new user creation) would run
-        console.log('⚠️ [Auth] Invite processing incomplete, keeping URL params for debugging');
+        logger.log('⚠️ [Auth] Invite processing incomplete, keeping URL params for debugging');
       }
 
       // ============================================================
@@ -332,8 +333,8 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
       } | undefined;
 
       if (metadata?.supabaseUserId && metadata?.householdId) {
-        console.log('📨 User came from Clerk invitation, activating pending user...');
-        console.log('📨 Metadata:', metadata);
+        logger.log('📨 User came from Clerk invitation, activating pending user...');
+        logger.log('📨 Metadata:', metadata);
 
         const { data: activatedUser, error: activateError } = await clientToUse
           .from('users')
@@ -348,10 +349,10 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
           .single();
 
         if (activateError) {
-          console.error('❌ Failed to activate invited user:', activateError);
+          logger.error('❌ Failed to activate invited user:', activateError);
         } else if (activatedUser) {
-          console.log('✅ [Auth] Invited user activated via metadata:', activatedUser);
-          console.log('✅ [Auth] Calling onLogin() with user');
+          logger.log('✅ [Auth] Invited user activated via metadata:', activatedUser);
+          logger.log('✅ [Auth] Calling onLogin() with user');
           onLogin({
             id: activatedUser.clerk_id || activatedUser.id,
             householdId: activatedUser.household_id,
@@ -367,7 +368,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
             onboardingStatus: activatedUser.onboarding_status || 'not_started'
           });
           setIsCreatingUser(false);
-          console.log('✅ [Auth] onLogin() called successfully, resetting isCreatingUser');
+          logger.log('✅ [Auth] onLogin() called successfully, resetting isCreatingUser');
           return;
         }
       }
@@ -381,24 +382,24 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
         .eq('clerk_id', clerkUser.id)
         .maybeSingle();
 
-      console.log('📊 Existing user check:', existingUser);
+      logger.log('📊 Existing user check:', existingUser);
 
       if (checkError) {
-        console.error('❌ Check error:', checkError);
+        logger.error('❌ Check error:', checkError);
       }
 
       if (existingUser) {
-        console.log('✅ [Auth] User exists:', existingUser);
+        logger.log('✅ [Auth] User exists:', existingUser);
 
         // Check if user has been removed from household (household_id is null)
         if (!existingUser.household_id) {
-          console.log('⚠️ [Auth] User has no household, showing removed screen');
+          logger.log('⚠️ [Auth] User has no household, showing removed screen');
           setShowRemovedFromHousehold(true);
           setIsCreatingUser(false);
           return;
         }
 
-        console.log('✅ [Auth] Calling onLogin() with existing user');
+        logger.log('✅ [Auth] Calling onLogin() with existing user');
         onLogin({
           id: existingUser.clerk_id,
           householdId: existingUser.household_id,
@@ -414,7 +415,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
           onboardingStatus: existingUser.onboarding_status || 'completed'
         });
         setIsCreatingUser(false);
-        console.log('✅ [Auth] onLogin() called successfully, resetting isCreatingUser');
+        logger.log('✅ [Auth] onLogin() called successfully, resetting isCreatingUser');
         return;
       }
 
@@ -431,12 +432,12 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
           .maybeSingle();
 
         if (pendingUser && !pendingError) {
-          console.log('📨 Found pending user by email, activating...');
+          logger.log('📨 Found pending user by email, activating...');
           
           // Check if invite hasn't expired
           const expiresAt = pendingUser.invite_expires_at;
           if (expiresAt && new Date(expiresAt) < new Date()) {
-            console.log('⏰ Invitation expired');
+            logger.log('⏰ Invitation expired');
             // Continue to create new user instead
           } else {
             // Activate the pending user
@@ -452,8 +453,8 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
               .single();
 
             if (!activateError && activatedUser) {
-              console.log('✅ [Auth] Pending user activated by email:', activatedUser);
-              console.log('✅ [Auth] Calling onLogin() with activated user');
+              logger.log('✅ [Auth] Pending user activated by email:', activatedUser);
+              logger.log('✅ [Auth] Calling onLogin() with activated user');
               onLogin({
                 id: activatedUser.clerk_id,
                 householdId: activatedUser.household_id,
@@ -469,7 +470,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
                 onboardingStatus: activatedUser.onboarding_status || 'not_started'
               });
               setIsCreatingUser(false);
-              console.log('✅ [Auth] onLogin() called successfully, resetting isCreatingUser');
+              logger.log('✅ [Auth] onLogin() called successfully, resetting isCreatingUser');
               return;
             }
           }
@@ -489,8 +490,8 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
       const finalUid = finalUrlParams.get('uid') || finalHashParams.get('uid');
       
       if (wasInviteAttempt && finalHid && finalUid) {
-        console.error('❌ [Auth] Invite params detected but not processed - NOT creating new household');
-        console.error('❌ [Auth] Invite details:', { hid: finalHid, uid: finalUid });
+        logger.error('❌ [Auth] Invite params detected but not processed - NOT creating new household');
+        logger.error('❌ [Auth] Invite details:', { hid: finalHid, uid: finalUid });
         showAlert(
           'Invitation Error',
           'There was a problem processing your invitation. Please try clicking the invite link again or contact the household admin for a new link.',
@@ -501,7 +502,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
         return;
       }
       
-      console.log('👤 New user, creating household and user via API...');
+      logger.log('👤 New user, creating household and user via API...');
 
       // Use the signup API route with service role key (bypasses RLS)
       const signupResponse = await fetch('/api/signup', {
@@ -519,14 +520,14 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
 
       if (!signupResponse.ok) {
         const errorData = await signupResponse.json();
-        console.error('❌ Signup API error:', errorData);
+        logger.error('❌ Signup API error:', errorData);
         throw new Error(errorData.error || 'Failed to create user account');
       }
 
       const signupData = await signupResponse.json();
-      console.log('✅ User and household created via API:', signupData);
-      console.log('🔍 User data:', signupData.user);
-      console.log('🔍 User name field:', signupData.user?.name);
+      logger.log('✅ User and household created via API:', signupData);
+      logger.log('🔍 User data:', signupData.user);
+      logger.log('🔍 User name field:', signupData.user?.name);
 
       // Use the created user data from API
       const createdUser = signupData.user;
@@ -534,13 +535,13 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
 
       // Ensure name field exists
       if (!createdUser.name) {
-        console.error('❌ User name is missing from API response!');
+        logger.error('❌ User name is missing from API response!');
         createdUser.name = clerkUser.fullName || clerkUser.firstName || 'User';
       }
 
-      console.log('✅ [Auth] User created:', createdUser);
-      console.log('✅ [Auth] Calling onLogin() with new user');
-      console.log('✅ [Auth] User data being passed:', {
+      logger.log('✅ [Auth] User created:', createdUser);
+      logger.log('✅ [Auth] Calling onLogin() with new user');
+      logger.log('✅ [Auth] User data being passed:', {
         id: createdUser.clerk_id,
         householdId: createdUser.household_id,
         email: createdUser.email,
@@ -563,12 +564,12 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
         onboardingStatus: createdUser.onboarding_status || 'not_started'
       };
 
-      console.log('✅ [Auth] Final user data for onLogin:', userData);
+      logger.log('✅ [Auth] Final user data for onLogin:', userData);
       onLogin(userData);
       setIsCreatingUser(false);
-      console.log('✅ [Auth] onLogin() called successfully, resetting isCreatingUser');
+      logger.log('✅ [Auth] onLogin() called successfully, resetting isCreatingUser');
     } catch (error: any) {
-      console.error('❌ Failed to create user:', error);
+      logger.error('❌ Failed to create user:', error);
       showAlert(
         'Account Setup Failed',
         'Account setup failed. Please try again or contact support.',
@@ -606,7 +607,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
           .eq('id', existingUser.id);
       }
       
-      console.log('✅ [Auth] Calling onLogin() from handleStayInCurrentHousehold');
+      logger.log('✅ [Auth] Calling onLogin() from handleStayInCurrentHousehold');
       onLogin({
         id: existingUser.clerk_id || existingUser.id,
         householdId: existingUser.household_id,
@@ -632,7 +633,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
   const handleCreateNewHousehold = async () => {
     if (!user) return;
     
-    console.log('🏠 [Auth] Creating new household for removed user');
+    logger.log('🏠 [Auth] Creating new household for removed user');
     setIsCreatingUser(true);
     
     try {
@@ -652,12 +653,12 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
 
       if (!signupResponse.ok) {
         const errorData = await signupResponse.json();
-        console.error('❌ Signup API error:', errorData);
+        logger.error('❌ Signup API error:', errorData);
         throw new Error(errorData.error || 'Failed to create household');
       }
 
       const signupData = await signupResponse.json();
-      console.log('✅ New household created:', signupData);
+      logger.log('✅ New household created:', signupData);
 
       const createdUser = signupData.user;
       
@@ -680,10 +681,10 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
       });
       
       setIsCreatingUser(false);
-      console.log('✅ [Auth] User logged in with new household');
+      logger.log('✅ [Auth] User logged in with new household');
       
     } catch (error: any) {
-      console.error('❌ Failed to create new household:', error);
+      logger.error('❌ Failed to create new household:', error);
       showAlert(
         'Household Creation Failed',
         'Could not create your household. Please try again.',
@@ -697,7 +698,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
   const handleDeleteAccountFromRemoved = async () => {
     if (!user) return;
     
-    console.log('🗑️ [Auth] Deleting account permanently');
+    logger.log('🗑️ [Auth] Deleting account permanently');
     
     try {
       const apiUrl = import.meta.env?.VITE_API_URL || '';
@@ -713,20 +714,20 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
 
       if (!deleteResponse.ok) {
         const errorData = await deleteResponse.json();
-        console.error('❌ Delete API error:', errorData);
+        logger.error('❌ Delete API error:', errorData);
         throw new Error(errorData.error || 'Failed to delete account');
       }
 
-      console.log('✅ User deleted from Supabase');
+      logger.log('✅ User deleted from Supabase');
 
       // Sign out from Clerk and redirect to homepage
       // Note: We sign out instead of deleting the Clerk account because 
       // client-side deletion may not have proper permissions
       try {
         await signOut();
-        console.log('✅ User signed out from Clerk');
+        logger.log('✅ User signed out from Clerk');
       } catch (clerkError) {
-        console.error('⚠️ Failed to sign out from Clerk:', clerkError);
+        logger.error('⚠️ Failed to sign out from Clerk:', clerkError);
         // Continue anyway - Supabase data is already deleted
       }
 
@@ -734,7 +735,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
       window.location.href = 'https://helpyfam.com';
       
     } catch (error: any) {
-      console.error('❌ Failed to delete account:', error);
+      logger.error('❌ Failed to delete account:', error);
       throw error; // Re-throw so the component can handle it
     }
   };
@@ -786,7 +787,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
           // Clear invite params
           window.history.replaceState({}, '', window.location.pathname);
           
-          console.log('✅ [Auth] Calling onLogin() from handleSwitchToNewHousehold (activated user)');
+          logger.log('✅ [Auth] Calling onLogin() from handleSwitchToNewHousehold (activated user)');
           onLogin({
             id: activatedUser.clerk_id || activatedUser.id,
             householdId: activatedUser.household_id,
@@ -821,7 +822,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
         // Clear invite params
         window.history.replaceState({}, '', window.location.pathname);
         
-        console.log('✅ [Auth] Calling onLogin() from handleSwitchToNewHousehold (updated user)');
+        logger.log('✅ [Auth] Calling onLogin() from handleSwitchToNewHousehold (updated user)');
         onLogin({
           id: updatedUser.clerk_id || updatedUser.id,
           householdId: updatedUser.household_id,
@@ -841,7 +842,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
         throw updateError || new Error('Failed to switch household');
       }
     } catch (error: any) {
-      console.error('Failed to switch household:', error);
+      logger.error('Failed to switch household:', error);
       // Check for session expired errors
       const isSessionExpired = error.message?.toLowerCase().includes('jwt') || 
                                error.message?.toLowerCase().includes('expired') ||
@@ -889,7 +890,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
   // CRITICAL: Show loading while Clerk is initializing (after OAuth redirect)
   // Don't render SignIn until we know if user is authenticated or not
   if (!isLoaded) {
-    console.log('🟣 [Auth] Clerk not loaded yet, showing loading state');
+    logger.log('🟣 [Auth] Clerk not loaded yet, showing loading state');
     return <AuthLoading />;
   }
 
@@ -907,8 +908,8 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
   // This means the user was processed but onLogin wasn't called yet (or is being called)
   // Show loading to prevent showing SignIn component
   if (isLoaded && user && hasCheckedUser.current) {
-    console.log('🟡 [Auth] Rendering loading state - user authenticated, hasCheckedUser is true');
-    console.log('🟡 [Auth] State:', { isCreatingUser, hasCheckedUser: hasCheckedUser.current });
+    logger.log('🟡 [Auth] Rendering loading state - user authenticated, hasCheckedUser is true');
+    logger.log('🟡 [Auth] State:', { isCreatingUser, hasCheckedUser: hasCheckedUser.current });
     return <AuthLoading />;
   }
 
@@ -924,7 +925,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
     
     // If invite params present, show SignUp component instead
     if (isInvite) {
-      console.log('🔴 [Auth] Rendering SignUp component - invite params detected');
+      logger.log('🔴 [Auth] Rendering SignUp component - invite params detected');
       
       // Create handler that preserves invite params when redirecting to sign-in
       const handleBackToSignIn = () => {
@@ -945,12 +946,12 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
     
     // Wait for SignIn component to be ready (prevents flash of container without form)
     if (!signInReady) {
-      console.log('🔴 [Auth] Waiting for SignIn component to be ready...');
+      logger.log('🔴 [Auth] Waiting for SignIn component to be ready...');
       return <AuthLoading />;
     }
     
-    console.log('🔴 [Auth] Rendering SignIn component - Clerk loaded but no authenticated user');
-    console.log('🔴 [Auth] State:', { isLoaded, hasUser: !!user });
+    logger.log('🔴 [Auth] Rendering SignIn component - Clerk loaded but no authenticated user');
+    logger.log('🔴 [Auth] State:', { isLoaded, hasUser: !!user });
     return (
       <>
         <AlertModal />

@@ -7,6 +7,7 @@
  * 
  * Uses the Badging API (Chrome 81+, Edge 84+, Safari 17.4+)
  */
+import { logger } from '../utils/logger';
 
 const LAST_SEEN_KEY = 'helpy_last_seen_at';
 
@@ -23,20 +24,20 @@ export const isBadgeSupported = (): boolean => {
  */
 export const setAppBadge = async (count: number): Promise<void> => {
   if (!isBadgeSupported()) {
-    console.log('[Badge] Badging API not supported');
+    logger.log('[Badge] Badging API not supported');
     return;
   }
 
   try {
     if (count <= 0) {
       await (navigator as any).clearAppBadge();
-      console.log('[Badge] Cleared');
+      logger.log('[Badge] Cleared');
     } else {
       await (navigator as any).setAppBadge(count);
-      console.log(`[Badge] Set to ${count}`);
+      logger.log(`[Badge] Set to ${count}`);
     }
   } catch (error) {
-    console.warn('[Badge] Failed to set badge:', error);
+    logger.warn('[Badge] Failed to set badge:', error);
   }
 };
 
@@ -57,7 +58,7 @@ const clearServiceWorkerBadge = async (): Promise<void> => {
   try {
     const registration = await navigator.serviceWorker?.ready;
     if (!registration?.active) {
-      console.log('[Badge] No active service worker');
+      logger.log('[Badge] No active service worker');
       return;
     }
 
@@ -65,13 +66,13 @@ const clearServiceWorkerBadge = async (): Promise<void> => {
     
     return new Promise((resolve) => {
       const timeout = setTimeout(() => {
-        console.log('[Badge] Service worker badge clear timed out');
+        logger.log('[Badge] Service worker badge clear timed out');
         resolve();
       }, 1000);
       
       messageChannel.port1.onmessage = (event) => {
         clearTimeout(timeout);
-        console.log('[Badge] Service worker badge clear response:', event.data);
+        logger.log('[Badge] Service worker badge clear response:', event.data);
         resolve();
       };
 
@@ -81,7 +82,7 @@ const clearServiceWorkerBadge = async (): Promise<void> => {
       );
     });
   } catch (error) {
-    console.warn('[Badge] Failed to clear service worker badge:', error);
+    logger.warn('[Badge] Failed to clear service worker badge:', error);
   }
 };
 
@@ -93,7 +94,7 @@ export const syncBadgeWithServiceWorker = async (): Promise<number> => {
   try {
     const registration = await navigator.serviceWorker?.ready;
     if (!registration?.active) {
-      console.log('[Badge] No active service worker');
+      logger.log('[Badge] No active service worker');
       return -1;
     }
 
@@ -101,13 +102,13 @@ export const syncBadgeWithServiceWorker = async (): Promise<number> => {
     
     return new Promise((resolve) => {
       const timeout = setTimeout(() => {
-        console.log('[Badge] Service worker badge sync timed out');
+        logger.log('[Badge] Service worker badge sync timed out');
         resolve(-1);
       }, 1000);
       
       messageChannel.port1.onmessage = (event) => {
         clearTimeout(timeout);
-        console.log('[Badge] Service worker badge sync response:', event.data);
+        logger.log('[Badge] Service worker badge sync response:', event.data);
         resolve(event.data?.count ?? -1);
       };
 
@@ -117,7 +118,7 @@ export const syncBadgeWithServiceWorker = async (): Promise<number> => {
       );
     });
   } catch (error) {
-    console.warn('[Badge] Failed to sync service worker badge:', error);
+    logger.warn('[Badge] Failed to sync service worker badge:', error);
     return -1;
   }
 };

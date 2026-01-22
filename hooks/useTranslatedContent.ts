@@ -5,6 +5,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { translateUserContent } from '../services/geminiService';
 import { useTranslationContextOptional } from '../contexts/TranslationContext';
+import { logger } from '../utils/logger';
 
 interface UseTranslatedContentOptions {
   content: string;
@@ -100,7 +101,7 @@ export const useTranslatedContent = ({
           setTranslatedText(content);
         }
       } catch (error) {
-        console.error('Translation error:', error);
+        logger.error('Translation error:', error);
         setTranslatedText(content); // Fallback to original
       } finally {
         setIsTranslating(false);

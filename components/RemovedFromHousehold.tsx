@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { UserX, Home, Trash2, AlertTriangle } from 'lucide-react';
+import { logger } from '../utils/logger';
 
 interface RemovedFromHouseholdProps {
   onDeleteAccount: () => Promise<void>;
@@ -24,7 +25,7 @@ const RemovedFromHousehold: React.FC<RemovedFromHouseholdProps> = ({
     try {
       await onCreateNewHousehold();
     } catch (error) {
-      console.error('Failed to create new household:', error);
+      logger.error('Failed to create new household:', error);
       setIsCreating(false);
     }
   };
@@ -34,7 +35,7 @@ const RemovedFromHousehold: React.FC<RemovedFromHouseholdProps> = ({
     try {
       await onDeleteAccount();
     } catch (error) {
-      console.error('Failed to delete account:', error);
+      logger.error('Failed to delete account:', error);
       setIsDeleting(false);
       setShowDeleteConfirm(false);
     }

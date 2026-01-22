@@ -8,6 +8,7 @@
 
 import { supabase } from './supabase';
 import { getAuthenticatedSupabaseClient } from '../contexts/SupabaseContext';
+import { logger } from '../utils/logger';
 
 interface JwtDebugResult {
   step: string;
@@ -34,7 +35,7 @@ function decodeJwt(token: string): JwtClaims | null {
   try {
     const parts = token.split('.');
     if (parts.length !== 3) {
-      console.error('[JWT Debug] Invalid JWT format - expected 3 parts, got', parts.length);
+      logger.error('[JWT Debug] Invalid JWT format - expected 3 parts, got', parts.length);
       return null;
     }
     
@@ -51,7 +52,7 @@ function decodeJwt(token: string): JwtClaims | null {
     
     return JSON.parse(jsonPayload);
   } catch (error) {
-    console.error('[JWT Debug] Failed to decode JWT:', error);
+    logger.error('[JWT Debug] Failed to decode JWT:', error);
     return null;
   }
 }
@@ -71,9 +72,9 @@ function isTokenExpired(claims: JwtClaims): boolean {
 export async function debugJwt(clerkGetToken?: () => Promise<string | null>): Promise<JwtDebugResult[]> {
   const results: JwtDebugResult[] = [];
   
-  console.log('\n========================================');
-  console.log('🔍 JWT DEBUG - Diagnosing Clerk/Supabase Integration');
-  console.log('========================================\n');
+  logger.log('\n========================================');
+  logger.log('🔍 JWT DEBUG - Diagnosing Clerk/Supabase Integration');
+  logger.log('========================================\n');
 
   // Step 1: Check if authenticated client exists
   const authClient = getAuthenticatedSupabaseClient();
@@ -100,7 +101,7 @@ export async function debugJwt(clerkGetToken?: () => Promise<string | null>): Pr
     try {
       // Try with template
       const templateName = import.meta.env.VITE_CLERK_JWT_TEMPLATE_NAME || 'supabase';
-      console.log(`[JWT Debug] Attempting to get token with template: ${templateName}`);
+      logger.log(`[JWT Debug] Attempting to get token with template: ${templateName}`);
       
       try {
         jwtToken = await clerkGetToken({ template: templateName } as any);
@@ -180,7 +181,7 @@ export async function debugJwt(clerkGetToken?: () => Promise<string | null>): Pr
     jwtClaims = decodeJwt(jwtToken);
     
     if (jwtClaims) {
-      console.log('[JWT Debug] Decoded JWT claims:', jwtClaims);
+      logger.log('[JWT Debug] Decoded JWT claims:', jwtClaims);
       
       // Check for clerk_id claim (required for RLS)
       if (jwtClaims.clerk_id) {
@@ -254,7 +255,7 @@ export async function debugJwt(clerkGetToken?: () => Promise<string | null>): Pr
   }
 
   // Step 4: Test Supabase RLS with JWT
-  console.log('[JWT Debug] Testing Supabase RLS...');
+  logger.log('[JWT Debug] Testing Supabase RLS...');
   
   try {
     // Use the authenticated client if available
@@ -354,40 +355,40 @@ export async function debugJwt(clerkGetToken?: () => Promise<string | null>): Pr
   }
 
   // Print summary
-  console.log('\n========================================');
-  console.log('📊 JWT DEBUG SUMMARY');
-  console.log('========================================\n');
+  logger.log('\n========================================');
+  logger.log('📊 JWT DEBUG SUMMARY');
+  logger.log('========================================\n');
 
   const errors = results.filter(r => r.status === 'ERROR');
   const warnings = results.filter(r => r.status === 'WARNING');
 
   results.forEach(r => {
     const icon = r.status === 'OK' ? '✅' : r.status === 'WARNING' ? '⚠️' : '❌';
-    console.log(`${icon} ${r.step}: ${r.message}`);
+    logger.log(`${icon} ${r.step}: ${r.message}`);
     if (r.details && r.status !== 'OK') {
-      console.log('   Details:', r.details);
+      logger.log('   Details:', r.details);
     }
   });
 
-  console.log('\n----------------------------------------');
-  console.log(`Total: ${results.length} checks | ${errors.length} errors | ${warnings.length} warnings`);
+  logger.log('\n----------------------------------------');
+  logger.log(`Total: ${results.length} checks | ${errors.length} errors | ${warnings.length} warnings`);
   
   if (errors.length > 0) {
-    console.log('\n🔴 CRITICAL ISSUES FOUND:');
-    errors.forEach(e => console.log(`   - ${e.step}: ${e.message}`));
+    logger.log('\n🔴 CRITICAL ISSUES FOUND:');
+    errors.forEach(e => logger.log(`   - ${e.step}: ${e.message}`));
     
     // Provide specific fix suggestions
     const hasClerkIdError = errors.some(e => e.step.includes('clerk_id'));
     if (hasClerkIdError) {
-      console.log('\n📋 FIX: Add clerk_id to your Clerk JWT template:');
-      console.log('   1. Go to Clerk Dashboard → Configure → JWT Templates');
-      console.log('   2. Find or create template named "supabase"');
-      console.log('   3. Add custom claim: { "clerk_id": "{{user.id}}" }');
-      console.log('   4. Save and sign out/in to get new token');
+      logger.log('\n📋 FIX: Add clerk_id to your Clerk JWT template:');
+      logger.log('   1. Go to Clerk Dashboard → Configure → JWT Templates');
+      logger.log('   2. Find or create template named "supabase"');
+      logger.log('   3. Add custom claim: { "clerk_id": "{{user.id}}" }');
+      logger.log('   4. Save and sign out/in to get new token');
     }
   }
 
-  console.log('========================================\n');
+  logger.log('========================================\n');
 
   return results;
 }
@@ -395,7 +396,7 @@ export async function debugJwt(clerkGetToken?: () => Promise<string | null>): Pr
 // Make debug function available globally in browser console
 if (typeof window !== 'undefined') {
   (window as any).helpyDebugJwtService = debugJwt;
-  console.log('[JWT Debug] 💡 TIP: Use window.helpyDebugJwt() from App.tsx for full diagnostics');
+  logger.log('[JWT Debug] 💡 TIP: Use window.helpyDebugJwt() from App.tsx for full diagnostics');
 }
 
 export default debugJwt;

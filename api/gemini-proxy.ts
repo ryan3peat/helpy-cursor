@@ -2,6 +2,7 @@
 // Server-side proxy for Google Gemini API to avoid CSP issues and keep API key secure
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { logger } from './_logger';
 
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 
@@ -41,7 +42,7 @@ export default async function handler(
     const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
     
     if (!apiKey) {
-      console.error('[Gemini Proxy] API key not configured');
+      logger.error('[Gemini Proxy] API key not configured');
       return res.status(500).json({ 
         error: 'Gemini API key not configured on server' 
       });
@@ -96,7 +97,7 @@ export default async function handler(
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('[Gemini Proxy] API error:', response.status, errorText);
+      logger.error('[Gemini Proxy] API error:', response.status, errorText);
       
       let errorMessage = `Gemini API error: ${response.status}`;
       try {
@@ -113,7 +114,7 @@ export default async function handler(
     return res.status(200).json(data);
 
   } catch (error) {
-    console.error('[Gemini Proxy] Unexpected error:', error);
+    logger.error('[Gemini Proxy] Unexpected error:', error);
     return res.status(500).json({ 
       error: error instanceof Error ? error.message : 'Internal server error' 
     });

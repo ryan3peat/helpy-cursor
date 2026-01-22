@@ -16,6 +16,7 @@ import { supabase } from './supabase';
 import { getCachedSupabaseUuid, isUserCachePopulated, getUserCacheStats } from './supabaseService';
 import { getAuthenticatedSupabaseClient, refreshSupabaseToken } from '../contexts/SupabaseContext';
 import { getDeviceId } from '../utils/pwaUtils';
+import { logger } from '../utils/logger';
 
 // ============================================================================
 // HELPER: Get authenticated Supabase client (for RLS) or fallback to default
@@ -25,7 +26,7 @@ let hasWarnedAboutNoAuthClient = false; // Only warn once to reduce console nois
 function getSupabaseClient() {
   const authClient = getAuthenticatedSupabaseClient();
   if (!authClient && !hasWarnedAboutNoAuthClient) {
-    console.warn('[pushNotificationService] ⚠️ No authenticated client available, using default (may fail RLS)');
+    logger.warn('[pushNotificationService] ⚠️ No authenticated client available, using default (may fail RLS)');
     hasWarnedAboutNoAuthClient = true;
   }
   return authClient || supabase;
@@ -90,7 +91,7 @@ function getIdType(id: string): string {
  */
 async function resolveSupabaseUserId(userId: string, householdId: string): Promise<string | null> {
   const idType = getIdType(userId);
-  console.log(`[Push] Resolving user ID: ${userId} (${idType}) in household: ${householdId}`);
+  logger.log(`[Push] Resolving user ID: ${userId} (${idType}) in household: ${householdId}`);
   
   try {
     // OPTIMIZATION: If it's already a valid UUID, verify it exists before returning
@@ -104,17 +105,17 @@ async function resolveSupabaseUserId(userId: string, householdId: string): Promi
         .maybeSingle();
       
       if (existingUser && !existsError) {
-        console.log(`[Push] ✅ ID ${userId} is already a valid Supabase UUID`);
+        logger.log(`[Push] ✅ ID ${userId} is already a valid Supabase UUID`);
         return userId;
       }
       // UUID format but doesn't exist in database - might be stale, continue with other methods
-      console.log(`[Push] ⚠️ UUID format but not found in database, trying other methods...`);
+      logger.log(`[Push] ⚠️ UUID format but not found in database, trying other methods...`);
     }
     
     // Check the supabaseService cache first (fast, no DB query)
     const cachedUuid = getCachedSupabaseUuid(userId);
     if (cachedUuid !== userId && isValidUuid(cachedUuid)) {
-      console.log(`[Push] ✅ Found cached mapping: ${userId} -> ${cachedUuid}`);
+      logger.log(`[Push] ✅ Found cached mapping: ${userId} -> ${cachedUuid}`);
       return cachedUuid;
     }
     
@@ -126,7 +127,7 @@ async function resolveSupabaseUserId(userId: string, householdId: string): Promi
 
     // SELF-HEALING: If JWT error, refresh token and retry ONCE
     if (error && isJwtError(error)) {
-      console.warn('[Push] ⚠️ JWT error on resolveSupabaseUserId, refreshing token...');
+      logger.warn('[Push] ⚠️ JWT error on resolveSupabaseUserId, refreshing token...');
       try {
         await refreshSupabaseToken();
         const retryResult = await getSupabaseClient()
@@ -134,38 +135,38 @@ async function resolveSupabaseUserId(userId: string, householdId: string): Promi
           .select('id, clerk_id')
           .eq('household_id', householdId);
         if (!retryResult.error) {
-          console.log('[Push] ✅ Retry successful');
+          logger.log('[Push] ✅ Retry successful');
           data = retryResult.data;
           error = null;
         }
       } catch (refreshError) {
-        console.error('[Push] ❌ Token refresh failed:', refreshError);
+        logger.error('[Push] ❌ Token refresh failed:', refreshError);
       }
     }
 
     if (error) {
-      console.error('[Push] ❌ Failed to query users:', error);
+      logger.error('[Push] ❌ Failed to query users:', error);
       // Fall through to try direct lookup
     }
     
     if (data && data.length > 0) {
-      console.log(`[Push] Found ${data.length} users in household`);
+      logger.log(`[Push] Found ${data.length} users in household`);
       
       // Check if it's a clerk_id (active users)
       const userByClerkId = data.find(u => u.clerk_id === userId);
       if (userByClerkId) {
-        console.log(`[Push] ✅ Resolved clerk_id ${userId} to UUID ${userByClerkId.id}`);
+        logger.log(`[Push] ✅ Resolved clerk_id ${userId} to UUID ${userByClerkId.id}`);
         return userByClerkId.id;
       }
 
       // Check if it's already a Supabase UUID (pending users)
       const userByUuid = data.find(u => u.id === userId);
       if (userByUuid) {
-        console.log(`[Push] ✅ ID ${userId} found as Supabase UUID in household`);
+        logger.log(`[Push] ✅ ID ${userId} found as Supabase UUID in household`);
         return userId;
       }
       
-      console.log('[Push] User not found in household users list, trying direct lookup...');
+      logger.log('[Push] User not found in household users list, trying direct lookup...');
     }
     
     // Direct lookup by clerk_id (in case household query failed or user not in results)
@@ -176,10 +177,10 @@ async function resolveSupabaseUserId(userId: string, householdId: string): Promi
       .maybeSingle();
     
     if (directUser && !directError) {
-      console.log(`[Push] ✅ Found user by direct clerk_id lookup: UUID ${directUser.id}`);
+      logger.log(`[Push] ✅ Found user by direct clerk_id lookup: UUID ${directUser.id}`);
       // Verify household matches
       if (directUser.household_id !== householdId) {
-        console.warn(`[Push] ⚠️ User household mismatch: expected ${householdId}, got ${directUser.household_id}`);
+        logger.warn(`[Push] ⚠️ User household mismatch: expected ${householdId}, got ${directUser.household_id}`);
         // Still return the ID, but log the mismatch for debugging
       }
       return directUser.id;
@@ -194,15 +195,15 @@ async function resolveSupabaseUserId(userId: string, householdId: string): Promi
         .maybeSingle();
       
       if (directById && !directByIdError) {
-        console.log(`[Push] ✅ Found user by direct id lookup: ${directById.id}`);
+        logger.log(`[Push] ✅ Found user by direct id lookup: ${directById.id}`);
         if (directById.household_id !== householdId) {
-          console.warn(`[Push] ⚠️ User household mismatch: expected ${householdId}, got ${directById.household_id}`);
+          logger.warn(`[Push] ⚠️ User household mismatch: expected ${householdId}, got ${directById.household_id}`);
         }
         return directById.id;
       }
     }
 
-    console.error(`[Push] ❌ Could not resolve user ID: ${userId}`, { 
+    logger.error(`[Push] ❌ Could not resolve user ID: ${userId}`, { 
       idType,
       householdId, 
       directError,
@@ -210,7 +211,7 @@ async function resolveSupabaseUserId(userId: string, householdId: string): Promi
     });
     return null;
   } catch (err) {
-    console.error('[Push] ❌ Error resolving user ID:', err);
+    logger.error('[Push] ❌ Error resolving user ID:', err);
     return null;
   }
 }
@@ -249,7 +250,7 @@ export function getNotificationPermission(): NotificationPermission {
  */
 export async function requestNotificationPermission(): Promise<NotificationPermission> {
   if (!('Notification' in window)) {
-    console.warn('[Push] Notifications not supported');
+    logger.warn('[Push] Notifications not supported');
     return 'denied';
   }
 
@@ -260,7 +261,7 @@ export async function requestNotificationPermission(): Promise<NotificationPermi
 
   // Request permission
   const permission = await Notification.requestPermission();
-  console.log('[Push] Permission result:', permission);
+  logger.log('[Push] Permission result:', permission);
   return permission;
 }
 
@@ -296,29 +297,29 @@ export async function checkNotificationCapability(
   userId: string, 
   householdId: string
 ): Promise<NotificationCapabilityResult> {
-  console.log('[Push] 🔍 Checking notification capability...');
+  logger.log('[Push] 🔍 Checking notification capability...');
   
   // 1. Check if push is supported in this browser
   if (!isPushSupported()) {
-    console.log('[Push] ❌ Capability: Push not supported');
+    logger.log('[Push] ❌ Capability: Push not supported');
     return { capable: false, reason: 'unsupported' };
   }
   
   // 2. Check browser permission
   const permission = getNotificationPermission();
   if (permission === 'denied') {
-    console.log('[Push] ❌ Capability: Permission denied by user');
+    logger.log('[Push] ❌ Capability: Permission denied by user');
     return { capable: false, reason: 'permission_denied' };
   }
   if (permission === 'default') {
-    console.log('[Push] ⚠️ Capability: Permission not yet requested');
+    logger.log('[Push] ⚠️ Capability: Permission not yet requested');
     return { capable: false, reason: 'permission_not_asked' };
   }
   
   // 3. Check service worker is registered
   const registration = await getServiceWorkerRegistration();
   if (!registration) {
-    console.log('[Push] ❌ Capability: No service worker');
+    logger.log('[Push] ❌ Capability: No service worker');
     return { capable: false, reason: 'no_service_worker' };
   }
   
@@ -327,11 +328,11 @@ export async function checkNotificationCapability(
   try {
     browserSub = await registration.pushManager.getSubscription();
   } catch (err) {
-    console.warn('[Push] Error getting browser subscription:', err);
+    logger.warn('[Push] Error getting browser subscription:', err);
   }
   
   if (!browserSub) {
-    console.log('[Push] ❌ Capability: No browser subscription');
+    logger.log('[Push] ❌ Capability: No browser subscription');
     return { capable: false, reason: 'no_browser_subscription' };
   }
   
@@ -339,7 +340,7 @@ export async function checkNotificationCapability(
   try {
     const supabaseUserId = await resolveSupabaseUserId(userId, householdId);
     if (!supabaseUserId) {
-      console.log('[Push] ⚠️ Could not resolve user ID, assuming capable');
+      logger.log('[Push] ⚠️ Could not resolve user ID, assuming capable');
       // Can't verify database, assume it's okay if browser side is good
       return { capable: true };
     }
@@ -351,13 +352,13 @@ export async function checkNotificationCapability(
       .limit(5);
     
     if (error) {
-      console.warn('[Push] Error checking database subscription:', error);
+      logger.warn('[Push] Error checking database subscription:', error);
       // Can't verify, assume okay if browser side is good
       return { capable: true };
     }
     
     if (!data || data.length === 0) {
-      console.log('[Push] ❌ Capability: No subscription in database');
+      logger.log('[Push] ❌ Capability: No subscription in database');
       return { capable: false, reason: 'no_database_subscription' };
     }
     
@@ -366,15 +367,15 @@ export async function checkNotificationCapability(
     const hasMatchingEndpoint = data.some(sub => sub.endpoint === browserEndpoint);
     
     if (!hasMatchingEndpoint) {
-      console.log('[Push] ⚠️ Capability: Browser subscription not in database (mismatch)');
+      logger.log('[Push] ⚠️ Capability: Browser subscription not in database (mismatch)');
       return { capable: false, reason: 'subscription_mismatch' };
     }
     
-    console.log('[Push] ✅ Capability: All checks passed - notifications will work');
+    logger.log('[Push] ✅ Capability: All checks passed - notifications will work');
     return { capable: true };
     
   } catch (err) {
-    console.warn('[Push] Error during database check:', err);
+    logger.warn('[Push] Error during database check:', err);
     // Browser side is good, assume okay
     return { capable: true };
   }
@@ -405,50 +406,50 @@ export async function ensureCurrentSubscriptionSaved(
   const MAX_RETRIES = 3;
   const RETRY_DELAYS = [0, 1000, 2000]; // No delay first, then 1s, then 2s
   
-  console.log(`[Push] 🔄 Ensuring current subscription is saved... (attempt ${retryCount + 1}/${MAX_RETRIES})`);
+  logger.log(`[Push] 🔄 Ensuring current subscription is saved... (attempt ${retryCount + 1}/${MAX_RETRIES})`);
   
   // Add delay for retries to give service worker time to initialize
   if (retryCount > 0 && RETRY_DELAYS[retryCount]) {
-    console.log(`[Push] Waiting ${RETRY_DELAYS[retryCount]}ms before retry...`);
+    logger.log(`[Push] Waiting ${RETRY_DELAYS[retryCount]}ms before retry...`);
     await new Promise(resolve => setTimeout(resolve, RETRY_DELAYS[retryCount]));
   }
   
   if (!isPushSupported()) {
-    console.log('[Push] ❌ Push not supported in this browser');
+    logger.log('[Push] ❌ Push not supported in this browser');
     return false;
   }
   
   const permission = getNotificationPermission();
-  console.log('[Push] Current permission:', permission);
+  logger.log('[Push] Current permission:', permission);
   if (permission !== 'granted') {
-    console.log('[Push] ❌ Permission not granted:', permission);
+    logger.log('[Push] ❌ Permission not granted:', permission);
     return false;
   }
   
   try {
     // Get or register service worker
-    console.log('[Push] Getting service worker registration...');
+    logger.log('[Push] Getting service worker registration...');
     let registration = await getServiceWorkerRegistration();
-    console.log('[Push] Existing registration:', registration ? 'found' : 'not found');
+    logger.log('[Push] Existing registration:', registration ? 'found' : 'not found');
     
     if (!registration) {
-      console.log('[Push] Registering service worker...');
+      logger.log('[Push] Registering service worker...');
       registration = await registerServiceWorker();
-      console.log('[Push] New registration:', registration ? 'created' : 'failed');
+      logger.log('[Push] New registration:', registration ? 'created' : 'failed');
     }
     
     if (!registration) {
-      console.error('[Push] ❌ No service worker registration');
+      logger.error('[Push] ❌ No service worker registration');
       // Retry if we haven't exceeded max retries
       if (retryCount < MAX_RETRIES - 1) {
-        console.log('[Push] Will retry...');
+        logger.log('[Push] Will retry...');
         return ensureCurrentSubscriptionSaved(userId, householdId, retryCount + 1);
       }
       return false;
     }
     
     // Wait for service worker to be ready with timeout
-    console.log('[Push] Waiting for service worker to be ready...');
+    logger.log('[Push] Waiting for service worker to be ready...');
     const readyPromise = navigator.serviceWorker.ready;
     const timeoutPromise = new Promise<never>((_, reject) => 
       setTimeout(() => reject(new Error('Service worker ready timeout')), 10000)
@@ -456,43 +457,43 @@ export async function ensureCurrentSubscriptionSaved(
     
     try {
       await Promise.race([readyPromise, timeoutPromise]);
-      console.log('[Push] ✅ Service worker is ready');
+      logger.log('[Push] ✅ Service worker is ready');
     } catch (timeoutError) {
-      console.error('[Push] ⚠️ Service worker ready timed out');
+      logger.error('[Push] ⚠️ Service worker ready timed out');
       if (retryCount < MAX_RETRIES - 1) {
-        console.log('[Push] Will retry...');
+        logger.log('[Push] Will retry...');
         return ensureCurrentSubscriptionSaved(userId, householdId, retryCount + 1);
       }
       return false;
     }
     
     // Get current browser subscription
-    console.log('[Push] Getting existing browser subscription...');
+    logger.log('[Push] Getting existing browser subscription...');
     let subscription = await registration.pushManager.getSubscription();
-    console.log('[Push] Existing subscription:', subscription ? subscription.endpoint.substring(0, 50) + '...' : 'none');
+    logger.log('[Push] Existing subscription:', subscription ? subscription.endpoint.substring(0, 50) + '...' : 'none');
     
     // If no subscription exists, create one
     if (!subscription) {
-      console.log('[Push] Creating new browser subscription...');
+      logger.log('[Push] Creating new browser subscription...');
       if (!VAPID_PUBLIC_KEY) {
-        console.error('[Push] ❌ VAPID_PUBLIC_KEY not configured');
+        logger.error('[Push] ❌ VAPID_PUBLIC_KEY not configured');
         return false;
       }
       subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
       });
-      console.log('[Push] ✅ New subscription created:', subscription.endpoint.substring(0, 50) + '...');
+      logger.log('[Push] ✅ New subscription created:', subscription.endpoint.substring(0, 50) + '...');
     } else {
-      console.log('[Push] Using existing browser subscription');
+      logger.log('[Push] Using existing browser subscription');
     }
     
     // ALWAYS save to database using API route (bypasses RLS issues)
-    console.log('[Push] Saving subscription via API for user:', userId);
+    logger.log('[Push] Saving subscription via API for user:', userId);
     
     const subscriptionJson = subscription.toJSON();
     if (!subscriptionJson.endpoint || !subscriptionJson.keys) {
-      console.error('[Push] ❌ Invalid subscription data');
+      logger.error('[Push] ❌ Invalid subscription data');
       return false;
     }
     
@@ -500,7 +501,7 @@ export async function ensureCurrentSubscriptionSaved(
     const appUrl = import.meta.env.VITE_APP_URL || 'https://app.helpyfam.com';
     const apiUrl = `${appUrl}/api/save-push-subscription-v2`;
     
-    console.log('[Push] Calling API:', apiUrl);
+    logger.log('[Push] Calling API:', apiUrl);
     
     const response = await fetch(apiUrl, {
       method: 'POST',
@@ -519,19 +520,19 @@ export async function ensureCurrentSubscriptionSaved(
     
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-      console.error('[Push] ❌ API error:', errorData);
+      logger.error('[Push] ❌ API error:', errorData);
       throw new Error(errorData.error || `API failed: ${response.status}`);
     }
     
     const result = await response.json();
-    console.log('[Push] ✅ Subscription saved via API:', result);
+    logger.log('[Push] ✅ Subscription saved via API:', result);
     
     return true;
   } catch (error) {
-    console.error('[Push] ❌ Failed to ensure subscription:', error);
+    logger.error('[Push] ❌ Failed to ensure subscription:', error);
     // Retry on failure
     if (retryCount < MAX_RETRIES - 1) {
-      console.log('[Push] Will retry after error...');
+      logger.log('[Push] Will retry after error...');
       return ensureCurrentSubscriptionSaved(userId, householdId, retryCount + 1);
     }
     return false;
@@ -551,12 +552,12 @@ export async function autoFixNotificationIssues(
   userId: string,
   householdId: string
 ): Promise<boolean> {
-  console.log('[Push] 🔧 Attempting auto-fix...');
+  logger.log('[Push] 🔧 Attempting auto-fix...');
   
   const capability = await checkNotificationCapability(userId, householdId);
   
   if (capability.capable) {
-    console.log('[Push] ✅ No issues to fix');
+    logger.log('[Push] ✅ No issues to fix');
     return true;
   }
   
@@ -564,16 +565,16 @@ export async function autoFixNotificationIssues(
   if (capability.reason === 'unsupported' || 
       capability.reason === 'permission_denied' || 
       capability.reason === 'permission_not_asked') {
-    console.log('[Push] ❌ Cannot auto-fix:', capability.reason);
+    logger.log('[Push] ❌ Cannot auto-fix:', capability.reason);
     return false;
   }
   
   // Try to fix service worker issues
   if (capability.reason === 'no_service_worker') {
-    console.log('[Push] 🔧 Attempting to register service worker...');
+    logger.log('[Push] 🔧 Attempting to register service worker...');
     const registration = await registerServiceWorker();
     if (!registration) {
-      console.log('[Push] ❌ Failed to register service worker');
+      logger.log('[Push] ❌ Failed to register service worker');
       return false;
     }
   }
@@ -582,20 +583,20 @@ export async function autoFixNotificationIssues(
   if (capability.reason === 'no_browser_subscription' || 
       capability.reason === 'no_database_subscription' ||
       capability.reason === 'subscription_mismatch') {
-    console.log('[Push] 🔧 Attempting to re-establish subscription...');
+    logger.log('[Push] 🔧 Attempting to re-establish subscription...');
     
     try {
       // Re-subscribe (this will create browser subscription and save to database)
       const subscription = await subscribeToPush(userId, householdId);
       if (subscription) {
-        console.log('[Push] ✅ Auto-fix successful - subscription re-established');
+        logger.log('[Push] ✅ Auto-fix successful - subscription re-established');
         return true;
       } else {
-        console.log('[Push] ❌ Auto-fix failed - could not create subscription');
+        logger.log('[Push] ❌ Auto-fix failed - could not create subscription');
         return false;
       }
     } catch (err) {
-      console.error('[Push] ❌ Auto-fix error:', err);
+      logger.error('[Push] ❌ Auto-fix error:', err);
       return false;
     }
   }
@@ -609,7 +610,7 @@ export async function autoFixNotificationIssues(
  */
 export async function registerServiceWorker(): Promise<ServiceWorkerRegistration | null> {
   if (!('serviceWorker' in navigator)) {
-    console.warn('[Push] Service workers not supported');
+    logger.warn('[Push] Service workers not supported');
     return null;
   }
 
@@ -617,14 +618,14 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
     const registration = await navigator.serviceWorker.register(SW_PATH, {
       scope: '/'
     });
-    console.log('[Push] Service worker registered:', registration);
+    logger.log('[Push] Service worker registered:', registration);
     
     // Set up update detection
     setupUpdateDetection(registration);
     
     return registration;
   } catch (error) {
-    console.error('[Push] Service worker registration failed:', error);
+    logger.error('[Push] Service worker registration failed:', error);
     return null;
   }
 }
@@ -635,7 +636,7 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
 function setupUpdateDetection(registration: ServiceWorkerRegistration): void {
   // Check if there's already a waiting worker (update available)
   if (registration.waiting) {
-    console.log('[SW Update] New version already waiting');
+    logger.log('[SW Update] New version already waiting');
     dispatchUpdateAvailable(registration);
   }
   
@@ -644,12 +645,12 @@ function setupUpdateDetection(registration: ServiceWorkerRegistration): void {
     const newWorker = registration.installing;
     if (!newWorker) return;
     
-    console.log('[SW Update] New version being installed...');
+    logger.log('[SW Update] New version being installed...');
     
     newWorker.addEventListener('statechange', () => {
       // When the new worker is installed and waiting
       if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-        console.log('[SW Update] New version ready - dispatching event');
+        logger.log('[SW Update] New version ready - dispatching event');
         dispatchUpdateAvailable(registration);
       }
     });
@@ -666,18 +667,18 @@ function setupUpdateDetection(registration: ServiceWorkerRegistration): void {
     // Prevent infinite reload loop: only reload ONCE per session
     // After first reload, the SW should be stable
     if (hasReloadedForUpdate) {
-      console.log('[SW Update] Controller changed again - ignoring to prevent loop');
+      logger.log('[SW Update] Controller changed again - ignoring to prevent loop');
       return;
     }
     
     // Only reload if there was already a controller (meaning this is an UPDATE, not initial load)
     // On first page load, navigator.serviceWorker.controller is null until SW activates
     if (navigator.serviceWorker.controller) {
-      console.log('[SW Update] Controller changed (update detected) - reloading for clean state...');
+      logger.log('[SW Update] Controller changed (update detected) - reloading for clean state...');
       hasReloadedForUpdate = true;
       window.location.reload();
     } else {
-      console.log('[SW Update] Controller set for first time - no reload needed');
+      logger.log('[SW Update] Controller set for first time - no reload needed');
     }
   });
 }
@@ -719,16 +720,16 @@ export async function checkForUpdates(): Promise<void> {
     if (registration) {
       // First, check if there's already a waiting worker (update ready but we missed the event)
       if (registration.waiting) {
-        console.log('[SW Update] Found waiting worker - dispatching update event');
+        logger.log('[SW Update] Found waiting worker - dispatching update event');
         dispatchUpdateAvailable(registration);
         return; // No need to call update() - already have one waiting
       }
       
-      console.log('[SW Update] Checking for updates...');
+      logger.log('[SW Update] Checking for updates...');
       await registration.update();
     }
   } catch (error) {
-    console.warn('[SW Update] Update check failed:', error);
+    logger.warn('[SW Update] Update check failed:', error);
   }
 }
 
@@ -760,7 +761,7 @@ export async function getServiceWorkerRegistration(): Promise<ServiceWorkerRegis
     
     return registration || null;
   } catch (error) {
-    console.error('[Push] Failed to get service worker registration:', error);
+    logger.error('[Push] Failed to get service worker registration:', error);
     return null;
   }
 }
@@ -796,15 +797,15 @@ export async function subscribeToPush(
   householdId: string,
   email?: string
 ): Promise<PushSubscription | null> {
-  console.log('[Push] subscribeToPush called:', { userId, householdId });
+  logger.log('[Push] subscribeToPush called:', { userId, householdId });
   
   if (!isPushSupported()) {
-    console.warn('[Push] Push not supported');
+    logger.warn('[Push] Push not supported');
     return null;
   }
 
   if (!VAPID_PUBLIC_KEY) {
-    console.error('[Push] VAPID_PUBLIC_KEY not configured');
+    logger.error('[Push] VAPID_PUBLIC_KEY not configured');
     return null;
   }
 
@@ -812,27 +813,27 @@ export async function subscribeToPush(
     // Step 1: Request permission only if not already granted
     let permission = getNotificationPermission();
     if (permission === 'default') {
-      console.log('[Push] Requesting permission...');
+      logger.log('[Push] Requesting permission...');
       permission = await requestNotificationPermission();
     }
     if (permission !== 'granted') {
-      console.warn('[Push] Permission not granted:', permission);
+      logger.warn('[Push] Permission not granted:', permission);
       return null;
     }
-    console.log('[Push] Permission granted');
+    logger.log('[Push] Permission granted');
 
     // Step 2: Get or register service worker
     let registration = await getServiceWorkerRegistration();
     if (!registration) {
-      console.log('[Push] Registering service worker...');
+      logger.log('[Push] Registering service worker...');
       registration = await registerServiceWorker();
     }
 
     if (!registration) {
-      console.error('[Push] No service worker registration');
+      logger.error('[Push] No service worker registration');
       return null;
     }
-    console.log('[Push] Service worker ready');
+    logger.log('[Push] Service worker ready');
 
     // Step 3: Wait for service worker to be ready
     await navigator.serviceWorker.ready;
@@ -841,14 +842,14 @@ export async function subscribeToPush(
     let subscription = await registration.pushManager.getSubscription();
 
     if (!subscription) {
-      console.log('[Push] Creating new browser subscription...');
+      logger.log('[Push] Creating new browser subscription...');
       subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
       });
-      console.log('[Push] New subscription created');
+      logger.log('[Push] New subscription created');
     } else {
-      console.log('[Push] Using existing browser subscription');
+      logger.log('[Push] Using existing browser subscription');
     }
 
     // Step 5: CRITICAL - Save via API endpoint (ONLY path, not fallback)
@@ -856,14 +857,14 @@ export async function subscribeToPush(
     // This is 100% reliable, unlike client-side resolution which fails for new users
     const subscriptionJson = subscription.toJSON();
     if (!subscriptionJson.endpoint || !subscriptionJson.keys) {
-      console.error('[Push] Invalid subscription data');
+      logger.error('[Push] Invalid subscription data');
       return null;
     }
     
     const appUrl = import.meta.env.VITE_APP_URL || 'https://app.helpyfam.com';
     const apiUrl = `${appUrl}/api/save-push-subscription-v2`;
     
-    console.log('[Push] Saving subscription via API...');
+    logger.log('[Push] Saving subscription via API...');
     
     const response = await fetch(apiUrl, {
       method: 'POST',
@@ -883,19 +884,19 @@ export async function subscribeToPush(
     // Step 6: ONLY return success if API confirmed save
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-      console.error('[Push] API save failed:', response.status, errorData);
+      logger.error('[Push] API save failed:', response.status, errorData);
       // BE HONEST - return null, don't pretend it worked
       return null;
     }
 
     const result = await response.json();
-    console.log('[Push] Subscription saved successfully via API:', result);
+    logger.log('[Push] Subscription saved successfully via API:', result);
     
     return subscription;
     
   } catch (error) {
-    console.error('[Push] subscribeToPush failed:', error);
-    console.error('[Push] Error details:', {
+    logger.error('[Push] subscribeToPush failed:', error);
+    logger.error('[Push] Error details:', {
       message: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined
     });
@@ -916,7 +917,7 @@ async function saveSubscriptionToDatabase(
   householdId: string
 ): Promise<void> {
   const idType = getIdType(userId);
-  console.log(`[Push] Saving subscription for user: ${userId} (${idType})`);
+  logger.log(`[Push] Saving subscription for user: ${userId} (${idType})`);
   
   const subscriptionJson = subscription.toJSON();
   
@@ -929,7 +930,7 @@ async function saveSubscriptionToDatabase(
   
   // Validate that we got a valid UUID, not a Clerk ID or other invalid value
   if (!supabaseUserId) {
-    console.error('[Push] ❌ Failed to resolve user ID:', { 
+    logger.error('[Push] ❌ Failed to resolve user ID:', { 
       input: userId, 
       inputType: idType,
       resolved: null 
@@ -938,7 +939,7 @@ async function saveSubscriptionToDatabase(
   }
   
   if (!isValidUuid(supabaseUserId)) {
-    console.error('[Push] ❌ Resolved ID is not a valid UUID:', { 
+    logger.error('[Push] ❌ Resolved ID is not a valid UUID:', { 
       input: userId, 
       inputType: idType,
       resolved: supabaseUserId,
@@ -959,7 +960,7 @@ async function saveSubscriptionToDatabase(
   };
 
   // Log the save attempt with clear ID mapping
-  console.log('[Push] Saving subscription to database:', {
+  logger.log('[Push] Saving subscription to database:', {
     original_user_id: userId,
     original_id_type: idType,
     resolved_user_id: supabaseUserId,
@@ -993,7 +994,7 @@ async function saveSubscriptionToDatabase(
 
   // If JWT verification fails (PGRST301), fall back to API route
   if (error && (error.code === 'PGRST301' || error.message?.includes('No suitable key'))) {
-    console.warn('[Push] JWT verification failed, using API route fallback');
+    logger.warn('[Push] JWT verification failed, using API route fallback');
     
     try {
       const appUrl = import.meta.env.VITE_APP_URL || import.meta.env.NEXT_PUBLIC_APP_URL || 'https://app.helpyfam.com';
@@ -1015,14 +1016,14 @@ async function saveSubscriptionToDatabase(
       const result = await response.json();
       savedData = result.data ? [result.data] : null;
       error = null;
-      console.log('[Push] ✅ Subscription saved via API route');
+      logger.log('[Push] ✅ Subscription saved via API route');
     } catch (apiError: any) {
-      console.error('[Push] ❌ API route also failed:', apiError);
+      logger.error('[Push] ❌ API route also failed:', apiError);
       throw apiError;
     }
   } else if (error) {
-    console.error('[Push] ❌ Failed to save subscription:', error);
-    console.error('[Push] Error details:', {
+    logger.error('[Push] ❌ Failed to save subscription:', error);
+    logger.error('[Push] Error details:', {
       code: error.code,
       message: error.message,
       details: error.details,
@@ -1033,7 +1034,7 @@ async function saveSubscriptionToDatabase(
     throw error;
   }
 
-  console.log('[Push] ✅ Subscription saved to database successfully:', savedData ? `ID: ${savedData[0]?.id}` : '(no data returned)');
+  logger.log('[Push] ✅ Subscription saved to database successfully:', savedData ? `ID: ${savedData[0]?.id}` : '(no data returned)');
 }
 
 /**
@@ -1043,7 +1044,7 @@ export async function unsubscribeFromPush(userId: string, householdId?: string):
   try {
     const registration = await getServiceWorkerRegistration();
     if (!registration) {
-      console.log('[Push] No service worker registration to unsubscribe');
+      logger.log('[Push] No service worker registration to unsubscribe');
       return true;
     }
 
@@ -1051,7 +1052,7 @@ export async function unsubscribeFromPush(userId: string, householdId?: string):
     if (subscription) {
       // Unsubscribe from push manager
       await subscription.unsubscribe();
-      console.log('[Push] Unsubscribed from push manager');
+      logger.log('[Push] Unsubscribed from push manager');
 
       // Try to resolve user ID if householdId provided
       let supabaseUserId = userId;
@@ -1070,13 +1071,13 @@ export async function unsubscribeFromPush(userId: string, householdId?: string):
         .eq('endpoint', subscription.endpoint);
 
       if (error) {
-        console.error('[Push] Failed to remove subscription from database:', error);
+        logger.error('[Push] Failed to remove subscription from database:', error);
       }
     }
 
     return true;
   } catch (error) {
-    console.error('[Push] Failed to unsubscribe:', error);
+    logger.error('[Push] Failed to unsubscribe:', error);
     return false;
   }
 }
@@ -1102,7 +1103,7 @@ export async function removeAllSubscriptions(userId: string, householdId?: strin
       .eq('user_id', supabaseUserId);
 
     if (error) {
-      console.error('[Push] Failed to remove subscriptions:', error);
+      logger.error('[Push] Failed to remove subscriptions:', error);
     }
 
     // Unsubscribe from push manager if possible
@@ -1114,9 +1115,9 @@ export async function removeAllSubscriptions(userId: string, householdId?: strin
       }
     }
 
-    console.log('[Push] All subscriptions removed for user');
+    logger.log('[Push] All subscriptions removed for user');
   } catch (error) {
-    console.error('[Push] Failed to remove all subscriptions:', error);
+    logger.error('[Push] Failed to remove all subscriptions:', error);
   }
 }
 
@@ -1131,7 +1132,7 @@ export async function hasActiveSubscription(userId: string, householdId?: string
     if (registration) {
       const browserSub = await registration.pushManager.getSubscription();
       if (browserSub) {
-        console.log('[Push] Found active browser subscription');
+        logger.log('[Push] Found active browser subscription');
         
         // Verify it's in the database too
         // Try to resolve to Supabase UUID if householdId provided
@@ -1151,13 +1152,13 @@ export async function hasActiveSubscription(userId: string, householdId?: string
           .limit(1);
         
         if (data && data.length > 0) {
-          console.log('[Push] Browser subscription is also in database');
+          logger.log('[Push] Browser subscription is also in database');
           return true;
         }
         
         // Browser has subscription but it's not in our database
         // This could happen if DB was cleared - return false so we re-save it
-        console.log('[Push] Browser subscription not found in database');
+        logger.log('[Push] Browser subscription not found in database');
         return false;
       }
     }
@@ -1165,7 +1166,7 @@ export async function hasActiveSubscription(userId: string, householdId?: string
     // No browser subscription found
     return false;
   } catch (error) {
-    console.error('[Push] Failed to check subscription:', error);
+    logger.error('[Push] Failed to check subscription:', error);
     return false;
   }
 }
@@ -1189,7 +1190,7 @@ export async function validateAndSyncSubscription(
   householdId: string,
   notificationsEnabled: boolean
 ): Promise<{ valid: boolean; action: 'none' | 'synced' | 'cleaned' | 'disabled' }> {
-  console.log('[Push] Validating subscription...', { userId, notificationsEnabled });
+  logger.log('[Push] Validating subscription...', { userId, notificationsEnabled });
   
   // If notifications are disabled, no need to validate
   if (!notificationsEnabled) {
@@ -1198,14 +1199,14 @@ export async function validateAndSyncSubscription(
   
   // Check if push is supported
   if (!isPushSupported()) {
-    console.log('[Push] Push not supported, skipping validation');
+    logger.log('[Push] Push not supported, skipping validation');
     return { valid: false, action: 'none' };
   }
   
   try {
     const registration = await getServiceWorkerRegistration();
     if (!registration) {
-      console.log('[Push] No service worker registration');
+      logger.log('[Push] No service worker registration');
       return { valid: false, action: 'none' };
     }
     
@@ -1214,7 +1215,7 @@ export async function validateAndSyncSubscription(
     // Resolve user ID to Supabase UUID
     const supabaseUserId = await resolveSupabaseUserId(userId, householdId);
     if (!supabaseUserId) {
-      console.log('[Push] Could not resolve user ID');
+      logger.log('[Push] Could not resolve user ID');
       return { valid: false, action: 'none' };
     }
     
@@ -1227,7 +1228,7 @@ export async function validateAndSyncSubscription(
       
       if (staleSubscriptions && staleSubscriptions.length > 0) {
         // Clean up stale database entries
-        console.log(`[Push] Cleaning up ${staleSubscriptions.length} stale subscription(s)`);
+        logger.log(`[Push] Cleaning up ${staleSubscriptions.length} stale subscription(s)`);
         await getSupabaseClient()
           .from('push_subscriptions')
           .delete()
@@ -1247,16 +1248,16 @@ export async function validateAndSyncSubscription(
       .limit(1);
     
     if (data && data.length > 0) {
-      console.log('[Push] Subscription is valid and in sync');
+      logger.log('[Push] Subscription is valid and in sync');
       return { valid: true, action: 'none' };
     }
     
     // Browser has subscription but it's not in database - sync it
-    console.log('[Push] Browser subscription not in database, syncing...');
+    logger.log('[Push] Browser subscription not in database, syncing...');
     
     const subscriptionJson = browserSub.toJSON();
     if (!subscriptionJson.endpoint || !subscriptionJson.keys) {
-      console.log('[Push] Invalid subscription data');
+      logger.log('[Push] Invalid subscription data');
       return { valid: false, action: 'none' };
     }
     
@@ -1286,15 +1287,15 @@ export async function validateAndSyncSubscription(
       });
     
     if (error) {
-      console.error('[Push] Failed to sync subscription:', error);
+      logger.error('[Push] Failed to sync subscription:', error);
       return { valid: false, action: 'none' };
     }
     
-    console.log('[Push] Subscription synced successfully');
+    logger.log('[Push] Subscription synced successfully');
     return { valid: true, action: 'synced' };
     
   } catch (error) {
-    console.error('[Push] Error validating subscription:', error);
+    logger.error('[Push] Error validating subscription:', error);
     return { valid: false, action: 'none' };
   }
 }
@@ -1305,14 +1306,14 @@ export async function validateAndSyncSubscription(
  */
 export async function initializePushNotifications(): Promise<void> {
   if (!isPushSupported()) {
-    console.log('[Push] Push notifications not supported in this browser');
+    logger.log('[Push] Push notifications not supported in this browser');
     return;
   }
 
   // Register service worker in the background
   const registration = await registerServiceWorker();
   if (registration) {
-    console.log('[Push] Push notification service initialized');
+    logger.log('[Push] Push notification service initialized');
   }
 }
 
@@ -1331,40 +1332,40 @@ export async function autoSubscribeIfNeeded(
   notificationsEnabled: boolean,
   email?: string
 ): Promise<boolean> {
-  console.log('[Push] Checking auto-subscribe...', { userId, householdId, notificationsEnabled });
+  logger.log('[Push] Checking auto-subscribe...', { userId, householdId, notificationsEnabled });
 
   // Check for valid userId
   if (!userId) {
-    console.log('[Push] Auto-subscribe skipped: userId is undefined');
+    logger.log('[Push] Auto-subscribe skipped: userId is undefined');
     return false;
   }
 
   // Only proceed if notifications are enabled
   if (!notificationsEnabled) {
-    console.log('[Push] Auto-subscribe skipped: notifications not enabled');
+    logger.log('[Push] Auto-subscribe skipped: notifications not enabled');
     return false;
   }
 
   // Check if push is supported
   if (!isPushSupported()) {
-    console.log('[Push] Auto-subscribe skipped: push not supported');
+    logger.log('[Push] Auto-subscribe skipped: push not supported');
     return false;
   }
 
   // Check if VAPID key is configured
   if (!VAPID_PUBLIC_KEY) {
-    console.error('[Push] Auto-subscribe skipped: VAPID key not configured');
-    console.error('[Push] VAPID_PUBLIC_KEY from env:', import.meta.env.VITE_VAPID_PUBLIC_KEY ? 'EXISTS' : 'MISSING');
+    logger.error('[Push] Auto-subscribe skipped: VAPID key not configured');
+    logger.error('[Push] VAPID_PUBLIC_KEY from env:', import.meta.env.VITE_VAPID_PUBLIC_KEY ? 'EXISTS' : 'MISSING');
     return false;
   }
   
-  console.log('[Push] VAPID public key length:', VAPID_PUBLIC_KEY.length, 'characters');
+  logger.log('[Push] VAPID public key length:', VAPID_PUBLIC_KEY.length, 'characters');
 
   try {
     // Check if user already has an active subscription in the database
     const hasSubscription = await hasActiveSubscription(userId, householdId);
     if (hasSubscription) {
-      console.log('[Push] Auto-subscribe skipped: already has active subscription');
+      logger.log('[Push] Auto-subscribe skipped: already has active subscription');
       return true;
     }
 
@@ -1373,33 +1374,33 @@ export async function autoSubscribeIfNeeded(
     // If permission is 'default' (never asked), skip and wait for user to toggle ON explicitly
     const permission = getNotificationPermission();
     if (permission === 'denied') {
-      console.log('[Push] Auto-subscribe skipped: permission denied');
+      logger.log('[Push] Auto-subscribe skipped: permission denied');
       return false;
     }
 
     if (permission === 'default') {
-      console.log('[Push] Auto-subscribe skipped: permission not yet granted (user needs to toggle ON explicitly)');
+      logger.log('[Push] Auto-subscribe skipped: permission not yet granted (user needs to toggle ON explicitly)');
       return false;
     }
 
     if (permission !== 'granted') {
-      console.log('[Push] Auto-subscribe skipped: permission not granted (current:', permission, ')');
+      logger.log('[Push] Auto-subscribe skipped: permission not granted (current:', permission, ')');
       return false;
     }
 
     // Subscribe to push notifications without prompting (permission already granted)
-    console.log('[Push] Auto-subscribing user to push notifications...');
+    logger.log('[Push] Auto-subscribing user to push notifications...');
     const subscription = await subscribeToPush(userId, householdId, email);
     
     if (subscription) {
-      console.log('[Push] Auto-subscribe successful!');
+      logger.log('[Push] Auto-subscribe successful!');
       return true;
     } else {
-      console.log('[Push] Auto-subscribe failed: no subscription returned');
+      logger.log('[Push] Auto-subscribe failed: no subscription returned');
       return false;
     }
   } catch (error) {
-    console.error('[Push] Auto-subscribe error:', error);
+    logger.error('[Push] Auto-subscribe error:', error);
     return false;
   }
 }
@@ -1409,13 +1410,13 @@ export async function autoSubscribeIfNeeded(
  */
 export async function sendTestNotification(): Promise<void> {
   if (Notification.permission !== 'granted') {
-    console.warn('[Push] Cannot send test notification - permission not granted');
+    logger.warn('[Push] Cannot send test notification - permission not granted');
     return;
   }
 
   const registration = await getServiceWorkerRegistration();
   if (!registration) {
-    console.warn('[Push] No service worker registration');
+    logger.warn('[Push] No service worker registration');
     return;
   }
 
@@ -1432,89 +1433,89 @@ export async function sendTestNotification(): Promise<void> {
  * Call this from browser console: window.helpyDebugPush()
  */
 export async function debugPushNotifications(userId?: string, householdId?: string): Promise<void> {
-  console.log('╔════════════════════════════════════════════════════════════╗');
-  console.log('║         HELPY PUSH NOTIFICATION DIAGNOSTICS                ║');
-  console.log('╠════════════════════════════════════════════════════════════╣');
+  logger.log('╔════════════════════════════════════════════════════════════╗');
+  logger.log('║         HELPY PUSH NOTIFICATION DIAGNOSTICS                ║');
+  logger.log('╠════════════════════════════════════════════════════════════╣');
   
   // 1. Check VAPID key
   const vapidStatus = VAPID_PUBLIC_KEY ? `✅ Set (${VAPID_PUBLIC_KEY.length} chars)` : '❌ MISSING';
-  console.log(`║ 1. VAPID Public Key: ${vapidStatus}`);
+  logger.log(`║ 1. VAPID Public Key: ${vapidStatus}`);
   if (!VAPID_PUBLIC_KEY) {
-    console.log('║    FIX: Add VITE_VAPID_PUBLIC_KEY to .env.local');
+    logger.log('║    FIX: Add VITE_VAPID_PUBLIC_KEY to .env.local');
   }
   
   // 2. Check browser support
   const browserSupport = isPushSupported() ? '✅ Supported' : '❌ Not supported';
-  console.log(`║ 2. Browser Support: ${browserSupport}`);
+  logger.log(`║ 2. Browser Support: ${browserSupport}`);
   
   // 3. Check permission
   const permission = getNotificationPermission();
   const permissionIcon = permission === 'granted' ? '✅' : permission === 'denied' ? '❌' : '⚠️';
-  console.log(`║ 3. Notification Permission: ${permissionIcon} ${permission}`);
+  logger.log(`║ 3. Notification Permission: ${permissionIcon} ${permission}`);
   if (permission === 'denied') {
-    console.log('║    FIX: Enable in browser settings (click lock icon)');
+    logger.log('║    FIX: Enable in browser settings (click lock icon)');
   }
   
   // 4. Check service worker
   const registration = await getServiceWorkerRegistration();
-  console.log(`║ 4. Service Worker: ${registration ? '✅ Registered' : '❌ Not registered'}`);
+  logger.log(`║ 4. Service Worker: ${registration ? '✅ Registered' : '❌ Not registered'}`);
   
   // 5. Check browser subscription
   if (registration) {
     const subscription = await registration.pushManager.getSubscription();
-    console.log(`║ 5. Browser Subscription: ${subscription ? '✅ Active' : '❌ None'}`);
+    logger.log(`║ 5. Browser Subscription: ${subscription ? '✅ Active' : '❌ None'}`);
     if (subscription) {
-      console.log(`║    Endpoint: ${subscription.endpoint.substring(0, 40)}...`);
+      logger.log(`║    Endpoint: ${subscription.endpoint.substring(0, 40)}...`);
     }
   }
   
   // 6. Check user ID cache status
   const cachePopulated = isUserCachePopulated();
   const cacheStats = getUserCacheStats();
-  console.log(`║ 6. User ID Cache: ${cachePopulated ? `✅ Populated (${cacheStats.size} entries)` : '❌ Empty'}`);
+  logger.log(`║ 6. User ID Cache: ${cachePopulated ? `✅ Populated (${cacheStats.size} entries)` : '❌ Empty'}`);
   if (!cachePopulated) {
-    console.log('║    FIX: Users may not be loaded yet. Wait or refresh.');
+    logger.log('║    FIX: Users may not be loaded yet. Wait or refresh.');
   }
   
   // 7. Check ID resolution (if userId provided)
   if (userId && householdId) {
-    console.log('║ 7. ID Resolution Test:');
-    console.log(`║    Input: ${userId} (${getIdType(userId)})`);
+    logger.log('║ 7. ID Resolution Test:');
+    logger.log(`║    Input: ${userId} (${getIdType(userId)})`);
     
     // First try cache
     const cachedId = getCachedSupabaseUuid(userId);
-    console.log(`║    Cached: ${cachedId === userId ? '(not in cache)' : cachedId}`);
+    logger.log(`║    Cached: ${cachedId === userId ? '(not in cache)' : cachedId}`);
     
     // Then try full resolution
     const resolvedId = await resolveSupabaseUserId(userId, householdId);
-    console.log(`║    Resolved: ${resolvedId ? `✅ ${resolvedId}` : '❌ Failed'}`);
+    logger.log(`║    Resolved: ${resolvedId ? `✅ ${resolvedId}` : '❌ Failed'}`);
     
     // 8. Check database subscriptions
     if (resolvedId) {
-      console.log('║ 8. Database Subscriptions:');
+      logger.log('║ 8. Database Subscriptions:');
       const { data, error } = await getSupabaseClient()
         .from('push_subscriptions')
         .select('id, endpoint, created_at')
         .eq('user_id', resolvedId);
       
       if (error) {
-        console.log(`║    ❌ Query error: ${error.message}`);
+        logger.log(`║    ❌ Query error: ${error.message}`);
       } else if (data && data.length > 0) {
-        console.log(`║    ✅ Found ${data.length} subscription(s)`);
+        logger.log(`║    ✅ Found ${data.length} subscription(s)`);
         data.forEach((sub, i) => {
-          console.log(`║    [${i + 1}] ${sub.endpoint.substring(0, 35)}...`);
+          logger.log(`║    [${i + 1}] ${sub.endpoint.substring(0, 35)}...`);
         });
       } else {
-        console.log('║    ⚠️ No subscriptions in database');
-        console.log('║    FIX: Toggle notifications OFF then ON in Settings');
+        logger.log('║    ⚠️ No subscriptions in database');
+        logger.log('║    FIX: Toggle notifications OFF then ON in Settings');
       }
     }
   } else {
-    console.log('║ 7-8. (Provide userId and householdId for full test)');
-    console.log('║      Usage: helpyDebugPush("user_xxx", "household-uuid")');
+    logger.log('║ 7-8. (Provide userId and householdId for full test)');
+    logger.log('║      Usage: helpyDebugPush("user_xxx", "household-uuid")');
   }
   
-  console.log('╚════════════════════════════════════════════════════════════╝');
+  logger.log('╚════════════════════════════════════════════════════════════╝');
 }
 
 // Make it available globally for debugging
@@ -1535,20 +1536,20 @@ export async function triggerBatchProcessing(): Promise<boolean> {
     if (error) {
       // Function might not exist yet - that's OK
       if (error.code === '42883') {
-        console.log('[Push] Batch processing RPC not available (migration not run yet)');
+        logger.log('[Push] Batch processing RPC not available (migration not run yet)');
         return false;
       }
-      console.error('[Push] Batch processing error:', error);
+      logger.error('[Push] Batch processing error:', error);
       return false;
     }
     
     if (data?.processed > 0) {
-      console.log(`[Push] Batch processing: ${data.processed} notification(s) sent`);
+      logger.log(`[Push] Batch processing: ${data.processed} notification(s) sent`);
     }
     
     return data?.success ?? false;
   } catch (err) {
-    console.error('[Push] Batch processing failed:', err);
+    logger.error('[Push] Batch processing failed:', err);
     return false;
   }
 }
@@ -1568,11 +1569,11 @@ export function startPeriodicBatchProcessing(): void {
   
   const INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
   
-  console.log('[Push] Starting periodic batch processing (every 5 minutes)');
+  logger.log('[Push] Starting periodic batch processing (every 5 minutes)');
   
   batchProcessingInterval = setInterval(() => {
     triggerBatchProcessing().catch(err => {
-      console.warn('[Push] Periodic batch processing failed:', err);
+      logger.warn('[Push] Periodic batch processing failed:', err);
     });
   }, INTERVAL_MS);
   
@@ -1587,7 +1588,7 @@ export function stopPeriodicBatchProcessing(): void {
   if (batchProcessingInterval) {
     clearInterval(batchProcessingInterval);
     batchProcessingInterval = null;
-    console.log('[Push] Stopped periodic batch processing');
+    logger.log('[Push] Stopped periodic batch processing');
   }
 }
 

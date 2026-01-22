@@ -2,6 +2,7 @@
  * Image compression utility for fast avatar uploads
  * Resizes and compresses images client-side before upload
  */
+import { logger } from './logger';
 
 export interface CompressedImage {
   file: File;
@@ -78,7 +79,7 @@ export async function compressImageForAvatar(
           const compressedSize = compressedFile.size;
           const compressionRatio = originalSize / compressedSize;
           
-          console.log(`📷 Image compressed: ${formatBytes(originalSize)} → ${formatBytes(compressedSize)} (${compressionRatio.toFixed(1)}x smaller)`);
+          logger.log(`📷 Image compressed: ${formatBytes(originalSize)} → ${formatBytes(compressedSize)} (${compressionRatio.toFixed(1)}x smaller)`);
           
           resolve({
             file: compressedFile,

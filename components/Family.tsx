@@ -79,6 +79,7 @@ import haptics from "@/utils/haptics";
 import HelperManagementContent from "./HelperManagementContent";
 import CreateSalarySlipSheet from "./CreateSalarySlipSheet";
 import type { HelperContract, SalarySlip } from "@src/types/helperManagement";
+import { logger } from '../utils/logger';
 
 interface FamilyProps extends BaseViewProps {
   householdId: string;
@@ -593,7 +594,7 @@ const Family: React.FC<FamilyProps> = ({
           }
         }
       } catch (err) {
-        console.error('Error fetching subscription plan:', err);
+        logger.error('Error fetching subscription plan:', err);
       }
     };
     
@@ -807,7 +808,7 @@ const Family: React.FC<FamilyProps> = ({
         await onAddPlace(createData);
       }
     } catch (err) {
-      console.error("Failed to save:", err);
+      logger.error("Failed to save:", err);
       setError(t['error.save_place'] || 'Failed to save. Please try again.');
     }
   };
@@ -824,47 +825,34 @@ const Family: React.FC<FamilyProps> = ({
     try {
       await onDeletePlace(itemToDelete.id);
     } catch (err) {
-      console.error("Failed to delete:", err);
+      logger.error("Failed to delete:", err);
       setError(t['error.delete_place'] || 'Failed to delete. Please try again.');
     }
   };
 
-  const openGoogleMaps = (address: string) => {
+  const openInMaps = (address: string) => {
     const encoded = encodeURIComponent(address);
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
     const isAndroid = /Android/.test(navigator.userAgent);
 
     if (isIOS) {
-      // iOS: Try Google Maps app first, ask user for Apple Maps if not installed
-      let appOpened = false;
-      
-      const handleVisibility = () => {
-        if (document.visibilityState === 'hidden') {
-          appOpened = true;
-        }
-      };
-      
-      document.addEventListener('visibilitychange', handleVisibility);
-      
-      // Try Google Maps app (URI scheme - works like tel:, returns where you left off)
-      window.location.href = `comgooglemaps://?q=${encoded}`;
-      
-      // After 1 second, if app didn't open, show modal to ask user
-      setTimeout(() => {
-        document.removeEventListener('visibilitychange', handleVisibility);
-        if (!appOpened && document.visibilityState === 'visible') {
-          // Google Maps didn't open - show modal to ask user
-          setPendingMapsAddress(encoded);
-          setShowMapsChoiceModal(true);
-        }
-      }, 1000);
+      // iOS: Show choice dialog (Google Maps + Apple Maps)
+      // We can't detect installed apps on iOS, so let user choose
+      setPendingMapsAddress(encoded);
+      setShowMapsChoiceModal(true);
     } else if (isAndroid) {
-      // Android: geo: URI opens default maps app (usually Google Maps if installed)
-      // Works like tel: - returns exactly where you left off
+      // Android: geo: URI triggers native app chooser with ALL installed map apps
       window.location.href = `geo:0,0?q=${encoded}`;
     } else {
       // Desktop: open Google Maps web in new tab
       window.open(`https://www.google.com/maps/search/?api=1&query=${encoded}`, "_blank");
+    }
+  };
+  
+  const handleOpenGoogleMaps = () => {
+    setShowMapsChoiceModal(false);
+    if (pendingMapsAddress) {
+      window.location.href = `comgooglemaps://?q=${pendingMapsAddress}`;
     }
   };
   
@@ -956,7 +944,7 @@ const Family: React.FC<FamilyProps> = ({
         await onAddPractice(createData);
       }
     } catch (err) {
-      console.error("Failed to save house routine:", err);
+      logger.error("Failed to save house routine:", err);
       setError(t['error.save_practice'] || 'Failed to save. Please try again.');
     }
   };
@@ -973,7 +961,7 @@ const Family: React.FC<FamilyProps> = ({
     try {
       await onDeletePractice(itemToDelete.id);
     } catch (err) {
-      console.error("Failed to delete house routine:", err);
+      logger.error("Failed to delete house routine:", err);
       setError(t['error.delete_practice'] || 'Failed to delete. Please try again.');
     }
   };
@@ -1034,7 +1022,7 @@ const Family: React.FC<FamilyProps> = ({
       setIsPracticeIdeasModalOpen(false);
       setSelectedPresetIds(new Set());
     } catch (err) {
-      console.error("Failed to add presets:", err);
+      logger.error("Failed to add presets:", err);
       setError(t['error.save_practice'] || 'Failed to save. Please try again.');
       haptics.error();
       setShowAddPresetsConfirm(false);
@@ -1344,7 +1332,7 @@ const Family: React.FC<FamilyProps> = ({
                     key={item.id}
                     item={item}
                     onEdit={() => handleEditPlaceClick(item)}
-                    onOpenMap={() => item.address && openGoogleMaps(item.address)}
+                    onOpenMap={() => item.address && openInMaps(item.address)}
                     onCall={() => item.phone && makeCall(item.countryCode || "+852", item.phone)}
                     canEdit={!isHelper}
                     currentLang={currentLang}
@@ -1619,7 +1607,7 @@ const Family: React.FC<FamilyProps> = ({
         </div>
       , document.body)}
 
-      {/* Maps Choice Modal (iOS - when Google Maps not installed) */}
+      {/* Maps Choice Modal (iOS) */}
       {showMapsChoiceModal && createPortal(
         <div 
           className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
@@ -1630,32 +1618,47 @@ const Family: React.FC<FamilyProps> = ({
             className="absolute bottom-0 left-0 right-0 bg-card"
             style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
           />
-          <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
+          <div 
+            className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" 
+            style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
             {/* Header */}
-            <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
+            <div className="pt-6 pb-3 px-5">
               <h2 className="text-title text-foreground">{t['maps.open_in_maps'] || 'Open in Maps'}</h2>
-            </div>
-
-            {/* Content */}
-            <div className="p-5">
-              <p className="text-body text-muted-foreground">
-                {t['maps.google_not_installed'] || 'Google Maps is not installed. Open in Apple Maps instead?'}
+              <p className="text-body text-muted-foreground mt-1">
+                {t['maps.choose_app'] || 'Choose your preferred maps app'}
               </p>
             </div>
 
-            {/* Footer */}
-            <div className="p-5 pb-8 border-t border-border flex gap-3 shrink-0">
+            {/* Separator */}
+            <div className="h-px bg-border mx-5" />
+
+            {/* Map Options */}
+            <div className="p-5 space-y-3">
               <button
-                onClick={() => setShowMapsChoiceModal(false)}
-                className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body"
+                onClick={handleOpenGoogleMaps}
+                className="w-full py-3.5 rounded-xl bg-secondary text-foreground text-body font-semibold flex items-center justify-center gap-3"
               >
-                {t['common.cancel'] || 'Cancel'}
+                <MapPin size={20} className="text-[#4285F4]" />
+                Google Maps
               </button>
               <button
                 onClick={handleOpenAppleMaps}
-                className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body"
+                className="w-full py-3.5 rounded-xl bg-secondary text-foreground text-body font-semibold flex items-center justify-center gap-3"
               >
-                {t['maps.open_apple_maps'] || 'Open Apple Maps'}
+                <MapPin size={20} className="text-[#30D158]" />
+                Apple Maps
+              </button>
+            </div>
+
+            {/* Footer */}
+            <div className="p-5 pb-8 border-t border-border shrink-0">
+              <button
+                onClick={() => setShowMapsChoiceModal(false)}
+                className="w-full py-3.5 rounded-xl bg-secondary text-foreground text-body font-semibold"
+              >
+                {t['common.cancel'] || 'Cancel'}
               </button>
             </div>
           </div>

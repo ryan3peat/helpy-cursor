@@ -1,6 +1,7 @@
 // api/sync-subscription.ts
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
+import { logger } from './_logger';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-11-17.clover',
@@ -80,7 +81,7 @@ export default async function handler(req: any, res: any) {
           period = interval === 'year' ? 'yearly' : 'monthly';
         }
       } catch (err) {
-        console.error('sync-subscription: error retrieving session', err);
+        logger.error('sync-subscription: error retrieving session', err);
       }
     }
 
@@ -94,11 +95,11 @@ export default async function handler(req: any, res: any) {
 
       stripeCustomerId = household?.stripe_customer_id || stripeCustomerId;
       if (household?.stripe_subscription_id) {
-        console.log('[sync-subscription] Retrieving subscription from Stripe:', household.stripe_subscription_id);
+        logger.log('[sync-subscription] Retrieving subscription from Stripe:', household.stripe_subscription_id);
         let sub: Stripe.Subscription;
         try {
           sub = await stripe.subscriptions.retrieve(household.stripe_subscription_id);
-          console.log('[sync-subscription] Raw Stripe subscription data:', {
+          logger.log('[sync-subscription] Raw Stripe subscription data:', {
             id: sub.id,
             status: sub.status,
             cancel_at_period_end: sub.cancel_at_period_end,
@@ -118,10 +119,10 @@ export default async function handler(req: any, res: any) {
           plan = priceIdToPlan(priceId);
           const interval = sub.items?.data?.[0]?.price?.recurring?.interval;
           period = interval === 'year' ? 'yearly' : 'monthly';
-          console.log('[sync-subscription] Parsed values:', { plan, status, cancelAtPeriodEnd, periodEnd, trialEnd });
+          logger.log('[sync-subscription] Parsed values:', { plan, status, cancelAtPeriodEnd, periodEnd, trialEnd });
         } catch (stripeError: any) {
-          console.error('[sync-subscription] Error retrieving subscription from Stripe:', stripeError.message);
-          console.log('[sync-subscription] This might mean the subscription ID is invalid or the subscription was deleted');
+          logger.error('[sync-subscription] Error retrieving subscription from Stripe:', stripeError.message);
+          logger.log('[sync-subscription] This might mean the subscription ID is invalid or the subscription was deleted');
           // Continue without updating subscription data
           return res.status(200).json({ success: false, error: 'Subscription not found in Stripe' });
         }
@@ -137,7 +138,7 @@ export default async function handler(req: any, res: any) {
     const trialEndISO = trialEnd ? new Date(trialEnd * 1000).toISOString() : null;
     const isTrial = status === 'trialing' && !!trialEnd;
 
-    console.log('[sync-subscription] Updating database with:', {
+    logger.log('[sync-subscription] Updating database with:', {
       householdId,
       plan,
       status,
@@ -164,13 +165,13 @@ export default async function handler(req: any, res: any) {
       .eq('id', householdId);
 
     if (updateError) {
-      console.error('sync-subscription update error:', updateError);
+      logger.error('sync-subscription update error:', updateError);
       return res.status(500).json({ error: 'Failed to update subscription' });
     }
 
     return res.status(200).json({ success: true, plan, status, cancelAtPeriodEnd });
   } catch (error: any) {
-    console.error('sync-subscription error:', error);
+    logger.error('sync-subscription error:', error);
     return res.status(500).json({ error: error.message || 'Server error' });
   }
 }

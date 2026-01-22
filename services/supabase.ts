@@ -1,4 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { logger } from '../utils/logger';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -50,7 +51,7 @@ let globalGetFreshToken: (() => Promise<string | null>) | null = null;
 export const setFreshTokenGetter = (getter: (() => Promise<string | null>) | null) => {
   globalGetFreshToken = getter;
   if (getter) {
-    console.log('[Supabase] ✅ Fresh token getter registered - proper auth enabled');
+    logger.log('[Supabase] ✅ Fresh token getter registered - proper auth enabled');
   }
 };
 
@@ -76,7 +77,7 @@ export const updateCurrentToken = (token: string | null) => {
 // FIX: Now returns singleton to prevent "Multiple GoTrueClient instances" warning
 export const createAuthenticatedClient = async (clerkToken: string | null, tokenRefresh?: () => Promise<void>): Promise<SupabaseClient> => {
   if (!clerkToken) {
-    console.warn('[Supabase] No JWT token provided, creating client without authentication');
+    logger.warn('[Supabase] No JWT token provided, creating client without authentication');
     return supabase; // Return default client instead of creating new one
   }
   
@@ -92,12 +93,12 @@ export const createAuthenticatedClient = async (clerkToken: string | null, token
   // The customFetch already handles getting fresh tokens via globalGetFreshToken
   // So we don't need a new client, we just need to update the token references
   if (authenticatedClientSingleton) {
-    console.log('[Supabase] Reusing existing authenticated client (token updated)');
+    logger.log('[Supabase] Reusing existing authenticated client (token updated)');
     return authenticatedClientSingleton;
   }
   
-  console.log('[Supabase] Creating authenticated client with JWT token');
-  console.log('[Supabase] Token preview:', clerkToken.substring(0, 50) + '...');
+  logger.log('[Supabase] Creating authenticated client with JWT token');
+  logger.log('[Supabase] Token preview:', clerkToken.substring(0, 50) + '...');
   
   // Use custom fetch to ensure JWT is sent with EVERY request
   // This is more reliable than global.headers which may not persist
@@ -117,7 +118,7 @@ export const createAuthenticatedClient = async (clerkToken: string | null, token
       try {
         token = await globalGetFreshToken();
       } catch (e) {
-        console.warn('[Supabase] Failed to get fresh token, falling back to cached:', e);
+        logger.warn('[Supabase] Failed to get fresh token, falling back to cached:', e);
         token = currentToken || clerkToken;
       }
     } else {
@@ -126,11 +127,11 @@ export const createAuthenticatedClient = async (clerkToken: string | null, token
       // This handles edge cases where the token getter was cleared but user is still signed in
       // Being aggressive here is safe because the refresh function is smart about caching
       if (globalTokenRefresh) {
-        console.warn('[Supabase] ⚠️ Fresh token getter unavailable, attempting refresh...');
+        logger.warn('[Supabase] ⚠️ Fresh token getter unavailable, attempting refresh...');
         try {
           await globalTokenRefresh();
         } catch (e) {
-          console.warn('[Supabase] Token refresh during fallback failed:', e);
+          logger.warn('[Supabase] Token refresh during fallback failed:', e);
         }
       }
       // Use cached token (hopefully refreshed above, or still valid)
@@ -144,7 +145,7 @@ export const createAuthenticatedClient = async (clerkToken: string | null, token
     // Log for debugging (only first few requests to avoid spam)
     const requestUrl = typeof url === 'string' ? url : url.toString();
     if (requestUrl.includes('supabase.co') && Math.random() < 0.1) { // Log ~10% of Supabase requests
-      console.log('[Supabase] Request with JWT:', {
+      logger.log('[Supabase] Request with JWT:', {
         url: requestUrl,
         hasAuth: headers.has('Authorization'),
         authPreview: headers.get('Authorization')?.substring(0, 30) + '...',
@@ -169,7 +170,7 @@ export const createAuthenticatedClient = async (clerkToken: string | null, token
         if (responseData.code === 'PGRST303' || 
             responseData.message?.includes('JWT expired') ||
             (responseData.message?.includes('JWT') && responseData.message?.includes('expired'))) {
-          console.warn('[Supabase] ⚠️ JWT expired, refreshing token...');
+          logger.warn('[Supabase] ⚠️ JWT expired, refreshing token...');
           
           // Refresh token if available
           if (globalTokenRefresh) {
@@ -180,24 +181,24 @@ export const createAuthenticatedClient = async (clerkToken: string | null, token
               const newToken = currentToken;
               if (newToken) {
                 headers.set('Authorization', `Bearer ${newToken}`);
-                console.log('[Supabase] 🔄 Retrying request with refreshed token');
+                logger.log('[Supabase] 🔄 Retrying request with refreshed token');
                 response = await fetch(url, {
                   ...options,
                   headers,
                 });
               } else {
-                console.error('[Supabase] ❌ Token refresh did not update current token');
+                logger.error('[Supabase] ❌ Token refresh did not update current token');
               }
             } catch (refreshError) {
-              console.error('[Supabase] ❌ Token refresh failed:', refreshError);
+              logger.error('[Supabase] ❌ Token refresh failed:', refreshError);
               // Return original 401 response
             }
           } else {
-            console.warn('[Supabase] ⚠️ No token refresh function available');
+            logger.warn('[Supabase] ⚠️ No token refresh function available');
           }
         } else {
           // 401 but not a JWT expiration error - try refresh anyway as fallback
-          console.warn('[Supabase] ⚠️ 401 Unauthorized, attempting token refresh...');
+          logger.warn('[Supabase] ⚠️ 401 Unauthorized, attempting token refresh...');
           
           if (globalTokenRefresh) {
             try {
@@ -207,20 +208,20 @@ export const createAuthenticatedClient = async (clerkToken: string | null, token
               const newToken = currentToken;
               if (newToken) {
                 headers.set('Authorization', `Bearer ${newToken}`);
-                console.log('[Supabase] 🔄 Retrying request with refreshed token');
+                logger.log('[Supabase] 🔄 Retrying request with refreshed token');
                 response = await fetch(url, {
                   ...options,
                   headers,
                 });
               }
             } catch (refreshError) {
-              console.error('[Supabase] ❌ Token refresh failed:', refreshError);
+              logger.error('[Supabase] ❌ Token refresh failed:', refreshError);
             }
           }
         }
       } catch (parseError) {
         // If response is not JSON or can't be parsed, try refresh anyway
-        console.warn('[Supabase] ⚠️ 401 Unauthorized, attempting token refresh...');
+        logger.warn('[Supabase] ⚠️ 401 Unauthorized, attempting token refresh...');
         
         if (globalTokenRefresh) {
           try {
@@ -230,14 +231,14 @@ export const createAuthenticatedClient = async (clerkToken: string | null, token
             const newToken = currentToken;
             if (newToken) {
               headers.set('Authorization', `Bearer ${newToken}`);
-              console.log('[Supabase] 🔄 Retrying request with refreshed token');
+              logger.log('[Supabase] 🔄 Retrying request with refreshed token');
               response = await fetch(url, {
                 ...options,
                 headers,
               });
             }
           } catch (refreshError) {
-            console.error('[Supabase] ❌ Token refresh failed:', refreshError);
+            logger.error('[Supabase] ❌ Token refresh failed:', refreshError);
           }
         }
       }
@@ -258,6 +259,6 @@ export const createAuthenticatedClient = async (clerkToken: string | null, token
   // Store in singleton for reuse
   authenticatedClientSingleton = client;
   
-  console.log('[Supabase] ✅ Authenticated client created (singleton), JWT will be sent in requests');
+  logger.log('[Supabase] ✅ Authenticated client created (singleton), JWT will be sent in requests');
   return client;
 };

@@ -6,6 +6,7 @@
 import { supabase as defaultSupabase } from './supabase';
 import { getAuthenticatedSupabaseClient, refreshSupabaseToken } from '../contexts/SupabaseContext';
 import { getCachedSupabaseUuid, getSupabaseUserId } from './supabaseService';
+import { logger } from '../utils/logger';
 import type { 
   HelperContract, 
   CreateHelperContract,
@@ -21,7 +22,7 @@ import type {
 function getSupabase() {
   const authClient = getAuthenticatedSupabaseClient();
   if (!authClient) {
-    console.warn('[salarySlipService] No authenticated client available, using default (may fail RLS)');
+    logger.warn('[salarySlipService] No authenticated client available, using default (may fail RLS)');
   }
   return authClient || defaultSupabase;
 }
@@ -44,7 +45,7 @@ function isJwtError(error: any): boolean {
 const supabase = {
   from: (table: string) => {
     const client = getSupabase();
-    console.log('[salarySlipService] Using Supabase client for table:', table);
+    logger.log('[salarySlipService] Using Supabase client for table:', table);
     return client.from(table);
   },
 };
@@ -67,20 +68,20 @@ async function toSupabaseUuid(userId: string, householdId: string): Promise<stri
   }
   
   // If cache didn't have it (or returned Clerk ID), query database
-  console.warn(`[salarySlipService] Cache miss for ${userId}, attempting database lookup...`);
+  logger.warn(`[salarySlipService] Cache miss for ${userId}, attempting database lookup...`);
   
   try {
     const uuid = await getSupabaseUserId(userId, householdId);
     
     if (!uuid) {
-      console.warn(`[salarySlipService] Database lookup returned null for ${userId}. Cache may not be populated yet.`);
+      logger.warn(`[salarySlipService] Database lookup returned null for ${userId}. Cache may not be populated yet.`);
       return null;
     }
     
-    console.warn(`[salarySlipService] Successfully resolved ${userId} to UUID ${uuid}`);
+    logger.warn(`[salarySlipService] Successfully resolved ${userId} to UUID ${uuid}`);
     return uuid;
   } catch (err) {
-    console.error(`[salarySlipService] Database lookup error for ${userId}:`, err);
+    logger.error(`[salarySlipService] Database lookup error for ${userId}:`, err);
     return null;
   }
 }
@@ -101,7 +102,7 @@ export async function getHelperContract(
   
   // If UUID resolution failed, return null (cache not ready yet)
   if (!helperUuid) {
-    console.log('[salarySlipService] getHelperContract: UUID resolution failed, returning null');
+    logger.log('[salarySlipService] getHelperContract: UUID resolution failed, returning null');
     return null;
   }
   
@@ -221,7 +222,7 @@ export async function getSalarySlips(
   
   // If UUID resolution failed, return empty (cache not ready yet)
   if (!helperUuid) {
-    console.log('[salarySlipService] getSalarySlips: UUID resolution failed, returning empty');
+    logger.log('[salarySlipService] getSalarySlips: UUID resolution failed, returning empty');
     return [];
   }
   

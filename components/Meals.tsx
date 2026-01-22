@@ -38,6 +38,7 @@ import { suggestMeal } from '../services/geminiService';
 import { detectInputLanguage } from '../services/languageDetectionService';
 import { haptics } from '../utils/haptics';
 import { useDemoMode } from '../contexts/DemoModeContext';
+import { logger } from '../utils/logger';
 
 interface MealsProps extends BaseViewProps {
   meals: Meal[];
@@ -142,6 +143,7 @@ const Meals: React.FC<MealsProps> = ({
 
   const mealTypes = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER, MealType.SNACKS];
   const langCode = currentLang === 'en' ? 'en-GB' : currentLang;
+  const mealsTitle = t['meals.title'] ?? 'Meals';
 
   // --- Translation Helper ---
   const getMealLabel = (type: MealType) => {
@@ -340,7 +342,7 @@ const Meals: React.FC<MealsProps> = ({
         onUpdate(meal.id, { forUserIds: newUserIds });
       }
     } catch (err) {
-      console.error('Failed to update meal:', err);
+      logger.error('Failed to update meal:', err);
       setError(t['error.update_meal'] || 'Failed to update meal. Please try again.');
     }
   };
@@ -362,7 +364,7 @@ const Meals: React.FC<MealsProps> = ({
     try {
       onAdd(newMeal);
     } catch (err) {
-      console.error('Failed to add meal:', err);
+      logger.error('Failed to add meal:', err);
       setError(t['error.add_meal'] || 'Failed to add meal. Please try again.');
     }
   };
@@ -466,7 +468,7 @@ const Meals: React.FC<MealsProps> = ({
       }
       setIsModalOpen(false);
     } catch (err) {
-      console.error('Failed to save meal:', err);
+      logger.error('Failed to save meal:', err);
       setError(t['error.save_meal'] || 'Failed to save meal. Please try again.');
     }
   };
@@ -477,7 +479,7 @@ const Meals: React.FC<MealsProps> = ({
         onDelete(editingMealId);
         setIsModalOpen(false);
       } catch (err) {
-        console.error('Failed to delete meal:', err);
+        logger.error('Failed to delete meal:', err);
         setError(t['error.delete_meal'] || 'Failed to delete meal. Please try again.');
       }
     }
@@ -832,7 +834,7 @@ const Meals: React.FC<MealsProps> = ({
         // User cancelled - not an error
         return;
       }
-      console.error('Failed to export PDF:', err);
+      logger.error('Failed to export PDF:', err);
       haptics.error();
       setError(t['error.export_pdf'] || 'Failed to export PDF. Please try again.');
     } finally {
@@ -1151,8 +1153,8 @@ const Meals: React.FC<MealsProps> = ({
           style={{ height: '120px' }}
         >
           <div className="flex items-center justify-between w-full">
-            <h1 className="text-display text-foreground">
-              {t['meals.title']}
+            <h1 className="text-display text-foreground header-title-stable">
+              {mealsTitle}
             </h1>
             
             {/* Header Actions */}

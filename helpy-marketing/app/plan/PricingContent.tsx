@@ -98,9 +98,9 @@ export default function PricingContent() {
         family_info: { included: true },
         ai_translations: { included: true },
         manual_expenses: { included: true },
-        ai_scan: { included: false },
-        spending_summary: { included: false },
-        helper_records: { included: false },
+        ai_scan: { included: true, trial: t.pricing.trial.freeScans },
+        spending_summary: { included: true, trial: t.pricing.trial.daysTrial },
+        helper_records: { included: true, trial: t.pricing.trial.freeSalarySlip },
       },
       badge: null,
       isFree: true
@@ -146,7 +146,7 @@ export default function PricingContent() {
         spending_summary: { included: true },
         helper_records: { included: true },
       },
-      badge: true,
+      badge: null,
       isFree: false
     }
   ], [t]);
@@ -262,6 +262,7 @@ export default function PricingContent() {
                           const featureValue = plan.featureValues[feature.id as keyof typeof plan.featureValues];
                           const isIncluded = featureValue?.included ?? false;
                           const limitValue = featureValue && 'value' in featureValue ? featureValue.value : null;
+                          const trialValue = featureValue && 'trial' in featureValue ? featureValue.trial : null;
 
                           // Limit features (family/helpers)
                           if (feature.isLimit && limitValue) {
@@ -279,6 +280,45 @@ export default function PricingContent() {
                                     <p 
                                       className="text-sm font-normal"
                                       style={{ color: hasColoredBg ? 'rgba(255,255,255,0.7)' : 'hsl(var(--muted-foreground))' }}
+                                    >
+                                      {feature.description}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          }
+
+                          // Trial features (Free plan only)
+                          if (trialValue) {
+                            return (
+                              <div key={feature.id} className="flex items-start gap-3">
+                                <div className="w-5 flex justify-center flex-shrink-0">
+                                  <Check 
+                                    size={18} 
+                                    className="mt-0.5" 
+                                    style={{ color: '#F59E0B' }} 
+                                  />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <p className="text-sm font-semibold" style={{ color: 'hsl(var(--foreground))' }}>
+                                      {feature.name}
+                                    </p>
+                                    <span 
+                                      className="text-xs font-semibold px-2 py-0.5 rounded-full"
+                                      style={{ 
+                                        backgroundColor: 'rgba(245, 158, 11, 0.15)',
+                                        color: '#F59E0B'
+                                      }}
+                                    >
+                                      {trialValue}
+                                    </span>
+                                  </div>
+                                  {'description' in feature && feature.description && (
+                                    <p 
+                                      className="text-sm font-normal"
+                                      style={{ color: 'hsl(var(--muted-foreground))' }}
                                     >
                                       {feature.description}
                                     </p>

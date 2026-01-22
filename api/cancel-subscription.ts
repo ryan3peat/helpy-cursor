@@ -1,6 +1,7 @@
 // api/cancel-subscription.ts
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
+import { logger } from './_logger';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-11-17.clover',
@@ -61,7 +62,7 @@ export default async function handler(req: any, res: any) {
       .single();
 
     if (householdError) {
-      console.error('Error fetching household for cancel:', householdError);
+      logger.error('Error fetching household for cancel:', householdError);
       return res.status(500).json({ error: 'Unable to fetch household' });
     }
 
@@ -75,7 +76,7 @@ export default async function handler(req: any, res: any) {
       } catch (stripeError: any) {
         // If the subscription is already canceled or missing, continue to downgrade locally
         if (stripeError?.code !== 'resource_missing') {
-          console.error('Stripe cancel error:', stripeError);
+          logger.error('Stripe cancel error:', stripeError);
           return res.status(500).json({ error: stripeError.message || 'Failed to cancel Stripe subscription' });
         }
       }
@@ -99,13 +100,13 @@ export default async function handler(req: any, res: any) {
       .eq('id', householdId);
 
     if (updateError) {
-      console.error('Error downgrading household to free:', updateError);
+      logger.error('Error downgrading household to free:', updateError);
       return res.status(500).json({ error: 'Failed to downgrade subscription' });
     }
 
     return res.status(200).json({ success: true });
   } catch (error: any) {
-    console.error('cancel-subscription error:', error);
+    logger.error('cancel-subscription error:', error);
     return res.status(500).json({ error: error.message || 'Server error' });
   }
 }

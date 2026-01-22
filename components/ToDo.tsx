@@ -32,6 +32,7 @@ import { ToDoItem, ToDoType, ShoppingCategory, TaskCategory, RecurrenceFrequency
 import { detectInputLanguage } from '../services/languageDetectionService';
 import { haptics } from '../utils/haptics';
 import { useDemoMode } from '../contexts/DemoModeContext';
+import { logger } from '../utils/logger';
 
 // ─────────────────────────────────────────────────────────────────
 // Types & Constants
@@ -894,7 +895,7 @@ const ToDo: React.FC<ToDoProps> = ({
       // Use functional update with the captured optimisticId to ensure we remove the correct item
       setOptimisticItems(prev => prev.filter(i => i.id !== optimisticId));
     } catch (err) {
-      console.error('Failed to add item:', err);
+      logger.error('Failed to add item:', err);
       setOptimisticItems(prev => prev.filter(i => i.id !== optimisticId));
       setError(t['error.add_item'] || 'Failed to add item. Please try again.');
     }
@@ -934,7 +935,7 @@ const ToDo: React.FC<ToDoProps> = ({
       // Success: clear optimistic item, real item comes from App state
       setOptimisticItems(prev => prev.filter(i => i.id !== optimisticId));
     } catch (err) {
-      console.error('Failed to add item:', err);
+      logger.error('Failed to add item:', err);
       setOptimisticItems(prev => prev.filter(i => i.id !== optimisticId));
       setError(t['error.add_item'] || 'Failed to add item. Please try again.');
     }
@@ -974,7 +975,7 @@ const ToDo: React.FC<ToDoProps> = ({
       try {
         await onUpdate(id, { completed: true });
       } catch (err) {
-        console.error('Failed to update item:', err);
+        logger.error('Failed to update item:', err);
         // Rollback on error
         setCompletingIds(prev => {
           const next = new Set(prev);
@@ -1000,7 +1001,7 @@ const ToDo: React.FC<ToDoProps> = ({
       try {
         await onUpdate(id, { completed: false });
       } catch (err) {
-        console.error('Failed to update item:', err);
+        logger.error('Failed to update item:', err);
         setOptimisticCompleted(prev => {
           const next = { ...prev };
           delete next[id];
@@ -1026,7 +1027,7 @@ const ToDo: React.FC<ToDoProps> = ({
         });
       }, 1000); // Keep filtered for 1 second after delete completes
     } catch (err) {
-      console.error('Failed to delete item:', err);
+      logger.error('Failed to delete item:', err);
       setDeletingIds(prev => {
         const next = new Set(prev);
         next.delete(id);
@@ -1055,7 +1056,7 @@ const ToDo: React.FC<ToDoProps> = ({
     try {
       await Promise.all(completedIds.map(id => onDelete(id)));
     } catch (err) {
-      console.error('Failed to delete some items:', err);
+      logger.error('Failed to delete some items:', err);
       // Rollback on error
       completedIds.forEach(id => {
         setDeletingIds(prev => {
@@ -1182,7 +1183,7 @@ const ToDo: React.FC<ToDoProps> = ({
           const { [itemId]: _, ...rest } = prev;
           return rest;
         });
-        console.error('Failed to update item:', err);
+        logger.error('Failed to update item:', err);
         setError(t['error.update_item'] || 'Failed to update item. Please try again.');
       } finally {
         setIsSaving(false);
@@ -1220,7 +1221,7 @@ const ToDo: React.FC<ToDoProps> = ({
         // Success: clear optimistic item, real item comes from App state
         setOptimisticItems(prev => prev.filter(i => i.id !== optimisticId));
       } catch (err) {
-        console.error('Failed to add item:', err);
+        logger.error('Failed to add item:', err);
         setOptimisticItems(prev => prev.filter(i => i.id !== optimisticId));
         setError(t['error.add_item'] || 'Failed to add item. Please try again.');
       } finally {

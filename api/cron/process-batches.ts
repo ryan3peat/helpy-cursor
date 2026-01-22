@@ -7,6 +7,7 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
+import { logger } from '../_logger';
 
 const supabase = createClient(
   process.env.SUPABASE_URL!,
@@ -20,12 +21,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   
   // If CRON_SECRET is set, validate it
   if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-    console.log('[Cron] Unauthorized request - missing or invalid CRON_SECRET');
+    logger.log('[Cron] Unauthorized request - missing or invalid CRON_SECRET');
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
   try {
-    console.log('[Cron] Processing notification batches...');
+    logger.log('[Cron] Processing notification batches...');
     
     // Call the existing Postgres function
     // This function already handles everything:
@@ -37,15 +38,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (error) {
       // Function might not exist - log but don't fail
       if (error.code === '42883') {
-        console.log('[Cron] process_notification_batches RPC not found (migration may not be run)');
+        logger.log('[Cron] process_notification_batches RPC not found (migration may not be run)');
         return res.status(200).json({ success: true, message: 'RPC not available' });
       }
       
-      console.error('[Cron] Error processing batches:', error);
+      logger.error('[Cron] Error processing batches:', error);
       return res.status(500).json({ success: false, error: error.message });
     }
     
-    console.log('[Cron] Batch processing complete');
+    logger.log('[Cron] Batch processing complete');
     
     return res.status(200).json({ 
       success: true, 
@@ -53,7 +54,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
     
   } catch (err) {
-    console.error('[Cron] Unexpected error:', err);
+    logger.error('[Cron] Unexpected error:', err);
     return res.status(500).json({ 
       success: false, 
       error: err instanceof Error ? err.message : 'Unknown error' 

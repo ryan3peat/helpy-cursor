@@ -22,6 +22,7 @@ import {
   deleteTicket,
 } from '../services/feedbackService';
 import { getCachedSupabaseUuid } from '../services/supabaseService';
+import { logger } from '../utils/logger';
 
 interface FeedbackSectionProps {
   currentUser: User;
@@ -70,7 +71,7 @@ const FeedbackSection: React.FC<FeedbackSectionProps> = ({
     if (!householdId || !userSupabaseId) return;
     
     // Debug on mount
-    console.log('[FeedbackSection] Mounting with:', {
+    logger.log('[FeedbackSection] Mounting with:', {
       householdId,
       userSupabaseId,
       isAdmin,
@@ -85,7 +86,7 @@ const FeedbackSection: React.FC<FeedbackSectionProps> = ({
       isAdmin,
       isSuperAdmin,
       (data) => {
-        console.log('[FeedbackSection] Tickets received:', {
+        logger.log('[FeedbackSection] Tickets received:', {
           count: data.length,
           isSuperAdmin,
           tickets: data.map(t => ({ id: t.id, subject: t.subject, userId: t.userId, householdId: t.householdId })),
@@ -154,7 +155,7 @@ const FeedbackSection: React.FC<FeedbackSectionProps> = ({
       // Replace optimistic ticket with real one
       setTickets(prev => prev.map(t => t.id === tempId ? ticket : t));
     } catch (error) {
-      console.error('Failed to create ticket:', error);
+      logger.error('Failed to create ticket:', error);
       // Rollback on error
       setTickets(prev => prev.filter(t => t.id !== tempId));
       // Restore form
@@ -209,7 +210,7 @@ const FeedbackSection: React.FC<FeedbackSectionProps> = ({
       );
       // Real-time subscription will update with actual data
     } catch (error) {
-      console.error('Failed to send reply:', error);
+      logger.error('Failed to send reply:', error);
       // Rollback on error
       setTickets(prev => prev.map(ticket => {
         if (ticket.id === ticketId) {
@@ -239,7 +240,7 @@ const FeedbackSection: React.FC<FeedbackSectionProps> = ({
     try {
       await updateTicketStatus(ticket.id, newStatus);
     } catch (error) {
-      console.error('Failed to update status:', error);
+      logger.error('Failed to update status:', error);
       // Rollback
       setTickets(prev => prev.map(t => 
         t.id === ticket.id ? { ...t, status: ticket.status } : t
@@ -256,7 +257,7 @@ const FeedbackSection: React.FC<FeedbackSectionProps> = ({
     try {
       await deleteTicket(ticketId);
     } catch (error) {
-      console.error('Failed to delete ticket:', error);
+      logger.error('Failed to delete ticket:', error);
       // Rollback - refetch tickets
       // The subscription will restore it
     }

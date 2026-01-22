@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Loader2, Users, Home } from 'lucide-react';
 import { useScrollHeader } from '../hooks/useScrollHeader';
 import { TranslationDictionary } from '../types';
+import { logger } from '../utils/logger';
 
 interface AnalyticsProps {
   onBack: () => void;
@@ -40,7 +41,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ onBack, t }) => {
         const result = await response.json();
         setData(result);
       } catch (err: any) {
-        console.error('Analytics fetch error:', err);
+        logger.error('Analytics fetch error:', err);
         setError(err.message || 'Failed to load analytics');
       } finally {
         setLoading(false);

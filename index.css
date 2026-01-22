@@ -817,6 +817,12 @@ select {
   contain-intrinsic-size: auto 250px;
 }
 
+.header-title-stable {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
 /* ─────────────────────────────────────────────────────────────────
    CLERK COMPONENT OVERRIDES
    ───────────────────────────────────────────────────────────────── */

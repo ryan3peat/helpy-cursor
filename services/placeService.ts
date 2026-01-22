@@ -2,6 +2,7 @@
 // Renamed from essentialInfoService.ts - "Places" is the user-facing name
 import { supabase as defaultSupabase } from './supabase';
 import { getAuthenticatedSupabaseClient, refreshSupabaseToken } from '../contexts/SupabaseContext';
+import { logger } from '../utils/logger';
 import type { Place, CreatePlace, PlaceCategory } from '@src/types/place';
 
 // Table renamed from 'essential_info' to 'places' (see migration 060)
@@ -15,7 +16,7 @@ const TABLE_NAME = 'places';
 function getSupabase() {
   const authClient = getAuthenticatedSupabaseClient();
   if (!authClient) {
-    console.warn('[placeService] ⚠️ No authenticated client - RLS may fail');
+    logger.warn('[placeService] ⚠️ No authenticated client - RLS may fail');
   }
   return authClient || defaultSupabase;
 }
@@ -92,7 +93,7 @@ export async function listPlaces(householdId: string): Promise<Place[]> {
 
   // SELF-HEALING: If JWT error, refresh token and retry ONCE
   if (error && isJwtError(error)) {
-    console.warn('[placeService] ⚠️ JWT error on listPlaces, refreshing token and retrying...');
+    logger.warn('[placeService] ⚠️ JWT error on listPlaces, refreshing token and retrying...');
     try {
       await refreshSupabaseToken();
       
@@ -104,20 +105,20 @@ export async function listPlaces(householdId: string): Promise<Place[]> {
         .order('created_at', { ascending: false });
       
       if (!retryResult.error) {
-        console.log('[placeService] ✅ Retry successful after token refresh');
+        logger.log('[placeService] ✅ Retry successful after token refresh');
         data = retryResult.data;
         error = null;
       } else {
-        console.error('[placeService] ❌ Retry also failed:', retryResult.error);
+        logger.error('[placeService] ❌ Retry also failed:', retryResult.error);
         error = retryResult.error;
       }
     } catch (refreshError) {
-      console.error('[placeService] ❌ Token refresh failed:', refreshError);
+      logger.error('[placeService] ❌ Token refresh failed:', refreshError);
     }
   }
 
   if (error) {
-    console.error('❌ Failed to fetch places:', error);
+    logger.error('❌ Failed to fetch places:', error);
     throw error;
   }
 
@@ -139,7 +140,7 @@ export async function listPlacesByCategory(
     .order('created_at', { ascending: false });
 
   if (error) {
-    console.error('❌ Failed to fetch places by category:', error);
+    logger.error('❌ Failed to fetch places by category:', error);
     throw error;
   }
 
@@ -165,7 +166,7 @@ export async function createPlace(
     .single();
 
   if (error) {
-    console.error('❌ Failed to create place:', error);
+    logger.error('❌ Failed to create place:', error);
     throw error;
   }
 
@@ -189,7 +190,7 @@ export async function updatePlace(
     .single();
 
   if (error) {
-    console.error('❌ Failed to update place:', error);
+    logger.error('❌ Failed to update place:', error);
     throw error;
   }
 
@@ -210,7 +211,7 @@ export async function deletePlace(
     .eq('household_id', householdId);
 
   if (error) {
-    console.error('❌ Failed to delete place:', error);
+    logger.error('❌ Failed to delete place:', error);
     throw error;
   }
 }
@@ -223,7 +224,7 @@ export function subscribeToPlaces(
   callback: (data: Place[]) => void
 ): () => void {
   // Initial fetch
-  listPlaces(householdId).then(callback).catch(console.error);
+  listPlaces(householdId).then(callback).catch(logger.error);
 
   // Subscribe to changes
   const channelName = `places-${householdId}`;
@@ -240,7 +241,7 @@ export function subscribeToPlaces(
       },
       () => {
         // Refetch on any change
-        listPlaces(householdId).then(callback).catch(console.error);
+        listPlaces(householdId).then(callback).catch(logger.error);
       }
     )
     .subscribe();

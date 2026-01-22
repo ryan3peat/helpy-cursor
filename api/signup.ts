@@ -4,6 +4,7 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
+import { logger } from './_logger';
 
 const supabase = createClient(
   process.env.SUPABASE_URL!,
@@ -39,7 +40,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const { clerkId, email, name, role = 'Admin' } = req.body;
 
-  console.log('[Signup API] Received request:', { clerkId, email, name, role });
+  logger.log('[Signup API] Received request:', { clerkId, email, name, role });
 
   if (!clerkId || !email || !name) {
     return res.status(400).json({
@@ -48,7 +49,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    console.log('[Signup API] Creating user and household for:', { clerkId, email, name });
+    logger.log('[Signup API] Creating user and household for:', { clerkId, email, name });
 
     // Check if user already exists by clerk_id
     const { data: existingUserByClerkId } = await supabase
@@ -60,7 +61,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (existingUserByClerkId) {
       // If user exists but has no household (was removed), create a new household for them
       if (!existingUserByClerkId.household_id) {
-        console.log('[Signup API] User exists but was removed from household, creating new household');
+        logger.log('[Signup API] User exists but was removed from household, creating new household');
         
         // Create a new household for the removed user
         const { data: newHousehold, error: householdError } = await supabase
@@ -76,7 +77,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           .single();
 
         if (householdError) {
-          console.error('[Signup API] Household creation error:', householdError);
+          logger.error('[Signup API] Household creation error:', householdError);
           return res.status(500).json({
             error: 'Failed to create household',
             details: householdError
@@ -96,14 +97,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           .single();
 
         if (updateError) {
-          console.error('[Signup API] Failed to update user with new household:', updateError);
+          logger.error('[Signup API] Failed to update user with new household:', updateError);
           return res.status(500).json({
             error: 'Failed to assign user to new household',
             details: updateError
           });
         }
 
-        console.log('[Signup API] User assigned to new household:', newHousehold.id);
+        logger.log('[Signup API] User assigned to new household:', newHousehold.id);
         return res.status(200).json({
           user: updatedUser,
           household: newHousehold,
@@ -112,7 +113,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       // User exists and already has a household
-      console.log('[Signup API] User already exists (by clerk_id):', existingUserByClerkId);
+      logger.log('[Signup API] User already exists (by clerk_id):', existingUserByClerkId);
       return res.status(200).json({
         user: existingUserByClerkId,
         message: 'User already exists'
@@ -129,7 +130,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (existingUserByEmail) {
       // If user exists but has no household (was removed), create a new household for them
       if (!existingUserByEmail.household_id) {
-        console.log('[Signup API] User exists by email but was removed, creating new household');
+        logger.log('[Signup API] User exists by email but was removed, creating new household');
         
         // Create a new household for the removed user
         const { data: newHousehold, error: householdError } = await supabase
@@ -145,7 +146,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           .single();
 
         if (householdError) {
-          console.error('[Signup API] Household creation error:', householdError);
+          logger.error('[Signup API] Household creation error:', householdError);
           return res.status(500).json({
             error: 'Failed to create household',
             details: householdError
@@ -166,14 +167,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           .single();
 
         if (updateError) {
-          console.error('[Signup API] Failed to update user with new household:', updateError);
+          logger.error('[Signup API] Failed to update user with new household:', updateError);
           return res.status(500).json({
             error: 'Failed to assign user to new household',
             details: updateError
           });
         }
 
-        console.log('[Signup API] User assigned to new household:', newHousehold.id);
+        logger.log('[Signup API] User assigned to new household:', newHousehold.id);
         return res.status(200).json({
           user: updatedUser,
           household: newHousehold,
@@ -181,7 +182,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
       }
 
-      console.log('[Signup API] User found by email, updating clerk_id:', { 
+      logger.log('[Signup API] User found by email, updating clerk_id:', { 
         oldClerkId: existingUserByEmail.clerk_id, 
         newClerkId: clerkId 
       });
@@ -195,7 +196,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .single();
 
       if (updateError) {
-        console.error('[Signup API] Failed to update clerk_id:', updateError);
+        logger.error('[Signup API] Failed to update clerk_id:', updateError);
         // Still return the existing user even if update failed
         return res.status(200).json({
           user: existingUserByEmail,
@@ -203,7 +204,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
       }
 
-      console.log('[Signup API] User clerk_id updated successfully');
+      logger.log('[Signup API] User clerk_id updated successfully');
       return res.status(200).json({
         user: updatedUser || existingUserByEmail,
         message: 'User already exists, clerk_id updated'
@@ -224,14 +225,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .single();
 
     if (householdError) {
-      console.error('[Signup API] Household creation error:', householdError);
+      logger.error('[Signup API] Household creation error:', householdError);
       return res.status(500).json({
         error: 'Failed to create household',
         details: householdError
       });
     }
 
-    console.log('[Signup API] Household created:', newHousehold.id);
+    logger.log('[Signup API] Household created:', newHousehold.id);
 
     // Create user
     const userData = {
@@ -247,7 +248,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       notifications_enabled: true
     };
 
-    console.log('[Signup API] Creating user with data:', userData);
+    logger.log('[Signup API] Creating user with data:', userData);
 
     const { data: newUser, error: userError } = await supabase
       .from('users')
@@ -256,7 +257,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .single();
 
     if (userError) {
-      console.error('[Signup API] User creation error:', userError);
+      logger.error('[Signup API] User creation error:', userError);
 
       // Clean up the household if user creation failed
       await supabase
@@ -270,8 +271,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    console.log('[Signup API] User created successfully:', newUser.id);
-    console.log('[Signup API] Returning user data:', { id: newUser.id, name: newUser.name, email: newUser.email });
+    logger.log('[Signup API] User created successfully:', newUser.id);
+    logger.log('[Signup API] Returning user data:', { id: newUser.id, name: newUser.name, email: newUser.email });
 
     return res.status(200).json({
       user: newUser,
@@ -280,7 +281,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
   } catch (error) {
-    console.error('[Signup API] Unexpected error:', error);
+    logger.error('[Signup API] Unexpected error:', error);
     return res.status(500).json({
       error: 'Internal server error',
       details: error instanceof Error ? error.message : 'Unknown error'

@@ -49,6 +49,7 @@ import { supabase } from '../services/supabase';
 import { processReceipt, ParsedReceipt } from '../services/visionService';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { useDemoMode } from '../contexts/DemoModeContext';
+import { logger } from '../utils/logger';
 
 // Expense Category Config (colors and icons)
 type ExpenseCategoryConfig = {
@@ -62,7 +63,7 @@ const EXPENSE_CATEGORY_CONFIG: Record<string, ExpenseCategoryConfig> = {
   'Food & Daily Needs': { color: '#FF9800', bgColor: '#FFF3E0', icon: <ShoppingCart size={18} /> },
   'Transport & Travel': { color: '#7E57C2', bgColor: '#EDE7F6', icon: <Car size={18} /> },
   'Health & Personal Care': { color: '#4CAF50', bgColor: '#E8F5E9', icon: <Heart size={18} /> },
-  'Lifestyle': { color: '#F06292', bgColor: '#FCE4EC', icon: <Handbag size={18} /> },
+  'Fun & Lifestyle': { color: '#F06292', bgColor: '#FCE4EC', icon: <Handbag size={18} /> },
   'Misc': { color: '#757575', bgColor: '#F5F5F5', icon: <Stone size={18} /> },
 };
 
@@ -696,7 +697,7 @@ const Expenses: React.FC<ExpensesProps> = ({
     } else {
       filtered = baseExpenses.filter((expense) => {
         if (!expense.date || typeof expense.date !== 'string') {
-          console.warn('[Expenses] Invalid date for expense:', expense.id, expense.date);
+          logger.warn('[Expenses] Invalid date for expense:', expense.id, expense.date);
           return false;
         }
 
@@ -735,7 +736,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                     month = parsedDate.getMonth() + 1; // getMonth() returns 0-11
                   }
                 } catch (e) {
-                  console.warn('[Expenses] Could not parse date:', expense.date, 'for expense:', expense.id);
+                  logger.warn('[Expenses] Could not parse date:', expense.date, 'for expense:', expense.id);
                   return false;
                 }
               }
@@ -745,7 +746,7 @@ const Expenses: React.FC<ExpensesProps> = ({
 
         // Validate parsed values
         if (year === null || month === null || isNaN(year) || isNaN(month) || month < 1 || month > 12) {
-          console.warn('[Expenses] Invalid parsed date values:', { year, month, date: expense.date, expenseId: expense.id });
+          logger.warn('[Expenses] Invalid parsed date values:', { year, month, date: expense.date, expenseId: expense.id });
           return false;
         }
 
@@ -870,7 +871,7 @@ const Expenses: React.FC<ExpensesProps> = ({
       const parsed = await processReceipt(base64Data, { knownMerchants });
       await updateReceiptWithOCR(receiptId, parsed);
 
-      console.log('[OCR] Parsed receipt:', {
+      logger.log('[OCR] Parsed receipt:', {
         total: parsed.total,
         merchant: parsed.merchant,
         lineItemsCount: parsed.lineItems?.length || 0,
@@ -889,7 +890,7 @@ const Expenses: React.FC<ExpensesProps> = ({
       setEditDate(parsed.date || getLocalDateString());
       setAddExpenseStage('ocr'); // Show OCR confirmation
     } catch (err) {
-      console.error('Receipt processing failed:', err);
+      logger.error('Receipt processing failed:', err);
       // Check for specific OCR errors and show user-friendly messages
       const errorMsg = err instanceof Error ? err.message.toLowerCase() : '';
       if (errorMsg.includes('rate limit') || errorMsg.includes('429')) {
@@ -933,7 +934,7 @@ const Expenses: React.FC<ExpensesProps> = ({
     }
 
     const extractedLineItems = pendingReceipt?.parsed.lineItems || [];
-    console.log('[Save] Line items being saved:', {
+    logger.log('[Save] Line items being saved:', {
       hasPendingReceipt: !!pendingReceipt,
       lineItemsCount: extractedLineItems.length,
       lineItems: extractedLineItems,
@@ -959,7 +960,7 @@ const Expenses: React.FC<ExpensesProps> = ({
 
     try {
       if (onAdd) {
-        console.log('[Expenses] Calling onAdd with expense ID:', newExpense.id);
+        logger.log('[Expenses] Calling onAdd with expense ID:', newExpense.id);
         const result = onAdd(newExpense);
         
         // Handle both sync and async onAdd
@@ -974,16 +975,16 @@ const Expenses: React.FC<ExpensesProps> = ({
           }
         }
         
-        console.log('[Expenses] onAdd returned expense:', savedExpense);
+        logger.log('[Expenses] onAdd returned expense:', savedExpense);
         
         // Use the actual UUID from database if returned
         if (savedExpense && savedExpense.id) {
           const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(savedExpense.id);
           if (isUuid) {
             savedExpenseId = savedExpense.id;
-            console.log('[Expenses] Using UUID from database:', savedExpenseId);
+            logger.log('[Expenses] Using UUID from database:', savedExpenseId);
           } else {
-            console.warn('[Expenses] onAdd returned non-UUID ID:', savedExpense.id);
+            logger.warn('[Expenses] onAdd returned non-UUID ID:', savedExpense.id);
           }
         }
         expenseLikelySaved = true;
@@ -993,27 +994,27 @@ const Expenses: React.FC<ExpensesProps> = ({
       if (pendingReceipt && savedExpenseId) {
         try {
           await new Promise(resolve => setTimeout(resolve, 200)); // ensure commit
-          console.log('[Expenses] Linking receipt to expense ID (UUID):', savedExpenseId);
+          logger.log('[Expenses] Linking receipt to expense ID (UUID):', savedExpenseId);
           await linkReceiptToExpense(pendingReceipt.receiptId, savedExpenseId);
-          console.log('[Expenses] Receipt linked to expense successfully');
+          logger.log('[Expenses] Receipt linked to expense successfully');
         } catch (linkError) {
-          console.warn('[Expenses] Failed to link receipt (non-fatal):', linkError);
+          logger.warn('[Expenses] Failed to link receipt (non-fatal):', linkError);
         }
       } else if (pendingReceipt) {
-        console.warn('[Expenses] Cannot link receipt - no valid expense UUID available');
+        logger.warn('[Expenses] Cannot link receipt - no valid expense UUID available');
       }
 
       // Haptic feedback on successful save
       haptics.success();
       
     } catch (addError) {
-      console.error('[Expenses] Error saving expense:', addError);
+      logger.error('[Expenses] Error saving expense:', addError);
       if (!expenseLikelySaved) {
         setError(t['error.save_expense'] || 'Could not save expense. Please try again.');
         haptics.error();
       } else {
         // Expense was likely saved (optimistic or returned), so avoid blocking banner
-        console.warn('[Expenses] Expense likely saved; suppressing error banner.');
+        logger.warn('[Expenses] Expense likely saved; suppressing error banner.');
         setError(null);
         haptics.success();
       }
@@ -1057,12 +1058,12 @@ const Expenses: React.FC<ExpensesProps> = ({
         .createSignedUrl(path, 60 * 60 * 24 * 7); // 7 days
 
       if (error) {
-        console.warn('[Expenses] Failed to refresh signed receipt URL:', error.message);
+        logger.warn('[Expenses] Failed to refresh signed receipt URL:', error.message);
         return null;
       }
       return data?.signedUrl || null;
     } catch (err) {
-      console.warn('[Expenses] Could not parse receipt URL for signing:', err);
+      logger.warn('[Expenses] Could not parse receipt URL for signing:', err);
       return null;
     }
   }
@@ -1109,7 +1110,7 @@ const Expenses: React.FC<ExpensesProps> = ({
       // Close modal after successful save (no more View mode)
       closeExistingModal();
     } catch (err) {
-      console.error('Failed to update expense:', err);
+      logger.error('Failed to update expense:', err);
       setError(t['error.update_expense'] || 'Could not update expense. Please try again.');
     } finally {
       setSavingExisting(false);
@@ -1127,7 +1128,7 @@ const Expenses: React.FC<ExpensesProps> = ({
       setLocalExpenses((prev) => prev.filter((e) => e.id !== selectedExpense.id));
       closeExistingModal();
     } catch (err) {
-      console.error('Failed to delete expense:', err);
+      logger.error('Failed to delete expense:', err);
       setError(t['error.delete_expense'] || 'Could not delete expense. Please try again.');
     } finally {
       setSavingExisting(false);
@@ -1162,7 +1163,7 @@ const Expenses: React.FC<ExpensesProps> = ({
       'Food & Daily Needs': t['expenses.category.food_daily'] || category,
       'Transport & Travel': t['expenses.category.transport_travel'] || category,
       'Health & Personal Care': t['expenses.category.health_personal'] || category,
-      'Lifestyle': t['expenses.category.fun_lifestyle'] || category,
+      'Fun & Lifestyle': t['expenses.category.fun_lifestyle'] || category,
       'Misc': t['expenses.category.miscellaneous'] || category,
     };
     return categoryMap[category] || category;
@@ -1515,13 +1516,13 @@ const Expenses: React.FC<ExpensesProps> = ({
                   <ArrowLeft size={20} />
                 </button>
               ) : (
-            <button
-              onClick={closeAddExpenseSheet}
+                <button
+                  onClick={closeAddExpenseSheet}
                   className="w-10 h-10 rounded-full flex items-center justify-center text-muted-foreground"
-              aria-label={t['common.close'] || 'Close'}
-            >
-              <X size={20} />
-            </button>
+                  aria-label={t['common.close'] || 'Close'}
+                >
+                  <X size={20} />
+                </button>
               )}
               
               {/* Title (center) */}
@@ -1530,7 +1531,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                   ? (t['expenses.confirm_receipt'] || 'Confirm Receipt')
                   : (t['expenses.add_expense'] || 'Add Expense')
                 }
-                </h2>
+              </h2>
               
               {/* ✓ Confirm Button (right) */}
               <button
@@ -1549,7 +1550,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                   <Check size={20} strokeWidth={3} />
                 )}
               </button>
-          </div>
+            </div>
             
             {/* Header separator */}
             <div className="px-5"><div className="h-px bg-border w-full"></div></div>
@@ -1682,53 +1683,28 @@ const Expenses: React.FC<ExpensesProps> = ({
                     />
                   </div>
 
-                {/* Category - Button style like mockup */}
-                    <div>
-                      <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
-                        {t['common.category'] || 'Category'}
-                      </label>
-                  <div className="grid grid-cols-3 gap-2 mb-2">
-                    {EXPENSE_CATEGORIES.slice(0, 3).map((cat) => {
-                      const isSelected = editCategory === cat;
-                      const config = getExpenseCategoryConfig(cat);
-                      return (
-                        <button
-                          key={cat}
-                          onClick={() => setEditCategory(cat)}
-                          className={`px-2 py-2 rounded-xl text-body transition-all flex items-center justify-start gap-1.5 ${
-                            isSelected
-                              ? 'bg-primary text-primary-foreground'
-                              : 'bg-card text-foreground ring-1 ring-border'
-                          }`}
-                        >
-                          <span className="flex-shrink-0">{config.icon}</span>
-                          <span className="truncate text-caption">{getCategoryLabel(cat).split(' ')[0]}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <div className="grid grid-cols-3 gap-2">
-                    {EXPENSE_CATEGORIES.slice(3).map((cat) => {
-                      const isSelected = editCategory === cat;
-                      const config = getExpenseCategoryConfig(cat);
-                          return (
-                        <button
-                          key={cat}
-                          onClick={() => setEditCategory(cat)}
-                          className={`px-2 py-2 rounded-xl text-body transition-all flex items-center justify-start gap-1.5 ${
-                            isSelected
-                              ? 'bg-primary text-primary-foreground'
-                              : 'bg-card text-foreground ring-1 ring-border'
-                          }`}
-                        >
-                          <span className="flex-shrink-0">{config.icon}</span>
-                          <span className="truncate text-caption">{getCategoryLabel(cat).split(' ')[0]}</span>
-                        </button>
-                          );
-                        })}
-                    </div>
+                {/* Category - Dropdown */}
+                <div>
+                  <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
+                    {t['common.category'] || 'Category'}
+                  </label>
+                  <select
+                    value={editCategory}
+                    onChange={(e) => {
+                      setEditCategory(e.target.value);
+                      haptics.selection();
+                    }}
+                    className="w-full px-4 py-3 rounded-xl bg-muted border border-transparent focus:border-primary outline-none transition-all text-body appearance-none cursor-pointer"
+                    style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239CA3AF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}
+                  >
+                    {EXPENSE_CATEGORIES.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {getCategoryLabel(cat)}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-                  </div>
+              </div>
             )}
 
             {/* ─────────────────────────────────────────────────────────────── */}
@@ -1826,51 +1802,26 @@ const Expenses: React.FC<ExpensesProps> = ({
                 />
               </div>
 
-                {/* Category - Button style */}
-              <div>
-                      <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
-                        {t['common.category'] || 'Category'}
-                      </label>
-                  <div className="grid grid-cols-3 gap-2 mb-2">
-                    {EXPENSE_CATEGORIES.slice(0, 3).map((cat) => {
-                      const isSelected = editCategory === cat;
-                      const config = getExpenseCategoryConfig(cat);
-                      return (
-                        <button
-                          key={cat}
-                          onClick={() => setEditCategory(cat)}
-                          className={`px-2 py-2 rounded-xl text-body transition-all flex items-center justify-start gap-1.5 ${
-                            isSelected
-                              ? 'bg-primary text-primary-foreground'
-                              : 'bg-card text-foreground ring-1 ring-border'
-                          }`}
-                        >
-                          <span className="flex-shrink-0">{config.icon}</span>
-                          <span className="truncate text-caption">{getCategoryLabel(cat).split(' ')[0]}</span>
-                        </button>
-                      );
-                    })}
-              </div>
-                  <div className="grid grid-cols-3 gap-2">
-                    {EXPENSE_CATEGORIES.slice(3).map((cat) => {
-                      const isSelected = editCategory === cat;
-                      const config = getExpenseCategoryConfig(cat);
-                      return (
-                        <button
-                          key={cat}
-                          onClick={() => setEditCategory(cat)}
-                          className={`px-2 py-2 rounded-xl text-body transition-all flex items-center justify-start gap-1.5 ${
-                            isSelected
-                              ? 'bg-primary text-primary-foreground'
-                              : 'bg-card text-foreground ring-1 ring-border'
-                          }`}
-                        >
-                          <span className="flex-shrink-0">{config.icon}</span>
-                          <span className="truncate text-caption">{getCategoryLabel(cat).split(' ')[0]}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
+                {/* Category - Dropdown */}
+                <div>
+                  <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
+                    {t['common.category'] || 'Category'}
+                  </label>
+                  <select
+                    value={editCategory}
+                    onChange={(e) => {
+                      setEditCategory(e.target.value);
+                      haptics.selection();
+                    }}
+                    className="w-full px-4 py-3 rounded-xl bg-muted border border-transparent focus:border-primary outline-none transition-all text-body appearance-none cursor-pointer"
+                    style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239CA3AF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}
+                  >
+                    {EXPENSE_CATEGORIES.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {getCategoryLabel(cat)}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
             )}
@@ -1878,7 +1829,7 @@ const Expenses: React.FC<ExpensesProps> = ({
             {/* Invisible spacer for consistent height */}
             <div className="shrink-0 p-5 pb-8">
               <div className="h-[52px]"></div>
-                </div>
+            </div>
           </div>
         </div>
       , document.body)}
@@ -1903,13 +1854,13 @@ const Expenses: React.FC<ExpensesProps> = ({
             {/* Header with X left, Title center, ✓ or Edit right */}
             <div className="flex items-center justify-between px-5 pt-5 pb-4 shrink-0">
               {/* X Close Button (left) */}
-            <button
-              onClick={closeExistingModal}
+              <button
+                onClick={closeExistingModal}
                 className="w-10 h-10 rounded-full flex items-center justify-center text-muted-foreground"
-              aria-label={t['common.close'] || 'Close'}
-            >
-              <X size={20} />
-            </button>
+                aria-label={t['common.close'] || 'Close'}
+              >
+                <X size={20} />
+              </button>
 
               {/* Title (center) */}
               <h2 className="text-title font-semibold text-foreground text-center flex-1">
@@ -2059,53 +2010,26 @@ const Expenses: React.FC<ExpensesProps> = ({
                     />
                   </div>
 
-                  {/* Category - Button style */}
-                    <div>
-                      <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
-                        {t['common.category'] || 'Category'}
-                      </label>
-                    <div className="grid grid-cols-3 gap-2 mb-2">
-                      {EXPENSE_CATEGORIES.slice(0, 3).map((cat) => {
-                        const isSelected = exCategory === cat;
-                        const config = getExpenseCategoryConfig(cat);
-                        return (
-                          <button
-                            key={cat}
-                            type="button"
-                            onClick={() => setExCategory(cat)}
-                            className={`px-2 py-2 rounded-xl text-body transition-all flex items-center justify-start gap-1.5 ${
-                              isSelected
-                                ? 'bg-primary text-primary-foreground'
-                                : 'bg-card text-foreground ring-1 ring-border'
-                            }`}
-                          >
-                            <span className="flex-shrink-0">{config.icon}</span>
-                            <span className="truncate text-caption">{getCategoryLabel(cat).split(' ')[0]}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                    <div className="grid grid-cols-3 gap-2">
-                      {EXPENSE_CATEGORIES.slice(3).map((cat) => {
-                        const isSelected = exCategory === cat;
-                        const config = getExpenseCategoryConfig(cat);
-                        return (
-                          <button
-                            key={cat}
-                            type="button"
-                            onClick={() => setExCategory(cat)}
-                            className={`px-2 py-2 rounded-xl text-body transition-all flex items-center justify-start gap-1.5 ${
-                              isSelected
-                                ? 'bg-primary text-primary-foreground'
-                                : 'bg-card text-foreground ring-1 ring-border'
-                            }`}
-                          >
-                            <span className="flex-shrink-0">{config.icon}</span>
-                            <span className="truncate text-caption">{getCategoryLabel(cat).split(' ')[0]}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
+                  {/* Category - Dropdown */}
+                  <div>
+                    <label className="block text-caption text-muted-foreground mb-2 tracking-wide">
+                      {t['common.category'] || 'Category'}
+                    </label>
+                    <select
+                      value={exCategory}
+                      onChange={(e) => {
+                        setExCategory(e.target.value);
+                        haptics.selection();
+                      }}
+                      className="w-full px-4 py-3 rounded-xl bg-muted border border-transparent focus:border-primary outline-none transition-all text-body appearance-none cursor-pointer"
+                      style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239CA3AF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}
+                    >
+                      {EXPENSE_CATEGORIES.map((cat) => (
+                        <option key={cat} value={cat}>
+                          {getCategoryLabel(cat)}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
               )}
@@ -2160,8 +2084,8 @@ const Expenses: React.FC<ExpensesProps> = ({
               /* Invisible spacer for consistent height */
               <div className="shrink-0 p-5 pb-8">
                 <div className="h-[52px]"></div>
-                </div>
-              )}
+              </div>
+            )}
           </div>
         </div>
       , document.body)}

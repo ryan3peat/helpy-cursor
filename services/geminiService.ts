@@ -1,6 +1,7 @@
 
 import { Type } from "@google/genai";
 import { MealType, TranslationDictionary } from "../types";
+import { logger } from '../utils/logger';
 
 // Regex patterns for content that should NOT be translated based on ISO/industry standards
 const NON_TRANSLATABLE_PATTERNS = [
@@ -55,7 +56,7 @@ const callGeminiProxy = async (contents: string | any, config?: { responseMimeTy
       data: data,
     };
   } catch (error) {
-    console.error('Gemini proxy error:', error);
+    logger.error('Gemini proxy error:', error);
     throw error;
   }
 };
@@ -67,7 +68,7 @@ export const suggestMeal = async (mealType: MealType, cuisinePreference: string 
     );
     return response.text || "Oatmeal with Berries";
   } catch (error) {
-    console.error("Error suggesting meal:", error);
+    logger.error("Error suggesting meal:", error);
     return "Toast and Eggs (Fallback)";
   }
 };
@@ -107,7 +108,7 @@ export const parseReceipt = async (base64Image: string): Promise<{ total: number
     if (!text) throw new Error("No response from AI");
     return JSON.parse(text);
   } catch (error) {
-    console.error("Receipt parsing failed:", error);
+    logger.error("Receipt parsing failed:", error);
     return { total: 0, merchant: "Unknown", date: "", category: "Misc" };
   }
 };
@@ -126,7 +127,7 @@ export const getAppTranslations = async (targetLangCode: string, baseDictionary:
         return { ...baseDictionary, ...parsed }; // Merge with base to ensure no missing keys
       }
     } catch (e) {
-      console.warn("Invalid cache, refetching.");
+      logger.warn("Invalid cache, refetching.");
     }
   }
 
@@ -157,7 +158,7 @@ export const getAppTranslations = async (targetLangCode: string, baseDictionary:
     
     return { ...baseDictionary, ...translatedDict };
   } catch (error) {
-    console.error("Translation failed:", error);
+    logger.error("Translation failed:", error);
     return baseDictionary; // Fallback to English
   }
 };
@@ -212,7 +213,7 @@ export const translateUserContent = async (
     const translated = response.text?.trim();
     return translated || text; // Return original if empty response
   } catch (error) {
-    console.error("User content translation failed:", error);
+    logger.error("User content translation failed:", error);
     return text; // Fallback to original
   }
 };
@@ -285,7 +286,7 @@ export const batchTranslateUserContent = async (
       return item.text; // Return original if no translation needed
     });
   } catch (error) {
-    console.error("Batch translation failed:", error);
+    logger.error("Batch translation failed:", error);
     return items.map(item => item.text); // Fallback to originals
   }
 };

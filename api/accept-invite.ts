@@ -4,6 +4,7 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
+import { logger } from './_logger';
 
 // Initialize Supabase with service role (bypasses RLS)
 const supabase = createClient(
@@ -33,7 +34,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const { pendingUserId, householdId, clerkId, email, name, avatar } = req.body;
 
-  console.log('[Accept Invite API] Request:', { pendingUserId, householdId, clerkId, email, name });
+  logger.log('[Accept Invite API] Request:', { pendingUserId, householdId, clerkId, email, name });
 
   // Validate required fields
   if (!pendingUserId || !householdId || !clerkId) {
@@ -51,11 +52,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .maybeSingle();
 
     if (existingUser) {
-      console.log('[Accept Invite API] User already exists with clerk_id:', existingUser.id);
+      logger.log('[Accept Invite API] User already exists with clerk_id:', existingUser.id);
       
       // Check if they're already in the INVITED household (same invite was processed)
       if (existingUser.household_id === householdId && existingUser.id === pendingUserId) {
-        console.log('[Accept Invite API] User already activated for THIS invite');
+        logger.log('[Accept Invite API] User already activated for THIS invite');
         return res.status(200).json({
           success: true,
           user: existingUser,
@@ -66,7 +67,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       
       // User exists but in a DIFFERENT household - this is a household switch scenario
       // Return a special response so the frontend can handle it
-      console.log('[Accept Invite API] User exists in different household:', existingUser.household_id);
+      logger.log('[Accept Invite API] User exists in different household:', existingUser.household_id);
       return res.status(409).json({
         error: 'User already belongs to another household',
         existingHouseholdId: existingUser.household_id,
@@ -85,8 +86,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .maybeSingle();
 
       if (userWithEmail) {
-        console.log('[Accept Invite API] Another user already has this email:', email);
-        console.log('[Accept Invite API] Existing user with email:', userWithEmail.id, 'household:', userWithEmail.household_id);
+        logger.log('[Accept Invite API] Another user already has this email:', email);
+        logger.log('[Accept Invite API] Existing user with email:', userWithEmail.id, 'household:', userWithEmail.household_id);
         
         // This email is already used by another account
         return res.status(409).json({
@@ -107,12 +108,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .maybeSingle();
 
     if (pendingError) {
-      console.error('[Accept Invite API] Error fetching pending user:', pendingError);
+      logger.error('[Accept Invite API] Error fetching pending user:', pendingError);
       return res.status(500).json({ error: 'Failed to fetch pending user' });
     }
 
     if (!pendingUser) {
-      console.log('[Accept Invite API] No pending user found:', { pendingUserId, householdId });
+      logger.log('[Accept Invite API] No pending user found:', { pendingUserId, householdId });
       return res.status(404).json({ 
         error: 'Invitation not found or already accepted',
         notFound: true
@@ -122,7 +123,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // 3. Check if invite has expired
     const expiresAt = pendingUser.invite_expires_at;
     if (expiresAt && new Date(expiresAt) < new Date()) {
-      console.log('[Accept Invite API] Invite expired:', expiresAt);
+      logger.log('[Accept Invite API] Invite expired:', expiresAt);
       return res.status(410).json({ 
         error: 'This invitation has expired',
         expired: true
@@ -146,13 +147,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .single();
 
     if (activateError) {
-      console.error('[Accept Invite API] Error activating user:', activateError);
+      logger.error('[Accept Invite API] Error activating user:', activateError);
       return res.status(500).json({ 
         error: `Failed to activate user: ${activateError.message}` 
       });
     }
 
-    console.log('[Accept Invite API] User activated successfully:', activatedUser.id);
+    logger.log('[Accept Invite API] User activated successfully:', activatedUser.id);
 
     return res.status(200).json({
       success: true,
@@ -161,7 +162,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
   } catch (error: any) {
-    console.error('[Accept Invite API] Unexpected error:', error);
+    logger.error('[Accept Invite API] Unexpected error:', error);
     return res.status(500).json({ 
       error: error.message || 'Internal server error' 
     });

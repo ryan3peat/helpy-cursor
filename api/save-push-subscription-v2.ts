@@ -5,6 +5,7 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
+import { logger } from './_logger';
 
 const supabase = createClient(
   process.env.SUPABASE_URL!,
@@ -43,7 +44,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const { user_id, household_id, endpoint, p256dh_key, auth_key, user_agent, device_fingerprint, email } = req.body;
 
-  console.log('[API] save-push-subscription-v2 called:', {
+  logger.log('[API] save-push-subscription-v2 called:', {
     user_id,
     user_id_type: isClerkId(user_id) ? 'clerk_id' : isValidUuid(user_id) ? 'uuid' : 'unknown',
     household_id,
@@ -76,7 +77,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       
       if (user && !error) {
         supabaseUserId = user_id;
-        console.log('[API] User ID is valid UUID:', supabaseUserId);
+        logger.log('[API] User ID is valid UUID:', supabaseUserId);
       }
     }
 
@@ -93,7 +94,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       
       if (user && !error) {
         supabaseUserId = user.id;
-        console.log('[API] Resolved Clerk ID to UUID:', user_id, '->', supabaseUserId);
+        logger.log('[API] Resolved Clerk ID to UUID:', user_id, '->', supabaseUserId);
       }
     }
 
@@ -109,7 +110,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       
       if (user && !error) {
         supabaseUserId = user.id;
-        console.log('[API] Resolved Clerk ID (no household constraint):', user_id, '->', supabaseUserId);
+        logger.log('[API] Resolved Clerk ID (no household constraint):', user_id, '->', supabaseUserId);
       }
     }
 
@@ -118,7 +119,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // This handles cases where clerk_id wasn't saved during signup
     // ─────────────────────────────────────────────────────────────────
     if (!supabaseUserId && email && isClerkId(user_id)) {
-      console.log('[API] Clerk ID lookup failed, trying email lookup:', email);
+      logger.log('[API] Clerk ID lookup failed, trying email lookup:', email);
       
       const { data: userByEmail, error: emailError } = await supabase
         .from('users')
@@ -129,21 +130,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .maybeSingle();
       
       if (userByEmail && !emailError) {
-        console.log('[API] Found user by email:', userByEmail.id);
+        logger.log('[API] Found user by email:', userByEmail.id);
         supabaseUserId = userByEmail.id;
         
         // AUTO-REPAIR: Update the clerk_id if it's missing or different
         if (!userByEmail.clerk_id || userByEmail.clerk_id !== user_id) {
-          console.log('[API] Auto-repairing clerk_id:', userByEmail.clerk_id, '->', user_id);
+          logger.log('[API] Auto-repairing clerk_id:', userByEmail.clerk_id, '->', user_id);
           const { error: updateError } = await supabase
             .from('users')
             .update({ clerk_id: user_id })
             .eq('id', userByEmail.id);
           
           if (updateError) {
-            console.error('[API] Failed to auto-repair clerk_id:', updateError);
+            logger.error('[API] Failed to auto-repair clerk_id:', updateError);
           } else {
-            console.log('[API] Successfully auto-repaired clerk_id for user:', userByEmail.id);
+            logger.log('[API] Successfully auto-repaired clerk_id for user:', userByEmail.id);
             clerkIdRepaired = true;
           }
         }
@@ -155,7 +156,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // This handles the case where the admin's clerk_id was never saved
     // ─────────────────────────────────────────────────────────────────
     if (!supabaseUserId && isClerkId(user_id)) {
-      console.log('[API] Email lookup failed, trying admin fallback for household:', household_id);
+      logger.log('[API] Email lookup failed, trying admin fallback for household:', household_id);
       
       const { data: householdUsers, error: householdError } = await supabase
         .from('users')
@@ -164,7 +165,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .eq('status', 'active');
       
       if (householdUsers && !householdError && householdUsers.length > 0) {
-        console.log('[API] Found', householdUsers.length, 'active users in household');
+        logger.log('[API] Found', householdUsers.length, 'active users in household');
         
         // Find admin/superadmin user without clerk_id (or with NULL clerk_id)
         const adminWithoutClerkId = householdUsers.find(u => 
@@ -172,7 +173,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         );
         
         if (adminWithoutClerkId) {
-          console.log('[API] Found admin without clerk_id:', adminWithoutClerkId.id, 'role:', adminWithoutClerkId.role);
+          logger.log('[API] Found admin without clerk_id:', adminWithoutClerkId.id, 'role:', adminWithoutClerkId.role);
           
           // Update the clerk_id for this user
           const { error: updateError } = await supabase
@@ -183,15 +184,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           if (!updateError) {
             supabaseUserId = adminWithoutClerkId.id;
             clerkIdRepaired = true;
-            console.log('[API] Auto-repaired clerk_id for admin:', supabaseUserId);
+            logger.log('[API] Auto-repaired clerk_id for admin:', supabaseUserId);
           } else {
-            console.error('[API] Failed to update admin clerk_id:', updateError);
+            logger.error('[API] Failed to update admin clerk_id:', updateError);
           }
         } else {
           // Log all users for debugging
-          console.log('[API] No admin without clerk_id found. Users in household:');
+          logger.log('[API] No admin without clerk_id found. Users in household:');
           householdUsers.forEach(u => {
-            console.log('[API]   -', u.role, '| clerk_id:', u.clerk_id ? 'SET' : 'NULL', '| id:', u.id);
+            logger.log('[API]   -', u.role, '| clerk_id:', u.clerk_id ? 'SET' : 'NULL', '| id:', u.id);
           });
         }
       }
@@ -201,8 +202,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // FINAL CHECK: If still not resolved, return error with helpful info
     // ─────────────────────────────────────────────────────────────────
     if (!supabaseUserId) {
-      console.error('[API] Could not resolve user_id:', user_id);
-      console.error('[API] Tried: UUID check, clerk_id lookup, email lookup, admin fallback');
+      logger.error('[API] Could not resolve user_id:', user_id);
+      logger.error('[API] Tried: UUID check, clerk_id lookup, email lookup, admin fallback');
       return res.status(404).json({ 
         error: 'User not found',
         user_id_received: user_id,
@@ -232,13 +233,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .single();
 
     if (error) {
-      console.error('[API] Failed to save subscription:', error);
+      logger.error('[API] Failed to save subscription:', error);
       return res.status(500).json({ 
         error: error.message || 'Failed to save subscription' 
       });
     }
 
-    console.log('[API] Subscription saved successfully:', data?.id);
+    logger.log('[API] Subscription saved successfully:', data?.id);
 
     return res.status(200).json({ 
       success: true, 
@@ -248,7 +249,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
   } catch (error: any) {
-    console.error('[API] Push subscription save error:', error);
+    logger.error('[API] Push subscription save error:', error);
     return res.status(500).json({ 
       error: error.message || 'Internal server error' 
     });

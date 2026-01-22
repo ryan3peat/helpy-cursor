@@ -1,5 +1,6 @@
 import React from 'react';
 import { Rat, RotateCcw } from 'lucide-react';
+import { logger } from '../../utils/logger';
 
 interface ErrorBoundaryProps {
   children: React.ReactNode;
@@ -36,8 +37,8 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
-    console.error('[ErrorBoundary] Caught error:', error);
-    console.error('[ErrorBoundary] Component stack:', errorInfo.componentStack);
+    logger.error('[ErrorBoundary] Caught error:', error);
+    logger.error('[ErrorBoundary] Component stack:', errorInfo.componentStack);
   }
 
   handleReload = (): void => {

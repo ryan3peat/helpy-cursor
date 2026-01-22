@@ -1,6 +1,7 @@
 // api/create-checkout-session.ts
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
+import { logger } from './_logger';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-11-17.clover',
@@ -147,7 +148,7 @@ export default async function handler(req: any, res: any) {
       } catch (error: any) {
         // If subscription doesn't exist in Stripe, it's safe to create a new one
         if (error.code !== 'resource_missing') {
-          console.error('Error checking existing subscription:', error);
+          logger.error('Error checking existing subscription:', error);
         }
       }
     }
@@ -219,7 +220,7 @@ export default async function handler(req: any, res: any) {
 
     return res.status(200).json({ url: session.url });
   } catch (error: any) {
-    console.error('Checkout error:', error);
+    logger.error('Checkout error:', error);
     return res.status(500).json({ error: error.message });
   }
 }

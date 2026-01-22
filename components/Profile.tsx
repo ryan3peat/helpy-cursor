@@ -17,6 +17,7 @@ import { useSupabase } from '../contexts/SupabaseContext';
 import { deleteItem, uploadAvatarImage } from '../services/supabaseService';
 import { useScrollLock } from '@/hooks/useScrollLock';
 import { useSheetTheme } from '@/hooks/useSheetTheme';
+import { logger } from '../utils/logger';
 import {
   isPushSupported,
   getNotificationPermission,
@@ -246,7 +247,7 @@ const Profile: React.FC<ProfileProps> = ({
       if (document.visibilityState === 'visible' && isPushSupported()) {
         const currentPermission = getNotificationPermission();
         setPushPermission(currentPermission);
-        console.log('[Profile] Re-checked notification permission:', currentPermission);
+        logger.log('[Profile] Re-checked notification permission:', currentPermission);
       }
     };
     
@@ -315,7 +316,7 @@ const Profile: React.FC<ProfileProps> = ({
     
     // Ensure we have an authenticated client
     if (!supabase) {
-      console.warn('[Profile] No Supabase client available for fetching subscription info');
+      logger.warn('[Profile] No Supabase client available for fetching subscription info');
       setIsLoadingSubscription(false);
       return false;
     }
@@ -360,7 +361,7 @@ const Profile: React.FC<ProfileProps> = ({
           cancelAtPeriodEnd: data.cancel_at_period_end || false
         };
         
-        console.log('[Profile] Updating subscriptionInfo state:', newSubscriptionInfo);
+        logger.log('[Profile] Updating subscriptionInfo state:', newSubscriptionInfo);
         
         // Mark as loaded
         hasLoadedSubscriptionRef.current = true;
@@ -376,7 +377,7 @@ const Profile: React.FC<ProfileProps> = ({
           maxHelpers: data.max_helpers ?? 1
         });
         
-        console.log('[Profile] State updated - subscriptionInfo should now be:', newSubscriptionInfo);
+        logger.log('[Profile] State updated - subscriptionInfo should now be:', newSubscriptionInfo);
         
         // If we were retrying and subscription is now active, we're done
         if (retryCount > 0 && data.subscription_status === 'active') {
@@ -386,7 +387,7 @@ const Profile: React.FC<ProfileProps> = ({
       }
       return false;
     } catch (error) {
-      console.error('Error fetching subscription info:', error);
+      logger.error('Error fetching subscription info:', error);
       return false;
     } finally {
       setIsLoadingSubscription(false);
@@ -422,30 +423,30 @@ const Profile: React.FC<ProfileProps> = ({
       // IMPORTANT: Sync FIRST, then fetch - to ensure we get the latest cancel_at_period_end value
       const syncAfterPortal = async () => {
         try {
-          console.log('[Profile] ====== PORTAL RETURN SYNC START ======');
-          console.log('[Profile] Syncing subscription after portal return for household:', currentUser.householdId);
+          logger.log('[Profile] ====== PORTAL RETURN SYNC START ======');
+          logger.log('[Profile] Syncing subscription after portal return for household:', currentUser.householdId);
 
           // Wait for Stripe to process the cancellation - try multiple times with increasing delays
-          console.log('[Profile] Waiting for Stripe to process cancellation...');
+          logger.log('[Profile] Waiting for Stripe to process cancellation...');
           let syncResult;
           let attempts = 0;
           const maxAttempts = 3;
 
           while (attempts < maxAttempts) {
-            console.log(`[Profile] Sync attempt ${attempts + 1}/${maxAttempts}`);
+            logger.log(`[Profile] Sync attempt ${attempts + 1}/${maxAttempts}`);
             syncResult = await syncSubscription(currentUser.householdId);
-            console.log('[Profile] Sync API result:', JSON.stringify(syncResult));
+            logger.log('[Profile] Sync API result:', JSON.stringify(syncResult));
 
             // If we successfully got cancelAtPeriodEnd: true, we're done
             if (syncResult.success && syncResult.cancelAtPeriodEnd) {
-              console.log('[Profile] Successfully detected cancellation in Stripe');
+              logger.log('[Profile] Successfully detected cancellation in Stripe');
               break;
             }
 
             attempts++;
             if (attempts < maxAttempts) {
               const delay = attempts * 1000; // 1s, 2s, 3s delays
-              console.log(`[Profile] Cancellation not detected yet, waiting ${delay}ms before retry...`);
+              logger.log(`[Profile] Cancellation not detected yet, waiting ${delay}ms before retry...`);
               await new Promise(resolve => setTimeout(resolve, delay));
             }
           }
@@ -454,12 +455,12 @@ const Profile: React.FC<ProfileProps> = ({
           await new Promise(resolve => setTimeout(resolve, 500));
 
           // NOW fetch updated subscription info from database (with loading = false to not show spinner)
-          console.log('[Profile] Fetching updated subscription info from database...');
+          logger.log('[Profile] Fetching updated subscription info from database...');
           await fetchSubscriptionInfo(0, false);
 
           // Check if subscription was fully canceled (status changed)
           if (!supabase) {
-            console.log('[Profile] No supabase client available');
+            logger.log('[Profile] No supabase client available');
             return;
           }
 
@@ -469,25 +470,25 @@ const Profile: React.FC<ProfileProps> = ({
             .eq('id', currentUser.householdId)
             .maybeSingle();
 
-          console.log('[Profile] Direct database query result:', JSON.stringify(data));
+          logger.log('[Profile] Direct database query result:', JSON.stringify(data));
           if (error) {
-            console.error('[Profile] Database query error:', error);
+            logger.error('[Profile] Database query error:', error);
           }
 
-          console.log('[Profile] cancel_at_period_end value:', data?.cancel_at_period_end);
-          console.log('[Profile] subscription_status value:', data?.subscription_status);
+          logger.log('[Profile] cancel_at_period_end value:', data?.cancel_at_period_end);
+          logger.log('[Profile] subscription_status value:', data?.subscription_status);
 
           if (data) {
             // Show canceled modal if subscription is fully canceled (not just cancel_at_period_end)
             if (data.subscription_status === 'canceled' || data.subscription_status === 'inactive') {
-              console.log('[Profile] Showing subscription canceled modal');
+              logger.log('[Profile] Showing subscription canceled modal');
               setSubscriptionCanceled(true);
             }
           }
 
-          console.log('[Profile] ====== PORTAL RETURN SYNC END ======');
+          logger.log('[Profile] ====== PORTAL RETURN SYNC END ======');
         } catch (error) {
-          console.error('[Profile] Error syncing after portal return:', error);
+          logger.error('[Profile] Error syncing after portal return:', error);
           // Still try to fetch local data
           await fetchSubscriptionInfo(0, false);
         }
@@ -522,30 +523,30 @@ const Profile: React.FC<ProfileProps> = ({
 
       // Actively sync subscription from Stripe (don't rely solely on webhook)
       const syncAndFetch = async () => {
-        console.log('[Profile] Syncing subscription after checkout...');
+        logger.log('[Profile] Syncing subscription after checkout...');
         
         // First, try to sync from Stripe API (this bypasses webhook)
         const syncResult = await syncSubscription(currentUser.householdId, sessionId || undefined);
         
         if (syncResult.success) {
-          console.log('[Profile] Sync successful:', syncResult);
+          logger.log('[Profile] Sync successful:', syncResult);
           // Small delay to ensure database update is committed
           await new Promise(resolve => setTimeout(resolve, 500));
           // Force refresh subscription info from database
-          console.log('[Profile] Fetching subscription info after sync...');
+          logger.log('[Profile] Fetching subscription info after sync...');
           const refreshed = await fetchSubscriptionInfo(0, false);
-          console.log('[Profile] Subscription info refreshed, active:', refreshed);
+          logger.log('[Profile] Subscription info refreshed, active:', refreshed);
           // Give React time to process the state update
           await new Promise(resolve => setTimeout(resolve, 100));
           // Verify the state was updated by fetching once more
-          console.log('[Profile] Verifying subscription info state...');
+          logger.log('[Profile] Verifying subscription info state...');
           await fetchSubscriptionInfo(0, false);
           setTimeout(() => setSubscriptionSuccess(false), 3000);
           isHandlingStripeReturnRef.current = false;
           return;
         }
         
-        console.warn('[Profile] Sync failed, falling back to polling:', syncResult.error);
+        logger.warn('[Profile] Sync failed, falling back to polling:', syncResult.error);
         isHandlingStripeReturnRef.current = false;
         
         // Fallback: poll for webhook to update (legacy behavior)
@@ -554,7 +555,7 @@ const Profile: React.FC<ProfileProps> = ({
           const retryDelay = 2000;
 
           if (attempt >= maxRetries) {
-            console.warn('Subscription update not detected after max retries');
+            logger.warn('Subscription update not detected after max retries');
             setSubscriptionSuccess(false);
             return;
           }
@@ -595,7 +596,7 @@ const Profile: React.FC<ProfileProps> = ({
 
   // Debug: Log subscriptionInfo changes to verify state updates
   React.useEffect(() => {
-    console.log('[Profile] subscriptionInfo state changed:', subscriptionInfo);
+    logger.log('[Profile] subscriptionInfo state changed:', subscriptionInfo);
   }, [subscriptionInfo]);
   
   // Get Clerk user to detect authentication method
@@ -890,7 +891,7 @@ const Profile: React.FC<ProfileProps> = ({
         window.location.href = checkoutUrl;
       }
     } catch (error) {
-      console.error('Checkout error:', error);
+      logger.error('Checkout error:', error);
       showAlert(
         t['error.plan_change_failed'] || 'Could not change your plan. Please try again or contact support.',
         '',
@@ -908,30 +909,30 @@ const Profile: React.FC<ProfileProps> = ({
 
   // Execute the actual downgrade to Free (called after modal confirmation)
   const executeDowngradeToFree = async () => {
-    console.log('[Profile] executeDowngradeToFree started');
+    logger.log('[Profile] executeDowngradeToFree started');
     try {
       setLoadingPlan('core'); // Use 'core' as a loading indicator for downgrade
-      console.log('[Profile] Calling downgradeToFree API...');
+      logger.log('[Profile] Calling downgradeToFree API...');
       const result = await downgradeToFree(currentUser.householdId, currentUser.id);
-      console.log('[Profile] downgradeToFree API result:', result);
-      console.log('[Profile] downgradeToFree API completed, refreshing subscription info...');
+      logger.log('[Profile] downgradeToFree API result:', result);
+      logger.log('[Profile] downgradeToFree API completed, refreshing subscription info...');
       // Refresh subscription info
       await fetchSubscriptionInfo(0, false);
-      console.log('[Profile] Subscription info refreshed, showing success alert');
+      logger.log('[Profile] Subscription info refreshed, showing success alert');
       showAlert(
         t['subscription.downgrade_success_title'] || 'Subscription Canceled',
         t['subscription.downgrade_success'] || 'Your subscription has been canceled. You are now on the Free plan.',
         'success'
       );
     } catch (error) {
-      console.error('[Profile] Downgrade error:', error);
+      logger.error('[Profile] Downgrade error:', error);
       showAlert(
         t['error.downgrade_title'] || 'Downgrade Failed',
         t['error.plan_change_failed'] || 'Could not change your plan. Please try again or contact support.',
         'error'
       );
     } finally {
-      console.log('[Profile] executeDowngradeToFree finished, resetting loadingPlan');
+      logger.log('[Profile] executeDowngradeToFree finished, resetting loadingPlan');
       setLoadingPlan(null);
     }
   };
@@ -954,7 +955,7 @@ const Profile: React.FC<ProfileProps> = ({
         await handleSelectPlan(targetPlan, targetPeriod, undefined, true);
       }
     } catch (error) {
-      console.error('Downgrade confirmation error:', error);
+      logger.error('Downgrade confirmation error:', error);
       setLoadingPlan(null); // Ensure loading is reset on error
     }
   };
@@ -984,7 +985,7 @@ const Profile: React.FC<ProfileProps> = ({
         setIsLoading(false);
       }, 5000);
     } catch (error) {
-      console.error('Portal error:', error);
+      logger.error('Portal error:', error);
       showAlert(
         t['error.portal_title'] || 'Portal Error',
         t['error.subscription_settings'] || 'Could not open subscription settings. Please try again.',
@@ -1077,7 +1078,7 @@ const Profile: React.FC<ProfileProps> = ({
         }, 800);
       }
     } catch (error: any) {
-      console.error('Failed to add user:', error);
+      logger.error('Failed to add user:', error);
       
       // Check if it's a plan limit error
       const errorMessage = error?.message || '';
@@ -1144,7 +1145,7 @@ const Profile: React.FC<ProfileProps> = ({
       // Go directly to invite step (skip success for resend)
       setAddUserStep('invite');
     } catch (error) {
-      console.error('Failed to resend invite:', error);
+      logger.error('Failed to resend invite:', error);
       showAlert(
         t['error.invite_title'] || 'Invite Failed',
         t['error.generate_invite'] || 'Failed to generate new invite link',
@@ -1265,13 +1266,13 @@ const Profile: React.FC<ProfileProps> = ({
 
     setIsUploadingAvatar(true);
     try {
-      console.log('📷 Compressing avatar for user:', selectedUser.id);
+      logger.log('📷 Compressing avatar for user:', selectedUser.id);
       
       // Compress image before upload (resizes to 400x400 max, ~80% quality)
       // This typically reduces 3-5MB phone photos to ~20-50KB
       const compressed = await compressImageForAvatar(file, 400, 0.85);
       
-      console.log('📷 Uploading compressed avatar...');
+      logger.log('📷 Uploading compressed avatar...');
       const avatarUrl = await uploadAvatarImage(
         currentUser.householdId,
         selectedUser.id,
@@ -1280,9 +1281,9 @@ const Profile: React.FC<ProfileProps> = ({
       
       // Update user with new avatar URL
       onUpdate(selectedUser.id, { avatar: avatarUrl });
-      console.log('✅ Avatar updated successfully');
+      logger.log('✅ Avatar updated successfully');
     } catch (error) {
-      console.error('❌ Failed to upload avatar:', error);
+      logger.error('❌ Failed to upload avatar:', error);
       showAlert(
         t['error.upload_failed_title'] || 'Upload Failed',
         t['error.upload_image'] || 'Failed to upload image. Please try again.',
@@ -2424,7 +2425,7 @@ const Profile: React.FC<ProfileProps> = ({
         try {
           await deleteItem(currentUser.householdId, 'users', member.id);
         } catch (error) {
-          console.error(`Error deleting family member ${member.id}:`, error);
+          logger.error(`Error deleting family member ${member.id}:`, error);
           // Continue with deletion even if one fails
         }
       }
@@ -2433,7 +2434,7 @@ const Profile: React.FC<ProfileProps> = ({
       try {
         await deleteItem(currentUser.householdId, 'users', currentUser.id);
       } catch (error) {
-        console.error('Error deleting master user:', error);
+        logger.error('Error deleting master user:', error);
         throw error;
       }
 
@@ -2447,7 +2448,7 @@ const Profile: React.FC<ProfileProps> = ({
         .eq('id', currentUser.householdId);
 
       if (householdError) {
-        console.error('Error deleting household:', householdError);
+        logger.error('Error deleting household:', householdError);
         throw householdError;
       }
 
@@ -2455,7 +2456,7 @@ const Profile: React.FC<ProfileProps> = ({
       try {
         await clerkUser.delete();
       } catch (error) {
-        console.error('Error deleting Clerk account:', error);
+        logger.error('Error deleting Clerk account:', error);
         // Even if Clerk deletion fails, we've deleted everything else
         // So we should still sign out
       }
@@ -2464,7 +2465,7 @@ const Profile: React.FC<ProfileProps> = ({
       setIsFinalDeleteConfirmOpen(false);
       onLogout();
     } catch (error) {
-      console.error('Error deleting account:', error);
+      logger.error('Error deleting account:', error);
       showAlert(
         t['error.delete_account_title'] || 'Delete Failed',
         t['error.delete_account'] || 'Failed to delete account. Please try again or contact support.',
@@ -2560,7 +2561,7 @@ const Profile: React.FC<ProfileProps> = ({
           },
           { 
             id: 'spending_summary', 
-            name: t['plan.feature.spending_summary'] || 'Monthly Spending Summary',
+            name: t['plan.feature.spending_summary'] || 'Monthly spending summary',
             description: t['plan.feature.spending_summary_desc'] || 'Pie charts show category totals and percentages.',
             isLimit: false 
           },
@@ -2596,9 +2597,9 @@ const Profile: React.FC<ProfileProps> = ({
           family_info: { included: true },
           ai_translations: { included: true },
           manual_expenses: { included: true },
-          ai_scan: { included: false },
-          spending_summary: { included: false },
-          helper_records: { included: false },
+          ai_scan: { included: true, trial: t['plan.trial.5_scans'] || '5 free scans' },
+          spending_summary: { included: true, trial: t['plan.trial.14_days'] || '14 days trial' },
+          helper_records: { included: true, trial: t['plan.trial.1_signature'] || '1 free salary slip' },
         },
         badge: null,
         isFree: true
@@ -2644,7 +2645,7 @@ const Profile: React.FC<ProfileProps> = ({
           spending_summary: { included: true },
           helper_records: { included: true },
         },
-        badge: true,
+        badge: null,
         isFree: false
       }
     ];
@@ -3027,6 +3028,7 @@ const Profile: React.FC<ProfileProps> = ({
                                   const featureValue = p.featureValues[feature.id as keyof typeof p.featureValues];
                                   const isIncluded = featureValue?.included ?? false;
                                   const limitValue = featureValue && 'value' in featureValue ? featureValue.value : null;
+                                  const trialValue = featureValue && 'trial' in featureValue ? featureValue.trial : null;
 
                                   // For limit features (family/helpers), show number as the leading element
                                   if (feature.isLimit && limitValue) {
@@ -3039,7 +3041,7 @@ const Profile: React.FC<ProfileProps> = ({
                                           }}
                                         >
                                           {limitValue}
-                            </span>
+                                        </span>
                                         <div className="min-w-0">
                                           <p 
                                             className="text-body font-semibold"
@@ -3054,9 +3056,51 @@ const Profile: React.FC<ProfileProps> = ({
                                             >
                                               {feature.description}
                                             </p>
-                          )}
-                        </div>
-                      </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    );
+                                  }
+
+                                  // For trial features (Free plan only), show trial badge
+                                  if (trialValue) {
+                                    return (
+                                      <div key={feature.id} className="flex items-start gap-3">
+                                        <div className="w-5 flex justify-center flex-shrink-0">
+                                          <Check 
+                                            size={18} 
+                                            className="mt-0.5" 
+                                            style={{ color: '#F59E0B' }} 
+                                          />
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                          <div className="flex items-center gap-2 flex-wrap">
+                                            <p 
+                                              className="text-body font-semibold"
+                                              style={{ color: 'hsl(var(--foreground))' }}
+                                            >
+                                              {feature.name}
+                                            </p>
+                                            <span 
+                                              className="text-caption font-semibold px-2 py-0.5 rounded-full"
+                                              style={{ 
+                                                backgroundColor: 'rgba(245, 158, 11, 0.15)',
+                                                color: '#F59E0B'
+                                              }}
+                                            >
+                                              {trialValue}
+                                            </span>
+                                          </div>
+                                          {feature.description && (
+                                            <p 
+                                              className="text-body font-normal"
+                                              style={{ color: 'hsl(var(--muted-foreground))' }}
+                                            >
+                                              {feature.description}
+                                            </p>
+                                          )}
+                                        </div>
+                                      </div>
                                     );
                                   }
 
@@ -4039,9 +4083,9 @@ const Profile: React.FC<ProfileProps> = ({
                                 notificationsEnabled: false
                                 // Keep hasPushSubscription: true - subscription still exists
                               });
-                              console.log('[Profile] Notifications muted (subscription preserved)');
+                              logger.log('[Profile] Notifications muted (subscription preserved)');
                             } catch (error) {
-                              console.error('[Profile] Error muting notifications:', error);
+                              logger.error('[Profile] Error muting notifications:', error);
                               setAccountData({ ...accountData, notificationsEnabled: true });
                             } finally {
                               setTimeout(() => {
@@ -4102,14 +4146,14 @@ const Profile: React.FC<ProfileProps> = ({
                             
                             if (capability.capable) {
                               // Subscription already exists, just enable in database
-                              console.log('[Profile] Re-enabling existing subscription');
+                              logger.log('[Profile] Re-enabling existing subscription');
                               await onUpdate(currentUser.id, { 
                                 notificationsEnabled: true,
                                 hasPushSubscription: true
                               });
                             } else {
                               // Need to set up subscription (first time or was fully unsubscribed)
-                              console.log('[Profile] Setting up new subscription, reason:', capability.reason);
+                              logger.log('[Profile] Setting up new subscription, reason:', capability.reason);
                               
                               const subscription = await subscribeToPush(
                                 currentUser.id,
@@ -4119,7 +4163,7 @@ const Profile: React.FC<ProfileProps> = ({
                               setPushPermission(getNotificationPermission());
                               
                               if (subscription) {
-                                console.log('[Profile] Notifications enabled successfully');
+                                logger.log('[Profile] Notifications enabled successfully');
                                 await onUpdate(currentUser.id, { 
                                   notificationsEnabled: true,
                                   hasPushSubscription: true
@@ -4127,7 +4171,7 @@ const Profile: React.FC<ProfileProps> = ({
                               } else {
                                 // Revert on failure
                                 const newPermission = getNotificationPermission();
-                                console.warn('[Profile] Subscription failed');
+                                logger.warn('[Profile] Subscription failed');
                                 setAccountData({ ...accountData, notificationsEnabled: false });
                                 
                                 if (newPermission === 'denied') {
@@ -4142,7 +4186,7 @@ const Profile: React.FC<ProfileProps> = ({
                               }
                             }
                           } catch (error) {
-                            console.error('[Profile] Error enabling notifications:', error);
+                            logger.error('[Profile] Error enabling notifications:', error);
                             setAccountData({ ...accountData, notificationsEnabled: false });
                             showAlert(
                               t['notifications.setup_failed_title'] || 'Setup Failed',

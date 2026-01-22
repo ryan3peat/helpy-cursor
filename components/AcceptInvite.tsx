@@ -5,6 +5,7 @@
 import React, { useEffect, useState } from 'react';
 import { useSignUp, useSignIn, useUser } from '@clerk/clerk-react';
 import { Loader2, CheckCircle, XCircle } from 'lucide-react';
+import { logger } from '../utils/logger';
 
 // Helper function to get user-friendly error message from Clerk errors
 function getClerkErrorMessage(err: any): string {
@@ -116,7 +117,7 @@ const AcceptInvite: React.FC<AcceptInviteProps> = ({ onComplete }) => {
         }, 2000);
       }
     } catch (err: any) {
-      console.error('Sign-in error:', err);
+      logger.error('Sign-in error:', err);
       setStatus('error');
       setErrorMessage(err.message || 'Failed to sign in with invitation');
     }
@@ -174,7 +175,7 @@ const AcceptInvite: React.FC<AcceptInviteProps> = ({ onComplete }) => {
         }
       }
     } catch (err: any) {
-      console.error('Signup error:', err);
+      logger.error('Signup error:', err);
       setErrorMessage(getClerkErrorMessage(err));
     } finally {
       setIsSubmitting(false);
@@ -225,7 +226,7 @@ const AcceptInvite: React.FC<AcceptInviteProps> = ({ onComplete }) => {
         }
       }
     } catch (err: any) {
-      console.error('Verification error:', err);
+      logger.error('Verification error:', err);
       setErrorMessage(getClerkErrorMessage(err));
     } finally {
       setIsSubmitting(false);

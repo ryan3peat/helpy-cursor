@@ -28,6 +28,7 @@ import {
   subscribeToPush
 } from '../services/pushNotificationService';
 import type { User, TranslationDictionary } from '../types';
+import { logger } from '../utils/logger';
 
 interface NotificationPromptProps {
   currentUser: User;
@@ -80,46 +81,46 @@ const NotificationPrompt: React.FC<NotificationPromptProps> = ({
   function checkShouldShowPrompt(): boolean {
     // 1. Must be running as PWA
     if (!isRunningAsPwa()) {
-      console.log('[NotifPrompt] Not showing: not running as PWA');
+      logger.log('[NotifPrompt] Not showing: not running as PWA');
       return false;
     }
 
     // 2. Must support push notifications
     if (!isPushSupported()) {
-      console.log('[NotifPrompt] Not showing: push not supported');
+      logger.log('[NotifPrompt] Not showing: push not supported');
       return false;
     }
 
     // 3. Check if permission is already granted or denied
     const permission = getNotificationPermission();
     if (permission === 'granted') {
-      console.log('[NotifPrompt] Not showing: permission already granted');
+      logger.log('[NotifPrompt] Not showing: permission already granted');
       return false;
     }
     if (permission === 'denied') {
-      console.log('[NotifPrompt] Not showing: permission was denied');
+      logger.log('[NotifPrompt] Not showing: permission was denied');
       return false;
     }
 
     // 4. Check if already prompted on this device for this user
     if (hasBeenPromptedForNotifications(currentUser.id)) {
-      console.log('[NotifPrompt] Not showing: already prompted on this device');
+      logger.log('[NotifPrompt] Not showing: already prompted on this device');
       return false;
     }
 
     // 5. Check if temporarily dismissed
     if (isPromptDismissed(currentUser.id)) {
-      console.log('[NotifPrompt] Not showing: dismissed recently');
+      logger.log('[NotifPrompt] Not showing: dismissed recently');
       return false;
     }
 
     // 6. Check if user is a Child (they can't receive notifications)
     if (currentUser.role === 'Child') {
-      console.log('[NotifPrompt] Not showing: user is a Child');
+      logger.log('[NotifPrompt] Not showing: user is a Child');
       return false;
     }
 
-    console.log('[NotifPrompt] Showing prompt for user:', currentUser.id);
+    logger.log('[NotifPrompt] Showing prompt for user:', currentUser.id);
     return true;
   }
 
@@ -143,7 +144,7 @@ const NotificationPrompt: React.FC<NotificationPromptProps> = ({
       
       if (subscription) {
         // SUCCESS - subscription saved to database
-        console.log('[NotifPrompt] Successfully enabled notifications');
+        logger.log('[NotifPrompt] Successfully enabled notifications');
         onNotificationEnabled?.();
         setIsVisible(false); // Only close on success
       } else {
@@ -151,16 +152,16 @@ const NotificationPrompt: React.FC<NotificationPromptProps> = ({
         const permission = getNotificationPermission();
         if (permission === 'denied') {
           // User blocked in OS - they know why, close the prompt
-          console.log('[NotifPrompt] User denied permission in OS dialog');
+          logger.log('[NotifPrompt] User denied permission in OS dialog');
           setIsVisible(false);
         } else {
           // Something else failed - show error and allow retry
-          console.error('[NotifPrompt] Subscription save failed');
+          logger.error('[NotifPrompt] Subscription save failed');
           setError(t['notifications.setup_failed'] || 'Failed to enable notifications. Please try again.');
         }
       }
     } catch (err) {
-      console.error('[NotifPrompt] Error enabling notifications:', err);
+      logger.error('[NotifPrompt] Error enabling notifications:', err);
       setError(t['notifications.setup_failed'] || 'Failed to enable notifications. Please try again.');
     } finally {
       setIsEnabling(false);

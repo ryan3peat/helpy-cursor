@@ -1,5 +1,6 @@
 // services/visionService.ts
 // Handles OCR processing via server-side API proxy (which uses Alibaba Cloud Qwen-VL)
+import { logger } from '../utils/logger';
 
 export interface ParsedReceipt {
   rawText: string;
@@ -117,7 +118,7 @@ function findBestMerchantMatch(candidate: string, knownMerchants: string[]): { v
 export function parseReceiptText(rawText: string, options?: ProcessReceiptOptions): ParsedReceipt {
     // Ensure rawText is a string
     if (typeof rawText !== 'string') {
-      console.warn('[VisionService] parseReceiptText received non-string input:', typeof rawText, rawText);
+      logger.warn('[VisionService] parseReceiptText received non-string input:', typeof rawText, rawText);
       rawText = String(rawText || '');
     }
     
@@ -344,7 +345,7 @@ export function parseReceiptText(rawText: string, options?: ProcessReceiptOption
       'Transport & Travel': ['gas', 'fuel', 'petrol', 'uber', 'grab', 'taxi', 'parking', 'transit'],
       'Housing & Utilities': ['electric', 'water', 'internet', 'phone', 'rent', 'maintenance'],
       'Health & Personal Care': ['pharmacy', 'clinic', 'hospital', 'doctor', 'dental', 'medical'],
-      'Lifestyle': ['cinema', 'movie', 'entertainment', 'gym', 'spa', 'hobby'],
+      'Fun & Lifestyle': ['cinema', 'movie', 'entertainment', 'gym', 'spa', 'hobby'],
     };
   
     const lowerText = rawText.toLowerCase();
@@ -363,7 +364,7 @@ export function parseReceiptText(rawText: string, options?: ProcessReceiptOption
       const itemName = itemMatch[1].trim();
       const itemPrice = parseFloat(itemMatch[2]);
       
-      console.log('[OCR Item Match]', { itemName, itemPrice, total, passesFilter: itemName.length > 2 && itemName.length < 50 && itemPrice < total });
+      logger.log('[OCR Item Match]', { itemName, itemPrice, total, passesFilter: itemName.length > 2 && itemName.length < 50 && itemPrice < total });
       
       // Filter out likely non-items
       if (itemName.length > 2 && itemName.length < 50 && itemPrice < total) {
@@ -371,7 +372,7 @@ export function parseReceiptText(rawText: string, options?: ProcessReceiptOption
       }
     }
     
-    console.log('[OCR] Extracted line items:', lineItems.length, lineItems);
+    logger.log('[OCR] Extracted line items:', lineItems.length, lineItems);
   
     return {
       rawText,

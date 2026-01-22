@@ -1109,17 +1109,17 @@ serve(async (req: Request) => {
 
     // Filter out the creator from recipients
     // Rule: Users don't receive notifications for their own actions
-    // Exception: Liko (julianoliko@gmail.com) receives his own notifications for testing
-    const LIKO_TEST_EMAIL = 'julianoliko@gmail.com';
+    // Exception: If NOTIFICATION_TEST_EMAIL env var is set, that user receives their own notifications (for testing)
+    const NOTIFICATION_TEST_EMAIL = Deno.env.get('NOTIFICATION_TEST_EMAIL') || '';
 
     const recipients = users.filter(u => {
-      // Check if this is Liko (test mode - receives own notifications)
-      const isLikoTestMode = u.email === LIKO_TEST_EMAIL;
+      // Check if this user is in test mode (receives own notifications)
+      const isTestMode = NOTIFICATION_TEST_EMAIL && u.email === NOTIFICATION_TEST_EMAIL;
       
-      // Exclude self-actions UNLESS it's Liko in test mode
+      // Exclude self-actions UNLESS user is in test mode
       if (u.id === creatorId || u.clerk_id === creatorId) {
-        if (isLikoTestMode) {
-          console.log(`[Push] 🧪 LIKO TEST MODE: Including ${u.name} in own notifications`);
+        if (isTestMode) {
+          console.log(`[Push] 🧪 TEST MODE: Including ${u.name} (${u.email}) in own notifications`);
           // Continue to other checks, don't return false
         } else {
           console.log(`[Push] Excluding creator ${u.name} from recipients`);

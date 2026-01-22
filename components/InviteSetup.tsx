@@ -4,8 +4,9 @@ import { useUser, useClerk } from "@clerk/clerk-react";
 import type { User } from "../types";
 import ErrorBanner from "./ui/ErrorBanner";
 import { getUser, completeInviteRegistration } from "@/services/userService";
+import { logger } from '../utils/logger';
 
-console.log('🔄 InviteSetup rendered');
+logger.log('🔄 InviteSetup rendered');
 
 // Loading component for auth states  
 const AuthLoading = () => (

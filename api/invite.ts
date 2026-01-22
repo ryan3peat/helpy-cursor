@@ -4,6 +4,7 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
+import { logger } from './_logger';
 
 // Initialize Supabase with service role (bypasses RLS)
 const supabase = createClient(
@@ -52,7 +53,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     // Verify inviter is Admin or SuperAdmin
     if (inviterId) {
-      console.log('[Invite API] Looking up inviter:', { inviterId, householdId });
+      logger.log('[Invite API] Looking up inviter:', { inviterId, householdId });
       
       // Check if inviterId looks like a UUID (Supabase ID) or Clerk ID
       const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(inviterId);
@@ -80,24 +81,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         inviterError = result.error;
       }
 
-      console.log('[Invite API] Inviter lookup result:', { inviter, error: inviterError, isUUID });
+      logger.log('[Invite API] Inviter lookup result:', { inviter, error: inviterError, isUUID });
 
       if (inviterError) {
-        console.error('[Invite API] Supabase inviter lookup error:', inviterError);
+        logger.error('[Invite API] Supabase inviter lookup error:', inviterError);
         return res.status(500).json({ error: `Database error looking up inviter: ${inviterError.message}` });
       }
 
       if (!inviter) {
-        console.error('[Invite API] Inviter not found for:', { inviterId, householdId });
+        logger.error('[Invite API] Inviter not found for:', { inviterId, householdId });
         return res.status(403).json({ error: `Inviter not found (id: ${inviterId})` });
       }
 
       if (inviter.role !== 'Admin' && inviter.role !== 'SuperAdmin') {
-        console.error('[Invite API] Inviter is not admin:', { role: inviter.role });
+        logger.error('[Invite API] Inviter is not admin:', { role: inviter.role });
         return res.status(403).json({ error: 'Only admins can invite family members' });
       }
       
-      console.log('[Invite API] Inviter verified as admin');
+      logger.log('[Invite API] Inviter verified as admin');
     }
     // ─────────────────────────────────────────────────────────────
     // Enforce household limits before creating the pending user
@@ -109,7 +110,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .single();
 
     if (householdError) {
-      console.error('Supabase household fetch error:', householdError);
+      logger.error('Supabase household fetch error:', householdError);
       return res.status(500).json({ error: 'Unable to verify subscription limits' });
     }
 
@@ -126,7 +127,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .eq('household_id', householdId);
 
     if (usersError) {
-      console.error('Supabase users fetch error:', usersError);
+      logger.error('Supabase users fetch error:', usersError);
       return res.status(500).json({ error: 'Unable to check current household members' });
     }
 
@@ -169,7 +170,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .single();
 
     if (userError) {
-      console.error('Supabase insert error:', userError);
+      logger.error('Supabase insert error:', userError);
       return res.status(500).json({ 
         error: `Failed to create user: ${userError.message}` 
       });
@@ -197,7 +198,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
   } catch (error: any) {
-    console.error('Invite creation error:', error);
+    logger.error('Invite creation error:', error);
     return res.status(500).json({ 
       error: error.message || 'Internal server error' 
     });

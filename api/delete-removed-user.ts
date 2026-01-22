@@ -4,6 +4,7 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
+import { logger } from './_logger';
 
 // Initialize Supabase with service role (bypasses RLS)
 const supabase = createClient(
@@ -49,7 +50,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .single();
 
     if (fetchError || !userToDelete) {
-      console.error('User lookup failed:', { clerkId, error: fetchError });
+      logger.error('User lookup failed:', { clerkId, error: fetchError });
       return res.status(404).json({ error: 'User not found' });
     }
 
@@ -69,7 +70,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .eq('user_id', dbUserId);
 
     if (pushDeleteError) {
-      console.warn('Warning: Failed to delete push subscriptions:', pushDeleteError);
+      logger.warn('Warning: Failed to delete push subscriptions:', pushDeleteError);
       // Continue with user deletion anyway
     }
 
@@ -80,13 +81,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .eq('id', dbUserId);
 
     if (deleteError) {
-      console.error('Supabase delete error:', deleteError);
+      logger.error('Supabase delete error:', deleteError);
       return res.status(500).json({
         error: `Failed to delete user: ${deleteError.message}`
       });
     }
 
-    console.log(`✅ Successfully deleted removed user ${userToDelete.name} (${dbUserId})`);
+    logger.log(`✅ Successfully deleted removed user ${userToDelete.name} (${dbUserId})`);
 
     return res.status(200).json({
       success: true,
@@ -98,7 +99,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
   } catch (error: any) {
-    console.error('Delete removed user error:', error);
+    logger.error('Delete removed user error:', error);
     return res.status(500).json({ 
       error: error.message || 'Internal server error' 
     });

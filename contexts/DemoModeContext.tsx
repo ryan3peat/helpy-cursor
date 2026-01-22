@@ -328,11 +328,11 @@ const createDemoExpenses = (): Expense[] => {
     { id: 'demo-exp-019', amount: 250, currency: 'HKD', category: 'Health & Personal Care', date: '2026-01-11', merchant: 'Watsons', createdBy: 'demo-mom-002' },
     { id: 'demo-exp-020', amount: 300, currency: 'HKD', category: 'Health & Personal Care', date: '2026-01-16', merchant: 'Union Hospital - Dr. Lee', createdBy: 'demo-mom-002' },
     
-    // Lifestyle (1,000)
-    { id: 'demo-exp-021', amount: 380, currency: 'HKD', category: 'Lifestyle', date: '2026-01-09', merchant: 'Tim Ho Wan', createdBy: 'demo-dad-001' },
-    { id: 'demo-exp-022', amount: 320, currency: 'HKD', category: 'Lifestyle', date: '2026-01-14', merchant: 'Ocean Park', createdBy: 'demo-dad-001' },
-    { id: 'demo-exp-023', amount: 150, currency: 'HKD', category: 'Lifestyle', date: '2026-01-19', merchant: 'Broadway Cinema', createdBy: 'demo-mom-002' },
-    { id: 'demo-exp-024', amount: 150, currency: 'HKD', category: 'Lifestyle', date: '2026-01-22', merchant: 'Yum Cha Restaurant', createdBy: 'demo-dad-001' },
+    // Fun & Lifestyle (1,000)
+    { id: 'demo-exp-021', amount: 380, currency: 'HKD', category: 'Fun & Lifestyle', date: '2026-01-09', merchant: 'Tim Ho Wan', createdBy: 'demo-dad-001' },
+    { id: 'demo-exp-022', amount: 320, currency: 'HKD', category: 'Fun & Lifestyle', date: '2026-01-14', merchant: 'Ocean Park', createdBy: 'demo-dad-001' },
+    { id: 'demo-exp-023', amount: 150, currency: 'HKD', category: 'Fun & Lifestyle', date: '2026-01-19', merchant: 'Broadway Cinema', createdBy: 'demo-mom-002' },
+    { id: 'demo-exp-024', amount: 150, currency: 'HKD', category: 'Fun & Lifestyle', date: '2026-01-22', merchant: 'Yum Cha Restaurant', createdBy: 'demo-dad-001' },
     
     // Misc (430)
     { id: 'demo-exp-025', amount: 150, currency: 'HKD', category: 'Misc', date: '2026-01-13', merchant: 'MUJI', createdBy: 'demo-mom-002' },

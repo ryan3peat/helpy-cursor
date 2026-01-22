@@ -91,11 +91,16 @@ export const translations = {
         addExpensesDesc: "Enter amount, category, shop, and date quickly.",
         aiReceiptScanning: "AI receipt scanning",
         aiReceiptDesc: "Take or upload receipt photo and automatically capture the details.",
-        monthlySpendingSummary: "Monthly Spending Summary",
+        monthlySpendingSummary: "Monthly spending summary",
         spendingSummaryDesc: "Pie charts show category totals and percentages.",
         helperManagement: "Helper",
         helperPayslips: "Helper details & salary slip",
         payslipsDesc: "Manage the helper's salary details and generate digital payslips.",
+      },
+      trial: {
+        freeScans: "5 free scans",
+        daysTrial: "14 days trial",
+        freeSalarySlip: "1 free salary slip",
       },
     },
     // FAQ Page
@@ -262,6 +267,11 @@ export const translations = {
         helperManagement: "家務助理",
         helperPayslips: "家務助理詳情及薪金單",
         payslipsDesc: "管理家務助理的薪金詳情並生成電子薪金單。",
+      },
+      trial: {
+        freeScans: "5 次免費掃描",
+        daysTrial: "14 天試用",
+        freeSalarySlip: "1 張免費薪金單",
       },
     },
     // FAQ Page

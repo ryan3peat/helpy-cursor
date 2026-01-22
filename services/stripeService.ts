@@ -1,4 +1,5 @@
 // services/stripeService.ts
+import { logger } from '../utils/logger';
 
 export interface SubscriptionPlan {
   id: 'free' | 'core' | 'pro' | 'test';
@@ -99,7 +100,7 @@ export async function createCheckoutSession(
 
     return data.url;
   } catch (error) {
-    console.error('Checkout session error:', error);
+    logger.error('Checkout session error:', error);
     throw error instanceof Error ? error : new Error('Unknown error creating checkout session');
   }
 }
@@ -131,7 +132,7 @@ export async function createPortalSession(householdId: string): Promise<string> 
 
     return data.url;
   } catch (error) {
-    console.error('Portal session error:', error);
+    logger.error('Portal session error:', error);
     throw error instanceof Error ? error : new Error('Unknown error creating portal session');
   }
 }
@@ -155,7 +156,7 @@ export async function downgradeToFree(householdId: string, requesterId?: string)
       throw new Error(errorMessage);
     }
   } catch (error) {
-    console.error('Downgrade to free error:', error);
+    logger.error('Downgrade to free error:', error);
     throw error instanceof Error ? error : new Error('Unknown error downgrading subscription');
   }
 }
@@ -191,7 +192,7 @@ export async function changeSubscription(
     const data = await response.json();
     return { success: true, plan: data.plan, status: data.status, message: data.message };
   } catch (error) {
-    console.error('Change subscription error:', error);
+    logger.error('Change subscription error:', error);
     return { 
       success: false, 
       error: error instanceof Error ? error.message : 'Unknown error changing subscription' 
@@ -208,7 +209,7 @@ export async function syncSubscription(
   sessionId?: string
 ): Promise<{ success: boolean; plan?: string; status?: string; cancelAtPeriodEnd?: boolean; error?: string }> {
   try {
-    console.log('[syncSubscription] Calling API for household:', householdId);
+    logger.log('[syncSubscription] Calling API for household:', householdId);
     const response = await fetch('/api/sync-subscription', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -223,12 +224,12 @@ export async function syncSubscription(
       } catch {
         errorMessage = `Server error: ${response.status} ${response.statusText}`;
       }
-      console.error('[syncSubscription] API error:', errorMessage);
+      logger.error('[syncSubscription] API error:', errorMessage);
       return { success: false, error: errorMessage };
     }
 
     const data = await response.json();
-    console.log('[syncSubscription] API response:', data);
+    logger.log('[syncSubscription] API response:', data);
     return { 
       success: true, 
       plan: data.plan, 
@@ -236,7 +237,7 @@ export async function syncSubscription(
       cancelAtPeriodEnd: data.cancelAtPeriodEnd 
     };
   } catch (error) {
-    console.error('Sync subscription error:', error);
+    logger.error('Sync subscription error:', error);
     return { 
       success: false, 
       error: error instanceof Error ? error.message : 'Unknown error syncing subscription' 

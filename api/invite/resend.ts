@@ -4,6 +4,7 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
+import { logger } from '../_logger';
 
 const supabase = createClient(
   process.env.SUPABASE_URL!,
@@ -74,7 +75,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
   } catch (error: any) {
-    console.error('Resend invite error:', error);
+    logger.error('Resend invite error:', error);
     return res.status(500).json({ 
       error: error.message || 'Failed to resend invitation' 
     });

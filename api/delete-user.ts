@@ -3,6 +3,7 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
+import { logger } from './_logger';
 
 // Initialize Supabase with service role (bypasses RLS)
 const supabase = createClient(
@@ -68,7 +69,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       if (!requester) {
-        console.error('Requester lookup failed:', { requesterId, householdId });
+        logger.error('Requester lookup failed:', { requesterId, householdId });
         return res.status(403).json({ error: 'Requester not found' });
       }
 
@@ -109,7 +110,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (!userToDelete) {
-      console.error('User to delete lookup failed:', { userId, householdId });
+      logger.error('User to delete lookup failed:', { userId, householdId });
       return res.status(404).json({ error: 'User not found in this household' });
     }
 
@@ -137,7 +138,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .eq('household_id', householdId);
 
       if (deleteError) {
-        console.error('Supabase delete error:', deleteError);
+        logger.error('Supabase delete error:', deleteError);
         return res.status(500).json({
           error: `Failed to delete user: ${deleteError.message}`
         });
@@ -145,7 +146,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       operationResult = 'deleted';
       operationMessage = `User ${userToDelete.name} has been completely removed from the system`;
-      console.log(`✅ Successfully deleted child user ${userToDelete.name} (${dbUserId}) entirely from database`);
+      logger.log(`✅ Successfully deleted child user ${userToDelete.name} (${dbUserId}) entirely from database`);
 
     } else if (isSpouseOrHelper) {
       // Remove spouse/helper from household but keep their account
@@ -156,7 +157,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .eq('household_id', householdId);
 
       if (updateError) {
-        console.error('Supabase update error:', updateError);
+        logger.error('Supabase update error:', updateError);
         return res.status(500).json({
           error: `Failed to remove user from household: ${updateError.message}`
         });
@@ -164,7 +165,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       operationResult = 'removed';
       operationMessage = `User ${userToDelete.name} has been removed from the household but their account is preserved`;
-      console.log(`✅ Successfully removed spouse/helper user ${userToDelete.name} (${dbUserId}) from household ${householdId}, account preserved`);
+      logger.log(`✅ Successfully removed spouse/helper user ${userToDelete.name} (${dbUserId}) from household ${householdId}, account preserved`);
 
     } else {
       // For other roles (e.g., 'Other'), default to removing from household (keep account)
@@ -175,7 +176,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .eq('household_id', householdId);
 
       if (updateError) {
-        console.error('Supabase update error:', updateError);
+        logger.error('Supabase update error:', updateError);
         return res.status(500).json({
           error: `Failed to remove user from household: ${updateError.message}`
         });
@@ -183,7 +184,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       operationResult = 'removed';
       operationMessage = `User ${userToDelete.name} has been removed from the household`;
-      console.log(`✅ Successfully removed user ${userToDelete.name} (${dbUserId}) from household ${householdId}`);
+      logger.log(`✅ Successfully removed user ${userToDelete.name} (${dbUserId}) from household ${householdId}`);
     }
 
     return res.status(200).json({
@@ -198,7 +199,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
   } catch (error: any) {
-    console.error('Delete user error:', error);
+    logger.error('Delete user error:', error);
     return res.status(500).json({ 
       error: error.message || 'Internal server error' 
     });

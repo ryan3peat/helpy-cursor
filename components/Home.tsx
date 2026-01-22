@@ -53,6 +53,7 @@ import { useDemoMode } from '../contexts/DemoModeContext';
 import { isRunningAsPwa, isIosDevice, isAndroidDevice } from '../utils/pwaUtils';
 import { isDevicePwaInstalled, recordPwaInstallation } from '../services/pwaService';
 import { getCachedSupabaseUuid, isUserCachePopulated } from '../services/supabaseService';
+import { logger } from '../utils/logger';
 
 import type { ConnectionStatus } from '../hooks/useRealtimeStatus';
 
@@ -331,7 +332,7 @@ function usePwaInstallNudge(userId?: string, householdId?: string) {
     const checkInstallation = async () => {
       const installed = await isDevicePwaInstalled(userId);
       if (installed) {
-        console.log('[PWA Nudge] Device already has PWA installed');
+        logger.log('[PWA Nudge] Device already has PWA installed');
         setIsInstalledOnDevice(true);
       }
     };
@@ -489,7 +490,7 @@ const Home: React.FC<HomeProps> = ({
   // Safety check for currentUser
   // ─────────────────────────────────────────────────────────────────
   if (!currentUser || !currentUser.name) {
-    console.error('❌ Home: currentUser is missing or malformed:', currentUser);
+    logger.error('❌ Home: currentUser is missing or malformed:', currentUser);
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
@@ -843,7 +844,7 @@ const Home: React.FC<HomeProps> = ({
       setIsEditingNotes(false);
       haptics.success(); // Haptic feedback on successful save
     } catch (err) {
-      console.error('Failed to save notes:', err);
+      logger.error('Failed to save notes:', err);
       setError(t['error.save_notes'] || 'Failed to save notes. Please try again.');
       haptics.error();
     } finally {
@@ -894,7 +895,7 @@ Give it a try:`;
       } catch (error) {
         // User cancelled - no action needed
         if ((error as Error).name !== 'AbortError') {
-          console.error('Share failed:', error);
+          logger.error('Share failed:', error);
         }
       }
     } else {
@@ -902,7 +903,7 @@ Give it a try:`;
       try {
         await navigator.clipboard.writeText(fullShareText);
       } catch (error) {
-        console.error('Copy failed:', error);
+        logger.error('Copy failed:', error);
       }
     }
   };
@@ -914,7 +915,7 @@ Give it a try:`;
       setTempNotes('');
       setIsEditingNotes(false);
     } catch (err) {
-      console.error('Failed to delete notes:', err);
+      logger.error('Failed to delete notes:', err);
       setError(t['error.delete_notes'] || 'Failed to delete notes. Please try again.');
     } finally {
       setIsDeletingNotes(false);
@@ -1315,7 +1316,7 @@ Give it a try:`;
             })()}
           </span>
         </div>
-        <div className="p-4">
+        <div className="px-5 py-4">
           {todaysMenu.length > 0 ? (
             <div className="space-y-3">
               {todaysMenu.map((meal, idx) => {
@@ -1353,11 +1354,18 @@ Give it a try:`;
               })}
             </div>
           ) : (
-            <div className="py-2 flex flex-col items-start gap-2">
-              <p className="text-body text-muted-foreground">{t['dashboard.no_meals_today'] || 'No meals remaining for today'}</p>
-              <button className="text-body text-primary flex items-center gap-1">
-                <Plus size={12} /> {t['meals.plan_dish'] || 'Plan Meal'}
-              </button>
+            <div className="py-2 flex justify-between items-center">
+              <span className="text-body text-muted-foreground">{t['dashboard.no_meals_today'] || 'No meals remaining for today'}</span>
+              <div
+                onClick={(e) => {
+                  e.stopPropagation();
+                  haptics.light();
+                  onNavigate('meals');
+                }}
+                className="p-1.5 rounded-full bg-primary flex items-center justify-center shadow-sm"
+              >
+                <Plus size={16} className="text-primary-foreground" />
+              </div>
             </div>
           )}
         </div>
@@ -1469,7 +1477,7 @@ Give it a try:`;
         
         {/* Empty state - compact inline with (+) button, aligned with header */}
         {todayTasks.length === 0 && overdueTasks.length === 0 && tomorrowTasks.length === 0 && (
-          <div className="px-4 py-3 flex justify-between items-center">
+          <div className="px-5 py-3 flex justify-between items-center">
             <span className="text-body text-muted-foreground">{t['dashboard.no_tasks'] || 'No tasks'}</span>
             <div
               onClick={(e) => {

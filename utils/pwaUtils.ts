@@ -4,6 +4,7 @@
  * Utilities for detecting PWA mode and managing device identification
  * for push notification features.
  */
+import { logger } from './logger';
 
 // ============================================================================
 // PWA DETECTION
@@ -66,7 +67,7 @@ export function getDeviceId(): string {
     // Generate a new UUID using crypto API
     deviceId = crypto.randomUUID();
     localStorage.setItem(DEVICE_ID_KEY, deviceId);
-    console.log('[PWA] Generated new device ID:', deviceId);
+    logger.log('[PWA] Generated new device ID:', deviceId);
   }
   
   return deviceId;
@@ -78,7 +79,7 @@ export function getDeviceId(): string {
  */
 export function clearDeviceId(): void {
   localStorage.removeItem(DEVICE_ID_KEY);
-  console.log('[PWA] Device ID cleared');
+  logger.log('[PWA] Device ID cleared');
 }
 
 // ============================================================================
@@ -110,7 +111,7 @@ export function markAsPromptedForNotifications(userId: string): void {
   const deviceId = getDeviceId();
   const key = `${PROMPT_PREFIX}${deviceId}_${userId}`;
   localStorage.setItem(key, 'true');
-  console.log('[PWA] Marked as prompted for notifications:', key);
+  logger.log('[PWA] Marked as prompted for notifications:', key);
 }
 
 /**
@@ -142,7 +143,7 @@ export function dismissPromptTemporarily(userId: string, cooldownHours: number =
   const key = `${PROMPT_DISMISSED_PREFIX}${deviceId}_${userId}`;
   const dismissUntil = Date.now() + (cooldownHours * 60 * 60 * 1000);
   localStorage.setItem(key, dismissUntil.toString());
-  console.log('[PWA] Prompt dismissed until:', new Date(dismissUntil).toISOString());
+  logger.log('[PWA] Prompt dismissed until:', new Date(dismissUntil).toISOString());
 }
 
 /**
@@ -154,6 +155,6 @@ export function clearPromptTracking(userId: string): void {
   const deviceId = getDeviceId();
   localStorage.removeItem(`${PROMPT_PREFIX}${deviceId}_${userId}`);
   localStorage.removeItem(`${PROMPT_DISMISSED_PREFIX}${deviceId}_${userId}`);
-  console.log('[PWA] Prompt tracking cleared for user:', userId);
+  logger.log('[PWA] Prompt tracking cleared for user:', userId);
 }
 

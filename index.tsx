@@ -4,6 +4,7 @@ import { ClerkProvider } from '@clerk/clerk-react';
 import './index.css';
 import App from './App';
 import { SupabaseProvider } from './contexts/SupabaseContext';
+import { logger } from './utils/logger';
 
 // Capture PWA install prompt IMMEDIATELY before React loads
 // This ensures we never miss Chrome's beforeinstallprompt event
@@ -22,9 +23,9 @@ document.addEventListener('beforeinput', (e: InputEvent) => {
 });
 
 // Log URL immediately on script load (before React)
-console.log('[Index] App starting. URL:', window.location.href);
-console.log('[Index] Hash:', window.location.hash);
-console.log('[Index] Pathname:', window.location.pathname);
+logger.log('[Index] App starting. URL:', window.location.href);
+logger.log('[Index] Hash:', window.location.hash);
+logger.log('[Index] Pathname:', window.location.pathname);
 
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 if (!clerkPubKey) {
@@ -32,9 +33,9 @@ if (!clerkPubKey) {
 }
 
 // Debug logging for Clerk initialization
-console.log('🔵 [Clerk] Initializing with key:', clerkPubKey ? `${clerkPubKey.substring(0, 15)}...` : 'MISSING');
-console.log('🔵 [Clerk] Environment:', import.meta.env.MODE);
-console.log('🔵 [Clerk] Hostname:', typeof window !== 'undefined' ? window.location.hostname : 'server');
+logger.log('🔵 [Clerk] Initializing with key:', clerkPubKey ? `${clerkPubKey.substring(0, 15)}...` : 'MISSING');
+logger.log('🔵 [Clerk] Environment:', import.meta.env.MODE);
+logger.log('🔵 [Clerk] Hostname:', typeof window !== 'undefined' ? window.location.hostname : 'server');
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {

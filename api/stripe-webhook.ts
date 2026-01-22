@@ -2,6 +2,7 @@
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
 import { buffer } from 'micro';
+import { logger } from './_logger';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-11-17.clover',
@@ -25,7 +26,7 @@ async function getHouseholdIdFromSubscription(subscriptionId: string): Promise<s
     const subscription = await stripe.subscriptions.retrieve(subscriptionId);
     return subscription.metadata?.household_id || null;
   } catch (error) {
-    console.error('Error retrieving subscription:', error);
+    logger.error('Error retrieving subscription:', error);
     return null;
   }
 }
@@ -43,7 +44,7 @@ function timestampToISO(rawTimestamp: unknown): string | null {
 
     if (timestamp === null || !Number.isFinite(timestamp) || timestamp <= 0) {
       if (rawTimestamp !== null && rawTimestamp !== undefined) {
-        console.warn('timestampToISO received invalid timestamp', { rawTimestamp });
+        logger.warn('timestampToISO received invalid timestamp', { rawTimestamp });
       }
       return null;
     }
@@ -56,7 +57,7 @@ function timestampToISO(rawTimestamp: unknown): string | null {
       milliseconds <= 0 ||
       Math.abs(milliseconds) > MAX_JS_DATE_MS
     ) {
-      console.warn('timestampToISO received non-finite milliseconds', {
+      logger.warn('timestampToISO received non-finite milliseconds', {
         rawTimestamp,
         milliseconds,
       });
@@ -67,14 +68,14 @@ function timestampToISO(rawTimestamp: unknown): string | null {
     const timeValue = date.getTime();
 
     if (!Number.isFinite(timeValue)) {
-      console.warn('timestampToISO produced invalid Date', { rawTimestamp, milliseconds });
+      logger.warn('timestampToISO produced invalid Date', { rawTimestamp, milliseconds });
       return null;
     }
 
     try {
       return date.toISOString();
     } catch (isoError) {
-      console.error('timestampToISO toISOString failed', {
+      logger.error('timestampToISO toISOString failed', {
         rawTimestamp,
         milliseconds,
         timeValue,
@@ -83,7 +84,7 @@ function timestampToISO(rawTimestamp: unknown): string | null {
       return null;
     }
   } catch (error) {
-    console.error('timestampToISO threw unexpectedly', { rawTimestamp, error });
+    logger.error('timestampToISO threw unexpectedly', { rawTimestamp, error });
     return null;
   }
 }
@@ -101,18 +102,18 @@ function sanitizeStripeObject(obj: any): any {
       try {
         const timeValue = obj.getTime();
         if (!Number.isFinite(timeValue)) {
-          console.warn('sanitizeStripeObject: Date has invalid time value', { timeValue });
+          logger.warn('sanitizeStripeObject: Date has invalid time value', { timeValue });
           return null;
         }
         // Double-check before calling toISOString
         const testDate = new Date(timeValue);
         if (isNaN(testDate.getTime())) {
-          console.warn('sanitizeStripeObject: Cannot create valid Date from timeValue', { timeValue });
+          logger.warn('sanitizeStripeObject: Cannot create valid Date from timeValue', { timeValue });
           return null;
         }
         return testDate.toISOString();
       } catch (error) {
-        console.warn('sanitizeStripeObject: Error converting Date to ISO string', { error });
+        logger.warn('sanitizeStripeObject: Error converting Date to ISO string', { error });
         return null;
       }
     }
@@ -145,7 +146,7 @@ function sanitizeStripeObject(obj: any): any {
               sanitized[key] = sanitizeStripeObject(value);
             }
           } catch (error) {
-            console.warn('sanitizeStripeObject: Error processing key', { key, error });
+            logger.warn('sanitizeStripeObject: Error processing key', { key, error });
             // Skip this key if it causes an error
             sanitized[key] = null;
           }
@@ -157,7 +158,7 @@ function sanitizeStripeObject(obj: any): any {
     // Return primitives as-is
     return obj;
   } catch (error) {
-    console.error('sanitizeStripeObject: Unexpected error', { error, objType: typeof obj });
+    logger.error('sanitizeStripeObject: Unexpected error', { error, objType: typeof obj });
     // Return null for any object that causes issues to prevent serialization errors
     return null;
   }
@@ -165,26 +166,26 @@ function sanitizeStripeObject(obj: any): any {
 
 export default async function handler(req: any, res: any) {
   // Log at the absolute top level to catch ALL requests
-  console.log('🚀 ===== STRIPE WEBHOOK HANDLER CALLED =====');
-  console.log('🚀 Handler invoked at:', new Date().toISOString());
-  console.log('🚀 Request method:', req.method);
-  console.log('🚀 Request URL:', req.url);
+  logger.log('🚀 ===== STRIPE WEBHOOK HANDLER CALLED =====');
+  logger.log('🚀 Handler invoked at:', new Date().toISOString());
+  logger.log('🚀 Request method:', req.method);
+  logger.log('🚀 Request URL:', req.url);
   
   // Top-level error handler to catch any Date serialization errors
   try {
     const result = await handleWebhookRequest(req, res);
-    console.log('✅ Handler completed successfully');
+    logger.log('✅ Handler completed successfully');
     return result;
   } catch (error: any) {
-    console.error('❌ ===== TOP LEVEL ERROR IN WEBHOOK HANDLER =====');
-    console.error('❌ Error type:', error?.constructor?.name);
-    console.error('❌ Error message:', error?.message);
-    console.error('❌ Error stack:', error?.stack);
+    logger.error('❌ ===== TOP LEVEL ERROR IN WEBHOOK HANDLER =====');
+    logger.error('❌ Error type:', error?.constructor?.name);
+    logger.error('❌ Error message:', error?.message);
+    logger.error('❌ Error stack:', error?.stack);
     
     // Specifically catch RangeError from Date.toISOString
     if (error instanceof RangeError && error.message.includes('Invalid time value')) {
-      console.error('❌ RangeError caught in webhook handler (Date serialization issue):', error);
-      console.error('Stack trace:', error.stack);
+      logger.error('❌ RangeError caught in webhook handler (Date serialization issue):', error);
+      logger.error('Stack trace:', error.stack);
       // Return 200 to Stripe so it doesn't retry
       return res.status(200).json({ received: true, error: 'Date serialization error handled' });
     }
@@ -195,8 +196,8 @@ export default async function handler(req: any, res: any) {
 
 async function handleWebhookRequest(req: any, res: any) {
   // Log ALL requests immediately (even before method check)
-  console.log('🔔 ===== WEBHOOK ENDPOINT HIT =====');
-  console.log('📥 Raw request received:', {
+  logger.log('🔔 ===== WEBHOOK ENDPOINT HIT =====');
+  logger.log('📥 Raw request received:', {
     method: req.method,
     url: req.url,
     path: req.url?.split('?')[0],
@@ -212,7 +213,7 @@ async function handleWebhookRequest(req: any, res: any) {
 
   // Allow GET requests for testing/health checks
   if (req.method === 'GET') {
-    console.log('✅ GET request received - webhook endpoint is accessible');
+    logger.log('✅ GET request received - webhook endpoint is accessible');
     return res.status(200).json({ 
       status: 'ok', 
       message: 'Stripe webhook endpoint is accessible',
@@ -222,7 +223,7 @@ async function handleWebhookRequest(req: any, res: any) {
   }
 
   if (req.method !== 'POST') {
-    console.log(`⚠️ Unsupported method: ${req.method}`);
+    logger.log(`⚠️ Unsupported method: ${req.method}`);
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
@@ -230,43 +231,43 @@ async function handleWebhookRequest(req: any, res: any) {
   let buf: Buffer;
   try {
     buf = await buffer(req);
-    console.log('✅ Body buffer created, size:', buf.length);
+    logger.log('✅ Body buffer created, size:', buf.length);
   } catch (error) {
-    console.error('❌ Error reading request body:', error);
+    logger.error('❌ Error reading request body:', error);
     return res.status(400).send('Error reading request body');
   }
 
   const sig = req.headers?.['stripe-signature'] || req.headers?.get?.('stripe-signature');
 
   if (!sig) {
-    console.log('⚠️ Missing stripe-signature header');
-    console.log('⚠️ This might be a test request or webhook not configured correctly');
+    logger.log('⚠️ Missing stripe-signature header');
+    logger.log('⚠️ This might be a test request or webhook not configured correctly');
     return res.status(400).json({ error: 'Missing stripe-signature header' });
   }
 
   // Check if webhook secret is configured
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
   if (!webhookSecret) {
-    console.error('❌ STRIPE_WEBHOOK_SECRET environment variable is not set!');
-    console.error('❌ Webhook signature verification cannot proceed');
+    logger.error('❌ STRIPE_WEBHOOK_SECRET environment variable is not set!');
+    logger.error('❌ Webhook signature verification cannot proceed');
     return res.status(500).json({ error: 'Webhook secret not configured' });
   }
 
-  console.log('🔐 Webhook secret is configured (length:', webhookSecret.length, 'chars)');
+  logger.log('🔐 Webhook secret is configured (length:', webhookSecret.length, 'chars)');
 
   let event: Stripe.Event;
 
   try {
-    console.log('🔍 Attempting to verify webhook signature...');
+    logger.log('🔍 Attempting to verify webhook signature...');
     event = stripe.webhooks.constructEvent(
       buf,
       sig,
       webhookSecret
     );
-    console.log('✅ Webhook signature verified successfully');
+    logger.log('✅ Webhook signature verified successfully');
   } catch (err: any) {
-    console.error(`❌ Webhook signature verification failed: ${err.message}`);
-    console.error('❌ Signature verification error details:', {
+    logger.error(`❌ Webhook signature verification failed: ${err.message}`);
+    logger.error('❌ Signature verification error details:', {
       message: err.message,
       type: err.type,
       code: err.code,
@@ -278,7 +279,7 @@ async function handleWebhookRequest(req: any, res: any) {
   const dataObject = event.data.object as any;
   const householdId = dataObject.metadata?.household_id;
   
-  console.log(`📋 Event object metadata:`, {
+  logger.log(`📋 Event object metadata:`, {
     has_metadata: !!dataObject.metadata,
     household_id: householdId,
     metadata_keys: dataObject.metadata ? Object.keys(dataObject.metadata) : [],
@@ -292,7 +293,7 @@ async function handleWebhookRequest(req: any, res: any) {
       try {
         sanitizedData = sanitizeStripeObject(dataObject);
       } catch (sanitizeError) {
-        console.error('❌ Error sanitizing event data:', sanitizeError);
+        logger.error('❌ Error sanitizing event data:', sanitizeError);
         // Fallback: use a minimal safe object
         sanitizedData = {
           id: dataObject.id,
@@ -309,26 +310,26 @@ async function handleWebhookRequest(req: any, res: any) {
       });
       
       if (logError) {
-        console.error('❌ Error logging event to subscription_events:', logError);
-        console.error('❌ Log error details:', {
+        logger.error('❌ Error logging event to subscription_events:', logError);
+        logger.error('❌ Log error details:', {
           code: logError.code,
           message: logError.message,
           details: logError.details,
           hint: logError.hint,
         });
       } else {
-        console.log(`✅ Event logged to subscription_events table`);
+        logger.log(`✅ Event logged to subscription_events table`);
       }
     } catch (error) {
-      console.error('❌ Exception logging event:', error);
+      logger.error('❌ Exception logging event:', error);
       // Don't throw - continue processing the webhook
     }
   } else {
-    console.warn(`⚠️ Event ${event.type} has no household_id in metadata - skipping event logging`);
+    logger.warn(`⚠️ Event ${event.type} has no household_id in metadata - skipping event logging`);
   }
 
-  console.log(`📥 Received webhook event: ${event.type}`);
-  console.log(`📋 Event details:`, {
+  logger.log(`📥 Received webhook event: ${event.type}`);
+  logger.log(`📋 Event details:`, {
     id: event.id,
     type: event.type,
     livemode: event.livemode,
@@ -347,8 +348,8 @@ async function handleWebhookRequest(req: any, res: any) {
       const period = session.metadata?.period;
       const hid = session.metadata?.household_id;
 
-      console.log(`✅ checkout.session.completed event received`);
-      console.log(`📋 Session details:`, {
+      logger.log(`✅ checkout.session.completed event received`);
+      logger.log(`📋 Session details:`, {
         session_id: session.id,
         customer: session.customer,
         subscription: session.subscription,
@@ -365,35 +366,35 @@ async function handleWebhookRequest(req: any, res: any) {
 
       // Validate required fields before proceeding
       if (!hid) {
-        console.error(`❌ checkout.session.completed: Missing household_id in metadata`, {
+        logger.error(`❌ checkout.session.completed: Missing household_id in metadata`, {
           metadata: session.metadata,
         });
         break;
       }
 
       if (!plan) {
-        console.error(`❌ checkout.session.completed: Missing plan in metadata`, {
+        logger.error(`❌ checkout.session.completed: Missing plan in metadata`, {
           metadata: session.metadata,
         });
         break;
       }
 
       if (!session.subscription) {
-        console.error(`❌ checkout.session.completed: Missing subscription in session`, {
+        logger.error(`❌ checkout.session.completed: Missing subscription in session`, {
           session_id: session.id,
         });
         break;
       }
 
       if (!PLAN_LIMITS[plan]) {
-        console.error(`❌ checkout.session.completed: Invalid plan "${plan}" - not in PLAN_LIMITS`, {
+        logger.error(`❌ checkout.session.completed: Invalid plan "${plan}" - not in PLAN_LIMITS`, {
           plan: plan,
           available_plans: Object.keys(PLAN_LIMITS),
         });
         break;
       }
 
-      console.log(`✅ checkout.session.completed: All validations passed, updating household ${hid} to ${plan}`);
+      logger.log(`✅ checkout.session.completed: All validations passed, updating household ${hid} to ${plan}`);
 
       if (hid && plan && session.subscription && PLAN_LIMITS[plan]) {
         const limits = PLAN_LIMITS[plan];
@@ -421,20 +422,20 @@ async function handleWebhookRequest(req: any, res: any) {
           }).eq('id', hid).select();
 
           if (updateError) {
-            console.error(`❌ Error updating household ${hid} subscription:`, updateError);
-            console.error(`❌ Update error details:`, {
+            logger.error(`❌ Error updating household ${hid} subscription:`, updateError);
+            logger.error(`❌ Update error details:`, {
               code: updateError.code,
               message: updateError.message,
               details: updateError.details,
               hint: updateError.hint,
             });
           } else {
-            console.log(`✅ Successfully updated household ${hid} subscription to ${plan}`);
-            console.log(`📊 Updated data:`, updateData);
+            logger.log(`✅ Successfully updated household ${hid} subscription to ${plan}`);
+            logger.log(`📊 Updated data:`, updateData);
           }
         } catch (error) {
-          console.error('❌ Error retrieving subscription in checkout.session.completed:', error);
-          console.error('❌ Error details:', {
+          logger.error('❌ Error retrieving subscription in checkout.session.completed:', error);
+          logger.error('❌ Error details:', {
             error: error instanceof Error ? error.message : String(error),
             stack: error instanceof Error ? error.stack : undefined,
           });
@@ -444,7 +445,7 @@ async function handleWebhookRequest(req: any, res: any) {
             ? session.subscription
             : session.subscription.id;
           
-          console.log(`🔄 Attempting fallback update for household ${hid} with subscription ${subscriptionId}`);
+          logger.log(`🔄 Attempting fallback update for household ${hid} with subscription ${subscriptionId}`);
           
           const { data: fallbackData, error: fallbackError } = await supabase.from('households').update({
             stripe_customer_id: session.customer as string,
@@ -457,16 +458,16 @@ async function handleWebhookRequest(req: any, res: any) {
           }).eq('id', hid).select();
 
           if (fallbackError) {
-            console.error(`❌ Fallback update also failed for household ${hid}:`, fallbackError);
-            console.error(`❌ Fallback error details:`, {
+            logger.error(`❌ Fallback update also failed for household ${hid}:`, fallbackError);
+            logger.error(`❌ Fallback error details:`, {
               code: fallbackError.code,
               message: fallbackError.message,
               details: fallbackError.details,
               hint: fallbackError.hint,
             });
           } else {
-            console.log(`✅ Fallback update succeeded for household ${hid}`);
-            console.log(`📊 Fallback updated data:`, fallbackData);
+            logger.log(`✅ Fallback update succeeded for household ${hid}`);
+            logger.log(`📊 Fallback updated data:`, fallbackData);
           }
         }
       }
@@ -510,7 +511,7 @@ async function handleWebhookRequest(req: any, res: any) {
       const subscription = event.data.object as Stripe.Subscription;
       const hid = subscription.metadata?.household_id;
 
-      console.log(`📦 customer.subscription.created for household: ${hid}`);
+      logger.log(`📦 customer.subscription.created for household: ${hid}`);
 
       if (hid) {
         // Only update if not already set by checkout.session.completed
@@ -577,14 +578,14 @@ async function handleWebhookRequest(req: any, res: any) {
           ? subscription.cancel_at.getTime() / 1000 
           : subscription.cancel_at);
       
-      console.log('🔍 subscription.updated raw timestamps', {
+      logger.log('🔍 subscription.updated raw timestamps', {
         hid,
         current_period_end: safeCurrentPeriodEnd,
         cancel_at: safeCancelAt,
         cancel_at_period_end: subscription.cancel_at_period_end,
       });
       
-      console.log(`🔄 customer.subscription.updated for household: ${hid}, status: ${subscription.status}, cancel_at_period_end: ${isScheduledToCancel}`);
+      logger.log(`🔄 customer.subscription.updated for household: ${hid}, status: ${subscription.status}, cancel_at_period_end: ${isScheduledToCancel}`);
 
       if (hid) {
         try {
@@ -634,12 +635,12 @@ async function handleWebhookRequest(req: any, res: any) {
             // Clear subscription ID for consistency with deleted handler
             updateData.stripe_subscription_id = null;
             updateData.cancel_at_period_end = false; // No longer pending, it's done
-            console.log(`⚠️ Subscription canceled immediately for household ${hid}`);
+            logger.log(`⚠️ Subscription canceled immediately for household ${hid}`);
           } else if (isScheduledToCancel) {
             // Subscription is scheduled to cancel at period end - still active but will cancel
             // Keep status as active/trialing so user can still use features until period ends
             // The cancel_at_period_end flag will show "Cancelled" button in UI
-            console.log(`⏰ Subscription scheduled to cancel at period end for household ${hid} (${cancelAt || 'end of period'})`);
+            logger.log(`⏰ Subscription scheduled to cancel at period end for household ${hid} (${cancelAt || 'end of period'})`);
             // Keep current plan and limits until period ends
             // The subscription will be handled by customer.subscription.deleted when it actually ends
           } else if (subscription.status === 'active' && !isScheduledToCancel) {
@@ -651,17 +652,17 @@ async function handleWebhookRequest(req: any, res: any) {
           const { error } = await supabase.from('households').update(updateData).eq('id', hid);
 
           if (error) {
-            console.error(`❌ Error updating household ${hid} subscription:`, error);
+            logger.error(`❌ Error updating household ${hid} subscription:`, error);
             // Don't throw - webhook should still return 200 to Stripe
           } else {
-            console.log(`✅ Updated household ${hid} subscription status to ${subscription.status}`);
+            logger.log(`✅ Updated household ${hid} subscription status to ${subscription.status}`);
           }
         } catch (error) {
-          console.error(`❌ Exception updating household ${hid} subscription:`, error);
+          logger.error(`❌ Exception updating household ${hid} subscription:`, error);
           // Don't throw - webhook should still return 200 to Stripe
         }
       } else {
-        console.warn(`⚠️ customer.subscription.updated event missing household_id in metadata`);
+        logger.warn(`⚠️ customer.subscription.updated event missing household_id in metadata`);
       }
       break;
     }
@@ -670,8 +671,8 @@ async function handleWebhookRequest(req: any, res: any) {
       // Continue provisioning as payments continue
       const invoice = event.data.object as Stripe.Invoice;
       
-      console.log(`💰 invoice.paid event received`);
-      console.log(`📋 Invoice details:`, {
+      logger.log(`💰 invoice.paid event received`);
+      logger.log(`📋 Invoice details:`, {
         invoice_id: invoice.id,
         subscription: invoice.subscription,
         subscription_type: typeof invoice.subscription,
@@ -693,18 +694,18 @@ async function handleWebhookRequest(req: any, res: any) {
       }
 
       if (!subscriptionId) {
-        console.log(`ℹ️ invoice.paid: Invoice ${invoice.id} is not associated with a subscription (likely one-time payment)`);
+        logger.log(`ℹ️ invoice.paid: Invoice ${invoice.id} is not associated with a subscription (likely one-time payment)`);
         break;
       }
 
-      console.log(`🔍 invoice.paid: Processing subscription ${subscriptionId}`);
+      logger.log(`🔍 invoice.paid: Processing subscription ${subscriptionId}`);
 
       try {
         const subscription = await stripe.subscriptions.retrieve(subscriptionId);
         const hid = subscription.metadata?.household_id;
         
         if (!hid) {
-          console.warn(`⚠️ invoice.paid: Subscription ${subscriptionId} has no household_id in metadata`);
+          logger.warn(`⚠️ invoice.paid: Subscription ${subscriptionId} has no household_id in metadata`);
           break;
         }
         
@@ -717,20 +718,20 @@ async function handleWebhookRequest(req: any, res: any) {
         }).eq('id', hid).select();
 
         if (updateError) {
-          console.error(`❌ Error updating household ${hid} after invoice.paid:`, updateError);
-          console.error(`❌ Update error details:`, {
+          logger.error(`❌ Error updating household ${hid} after invoice.paid:`, updateError);
+          logger.error(`❌ Update error details:`, {
             code: updateError.code,
             message: updateError.message,
             details: updateError.details,
             hint: updateError.hint,
           });
         } else {
-          console.log(`✅ Updated household ${hid} after invoice.paid`);
-          console.log(`📊 Updated data:`, updateData);
+          logger.log(`✅ Updated household ${hid} after invoice.paid`);
+          logger.log(`📊 Updated data:`, updateData);
         }
       } catch (error) {
-        console.error('❌ Error handling invoice.paid:', error);
-        console.error('❌ Error details:', {
+        logger.error('❌ Error handling invoice.paid:', error);
+        logger.error('❌ Error details:', {
           error: error instanceof Error ? error.message : String(error),
           stack: error instanceof Error ? error.stack : undefined,
         });
@@ -743,7 +744,7 @@ async function handleWebhookRequest(req: any, res: any) {
       const invoice = event.data.object as any;
       const subscriptionId = invoice.subscription;
 
-      console.log(`❌ invoice.payment_failed for subscription: ${subscriptionId}`);
+      logger.log(`❌ invoice.payment_failed for subscription: ${subscriptionId}`);
 
       if (subscriptionId && typeof subscriptionId === 'string') {
         try {
@@ -755,10 +756,10 @@ async function handleWebhookRequest(req: any, res: any) {
               subscription_status: 'past_due',
             }).eq('id', hid);
 
-            console.log(`⚠️ Marked household ${hid} as past_due`);
+            logger.log(`⚠️ Marked household ${hid} as past_due`);
           }
         } catch (error) {
-          console.error('Error handling invoice.payment_failed:', error);
+          logger.error('Error handling invoice.payment_failed:', error);
         }
       }
       break;
@@ -767,8 +768,8 @@ async function handleWebhookRequest(req: any, res: any) {
     case 'invoice.finalization_failed': {
       // Invoice couldn't be finalized - log for manual review
       const invoice = event.data.object as any;
-      console.error(`🚨 invoice.finalization_failed: ${invoice.id}`);
-      console.error('Last finalization error:', invoice.last_finalization_error);
+      logger.error(`🚨 invoice.finalization_failed: ${invoice.id}`);
+      logger.error('Last finalization error:', invoice.last_finalization_error);
       
       // Log to subscription_events for later review
       if (invoice.subscription) {
@@ -793,7 +794,7 @@ async function handleWebhookRequest(req: any, res: any) {
       const subscription = event.data.object as Stripe.Subscription;
       const hid = subscription.metadata?.household_id;
 
-      console.log(`🗑️ customer.subscription.deleted for household: ${hid}`);
+      logger.log(`🗑️ customer.subscription.deleted for household: ${hid}`);
       
       if (hid) {
         try {
@@ -809,17 +810,17 @@ async function handleWebhookRequest(req: any, res: any) {
           }).eq('id', hid);
 
           if (error) {
-            console.error(`❌ Error updating household ${hid} after subscription deletion:`, error);
+            logger.error(`❌ Error updating household ${hid} after subscription deletion:`, error);
             // Don't throw - webhook should still return 200 to Stripe
           } else {
-            console.log(`✅ Reverted household ${hid} to free tier`);
+            logger.log(`✅ Reverted household ${hid} to free tier`);
           }
         } catch (error) {
-          console.error(`❌ Exception updating household ${hid} after subscription deletion:`, error);
+          logger.error(`❌ Exception updating household ${hid} after subscription deletion:`, error);
           // Don't throw - webhook should still return 200 to Stripe
         }
       } else {
-        console.warn(`⚠️ customer.subscription.deleted event missing household_id in metadata`);
+        logger.warn(`⚠️ customer.subscription.deleted event missing household_id in metadata`);
       }
       break;
     }
@@ -829,7 +830,7 @@ async function handleWebhookRequest(req: any, res: any) {
       const subscription = event.data.object as Stripe.Subscription;
       const hid = subscription.metadata?.household_id;
 
-      console.log(`⏰ customer.subscription.trial_will_end for household: ${hid}`);
+      logger.log(`⏰ customer.subscription.trial_will_end for household: ${hid}`);
       
       // Log for potential email notification system
       if (hid) {
@@ -849,8 +850,8 @@ async function handleWebhookRequest(req: any, res: any) {
     }
 
     default:
-      console.log(`ℹ️ Unhandled event type: ${event.type}`);
-      console.log(`📋 Unhandled event details:`, {
+      logger.log(`ℹ️ Unhandled event type: ${event.type}`);
+      logger.log(`📋 Unhandled event details:`, {
         id: event.id,
         type: event.type,
         object_type: (event.data.object as any)?.object,
@@ -858,8 +859,8 @@ async function handleWebhookRequest(req: any, res: any) {
     }
   } catch (error: any) {
     // Log unexpected errors but still return 200 to Stripe
-    console.error(`❌ Unexpected error handling webhook event ${event.type}:`, error);
-    console.error('Error details:', {
+    logger.error(`❌ Unexpected error handling webhook event ${event.type}:`, error);
+    logger.error('Error details:', {
       message: error?.message,
       stack: error?.stack,
       eventType: event.type,

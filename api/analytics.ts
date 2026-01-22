@@ -4,6 +4,7 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
+import { logger } from './_logger';
 
 // Initialize Supabase with service role (bypasses RLS)
 const supabase = createClient(
@@ -38,7 +39,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .select('id, household_id, status');
 
     if (error) {
-      console.error('Analytics query error:', error);
+      logger.error('Analytics query error:', error);
       return res.status(500).json({ error: 'Failed to fetch analytics data' });
     }
 
@@ -83,7 +84,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
   } catch (error: any) {
-    console.error('Analytics error:', error);
+    logger.error('Analytics error:', error);
     return res.status(500).json({ 
       error: error.message || 'Internal server error'
     });

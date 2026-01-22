@@ -6,6 +6,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useSignUp, useSignIn, useClerk, useUser, SignUp } from '@clerk/clerk-react';
 import { Loader2, Mail, ArrowRight } from 'lucide-react';
 import ErrorBanner from './ui/ErrorBanner';
+import { logger } from '../utils/logger';
 
 // Helper function to get user-friendly error message from Clerk errors
 function getClerkErrorMessage(err: any): string {
@@ -149,7 +150,7 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
         }
       } catch (err: any) {
         setError('Failed to load invitation details');
-        console.error('Fetch invite info error:', err);
+        logger.error('Fetch invite info error:', err);
       } finally {
         setLoading(false);
       }
@@ -204,7 +205,7 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
             window.location.href = inviteUrl;
           }, 500);
         } catch (setActiveError: any) {
-          console.error('setActive error:', setActiveError);
+          logger.error('setActive error:', setActiveError);
           // If setActive fails, still redirect - Auth.tsx will handle it
           window.location.href = inviteUrl;
         }
@@ -212,7 +213,7 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
         setError('Account creation completed but requires additional setup. Please try signing in.');
       }
     } catch (err: any) {
-      console.error('InviteWelcome signup error:', err);
+      logger.error('InviteWelcome signup error:', err);
       const errorMessage = getClerkErrorMessage(err);
       
       // If user already exists, redirect to sign in with invite params - use production URL
@@ -257,7 +258,7 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
             window.location.href = inviteUrl;
           }, 500);
         } catch (setActiveError: any) {
-          console.error('setActive error:', setActiveError);
+          logger.error('setActive error:', setActiveError);
           // If setActive fails, still redirect - Auth.tsx will handle it
           window.location.href = inviteUrl;
         }
@@ -265,7 +266,7 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
         setError('Verification failed. Please try again.');
       }
     } catch (err: any) {
-      console.error('InviteWelcome verification error:', err);
+      logger.error('InviteWelcome verification error:', err);
       setError(getClerkErrorMessage(err));
     } finally {
       setIsSubmitting(false);
@@ -339,7 +340,7 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
         redirectUrlComplete: redirectUrl,
       });
     } catch (error: any) {
-      console.error('Google OAuth sign-in error:', error);
+      logger.error('Google OAuth sign-in error:', error);
       setError('Failed to initiate Google sign-in. Please try again.');
     }
   };

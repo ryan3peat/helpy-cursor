@@ -1,6 +1,7 @@
 // api/create-portal-session.ts
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
+import { logger } from './_logger';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-11-17.clover',
@@ -54,7 +55,7 @@ export default async function handler(req: any, res: any) {
 
     return res.status(200).json({ url: portalSession.url });
   } catch (error: any) {
-    console.error('Portal session error:', error);
+    logger.error('Portal session error:', error);
     return res.status(500).json({ error: error.message });
   }
 }

@@ -12,6 +12,7 @@ import type { HelperContract, CreateSalarySlip } from '@src/types/helperManageme
 import { useScrollLock } from '../hooks/useScrollLock';
 import { useSheetTheme } from '../hooks/useSheetTheme';
 import { haptics } from '../utils/haptics';
+import { logger } from '../utils/logger';
 import {
   getHelperContract,
   createSalarySlip,
@@ -119,7 +120,7 @@ const CreateSalarySlipSheet: React.FC<Props> = ({
     // Check if cache is populated before trying to resolve
     if (!isUserCachePopulated()) {
       // Cache not ready - return empty to avoid false match
-      console.log('[CreateSalarySlipSheet] User cache not ready, will retry when auth is ready');
+      logger.log('[CreateSalarySlipSheet] User cache not ready, will retry when auth is ready');
       return '';
     }
     return getCachedSupabaseUuid(selectedHelperId);
@@ -240,7 +241,7 @@ const CreateSalarySlipSheet: React.FC<Props> = ({
     
     // Wait for auth to be ready (ensures RLS-compliant queries)
     if (!isAuthReady) {
-      console.log('[CreateSalarySlipSheet] Waiting for auth before loading contract...');
+      logger.log('[CreateSalarySlipSheet] Waiting for auth before loading contract...');
       return;
     }
     
@@ -263,7 +264,7 @@ const CreateSalarySlipSheet: React.FC<Props> = ({
         setFoodAllowance('');
       }
     } catch (err) {
-      console.error('Failed to load contract:', err);
+      logger.error('Failed to load contract:', err);
     } finally {
       setLoadingContract(false);
     }
@@ -328,7 +329,7 @@ const CreateSalarySlipSheet: React.FC<Props> = ({
       onClose();
       onSuccess?.();
     } catch (err: any) {
-      console.error('Failed to create salary slip:', err);
+      logger.error('Failed to create salary slip:', err);
       setError(err.message || t['error.create_slip'] || 'Failed to create salary slip. Please try again.');
     } finally {
       setIsLoading(false);

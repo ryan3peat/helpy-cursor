@@ -1,6 +1,7 @@
 import { supabase } from './supabase';
 import { getAuthenticatedSupabaseClient, refreshSupabaseToken } from '../contexts/SupabaseContext';
 import { User, ShoppingItem, Task, Meal, Expense, Section, ToDoItem } from '../types';
+import { logger } from '../utils/logger';
 
 /**
  * Get the best available Supabase client.
@@ -11,7 +12,7 @@ function getSupabaseClient() {
   if (authClient) {
     return authClient;
   }
-  console.warn('[supabaseService] No authenticated client, using default (RLS may block queries)');
+  logger.warn('[supabaseService] No authenticated client, using default (RLS may block queries)');
   return supabase;
 }
 
@@ -90,7 +91,7 @@ export function getCachedSupabaseUuid(userId: string): string {
   // If it's a Clerk ID but not in cache, we can't resolve it yet
   // This might happen if called before users are loaded
   if (isClerkIdFormat(userId)) {
-    console.warn(`[Cache] Clerk ID not in cache (users may not be loaded yet): ${userId}`);
+    logger.warn(`[Cache] Clerk ID not in cache (users may not be loaded yet): ${userId}`);
   }
   
   // Return as-is (caller should handle the case where it's not a valid UUID)
@@ -183,7 +184,7 @@ function updateSubscriptionStatus(channelName: string, status: SubscriptionStatu
   
   // Only notify if overall status changed
   if (previousOverall !== newOverall) {
-    console.log(`📡 [Connection] Overall status changed: ${previousOverall} → ${newOverall}`);
+    logger.log(`📡 [Connection] Overall status changed: ${previousOverall} → ${newOverall}`);
     statusListeners.forEach(listener => listener(subscriptionStatuses));
   }
 }
@@ -209,39 +210,39 @@ function removeSubscriptionStatus(channelName: string) {
 export async function getSupabaseUserId(id: string, householdId: string): Promise<string | null> {
   // Check cache first
   if (userIdCache[id]) {
-    console.warn(`[getSupabaseUserId] Cache hit: ${id} -> ${userIdCache[id]}`);
+    logger.warn(`[getSupabaseUserId] Cache hit: ${id} -> ${userIdCache[id]}`);
     return userIdCache[id];
   }
   
-  console.warn(`[getSupabaseUserId] Looking up UUID for id: ${id}, householdId: ${householdId}`);
+  logger.warn(`[getSupabaseUserId] Looking up UUID for id: ${id}, householdId: ${householdId}`);
   
   // Use authenticated client for RLS compliance
   const client = getSupabaseClient();
   
   if (!client) {
-    console.error('[getSupabaseUserId] No Supabase client available!');
+    logger.error('[getSupabaseUserId] No Supabase client available!');
     return null;
   }
   
   // Query all users in household
-  console.warn('[getSupabaseUserId] Querying users table...');
+  logger.warn('[getSupabaseUserId] Querying users table...');
   const { data, error } = await client
     .from('users')
     .select('id, clerk_id, status')
     .eq('household_id', householdId);
   
   if (error) {
-    console.error('[getSupabaseUserId] Query error:', error);
-    console.error('[getSupabaseUserId] Error details:', { code: error.code, message: error.message, hint: error.hint });
+    logger.error('[getSupabaseUserId] Query error:', error);
+    logger.error('[getSupabaseUserId] Error details:', { code: error.code, message: error.message, hint: error.hint });
     return null;
   }
   
-  console.warn(`[getSupabaseUserId] Query returned ${data?.length ?? 0} users`);
+  logger.warn(`[getSupabaseUserId] Query returned ${data?.length ?? 0} users`);
   
   // First, check if this ID matches a clerk_id (active users)
   const userByClerkId = data?.find(u => String(u.clerk_id) === String(id));
   if (userByClerkId) {
-    console.warn(`[getSupabaseUserId] Found: clerk_id ${id} -> UUID ${userByClerkId.id}`);
+    logger.warn(`[getSupabaseUserId] Found: clerk_id ${id} -> UUID ${userByClerkId.id}`);
     userIdCache[id] = userByClerkId.id;
     return userByClerkId.id;
   }
@@ -249,14 +250,14 @@ export async function getSupabaseUserId(id: string, householdId: string): Promis
   // Second, check if this ID is already a Supabase UUID (pending users)
   const userByUuid = data?.find(u => String(u.id) === String(id));
   if (userByUuid) {
-    console.warn(`[getSupabaseUserId] ID ${id} is already a UUID (status: ${userByUuid.status})`);
+    logger.warn(`[getSupabaseUserId] ID ${id} is already a UUID (status: ${userByUuid.status})`);
     // Cache it mapped to itself for consistency
     userIdCache[id] = id;
     return id;
   }
   
-  console.error(`[getSupabaseUserId] User not found: ${id}`);
-  console.warn('[getSupabaseUserId] Available clerk_ids:', data?.map(u => u.clerk_id).join(', ') || 'none');
+  logger.error(`[getSupabaseUserId] User not found: ${id}`);
+  logger.warn('[getSupabaseUserId] Available clerk_ids:', data?.map(u => u.clerk_id).join(', ') || 'none');
   return null;
 }
 
@@ -271,7 +272,7 @@ export function subscribeToCollection(
 ): () => void {
   const tableName = COLLECTION_MAP[collection];
   
-  console.log(`🔔 Subscribing to ${tableName} for household ${householdId}`);
+  logger.log(`🔔 Subscribing to ${tableName} for household ${householdId}`);
   
   // Build the select query - include JOINs for specific collections
   // - expenses: LEFT JOIN receipts to get image_url
@@ -305,7 +306,7 @@ export function subscribeToCollection(
     if (error) {
       // Check if error is JWT expired
       if (error.code === 'PGRST303' || error.message?.includes('JWT expired')) {
-        console.warn(`⚠️ Initial fetch JWT expired for ${tableName}, refreshing token...`);
+        logger.warn(`⚠️ Initial fetch JWT expired for ${tableName}, refreshing token...`);
         try {
           await refreshSupabaseToken();
           
@@ -330,10 +331,10 @@ export function subscribeToCollection(
           const { data: retryData, error: retryError } = await retryQueryBuilder;
           
           if (retryError) {
-            console.error(`❌ Retry failed for ${tableName}:`, retryError);
+            logger.error(`❌ Retry failed for ${tableName}:`, retryError);
             // Fallback to simple select if JOIN fails
             if (collection === 'expenses') {
-              console.log('📥 Falling back to simple expenses fetch without receipts JOIN');
+              logger.log('📥 Falling back to simple expenses fetch without receipts JOIN');
               const { data: fallbackData } = await refreshedClient
                 .from(tableName)
                 .select('*')
@@ -343,18 +344,18 @@ export function subscribeToCollection(
             return;
           }
           
-          console.log(`📥 Initial ${tableName} data (after refresh):`, retryData?.length, 'items');
+          logger.log(`📥 Initial ${tableName} data (after refresh):`, retryData?.length, 'items');
           callback(convertSupabaseData(retryData || [], collection));
           return;
         } catch (refreshError) {
-          console.error(`❌ Token refresh failed for ${tableName}:`, refreshError);
+          logger.error(`❌ Token refresh failed for ${tableName}:`, refreshError);
         }
       }
       
-      console.error(`❌ Initial fetch error for ${tableName}:`, error);
+      logger.error(`❌ Initial fetch error for ${tableName}:`, error);
       // Fallback to simple select if JOIN fails (e.g., no receipts/push_subscriptions table or FK not set)
       if (collection === 'expenses' || collection === 'users') {
-        console.log(`📥 Falling back to simple ${tableName} fetch without JOIN`);
+        logger.log(`📥 Falling back to simple ${tableName} fetch without JOIN`);
         getSupabaseClient()
           .from(tableName)
           .select('*')
@@ -366,7 +367,7 @@ export function subscribeToCollection(
       return;
     }
     
-    console.log(`📥 Initial ${tableName} data:`, data?.length, 'items');
+    logger.log(`📥 Initial ${tableName} data:`, data?.length, 'items');
     callback(convertSupabaseData(data || [], collection));
   };
   
@@ -384,7 +385,7 @@ export function subscribeToCollection(
       filter: `household_id=eq.${householdId}`
     },
     (payload: any) => {
-      console.log(`🔄 Real-time ${payload.eventType} on ${tableName}`);
+      logger.log(`🔄 Real-time ${payload.eventType} on ${tableName}`);
     
       // CRITICAL FIX: Refetch all data on ANY change
       fetchData()
@@ -396,18 +397,18 @@ export function subscribeToCollection(
               .select('*')
               .eq('household_id', householdId)
               .then(({ data: fallbackData }) => {
-                console.log(`📥 Refetched ${fallbackData?.length || 0} items after ${payload.eventType} (fallback)`);
+                logger.log(`📥 Refetched ${fallbackData?.length || 0} items after ${payload.eventType} (fallback)`);
                 callback(convertSupabaseData(fallbackData || [], collection));
               });
             return;
           }
-          console.log(`📥 Refetched ${data?.length || 0} items after ${payload.eventType}`);
+          logger.log(`📥 Refetched ${data?.length || 0} items after ${payload.eventType}`);
           callback(convertSupabaseData(data || [], collection));
         });
     }
   )
   .subscribe((status) => {
-    console.log(`📡 Subscription status for ${tableName}:`, status);
+    logger.log(`📡 Subscription status for ${tableName}:`, status);
     // Track this subscription's status
     updateSubscriptionStatus(`${tableName}-${householdId}`, status as SubscriptionStatus);
   });
@@ -430,21 +431,21 @@ export function subscribeToCollection(
           filter: `household_id=eq.${householdId}`
         },
         (payload: any) => {
-          console.log(`🔄 Real-time ${payload.eventType} on receipts (for expenses)`);
+          logger.log(`🔄 Real-time ${payload.eventType} on receipts (for expenses)`);
           // Refetch expenses when receipts change
           fetchData()
             .then(({ data, error }) => {
               if (error) {
-                console.error('❌ Failed to refetch expenses after receipt change:', error);
+                logger.error('❌ Failed to refetch expenses after receipt change:', error);
                 return;
               }
-              console.log(`📥 Refetched ${data?.length || 0} expenses after receipt ${payload.eventType}`);
+              logger.log(`📥 Refetched ${data?.length || 0} expenses after receipt ${payload.eventType}`);
               callback(convertSupabaseData(data || [], collection));
             });
         }
       )
       .subscribe((status) => {
-        console.log(`📡 Receipts subscription status (for expenses):`, status);
+        logger.log(`📡 Receipts subscription status (for expenses):`, status);
         updateSubscriptionStatus(`receipts-for-expenses-${householdId}`, status as SubscriptionStatus);
       });
     
@@ -466,12 +467,12 @@ export function subscribeToCollection(
           filter: `household_id=eq.${householdId}`
         },
         (payload: any) => {
-          console.log(`🔄 Real-time ${payload.eventType} on push_subscriptions (for users)`);
+          logger.log(`🔄 Real-time ${payload.eventType} on push_subscriptions (for users)`);
           // Refetch users when push_subscriptions change
           fetchData()
             .then(({ data, error }) => {
               if (error) {
-                console.error('❌ Failed to refetch users after push_subscriptions change:', error);
+                logger.error('❌ Failed to refetch users after push_subscriptions change:', error);
                 // Fallback to simple fetch
                 getSupabaseClient()
                   .from(tableName)
@@ -482,13 +483,13 @@ export function subscribeToCollection(
                   });
                 return;
               }
-              console.log(`📥 Refetched ${data?.length || 0} users after push_subscriptions ${payload.eventType}`);
+              logger.log(`📥 Refetched ${data?.length || 0} users after push_subscriptions ${payload.eventType}`);
               callback(convertSupabaseData(data || [], collection));
             });
         }
       )
       .subscribe((status) => {
-        console.log(`📡 Push subscriptions subscription status (for users):`, status);
+        logger.log(`📡 Push subscriptions subscription status (for users):`, status);
         updateSubscriptionStatus(`push-subs-for-users-${householdId}`, status as SubscriptionStatus);
       });
     
@@ -497,16 +498,16 @@ export function subscribeToCollection(
 
   // Return unsubscribe function
   return () => {
-    console.log(`🔕 Unsubscribing from ${tableName}`);
+    logger.log(`🔕 Unsubscribing from ${tableName}`);
     subscription.unsubscribe();
     removeSubscriptionStatus(`${tableName}-${householdId}`);
     if (receiptsSubscription) {
-      console.log('🔕 Unsubscribing from receipts (for expenses)');
+      logger.log('🔕 Unsubscribing from receipts (for expenses)');
       receiptsSubscription.unsubscribe();
       removeSubscriptionStatus(`receipts-for-expenses-${householdId}`);
     }
     if (pushSubscriptionsSubscription) {
-      console.log('🔕 Unsubscribing from push_subscriptions (for users)');
+      logger.log('🔕 Unsubscribing from push_subscriptions (for users)');
       pushSubscriptionsSubscription.unsubscribe();
       removeSubscriptionStatus(`push-subs-for-users-${householdId}`);
     }
@@ -523,7 +524,7 @@ async function convertUserIdsToUuids(ids: string[], householdId: string): Promis
     if (uuid) {
       convertedIds.push(uuid);
     } else {
-      console.warn(`⚠️ Could not resolve user ID: ${id}`);
+      logger.warn(`⚠️ Could not resolve user ID: ${id}`);
     }
   }
   return convertedIds;
@@ -540,7 +541,7 @@ export async function addItem(
 ): Promise<DataItem> {
   const tableName = COLLECTION_MAP[collection];
   
-  console.log(`➕ Adding to ${collection}:`, item);
+  logger.log(`➕ Adding to ${collection}:`, item);
   
   // Convert camelCase to snake_case for Supabase
   const snakeCaseItem = convertToSnakeCase(item);
@@ -596,9 +597,9 @@ export async function addItem(
   
   // For meals: convert for_user_ids from Clerk IDs to Supabase UUIDs
   if (collection === 'meals' && Array.isArray(finalData.for_user_ids)) {
-    console.log('🔄 Converting for_user_ids to UUIDs:', finalData.for_user_ids);
+    logger.log('🔄 Converting for_user_ids to UUIDs:', finalData.for_user_ids);
     finalData.for_user_ids = await convertUserIdsToUuids(finalData.for_user_ids, householdId);
-    console.log('✅ Converted for_user_ids:', finalData.for_user_ids);
+    logger.log('✅ Converted for_user_ids:', finalData.for_user_ids);
   }
   
   // For todo_items and recurring_series: convert assignee_id, created_by, and last_modified_by IN PARALLEL
@@ -614,10 +615,10 @@ export async function addItem(
     if (assigneeUuid) {
       const isValidUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(assigneeUuid);
       if (isValidUuid) {
-        console.log(`🔄 Converting assignee_id ${finalData.assignee_id} to UUID ${assigneeUuid}`);
+        logger.log(`🔄 Converting assignee_id ${finalData.assignee_id} to UUID ${assigneeUuid}`);
         finalData.assignee_id = assigneeUuid;
       } else {
-        console.warn(`⚠️ getSupabaseUserId returned invalid UUID for assignee_id: ${assigneeUuid} - setting to null`);
+        logger.warn(`⚠️ getSupabaseUserId returned invalid UUID for assignee_id: ${assigneeUuid} - setting to null`);
         finalData.assignee_id = null;
       }
     } else if (finalData.assignee_id) {
@@ -625,7 +626,7 @@ export async function addItem(
       // This prevents FK constraint violations from Clerk IDs being left in place
       const isAlreadyValidUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(finalData.assignee_id);
       if (!isAlreadyValidUuid) {
-        console.warn(`⚠️ Could not resolve assignee_id: ${finalData.assignee_id} - setting to null`);
+        logger.warn(`⚠️ Could not resolve assignee_id: ${finalData.assignee_id} - setting to null`);
         finalData.assignee_id = null;
       }
     }
@@ -634,14 +635,14 @@ export async function addItem(
     if (createdByUuid) {
       const isValidUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(createdByUuid);
       if (isValidUuid) {
-        console.log(`🔄 Converting created_by ${finalData.created_by} to UUID ${createdByUuid}`);
+        logger.log(`🔄 Converting created_by ${finalData.created_by} to UUID ${createdByUuid}`);
         finalData.created_by = createdByUuid;
       } else {
-        console.warn(`⚠️ getSupabaseUserId returned invalid UUID for created_by: ${createdByUuid} - setting to null`);
+        logger.warn(`⚠️ getSupabaseUserId returned invalid UUID for created_by: ${createdByUuid} - setting to null`);
         finalData.created_by = null;
       }
     } else if (finalData.created_by) {
-      console.warn(`⚠️ Could not resolve created_by ID: ${finalData.created_by} - setting to null`);
+      logger.warn(`⚠️ Could not resolve created_by ID: ${finalData.created_by} - setting to null`);
       finalData.created_by = null;
     }
     
@@ -649,14 +650,14 @@ export async function addItem(
     if (lastModifiedByUuid) {
       const isValidUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(lastModifiedByUuid);
       if (isValidUuid) {
-        console.log(`🔄 Converting last_modified_by ${finalData.last_modified_by} to UUID ${lastModifiedByUuid}`);
+        logger.log(`🔄 Converting last_modified_by ${finalData.last_modified_by} to UUID ${lastModifiedByUuid}`);
         finalData.last_modified_by = lastModifiedByUuid;
       } else {
-        console.warn(`⚠️ getSupabaseUserId returned invalid UUID for last_modified_by: ${lastModifiedByUuid} - setting to null`);
+        logger.warn(`⚠️ getSupabaseUserId returned invalid UUID for last_modified_by: ${lastModifiedByUuid} - setting to null`);
         finalData.last_modified_by = null;
       }
     } else if (finalData.last_modified_by) {
-      console.warn(`⚠️ Could not resolve last_modified_by ID: ${finalData.last_modified_by} - setting to null`);
+      logger.warn(`⚠️ Could not resolve last_modified_by ID: ${finalData.last_modified_by} - setting to null`);
       finalData.last_modified_by = null;
     }
   }
@@ -672,14 +673,14 @@ export async function addItem(
       if (uuid) {
         const isValidUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(uuid);
         if (isValidUuid) {
-          console.log(`🔄 Converting created_by ${originalCreatedBy} to UUID ${uuid}`);
+          logger.log(`🔄 Converting created_by ${originalCreatedBy} to UUID ${uuid}`);
           finalData.created_by = uuid;
         } else {
-          console.warn(`⚠️ getSupabaseUserId returned invalid UUID for created_by: ${uuid} - setting to null`);
+          logger.warn(`⚠️ getSupabaseUserId returned invalid UUID for created_by: ${uuid} - setting to null`);
           finalData.created_by = null;
         }
       } else {
-        console.warn(`⚠️ Could not resolve created_by ID: ${originalCreatedBy} - setting to null`);
+        logger.warn(`⚠️ Could not resolve created_by ID: ${originalCreatedBy} - setting to null`);
         finalData.created_by = null;
       }
     }
@@ -692,14 +693,14 @@ export async function addItem(
       if (uuid) {
         const isValidUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(uuid);
         if (isValidUuid) {
-          console.log(`🔄 Converting last_modified_by ${originalLastModifiedBy} to UUID ${uuid}`);
+          logger.log(`🔄 Converting last_modified_by ${originalLastModifiedBy} to UUID ${uuid}`);
           finalData.last_modified_by = uuid;
         } else {
-          console.warn(`⚠️ getSupabaseUserId returned invalid UUID for last_modified_by: ${uuid} - setting to null`);
+          logger.warn(`⚠️ getSupabaseUserId returned invalid UUID for last_modified_by: ${uuid} - setting to null`);
           finalData.last_modified_by = null;
         }
       } else {
-        console.warn(`⚠️ Could not resolve last_modified_by ID: ${originalLastModifiedBy} - setting to null`);
+        logger.warn(`⚠️ Could not resolve last_modified_by ID: ${originalLastModifiedBy} - setting to null`);
         finalData.last_modified_by = null;
       }
     }
@@ -740,7 +741,7 @@ export async function addItem(
     }
     
     // Debug: Log expense data being sent
-    console.log('[DB Save] Expense data being sent:', {
+    logger.log('[DB Save] Expense data being sent:', {
       currency: finalData.currency,
       hasReceiptUrl: !!finalData.receipt_url,
       receiptUrl: finalData.receipt_url,
@@ -750,7 +751,7 @@ export async function addItem(
     });
   }
 
-  console.log('🟡 Sending to Supabase:', finalData);
+  logger.log('🟡 Sending to Supabase:', finalData);
   
   // Use authenticated client for RLS
   let client = getSupabaseClient();
@@ -761,7 +762,7 @@ export async function addItem(
     .select()
     .single();
 
-  console.log('🟡 Response:', { 
+  logger.log('🟡 Response:', { 
     hasData: !!data, 
     hasError: !!error,
     errorMessage: error?.message,
@@ -773,7 +774,7 @@ export async function addItem(
   // SELF-HEALING: If this looks like a JWT/auth error, refresh token and retry ONCE
   // This handles edge cases where the token expired between requests
   if (error && isJwtError(error)) {
-    console.warn('⚠️ [addItem] JWT error detected, refreshing token and retrying...');
+    logger.warn('⚠️ [addItem] JWT error detected, refreshing token and retrying...');
     try {
       await refreshSupabaseToken();
       
@@ -788,37 +789,37 @@ export async function addItem(
         .single();
       
       if (!retryResult.error) {
-        console.log('✅ [addItem] Retry successful after token refresh');
+        logger.log('✅ [addItem] Retry successful after token refresh');
         data = retryResult.data;
         error = null;
       } else {
-        console.error('❌ [addItem] Retry also failed:', retryResult.error);
+        logger.error('❌ [addItem] Retry also failed:', retryResult.error);
         error = retryResult.error;
       }
     } catch (refreshError) {
-      console.error('❌ [addItem] Token refresh failed:', refreshError);
+      logger.error('❌ [addItem] Token refresh failed:', refreshError);
       // Keep original error
     }
   }
 
   if (error) {
-    console.error('❌ Insert failed:', error);
-    console.error('❌ Full error object:', JSON.stringify(error, null, 2));
-    console.error('❌ Data that failed to insert:', JSON.stringify(finalData, null, 2));
+    logger.error('❌ Insert failed:', error);
+    logger.error('❌ Full error object:', JSON.stringify(error, null, 2));
+    logger.error('❌ Data that failed to insert:', JSON.stringify(finalData, null, 2));
     throw error;
   }
   
   if (!data) {
-    console.error('❌ Insert succeeded but no data returned');
-    console.error('❌ Final data sent:', JSON.stringify(finalData, null, 2));
+    logger.error('❌ Insert succeeded but no data returned');
+    logger.error('❌ Final data sent:', JSON.stringify(finalData, null, 2));
     throw new Error('Insert succeeded but no data returned from database');
   }
   
-  console.log('✅ Insert successful, returned data keys:', Object.keys(data));
+  logger.log('✅ Insert successful, returned data keys:', Object.keys(data));
   
   // Debug: Log receipt_url in response for expenses
   if (collection === 'expenses' && data) {
-    console.log('[DB Response] Expense receipt_url returned from DB:', {
+    logger.log('[DB Response] Expense receipt_url returned from DB:', {
       hasReceiptUrl: !!data.receipt_url,
       receiptUrl: data.receipt_url,
       receiptUrlType: typeof data.receipt_url,
@@ -841,7 +842,7 @@ export async function updateItem(
 ): Promise<void> {
   const tableName = COLLECTION_MAP[collection];
   
-  console.log(`🔄 Updating ${collection} item:`, id, updates);
+  logger.log(`🔄 Updating ${collection} item:`, id, updates);
   
   const snakeCaseUpdates = convertToSnakeCase(updates);
   
@@ -857,16 +858,16 @@ export async function updateItem(
   
   // For meals: convert for_user_ids from Clerk IDs to Supabase UUIDs
   if (collection === 'meals' && Array.isArray(snakeCaseUpdates.for_user_ids)) {
-    console.log('🔄 Converting for_user_ids to UUIDs:', snakeCaseUpdates.for_user_ids);
+    logger.log('🔄 Converting for_user_ids to UUIDs:', snakeCaseUpdates.for_user_ids);
     snakeCaseUpdates.for_user_ids = await convertUserIdsToUuids(snakeCaseUpdates.for_user_ids, householdId);
-    console.log('✅ Converted for_user_ids:', snakeCaseUpdates.for_user_ids);
+    logger.log('✅ Converted for_user_ids:', snakeCaseUpdates.for_user_ids);
   }
   
   // For todo_items: convert assignee_id from Clerk ID to Supabase UUID
   if (collection === 'todo_items' && snakeCaseUpdates.assignee_id) {
     const uuid = await getSupabaseUserId(snakeCaseUpdates.assignee_id, householdId);
     if (uuid) {
-      console.log(`🔄 Converting assignee_id ${snakeCaseUpdates.assignee_id} to UUID ${uuid}`);
+      logger.log(`🔄 Converting assignee_id ${snakeCaseUpdates.assignee_id} to UUID ${uuid}`);
       snakeCaseUpdates.assignee_id = uuid;
     }
   }
@@ -878,14 +879,14 @@ export async function updateItem(
     if (uuid) {
       const isValidUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(uuid);
       if (isValidUuid) {
-        console.log(`🔄 Converting last_modified_by ${snakeCaseUpdates.last_modified_by} to UUID ${uuid}`);
+        logger.log(`🔄 Converting last_modified_by ${snakeCaseUpdates.last_modified_by} to UUID ${uuid}`);
         snakeCaseUpdates.last_modified_by = uuid;
       } else {
-        console.warn(`⚠️ getSupabaseUserId returned invalid UUID for last_modified_by: ${uuid} - setting to null`);
+        logger.warn(`⚠️ getSupabaseUserId returned invalid UUID for last_modified_by: ${uuid} - setting to null`);
         snakeCaseUpdates.last_modified_by = null;
       }
     } else {
-      console.warn(`⚠️ Could not resolve last_modified_by ID: ${snakeCaseUpdates.last_modified_by} - setting to null`);
+      logger.warn(`⚠️ Could not resolve last_modified_by ID: ${snakeCaseUpdates.last_modified_by} - setting to null`);
       snakeCaseUpdates.last_modified_by = null;
     }
   }
@@ -895,7 +896,7 @@ export async function updateItem(
   if (collection === 'users') {
     // Remove country_code if it exists (column doesn't exist in database)
     if ('country_code' in snakeCaseUpdates) {
-      console.log('⚠️ Removing country_code from update (column does not exist in database)');
+      logger.log('⚠️ Removing country_code from update (column does not exist in database)');
       delete snakeCaseUpdates.country_code;
     }
     
@@ -906,7 +907,7 @@ export async function updateItem(
       const combinedName = [firstName, lastName].filter(Boolean).join(' ').trim();
       if (combinedName) {
         snakeCaseUpdates.name = combinedName;
-        console.log(`🔄 Combined first_name + last_name into name: "${combinedName}"`);
+        logger.log(`🔄 Combined first_name + last_name into name: "${combinedName}"`);
       }
       delete snakeCaseUpdates.first_name;
       delete snakeCaseUpdates.last_name;
@@ -923,7 +924,7 @@ export async function updateItem(
       if (validUserFields.includes(key)) {
         filteredUpdates[key] = snakeCaseUpdates[key];
       } else {
-        console.log(`⚠️ Removing invalid field '${key}' from user update (column does not exist)`);
+        logger.log(`⚠️ Removing invalid field '${key}' from user update (column does not exist)`);
       }
     }
     Object.assign(snakeCaseUpdates, filteredUpdates);
@@ -935,7 +936,7 @@ export async function updateItem(
     }
   }
   
-  console.log('🔄 Snake case updates:', snakeCaseUpdates);
+  logger.log('🔄 Snake case updates:', snakeCaseUpdates);
   
   let actualId = id;
   
@@ -944,11 +945,11 @@ export async function updateItem(
   if (collection === 'users') {
     const supabaseId = await getSupabaseUserId(id, householdId);
     if (!supabaseId) {
-      console.error('❌ Could not find Supabase UUID for user:', id);
+      logger.error('❌ Could not find Supabase UUID for user:', id);
       throw new Error(`User not found: ${id}`);
     }
     actualId = supabaseId;
-    console.log(`🔄 Resolved id ${id} to Supabase UUID ${actualId}`);
+    logger.log(`🔄 Resolved id ${id} to Supabase UUID ${actualId}`);
   }
   
   // Use authenticated client for RLS
@@ -961,11 +962,11 @@ export async function updateItem(
     .eq('household_id', householdId)
     .select();
 
-  console.log('🔄 Update response:', { data, error });
+  logger.log('🔄 Update response:', { data, error });
 
   // SELF-HEALING: If this looks like a JWT/auth error, refresh token and retry ONCE
   if (error && isJwtError(error)) {
-    console.warn('⚠️ [updateItem] JWT error detected, refreshing token and retrying...');
+    logger.warn('⚠️ [updateItem] JWT error detected, refreshing token and retrying...');
     try {
       await refreshSupabaseToken();
       
@@ -981,28 +982,28 @@ export async function updateItem(
         .select();
       
       if (!retryResult.error) {
-        console.log('✅ [updateItem] Retry successful after token refresh');
+        logger.log('✅ [updateItem] Retry successful after token refresh');
         data = retryResult.data;
         error = null;
       } else {
-        console.error('❌ [updateItem] Retry also failed:', retryResult.error);
+        logger.error('❌ [updateItem] Retry also failed:', retryResult.error);
         error = retryResult.error;
       }
     } catch (refreshError) {
-      console.error('❌ [updateItem] Token refresh failed:', refreshError);
+      logger.error('❌ [updateItem] Token refresh failed:', refreshError);
       // Keep original error
     }
   }
 
   if (error) {
-    console.error('❌ Update failed:', error);
+    logger.error('❌ Update failed:', error);
     throw error;
   }
   
   if (!data || data.length === 0) {
-    console.warn('⚠️ No rows updated - item may not exist or wrong ID');
+    logger.warn('⚠️ No rows updated - item may not exist or wrong ID');
   } else {
-    console.log('✅ Update successful');
+    logger.log('✅ Update successful');
   }
 }
 
@@ -1022,7 +1023,7 @@ export async function deleteItem(
 ): Promise<void> {
   const tableName = COLLECTION_MAP[collection];
   
-  console.log(`🗑️ Deleting ${collection} item:`, id, lastModifiedBy ? `by ${lastModifiedBy}` : '');
+  logger.log(`🗑️ Deleting ${collection} item:`, id, lastModifiedBy ? `by ${lastModifiedBy}` : '');
   
   let actualId = id;
   
@@ -1030,11 +1031,11 @@ export async function deleteItem(
   if (collection === 'users') {
     const supabaseId = await getSupabaseUserId(id, householdId);
     if (!supabaseId) {
-      console.error('❌ Could not find Supabase UUID for user:', id);
+      logger.error('❌ Could not find Supabase UUID for user:', id);
       throw new Error(`User not found: ${id}`);
     }
     actualId = supabaseId;
-    console.log(`🗑️ Resolved id ${id} to Supabase UUID ${actualId}`);
+    logger.log(`🗑️ Resolved id ${id} to Supabase UUID ${actualId}`);
   }
   
   // Use authenticated client for RLS
@@ -1053,7 +1054,7 @@ export async function deleteItem(
       if (lastModifiedByUuid) {
         const isValidUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(lastModifiedByUuid);
         if (isValidUuid) {
-          console.log(`🔄 Converting lastModifiedBy ${lastModifiedBy} to UUID ${lastModifiedByUuid} for soft delete`);
+          logger.log(`🔄 Converting lastModifiedBy ${lastModifiedBy} to UUID ${lastModifiedByUuid} for soft delete`);
           softDeleteUpdate.last_modified_by = lastModifiedByUuid;
         }
       }
@@ -1068,7 +1069,7 @@ export async function deleteItem(
 
     // SELF-HEALING: If this looks like a JWT/auth error, refresh token and retry ONCE
     if (error && isJwtError(error)) {
-      console.warn('⚠️ [deleteItem] JWT error detected on soft delete, refreshing token and retrying...');
+      logger.warn('⚠️ [deleteItem] JWT error detected on soft delete, refreshing token and retrying...');
       try {
         await refreshSupabaseToken();
         client = getSupabaseClient();
@@ -1081,27 +1082,27 @@ export async function deleteItem(
           .select();
         
         if (!retryResult.error) {
-          console.log('✅ [deleteItem] Retry successful after token refresh');
+          logger.log('✅ [deleteItem] Retry successful after token refresh');
           error = null;
           count = retryResult.count;
         } else {
-          console.error('❌ [deleteItem] Retry also failed:', retryResult.error);
+          logger.error('❌ [deleteItem] Retry also failed:', retryResult.error);
           error = retryResult.error;
         }
       } catch (refreshError) {
-        console.error('❌ [deleteItem] Token refresh failed:', refreshError);
+        logger.error('❌ [deleteItem] Token refresh failed:', refreshError);
       }
     }
 
     if (error) {
-      console.error('❌ Soft delete error:', error);
+      logger.error('❌ Soft delete error:', error);
       throw error;
     }
     
     if (!count || count === 0) {
-      console.warn('⚠️ No rows soft-deleted - item may not exist');
+      logger.warn('⚠️ No rows soft-deleted - item may not exist');
     } else {
-      console.log('✅ Soft delete successful (deleted_at set)');
+      logger.log('✅ Soft delete successful (deleted_at set)');
     }
     return;
   }
@@ -1113,7 +1114,7 @@ export async function deleteItem(
     if (lastModifiedByUuid) {
       const isValidUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(lastModifiedByUuid);
       if (isValidUuid) {
-        console.log(`🔄 Setting last_modified_by to ${lastModifiedByUuid} before hard delete`);
+        logger.log(`🔄 Setting last_modified_by to ${lastModifiedByUuid} before hard delete`);
         // CRITICAL: .select() ensures UPDATE completes before DELETE runs
         const { error: updateError } = await client
           .from(tableName)
@@ -1123,9 +1124,9 @@ export async function deleteItem(
           .select();
         
         if (updateError) {
-          console.error('❌ Failed to set last_modified_by before delete:', updateError);
+          logger.error('❌ Failed to set last_modified_by before delete:', updateError);
         } else {
-          console.log('✅ last_modified_by set successfully before delete');
+          logger.log('✅ last_modified_by set successfully before delete');
         }
       }
     }
@@ -1140,7 +1141,7 @@ export async function deleteItem(
 
   // SELF-HEALING: If this looks like a JWT/auth error, refresh token and retry ONCE
   if (error && isJwtError(error)) {
-    console.warn('⚠️ [deleteItem] JWT error detected on hard delete, refreshing token and retrying...');
+    logger.warn('⚠️ [deleteItem] JWT error detected on hard delete, refreshing token and retrying...');
     try {
       await refreshSupabaseToken();
       client = getSupabaseClient();
@@ -1152,27 +1153,27 @@ export async function deleteItem(
         .eq('household_id', householdId);
       
       if (!retryResult.error) {
-        console.log('✅ [deleteItem] Retry successful after token refresh');
+        logger.log('✅ [deleteItem] Retry successful after token refresh');
         error = null;
         count = retryResult.count;
       } else {
-        console.error('❌ [deleteItem] Retry also failed:', retryResult.error);
+        logger.error('❌ [deleteItem] Retry also failed:', retryResult.error);
         error = retryResult.error;
       }
     } catch (refreshError) {
-      console.error('❌ [deleteItem] Token refresh failed:', refreshError);
+      logger.error('❌ [deleteItem] Token refresh failed:', refreshError);
     }
   }
 
   if (error) {
-    console.error('❌ Delete error:', error);
+    logger.error('❌ Delete error:', error);
     throw error;
   }
   
   if (count === 0) {
-    console.warn('⚠️ No rows deleted - item may not exist');
+    logger.warn('⚠️ No rows deleted - item may not exist');
   } else {
-    console.log('✅ Delete successful');
+    logger.log('✅ Delete successful');
     // Clear from cache
     delete userIdCache[id];
   }
@@ -1297,25 +1298,25 @@ export async function registerUser(
   email: string,
   password: string
 ): Promise<User> {
-  console.log('🔵 registerUser called', { name, email });
+  logger.log('🔵 registerUser called', { name, email });
   
   // 1. Create household FIRST (doesn't need auth)
-  console.log('🔵 Creating household');
+  logger.log('🔵 Creating household');
   const { data: householdData, error: householdError } = await supabase
     .from('households')
     .insert([{ name: `${name}'s Home` }])
     .select()
     .single();
 
-  console.log('🔵 Household response:', { householdData, householdError });
+  logger.log('🔵 Household response:', { householdData, householdError });
   
   if (householdError) {
-    console.error('🔴 Household creation failed:', householdError);
+    logger.error('🔴 Household creation failed:', householdError);
     throw new Error(`Failed to create household: ${householdError.message}`);
   }
 
   // 2. Create auth user in Supabase Auth
-  console.log('🔵 Creating auth user');
+  logger.log('🔵 Creating auth user');
   const { data: authData, error: authError } = await supabase.auth.signUp({
     email,
     password,
@@ -1327,10 +1328,10 @@ export async function registerUser(
     }
   });
 
-  console.log('🔵 Auth response:', { authData, authError });
+  logger.log('🔵 Auth response:', { authData, authError });
   
   if (authError) {
-    console.error('🔴 Auth creation failed:', authError);
+    logger.error('🔴 Auth creation failed:', authError);
     throw new Error(`Failed to create auth user: ${authError.message}`);
   }
   
@@ -1339,7 +1340,7 @@ export async function registerUser(
   }
 
   // 3. Create user profile in users table
-  console.log('🔵 Creating user profile');
+  logger.log('🔵 Creating user profile');
   const newUser = {
     id: authData.user.id,
     household_id: householdData.id,
@@ -1357,14 +1358,14 @@ export async function registerUser(
     .select()
     .single();
 
-  console.log('🔵 User profile response:', { userData, userError });
+  logger.log('🔵 User profile response:', { userData, userError });
   
   if (userError) {
-    console.error('🔴 User profile creation failed:', userError);
+    logger.error('🔴 User profile creation failed:', userError);
     throw new Error(`Failed to create user profile: ${userError.message}`);
   }
   
-  console.log('🟢 Registration complete:', userData);
+  logger.log('🟢 Registration complete:', userData);
   
   // Convert from snake_case to camelCase
   return {
@@ -1512,14 +1513,14 @@ function convertSupabaseData(data: any[], collection?: string): DataItem[] {
         // Active user - use clerk_id as app id
         userIdCache[item.clerk_id] = item.id;
         uuidToAppIdCache[item.id] = item.clerk_id; // Reverse mapping
-        console.log(`📝 Cached mapping: clerk_id ${item.clerk_id} <-> UUID ${item.id}`);
+        logger.log(`📝 Cached mapping: clerk_id ${item.clerk_id} <-> UUID ${item.id}`);
         converted.id = item.clerk_id;
       } else {
         // Pending user - keep Supabase UUID as id
         // Also cache it to itself so lookups work
         userIdCache[item.id] = item.id;
         uuidToAppIdCache[item.id] = item.id; // Maps to itself
-        console.log(`📝 Pending user: keeping UUID ${item.id} as id`);
+        logger.log(`📝 Pending user: keeping UUID ${item.id} as id`);
       }
       
       // Check if user has any push subscriptions (from LEFT JOIN)
@@ -1652,7 +1653,7 @@ export async function uploadAvatarImage(
   const filename = `${userId}_${timestamp}.${extension}`;
   const filePath = `${householdId}/${filename}`;
 
-  console.log(`📷 Uploading avatar for user ${userId} to path: ${filePath}`);
+  logger.log(`📷 Uploading avatar for user ${userId} to path: ${filePath}`);
 
   // Upload to Supabase Storage (using 'avatars' bucket)
   const { data, error } = await supabase.storage
@@ -1663,7 +1664,7 @@ export async function uploadAvatarImage(
     });
 
   if (error) {
-    console.error('❌ Avatar upload failed:', error);
+    logger.error('❌ Avatar upload failed:', error);
     throw new Error(`Failed to upload avatar: ${error.message}`);
   }
 
@@ -1675,7 +1676,7 @@ export async function uploadAvatarImage(
     throw new Error('Failed to get avatar public URL');
   }
 
-  console.log(`✅ Avatar uploaded successfully: ${publicUrl}`);
+  logger.log(`✅ Avatar uploaded successfully: ${publicUrl}`);
   return publicUrl;
 }
 
@@ -1690,11 +1691,11 @@ export async function fetchCollection(
   const tableName = COLLECTION_MAP[collection];
   
   if (!tableName) {
-    console.error(`❌ Unknown collection: ${collection}`);
+    logger.error(`❌ Unknown collection: ${collection}`);
     return [];
   }
   
-  console.log(`🔄 [Sync] Fetching ${tableName} for household ${householdId}`);
+  logger.log(`🔄 [Sync] Fetching ${tableName} for household ${householdId}`);
   
   // Use authenticated client for RLS
   const client = getSupabaseClient();
@@ -1719,11 +1720,11 @@ export async function fetchCollection(
   const { data, error } = await queryBuilder;
 
   if (error) {
-    console.error(`❌ [Sync] Fetch error for ${tableName}:`, error);
+    logger.error(`❌ [Sync] Fetch error for ${tableName}:`, error);
     
     // Check if error is JWT expired
     if (error.code === 'PGRST303' || error.message?.includes('JWT expired')) {
-      console.warn(`⚠️ [Sync] JWT expired for ${tableName}, refreshing token and retrying...`);
+      logger.warn(`⚠️ [Sync] JWT expired for ${tableName}, refreshing token and retrying...`);
       try {
         // Refresh token
         await refreshSupabaseToken();
@@ -1743,7 +1744,7 @@ export async function fetchCollection(
         const { data: retryData, error: retryError } = await retryQueryBuilder;
         
         if (retryError) {
-          console.error(`❌ [Sync] Retry failed for ${tableName}:`, retryError);
+          logger.error(`❌ [Sync] Retry failed for ${tableName}:`, retryError);
           // Fallback for expenses/users if JOIN fails
           if (collection === 'expenses' || collection === 'users') {
             const { data: fallbackData } = await refreshedClient
@@ -1755,10 +1756,10 @@ export async function fetchCollection(
           return [];
         }
         
-        console.log(`✅ [Sync] Retry successful for ${tableName}, fetched ${retryData?.length || 0} items`);
+        logger.log(`✅ [Sync] Retry successful for ${tableName}, fetched ${retryData?.length || 0} items`);
         return convertSupabaseData(retryData || [], collection);
       } catch (refreshError) {
-        console.error(`❌ [Sync] Token refresh failed for ${tableName}:`, refreshError);
+        logger.error(`❌ [Sync] Token refresh failed for ${tableName}:`, refreshError);
         // Fallback for expenses/users if JOIN fails
         if (collection === 'expenses' || collection === 'users') {
           const { data: fallbackData } = await client
@@ -1782,6 +1783,6 @@ export async function fetchCollection(
     return [];
   }
   
-  console.log(`✅ [Sync] Fetched ${data?.length || 0} items from ${tableName}`);
+  logger.log(`✅ [Sync] Fetched ${data?.length || 0} items from ${tableName}`);
   return convertSupabaseData(data || [], collection);
 }

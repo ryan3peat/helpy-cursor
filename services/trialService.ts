@@ -1,4 +1,5 @@
 // services/trialService.ts
+import { logger } from '../utils/logger';
 // ============================================================================
 // Trial Service - Manages usage-based and time-based trial limits
 // ============================================================================
@@ -156,7 +157,7 @@ export async function fetchUsageStatus(householdId: string): Promise<UsageStatus
       .single();
     
     if (error || !data) {
-      console.error('[trialService] Error fetching usage status:', error);
+      logger.error('[trialService] Error fetching usage status:', error);
       // Return restrictive defaults on error
       return calculateUsageStatus(0, 0, null, false);
     }
@@ -174,7 +175,7 @@ export async function fetchUsageStatus(householdId: string): Promise<UsageStatus
       hasPaidSubscription
     );
   } catch (err) {
-    console.error('[trialService] Exception fetching usage status:', err);
+    logger.error('[trialService] Exception fetching usage status:', err);
     return calculateUsageStatus(0, 0, null, false);
   }
 }
@@ -211,14 +212,14 @@ export async function incrementAiScanCount(householdId: string): Promise<number>
       .eq('id', householdId);
     
     if (updateError) {
-      console.error('[trialService] Error incrementing AI scan count:', updateError);
+      logger.error('[trialService] Error incrementing AI scan count:', updateError);
       return -1;
     }
     
-    console.log(`[trialService] AI scan count incremented to ${newCount} for household ${householdId}`);
+    logger.log(`[trialService] AI scan count incremented to ${newCount} for household ${householdId}`);
     return newCount;
   } catch (err) {
-    console.error('[trialService] Exception incrementing AI scan count:', err);
+    logger.error('[trialService] Exception incrementing AI scan count:', err);
     return -1;
   }
 }
@@ -247,14 +248,14 @@ export async function incrementSalarySignCount(householdId: string): Promise<num
       .eq('id', householdId);
     
     if (updateError) {
-      console.error('[trialService] Error incrementing salary sign count:', updateError);
+      logger.error('[trialService] Error incrementing salary sign count:', updateError);
       return -1;
     }
     
-    console.log(`[trialService] Salary sign count incremented to ${newCount} for household ${householdId}`);
+    logger.log(`[trialService] Salary sign count incremented to ${newCount} for household ${householdId}`);
     return newCount;
   } catch (err) {
-    console.error('[trialService] Exception incrementing salary sign count:', err);
+    logger.error('[trialService] Exception incrementing salary sign count:', err);
     return -1;
   }
 }

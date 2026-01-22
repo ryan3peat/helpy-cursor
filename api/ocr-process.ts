@@ -2,6 +2,7 @@
 // Server-side proxy for DashScope Qwen-VL API to avoid CORS issues
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { logger } from './_logger';
 
 // Use international endpoint for international edition accounts
 const DASHSCOPE_API_URL = 'https://dashscope-intl.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation';
@@ -49,12 +50,12 @@ export default async function handler(
   }
 
   try {
-    console.log('[OCR API] Received OCR request');
+    logger.log('[OCR API] Received OCR request');
     
     const apiKey = process.env.ALIBABA_CLOUD_API_KEY?.trim();
     
     if (!apiKey) {
-      console.error('[OCR API] API key not configured');
+      logger.error('[OCR API] API key not configured');
       return res.status(500).json({ 
         error: 'Alibaba Cloud API key not configured on server' 
       });
@@ -62,22 +63,22 @@ export default async function handler(
 
     // Validate API key format (should start with 'sk-')
     if (!apiKey.startsWith('sk-')) {
-      console.error('[OCR API] Invalid API key format');
+      logger.error('[OCR API] Invalid API key format');
       return res.status(500).json({ 
         error: 'Invalid API key format. Alibaba Cloud API keys should start with "sk-"' 
       });
     }
 
-    console.log('[OCR API] API key validated, length:', apiKey.length);
+    logger.log('[OCR API] API key validated, length:', apiKey.length);
 
     const { base64Image }: QwenVLRequest = req.body;
 
     if (!base64Image) {
-      console.error('[OCR API] Missing base64Image in request');
+      logger.error('[OCR API] Missing base64Image in request');
       return res.status(400).json({ error: 'base64Image is required' });
     }
 
-    console.log('[OCR API] Image received, base64 length:', base64Image.length);
+    logger.log('[OCR API] Image received, base64 length:', base64Image.length);
 
     // Qwen-VL expects base64 image in data URI format
     const imageDataUri = `data:image/jpeg;base64,${base64Image}`;
@@ -104,8 +105,8 @@ export default async function handler(
       },
     };
 
-    console.log('[OCR API] Calling DashScope API:', DASHSCOPE_API_URL);
-    console.log('[OCR API] Model:', QWEN_MODEL);
+    logger.log('[OCR API] Calling DashScope API:', DASHSCOPE_API_URL);
+    logger.log('[OCR API] Model:', QWEN_MODEL);
 
     const response = await fetch(DASHSCOPE_API_URL, {
       method: 'POST',
@@ -116,12 +117,12 @@ export default async function handler(
       body: JSON.stringify(requestBody),
     });
 
-    console.log('[OCR API] DashScope API response status:', response.status);
+    logger.log('[OCR API] DashScope API response status:', response.status);
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('[OCR API] DashScope API error:', response.status);
-      console.error('[OCR API] Error response:', errorText);
+      logger.error('[OCR API] DashScope API error:', response.status);
+      logger.error('[OCR API] Error response:', errorText);
       
       let errorMessage = `Qwen-VL API error: ${response.status}`;
       
@@ -145,8 +146,8 @@ export default async function handler(
     const data: QwenVLResponse = await response.json();
 
     // Log API response for debugging
-    console.log('[OCR API] DashScope API call successful');
-    console.log('[OCR API] Response structure:', {
+    logger.log('[OCR API] DashScope API call successful');
+    logger.log('[OCR API] Response structure:', {
       hasOutput: !!data.output,
       hasChoices: !!data.output?.choices,
       choicesLength: data.output?.choices?.length || 0,
@@ -158,7 +159,7 @@ export default async function handler(
 
     // Check for API-level errors
     if (data.code && data.code !== 'Success') {
-      console.error('[OCR API] DashScope API error:', data.code, data.message);
+      logger.error('[OCR API] DashScope API error:', data.code, data.message);
       return res.status(500).json({ 
         error: `Qwen-VL API error: ${data.message || data.code}` 
       });
@@ -169,7 +170,7 @@ export default async function handler(
 
     // Handle case where content might be an object or array
     if (typeof fullText !== 'string') {
-      console.log('[OCR API] Content is not a string, converting. Type:', typeof fullText);
+      logger.log('[OCR API] Content is not a string, converting. Type:', typeof fullText);
       if (Array.isArray(fullText)) {
         // If it's an array, join the elements
         fullText = fullText.map(item => 
@@ -188,21 +189,21 @@ export default async function handler(
     fullText = String(fullText || '');
 
     if (!fullText || fullText.trim().length === 0) {
-      console.error('[OCR API] No text content extracted from response');
+      logger.error('[OCR API] No text content extracted from response');
       return res.status(500).json({ 
         error: 'No text detected in image. The Qwen-VL model did not return any text content.' 
       });
     }
 
-    console.log('[OCR API] Successfully extracted text, length:', fullText.length);
-    console.log('[OCR API] Text preview (first 200 chars):', fullText.substring(0, 200));
+    logger.log('[OCR API] Successfully extracted text, length:', fullText.length);
+    logger.log('[OCR API] Text preview (first 200 chars):', fullText.substring(0, 200));
 
     // Return the extracted text
     return res.status(200).json({ text: fullText });
 
   } catch (error) {
-    console.error('[OCR API] Unexpected error during OCR processing:', error);
-    console.error('[OCR API] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+    logger.error('[OCR API] Unexpected error during OCR processing:', error);
+    logger.error('[OCR API] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
     return res.status(500).json({ 
       error: error instanceof Error ? error.message : 'Internal server error' 
     });

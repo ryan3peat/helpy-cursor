@@ -6,7 +6,7 @@ export const EXPENSE_CATEGORIES = [
   'Food & Daily Needs',
   'Transport & Travel',
   'Health & Personal Care',
-  'Lifestyle',
+  'Fun & Lifestyle',
   'Misc'
 ];
 
@@ -426,7 +426,7 @@ Give it a try:`,
   'expenses.category.food_daily': 'Food & Daily Needs',
   'expenses.category.transport_travel': 'Transport & Travel',
   'expenses.category.health_personal': 'Health & Personal Care',
-  'expenses.category.fun_lifestyle': 'Lifestyle',
+  'expenses.category.fun_lifestyle': 'Fun & Lifestyle',
   'expenses.category.miscellaneous': 'Misc',
   'info.category.home': 'Home',
   'info.category.school': 'School',
@@ -646,7 +646,7 @@ Give it a try:`,
   'expenses.confirm_receipt': 'Confirm Receipt',
 
   // Maps
-  'maps.google_not_installed': 'Google Maps is not installed. Open in Apple Maps instead?',
+  'maps.choose_app': 'Choose your preferred maps app',
 
   // Expenses - Form Labels & Buttons
   'expenses.shop_name': 'Shop Name',
@@ -856,10 +856,15 @@ Give it a try:`,
   'plan.feature.manual_expenses_desc': 'Enter amount, category, shop, and date quickly.',
   'plan.feature.ai_scan': 'AI receipt scanning',
   'plan.feature.ai_scan_desc': 'Take or upload receipt photo and automatically capture the details.',
-  'plan.feature.spending_summary': 'Monthly Spending Summary',
+  'plan.feature.spending_summary': 'Monthly spending summary',
   'plan.feature.spending_summary_desc': 'Pie charts show category totals and percentages.',
   'plan.feature.helper_records': 'Helper details & salary slip',
   'plan.feature.helper_records_desc': 'Manage the helper\'s salary details and generate digital payslips.',
+  
+  // Plan Trial Labels (Free plan trial features)
+  'plan.trial.5_scans': '5 free scans',
+  'plan.trial.14_days': '14 days trial',
+  'plan.trial.1_signature': '1 free salary slip',
   
   // Plan Features - Test (for Stripe testing)
   'plan.feature.test_desc': 'Test plan for payment testing',

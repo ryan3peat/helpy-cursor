@@ -4,6 +4,7 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
+import { logger } from './_logger';
 
 const supabase = createClient(
   process.env.SUPABASE_URL!,
@@ -81,7 +82,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .single();
 
     if (error) {
-      console.error('Failed to save push subscription:', error);
+      logger.error('Failed to save push subscription:', error);
       return res.status(500).json({ 
         error: error.message || 'Failed to save subscription' 
       });
@@ -93,7 +94,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
   } catch (error: any) {
-    console.error('Push subscription save error:', error);
+    logger.error('Push subscription save error:', error);
     return res.status(500).json({ 
       error: error.message || 'Internal server error' 
     });

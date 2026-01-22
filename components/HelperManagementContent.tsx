@@ -35,6 +35,7 @@ import { useSheetTheme } from '../hooks/useSheetTheme';
 import { haptics } from '../utils/haptics';
 import { getCachedSupabaseUuid, isUserCachePopulated } from '../services/supabaseService';
 import { useSupabaseReady } from '../contexts/SupabaseContext';
+import { logger } from '../utils/logger';
 import {
   getHelperContract,
   getSalarySlips,
@@ -190,10 +191,10 @@ export const HelperManagementContent: React.FC<Props> = ({
     // Wait for auth to be ready before making database queries
     // This ensures RLS policies can properly authenticate the user
     if (isAuthReady || isDemoMode) {
-      console.log('[HelperManagementContent] Auth ready, loading data...');
+      logger.log('[HelperManagementContent] Auth ready, loading data...');
       loadData();
     } else {
-      console.log('[HelperManagementContent] Waiting for Supabase auth to be ready...');
+      logger.log('[HelperManagementContent] Waiting for Supabase auth to be ready...');
     }
   }, [helperId, householdId, refreshKey, isAuthReady, isDemoMode]);
   
@@ -209,17 +210,17 @@ export const HelperManagementContent: React.FC<Props> = ({
         const cachePopulated = isUserCachePopulated();
         
         if (cachePopulated) {
-          console.log(`[HelperManagementContent] User cache populated after ${retryCount} attempts, loading data...`);
+          logger.log(`[HelperManagementContent] User cache populated after ${retryCount} attempts, loading data...`);
           loadData();
           clearInterval(retryInterval);
         } else if (retryCount >= maxRetries) {
-          console.warn(`[HelperManagementContent] Cache not populated after ${maxRetries} retries. Using fallback query.`);
+          logger.warn(`[HelperManagementContent] Cache not populated after ${maxRetries} retries. Using fallback query.`);
           // Try one more time - the database fallback in salarySlipService should work now
           loadData();
           clearInterval(retryInterval);
         } else if (retryCount % 4 === 0) {
           // Log every 2 seconds (4 * 500ms) to show progress
-          console.log(`[HelperManagementContent] Waiting for user cache... (attempt ${retryCount}/${maxRetries})`);
+          logger.log(`[HelperManagementContent] Waiting for user cache... (attempt ${retryCount}/${maxRetries})`);
         }
       }, 500);
       
@@ -422,10 +423,10 @@ export const HelperManagementContent: React.FC<Props> = ({
         const otherSlips = cachedSlips.filter(s => s.helperId !== actualHelperUuid);
         onSlipsChange([...otherSlips, ...slipsData]);
       } else {
-        console.log('[HelperManagementContent] Cache not ready, will retry...');
+        logger.log('[HelperManagementContent] Cache not ready, will retry...');
       }
     } catch (err) {
-      console.error('Failed to load helper data:', err);
+      logger.error('Failed to load helper data:', err);
       setError(t['error.load_data'] || 'Failed to load data. Please try again.');
     }
   };
@@ -489,7 +490,7 @@ export const HelperManagementContent: React.FC<Props> = ({
       setShowContractSheet(false);
       loadData();
     } catch (err) {
-      console.error('Failed to save contract:', err);
+      logger.error('Failed to save contract:', err);
       setError(t['error.save_contract'] || 'Failed to save employment details. Please try again.');
     } finally {
       setIsLoading(false);
@@ -524,7 +525,7 @@ export const HelperManagementContent: React.FC<Props> = ({
       setShowDeleteConfirm(null);
       loadData();
     } catch (err) {
-      console.error('Failed to delete slip:', err);
+      logger.error('Failed to delete slip:', err);
       setError(t['error.delete_slip'] || 'Failed to delete salary slip. Please try again.');
     } finally {
       setIsLoading(false);
@@ -581,7 +582,7 @@ export const HelperManagementContent: React.FC<Props> = ({
       setShowSignConfirm(null);
       loadData();
     } catch (err: any) {
-      console.error('Failed to sign slip:', err);
+      logger.error('Failed to sign slip:', err);
       setError(err.message || t['error.sign_slip'] || 'Failed to sign. Please try again.');
     } finally {
       setIsLoading(false);
@@ -853,7 +854,7 @@ export const HelperManagementContent: React.FC<Props> = ({
       if (err instanceof Error && err.name === 'AbortError') {
         return; // User cancelled
       }
-      console.error('Failed to export PDF:', err);
+      logger.error('Failed to export PDF:', err);
       setError(t['error.export_pdf'] || 'Failed to export PDF. Please try again.');
     }
   };
@@ -1137,7 +1138,7 @@ export const HelperManagementContent: React.FC<Props> = ({
       if (err instanceof Error && err.name === 'AbortError') {
         return; // User cancelled
       }
-      console.error('Failed to export all PDFs:', err);
+      logger.error('Failed to export all PDFs:', err);
       setError(t['error.export_pdf'] || 'Failed to export PDFs. Please try again.');
     } finally {
       setIsExportingAll(false);

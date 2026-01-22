@@ -5,6 +5,7 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
+import { logger } from './_logger';
 
 // Initialize Supabase with service role (bypasses RLS)
 const supabase = createClient(
@@ -29,7 +30,7 @@ async function resolveUserIdToUuid(userId: string, householdId: string): Promise
       .single();
     
     if (error || !data) {
-      console.log(`Could not find user with clerk_id ${userId}`);
+      logger.log(`Could not find user with clerk_id ${userId}`);
       return null;
     }
     return data.id;
@@ -44,7 +45,7 @@ async function resolveUserIdToUuid(userId: string, householdId: string): Promise
     .single();
   
   if (error || !data) {
-    console.log(`Could not find user with id ${userId}`);
+    logger.log(`Could not find user with id ${userId}`);
     return null;
   }
   return data.id;
@@ -136,11 +137,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           .eq('id', resolvedUserId);
 
         if (deleteError) {
-          console.error('Error deleting user:', deleteError);
+          logger.error('Error deleting user:', deleteError);
           return res.status(500).json({ error: 'Failed to delete user' });
         }
 
-        console.log(`✅ User ${currentUser.name} (${resolvedUserId}) deleted their account`);
+        logger.log(`✅ User ${currentUser.name} (${resolvedUserId}) deleted their account`);
         
         return res.status(200).json({
           success: true,
@@ -193,7 +194,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           .eq('id', resolvedNewOwnerId);
 
         if (updateNewOwnerError) {
-          console.error('Error updating new owner:', updateNewOwnerError);
+          logger.error('Error updating new owner:', updateNewOwnerError);
           return res.status(500).json({ error: 'Failed to transfer ownership' });
         }
 
@@ -216,11 +217,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             .update({ role: newOwner.role })
             .eq('id', resolvedNewOwnerId);
           
-          console.error('Error deleting admin:', deleteAdminError);
+          logger.error('Error deleting admin:', deleteAdminError);
           return res.status(500).json({ error: 'Failed to remove admin account' });
         }
 
-        console.log(`✅ Admin ${currentUser.name} deactivated, ownership transferred to ${newOwner.name}`);
+        logger.log(`✅ Admin ${currentUser.name} deactivated, ownership transferred to ${newOwner.name}`);
 
         return res.status(200).json({
           success: true,
@@ -255,7 +256,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           .eq('household_id', householdId);
 
         if (usersError) {
-          console.error('Error fetching household users:', usersError);
+          logger.error('Error fetching household users:', usersError);
           return res.status(500).json({ error: 'Failed to fetch household members' });
         }
 
@@ -276,7 +277,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           .eq('household_id', householdId);
 
         if (deleteUsersError) {
-          console.error('Error deleting users:', deleteUsersError);
+          logger.error('Error deleting users:', deleteUsersError);
           return res.status(500).json({ error: 'Failed to delete household members' });
         }
 
@@ -287,11 +288,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           .eq('id', householdId);
 
         if (deleteHouseholdError) {
-          console.error('Error deleting household:', deleteHouseholdError);
+          logger.error('Error deleting household:', deleteHouseholdError);
           return res.status(500).json({ error: 'Failed to delete household' });
         }
 
-        console.log(`✅ Household ${householdId} deleted with ${userCount} members`);
+        logger.log(`✅ Household ${householdId} deleted with ${userCount} members`);
 
         return res.status(200).json({
           success: true,
@@ -306,7 +307,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
   } catch (error: any) {
-    console.error('Delete account error:', error);
+    logger.error('Delete account error:', error);
     return res.status(500).json({ 
       error: error.message || 'Internal server error' 
     });

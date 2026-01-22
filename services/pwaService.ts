@@ -8,6 +8,7 @@
 
 import { supabase } from './supabase';
 import { getAuthenticatedSupabaseClient, refreshSupabaseToken } from '../contexts/SupabaseContext';
+import { logger } from '../utils/logger';
 import { getDeviceId, isIosDevice, isAndroidDevice } from '../utils/pwaUtils';
 
 // ============================================================================
@@ -17,7 +18,7 @@ import { getDeviceId, isIosDevice, isAndroidDevice } from '../utils/pwaUtils';
 function getSupabaseClient() {
   const authClient = getAuthenticatedSupabaseClient();
   if (!authClient) {
-    console.warn('[pwaService] ⚠️ No authenticated client available, using default (may fail RLS)');
+    logger.warn('[pwaService] ⚠️ No authenticated client available, using default (may fail RLS)');
   }
   return authClient || supabase;
 }
@@ -59,7 +60,7 @@ export async function isDevicePwaInstalled(userId: string): Promise<boolean> {
 
     // SELF-HEALING: If JWT error, refresh token and retry ONCE
     if (error && isJwtError(error)) {
-      console.warn('[pwaService] ⚠️ JWT error on isDevicePwaInstalled, refreshing token...');
+      logger.warn('[pwaService] ⚠️ JWT error on isDevicePwaInstalled, refreshing token...');
       try {
         await refreshSupabaseToken();
         const retryResult = await getSupabaseClient()
@@ -69,25 +70,25 @@ export async function isDevicePwaInstalled(userId: string): Promise<boolean> {
           .eq('device_id', deviceId)
           .limit(1);
         if (!retryResult.error) {
-          console.log('[pwaService] ✅ Retry successful');
+          logger.log('[pwaService] ✅ Retry successful');
           data = retryResult.data;
           error = null;
         }
       } catch (refreshError) {
-        console.error('[pwaService] ❌ Token refresh failed:', refreshError);
+        logger.error('[pwaService] ❌ Token refresh failed:', refreshError);
       }
     }
     
     if (error) {
-      console.error('[PWA Service] Error checking installation:', error);
+      logger.error('[PWA Service] Error checking installation:', error);
       return false;
     }
     
     const isInstalled = data && data.length > 0;
-    console.log('[PWA Service] Device installation check:', { userId, deviceId, isInstalled });
+    logger.log('[PWA Service] Device installation check:', { userId, deviceId, isInstalled });
     return isInstalled;
   } catch (error) {
-    console.error('[PWA Service] Failed to check installation:', error);
+    logger.error('[PWA Service] Failed to check installation:', error);
     return false;
   }
 }
@@ -107,7 +108,7 @@ export async function recordPwaInstallation(
     const platform = isIosDevice() ? 'ios' : isAndroidDevice() ? 'android' : 'desktop';
     const userAgent = navigator.userAgent;
     
-    console.log('[PWA Service] Recording installation:', { userId, householdId, deviceId, platform });
+    logger.log('[PWA Service] Recording installation:', { userId, householdId, deviceId, platform });
     
     const { error } = await getSupabaseClient()
       .from('pwa_installations')
@@ -123,14 +124,14 @@ export async function recordPwaInstallation(
       });
     
     if (error) {
-      console.error('[PWA Service] Error recording installation:', error);
+      logger.error('[PWA Service] Error recording installation:', error);
       return false;
     }
     
-    console.log('[PWA Service] Installation recorded successfully');
+    logger.log('[PWA Service] Installation recorded successfully');
     return true;
   } catch (error) {
-    console.error('[PWA Service] Failed to record installation:', error);
+    logger.error('[PWA Service] Failed to record installation:', error);
     return false;
   }
 }
@@ -151,14 +152,14 @@ export async function clearPwaInstallation(userId: string): Promise<boolean> {
       .eq('device_id', deviceId);
     
     if (error) {
-      console.error('[PWA Service] Error clearing installation:', error);
+      logger.error('[PWA Service] Error clearing installation:', error);
       return false;
     }
     
-    console.log('[PWA Service] Installation cleared for device:', deviceId);
+    logger.log('[PWA Service] Installation cleared for device:', deviceId);
     return true;
   } catch (error) {
-    console.error('[PWA Service] Failed to clear installation:', error);
+    logger.error('[PWA Service] Failed to clear installation:', error);
     return false;
   }
 }

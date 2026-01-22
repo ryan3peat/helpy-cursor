@@ -56,6 +56,7 @@ import {
   deletePractice,
 } from './services/practiceService';
 import { useRealtimeStatus } from './hooks/useRealtimeStatus';
+import { logger } from './utils/logger';
 
 // Loading component for app states
 const AppLoading = () => (
@@ -132,7 +133,7 @@ const AppContent: React.FC = () => {
   // Listen for service worker update events
   useEffect(() => {
     const handleUpdateAvailable = (e: CustomEvent<{ registration: ServiceWorkerRegistration }>) => {
-      console.log('[App] Service worker update available!');
+      logger.log('[App] Service worker update available!');
       setSwRegistration(e.detail.registration);
       // Only show toast if user hasn't dismissed it this session
       if (!updateToastDismissedRef.current) {
@@ -152,14 +153,14 @@ const AppContent: React.FC = () => {
     // Check for updates when app comes to foreground
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        console.log('[App] App visible - checking for updates...');
+        logger.log('[App] App visible - checking for updates...');
         checkForUpdates();
       }
     };
 
     // Check every 60 minutes while app is open
     const intervalId = setInterval(() => {
-      console.log('[App] Periodic update check (60 min)...');
+      logger.log('[App] Periodic update check (60 min)...');
       checkForUpdates();
     }, 60 * 60 * 1000);
 
@@ -173,7 +174,7 @@ const AppContent: React.FC = () => {
 
   // Handle Update button click
   const handleUpdateApp = useCallback(() => {
-    console.log('[App] User clicked Update - applying service worker update...');
+    logger.log('[App] User clicked Update - applying service worker update...');
     if (swRegistration) {
       applyServiceWorkerUpdate(swRegistration);
     } else {
@@ -184,7 +185,7 @@ const AppContent: React.FC = () => {
 
   // Handle Dismiss button click
   const handleDismissUpdate = useCallback(() => {
-    console.log('[App] User dismissed update toast');
+    logger.log('[App] User dismissed update toast');
     setShowUpdateToast(false);
     updateToastDismissedRef.current = true;
     // Toast will reappear on next app open (ref resets on page load)
@@ -196,14 +197,14 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     if (!clerkLoaded) {
       const timeout = setTimeout(() => {
-        console.error('⚠️ [App] Clerk loading timeout - taking longer than 10 seconds');
-        console.error('⚠️ [App] Checking for network errors...');
+        logger.error('⚠️ [App] Clerk loading timeout - taking longer than 10 seconds');
+        logger.error('⚠️ [App] Checking for network errors...');
         
         // Check if we can reach Clerk's API
         fetch('https://api.clerk.dev/v1/health', { method: 'HEAD' })
-          .then(() => console.log('✅ [App] Can reach Clerk API'))
+          .then(() => logger.log('✅ [App] Can reach Clerk API'))
           .catch((err) => {
-            console.error('❌ [App] Cannot reach Clerk API:', err);
+            logger.error('❌ [App] Cannot reach Clerk API:', err);
             setClerkError('Network error: Cannot connect to Clerk servers. Check your internet connection.');
           });
         
@@ -250,7 +251,7 @@ const AppContent: React.FC = () => {
         const translated = await getStaticTranslations(lang);
         setTranslations(translated);
       } catch (error) {
-        console.error('Failed to load translations:', error);
+        logger.error('Failed to load translations:', error);
         setTranslations(BASE_TRANSLATIONS); // Fallback to English
       } finally {
         setStaticTranslating(false);
@@ -339,18 +340,18 @@ const AppContent: React.FC = () => {
   }, [currentUser]);
 
   const handleLogin = useCallback((user: User) => {
-    console.log('🔵 [App] handleLogin called with user:', user);
-    console.log('🔵 [App] User details:', {
+    logger.log('🔵 [App] handleLogin called with user:', user);
+    logger.log('🔵 [App] User details:', {
       id: user.id,
       householdId: user.householdId,
       notificationsEnabled: user.notificationsEnabled,
       hasNotificationsEnabled: 'notificationsEnabled' in user
     });
-    console.log('🔵 [App] loginProcessedRef.current:', loginProcessedRef.current);
-    console.log('🔵 [App] currentUser before update:', currentUser);
+    logger.log('🔵 [App] loginProcessedRef.current:', loginProcessedRef.current);
+    logger.log('🔵 [App] currentUser before update:', currentUser);
     
     if (loginProcessedRef.current) {
-      console.log('⚠️ [App] handleLogin blocked by loginProcessedRef');
+      logger.log('⚠️ [App] handleLogin blocked by loginProcessedRef');
       return;
     }
     loginProcessedRef.current = true;
@@ -358,7 +359,7 @@ const AppContent: React.FC = () => {
     window.history.replaceState({}, document.title, newUrl);
     setInviteParams(null);
     
-    console.log('🔵 [App] User details before setCurrentUser:', {
+    logger.log('🔵 [App] User details before setCurrentUser:', {
       id: user.id,
       householdId: user.householdId,
       notificationsEnabled: user.notificationsEnabled,
@@ -371,13 +372,13 @@ const AppContent: React.FC = () => {
     setActiveView('dashboard');
     // Mark app as seen for badge tracking
     markAppAsSeen();
-    console.log('✅ [App] handleLogin completed, currentUser should be set');
+    logger.log('✅ [App] handleLogin completed, currentUser should be set');
     
     // Note: Notification capability check is handled by the useEffect that watches currentUser
     // No need to duplicate the check here - the useEffect will run when currentUser is set
     setTimeout(() => {
       loginProcessedRef.current = false;
-      console.log('✅ [App] loginProcessedRef reset');
+      logger.log('✅ [App] loginProcessedRef reset');
     }, 1000);
   }, [currentUser]);
 
@@ -435,7 +436,7 @@ const AppContent: React.FC = () => {
       await signOut();
       resetState();
     } catch (error) {
-      console.error('Logout error:', error);
+      logger.error('Logout error:', error);
       resetState();
     }
   }, [signOut]);
@@ -460,7 +461,7 @@ const AppContent: React.FC = () => {
     const handleServiceWorkerMessage = (event: MessageEvent) => {
       if (event.data?.type === 'NAVIGATE' && event.data?.url) {
         const url = event.data.url as string;
-        console.log('[App] Received NAVIGATE message from service worker:', url);
+        logger.log('[App] Received NAVIGATE message from service worker:', url);
         
         // Parse the hash URL and navigate in-app
         if (url.includes('#todo') || url.includes('todo')) {
@@ -469,24 +470,24 @@ const AppContent: React.FC = () => {
           const section = sectionMatch ? sectionMatch[1] : undefined;
           setActiveView('todo');
           setNavData(section ? { section } : null);
-          console.log('[App] Navigating to ToDo', section ? `(section: ${section})` : '');
+          logger.log('[App] Navigating to ToDo', section ? `(section: ${section})` : '');
         } else if (url.includes('#meals') || url.includes('meals')) {
           setActiveView('meals');
           setNavData(null);
-          console.log('[App] Navigating to Meals');
+          logger.log('[App] Navigating to Meals');
         } else if (url.includes('#expenses') || url.includes('expenses')) {
           setActiveView('expenses');
           setNavData(null);
-          console.log('[App] Navigating to Expenses');
+          logger.log('[App] Navigating to Expenses');
         } else if (url.includes('#profile') || url.includes('profile')) {
           setActiveView('profile');
           setNavData(null);
-          console.log('[App] Navigating to Profile');
+          logger.log('[App] Navigating to Profile');
         } else {
           // Default to dashboard
           setActiveView('dashboard');
           setNavData(null);
-          console.log('[App] Navigating to Home (default)');
+          logger.log('[App] Navigating to Home (default)');
         }
         
         // Mark app as seen for badge tracking
@@ -727,7 +728,7 @@ const AppContent: React.FC = () => {
     if (!currentUser?.householdId) return;
     const hid = currentUser.householdId;
     
-    console.log('[App] Running periodic sync...');
+    logger.log('[App] Running periodic sync...');
     
     // Use authenticated client for RLS-protected queries (fixes 406 errors)
     const authClient = getAuthenticatedSupabaseClient() || supabase;
@@ -806,9 +807,9 @@ const AppContent: React.FC = () => {
         setUsageStatus(newUsageStatus);
       }
       
-      console.log('[App] Periodic sync completed');
+      logger.log('[App] Periodic sync completed');
     } catch (error) {
-      console.error('[App] Periodic sync failed:', error);
+      logger.error('[App] Periodic sync failed:', error);
     }
   }, [currentUser?.householdId]);
 
@@ -827,16 +828,16 @@ const AppContent: React.FC = () => {
     const handleVisibilityChange = () => {
       // When app becomes visible, check if we need to refresh data
       if (document.visibilityState === 'visible') {
-        console.log('[App] 📱 App became visible, checking connection status...');
+        logger.log('[App] 📱 App became visible, checking connection status...');
         
         // If disconnected or connecting, immediately sync data
         if (realtimeStatus === 'disconnected' || realtimeStatus === 'connecting') {
-          console.log(`[App] ⚠️ Connection status: ${realtimeStatus} - triggering immediate sync`);
+          logger.log(`[App] ⚠️ Connection status: ${realtimeStatus} - triggering immediate sync`);
           syncNow();
         } else {
           // Even if connected, do a quick sync to ensure we have latest data
           // This handles cases where subscriptions missed updates while backgrounded
-          console.log('[App] ✅ Connection appears active, doing background refresh to catch any missed updates');
+          logger.log('[App] ✅ Connection appears active, doing background refresh to catch any missed updates');
           syncAllData();
         }
       }
@@ -862,11 +863,11 @@ const AppContent: React.FC = () => {
       .then(() => {
         // Check for updates AFTER service worker is registered and listeners are set up
         // This prevents the race condition where we check before we're listening
-        console.log('[App] SW initialized - checking for updates...');
+        logger.log('[App] SW initialized - checking for updates...');
         checkForUpdates();
       })
       .catch(err => {
-        console.warn('[App] Failed to initialize push notifications:', err);
+        logger.warn('[App] Failed to initialize push notifications:', err);
         // Still check for updates even if push init fails (SW might still be registered)
         checkForUpdates();
       });
@@ -911,7 +912,7 @@ const AppContent: React.FC = () => {
     const currentHasPushSubscription = currentUser?.hasPushSubscription;
     const userEmail = currentUser?.email;
     
-    console.log('[App] Auto-subscribe useEffect triggered', {
+    logger.log('[App] Auto-subscribe useEffect triggered', {
       hasCurrentUser: !!currentUser,
       userId,
       householdId,
@@ -919,7 +920,7 @@ const AppContent: React.FC = () => {
     });
     
     if (!userId || !householdId) {
-      console.log('[App] Auto-subscribe skipped: missing currentUser or householdId');
+      logger.log('[App] Auto-subscribe skipped: missing currentUser or householdId');
       return;
     }
     
@@ -928,17 +929,17 @@ const AppContent: React.FC = () => {
     
     // Skip if we already checked with the same parameters
     if (lastNotificationCheckKeyRef.current === checkKey) {
-      console.log('[App] Skipping duplicate notification check (same parameters)');
+      logger.log('[App] Skipping duplicate notification check (same parameters)');
       return;
     }
     
     // Skip if a check is already in progress
     if (notificationCheckInProgressRef.current) {
-      console.log('[App] Notification check already in progress, skipping');
+      logger.log('[App] Notification check already in progress, skipping');
       return;
     }
     
-    console.log('[App] Checking notification capability...');
+    logger.log('[App] Checking notification capability...');
     
     // EARLY SYNC CHECK: If browser permission doesn't allow notifications but database
     // says hasPushSubscription=true, this is stale data. Fix it immediately to prevent
@@ -946,7 +947,7 @@ const AppContent: React.FC = () => {
     if (typeof Notification !== 'undefined' && currentHasPushSubscription) {
       const browserPermission = Notification.permission;
       if (browserPermission === 'default' || browserPermission === 'denied') {
-        console.log(`[App] 🔧 Early fix: Permission is '${browserPermission}' but hasPushSubscription=true. Correcting stale data.`);
+        logger.log(`[App] 🔧 Early fix: Permission is '${browserPermission}' but hasPushSubscription=true. Correcting stale data.`);
         setCurrentUser(prev => prev ? { ...prev, hasPushSubscription: false } : prev);
       }
     }
@@ -960,7 +961,7 @@ const AppContent: React.FC = () => {
       try {
         // If user disabled notifications, no need to check capability
         if (notificationsEnabled !== true) {
-          console.log('[App] Notifications disabled by user preference');
+          logger.log('[App] Notifications disabled by user preference');
           // Ensure hasPushSubscription is false when notifications are disabled
           if (currentHasPushSubscription) {
             setCurrentUser(prev => prev ? { ...prev, hasPushSubscription: false } : prev);
@@ -972,46 +973,46 @@ const AppContent: React.FC = () => {
         // This fixes the "stale subscription" problem where user clears cache
         // and the database has old endpoints that don't work
         if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-          console.log('[App] 🔄 Ensuring current browser subscription is synced to database...');
-          console.log('[App] 🔍 Debug: userId =', userId, 'householdId =', householdId, 'email =', userEmail ? userEmail.substring(0, 3) + '***' : 'undefined');
+          logger.log('[App] 🔄 Ensuring current browser subscription is synced to database...');
+          logger.log('[App] 🔍 Debug: userId =', userId, 'householdId =', householdId, 'email =', userEmail ? userEmail.substring(0, 3) + '***' : 'undefined');
           const synced = await ensureCurrentSubscriptionSaved(userId, householdId, 0, userEmail);
           if (synced) {
-            console.log('[App] ✅ Subscription synced successfully');
+            logger.log('[App] ✅ Subscription synced successfully');
             setCurrentUser(prev => prev ? { ...prev, hasPushSubscription: true } : prev);
             return; // No need for further checks, we just synced
           } else {
-            console.log('[App] ⚠️ Subscription sync failed on initial attempt');
+            logger.log('[App] ⚠️ Subscription sync failed on initial attempt');
             // Schedule a delayed retry as a fallback (gives more time for service worker)
-            console.log('[App] 📅 Scheduling delayed retry in 5 seconds...');
+            logger.log('[App] 📅 Scheduling delayed retry in 5 seconds...');
             setTimeout(async () => {
-              console.log('[App] ⏰ Delayed retry: Attempting subscription sync again...');
+              logger.log('[App] ⏰ Delayed retry: Attempting subscription sync again...');
               const delayedSync = await ensureCurrentSubscriptionSaved(userId, householdId, 0, userEmail);
               if (delayedSync) {
-                console.log('[App] ✅ Delayed sync succeeded!');
+                logger.log('[App] ✅ Delayed sync succeeded!');
                 setCurrentUser(prev => prev ? { ...prev, hasPushSubscription: true } : prev);
               } else {
-                console.log('[App] ❌ Delayed sync also failed');
+                logger.log('[App] ❌ Delayed sync also failed');
               }
             }, 5000);
           }
         } else {
-          console.log('[App] ⏭️ Skipping sync: Notification not defined or permission not granted');
+          logger.log('[App] ⏭️ Skipping sync: Notification not defined or permission not granted');
           if (typeof Notification !== 'undefined') {
-            console.log('[App] Current permission:', Notification.permission);
+            logger.log('[App] Current permission:', Notification.permission);
           }
         }
         
         // Check actual capability
         const capability = await checkNotificationCapability(userId, householdId);
         
-        console.log('[App] Notification capability:', capability);
+        logger.log('[App] Notification capability:', capability);
         
         // Update UI state to reflect REALITY
         const isActuallyCapable = capability.capable;
         
         // Only update if the value actually changed
         if (isActuallyCapable !== currentHasPushSubscription) {
-          console.log(`[App] Updating hasPushSubscription: ${currentHasPushSubscription} → ${isActuallyCapable}`);
+          logger.log(`[App] Updating hasPushSubscription: ${currentHasPushSubscription} → ${isActuallyCapable}`);
           setCurrentUser(prev => prev ? { ...prev, hasPushSubscription: isActuallyCapable } : prev);
         }
         
@@ -1022,22 +1023,22 @@ const AppContent: React.FC = () => {
               capability.reason === 'no_database_subscription' ||
               capability.reason === 'subscription_mismatch' ||
               capability.reason === 'no_service_worker') {
-            console.log('[App] Attempting auto-fix...');
+            logger.log('[App] Attempting auto-fix...');
             const fixed = await autoFixNotificationIssues(userId, householdId);
             if (fixed) {
-              console.log('[App] ✅ Auto-fix successful');
+              logger.log('[App] ✅ Auto-fix successful');
               setCurrentUser(prev => prev ? { ...prev, hasPushSubscription: true } : prev);
             } else {
-              console.log('[App] ⚠️ Auto-fix failed - user may need to re-toggle');
+              logger.log('[App] ⚠️ Auto-fix failed - user may need to re-toggle');
             }
           } else {
-            console.log('[App] ❌ Cannot auto-fix:', capability.reason);
+            logger.log('[App] ❌ Cannot auto-fix:', capability.reason);
           }
         } else {
-          console.log('[App] ✅ Notifications working correctly');
+          logger.log('[App] ✅ Notifications working correctly');
         }
       } catch (err) {
-        console.warn('[App] Error checking notification capability:', err);
+        logger.warn('[App] Error checking notification capability:', err);
       } finally {
         notificationCheckInProgressRef.current = false;
       }
@@ -1052,10 +1053,10 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     if (!currentUser || !currentUser.householdId) return;
     if (!isSupabaseReady) {
-      console.log('[App] ⏳ Waiting for authenticated Supabase client...');
+      logger.log('[App] ⏳ Waiting for authenticated Supabase client...');
       return;
     }
-    console.log('[App] ✅ Supabase ready, setting up subscriptions');
+    logger.log('[App] ✅ Supabase ready, setting up subscriptions');
     const hid = currentUser.householdId;
     
     const unsubUsers = subscribeToCollection(hid, 'users', (data) => {
@@ -1088,7 +1089,7 @@ const AppContent: React.FC = () => {
       // Protect cached data: don't replace existing users with empty results
       setUsers(prev => {
         if (finalUsers.length === 0 && prev.length > 0) {
-          console.log('[App] 🛡️ Protecting cached users from empty result');
+          logger.log('[App] 🛡️ Protecting cached users from empty result');
           return prev;
         }
         return finalUsers as User[];
@@ -1105,7 +1106,7 @@ const AppContent: React.FC = () => {
         // Protect cached data: don't replace existing todos with empty results
         const realPrevItems = prev.filter(item => !item.id.startsWith('temp-') && !item.id.startsWith('todo-'));
         if (filteredData.length === 0 && realPrevItems.length > 0) {
-          console.log('[App] 🛡️ Protecting cached todos from empty result');
+          logger.log('[App] 🛡️ Protecting cached todos from empty result');
           return prev;
         }
         
@@ -1130,7 +1131,7 @@ const AppContent: React.FC = () => {
       // This prevents brief network hiccups from wiping the UI
       setMeals(prev => {
         if (data.length === 0 && prev.length > 0) {
-          console.log('[App] 🛡️ Protecting cached meals from empty result');
+          logger.log('[App] 🛡️ Protecting cached meals from empty result');
           return prev;
         }
         return data as Meal[];
@@ -1141,7 +1142,7 @@ const AppContent: React.FC = () => {
       // Protect cached data: don't replace existing data with empty results
       setExpenses(prev => {
         if (data.length === 0 && prev.length > 0) {
-          console.log('[App] 🛡️ Protecting cached expenses from empty result');
+          logger.log('[App] 🛡️ Protecting cached expenses from empty result');
           return prev;
         }
         return data as Expense[];
@@ -1168,7 +1169,7 @@ const AppContent: React.FC = () => {
       // This prevents brief JWT hiccups from wiping the UI
       setPlaces(prev => {
         if (data.length === 0 && prev.length > 0) {
-          console.log('[App] 🛡️ Protecting cached places from empty result');
+          logger.log('[App] 🛡️ Protecting cached places from empty result');
           return prev;
         }
         return data;
@@ -1178,7 +1179,7 @@ const AppContent: React.FC = () => {
       // Protect cached data: don't replace existing practices with empty results
       setPractices(prev => {
         if (data.length === 0 && prev.length > 0) {
-          console.log('[App] 🛡️ Protecting cached practices from empty result');
+          logger.log('[App] 🛡️ Protecting cached practices from empty result');
           return prev;
         }
         return data;
@@ -1189,16 +1190,16 @@ const AppContent: React.FC = () => {
     // This ensures helper data loads on mount, not just on periodic sync
     (async () => {
       try {
-        console.log('[App] Fetching initial helper data...');
+        logger.log('[App] Fetching initial helper data...');
         const [contractsData, slipsData] = await Promise.all([
           getHelperContracts(hid),
           getAllSalarySlips(hid),
         ]);
         if (contractsData) setHelperContracts(contractsData);
         if (slipsData) setSalarySlips(slipsData);
-        console.log('[App] ✅ Initial helper data loaded');
+        logger.log('[App] ✅ Initial helper data loaded');
       } catch (err) {
-        console.error('[App] Failed to fetch initial helper data:', err);
+        logger.error('[App] Failed to fetch initial helper data:', err);
       }
     })();
     
@@ -1259,10 +1260,10 @@ const AppContent: React.FC = () => {
     
     // Start master timeout IMMEDIATELY
     if (!masterTimeoutRef.current) {
-      console.log('[Session Verification] ⏱️ Starting 5s master timeout...');
+      logger.log('[Session Verification] ⏱️ Starting 5s master timeout...');
       masterTimeoutRef.current = setTimeout(() => {
         if (!sessionVerified) {
-          console.warn('[Session Verification] ⏰ MASTER TIMEOUT - letting user through after 5s wait');
+          logger.warn('[Session Verification] ⏰ MASTER TIMEOUT - letting user through after 5s wait');
           setSessionVerified(true);
         }
         masterTimeoutRef.current = null;
@@ -1291,7 +1292,7 @@ const AppContent: React.FC = () => {
     
     // Demo mode: skip verification
     if (isDemoMode) {
-      console.log('[Session Verification] Demo mode - skipping verification');
+      logger.log('[Session Verification] Demo mode - skipping verification');
       setSessionVerified(true);
       sessionVerificationRef.current = true;
       return;
@@ -1299,7 +1300,7 @@ const AppContent: React.FC = () => {
     
     // Wait for authenticated Supabase client (master timeout will save us if this takes too long)
     if (!isSupabaseReady) {
-      console.log('[Session Verification] ⏳ Waiting for authenticated client...');
+      logger.log('[Session Verification] ⏳ Waiting for authenticated client...');
       return;
     }
     
@@ -1307,9 +1308,9 @@ const AppContent: React.FC = () => {
     sessionVerificationRef.current = true;
     
     const verifySession = async (): Promise<'verified' | 'stale'> => {
-      console.log('[Session Verification] 🔍 Verifying session at the door...');
-      console.log('[Session Verification] currentUser.id:', currentUser.id);
-      console.log('[Session Verification] householdId:', currentUser.householdId);
+      logger.log('[Session Verification] 🔍 Verifying session at the door...');
+      logger.log('[Session Verification] currentUser.id:', currentUser.id);
+      logger.log('[Session Verification] householdId:', currentUser.householdId);
       
       const client = getAuthenticatedSupabaseClient();
       if (!client) {
@@ -1326,21 +1327,21 @@ const AppContent: React.FC = () => {
         .maybeSingle();
       
       if (householdError) {
-        console.error('[Session Verification] ❌ Household query error:', householdError.message, householdError.code);
+        logger.error('[Session Verification] ❌ Household query error:', householdError.message, householdError.code);
         // 406 means RLS blocked - the JWT doesn't have access to this household
         if (householdError.code === 'PGRST116' || householdError.message?.includes('406')) {
-          console.error('[Session Verification] ❌ RLS blocked access - session is stale');
+          logger.error('[Session Verification] ❌ RLS blocked access - session is stale');
           return 'stale';
         }
         return 'stale';
       }
       
       if (!householdData) {
-        console.error('[Session Verification] ❌ Household not found or no access');
+        logger.error('[Session Verification] ❌ Household not found or no access');
         return 'stale';
       }
       
-      console.log('[Session Verification] ✅ Household access verified:', householdData.name);
+      logger.log('[Session Verification] ✅ Household access verified:', householdData.name);
       
       // Optional: Also verify we can see at least one user in the household
       // This catches edge cases where household is visible but user data isn't
@@ -1351,18 +1352,18 @@ const AppContent: React.FC = () => {
         .limit(1);
       
       if (usersError) {
-        console.warn('[Session Verification] ⚠️ Users query failed:', usersError.message);
+        logger.warn('[Session Verification] ⚠️ Users query failed:', usersError.message);
         // Household worked, so session is probably OK
         return 'verified';
       }
       
       if (!usersInHousehold || usersInHousehold.length === 0) {
-        console.warn('[Session Verification] ⚠️ No users visible in household (might be OK if RLS is strict)');
+        logger.warn('[Session Verification] ⚠️ No users visible in household (might be OK if RLS is strict)');
         // Household access worked, so session is valid
         return 'verified';
       }
       
-      console.log('[Session Verification] ✅ Session verified successfully');
+      logger.log('[Session Verification] ✅ Session verified successfully');
       return 'verified';
     };
     
@@ -1379,17 +1380,17 @@ const AppContent: React.FC = () => {
           setSessionVerified(true);
         } else {
           // Stale session detected
-          console.warn('[Session Verification] ⚠️ Session invalid');
+          logger.warn('[Session Verification] ⚠️ Session invalid');
           
           // On localhost, skip session invalidation (JWT template may be missing)
           const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
           if (isLocalDev) {
-            console.log('[Session Verification] ⚠️ Skipping invalidation on localhost - marking as verified');
+            logger.log('[Session Verification] ⚠️ Skipping invalidation on localhost - marking as verified');
             setSessionVerified(true);
             return;
           }
           
-          console.log('[Session Verification] 🔄 Triggering silent refresh via Auth');
+          logger.log('[Session Verification] 🔄 Triggering silent refresh via Auth');
           localStorage.removeItem('helpy_current_session_user');
           setCurrentUser(null);
           setSessionVerified(false);
@@ -1397,7 +1398,7 @@ const AppContent: React.FC = () => {
         }
       })
       .catch((err) => {
-        console.error('[Session Verification] ❌ Unexpected error:', err);
+        logger.error('[Session Verification] ❌ Unexpected error:', err);
         // On error, let master timeout handle it (or it already did)
       });
   }, [currentUser, isSupabaseReady, sessionVerified, isDemoMode]);
@@ -1416,7 +1417,7 @@ const AppContent: React.FC = () => {
     
     // Demo mode: skip database, just return the item for UI display
     if (isDemoMode) {
-      console.log('📷 Demo mode: skipping todo add to database');
+      logger.log('📷 Demo mode: skipping todo add to database');
       return item;
     }
     
@@ -1446,7 +1447,7 @@ const AppContent: React.FC = () => {
       
       try {
         const savedSeries = await addItem(hid, 'recurring_series', seriesData);
-        console.log('🔄 Created recurring series:', savedSeries?.id);
+        logger.log('🔄 Created recurring series:', savedSeries?.id);
         
         // The database trigger automatically creates current + next instances
         // Fetch the created instances to update UI
@@ -1496,7 +1497,7 @@ const AppContent: React.FC = () => {
         
         return newItem; // Fallback
       } catch (error) {
-        console.error('❌ Failed to create recurring task:', error);
+        logger.error('❌ Failed to create recurring task:', error);
         // Remove the optimistic temp item since save failed
         setTodoItems(prev => prev.filter(i => i.id !== tempId));
         showAlert(
@@ -1527,7 +1528,7 @@ const AppContent: React.FC = () => {
       
       return savedItem || newItem;
     } catch (error) {
-      console.error('❌ Failed to create task:', error);
+      logger.error('❌ Failed to create task:', error);
       // Remove the optimistic temp item since save failed
       setTodoItems(prev => prev.filter(i => i.id !== tempId));
       showAlert(
@@ -1544,7 +1545,7 @@ const AppContent: React.FC = () => {
     
     // Demo mode: skip database operation
     if (isDemoMode) {
-      console.log('📷 Demo mode: skipping todo update to database');
+      logger.log('📷 Demo mode: skipping todo update to database');
       return;
     }
     
@@ -1566,7 +1567,7 @@ const AppContent: React.FC = () => {
     ));
     // Skip database call for temp IDs - real-time sync will handle it
     if (isTempId(id)) {
-      console.warn('⚠️ Skipping update for temp item - waiting for real ID:', id);
+      logger.warn('⚠️ Skipping update for temp item - waiting for real ID:', id);
       return;
     }
     await updateItem(hid, 'todo_items', id, enhancedData);
@@ -1581,7 +1582,7 @@ const AppContent: React.FC = () => {
     
     // Demo mode: skip database operation
     if (isDemoMode) {
-      console.log('📷 Demo mode: skipping todo delete from database');
+      logger.log('📷 Demo mode: skipping todo delete from database');
       return;
     }
     
@@ -1601,7 +1602,7 @@ const AppContent: React.FC = () => {
     
     // Skip database call for temp IDs - item not in database yet
     if (isTempId(id)) {
-      console.warn('⚠️ Skipping delete for temp item - not yet saved:', id);
+      logger.warn('⚠️ Skipping delete for temp item - not yet saved:', id);
       setTimeout(() => {
         pendingTodoDeletions.current.delete(id);
       }, 500);
@@ -1615,7 +1616,7 @@ const AppContent: React.FC = () => {
       // For recurring tasks: FIRST soft-delete the series to prevent the trigger
       // from creating new instances while we're deleting
       if (seriesId) {
-        console.log('🗑️ Soft-deleting recurring series FIRST:', seriesId);
+        logger.log('🗑️ Soft-deleting recurring series FIRST:', seriesId);
         await updateItem(hid, 'recurring_series', seriesId, { 
           deletedAt: new Date().toISOString() 
         });
@@ -1636,7 +1637,7 @@ const AppContent: React.FC = () => {
             allSeriesItemIds.forEach(itemId => pendingTodoDeletions.current.add(itemId));
           }
         } catch (err) {
-          console.warn('Failed to fetch series items from DB, falling back to local state');
+          logger.warn('Failed to fetch series items from DB, falling back to local state');
           allSeriesItemIds = todoItems.filter(t => t.seriesId === seriesId).map(t => t.id);
           allSeriesItemIds.forEach(itemId => pendingTodoDeletions.current.add(itemId));
         }
@@ -1657,7 +1658,7 @@ const AppContent: React.FC = () => {
         allSeriesItemIds.forEach(itemId => pendingTodoDeletions.current.delete(itemId));
       }, 2000);
     } catch (error) {
-      console.error('Failed to delete todo item:', error);
+      logger.error('Failed to delete todo item:', error);
       // On error, clear from pending - real-time sync will restore items
       allSeriesItemIds.forEach(itemId => pendingTodoDeletions.current.delete(itemId));
     }
@@ -1669,7 +1670,7 @@ const AppContent: React.FC = () => {
     
     // Demo mode: skip database operation
     if (isDemoMode) {
-      console.log('📷 Demo mode: skipping meal add to database');
+      logger.log('📷 Demo mode: skipping meal add to database');
       return;
     }
     
@@ -1685,7 +1686,7 @@ const AppContent: React.FC = () => {
     
     // Demo mode: skip database operation
     if (isDemoMode) {
-      console.log('📷 Demo mode: skipping meal update to database');
+      logger.log('📷 Demo mode: skipping meal update to database');
       return;
     }
     
@@ -1695,7 +1696,7 @@ const AppContent: React.FC = () => {
     setMeals(prev => prev.map(m => m.id === id ? { ...m, ...enhancedData } : m));  // Optimistic
     // Skip database call for temp IDs - real-time sync will handle it
     if (isTempId(id)) {
-      console.warn('⚠️ Skipping update for temp meal - waiting for real ID:', id);
+      logger.warn('⚠️ Skipping update for temp meal - waiting for real ID:', id);
       return;
     }
     await updateItem(hid, 'meals', id, enhancedData);
@@ -1706,14 +1707,14 @@ const AppContent: React.FC = () => {
     
     // Demo mode: skip database operation
     if (isDemoMode) {
-      console.log('📷 Demo mode: skipping meal delete from database');
+      logger.log('📷 Demo mode: skipping meal delete from database');
       return;
     }
     
     setMeals(prev => prev.filter(m => m.id !== id));  // Optimistic
     // Skip database call for temp IDs - item not in database yet
     if (isTempId(id)) {
-      console.warn('⚠️ Skipping delete for temp meal - not yet saved:', id);
+      logger.warn('⚠️ Skipping delete for temp meal - not yet saved:', id);
       return;
     }
     // Pass currentUser.id for notification attribution
@@ -1726,7 +1727,7 @@ const AppContent: React.FC = () => {
     
     // Demo mode: skip database, just return the expense for UI display
     if (isDemoMode) {
-      console.log('📷 Demo mode: skipping expense add to database');
+      logger.log('📷 Demo mode: skipping expense add to database');
       return expense;
     }
     
@@ -1738,9 +1739,9 @@ const AppContent: React.FC = () => {
     const expenseWithoutId = { ...expense };
     delete expenseWithoutId.id; // Remove ID so Supabase generates UUID
     // Keep createdBy for notifications - expenses table has created_by column (migration 018)
-    console.log('[App] Adding expense without ID, will get UUID from DB');
+    logger.log('[App] Adding expense without ID, will get UUID from DB');
     const savedExpense = await addItem(hid, 'expenses', expenseWithoutId);
-    console.log('[App] Expense saved with UUID:', savedExpense.id);
+    logger.log('[App] Expense saved with UUID:', savedExpense.id);
     
     // Return the expense with the actual UUID from database
     return savedExpense as Expense;
@@ -1751,7 +1752,7 @@ const AppContent: React.FC = () => {
     
     // Demo mode: skip database operation
     if (isDemoMode) {
-      console.log('📷 Demo mode: skipping expense update to database');
+      logger.log('📷 Demo mode: skipping expense update to database');
       return;
     }
     
@@ -1763,7 +1764,7 @@ const AppContent: React.FC = () => {
     setExpenses(prev => prev.map(e => e.id === id ? { ...e, ...enhancedData } : e));  // Optimistic
     // Skip database call for temp IDs - real-time sync will handle it
     if (isTempId(id)) {
-      console.warn('⚠️ Skipping update for temp expense - waiting for real ID:', id);
+      logger.warn('⚠️ Skipping update for temp expense - waiting for real ID:', id);
       return;
     }
     await updateItem(hid, 'expenses', id, enhancedData);
@@ -1774,14 +1775,14 @@ const AppContent: React.FC = () => {
     
     // Demo mode: skip database operation
     if (isDemoMode) {
-      console.log('📷 Demo mode: skipping expense delete from database');
+      logger.log('📷 Demo mode: skipping expense delete from database');
       return;
     }
     
     setExpenses(prev => prev.filter(e => e.id !== id));  // Optimistic
     // Skip database call for temp IDs - item not in database yet
     if (isTempId(id)) {
-      console.warn('⚠️ Skipping delete for temp expense - not yet saved:', id);
+      logger.warn('⚠️ Skipping delete for temp expense - not yet saved:', id);
       return;
     }
     // Pass currentUser.id for notification attribution
@@ -1794,7 +1795,7 @@ const AppContent: React.FC = () => {
     
     // Demo mode: skip database operation
     if (isDemoMode) {
-      console.log('📷 Demo mode: skipping user add to database');
+      logger.log('📷 Demo mode: skipping user add to database');
       return undefined;
     }
     
@@ -1831,14 +1832,14 @@ const AppContent: React.FC = () => {
     
     // Demo mode: skip database operation
     if (isDemoMode) {
-      console.log('📷 Demo mode: skipping user update to database');
+      logger.log('📷 Demo mode: skipping user update to database');
       return;
     }
     
     setUsers(prev => prev.map(u => u.id === id ? { ...u, ...data } : u));  // Optimistic
     // Skip database call for temp IDs - real-time sync will handle it
     if (isTempId(id)) {
-      console.warn('⚠️ Skipping update for temp user - waiting for real ID:', id);
+      logger.warn('⚠️ Skipping update for temp user - waiting for real ID:', id);
       return;
     }
     await updateItem(hid, 'users', id, data);
@@ -1849,13 +1850,13 @@ const AppContent: React.FC = () => {
 
     // Demo mode: skip database operation
     if (isDemoMode) {
-      console.log('📷 Demo mode: skipping user delete from database');
+      logger.log('📷 Demo mode: skipping user delete from database');
       return;
     }
 
     // Skip for temp IDs - user not in database yet
     if (isTempId(id)) {
-      console.warn('⚠️ Skipping delete for temp user - not yet saved:', id);
+      logger.warn('⚠️ Skipping delete for temp user - not yet saved:', id);
       setUsers(prev => prev.filter(u => u.id !== id));  // Just remove from UI
       return;
     }
@@ -1885,10 +1886,10 @@ const AppContent: React.FC = () => {
       // Update UI optimistically
       setUsers(prev => prev.filter(u => u.id !== id));
 
-      console.log(`✅ Successfully ${result.operation} user: ${result.removedUser?.name}`);
+      logger.log(`✅ Successfully ${result.operation} user: ${result.removedUser?.name}`);
 
     } catch (error: any) {
-      console.error('Failed to delete user:', error);
+      logger.error('Failed to delete user:', error);
       // Revert optimistic update on error
       // Note: In a real app, you'd want to refetch the users list here
       showAlert(
@@ -1905,7 +1906,7 @@ const AppContent: React.FC = () => {
     
     // Demo mode: skip database operation
     if (isDemoMode) {
-      console.log('📷 Demo mode: skipping family notes save to database');
+      logger.log('📷 Demo mode: skipping family notes save to database');
       return;
     }
     
@@ -1921,7 +1922,7 @@ const AppContent: React.FC = () => {
       // Pass currentUser.id to track who updated for notifications
       await saveFamilyNotes(hid, notes, lang, currentUser?.id);
     } catch (error) {
-      console.error('Failed to save notes:', error);
+      logger.error('Failed to save notes:', error);
       // Rollback on error
       setFamilyNotes(previousNotes);
       setFamilyNotesLang(previousLang);
@@ -1935,7 +1936,7 @@ const AppContent: React.FC = () => {
     
     // Demo mode: skip database operation
     if (isDemoMode) {
-      console.log('📷 Demo mode: skipping notes translations save to database');
+      logger.log('📷 Demo mode: skipping notes translations save to database');
       return;
     }
     
@@ -1948,7 +1949,7 @@ const AppContent: React.FC = () => {
         .eq('id', hid);
       if (error) throw error;
     } catch (error) {
-      console.error('Failed to update notes translations:', error);
+      logger.error('Failed to update notes translations:', error);
       throw error;
     }
   };
@@ -1959,7 +1960,7 @@ const AppContent: React.FC = () => {
     
     // Demo mode: skip database operation
     if (isDemoMode) {
-      console.log('📷 Demo mode: skipping place add to database');
+      logger.log('📷 Demo mode: skipping place add to database');
       return;
     }
     
@@ -1974,7 +1975,7 @@ const AppContent: React.FC = () => {
     try {
       await createPlace(hid, info);
     } catch (error) {
-      console.error('Failed to add place:', error);
+      logger.error('Failed to add place:', error);
       setPlaces(prev => prev.filter(item => item.id !== tempId));  // Rollback
     }
   };
@@ -1984,7 +1985,7 @@ const AppContent: React.FC = () => {
     
     // Demo mode: skip database operation
     if (isDemoMode) {
-      console.log('📷 Demo mode: skipping place update to database');
+      logger.log('📷 Demo mode: skipping place update to database');
       return;
     }
     
@@ -1994,13 +1995,13 @@ const AppContent: React.FC = () => {
     ));  // Optimistic
     // Skip database call for temp IDs - real-time sync will handle it
     if (isTempId(id)) {
-      console.warn('⚠️ Skipping update for temp place - waiting for real ID:', id);
+      logger.warn('⚠️ Skipping update for temp place - waiting for real ID:', id);
       return;
     }
     try {
       await updatePlace(hid, id, data);
     } catch (error) {
-      console.error('Failed to update place:', error);
+      logger.error('Failed to update place:', error);
       setPlaces(previousItems);  // Rollback
     }
   };
@@ -2010,7 +2011,7 @@ const AppContent: React.FC = () => {
     
     // Demo mode: skip database operation
     if (isDemoMode) {
-      console.log('📷 Demo mode: skipping place delete from database');
+      logger.log('📷 Demo mode: skipping place delete from database');
       return;
     }
     
@@ -2018,13 +2019,13 @@ const AppContent: React.FC = () => {
     setPlaces(prev => prev.filter(item => item.id !== id));  // Optimistic
     // Skip database call for temp IDs - item not in database yet
     if (isTempId(id)) {
-      console.warn('⚠️ Skipping delete for temp place - not yet saved:', id);
+      logger.warn('⚠️ Skipping delete for temp place - not yet saved:', id);
       return;
     }
     try {
       await deletePlace(hid, id);
     } catch (error) {
-      console.error('Failed to delete place:', error);
+      logger.error('Failed to delete place:', error);
       setPlaces(previousItems);  // Rollback
     }
   };
@@ -2035,7 +2036,7 @@ const AppContent: React.FC = () => {
     
     // Demo mode: skip database operation
     if (isDemoMode) {
-      console.log('📷 Demo mode: skipping practice add to database');
+      logger.log('📷 Demo mode: skipping practice add to database');
       return;
     }
     
@@ -2052,7 +2053,7 @@ const AppContent: React.FC = () => {
       // Replace the temp item with the saved record
       setPractices(prev => prev.map(i => i.id === tempId ? saved : i));
     } catch (error) {
-      console.error('Failed to add practice:', error);
+      logger.error('Failed to add practice:', error);
       setPractices(prev => prev.filter(i => i.id !== tempId));  // Rollback
     }
   };
@@ -2062,7 +2063,7 @@ const AppContent: React.FC = () => {
     
     // Demo mode: skip database operation
     if (isDemoMode) {
-      console.log('📷 Demo mode: skipping practice update to database');
+      logger.log('📷 Demo mode: skipping practice update to database');
       return;
     }
     
@@ -2072,7 +2073,7 @@ const AppContent: React.FC = () => {
     ));  // Optimistic
     // Skip database call for temp IDs - real-time sync will handle it
     if (isTempId(id)) {
-      console.warn('⚠️ Skipping update for temp practice - waiting for real ID:', id);
+      logger.warn('⚠️ Skipping update for temp practice - waiting for real ID:', id);
       return;
     }
     try {
@@ -2081,7 +2082,7 @@ const AppContent: React.FC = () => {
       // translations if DB hasn't committed yet. This matches handleUpdatePlace.
       await updatePractice(hid, id, data);
     } catch (error) {
-      console.error('Failed to update practice:', error);
+      logger.error('Failed to update practice:', error);
       setPractices(previousItems);  // Rollback
     }
   };
@@ -2091,7 +2092,7 @@ const AppContent: React.FC = () => {
     
     // Demo mode: skip database operation
     if (isDemoMode) {
-      console.log('📷 Demo mode: skipping practice delete from database');
+      logger.log('📷 Demo mode: skipping practice delete from database');
       return;
     }
     
@@ -2099,13 +2100,13 @@ const AppContent: React.FC = () => {
     setPractices(prev => prev.filter(i => i.id !== id));  // Optimistic
     // Skip database call for temp IDs - item not in database yet
     if (isTempId(id)) {
-      console.warn('⚠️ Skipping delete for temp practice - not yet saved:', id);
+      logger.warn('⚠️ Skipping delete for temp practice - not yet saved:', id);
       return;
     }
     try {
       await deletePractice(hid, id);
     } catch (error) {
-      console.error('Failed to delete practice:', error);
+      logger.error('Failed to delete practice:', error);
       setPractices(previousItems);  // Rollback
     }
   };
@@ -2302,8 +2303,8 @@ const AppContent: React.FC = () => {
   // CRITICAL: Show loading while Clerk is initializing (after OAuth redirect)
   // Don't make routing decisions until Clerk has finished loading
   if (!clerkLoaded) {
-    console.log('🟣 [App] Clerk not loaded yet, showing loading state');
-    console.log('🟣 [App] Clerk state details:', { 
+    logger.log('🟣 [App] Clerk not loaded yet, showing loading state');
+    logger.log('🟣 [App] Clerk state details:', { 
       clerkLoaded, 
       isSignedIn, 
       hasClerkUser: !!clerkUser,
@@ -2360,8 +2361,8 @@ const AppContent: React.FC = () => {
   // If Clerk user is authenticated but currentUser not set yet, show Auth component
   // This handles the case after OAuth redirect where Clerk is authenticated but App state isn't updated
   if (!currentUser) {
-    console.log('🟠 [App] Rendering Auth component - no currentUser');
-    console.log('🟠 [App] Clerk state:', { clerkLoaded, isSignedIn, clerkUser: !!clerkUser });
+    logger.log('🟠 [App] Rendering Auth component - no currentUser');
+    logger.log('🟠 [App] Clerk state:', { clerkLoaded, isSignedIn, clerkUser: !!clerkUser });
     return (
       <div 
         className={`transition-opacity duration-300 ${appReady ? 'opacity-100' : 'opacity-0'}`}
@@ -2377,7 +2378,7 @@ const AppContent: React.FC = () => {
   // Skip on localhost to allow development without JWT template
   const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
   if (!sessionVerified && !isDemoMode && !isLocalhost) {
-    console.log('🔐 [App] Session not yet verified, showing loading...');
+    logger.log('🔐 [App] Session not yet verified, showing loading...');
     return <AppLoading />;
   }
 
@@ -2410,7 +2411,7 @@ const AppContent: React.FC = () => {
           isOnboardingActive={onboardingStep > 0 && pwaModalHandled}
           onVisibilityChange={setNotifPromptVisible}
           onNotificationEnabled={async () => {
-            console.log('[App] Notifications enabled via prompt');
+            logger.log('[App] Notifications enabled via prompt');
             if (currentUser) {
               await handleUpdateUser(currentUser.id, {
                 notificationsEnabled: true,

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { onConnectionStatusChange } from '../services/supabaseService';
+import { logger } from '../utils/logger';
 
 export type ConnectionStatus = 'connected' | 'disconnected' | 'connecting';
 
@@ -34,10 +35,10 @@ export function useRealtimeStatus(options: UseRealtimeStatusOptions = {}) {
 
   // Subscribe to connection status changes from actual data subscriptions
   useEffect(() => {
-    console.log('📡 [Realtime] Monitoring actual data subscriptions...');
+    logger.log('📡 [Realtime] Monitoring actual data subscriptions...');
     
     const unsubscribe = onConnectionStatusChange((newStatus) => {
-      console.log(`📡 [Realtime] Connection status: ${newStatus}`);
+      logger.log(`📡 [Realtime] Connection status: ${newStatus}`);
       setStatus(newStatus);
     });
 
@@ -50,10 +51,10 @@ export function useRealtimeStatus(options: UseRealtimeStatusOptions = {}) {
   useEffect(() => {
     if (!enablePeriodicSync || !onSyncRequest) return;
 
-    console.log(`⏰ [Realtime] Periodic sync enabled, interval: ${syncInterval / 1000}s`);
+    logger.log(`⏰ [Realtime] Periodic sync enabled, interval: ${syncInterval / 1000}s`);
 
     const intervalId = setInterval(() => {
-      console.log('⏰ [Realtime] Periodic sync triggered');
+      logger.log('⏰ [Realtime] Periodic sync triggered');
       onSyncRequest();
       setLastSyncTime(new Date());
     }, syncInterval);
@@ -73,7 +74,7 @@ export function useRealtimeStatus(options: UseRealtimeStatusOptions = {}) {
   // Manual sync function
   const syncNow = useCallback(() => {
     if (onSyncRequest) {
-      console.log('🔄 [Realtime] Manual sync requested');
+      logger.log('🔄 [Realtime] Manual sync requested');
       onSyncRequest();
       setLastSyncTime(new Date());
     }

@@ -1084,7 +1084,7 @@ const ToDo: React.FC<ToDoProps> = ({
       assigneeId: getDefaultAssignee(users, currentUser),
       ...(activeSection === 'shopping' 
         ? { quantity: '1', unit: '', brand: '' }
-        : { dueDate: today, dueTime: '', recurrence: { frequency: 'NONE' } }
+        : { dueDate: today, dueTime: '09:00', recurrence: { frequency: 'NONE' } }
       ),
     });
     

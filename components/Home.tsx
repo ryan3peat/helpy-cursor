@@ -1419,7 +1419,7 @@ Give it a try:`;
                   <div key={task.id} className="flex justify-between items-center gap-2">
                     <span className="text-body text-foreground truncate flex-1">{task.name}</span>
                     {task.dueTime && (
-                      <span className="text-caption text-muted-foreground flex-shrink-0">{task.dueTime}</span>
+                      <span className="text-caption text-muted-foreground flex-shrink-0">{task.dueTime.slice(0, 5)}</span>
                     )}
                   </div>
                 ))}
@@ -1444,7 +1444,7 @@ Give it a try:`;
                   <div key={task.id} className="flex justify-between items-center gap-2">
                     <span className="text-body text-foreground truncate flex-1">{task.name}</span>
                     {task.dueTime && (
-                      <span className="text-caption text-muted-foreground flex-shrink-0">{task.dueTime}</span>
+                      <span className="text-caption text-muted-foreground flex-shrink-0">{task.dueTime.slice(0, 5)}</span>
                     )}
                   </div>
                 ))}
@@ -1456,9 +1456,9 @@ Give it a try:`;
           </div>
         )}
         
-        {/* Empty state - compact inline with (+) button */}
+        {/* Empty state - compact inline with (+) button, aligned with header */}
         {todayTasks.length === 0 && overdueTasks.length === 0 && tomorrowTasks.length === 0 && (
-          <div className="px-4 py-3 pl-11 flex justify-between items-center">
+          <div className="px-4 py-3 flex justify-between items-center">
             <span className="text-body text-muted-foreground">{t['dashboard.no_tasks'] || 'No tasks'}</span>
             <div
               onClick={(e) => {
@@ -1475,7 +1475,7 @@ Give it a try:`;
         
         {/* Bottom padding for (+) button clearance */}
         {(todayTasks.length > 0 || overdueTasks.length > 0 || tomorrowTasks.length > 0) && (
-          <div className="h-8"></div>
+          <div className="h-12"></div>
         )}
       </div>
 

@@ -1,7 +1,13 @@
 // api/cancel-subscription.ts
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
-import { logger } from './_logger';
+
+// Inline logger to avoid module resolution issues in Vercel serverless
+const isDev = process.env.NODE_ENV !== 'production';
+const logger = {
+  log: (...args: unknown[]) => isDev && console.log(...args),
+  error: (...args: unknown[]) => console.error(...args),
+};
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-11-17.clover',

@@ -2,7 +2,13 @@
 // Server-side proxy for DashScope Qwen-VL API to avoid CORS issues
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { logger } from './_logger';
+
+// Inline logger to avoid module resolution issues in Vercel serverless
+const isDev = process.env.NODE_ENV !== 'production';
+const logger = {
+  log: (...args: unknown[]) => isDev && console.log(...args),
+  error: (...args: unknown[]) => console.error(...args),
+};
 
 // Use international endpoint for international edition accounts
 const DASHSCOPE_API_URL = 'https://dashscope-intl.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation';

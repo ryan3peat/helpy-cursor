@@ -2,7 +2,13 @@
 // Server-side proxy for Google Gemini API to avoid CSP issues and keep API key secure
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { logger } from './_logger';
+
+// Inline logger to avoid module resolution issues in Vercel serverless
+const isDev = process.env.NODE_ENV !== 'production';
+const logger = {
+  log: (...args: unknown[]) => isDev && console.log(...args),
+  error: (...args: unknown[]) => console.error(...args),
+};
 
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 

@@ -4,7 +4,14 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
-import { logger } from './_logger';
+
+// Inline logger to avoid module resolution issues in Vercel serverless
+const isDev = process.env.NODE_ENV !== 'production';
+const logger = {
+  log: (...args: unknown[]) => isDev && console.log(...args),
+  warn: (...args: unknown[]) => isDev && console.warn(...args),
+  error: (...args: unknown[]) => console.error(...args),
+};
 
 // Initialize Supabase with service role (bypasses RLS)
 const supabase = createClient(

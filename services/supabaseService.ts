@@ -1117,33 +1117,29 @@ export async function deleteItem(
   // For meals and expenses: update last_modified_by BEFORE hard delete for notification attribution
   // The trigger reads OLD.last_modified_by for delete notifications
   if (lastModifiedBy && ['meals', 'expenses'].includes(collection)) {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/a848de4d-66f4-4490-8d69-77a8eaa34e52',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'supabaseService.ts:deleteItem',message:'ABOUT TO UPDATE last_modified_by before DELETE',data:{collection,id:actualId,lastModifiedBy},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
     const lastModifiedByUuid = await getSupabaseUserId(lastModifiedBy, householdId);
     if (lastModifiedByUuid) {
       const isValidUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(lastModifiedByUuid);
       if (isValidUuid) {
         console.log(`🔄 Setting last_modified_by to ${lastModifiedByUuid} before hard delete`);
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/a848de4d-66f4-4490-8d69-77a8eaa34e52',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'supabaseService.ts:deleteItem:UPDATE',message:'EXECUTING UPDATE to set last_modified_by - THIS TRIGGERS NOTIFICATION!',data:{collection,id:actualId,lastModifiedByUuid},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A'})}).catch(()=>{});
-        // #endregion
-        await client
+        // CRITICAL: .select() ensures UPDATE completes before DELETE runs
+        const { error: updateError } = await client
           .from(tableName)
           .update({ last_modified_by: lastModifiedByUuid })
           .eq('id', actualId)
-          .eq('household_id', householdId);
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/a848de4d-66f4-4490-8d69-77a8eaa34e52',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'supabaseService.ts:deleteItem:UPDATE_DONE',message:'UPDATE completed - trigger has fired for UPDATE event',data:{collection,id:actualId},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A'})}).catch(()=>{});
-        // #endregion
+          .eq('household_id', householdId)
+          .select();
+        
+        if (updateError) {
+          console.error('❌ Failed to set last_modified_by before delete:', updateError);
+        } else {
+          console.log('✅ last_modified_by set successfully before delete');
+        }
       }
     }
   }
   
   // Hard delete for other tables
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/a848de4d-66f4-4490-8d69-77a8eaa34e52',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'supabaseService.ts:deleteItem:DELETE',message:'EXECUTING DELETE - THIS TRIGGERS NOTIFICATION!',data:{collection,id:actualId},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A'})}).catch(()=>{});
-  // #endregion
   let { error, count } = await client
     .from(tableName)
     .delete({ count: 'exact' })

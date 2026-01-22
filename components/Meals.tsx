@@ -140,6 +140,7 @@ const Meals: React.FC<MealsProps> = ({
   // ─────────────────────────────────────────────────────────────────
   const hasInitiallyScrolled = useRef(false);
   const hasScrolledWeekView = useRef(false);
+  const hasInitialized = useRef(false); // Tracks if first scroll completed (prevents flicker on view switch)
 
   const mealTypes = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER, MealType.SNACKS];
   const langCode = currentLang === 'en' ? 'en-GB' : currentLang;
@@ -424,7 +425,7 @@ const Meals: React.FC<MealsProps> = ({
     setModalAudience(newAudience);
     const eligibleUsers = getUsersForAudience(newAudience);
     // Auto-select all eligible users (including helpers)
-    setSelectedUserIds(eligibleUsers.map(u => u.id));
+      setSelectedUserIds(eligibleUsers.map(u => u.id));
   };
 
   const handleSave = () => {
@@ -877,6 +878,7 @@ const Meals: React.FC<MealsProps> = ({
           // If element not found on last attempt, still show content
           if (index === scrollAttempts.length - 1) {
             setContentReady(true);
+            hasInitialized.current = true;
           }
           return;
         }
@@ -888,16 +890,20 @@ const Meals: React.FC<MealsProps> = ({
         // Show content after final scroll attempt
         if (index === scrollAttempts.length - 1) {
           setContentReady(true);
-        }
-      }, delay);
+          hasInitialized.current = true;
+          }
+        }, delay);
     });
   }, [view]);
 
-  // Reset day scroll flag and content visibility when leaving day view
+  // Reset day scroll flag when leaving day view
+  // Only hide content on initial load, not when switching views
   useEffect(() => {
     if (view !== 'day') {
       hasInitiallyScrolled.current = false;
-      setContentReady(false);
+      if (!hasInitialized.current) {
+        setContentReady(false);
+      }
     }
   }, [view]);
 
@@ -924,6 +930,7 @@ const Meals: React.FC<MealsProps> = ({
       // Still scroll to top to show table header
       window.scrollTo({ top: 0, behavior: 'auto' });
       setContentReady(true);
+      hasInitialized.current = true;
       return;
     }
     
@@ -938,6 +945,7 @@ const Meals: React.FC<MealsProps> = ({
           // If element not found on last attempt, still show content
           if (index === scrollAttempts.length - 1) {
             setContentReady(true);
+            hasInitialized.current = true;
           }
           return;
         }
@@ -954,8 +962,9 @@ const Meals: React.FC<MealsProps> = ({
         // Show content after final scroll attempt
         if (index === scrollAttempts.length - 1) {
           setContentReady(true);
-        }
-      }, delay);
+          hasInitialized.current = true;
+          }
+        }, delay);
     });
   }, [view, weekDays]);
 
@@ -1175,7 +1184,7 @@ const Meals: React.FC<MealsProps> = ({
             <div className="flex items-center gap-1">
               {/* Export PDF Button - Only visible in table view */}
               {view === 'week' && (
-                <button
+                    <button
                   onClick={handleExportPDF}
                   disabled={exportingPdf}
                   className="p-2 rounded-full text-muted-foreground transition-colors disabled:opacity-50"
@@ -1185,8 +1194,8 @@ const Meals: React.FC<MealsProps> = ({
                     <Loader2 size={20} className="animate-spin" />
                   ) : (
                     <Download size={20} />
-                  )}
-                </button>
+                      )}
+                    </button>
               )}
               
               {/* Day/Week Toggle - Simple state change like Family tabs */}
@@ -1236,7 +1245,7 @@ const Meals: React.FC<MealsProps> = ({
             </div>
 
             {/* Today Button */}
-            <button
+              <button
               onClick={goToToday}
               disabled={isCurrentWeek}
               className={`px-4 rounded-xl font-semibold text-body h-12 ${
@@ -1246,9 +1255,9 @@ const Meals: React.FC<MealsProps> = ({
               }`}
             >
               {t['meals.today'] ?? 'Today'}
-            </button>
-          </div>
+              </button>
         </div>
+      </div>
 
         {/* ─────────────────────────────────────────────────────────────── */}
         {/* MAIN CONTENT - Hidden until scroll completes to prevent flicker */}
@@ -1569,95 +1578,95 @@ const Meals: React.FC<MealsProps> = ({
                 
                 {/* Table Body - Date rows */}
                 <tbody>
-                  {weekDays.map((day, dayIndex) => {
+                {weekDays.map((day, dayIndex) => {
                     const dateStr = formatDateStr(day);
-                    const isToday = day.toDateString() === new Date().toDateString();
+                  const isToday = day.toDateString() === new Date().toDateString();
                     const isLastRow = dayIndex === weekDays.length - 1;
-                    return (
+                  return (
                       <tr key={dateStr} id={`week-row-${dateStr}`}>
                         {/* Date label cell - sticky horizontally */}
                         <td 
-                          onClick={() => handleWeekCellClick(day)}
+                      onClick={() => handleWeekCellClick(day)}
                           className={`p-2 text-center align-middle sticky left-0 z-10 cursor-pointer border-r border-border ${!isLastRow ? 'border-b border-border' : ''} ${isToday ? 'bg-primary' : 'bg-card'}`}
                           style={{ 
                             boxShadow: '1px 0 0 0 #d1d5db',
                             minWidth: '90px'
                           }}
-                        >
-                          <span className={`text-caption font-semibold block ${isToday ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
-                            {day.toLocaleDateString(langCode, { weekday: 'short' })}
-                            </span>
-                          <span className={`text-body font-bold block ${isToday ? 'text-primary-foreground' : 'text-foreground'}`}>
+                    >
+                      <span className={`text-caption font-semibold block ${isToday ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
+                        {day.toLocaleDateString(langCode, { weekday: 'short' })}
+                      </span>
+                      <span className={`text-body font-bold block ${isToday ? 'text-primary-foreground' : 'text-foreground'}`}>
                             {day.getDate()} {day.toLocaleDateString(langCode, { month: 'short' })}
-                          </span>
+                      </span>
                         </td>
-                        
+
                         {/* Meal type cells for this date */}
-                        {mealTypes.map((type, typeIndex) => {
-                          const slotMeals = getMealsForSlot(day, type);
+                {mealTypes.map((type, typeIndex) => {
+                        const slotMeals = getMealsForSlot(day, type);
                           const isLastCol = typeIndex === mealTypes.length - 1;
-                          
-                          return (
+                        
+                        return (
                             <td
                               key={`${dateStr}-${type}`}
-                              onClick={() => handleWeekCellClick(day)}
+                            onClick={() => handleWeekCellClick(day)}
                               className={`p-1.5 cursor-pointer align-top ${!isLastRow ? 'border-b border-border' : ''} ${!isLastCol ? 'border-r border-border' : ''}`}
                               style={{ minWidth: '100px' }}
-                            >
-                              {slotMeals.length > 0 ? (
-                                <div className="space-y-1">
-                                  {slotMeals.map(meal => {
-                                    const hasDish = meal.description.trim().length > 0;
-                                    const mealUsers = meal.forUserIds
-                                      .map(uid => users.find(u => u.id === uid))
-                                      .filter((u): u is User => !!u);
-                                    const adultCount = mealUsers.filter(u => u.role !== UserRole.CHILD).length;
-                                    const kidCount = mealUsers.filter(u => u.role === UserRole.CHILD).length;
-                                    
-                                    return (
-                                      <div
-                                        key={meal.id}
-                                        className="px-1.5 py-1 rounded-md bg-muted/50"
-                                      >
-                                        {hasDish ? (
+                          >
+                            {slotMeals.length > 0 ? (
+                              <div className="space-y-1">
+                                {slotMeals.map(meal => {
+                                  const hasDish = meal.description.trim().length > 0;
+                                  const mealUsers = meal.forUserIds
+                                    .map(uid => users.find(u => u.id === uid))
+                                    .filter((u): u is User => !!u);
+                                  const adultCount = mealUsers.filter(u => u.role !== UserRole.CHILD).length;
+                                  const kidCount = mealUsers.filter(u => u.role === UserRole.CHILD).length;
+                                  
+                                  return (
+                                    <div
+                                      key={meal.id}
+                                      className="px-1.5 py-1 rounded-md bg-muted/50"
+                                    >
+                                      {hasDish ? (
                                           <span className="text-caption font-semibold text-foreground leading-tight block break-words">
-                                            <TranslatedMealDescription meal={meal} currentLang={currentLang} onUpdate={onUpdate} />
-                                          </span>
-                                        ) : (
+                                          <TranslatedMealDescription meal={meal} currentLang={currentLang} onUpdate={onUpdate} />
+                                        </span>
+                                      ) : (
                                           <span className="text-caption font-semibold text-muted-foreground block">
-                                            RSVP
+                                          RSVP
+                                        </span>
+                                      )}
+                                      {/* RSVP counts */}
+                                        <div className="flex items-center gap-1 text-caption text-muted-foreground mt-0.5">
+                                        {adultCount > 0 && (
+                                          <span className="flex items-center gap-0.5">
+                                              <UserIcon size={12} />
+                                            {adultCount}
                                           </span>
                                         )}
-                                        {/* RSVP counts */}
-                                        <div className="flex items-center gap-1 text-caption text-muted-foreground mt-0.5">
-                                          {adultCount > 0 && (
-                                            <span className="flex items-center gap-0.5">
-                                              <UserIcon size={12} />
-                                              {adultCount}
-                                            </span>
-                                          )}
-                                          {kidCount > 0 && (
-                                            <span className="flex items-center gap-0.5">
+                                        {kidCount > 0 && (
+                                          <span className="flex items-center gap-0.5">
                                               <Baby size={12} />
-                                              {kidCount}
-                                            </span>
-                                          )}
-                                        </div>
+                                            {kidCount}
+                                          </span>
+                                        )}
                                       </div>
-                                    );
-                                  })}
-                                </div>
-                              ) : (
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            ) : (
                                 <div className="flex items-center justify-center py-2">
-                                  <span className="text-muted-foreground/30 text-lg">·</span>
-                                </div>
-                              )}
+                                <span className="text-muted-foreground/30 text-lg">·</span>
+                              </div>
+                            )}
                             </td>
-                          );
-                        })}
+                        );
+                      })}
                       </tr>
-                    );
-                  })}
+                  );
+                })}
                 </tbody>
               </table>
             </div>
@@ -1694,14 +1703,14 @@ const Meals: React.FC<MealsProps> = ({
             {/* Header with X left, Title center, ✓ right */}
             <div className="flex items-center justify-between px-5 pt-5 pb-4 shrink-0">
               {/* X Close Button (left) */}
-              <button
-                onClick={() => setIsModalOpen(false)}
+            <button
+              onClick={() => setIsModalOpen(false)}
                 className="w-10 h-10 rounded-full flex items-center justify-center text-muted-foreground"
-                aria-label={t['common.close'] || 'Close'}
-              >
-                <X size={20} />
-              </button>
-              
+              aria-label={t['common.close'] || 'Close'}
+            >
+              <X size={20} />
+            </button>
+
               {/* Title (center) */}
               <h2 className="text-title font-semibold text-foreground text-center flex-1">
                 {`${modalDate.toLocaleDateString(langCode, { weekday: 'short' })}, ${modalDate.getDate()} ${modalDate.toLocaleDateString(langCode, { month: 'short' })}`}
@@ -1807,22 +1816,22 @@ const Meals: React.FC<MealsProps> = ({
                     {t['meals.audience_label'] ?? 'This meal is for'}
                   </label>
                   <div className="flex gap-2">
-                    {(['ALL', 'ADULTS', 'KIDS'] as const).map(aud => {
-                      const active = modalAudience === aud;
-                      return (
-                        <button
-                          key={aud}
-                          onClick={() => handleAudienceChange(aud)}
+                      {(['ALL', 'ADULTS', 'KIDS'] as const).map(aud => {
+                        const active = modalAudience === aud;
+                        return (
+                          <button
+                            key={aud}
+                            onClick={() => handleAudienceChange(aud)}
                           className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-body transition-colors ${
                             active
                               ? 'bg-primary text-primary-foreground'
                               : 'bg-card text-foreground ring-1 ring-border'
-                          }`}
-                        >
-                          {getAudienceLabel(aud)}
-                        </button>
-                      );
-                    })}
+                            }`}
+                          >
+                            {getAudienceLabel(aud)}
+                          </button>
+                        );
+                      })}
                   </div>
                 </div>
 
@@ -1863,21 +1872,21 @@ const Meals: React.FC<MealsProps> = ({
                 <div className="px-5"><div className="h-px bg-border w-full"></div></div>
                 {/* Footer with Delete button */}
                 <div className="shrink-0 p-5 pb-8">
-                  <button
-                    onClick={handleDelete}
+                <button
+                  onClick={handleDelete}
                     className="w-full py-3.5 rounded-xl bg-destructive/10 text-destructive font-semibold flex items-center justify-center gap-2"
-                  >
-                    <Trash2 size={20} />
+                >
+                  <Trash2 size={20} />
                     {t['meals.delete_meal'] ?? 'Delete Meal'}
-                  </button>
-                </div>
+              </button>
+            </div>
               </>
             ) : (
               /* Invisible spacer for consistent height */
               <div className="shrink-0 p-5 pb-8">
                 <div className="h-[52px]"></div>
-              </div>
-            )}
+        </div>
+      )}
           </div>
         </div>
       , document.body)}

@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tasks Widget Mockups - Helpy</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#3EAFD2',
+            destructive: '#F06292',
+            card: '#FFFFFF',
+            background: '#F8F9FA',
+            foreground: '#1A1A1A',
+            muted: '#F3F4F6',
+            'muted-foreground': '#6B7280',
+            border: '#E5E7EB',
+          },
+          fontFamily: {
+            sans: ['DM Sans', 'sans-serif'],
+          },
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: 'DM Sans', sans-serif; }
+    .text-display { font-size: 2rem; font-weight: 700; }
+    .text-title { font-size: 1rem; font-weight: 700; }
+    .text-body { font-size: 0.875rem; }
+    .text-caption { font-size: 0.75rem; }
+  </style>
+</head>
+<body class="bg-background min-h-screen p-6">
+  <div class="max-w-md mx-auto space-y-8">
+    
+    <h1 class="text-display text-foreground text-center mb-8">Tasks Widget Mockups</h1>
+
+    <!-- OPTION 1: Priority-Stacked Layout -->
+    <div>
+      <h2 class="text-title text-muted-foreground mb-3">Option 1: Priority-Stacked</h2>
+      <div class="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
+        <!-- Header -->
+        <div class="px-4 py-3 flex justify-between items-center border-b border-border">
+          <div>
+            <span class="text-title text-foreground block">Tasks</span>
+            <span class="text-caption text-muted-foreground">To Do</span>
+          </div>
+          <button class="w-9 h-9 rounded-full bg-primary flex items-center justify-center shadow-sm">
+            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+          </button>
+        </div>
+        
+        <!-- Overdue Section -->
+        <div class="px-4 py-3 border-b border-border">
+          <div class="flex items-center gap-2 mb-2">
+            <div class="w-2 h-2 rounded-full bg-destructive"></div>
+            <span class="text-caption font-semibold text-destructive">OVERDUE (3)</span>
+          </div>
+          <div class="space-y-2 pl-4">
+            <div class="flex justify-between items-center">
+              <span class="text-body text-foreground">Buy groceries</span>
+              <span class="text-caption text-destructive">2 days</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-body text-foreground">Call dentist</span>
+              <span class="text-caption text-destructive">5 days</span>
+            </div>
+            <span class="text-caption text-muted-foreground">+1 more</span>
+          </div>
+        </div>
+        
+        <!-- Today Section -->
+        <div class="px-4 py-3 border-b border-border">
+          <div class="flex items-center gap-2 mb-2">
+            <div class="w-2 h-2 rounded-full bg-primary"></div>
+            <span class="text-caption font-semibold text-primary">TODAY (4)</span>
+          </div>
+          <div class="space-y-2 pl-4">
+            <div class="flex justify-between items-center">
+              <span class="text-body text-foreground">Pick up dry cleaning</span>
+              <span class="text-caption text-muted-foreground">14:00</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-body text-foreground">Prepare dinner</span>
+              <span class="text-caption text-muted-foreground">18:00</span>
+            </div>
+            <span class="text-caption text-muted-foreground">+2 more</span>
+          </div>
+        </div>
+        
+        <!-- Tomorrow Section -->
+        <div class="px-4 py-3">
+          <div class="flex items-center gap-2 mb-2">
+            <div class="w-2 h-2 rounded-full bg-muted-foreground"></div>
+            <span class="text-caption font-semibold text-muted-foreground">TOMORROW (2)</span>
+          </div>
+          <div class="space-y-2 pl-4">
+            <div class="flex justify-between items-center">
+              <span class="text-body text-foreground">Doctor appointment</span>
+              <span class="text-caption text-muted-foreground">10:00</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- OPTION 2: Compact Summary -->
+    <div>
+      <h2 class="text-title text-muted-foreground mb-3">Option 2: Compact Summary</h2>
+      <div class="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
+        <!-- Header -->
+        <div class="px-4 py-3 flex justify-between items-center border-b border-border">
+          <div>
+            <span class="text-title text-foreground block">Tasks</span>
+            <span class="text-caption text-muted-foreground">To Do</span>
+          </div>
+          <button class="w-9 h-9 rounded-full bg-primary flex items-center justify-center shadow-sm">
+            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+          </button>
+        </div>
+        
+        <!-- Overdue Warning Banner -->
+        <div class="px-4 py-2.5 bg-destructive/10 flex items-center gap-2">
+          <svg class="w-4 h-4 text-destructive" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+          </svg>
+          <span class="text-body font-semibold text-destructive">3 overdue tasks need attention</span>
+        </div>
+        
+        <!-- Stats Row -->
+        <div class="grid grid-cols-3 border-b border-border">
+          <div class="px-4 py-4 text-center border-r border-border">
+            <span class="text-display text-primary block">4</span>
+            <span class="text-caption text-muted-foreground">Today</span>
+          </div>
+          <div class="px-4 py-4 text-center border-r border-border">
+            <span class="text-display text-foreground block">2</span>
+            <span class="text-caption text-muted-foreground">Tomorrow</span>
+          </div>
+          <div class="px-4 py-4 text-center">
+            <span class="text-display text-muted-foreground block">7</span>
+            <span class="text-caption text-muted-foreground">Later</span>
+          </div>
+        </div>
+        
+        <!-- Next Task -->
+        <div class="px-4 py-3 flex items-center gap-3">
+          <div class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+            <svg class="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+            </svg>
+          </div>
+          <div class="flex-1">
+            <span class="text-body text-foreground block">Pick up dry cleaning</span>
+            <span class="text-caption text-muted-foreground">due 14:00</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- OPTION 3: Two-Column Clean (UPDATED) -->
+    <div>
+      <h2 class="text-title text-muted-foreground mb-3">Option 3: Two-Column Clean (Updated)</h2>
+      <div class="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
+        <!-- Header -->
+        <div class="px-4 py-3 flex justify-between items-center">
+          <div>
+            <span class="text-title text-foreground block">Tasks</span>
+            <span class="text-caption text-muted-foreground">To Do</span>
+          </div>
+          <button class="w-9 h-9 rounded-full bg-primary flex items-center justify-center shadow-sm">
+            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+          </button>
+        </div>
+        <!-- Inset separator -->
+        <div class="mx-4 border-t border-border"></div>
+        
+        <!-- Today Section (Top - full width) -->
+        <div class="px-4 py-3">
+          <span class="text-caption font-semibold text-primary mb-2 block">Today (4)</span>
+          <div class="space-y-2">
+            <span class="text-body text-foreground block">Pick up dry cleaning</span>
+            <span class="text-body text-foreground block">Prepare dinner</span>
+            <span class="text-body text-foreground block">Pay bills online</span>
+            <span class="text-caption text-muted-foreground">+1 more</span>
+          </div>
+        </div>
+        <!-- Inset separator -->
+        <div class="mx-4 border-t border-border"></div>
+        
+        <!-- Two Column Grid -->
+        <div class="grid grid-cols-2 relative">
+          <!-- Vertical divider - touches top separator, inset from bottom -->
+          <div class="absolute left-1/2 top-0 bottom-3 border-r border-border"></div>
+          
+          <!-- Overdue Column (Left) -->
+          <div class="px-4 py-3">
+            <span class="text-caption font-semibold text-destructive mb-3 block">Overdue (3)</span>
+            <div class="space-y-2">
+              <div class="flex justify-between items-center">
+                <span class="text-body text-foreground">Buy groceries</span>
+                <span class="text-caption text-destructive">2d</span>
+              </div>
+              <div class="flex justify-between items-center">
+                <span class="text-body text-foreground">Call dentist</span>
+                <span class="text-caption text-destructive">5d</span>
+              </div>
+              <span class="text-caption text-muted-foreground">+1 more</span>
+            </div>
+          </div>
+          
+          <!-- Tomorrow Column (Right) -->
+          <div class="px-4 py-3">
+            <span class="text-caption font-semibold text-muted-foreground mb-3 block">Tomorrow (2)</span>
+            <div class="space-y-2">
+              <span class="text-body text-foreground block">Doctor appointment</span>
+              <span class="text-body text-foreground block">Submit report</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- OPTION 3B: Alternative - Three Column -->
+    <div>
+      <h2 class="text-title text-muted-foreground mb-3">Option 3B: Three-Column Variant</h2>
+      <div class="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
+        <!-- Header -->
+        <div class="px-4 py-3 flex justify-between items-center border-b border-border">
+          <div>
+            <span class="text-title text-foreground block">Tasks</span>
+            <span class="text-caption text-muted-foreground">To Do</span>
+          </div>
+          <button class="w-9 h-9 rounded-full bg-primary flex items-center justify-center shadow-sm">
+            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+          </button>
+        </div>
+        
+        <!-- Three Column Grid -->
+        <div class="grid grid-cols-3">
+          <!-- Overdue Column -->
+          <div class="px-3 py-3 border-r border-border">
+            <div class="flex items-center gap-1.5 mb-2">
+              <div class="w-2 h-2 rounded-full bg-destructive"></div>
+              <span class="text-caption font-semibold text-destructive">OVERDUE</span>
+            </div>
+            <div class="space-y-1.5">
+              <span class="text-body text-foreground block truncate">Buy groceries</span>
+              <span class="text-body text-foreground block truncate">Call dentist</span>
+              <span class="text-caption text-muted-foreground">+1 more</span>
+            </div>
+          </div>
+          
+          <!-- Today Column -->
+          <div class="px-3 py-3 border-r border-border">
+            <div class="flex items-center gap-1.5 mb-2">
+              <div class="w-2 h-2 rounded-full bg-primary"></div>
+              <span class="text-caption font-semibold text-primary">TODAY</span>
+            </div>
+            <div class="space-y-1.5">
+              <span class="text-body text-foreground block truncate">Pick up dry cleaning</span>
+              <span class="text-body text-foreground block truncate">Prepare dinner</span>
+              <span class="text-caption text-muted-foreground">+2 more</span>
+            </div>
+          </div>
+          
+          <!-- Tomorrow Column -->
+          <div class="px-3 py-3">
+            <div class="flex items-center gap-1.5 mb-2">
+              <div class="w-2 h-2 rounded-full bg-muted-foreground"></div>
+              <span class="text-caption font-semibold text-muted-foreground">TOMORROW</span>
+            </div>
+            <div class="space-y-1.5">
+              <span class="text-body text-foreground block truncate">Doctor appt</span>
+              <span class="text-body text-foreground block truncate">Submit report</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Spacing at bottom -->
+    <div class="h-8"></div>
+    
+  </div>
+</body>
+</html>

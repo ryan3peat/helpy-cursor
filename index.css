@@ -824,6 +824,16 @@ select {
 }
 
 /* ─────────────────────────────────────────────────────────────────
+   CONTENT VISIBILITY - FLICKER PREVENTION
+   Skips rendering off-screen content until scrolled into view.
+   Used for Meals day cards to prevent flicker on initial scroll.
+   ───────────────────────────────────────────────────────────────── */
+.content-visibility-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 250px;
+}
+
+/* ─────────────────────────────────────────────────────────────────
    CLERK COMPONENT OVERRIDES
    ───────────────────────────────────────────────────────────────── */
 

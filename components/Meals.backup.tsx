@@ -96,6 +96,7 @@ const Meals: React.FC<MealsProps> = ({
   const [loadingAi, setLoadingAi] = useState(false);
   const [exportingPdf, setExportingPdf] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [contentReady, setContentReady] = useState(false);
   
   
   // Scroll header hook for animation - lower threshold so shadow appears when card date gets covered
@@ -139,6 +140,7 @@ const Meals: React.FC<MealsProps> = ({
   // ─────────────────────────────────────────────────────────────────
   const hasInitiallyScrolled = useRef(false);
   const hasScrolledWeekView = useRef(false);
+  const hasInitialized = useRef(false); // Tracks if first scroll completed (prevents flicker on view switch)
 
   const mealTypes = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER, MealType.SNACKS];
   const langCode = currentLang === 'en' ? 'en-GB' : currentLang;
@@ -854,7 +856,7 @@ const Meals: React.FC<MealsProps> = ({
 
   // ─────────────────────────────────────────────────────────────────
   // AUTO-SCROLL TO TODAY - On initial mount AND when switching to day view
-  // Uses content-visibility CSS for flicker prevention (off-screen cards don't render)
+  // Content is hidden until scroll completes to prevent flicker
   // ─────────────────────────────────────────────────────────────────
   useEffect(() => {
     // Skip if not in day view
@@ -869,27 +871,45 @@ const Meals: React.FC<MealsProps> = ({
     
     // Use multiple attempts for reliability
     const scrollAttempts = [0, 50, 150];
-    scrollAttempts.forEach((delay) => {
+    scrollAttempts.forEach((delay, index) => {
       setTimeout(() => {
         const targetEl = document.getElementById(`day-${targetDateStr}`);
-        if (!targetEl) return;
+        if (!targetEl) {
+          // If element not found on last attempt, still show content
+          if (index === scrollAttempts.length - 1) {
+            setContentReady(true);
+            hasInitialized.current = true;
+          }
+          return;
+        }
         
         const rect = targetEl.getBoundingClientRect();
         const elementPosition = rect.top + window.scrollY;
         window.scrollTo({ top: elementPosition - headerOffset, behavior: 'auto' });
-      }, delay);
+        
+        // Show content after final scroll attempt
+        if (index === scrollAttempts.length - 1) {
+          setContentReady(true);
+          hasInitialized.current = true;
+          }
+        }, delay);
     });
   }, [view]);
 
   // Reset day scroll flag when leaving day view
+  // Only hide content on initial load, not when switching views
   useEffect(() => {
     if (view !== 'day') {
       hasInitiallyScrolled.current = false;
+      if (!hasInitialized.current) {
+        setContentReady(false);
+      }
     }
   }, [view]);
 
   // ─────────────────────────────────────────────────────────────────
   // AUTO-SCROLL TO TODAY ROW IN WEEK VIEW
+  // Content is hidden until scroll completes to prevent flicker
   // ─────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (view !== 'week') {
@@ -909,17 +929,26 @@ const Meals: React.FC<MealsProps> = ({
     if (todayIndex === -1) {
       // Still scroll to top to show table header
       window.scrollTo({ top: 0, behavior: 'auto' });
+      setContentReady(true);
+      hasInitialized.current = true;
       return;
     }
     
     // Use multiple attempts for reliability (DOM needs time to render)
     const scrollAttempts = [0, 50, 150, 300];
-    scrollAttempts.forEach((delay) => {
+    scrollAttempts.forEach((delay, index) => {
       setTimeout(() => {
         // Find the table row for today's date
         const dateStr = formatDateStr(weekDays[todayIndex]);
         const targetRow = document.getElementById(`week-row-${dateStr}`);
-        if (!targetRow) return;
+        if (!targetRow) {
+          // If element not found on last attempt, still show content
+          if (index === scrollAttempts.length - 1) {
+            setContentReady(true);
+            hasInitialized.current = true;
+          }
+          return;
+        }
         
         // Calculate scroll position to center today's row
         const headerOffset = 250; // Approximate header height
@@ -929,7 +958,13 @@ const Meals: React.FC<MealsProps> = ({
         
         // Use 'auto' for instant scroll (no visible animation)
         window.scrollTo({ top: Math.max(0, targetScroll), behavior: 'auto' });
-      }, delay);
+        
+        // Show content after final scroll attempt
+        if (index === scrollAttempts.length - 1) {
+          setContentReady(true);
+          hasInitialized.current = true;
+          }
+        }, delay);
     });
   }, [view, weekDays]);
 
@@ -1225,9 +1260,9 @@ const Meals: React.FC<MealsProps> = ({
       </div>
 
         {/* ─────────────────────────────────────────────────────────────── */}
-        {/* MAIN CONTENT */}
+        {/* MAIN CONTENT - Hidden until scroll completes to prevent flicker */}
         {/* ─────────────────────────────────────────────────────────────── */}
-        <div className="pt-1">
+        <div className="pt-1" style={{ opacity: contentReady ? 1 : 0 }}>
 
       {/* Day View */}
       {view === 'day' ? (
@@ -1259,7 +1294,7 @@ const Meals: React.FC<MealsProps> = ({
                 <div 
                   key={dateStr} 
                   id={`day-${dateStr}`} 
-                  className="bg-card rounded-xl overflow-hidden shadow-sm content-visibility-auto"
+                  className="bg-card rounded-xl overflow-hidden shadow-sm "
                 >
                   {/* Prominent Date Header Bar */}
                   <div className={`px-4 py-3 ${isToday ? 'bg-primary' : 'bg-card'}`}>

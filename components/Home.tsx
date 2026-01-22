@@ -605,13 +605,49 @@ const Home: React.FC<HomeProps> = ({
     );
   };
 
-  const shoppingCount = todoItems.filter(i => i.type === 'shopping' && !i.completed).length;
+  const shoppingItems = useMemo(() => {
+    return todoItems.filter(i => i.type === 'shopping' && !i.completed);
+  }, [todoItems]);
+  const shoppingCount = shoppingItems.length;
   
-  // Task count - deduplicate recurring tasks (count only next upcoming instance per series)
-  const activeTaskCount = useMemo(() => {
+  // ─────────────────────────────────────────────────────────────────
+  // Task categorization - EXACT SAME LOGIC AS ToDo.tsx
+  // ─────────────────────────────────────────────────────────────────
+  
+  // Same getDateGroup logic from ToDo.tsx
+  const getDateGroup = (dueDate?: string): 'overdue' | 'noDate' | 'today' | 'tomorrow' | 'thisWeek' | 'nextWeek' | 'later' => {
+    if (!dueDate) return 'noDate';
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const due = new Date(dueDate + 'T00:00:00');
+    
+    const diffDays = Math.floor((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 0) return 'overdue';
+    if (diffDays === 0) return 'today';
+    if (diffDays === 1) return 'tomorrow';
+    
+    const dayOfWeek = today.getDay();
+    const daysUntilEndOfWeek = 7 - dayOfWeek;
+    const endOfWeek = new Date(today);
+    endOfWeek.setDate(today.getDate() + daysUntilEndOfWeek);
+    
+    if (due <= endOfWeek) return 'thisWeek';
+    
+    const endOfNextWeek = new Date(endOfWeek);
+    endOfNextWeek.setDate(endOfWeek.getDate() + 7);
+    
+    if (due <= endOfNextWeek) return 'nextWeek';
+    
+    return 'later';
+  };
+  
+  // Task groups - same deduplication logic as ToDo.tsx
+  const { todayTasks, tomorrowTasks, overdueTasks, activeTaskCount } = useMemo(() => {
     const taskItems = todoItems.filter(i => i.type === 'task' && !i.completed);
     
-    // Apply same deduplication logic as ToDo display
+    // Same recurring task deduplication as ToDo.tsx
     const seriesMap = new Map<string, ToDoItem[]>();
     const nonSeriesItems: ToDoItem[] = [];
     
@@ -630,22 +666,52 @@ const Home: React.FC<HomeProps> = ({
       }
     });
     
-    // For each series, count only the next upcoming instance
-    let pendingCount = nonSeriesItems.length;
-    
+    // Build deduplicated list - same as ToDo.tsx
+    const deduplicated: ToDoItem[] = [...nonSeriesItems];
     seriesMap.forEach((seriesItems) => {
       const sorted = seriesItems.sort((a, b) => {
         const dateA = a.dueDate ? new Date(a.dueDate + 'T00:00:00').getTime() : Infinity;
         const dateB = b.dueDate ? new Date(b.dueDate + 'T00:00:00').getTime() : Infinity;
         return dateA - dateB;
       });
-      
       const nextUpcoming = sorted.find(item => !item.completed);
-      if (nextUpcoming) pendingCount++;
+      if (nextUpcoming) deduplicated.push(nextUpcoming);
     });
     
-    return pendingCount;
+    // Group by date - same logic as groupItemsByDate in ToDo.tsx
+    const today: ToDoItem[] = [];
+    const tomorrow: ToDoItem[] = [];
+    const overdue: ToDoItem[] = [];
+    
+    deduplicated.forEach(item => {
+      const group = getDateGroup(item.dueDate);
+      // noDate items go to today (same as ToDo.tsx display order)
+      if (group === 'today' || group === 'noDate') {
+        today.push(item);
+      } else if (group === 'tomorrow') {
+        tomorrow.push(item);
+      } else if (group === 'overdue') {
+        overdue.push(item);
+      }
+      // thisWeek, nextWeek, later not shown in widget
+    });
+    
+    return {
+      todayTasks: today,
+      tomorrowTasks: tomorrow,
+      overdueTasks: overdue,
+      activeTaskCount: deduplicated.length
+    };
   }, [todoItems]);
+  
+  // Helper to calculate days overdue (for display)
+  const getDaysOverdue = (dueDate: string): number => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const due = new Date(dueDate + 'T00:00:00');
+    const diffTime = today.getTime() - due.getTime();
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  };
   
   // Calculate total member count for quota display (family + helpers combined)
   // Count ALL users (active + pending) since pending invites also consume quota slots
@@ -1286,29 +1352,140 @@ Give it a try:`;
         </div>
       </div>
 
-      {/* Stat Cards */}
-      <div className="grid grid-cols-2 gap-4">
-        <StatCard
-          title={t['dashboard.tasks']}
-          count={activeTaskCount}
-          icon={ClipboardList}
-          label={t['dashboard.todo']}
-          colorClass="text-primary"
-          showAddButton={true}
-          onAddClick={() => onNavigate('todo', { section: 'task', openAddSheet: true })}
-          onClick={() => onNavigate('todo', { section: 'task' })}
-        />
-        <StatCard
-          title={t['dashboard.shopping']}
-          count={shoppingCount}
-          icon={ShoppingCart}
-          label={t['dashboard.todo']}
-          colorClass="text-primary"
-          onClick={() => onNavigate('todo', { section: 'shopping' })}
-          showAddButton={true}
-          onAddClick={() => onNavigate('todo', { section: 'shopping', openAddSheet: true })}
-        />
+      {/* Tasks Widget - Priority-Stacked Layout */}
+      <div
+        onClick={() => onNavigate('todo', { section: 'task' })}
+        className="relative bg-card rounded-2xl shadow-sm border border-border overflow-hidden cursor-pointer"
+      >
+        {/* Top icon - same position as StatCard */}
+        <div className="absolute top-3 right-3 w-9 h-9 flex items-center justify-center opacity-80">
+          <ClipboardList size={20} className="text-primary" />
+        </div>
+        
+        {/* Add Button - bottom right corner, only when has tasks */}
+        {(todayTasks.length > 0 || overdueTasks.length > 0 || tomorrowTasks.length > 0) && (
+          <div className="absolute bottom-3 right-3 w-9 h-9 flex items-center justify-center z-10">
+            <div
+              onClick={(e) => {
+                e.stopPropagation();
+                haptics.light();
+                onNavigate('todo', { section: 'task', openAddSheet: true });
+              }}
+              className="p-1.5 rounded-full bg-primary flex items-center justify-center shadow-sm"
+            >
+              <Plus size={16} className="text-primary-foreground" />
+            </div>
+          </div>
+        )}
+        
+        {/* Header */}
+        <div className="px-4 py-3 pr-14">
+          <span className="text-title text-foreground block">{t['dashboard.tasks'] || 'Tasks'}</span>
+          <span className="text-caption text-muted-foreground">{t['dashboard.todo'] || 'To Do'}</span>
+        </div>
+        
+        {/* Today Section - only show if has items */}
+        {todayTasks.length > 0 && (
+          <>
+            <div className="mx-4 border-t border-border"></div>
+            <div className="px-4 py-3">
+              <span className="text-caption font-semibold text-primary mb-2 block">
+                {t['dashboard.today'] || 'Today'} ({todayTasks.length})
+              </span>
+              <div className="space-y-2">
+                {todayTasks.slice(0, 3).map(task => (
+                  <span key={task.id} className="text-body text-foreground block truncate">{task.title}</span>
+                ))}
+                {todayTasks.length > 3 && (
+                  <span className="text-caption text-muted-foreground">+{todayTasks.length - 3} {t['common.more'] || 'more'}</span>
+                )}
+              </div>
+            </div>
+          </>
+        )}
+        
+        {/* Overdue Section - only show if has items */}
+        {overdueTasks.length > 0 && (
+          <>
+            <div className="mx-4 border-t border-border"></div>
+            <div className="px-4 py-3">
+              <span className="text-caption font-semibold text-destructive mb-2 block">
+                {t['dashboard.overdue'] || 'Overdue'} ({overdueTasks.length})
+              </span>
+              <div className="space-y-2">
+                {overdueTasks.slice(0, 2).map(task => (
+                  <div key={task.id} className="flex justify-between items-center gap-2">
+                    <span className="text-body text-foreground truncate flex-1">{task.title}</span>
+                    {task.dueDate && (
+                      <span className="text-caption text-destructive flex-shrink-0">{getDaysOverdue(task.dueDate)}d</span>
+                    )}
+                  </div>
+                ))}
+                {overdueTasks.length > 2 && (
+                  <span className="text-caption text-muted-foreground">+{overdueTasks.length - 2} {t['common.more'] || 'more'}</span>
+                )}
+              </div>
+            </div>
+          </>
+        )}
+        
+        {/* Tomorrow Section - only show if has items */}
+        {tomorrowTasks.length > 0 && (
+          <>
+            <div className="mx-4 border-t border-border"></div>
+            <div className="px-4 py-3">
+              <span className="text-caption font-semibold text-muted-foreground mb-2 block">
+                {t['dashboard.tomorrow'] || 'Tomorrow'} ({tomorrowTasks.length})
+              </span>
+              <div className="space-y-2">
+                {tomorrowTasks.slice(0, 2).map(task => (
+                  <span key={task.id} className="text-body text-foreground block truncate">{task.title}</span>
+                ))}
+                {tomorrowTasks.length > 2 && (
+                  <span className="text-caption text-muted-foreground">+{tomorrowTasks.length - 2} {t['common.more'] || 'more'}</span>
+                )}
+              </div>
+            </div>
+          </>
+        )}
+        
+        {/* Empty state - compact inline with (+) button */}
+        {todayTasks.length === 0 && overdueTasks.length === 0 && tomorrowTasks.length === 0 && (
+          <>
+            <div className="mx-4 border-t border-border"></div>
+            <div className="px-4 py-3 flex justify-between items-center">
+              <span className="text-body text-muted-foreground">{t['dashboard.no_tasks'] || 'No tasks'}</span>
+              <div
+                onClick={(e) => {
+                  e.stopPropagation();
+                  haptics.light();
+                  onNavigate('todo', { section: 'task', openAddSheet: true });
+                }}
+                className="p-1.5 rounded-full bg-primary flex items-center justify-center shadow-sm"
+              >
+                <Plus size={16} className="text-primary-foreground" />
+              </div>
+            </div>
+          </>
+        )}
+        
+        {/* Bottom padding for (+) button clearance */}
+        {(todayTasks.length > 0 || overdueTasks.length > 0 || tomorrowTasks.length > 0) && (
+          <div className="h-8"></div>
+        )}
       </div>
+
+      {/* Shopping Widget - Full Width */}
+      <StatCard
+        title={t['dashboard.shopping'] || 'Shopping'}
+        count={shoppingCount}
+        icon={ShoppingCart}
+        label={t['dashboard.todo'] || 'To Do'}
+        colorClass="text-primary"
+        onClick={() => onNavigate('todo', { section: 'shopping' })}
+        showAddButton={true}
+        onAddClick={() => onNavigate('todo', { section: 'shopping', openAddSheet: true })}
+      />
 
       {/* Expenses - Hidden for Helper */}
       {!isHelper && (

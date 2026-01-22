@@ -1354,7 +1354,7 @@ Give it a try:`;
 
       {/* Tasks Widget - Priority-Stacked Layout */}
       <div
-        onClick={() => onNavigate('todo', { section: 'task' })}
+          onClick={() => onNavigate('todo', { section: 'task' })}
         className="relative bg-card rounded-2xl shadow-sm border border-border overflow-hidden cursor-pointer"
       >
         {/* Top icon - same position as StatCard */}
@@ -1384,12 +1384,34 @@ Give it a try:`;
           <span className="text-caption text-muted-foreground">{t['dashboard.todo'] || 'To Do'}</span>
         </div>
         
-        {/* Today Section - only show if has items */}
+        {/* Overdue Section - FIRST (no separator before first section) */}
+        {overdueTasks.length > 0 && (
+          <div className="px-4 py-3 pl-11">
+            <span className="text-body text-destructive mb-2 block">
+              {t['dashboard.overdue'] || 'Overdue'} ({overdueTasks.length})
+            </span>
+            <div className="space-y-2">
+              {overdueTasks.slice(0, 2).map(task => (
+                <div key={task.id} className="flex justify-between items-center gap-2">
+                  <span className="text-body text-foreground truncate flex-1">{task.name}</span>
+                  {task.dueDate && (
+                    <span className="text-caption text-destructive flex-shrink-0">{getDaysOverdue(task.dueDate)}d</span>
+                  )}
+                </div>
+              ))}
+              {overdueTasks.length > 2 && (
+                <span className="text-caption text-muted-foreground">+{overdueTasks.length - 2} {t['common.more'] || 'more'}</span>
+              )}
+            </div>
+          </div>
+        )}
+        
+        {/* Today Section - separator only if Overdue exists before it */}
         {todayTasks.length > 0 && (
           <>
-            <div className="mx-4 border-t border-border"></div>
-            <div className="px-4 py-3 pl-7">
-              <span className="text-title text-primary mb-2 block">
+            {overdueTasks.length > 0 && <div className="mx-4 border-t border-border"></div>}
+            <div className="px-4 py-3 pl-11">
+              <span className="text-body text-primary mb-2 block">
                 {t['dashboard.today'] || 'Today'} ({todayTasks.length})
               </span>
               <div className="space-y-2">
@@ -1404,37 +1426,12 @@ Give it a try:`;
           </>
         )}
         
-        {/* Overdue Section - only show if has items */}
-        {overdueTasks.length > 0 && (
-          <>
-            <div className="mx-4 border-t border-border"></div>
-            <div className="px-4 py-3 pl-7">
-              <span className="text-title text-destructive mb-2 block">
-                {t['dashboard.overdue'] || 'Overdue'} ({overdueTasks.length})
-              </span>
-              <div className="space-y-2">
-                {overdueTasks.slice(0, 2).map(task => (
-                  <div key={task.id} className="flex justify-between items-center gap-2">
-                    <span className="text-body text-foreground truncate flex-1">{task.name}</span>
-                    {task.dueDate && (
-                      <span className="text-caption text-destructive flex-shrink-0">{getDaysOverdue(task.dueDate)}d</span>
-                    )}
-                  </div>
-                ))}
-                {overdueTasks.length > 2 && (
-                  <span className="text-caption text-muted-foreground">+{overdueTasks.length - 2} {t['common.more'] || 'more'}</span>
-                )}
-              </div>
-            </div>
-          </>
-        )}
-        
-        {/* Tomorrow Section - only show if has items */}
+        {/* Tomorrow Section - separator only if Overdue or Today exists before it */}
         {tomorrowTasks.length > 0 && (
           <>
-            <div className="mx-4 border-t border-border"></div>
-            <div className="px-4 py-3 pl-7">
-              <span className="text-title text-muted-foreground mb-2 block">
+            {(overdueTasks.length > 0 || todayTasks.length > 0) && <div className="mx-4 border-t border-border"></div>}
+            <div className="px-4 py-3 pl-11">
+              <span className="text-body text-muted-foreground mb-2 block">
                 {t['dashboard.tomorrow'] || 'Tomorrow'} ({tomorrowTasks.length})
               </span>
               <div className="space-y-2">
@@ -1451,22 +1448,19 @@ Give it a try:`;
         
         {/* Empty state - compact inline with (+) button */}
         {todayTasks.length === 0 && overdueTasks.length === 0 && tomorrowTasks.length === 0 && (
-          <>
-            <div className="mx-4 border-t border-border"></div>
-            <div className="px-4 py-3 pl-7 flex justify-between items-center">
-              <span className="text-body text-muted-foreground">{t['dashboard.no_tasks'] || 'No tasks'}</span>
-              <div
-                onClick={(e) => {
-                  e.stopPropagation();
-                  haptics.light();
-                  onNavigate('todo', { section: 'task', openAddSheet: true });
-                }}
-                className="p-1.5 rounded-full bg-primary flex items-center justify-center shadow-sm"
-              >
-                <Plus size={16} className="text-primary-foreground" />
-              </div>
+          <div className="px-4 py-3 pl-11 flex justify-between items-center">
+            <span className="text-body text-muted-foreground">{t['dashboard.no_tasks'] || 'No tasks'}</span>
+            <div
+              onClick={(e) => {
+                e.stopPropagation();
+                haptics.light();
+                onNavigate('todo', { section: 'task', openAddSheet: true });
+              }}
+              className="p-1.5 rounded-full bg-primary flex items-center justify-center shadow-sm"
+            >
+              <Plus size={16} className="text-primary-foreground" />
             </div>
-          </>
+          </div>
         )}
         
         {/* Bottom padding for (+) button clearance */}
@@ -1476,16 +1470,16 @@ Give it a try:`;
       </div>
 
       {/* Shopping Widget - Full Width */}
-      <StatCard
+        <StatCard
         title={t['dashboard.shopping'] || 'Shopping'}
-        count={shoppingCount}
-        icon={ShoppingCart}
+          count={shoppingCount}
+          icon={ShoppingCart}
         label={t['dashboard.todo'] || 'To Do'}
-        colorClass="text-primary"
-        onClick={() => onNavigate('todo', { section: 'shopping' })}
-        showAddButton={true}
-        onAddClick={() => onNavigate('todo', { section: 'shopping', openAddSheet: true })}
-      />
+          colorClass="text-primary"
+          onClick={() => onNavigate('todo', { section: 'shopping' })}
+          showAddButton={true}
+          onAddClick={() => onNavigate('todo', { section: 'shopping', openAddSheet: true })}
+        />
 
       {/* Expenses - Hidden for Helper */}
       {!isHelper && (

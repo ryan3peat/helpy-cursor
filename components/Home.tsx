@@ -1394,7 +1394,7 @@ Give it a try:`;
               </span>
               <div className="space-y-2">
                 {todayTasks.slice(0, 3).map(task => (
-                  <span key={task.id} className="text-body text-foreground block truncate">{task.title}</span>
+                  <span key={task.id} className="text-body text-foreground block truncate">{task.name}</span>
                 ))}
                 {todayTasks.length > 3 && (
                   <span className="text-caption text-muted-foreground">+{todayTasks.length - 3} {t['common.more'] || 'more'}</span>
@@ -1415,7 +1415,7 @@ Give it a try:`;
               <div className="space-y-2">
                 {overdueTasks.slice(0, 2).map(task => (
                   <div key={task.id} className="flex justify-between items-center gap-2">
-                    <span className="text-body text-foreground truncate flex-1">{task.title}</span>
+                    <span className="text-body text-foreground truncate flex-1">{task.name}</span>
                     {task.dueDate && (
                       <span className="text-caption text-destructive flex-shrink-0">{getDaysOverdue(task.dueDate)}d</span>
                     )}
@@ -1439,7 +1439,7 @@ Give it a try:`;
               </span>
               <div className="space-y-2">
                 {tomorrowTasks.slice(0, 2).map(task => (
-                  <span key={task.id} className="text-body text-foreground block truncate">{task.title}</span>
+                  <span key={task.id} className="text-body text-foreground block truncate">{task.name}</span>
                 ))}
                 {tomorrowTasks.length > 2 && (
                   <span className="text-caption text-muted-foreground">+{tomorrowTasks.length - 2} {t['common.more'] || 'more'}</span>

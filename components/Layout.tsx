@@ -27,6 +27,10 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, onNavigate, t }) 
 
   return (
     <div className="min-h-screen pb-20 bg-background">
+      <div
+        className="fixed top-0 left-0 right-0 z-[9] bg-background pointer-events-none"
+        style={{ height: '210px' }}
+      />
       {/* Main Content Area - key forces remount, animation triggers on mount */}
       <div key={activeView} className="flex-1 page-fade-in">{children}</div>
 

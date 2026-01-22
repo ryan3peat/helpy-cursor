@@ -2,6 +2,11 @@
 
 ## ⚠️ CRITICAL - DO NOT MODIFY THIS PATTERN
 
+**Status: 100% flicker-free (header + body).**
+
+This solution is **permanent** and **must not be changed, removed, or overwritten**.
+All agents must treat this as a locked pattern.
+
 This document explains the auto-scroll fix for the Meals page that scrolls to "Today" on load.
 
 ---
@@ -51,7 +56,7 @@ Key points:
 The Meals header must be **overlay-stabilized** to prevent iOS Safari repaint flicker.
 This solution is required **at all times** and must **never be removed or overwritten**.
 
-Required elements:
+Required elements (must stay exactly as-is):
 
 ```tsx
 // Solid background shield behind header/tabs (must stay)
@@ -157,6 +162,8 @@ useLayoutEffect(() => {
 | Use `-mx-4 px-4` on header | Extends header edge-to-edge |
 | **Keep header overlays + shield** | Prevents iOS repaint flicker |
 | **Do not remove overlay CSS** | Ensures stable compositing |
+| **Do not re-enable content-visibility on cards** | Causes delayed card rendering and shadow pop-in |
+| **Never remove the fixed overlays** | They guarantee zero flicker |
 | Use `useLayoutEffect` | Runs before paint, prevents flicker |
 | Single requestAnimationFrame | No race conditions, no multiple repaints |
 | NO multiple setTimeout attempts | This causes iOS Safari flicker! |

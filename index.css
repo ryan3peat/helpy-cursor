@@ -808,22 +808,6 @@ select {
 }
 
 /* ─────────────────────────────────────────────────────────────────
-   PAGE TRANSITION - FADE IN
-   ───────────────────────────────────────────────────────────────── */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-.page-fade-in {
-  animation: fadeIn 0.3s ease-out;
-}
-
-/* ─────────────────────────────────────────────────────────────────
    CONTENT VISIBILITY - FLICKER PREVENTION
    Skips rendering off-screen content until scrolled into view.
    Used for Meals day cards to prevent flicker on initial scroll.

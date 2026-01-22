@@ -1398,7 +1398,7 @@ Give it a try:`;
         {/* Overdue Section - FIRST (no separator before first section) */}
         {overdueTasks.length > 0 && (
           <div className="px-4 py-3 pl-11">
-            <span className="text-body text-destructive mb-2 block">
+            <span className="text-title text-destructive mb-2 block">
               {t['dashboard.overdue'] || 'Overdue'} ({overdueTasks.length})
             </span>
             <div className="space-y-2">
@@ -1422,7 +1422,7 @@ Give it a try:`;
           <div className="relative">
             {overdueTasks.length > 0 && <div className="absolute top-0 left-11 right-4 border-t border-border"></div>}
             <div className="px-4 py-3 pl-11">
-              <span className="text-body text-primary mb-2 block">
+              <span className="text-title text-primary mb-2 block">
                 {t['dashboard.today'] || 'Today'} ({todayTasks.length})
               </span>
               <div className="space-y-2">
@@ -1447,7 +1447,7 @@ Give it a try:`;
           <div className="relative">
             {(overdueTasks.length > 0 || todayTasks.length > 0) && <div className="absolute top-0 left-11 right-4 border-t border-border"></div>}
             <div className="px-4 py-3 pl-11">
-              <span className="text-body text-muted-foreground mb-2 block">
+              <span className="text-title text-muted-foreground mb-2 block">
                 {t['dashboard.tomorrow'] || 'Tomorrow'} ({tomorrowTasks.length})
               </span>
               <div className="space-y-2">

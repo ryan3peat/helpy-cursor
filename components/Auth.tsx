@@ -13,7 +13,7 @@ import RemovedFromHousehold from './RemovedFromHousehold';
 // Loading component for auth states
 const AuthLoading = () => (
   <div 
-    className="fixed inset-0 flex flex-col items-center justify-center p-6 page-fade-in auth-gradient-bg overflow-hidden"
+    className="fixed inset-0 flex flex-col items-center justify-center p-6 auth-gradient-bg overflow-hidden"
     style={{ touchAction: 'none' }}
   >
     {/* Loading bar only - no logo/text to avoid jarring transition from iOS splash */}

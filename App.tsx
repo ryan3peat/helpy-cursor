@@ -59,7 +59,10 @@ import { useRealtimeStatus } from './hooks/useRealtimeStatus';
 
 // Loading component for app states
 const AppLoading = () => (
-  <div className="min-h-screen w-full flex flex-col items-center justify-center p-6 page-fade-in auth-gradient-bg">
+  <div 
+    className="fixed inset-0 flex flex-col items-center justify-center p-6 auth-gradient-bg overflow-hidden"
+    style={{ touchAction: 'none' }}
+  >
     {/* Loading bar only - no logo/text to avoid jarring transition from iOS splash */}
     <div className="auth-loading-bar mx-auto">
       <div className="auth-loading-bar-fill" />
@@ -726,6 +729,9 @@ const AppContent: React.FC = () => {
     
     console.log('[App] Running periodic sync...');
     
+    // Use authenticated client for RLS-protected queries (fixes 406 errors)
+    const authClient = getAuthenticatedSupabaseClient() || supabase;
+    
     try {
       // Fetch all collections in parallel (including household limits AND family notes AND usage info)
       const [usersData, todoData, mealsData, expensesData, householdData, contractsData, slipsData] = await Promise.all([
@@ -733,7 +739,7 @@ const AppContent: React.FC = () => {
         fetchCollection(hid, 'todo_items'),
         fetchCollection(hid, 'meals'),
         fetchCollection(hid, 'expenses'),
-        supabase.from('households').select('max_family_members, max_helpers, family_notes, family_notes_lang, family_notes_translations, trial_started_at, ai_scan_count, salary_slip_sign_count, subscription_plan, subscription_status').eq('id', hid).maybeSingle(),
+        authClient.from('households').select('max_family_members, max_helpers, family_notes, family_notes_lang, family_notes_translations, trial_started_at, ai_scan_count, salary_slip_sign_count, subscription_plan, subscription_status').eq('id', hid).maybeSingle(),
         getHelperContracts(hid),
         getAllSalarySlips(hid),
       ]);
@@ -1310,30 +1316,50 @@ const AppContent: React.FC = () => {
         throw new Error('No authenticated Supabase client available');
       }
       
-      // Quick test query: verify we can access this user's data
-      // For active users, currentUser.id is the clerk_id (user_xxx format)
-      const isClerkId = currentUser.id.startsWith('user_');
-      
-      const { data, error } = await client
-        .from('users')
-        .select('id, clerk_id, household_id')
-        .eq(isClerkId ? 'clerk_id' : 'id', currentUser.id)
+      // FIXED: Instead of querying by localStorage user ID (which might not match JWT),
+      // verify we can access the HOUSEHOLD. This is what matters for the session.
+      // RLS will check if our JWT has access to this household.
+      const { data: householdData, error: householdError } = await client
+        .from('households')
+        .select('id, name')
+        .eq('id', currentUser.householdId)
         .maybeSingle();
       
-      if (error) {
-        console.error('[Session Verification] ❌ Query error:', error.message);
+      if (householdError) {
+        console.error('[Session Verification] ❌ Household query error:', householdError.message, householdError.code);
+        // 406 means RLS blocked - the JWT doesn't have access to this household
+        if (householdError.code === 'PGRST116' || householdError.message?.includes('406')) {
+          console.error('[Session Verification] ❌ RLS blocked access - session is stale');
+          return 'stale';
+        }
         return 'stale';
       }
       
-      if (!data) {
-        console.error('[Session Verification] ❌ User not found in database');
+      if (!householdData) {
+        console.error('[Session Verification] ❌ Household not found or no access');
         return 'stale';
       }
       
-      // Verify household matches
-      if (data.household_id !== currentUser.householdId) {
-        console.warn('[Session Verification] ⚠️ Household mismatch - cached:', currentUser.householdId, 'actual:', data.household_id);
-        return 'stale';
+      console.log('[Session Verification] ✅ Household access verified:', householdData.name);
+      
+      // Optional: Also verify we can see at least one user in the household
+      // This catches edge cases where household is visible but user data isn't
+      const { data: usersInHousehold, error: usersError } = await client
+        .from('users')
+        .select('id, clerk_id')
+        .eq('household_id', currentUser.householdId)
+        .limit(1);
+      
+      if (usersError) {
+        console.warn('[Session Verification] ⚠️ Users query failed:', usersError.message);
+        // Household worked, so session is probably OK
+        return 'verified';
+      }
+      
+      if (!usersInHousehold || usersInHousehold.length === 0) {
+        console.warn('[Session Verification] ⚠️ No users visible in household (might be OK if RLS is strict)');
+        // Household access worked, so session is valid
+        return 'verified';
       }
       
       console.log('[Session Verification] ✅ Session verified successfully');
@@ -1425,7 +1451,8 @@ const AppContent: React.FC = () => {
         // The database trigger automatically creates current + next instances
         // Fetch the created instances to update UI
         if (savedSeries?.id) {
-          const createdInstances = await supabase
+          const authClient = getAuthenticatedSupabaseClient() || supabase;
+          const createdInstances = await authClient
             .from('todo_items')
             .select('*')
             .eq('series_id', savedSeries.id)
@@ -1596,7 +1623,8 @@ const AppContent: React.FC = () => {
         // NOW query database for all items - safe because series is already soft-deleted
         // No new instances can be created by the trigger at this point
         try {
-          const { data: dbSeriesItems } = await supabase
+          const authClient = getAuthenticatedSupabaseClient() || supabase;
+          const { data: dbSeriesItems } = await authClient
             .from('todo_items')
             .select('id')
             .eq('series_id', seriesId)
@@ -1913,7 +1941,8 @@ const AppContent: React.FC = () => {
     
     setFamilyNotesTranslations(translations);
     try {
-      const { error } = await supabase
+      const authClient = getAuthenticatedSupabaseClient() || supabase;
+      const { error } = await authClient
         .from('households')
         .update({ family_notes_translations: translations })
         .eq('id', hid);

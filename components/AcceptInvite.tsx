@@ -35,7 +35,10 @@ function getClerkErrorMessage(err: any): string {
 
 // Loading component for auth states  
 const AuthLoading = () => (
-  <div className="min-h-screen w-full flex flex-col items-center justify-center p-6 page-fade-in auth-gradient-bg">
+  <div 
+    className="fixed inset-0 flex flex-col items-center justify-center p-6 auth-gradient-bg overflow-hidden"
+    style={{ touchAction: 'none' }}
+  >
     {/* Loading bar only - no logo/text to avoid jarring transition from iOS splash */}
     <div className="auth-loading-bar mx-auto">
       <div className="auth-loading-bar-fill" />

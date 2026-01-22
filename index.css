@@ -823,6 +823,12 @@ select {
   -webkit-font-smoothing: antialiased;
 }
 
+.header-sticky-stable {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  will-change: transform;
+}
+
 /* ─────────────────────────────────────────────────────────────────
    CLERK COMPONENT OVERRIDES
    ───────────────────────────────────────────────────────────────── */

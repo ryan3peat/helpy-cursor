@@ -913,7 +913,7 @@ const Meals: React.FC<MealsProps> = ({
     // Only scroll vertically if today is in the current week
     if (todayIndex === -1) {
       // Still scroll to top to show table header
-      window.scrollTo({ top: 0, behavior: 'auto' });
+        window.scrollTo({ top: 0, behavior: 'auto' });
       return;
     }
     
@@ -937,7 +937,7 @@ const Meals: React.FC<MealsProps> = ({
         // Use 'auto' for instant scroll (no visible animation)
         window.scrollTo({ top: Math.max(0, targetScroll), behavior: 'auto' });
         didScroll = true;
-      }, delay);
+        }, delay);
     });
   }, [view, weekDays]);
 
@@ -1140,7 +1140,7 @@ const Meals: React.FC<MealsProps> = ({
 
   return (
     <div className="min-h-screen bg-background pb-40">
-      <div
+      <div 
         className="fixed top-0 left-0 right-0 z-[19] bg-background pointer-events-none"
         style={{ height: '210px' }}
       />
@@ -1149,7 +1149,7 @@ const Meals: React.FC<MealsProps> = ({
         {/* STICKY HEADER - matches Family */}
         {/* ─────────────────────────────────────────────────────────────── */}
         <header 
-          className="sticky top-0 z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 pb-3 flex items-end" 
+          className="sticky top-0 z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 pb-3 flex items-end header-sticky-stable" 
           style={{ height: '120px' }}
         >
           <div className="flex items-center justify-between w-full">
@@ -1195,7 +1195,7 @@ const Meals: React.FC<MealsProps> = ({
         {/* WEEK NAVIGATION - Same structure as Family Info tab nav */}
         {/* ─────────────────────────────────────────────────────────────── */}
         <div 
-          className="sticky z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 py-5"
+          className="sticky z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 py-5 header-sticky-stable"
           style={{ 
             top: '120px',
             boxShadow: isScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none'

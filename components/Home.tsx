@@ -696,6 +696,17 @@ const Home: React.FC<HomeProps> = ({
       // thisWeek, nextWeek, later not shown in widget
     });
     
+    // Sort by createdAt descending (newest first) - same as ToDo.tsx default 'addedDate-desc'
+    const sortByCreatedDesc = (a: ToDoItem, b: ToDoItem) => {
+      const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return dateB - dateA; // descending (newest first)
+    };
+    
+    today.sort(sortByCreatedDesc);
+    tomorrow.sort(sortByCreatedDesc);
+    overdue.sort(sortByCreatedDesc);
+    
     return {
       todayTasks: today,
       tomorrowTasks: tomorrow,

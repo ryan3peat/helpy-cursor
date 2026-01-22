@@ -150,8 +150,6 @@ const Profile: React.FC<ProfileProps> = ({
   // Plan confirmation modal state (for promo/referral codes)
   const [isPlanConfirmOpen, setIsPlanConfirmOpen] = useState(false);
   const [pendingPlan, setPendingPlan] = useState<{ plan: 'core' | 'pro' | 'test'; period: 'monthly' | 'yearly' } | null>(null);
-  const [promoCodeInput, setPromoCodeInput] = useState('');
-  const [promoCodeError, setPromoCodeError] = useState<string | null>(null);
   const [referralCodeInput, setReferralCodeInput] = useState('');
   const [referralCodeError, setReferralCodeError] = useState<string | null>(null);
   const [referralCodeValid, setReferralCodeValid] = useState(false);
@@ -162,6 +160,9 @@ const Profile: React.FC<ProfileProps> = ({
     status: string;
     periodEnd?: string;
     period?: string;
+    isTrial?: boolean;
+    trialEndsAt?: string;
+    cancelAtPeriodEnd?: boolean;
   } | null>(null);
   
   // Household limits for family member quota
@@ -171,6 +172,7 @@ const Profile: React.FC<ProfileProps> = ({
   }>({ maxFamily: 3, maxHelpers: 1 }); // Default to free plan limits
   const [isLoadingSubscription, setIsLoadingSubscription] = useState(true);
   const hasLoadedSubscriptionRef = useRef(false); // Track if we've loaded subscription info at least once
+  const isHandlingStripeReturnRef = useRef(false); // Prevent double-fetch when returning from Stripe
   const [isDeleteAccountModalOpen, setIsDeleteAccountModalOpen] = useState(false);
   const [isFinalDeleteConfirmOpen, setIsFinalDeleteConfirmOpen] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
@@ -286,6 +288,18 @@ const Profile: React.FC<ProfileProps> = ({
   // Pre-fetch subscription info on component mount (for admins)
   // This eliminates latency when navigating to the Plan page
   React.useEffect(() => {
+    // Skip if we're handling Stripe return (that handler will fetch after sync)
+    const urlParams = new URLSearchParams(window.location.search);
+    const hashParams = new URLSearchParams(window.location.hash.split('?')[1] || '');
+    const portalReturn = urlParams.get('portal_return') || hashParams.get('portal_return');
+    const sessionId = urlParams.get('session_id') || hashParams.get('session_id');
+    const success = urlParams.get('success') || hashParams.get('success');
+    
+    if (portalReturn === 'true' || sessionId || success === 'true') {
+      // Let the Stripe return handler manage the fetch after sync
+      return;
+    }
+    
     if (currentUser?.householdId && (currentUser?.role === UserRole.MASTER || currentUser?.role === UserRole.SUPERADMIN)) {
       fetchSubscriptionInfo();
     } else {
@@ -302,6 +316,7 @@ const Profile: React.FC<ProfileProps> = ({
     // Ensure we have an authenticated client
     if (!supabase) {
       console.warn('[Profile] No Supabase client available for fetching subscription info');
+      setIsLoadingSubscription(false);
       return false;
     }
     
@@ -312,7 +327,7 @@ const Profile: React.FC<ProfileProps> = ({
       }
       const { data, error } = await supabase
         .from('households')
-        .select('name, subscription_plan, subscription_status, subscription_current_period_end, subscription_period, max_family_members, max_helpers')
+        .select('name, subscription_plan, subscription_status, subscription_current_period_end, subscription_period, max_family_members, max_helpers, is_trial, trial_ends_at, cancel_at_period_end')
         .eq('id', currentUser.householdId)
         .maybeSingle();
 
@@ -339,7 +354,10 @@ const Profile: React.FC<ProfileProps> = ({
           plan: data.subscription_plan || 'free',
           status: data.subscription_status || 'inactive',
           periodEnd: data.subscription_current_period_end,
-          period: data.subscription_period || 'monthly'
+          period: data.subscription_period || 'monthly',
+          isTrial: data.is_trial || false,
+          trialEndsAt: data.trial_ends_at || undefined,
+          cancelAtPeriodEnd: data.cancel_at_period_end || false
         };
         
         console.log('[Profile] Updating subscriptionInfo state:', newSubscriptionInfo);
@@ -385,41 +403,111 @@ const Profile: React.FC<ProfileProps> = ({
     const success = urlParams.get('success') || hashParams.get('success');
     const portalReturn = urlParams.get('portal_return') || hashParams.get('portal_return');
 
-    // If we just returned from Stripe portal, check if subscription was canceled
+    // If we just returned from Stripe portal, sync and check subscription status
     if (portalReturn === 'true') {
-      // Navigate to subscription page
-      setActiveSection('settings');
-      setTimeout(() => setActiveSection('plan'), 100);
-
-      // Clear URL parameters
+      // Mark that we're handling Stripe return to prevent double-fetch
+      isHandlingStripeReturnRef.current = true;
+      
+      // Show loading state while syncing from Stripe
+      setIsLoadingSubscription(true);
+      
+      // Clear URL parameters first to prevent re-triggering
       const newUrl = window.location.pathname + (window.location.hash.split('?')[0] || '');
       window.history.replaceState({}, document.title, newUrl);
+      
+      // Navigate to subscription page
+      setActiveSection('plan');
 
-      // Check subscription status after a short delay (webhook might need time)
-      setTimeout(async () => {
-        if (!supabase) {
-          console.warn('[Profile] No Supabase client available for portal return check');
-          return;
+      // Sync subscription from Stripe to get latest status (including cancel_at_period_end)
+      // IMPORTANT: Sync FIRST, then fetch - to ensure we get the latest cancel_at_period_end value
+      const syncAfterPortal = async () => {
+        try {
+          console.log('[Profile] ====== PORTAL RETURN SYNC START ======');
+          console.log('[Profile] Syncing subscription after portal return for household:', currentUser.householdId);
+
+          // Wait for Stripe to process the cancellation - try multiple times with increasing delays
+          console.log('[Profile] Waiting for Stripe to process cancellation...');
+          let syncResult;
+          let attempts = 0;
+          const maxAttempts = 3;
+
+          while (attempts < maxAttempts) {
+            console.log(`[Profile] Sync attempt ${attempts + 1}/${maxAttempts}`);
+            syncResult = await syncSubscription(currentUser.householdId);
+            console.log('[Profile] Sync API result:', JSON.stringify(syncResult));
+
+            // If we successfully got cancelAtPeriodEnd: true, we're done
+            if (syncResult.success && syncResult.cancelAtPeriodEnd) {
+              console.log('[Profile] Successfully detected cancellation in Stripe');
+              break;
+            }
+
+            attempts++;
+            if (attempts < maxAttempts) {
+              const delay = attempts * 1000; // 1s, 2s, 3s delays
+              console.log(`[Profile] Cancellation not detected yet, waiting ${delay}ms before retry...`);
+              await new Promise(resolve => setTimeout(resolve, delay));
+            }
+          }
+
+          // Small delay to ensure database update is committed
+          await new Promise(resolve => setTimeout(resolve, 500));
+
+          // NOW fetch updated subscription info from database (with loading = false to not show spinner)
+          console.log('[Profile] Fetching updated subscription info from database...');
+          await fetchSubscriptionInfo(0, false);
+
+          // Check if subscription was fully canceled (status changed)
+          if (!supabase) {
+            console.log('[Profile] No supabase client available');
+            return;
+          }
+
+          const { data, error } = await supabase
+            .from('households')
+            .select('subscription_status, subscription_plan, cancel_at_period_end, is_trial')
+            .eq('id', currentUser.householdId)
+            .maybeSingle();
+
+          console.log('[Profile] Direct database query result:', JSON.stringify(data));
+          if (error) {
+            console.error('[Profile] Database query error:', error);
+          }
+
+          console.log('[Profile] cancel_at_period_end value:', data?.cancel_at_period_end);
+          console.log('[Profile] subscription_status value:', data?.subscription_status);
+
+          if (data) {
+            // Show canceled modal if subscription is fully canceled (not just cancel_at_period_end)
+            if (data.subscription_status === 'canceled' || data.subscription_status === 'inactive') {
+              console.log('[Profile] Showing subscription canceled modal');
+              setSubscriptionCanceled(true);
+            }
+          }
+
+          console.log('[Profile] ====== PORTAL RETURN SYNC END ======');
+        } catch (error) {
+          console.error('[Profile] Error syncing after portal return:', error);
+          // Still try to fetch local data
+          await fetchSubscriptionInfo(0, false);
         }
-        // Fetch subscription info and check if it's no longer active
-        const { data } = await supabase
-          .from('households')
-          .select('subscription_status')
-          .eq('id', currentUser.householdId)
-          .maybeSingle();
-        
-        if (data && data.subscription_status !== 'active') {
-          // Subscription was canceled or is no longer active
-          setSubscriptionCanceled(true);
-        }
-        
-        // Also refresh the full subscription info
-        fetchSubscriptionInfo();
-      }, 2000);
+      };
+      
+      // Sync from Stripe FIRST, then fetch - ensures we have the latest cancel_at_period_end value
+      // Don't fetch stale data first, as it shows the wrong button state
+      syncAfterPortal().finally(() => {
+        // Reset the flag after sync is complete
+        isHandlingStripeReturnRef.current = false;
+      });
+      
+      return; // Don't process other URL params
     }
 
     // If we just returned from Stripe checkout
     if (sessionId || success === 'true') {
+      // Mark that we're handling Stripe return to prevent double-fetch
+      isHandlingStripeReturnRef.current = true;
+      
       // Navigate to subscription page
       setActiveSection('settings');
       // Small delay to allow settings to render, then navigate to plan
@@ -453,10 +541,12 @@ const Profile: React.FC<ProfileProps> = ({
           console.log('[Profile] Verifying subscription info state...');
           await fetchSubscriptionInfo(0, false);
           setTimeout(() => setSubscriptionSuccess(false), 3000);
+          isHandlingStripeReturnRef.current = false;
           return;
         }
         
         console.warn('[Profile] Sync failed, falling back to polling:', syncResult.error);
+        isHandlingStripeReturnRef.current = false;
         
         // Fallback: poll for webhook to update (legacy behavior)
         const retryFetch = async (attempt: number = 0) => {
@@ -494,6 +584,10 @@ const Profile: React.FC<ProfileProps> = ({
 
   // Fetch subscription info when navigating to plan/security sections (only if missing)
   React.useEffect(() => {
+    // Skip if we're handling Stripe return (that handler will fetch)
+    if (isHandlingStripeReturnRef.current) {
+      return;
+    }
     if ((activeSection === 'plan' || activeSection === 'security') && !subscriptionInfo) {
       fetchSubscriptionInfo();
     }
@@ -713,11 +807,9 @@ const Profile: React.FC<ProfileProps> = ({
     }
   };
 
-  // Open plan confirmation modal (for new subscriptions with promo/referral codes)
+  // Open plan confirmation modal (for new subscriptions with referral codes)
   const handleOpenPlanConfirm = (plan: 'core' | 'pro' | 'test', period: 'monthly' | 'yearly') => {
     setPendingPlan({ plan, period });
-    setPromoCodeInput('');
-    setPromoCodeError(null);
     setReferralCodeInput('');
     setReferralCodeError(null);
     setReferralCodeValid(false);
@@ -728,21 +820,21 @@ const Profile: React.FC<ProfileProps> = ({
   const handleConfirmPlan = async () => {
     if (!pendingPlan) return;
     await handleSelectPlan(
-      pendingPlan.plan, 
-      pendingPlan.period, 
-      referralCodeValid ? undefined : promoCodeInput, 
+      pendingPlan.plan,
+      pendingPlan.period,
+      undefined,
       referralCodeValid ? referralCodeInput : undefined
     );
   };
 
   // Stripe Checkout Handler - handles both new subscriptions and plan changes
-  const handleSelectPlan = async (plan: 'core' | 'pro' | 'test', period: 'monthly' | 'yearly', promoCode?: string, referralCode?: string, skipConfirmation?: boolean) => {
+  const handleSelectPlan = async (plan: 'core' | 'pro' | 'test', period: 'monthly' | 'yearly', referralCode?: string, skipConfirmation?: boolean) => {
     try {
-      setPromoCodeError(null);
       setLoadingPlan(plan);
       
-      // Check if user has an active paid subscription
-      const hasActivePaidSubscription = subscriptionInfo?.status === 'active' && 
+      // Check if user has an active paid subscription (includes 'trialing' status)
+      const isSubscriptionActive = subscriptionInfo?.status === 'active' || subscriptionInfo?.status === 'trialing';
+      const hasActivePaidSubscription = isSubscriptionActive && 
         subscriptionInfo?.plan && 
         subscriptionInfo.plan !== 'free';
       
@@ -789,7 +881,7 @@ const Profile: React.FC<ProfileProps> = ({
           plan,
           period,
           currentUser.email || '',
-          promoCode,
+          undefined,
           referralCode,
           currentUser.id
         );
@@ -799,13 +891,11 @@ const Profile: React.FC<ProfileProps> = ({
       }
     } catch (error) {
       console.error('Checkout error:', error);
-      // Check for promo code errors
-      const errorMsg = error instanceof Error ? error.message.toLowerCase() : '';
-      if (errorMsg.includes('coupon') || errorMsg.includes('promo')) {
-        setPromoCodeError(t['error.invalid_promo_code'] || 'Invalid promo code. Please check and try again.');
-      } else {
-        setPromoCodeError(t['error.plan_change_failed'] || 'Could not change your plan. Please try again or contact support.');
-      }
+      showAlert(
+        t['error.plan_change_failed'] || 'Could not change your plan. Please try again or contact support.',
+        '',
+        'error'
+      );
       setLoadingPlan(null);
     }
   };
@@ -818,24 +908,30 @@ const Profile: React.FC<ProfileProps> = ({
 
   // Execute the actual downgrade to Free (called after modal confirmation)
   const executeDowngradeToFree = async () => {
+    console.log('[Profile] executeDowngradeToFree started');
     try {
       setLoadingPlan('core'); // Use 'core' as a loading indicator for downgrade
-      await downgradeToFree(currentUser.householdId, currentUser.id);
+      console.log('[Profile] Calling downgradeToFree API...');
+      const result = await downgradeToFree(currentUser.householdId, currentUser.id);
+      console.log('[Profile] downgradeToFree API result:', result);
+      console.log('[Profile] downgradeToFree API completed, refreshing subscription info...');
       // Refresh subscription info
       await fetchSubscriptionInfo(0, false);
+      console.log('[Profile] Subscription info refreshed, showing success alert');
       showAlert(
         t['subscription.downgrade_success_title'] || 'Subscription Canceled',
         t['subscription.downgrade_success'] || 'Your subscription has been canceled. You are now on the Free plan.',
         'success'
       );
-      setLoadingPlan(null);
     } catch (error) {
-      console.error('Downgrade error:', error);
+      console.error('[Profile] Downgrade error:', error);
       showAlert(
         t['error.downgrade_title'] || 'Downgrade Failed',
         t['error.plan_change_failed'] || 'Could not change your plan. Please try again or contact support.',
         'error'
       );
+    } finally {
+      console.log('[Profile] executeDowngradeToFree finished, resetting loadingPlan');
       setLoadingPlan(null);
     }
   };
@@ -845,15 +941,22 @@ const Profile: React.FC<ProfileProps> = ({
     if (!pendingDowngrade) return;
     
     setShowDowngradeModal(false);
+    const downgradeType = pendingDowngrade.type;
+    const targetPlan = pendingDowngrade.targetPlan;
+    const targetPeriod = pendingDowngrade.targetPeriod;
+    setPendingDowngrade(null); // Clear immediately to prevent double-clicks
     
-    if (pendingDowngrade.type === 'paid_to_free') {
-      await executeDowngradeToFree();
-    } else if (pendingDowngrade.type === 'paid_to_paid' && pendingDowngrade.targetPlan && pendingDowngrade.targetPeriod) {
-      // Call handleSelectPlan with skipConfirmation=true to bypass the modal
-      await handleSelectPlan(pendingDowngrade.targetPlan, pendingDowngrade.targetPeriod, undefined, undefined, true);
+    try {
+      if (downgradeType === 'paid_to_free') {
+        await executeDowngradeToFree();
+      } else if (downgradeType === 'paid_to_paid' && targetPlan && targetPeriod) {
+        // Call handleSelectPlan with skipConfirmation=true to bypass the modal
+        await handleSelectPlan(targetPlan, targetPeriod, undefined, true);
+      }
+    } catch (error) {
+      console.error('Downgrade confirmation error:', error);
+      setLoadingPlan(null); // Ensure loading is reset on error
     }
-    
-    setPendingDowngrade(null);
   };
 
   // Handle cancel from downgrade modal
@@ -868,7 +971,18 @@ const Profile: React.FC<ProfileProps> = ({
     try {
       setIsLoading(true);
       const portalUrl = await createPortalSession(currentUser.householdId);
+      
+      if (!portalUrl) {
+        throw new Error('No portal URL returned');
+      }
+      
+      // Redirect to Stripe portal
       window.location.href = portalUrl;
+      
+      // Safety: reset loading after a delay in case redirect doesn't happen
+      setTimeout(() => {
+        setIsLoading(false);
+      }, 5000);
     } catch (error) {
       console.error('Portal error:', error);
       showAlert(
@@ -2262,20 +2376,8 @@ const Profile: React.FC<ProfileProps> = ({
   
   const confirmCancelSubscription = async () => {
     setShowCancelSubConfirm(false);
-    
-    try {
-      setIsLoading(true);
-      // Redirect to Stripe portal for cancellation
-      await handleManageSubscription();
-    } catch (error) {
-      console.error('Error canceling subscription:', error);
-      showAlert(
-        t['error.cancel_subscription_title'] || 'Cancellation Failed',
-        t['error.cancel_subscription'] || 'Failed to cancel subscription. Please try again.',
-        'error'
-      );
-      setIsLoading(false);
-    }
+    // handleManageSubscription already handles loading state and errors internally
+    await handleManageSubscription();
   };
 
   const formatDate = (dateString?: string) => {
@@ -2548,21 +2650,27 @@ const Profile: React.FC<ProfileProps> = ({
     ];
 
     const isAdmin = currentUser.role === UserRole.MASTER || currentUser.role === UserRole.SUPERADMIN;
-    const currentPlanName = subscriptionInfo?.plan === 'core' 
+    // Check if subscription is active (includes 'trialing' status for free trial subscriptions)
+    const isSubscriptionActive = subscriptionInfo?.status === 'active' || subscriptionInfo?.status === 'trialing';
+    // Determine the current plan - if subscription is active/trialing, use the plan, otherwise it's free
+    const effectivePlan = isSubscriptionActive && subscriptionInfo?.plan && subscriptionInfo.plan !== 'free' 
+      ? subscriptionInfo.plan 
+      : 'free';
+    const currentPlanName = effectivePlan === 'core' 
       ? (t['common.core'] || 'Core') 
-      : subscriptionInfo?.plan === 'pro' 
+      : effectivePlan === 'pro' 
       ? (t['common.pro'] || 'Pro') 
       : (t['common.free'] || 'Free');
-    const planPrice = subscriptionInfo?.plan === 'core' 
+    const planPrice = effectivePlan === 'core' 
       ? (subscriptionInfo?.period === 'yearly' ? 845 : 88)
-      : subscriptionInfo?.plan === 'pro'
+      : effectivePlan === 'pro'
       ? (subscriptionInfo?.period === 'yearly' ? 1133 : 118)
       : 0;
     
     // Current plan card colors based on plan
-    const currentPlanColors = subscriptionInfo?.plan === 'core'
+    const currentPlanColors = effectivePlan === 'core'
       ? { bg: HELPY_BLUE, text: 'white', textMuted: 'rgba(255,255,255,0.8)', border: 'rgba(255,255,255,0.2)', badgeBg: 'white', badgeBorder: 'white', badgeText: HELPY_BLUE }
-      : subscriptionInfo?.plan === 'pro'
+      : effectivePlan === 'pro'
       ? { bg: HELPY_PINK, text: 'white', textMuted: 'rgba(255,255,255,0.8)', border: 'rgba(255,255,255,0.2)', badgeBg: 'white', badgeBorder: 'white', badgeText: HELPY_PINK }
       : { bg: 'hsl(var(--card))', text: 'hsl(var(--foreground))', textMuted: 'hsl(var(--muted-foreground))', border: 'hsl(var(--border))', badgeBg: 'white', badgeBorder: HELPY_BLUE, badgeText: HELPY_BLUE };
 
@@ -2631,31 +2739,35 @@ const Profile: React.FC<ProfileProps> = ({
                   </div>
                 </div>
                 
-                {subscriptionInfo?.status === 'active' && subscriptionInfo?.periodEnd ? (
-                  <div 
+                {subscriptionInfo?.periodEnd ? (
+                  <div
                     className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t"
                     style={{ borderColor: currentPlanColors.border }}
                   >
                     <div>
-                      <p 
+                      <p
                         className="text-caption mb-1"
                         style={{ color: currentPlanColors.textMuted }}
                       >
-                        {t['common.expires_on'] || 'Expires On'}
+                        {(subscriptionInfo?.cancelAtPeriodEnd || subscriptionInfo?.status === 'canceled') ? (t['subscription.access_until'] || 'Access Until') : (t['common.expires_on'] || 'Expires On')}
                       </p>
                       <p className="text-body font-semibold">{formatDate(subscriptionInfo.periodEnd)}</p>
                     </div>
                     <div>
-                      <p 
+                      <p
                         className="text-caption mb-1"
                         style={{ color: currentPlanColors.textMuted }}
                       >
-                        {t['common.next_payment'] || 'Next Payment'}
+                        {(subscriptionInfo?.cancelAtPeriodEnd || subscriptionInfo?.status === 'canceled') ? (t['common.status'] || 'Status') : (t['common.next_payment'] || 'Next Payment')}
                       </p>
-                      <p className="text-body font-semibold">{getNextPaymentDate(subscriptionInfo.periodEnd, subscriptionInfo.period) || (t['common.na'] || 'N/A')}</p>
+                      <p className="text-body font-semibold">
+                        {(subscriptionInfo?.cancelAtPeriodEnd || subscriptionInfo?.status === 'canceled')
+                          ? (t['subscription.cancelled'] || 'Cancelled')
+                          : (getNextPaymentDate(subscriptionInfo.periodEnd, subscriptionInfo.period) || (t['common.na'] || 'N/A'))}
+                      </p>
                     </div>
                   </div>
-                ) : subscriptionInfo?.status !== 'active' && (
+                ) : !isSubscriptionActive && (
                   <div 
                     className="mt-4 pt-4 border-t"
                     style={{ borderColor: currentPlanColors.border }}
@@ -2669,18 +2781,52 @@ const Profile: React.FC<ProfileProps> = ({
                   </div>
                 )}
 
-                {subscriptionInfo?.status === 'active' && isAdmin && (
-                  <button
-                    onClick={handleCancelSubscription}
-                    disabled={isLoading}
-                    className="w-full mt-4 py-3 rounded-xl font-semibold disabled:opacity-50"
-                    style={{ 
-                      backgroundColor: subscriptionInfo?.plan ? 'rgba(255,255,255,0.2)' : 'hsl(var(--secondary))',
-                      color: currentPlanColors.text
-                    }}
+                {/* Trial End Date Display */}
+                {subscriptionInfo?.isTrial && subscriptionInfo?.trialEndsAt && (
+                  <div 
+                    className="mt-4 pt-4 border-t"
+                    style={{ borderColor: currentPlanColors.border }}
                   >
-                    {isLoading ? (t['common.processing'] || 'Processing...') : (t['common.cancel_subscription'] || 'Cancel Subscription')}
-                  </button>
+                    <p 
+                      className="text-body"
+                      style={{ color: currentPlanColors.textMuted }}
+                    >
+                      {t['subscription.trial_ends'] || 'Free trial ends'}: <span className="font-semibold" style={{ color: currentPlanColors.text }}>{formatDate(subscriptionInfo.trialEndsAt)}</span>
+                    </p>
+                  </div>
+                )}
+
+                {/* Show cancel button for active paid subscriptions, subscriptions set to cancel at period end, OR cancelled subscriptions */}
+                {((isSubscriptionActive && subscriptionInfo?.plan && subscriptionInfo.plan !== 'free') || subscriptionInfo?.cancelAtPeriodEnd || subscriptionInfo?.status === 'canceled') && isAdmin && (
+                  <>
+                    <button
+                      onClick={handleCancelSubscription}
+                      disabled={isLoading || subscriptionInfo?.cancelAtPeriodEnd || subscriptionInfo?.status === 'canceled'}
+                      className="w-full py-3 rounded-xl font-semibold disabled:opacity-50"
+                      style={{
+                        backgroundColor: (subscriptionInfo?.cancelAtPeriodEnd || subscriptionInfo?.status === 'canceled')
+                          ? 'rgba(128,128,128,0.3)'
+                          : subscriptionInfo?.plan ? 'rgba(255,255,255,0.2)' : 'hsl(var(--secondary))',
+                        color: (subscriptionInfo?.cancelAtPeriodEnd || subscriptionInfo?.status === 'canceled') ? 'rgba(255,255,255,0.6)' : currentPlanColors.text
+                      }}
+                    >
+                      {isLoading
+                        ? (t['common.processing'] || 'Processing...')
+                        : (subscriptionInfo?.cancelAtPeriodEnd || subscriptionInfo?.status === 'canceled')
+                          ? (t['subscription.cancelled'] || 'Cancelled')
+                          : (t['common.cancel_subscription'] || 'Cancel Subscription')}
+                    </button>
+                    {(subscriptionInfo?.cancelAtPeriodEnd || subscriptionInfo?.status === 'canceled') && subscriptionInfo?.periodEnd && (
+                      <p
+                        className="text-caption text-center mt-2"
+                        style={{ color: currentPlanColors.textMuted }}
+                      >
+                        {subscriptionInfo?.status === 'canceled'
+                          ? (t['subscription.cancelled'] || 'Subscription cancelled')
+                          : (t['subscription.access_until'] || 'You have access until') + ' ' + formatDate(subscriptionInfo.periodEnd)}
+                      </p>
+                    )}
+                  </>
                 )}
               </div>
             )}
@@ -2688,7 +2834,7 @@ const Profile: React.FC<ProfileProps> = ({
             {/* Upgrade/Change Plan Section */}
             <div id="plan-section" className="mb-6">
               <h3 className="text-title font-bold text-foreground mb-4">
-                {subscriptionInfo && subscriptionInfo.status === 'active' ? (t['subscription.change_plan'] || 'Change Plan') : (t['subscription.choose_plan'] || 'Choose Your Plan')}
+                {isSubscriptionActive && effectivePlan !== 'free' ? (t['subscription.change_plan'] || 'Change Plan') : (t['subscription.choose_plan'] || 'Choose Your Plan')}
               </h3>
 
               {!isAdmin && (
@@ -2738,21 +2884,28 @@ const Profile: React.FC<ProfileProps> = ({
               <div className="space-y-4">
                 {plans.map((p) => {
                   const price = billingPeriod === 'monthly' ? p.monthlyPrice : p.yearlyPrice;
+                  // Check if subscription is active (includes 'trialing' status for free trial subscriptions)
+                  const isSubscriptionActive = subscriptionInfo?.status === 'active' || subscriptionInfo?.status === 'trialing';
                   // For free plan, check if user has no active paid subscription
                   const isCurrentPlan = p.isFree 
-                    ? (!subscriptionInfo?.plan || subscriptionInfo?.plan === 'free' || subscriptionInfo?.status !== 'active')
-                    : (subscriptionInfo?.plan === p.id && subscriptionInfo?.status === 'active');
+                    ? (!subscriptionInfo?.plan || subscriptionInfo?.plan === 'free' || !isSubscriptionActive)
+                    : (subscriptionInfo?.plan === p.id && isSubscriptionActive);
 
                   // Determine if this is an upgrade or downgrade
                   // Plan hierarchy: free (0) < core (1) < pro (2)
+                  // IMPORTANT: Use effectivePlan (which considers subscription status), not subscriptionInfo.plan
+                  // This ensures that inactive/canceled subscriptions are treated as Free
                   const planRank = { free: 0, core: 1, pro: 2 };
-                  const currentPlanRank = planRank[subscriptionInfo?.plan as keyof typeof planRank] ?? 0;
+                  const currentEffectivePlan = isSubscriptionActive && subscriptionInfo?.plan && subscriptionInfo.plan !== 'free'
+                    ? subscriptionInfo.plan
+                    : 'free';
+                  const currentPlanRank = planRank[currentEffectivePlan as keyof typeof planRank] ?? 0;
                   const targetPlanRank = planRank[p.id as keyof typeof planRank] ?? 0;
                   const isUpgrade = targetPlanRank > currentPlanRank;
                   const isDowngrade = targetPlanRank < currentPlanRank;
                   
                   // Check if user has an active paid subscription (for showing downgrade to Free)
-                  const hasActivePaidSubscription = subscriptionInfo?.status === 'active' && 
+                  const hasActivePaidSubscription = isSubscriptionActive && 
                     subscriptionInfo?.plan && 
                     subscriptionInfo.plan !== 'free';
 
@@ -3093,38 +3246,6 @@ const Profile: React.FC<ProfileProps> = ({
                     )}
                   </div>
 
-                  {/* Divider between referral and promo code */}
-                  {!referralCodeValid && (
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <div className="flex-1 h-px bg-border" />
-                      <span className="text-caption">{t['common.or'] || 'or'}</span>
-                      <div className="flex-1 h-px bg-border" />
-                    </div>
-                  )}
-
-                  {/* Promo Code Section */}
-                  <div className={`space-y-2 ${referralCodeValid ? 'opacity-50 pointer-events-none' : ''}`}>
-                    <label className="text-caption font-bold text-muted-foreground ml-1">
-                      {t['subscription.promo_code'] || 'Promo code (optional)'}
-                    </label>
-                    <input
-                      type="text"
-                      autoComplete="one-time-code"
-                      value={promoCodeInput}
-                      onChange={(e) => {
-                        setPromoCodeInput(e.target.value);
-                        setPromoCodeError(null);
-                      }}
-                      placeholder={t['subscription.promo_code_placeholder'] || 'Enter promo code'}
-                      className="w-full bg-muted border border-border rounded-xl px-4 py-3 text-foreground font-medium focus:border-primary outline-none transition-colors text-body"
-                    />
-                    {promoCodeError && (
-                      <p className="text-caption text-destructive">{promoCodeError}</p>
-                    )}
-                    <p className="text-caption text-muted-foreground">
-                      {t['subscription.promo_code_hint'] || 'We will apply this code on the Stripe checkout page.'}
-                    </p>
-                  </div>
                 </div>
                 </div>
 
@@ -3135,8 +3256,6 @@ const Profile: React.FC<ProfileProps> = ({
                       if (loadingPlan !== null) return;
                       setIsPlanConfirmOpen(false);
                       setPendingPlan(null);
-                      setPromoCodeInput('');
-                      setPromoCodeError(null);
                       setReferralCodeInput('');
                       setReferralCodeError(null);
                       setReferralCodeValid(false);
@@ -3217,6 +3336,49 @@ const Profile: React.FC<ProfileProps> = ({
                     className="flex-1 py-3.5 rounded-xl bg-destructive/10 text-destructive text-body font-semibold"
                   >
                     {t['common.confirm'] || 'Confirm'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          , document.body)}
+
+          {/* Cancel Subscription Confirmation Modal */}
+          {showCancelSubConfirm && createPortal(
+            <div 
+              className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
+              onClick={(e) => { if (e.target === e.currentTarget) setShowCancelSubConfirm(false); }}
+            >
+              {/* Safe area bottom cover */}
+              <div 
+                className="absolute bottom-0 left-0 right-0 bg-card"
+                style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
+              />
+              <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
+                {/* Header */}
+                <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
+                  <h2 className="text-title text-foreground">{t['subscription.cancel_title'] || 'Cancel Subscription'}</h2>
+                </div>
+
+                {/* Content */}
+                <div className="p-5">
+                  <p className="text-body text-muted-foreground">
+                    {t['subscription.confirm_cancel'] || 'Are you sure you want to cancel your subscription? You will lose access to premium features at the end of your billing period.'}
+                  </p>
+                </div>
+
+                {/* Footer */}
+                <div className="p-5 pb-8 border-t border-border flex gap-3 shrink-0">
+                  <button
+                    onClick={() => setShowCancelSubConfirm(false)}
+                    className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body"
+                  >
+                    {t['common.keep_subscription'] || 'Keep Subscription'}
+                  </button>
+                  <button
+                    onClick={confirmCancelSubscription}
+                    className="flex-1 py-3.5 rounded-xl bg-destructive/10 text-destructive text-body"
+                  >
+                    {t['common.cancel_subscription'] || 'Cancel'}
                   </button>
                 </div>
               </div>
@@ -4025,49 +4187,6 @@ const Profile: React.FC<ProfileProps> = ({
             <span className="helpy-logo">helpy</span>
           </div>
         </div>
-
-        {/* Cancel Subscription Confirmation Modal */}
-        {showCancelSubConfirm && createPortal(
-          <div 
-            className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
-            onClick={(e) => { if (e.target === e.currentTarget) setShowCancelSubConfirm(false); }}
-          >
-            {/* Safe area bottom cover */}
-            <div 
-              className="absolute bottom-0 left-0 right-0 bg-card"
-              style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
-            />
-            <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)' }}>
-              {/* Header */}
-              <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
-                <h2 className="text-title text-foreground">{t['subscription.cancel_title'] || 'Cancel Subscription'}</h2>
-              </div>
-
-              {/* Content */}
-              <div className="p-5">
-                <p className="text-body text-muted-foreground">
-                  {t['subscription.confirm_cancel'] || 'Are you sure you want to cancel your subscription? You will lose access to premium features at the end of your billing period.'}
-                </p>
-              </div>
-
-              {/* Footer */}
-              <div className="p-5 pb-8 border-t border-border flex gap-3 shrink-0">
-                <button
-                  onClick={() => setShowCancelSubConfirm(false)}
-                  className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body"
-                >
-                  {t['common.keep_subscription'] || 'Keep Subscription'}
-                </button>
-                <button
-                  onClick={confirmCancelSubscription}
-                  className="flex-1 py-3.5 rounded-xl bg-destructive/10 text-destructive text-body"
-                >
-                  {t['common.cancel_subscription'] || 'Cancel'}
-                </button>
-              </div>
-            </div>
-          </div>
-        , document.body)}
 
         {/* Generic Alert Modal (replaces native alert()) */}
         {alertModal.isOpen && createPortal(

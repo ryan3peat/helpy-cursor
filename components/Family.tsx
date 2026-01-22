@@ -42,7 +42,8 @@ import {
 } from "lucide-react";
 import Avatar from "./ui/Avatar";
 import ErrorBanner from "./ui/ErrorBanner";
-import { BaseViewProps, User, UserRole, TranslationDictionary } from "@/types";
+import { BaseViewProps, User, UserRole, TranslationDictionary, UsageStatus } from "@/types";
+import { calculateUsageStatus } from "@/services/trialService";
 import { useTranslatedContent } from "@/hooks/useTranslatedContent";
 import { detectInputLanguage } from "@/services/languageDetectionService";
 import { useSupabase } from "@/contexts/SupabaseContext";
@@ -105,6 +106,10 @@ interface FamilyProps extends BaseViewProps {
   onNavigateToProfile?: () => void;
   // Direct edit helper callback (opens edit modal directly)
   onEditHelper?: (helperId: string) => void;
+  // Usage-based limits support
+  usageStatus?: UsageStatus;
+  onShowUsageLimitModal?: (feature: 'aiScan' | 'salarySign' | 'spendingSummary') => void;
+  onUsageStatusChange?: (usageStatus: UsageStatus) => void;
 }
 
 type ActiveSection = "places" | "practice" | "helper";
@@ -519,6 +524,9 @@ const Family: React.FC<FamilyProps> = ({
   onSectionChange,
   onNavigateToProfile,
   onEditHelper,
+  usageStatus,
+  onShowUsageLimitModal,
+  onUsageStatusChange,
 }) => {
   // Get authenticated Supabase client (with JWT for RLS)
   const supabase = useSupabase();
@@ -530,8 +538,8 @@ const Family: React.FC<FamilyProps> = ({
   const [selectedHelperId, setSelectedHelperId] = useState<string | null>(null);
   const [helperRefreshKey, setHelperRefreshKey] = useState(0);
   
-  // Filter helpers from users
-  const helpers = users.filter(u => u.role === UserRole.HELPER && u.status === 'active');
+  // Filter helpers from users (include both active and pending for admins to manage)
+  const helpers = users.filter(u => u.role === UserRole.HELPER && (u.status === 'active' || u.status === 'pending'));
   
   // Auto-select first helper when switching to helper tab
   useEffect(() => {
@@ -592,9 +600,31 @@ const Family: React.FC<FamilyProps> = ({
     fetchSubscriptionPlan();
   }, [householdId, supabase]);
   
-  // Helper Management is only available to Core and Pro users (not Free)
-  // SuperAdmin bypasses plan restrictions UNLESS simulating free user
-  const hasHelperManagementAccess = subscriptionPlan === 'core' || subscriptionPlan === 'pro' || (isSuperAdmin && !isSimulatingFreeUser);
+  // Usage-based access checks for salary slip signing
+  const canUseSalarySign = usageStatus?.canUseSalarySign ?? true;
+  const hasPaidSubscription = usageStatus?.hasPaidSubscription ?? false;
+  
+  // Helper Management access: 
+  // - Paid users (Core/Pro): Full access
+  // - Free users with signature remaining: Can access and sign 1 slip
+  // - Free users with no signature remaining: Can view but not sign
+  // SuperAdmin bypasses restrictions UNLESS simulating free user
+  const hasHelperManagementAccess = 
+    subscriptionPlan === 'core' || 
+    subscriptionPlan === 'pro' || 
+    hasPaidSubscription ||
+    canUseSalarySign || // Free users can access if they have signature remaining
+    (isSuperAdmin && !isSimulatingFreeUser);
+  
+  // Whether signing is restricted (for showing upgrade modal when trying to sign)
+  const isSalarySignRestricted = !hasPaidSubscription && !canUseSalarySign && subscriptionPlan === 'free';
+  
+  // Helper function to show usage limit modal for salary signing
+  const showSalarySignLimitModal = () => {
+    if (onShowUsageLimitModal) {
+      onShowUsageLimitModal('salarySign');
+    }
+  };
   
   // Helper upgrade modal state
   const [showHelperUpgradeModal, setShowHelperUpgradeModal] = useState(false);
@@ -1103,7 +1133,7 @@ const Family: React.FC<FamilyProps> = ({
               </div>
             </button>
 
-            {/* Helper Card - Only available to Core and Pro users */}
+            {/* Helper Card - Only available to Core and Pro users, or trial users */}
             <button
               onClick={() => {
                 if (hasHelperManagementAccess) {
@@ -1261,13 +1291,18 @@ const Family: React.FC<FamilyProps> = ({
                   <button
                     key={helper.id}
                     onClick={() => setSelectedHelperId(helper.id)}
-                    className={`px-4 py-2 rounded-full text-body whitespace-nowrap transition-all ${
+                    className={`px-4 py-2 rounded-full text-body whitespace-nowrap transition-all flex items-center gap-1.5 ${
                       selectedHelperId === helper.id
                         ? "bg-card text-primary shadow-sm"
                         : "text-muted-foreground"
                     }`}
                   >
                     {helper.name}
+                    {helper.status === 'pending' && (
+                      <span className={`text-caption ${selectedHelperId === helper.id ? 'text-muted-foreground' : 'text-muted-foreground/70'}`}>
+                        ({t['common.pending'] || 'Pending'})
+                      </span>
+                    )}
                   </button>
                 ))}
               </div>
@@ -1406,6 +1441,9 @@ const Family: React.FC<FamilyProps> = ({
                       onEditHelper={onEditHelper}
                       onCreateSlipClick={() => setShowCreateSlipSheet(true)}
                       refreshKey={helperRefreshKey}
+                      usageStatus={usageStatus}
+                      onShowUsageLimitModal={showSalarySignLimitModal}
+                      onUsageStatusChange={onUsageStatusChange}
                     />
                   );
                 })()}

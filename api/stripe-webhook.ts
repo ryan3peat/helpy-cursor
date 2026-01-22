@@ -622,6 +622,9 @@ async function handleWebhookRequest(req: any, res: any) {
             updateData.max_helpers = PLAN_LIMITS[plan].maxHelpers;
           }
 
+          // Always update cancel_at_period_end to reflect current state
+          updateData.cancel_at_period_end = isScheduledToCancel;
+          
           // Handle subscription cancellation scenarios
           if (subscription.status === 'canceled' || subscription.status === 'unpaid') {
             // Subscription is immediately canceled or unpaid - revert to free tier
@@ -630,17 +633,19 @@ async function handleWebhookRequest(req: any, res: any) {
             updateData.max_helpers = PLAN_LIMITS.free.maxHelpers;
             // Clear subscription ID for consistency with deleted handler
             updateData.stripe_subscription_id = null;
+            updateData.cancel_at_period_end = false; // No longer pending, it's done
             console.log(`⚠️ Subscription canceled immediately for household ${hid}`);
           } else if (isScheduledToCancel) {
             // Subscription is scheduled to cancel at period end - still active but will cancel
-            // Set status to 'canceling' so UI can show appropriate messaging
-            updateData.subscription_status = 'canceling';
+            // Keep status as active/trialing so user can still use features until period ends
+            // The cancel_at_period_end flag will show "Cancelled" button in UI
             console.log(`⏰ Subscription scheduled to cancel at period end for household ${hid} (${cancelAt || 'end of period'})`);
             // Keep current plan and limits until period ends
             // The subscription will be handled by customer.subscription.deleted when it actually ends
           } else if (subscription.status === 'active' && !isScheduledToCancel) {
             // Subscription is active and NOT scheduled to cancel (e.g., user resubscribed or cancellation was reversed)
             updateData.subscription_status = 'active';
+            updateData.cancel_at_period_end = false;
           }
 
           const { error } = await supabase.from('households').update(updateData).eq('id', hid);
@@ -798,6 +803,9 @@ async function handleWebhookRequest(req: any, res: any) {
             stripe_subscription_id: null,
             max_family_members: PLAN_LIMITS.free.maxFamily,
             max_helpers: PLAN_LIMITS.free.maxHelpers,
+            cancel_at_period_end: false, // Subscription is now fully canceled
+            is_trial: false,
+            trial_ends_at: null,
           }).eq('id', hid);
 
           if (error) {

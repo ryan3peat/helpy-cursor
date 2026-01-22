@@ -204,10 +204,11 @@ export async function changeSubscription(
  * This is a backup mechanism when webhooks don't fire properly
  */
 export async function syncSubscription(
-  householdId: string, 
+  householdId: string,
   sessionId?: string
-): Promise<{ success: boolean; plan?: string; status?: string; error?: string }> {
+): Promise<{ success: boolean; plan?: string; status?: string; cancelAtPeriodEnd?: boolean; error?: string }> {
   try {
+    console.log('[syncSubscription] Calling API for household:', householdId);
     const response = await fetch('/api/sync-subscription', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -222,11 +223,18 @@ export async function syncSubscription(
       } catch {
         errorMessage = `Server error: ${response.status} ${response.statusText}`;
       }
+      console.error('[syncSubscription] API error:', errorMessage);
       return { success: false, error: errorMessage };
     }
 
     const data = await response.json();
-    return { success: true, plan: data.plan, status: data.status };
+    console.log('[syncSubscription] API response:', data);
+    return { 
+      success: true, 
+      plan: data.plan, 
+      status: data.status,
+      cancelAtPeriodEnd: data.cancelAtPeriodEnd 
+    };
   } catch (error) {
     console.error('Sync subscription error:', error);
     return { 

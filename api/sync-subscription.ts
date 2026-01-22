@@ -44,6 +44,8 @@ export default async function handler(req: any, res: any) {
     let periodEnd: number | null = null;
     let stripeCustomerId: string | null = null;
     let status: string | null = null;
+    let trialEnd: number | null = null;
+    let cancelAtPeriodEnd: boolean = false;
 
     if (sessionId) {
       try {
@@ -56,6 +58,8 @@ export default async function handler(req: any, res: any) {
           subscriptionId = sub.id;
           status = sub.status;
           periodEnd = sub.current_period_end || null;
+          trialEnd = sub.trial_end || null;
+          cancelAtPeriodEnd = sub.cancel_at_period_end || false;
           const priceId = sub.items?.data?.[0]?.price?.id;
           plan = priceIdToPlan(priceId);
           const interval = sub.items?.data?.[0]?.price?.recurring?.interval;
@@ -76,14 +80,37 @@ export default async function handler(req: any, res: any) {
 
       stripeCustomerId = household?.stripe_customer_id || stripeCustomerId;
       if (household?.stripe_subscription_id) {
-        const sub = await stripe.subscriptions.retrieve(household.stripe_subscription_id);
-        subscriptionId = sub.id;
-        status = sub.status;
-        periodEnd = sub.current_period_end || null;
-        const priceId = sub.items?.data?.[0]?.price?.id;
-        plan = priceIdToPlan(priceId);
-        const interval = sub.items?.data?.[0]?.price?.recurring?.interval;
-        period = interval === 'year' ? 'yearly' : 'monthly';
+        console.log('[sync-subscription] Retrieving subscription from Stripe:', household.stripe_subscription_id);
+        let sub: Stripe.Subscription;
+        try {
+          sub = await stripe.subscriptions.retrieve(household.stripe_subscription_id);
+          console.log('[sync-subscription] Raw Stripe subscription data:', {
+            id: sub.id,
+            status: sub.status,
+            cancel_at_period_end: sub.cancel_at_period_end,
+            cancel_at: sub.cancel_at,
+            canceled_at: sub.canceled_at,
+            trial_end: sub.trial_end,
+            current_period_end: sub.current_period_end,
+            current_period_start: sub.current_period_start,
+          });
+          
+          subscriptionId = sub.id;
+          status = sub.status;
+          periodEnd = sub.current_period_end || null;
+          trialEnd = sub.trial_end || null;
+          cancelAtPeriodEnd = sub.cancel_at_period_end === true; // Explicit boolean check
+          const priceId = sub.items?.data?.[0]?.price?.id;
+          plan = priceIdToPlan(priceId);
+          const interval = sub.items?.data?.[0]?.price?.recurring?.interval;
+          period = interval === 'year' ? 'yearly' : 'monthly';
+          console.log('[sync-subscription] Parsed values:', { plan, status, cancelAtPeriodEnd, periodEnd, trialEnd });
+        } catch (stripeError: any) {
+          console.error('[sync-subscription] Error retrieving subscription from Stripe:', stripeError.message);
+          console.log('[sync-subscription] This might mean the subscription ID is invalid or the subscription was deleted');
+          // Continue without updating subscription data
+          return res.status(200).json({ success: false, error: 'Subscription not found in Stripe' });
+        }
       }
     }
 
@@ -93,6 +120,17 @@ export default async function handler(req: any, res: any) {
 
     const limits = PLAN_LIMITS[plan];
     const periodEndISO = periodEnd ? new Date(periodEnd * 1000).toISOString() : null;
+    const trialEndISO = trialEnd ? new Date(trialEnd * 1000).toISOString() : null;
+    const isTrial = status === 'trialing' && !!trialEnd;
+
+    console.log('[sync-subscription] Updating database with:', {
+      householdId,
+      plan,
+      status,
+      cancelAtPeriodEnd,
+      isTrial,
+      periodEndISO,
+    });
 
     const { error: updateError } = await supabase
       .from('households')
@@ -105,6 +143,9 @@ export default async function handler(req: any, res: any) {
         ...(periodEndISO && { subscription_current_period_end: periodEndISO }),
         max_family_members: limits.maxFamily,
         max_helpers: limits.maxHelpers,
+        is_trial: isTrial,
+        ...(trialEndISO && { trial_ends_at: trialEndISO }),
+        cancel_at_period_end: cancelAtPeriodEnd,
       })
       .eq('id', householdId);
 
@@ -113,7 +154,7 @@ export default async function handler(req: any, res: any) {
       return res.status(500).json({ error: 'Failed to update subscription' });
     }
 
-    return res.status(200).json({ success: true, plan, status });
+    return res.status(200).json({ success: true, plan, status, cancelAtPeriodEnd });
   } catch (error: any) {
     console.error('sync-subscription error:', error);
     return res.status(500).json({ error: error.message || 'Server error' });

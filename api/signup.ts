@@ -63,7 +63,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             name: `${name}'s Family`,
             subscription_plan: 'free',
             max_family_members: PLAN_LIMITS.free.maxFamily,
-            max_helpers: PLAN_LIMITS.free.maxHelpers
+            max_helpers: PLAN_LIMITS.free.maxHelpers,
+            trial_started_at: new Date().toISOString() // Start 14-day feature trial
           }])
           .select()
           .single();
@@ -131,7 +132,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             name: `${name}'s Family`,
             subscription_plan: 'free',
             max_family_members: PLAN_LIMITS.free.maxFamily,
-            max_helpers: PLAN_LIMITS.free.maxHelpers
+            max_helpers: PLAN_LIMITS.free.maxHelpers,
+            trial_started_at: new Date().toISOString() // Start 14-day feature trial
           }])
           .select()
           .single();
@@ -209,7 +211,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         name: `${name}'s Family`,
         subscription_plan: 'free',
         max_family_members: PLAN_LIMITS.free.maxFamily,
-        max_helpers: PLAN_LIMITS.free.maxHelpers
+        max_helpers: PLAN_LIMITS.free.maxHelpers,
+        trial_started_at: new Date().toISOString() // Start 14-day feature trial
       }])
       .select()
       .single();

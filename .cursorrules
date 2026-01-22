@@ -63,23 +63,37 @@ import { createPortal } from 'react-dom';
 
 ---
 
-### Meals.tsx Structure
+### Meals Page - LOCKED PATTERN (DO NOT MODIFY)
 
-The Meals page MUST use the exact same structure as ToDo and Expenses:
+**The Meals page has a special implementation to prevent iOS Safari flicker. DO NOT CHANGE.**
 
-```tsx
-<div className="min-h-screen bg-background pb-40">
-  <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
-    <header className="sticky top-0 z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 ...">
-```
+#### Header Overlays (Meals.tsx)
+- Fixed background shield at z-[19]
+- Fixed title overlay at z-[21] with `pointer-events-none`
+- Fixed week selector overlay at z-[21] with `pointer-events-none`
+- Real interactive elements have `opacity-0`
 
-Key rules:
-1. Header INSIDE the `page-content` wrapper (not outside)
-2. Header uses `-mx-4 px-4 sm:-mx-6 sm:px-6` to extend edge-to-edge
-3. Use `useEffect` with MULTIPLE TIMED ATTEMPTS (0ms, 50ms, 150ms, 300ms) for auto-scroll
-4. NO scroll-pending/scroll-ready classes
+**DO NOT REMOVE** the header overlays or change their z-index.
 
-See `docs/MEALS_SCROLL_FIX.md` for details.
+#### Always-Mounted Pattern (App.tsx)
+- Meals is rendered OUTSIDE Layout's keyed container
+- Uses `display: block/none` based on activeView
+- Passes `isActive={activeView === 'meals'}` prop
+
+**DO NOT** move Meals back into renderView() or add key={} to its wrapper.
+
+#### Scroll Logic (Meals.tsx)
+- Uses `isActive` prop to control when scroll runs
+- Multiple timed attempts [0, 50, 150]ms
+- Resets `hasInitiallyScrolled` when `!isActive`
+
+**DO NOT** use useLayoutEffect or change the scroll timing.
+
+#### Git Pull Warning
+If `git pull` conflicts with Meals.tsx, App.tsx, or index.css:
+- **KEEP LOCAL VERSION** with `git checkout --ours <file>`
+
+See `docs/MEALS_SCROLL_FIX.md` for full details.
 
 ---
 

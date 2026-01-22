@@ -38,6 +38,7 @@ import { suggestMeal } from '../services/geminiService';
 import { detectInputLanguage } from '../services/languageDetectionService';
 import { haptics } from '../utils/haptics';
 import { useDemoMode } from '../contexts/DemoModeContext';
+import { logger } from '../utils/logger';
 
 interface MealsProps extends BaseViewProps {
   meals: Meal[];
@@ -46,6 +47,7 @@ interface MealsProps extends BaseViewProps {
   onAdd: (meal: Meal) => void;
   onUpdate: (id: string, data: Partial<Meal>) => void;
   onDelete: (id: string) => void;
+  isActive?: boolean;
 }
 
 // Component for displaying translated meal description
@@ -82,7 +84,8 @@ const Meals: React.FC<MealsProps> = ({
   onUpdate,
   onDelete,
   t,
-  currentLang
+  currentLang,
+  isActive = true
 }) => {
   // ─────────────────────────────────────────────────────────────────
   // Role-based permissions
@@ -96,7 +99,6 @@ const Meals: React.FC<MealsProps> = ({
   const [loadingAi, setLoadingAi] = useState(false);
   const [exportingPdf, setExportingPdf] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [contentReady, setContentReady] = useState(false);
   
   
   // Scroll header hook for animation - lower threshold so shadow appears when card date gets covered
@@ -140,10 +142,10 @@ const Meals: React.FC<MealsProps> = ({
   // ─────────────────────────────────────────────────────────────────
   const hasInitiallyScrolled = useRef(false);
   const hasScrolledWeekView = useRef(false);
-  const hasInitialized = useRef(false); // Tracks if first scroll completed (prevents flicker on view switch)
 
   const mealTypes = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER, MealType.SNACKS];
   const langCode = currentLang === 'en' ? 'en-GB' : currentLang;
+  const mealsTitle = t['meals.title'] ?? 'Meals';
 
   // --- Translation Helper ---
   const getMealLabel = (type: MealType) => {
@@ -342,7 +344,7 @@ const Meals: React.FC<MealsProps> = ({
         onUpdate(meal.id, { forUserIds: newUserIds });
       }
     } catch (err) {
-      console.error('Failed to update meal:', err);
+      logger.error('Failed to update meal:', err);
       setError(t['error.update_meal'] || 'Failed to update meal. Please try again.');
     }
   };
@@ -364,7 +366,7 @@ const Meals: React.FC<MealsProps> = ({
     try {
       onAdd(newMeal);
     } catch (err) {
-      console.error('Failed to add meal:', err);
+      logger.error('Failed to add meal:', err);
       setError(t['error.add_meal'] || 'Failed to add meal. Please try again.');
     }
   };
@@ -468,7 +470,7 @@ const Meals: React.FC<MealsProps> = ({
       }
       setIsModalOpen(false);
     } catch (err) {
-      console.error('Failed to save meal:', err);
+      logger.error('Failed to save meal:', err);
       setError(t['error.save_meal'] || 'Failed to save meal. Please try again.');
     }
   };
@@ -479,7 +481,7 @@ const Meals: React.FC<MealsProps> = ({
         onDelete(editingMealId);
         setIsModalOpen(false);
       } catch (err) {
-        console.error('Failed to delete meal:', err);
+        logger.error('Failed to delete meal:', err);
         setError(t['error.delete_meal'] || 'Failed to delete meal. Please try again.');
       }
     }
@@ -834,7 +836,7 @@ const Meals: React.FC<MealsProps> = ({
         // User cancelled - not an error
         return;
       }
-      console.error('Failed to export PDF:', err);
+      logger.error('Failed to export PDF:', err);
       haptics.error();
       setError(t['error.export_pdf'] || 'Failed to export PDF. Please try again.');
     } finally {
@@ -855,10 +857,13 @@ const Meals: React.FC<MealsProps> = ({
   };
 
   // ─────────────────────────────────────────────────────────────────
-  // AUTO-SCROLL TO TODAY - On initial mount AND when switching to day view
-  // Content is hidden until scroll completes to prevent flicker
+  // AUTO-SCROLL TO TODAY - When Meals becomes active AND in day view
+  // Uses multiple timed attempts for reliability
   // ─────────────────────────────────────────────────────────────────
   useEffect(() => {
+    // Skip if not active (hidden)
+    if (!isActive) return;
+    
     // Skip if not in day view
     if (view !== 'day') return;
     
@@ -871,47 +876,39 @@ const Meals: React.FC<MealsProps> = ({
     
     // Use multiple attempts for reliability
     const scrollAttempts = [0, 50, 150];
-    scrollAttempts.forEach((delay, index) => {
+    scrollAttempts.forEach((delay) => {
       setTimeout(() => {
         const targetEl = document.getElementById(`day-${targetDateStr}`);
-        if (!targetEl) {
-          // If element not found on last attempt, still show content
-          if (index === scrollAttempts.length - 1) {
-            setContentReady(true);
-            hasInitialized.current = true;
-          }
-          return;
-        }
+        if (!targetEl) return;
         
         const rect = targetEl.getBoundingClientRect();
         const elementPosition = rect.top + window.scrollY;
         window.scrollTo({ top: elementPosition - headerOffset, behavior: 'auto' });
-        
-        // Show content after final scroll attempt
-        if (index === scrollAttempts.length - 1) {
-          setContentReady(true);
-          hasInitialized.current = true;
-          }
-        }, delay);
+      }, delay);
     });
-  }, [view]);
+  }, [view, isActive]);
 
   // Reset day scroll flag when leaving day view
-  // Only hide content on initial load, not when switching views
   useEffect(() => {
     if (view !== 'day') {
       hasInitiallyScrolled.current = false;
-      if (!hasInitialized.current) {
-        setContentReady(false);
-      }
     }
   }, [view]);
 
+  // Reset scroll flag when leaving Meals page, so it scrolls again on return
+  useEffect(() => {
+    if (!isActive) {
+      hasInitiallyScrolled.current = false;
+    }
+  }, [isActive]);
+
   // ─────────────────────────────────────────────────────────────────
   // AUTO-SCROLL TO TODAY ROW IN WEEK VIEW
-  // Content is hidden until scroll completes to prevent flicker
   // ─────────────────────────────────────────────────────────────────
   useEffect(() => {
+    // Skip if not active (hidden)
+    if (!isActive) return;
+    
     if (view !== 'week') {
       hasScrolledWeekView.current = false;
       return;
@@ -928,27 +925,20 @@ const Meals: React.FC<MealsProps> = ({
     // Only scroll vertically if today is in the current week
     if (todayIndex === -1) {
       // Still scroll to top to show table header
-      window.scrollTo({ top: 0, behavior: 'auto' });
-      setContentReady(true);
-      hasInitialized.current = true;
+        window.scrollTo({ top: 0, behavior: 'auto' });
       return;
     }
     
     // Use multiple attempts for reliability (DOM needs time to render)
     const scrollAttempts = [0, 50, 150, 300];
-    scrollAttempts.forEach((delay, index) => {
+    let didScroll = false;
+    scrollAttempts.forEach((delay) => {
       setTimeout(() => {
+        if (didScroll) return;
         // Find the table row for today's date
         const dateStr = formatDateStr(weekDays[todayIndex]);
         const targetRow = document.getElementById(`week-row-${dateStr}`);
-        if (!targetRow) {
-          // If element not found on last attempt, still show content
-          if (index === scrollAttempts.length - 1) {
-            setContentReady(true);
-            hasInitialized.current = true;
-          }
-          return;
-        }
+        if (!targetRow) return;
         
         // Calculate scroll position to center today's row
         const headerOffset = 250; // Approximate header height
@@ -958,15 +948,10 @@ const Meals: React.FC<MealsProps> = ({
         
         // Use 'auto' for instant scroll (no visible animation)
         window.scrollTo({ top: Math.max(0, targetScroll), behavior: 'auto' });
-        
-        // Show content after final scroll attempt
-        if (index === scrollAttempts.length - 1) {
-          setContentReady(true);
-          hasInitialized.current = true;
-          }
+        didScroll = true;
         }, delay);
     });
-  }, [view, weekDays]);
+  }, [view, weekDays, isActive]);
 
   // Close quick join popover when clicking outside
   useEffect(() => {
@@ -1167,27 +1152,94 @@ const Meals: React.FC<MealsProps> = ({
 
   return (
     <div className="min-h-screen bg-background pb-40">
+      <div 
+        className="fixed top-0 left-0 right-0 z-[19] bg-background pointer-events-none"
+        style={{ height: '210px' }}
+      />
+      <div
+        className="fixed top-0 left-0 right-0 z-[21] pointer-events-none"
+        aria-hidden="true"
+      >
+        <div className="max-w-2xl mx-auto px-4 sm:px-6">
+          <div className="flex items-end pb-3" style={{ height: '120px' }}>
+            <div className="flex items-center justify-between w-full">
+              <h1 className="text-display text-foreground header-title-stable">
+                {mealsTitle}
+              </h1>
+              <div className="flex items-center gap-1 text-muted-foreground">
+                {view === 'week' && (
+                  <button className="p-2 rounded-full">
+                    {exportingPdf ? (
+                      <Loader2 size={20} className="animate-spin" />
+                    ) : (
+                      <Download size={20} />
+                    )}
+                  </button>
+                )}
+                <button className="p-2 rounded-full">
+                  {view === 'day' ? <Sheet size={20} /> : <Rows3 size={20} />}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div
+        className="fixed top-[120px] left-0 right-0 z-[21] pointer-events-none"
+        aria-hidden="true"
+      >
+        <div className="max-w-2xl mx-auto px-4 sm:px-6">
+          <div
+            className="bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 py-5 header-sticky-stable"
+            style={{ boxShadow: isScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none' }}
+          >
+            <div className="flex items-center gap-3">
+              <div className="relative flex-1 flex items-center justify-between px-2 rounded-xl h-12 overflow-hidden bg-muted">
+                <button className="p-2 rounded-lg text-muted-foreground z-10">
+                  <ChevronLeft size={20} />
+                </button>
+                <span className={`text-body font-semibold tabular-nums z-10 ${isCurrentWeek ? 'text-primary' : 'text-foreground'}`}>
+                  {dateRangeStr}
+                </span>
+                <button className="p-2 rounded-lg text-muted-foreground z-10">
+                  <ChevronRight size={20} />
+                </button>
+                <div className="absolute inset-0 rounded-xl pointer-events-none shadow-[inset_0_2px_4px_rgba(0,0,0,0.06)]" />
+              </div>
+              <button
+                className={`px-4 rounded-xl font-semibold text-body h-12 ${
+                  isCurrentWeek
+                    ? 'bg-muted text-muted-foreground cursor-default'
+                    : 'bg-primary text-primary-foreground shadow-sm'
+                }`}
+              >
+                {t['common.today'] || 'Today'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
       <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
         {/* ─────────────────────────────────────────────────────────────── */}
         {/* STICKY HEADER - matches Family */}
         {/* ─────────────────────────────────────────────────────────────── */}
         <header 
-          className="sticky top-0 z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 pb-3 flex items-end" 
+          className="sticky top-0 z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 pb-3 flex items-end header-sticky-stable" 
           style={{ height: '120px' }}
         >
           <div className="flex items-center justify-between w-full">
-            <h1 className="text-display text-foreground">
-              {t['meals.title']}
+            <h1 className="text-display text-foreground header-title-stable opacity-0">
+              {mealsTitle}
             </h1>
             
             {/* Header Actions */}
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 opacity-0">
               {/* Export PDF Button - Only visible in table view */}
               {view === 'week' && (
                     <button
                   onClick={handleExportPDF}
                   disabled={exportingPdf}
-                  className="p-2 rounded-full text-muted-foreground transition-colors disabled:opacity-50"
+                  className="p-2 rounded-full text-muted-foreground disabled:opacity-50"
                   aria-label={t['meals.export_pdf'] || 'Export PDF'}
                 >
                   {exportingPdf ? (
@@ -1201,7 +1253,7 @@ const Meals: React.FC<MealsProps> = ({
               {/* Day/Week Toggle - Simple state change like Family tabs */}
               <button
                 onClick={() => setView(view === 'day' ? 'week' : 'day')}
-                className="p-2 rounded-full text-muted-foreground transition-colors"
+                className="p-2 rounded-full text-muted-foreground"
               >
                 {view === 'day' ? <Sheet size={20} /> : <Rows3 size={20} />}
               </button>
@@ -1218,7 +1270,7 @@ const Meals: React.FC<MealsProps> = ({
         {/* WEEK NAVIGATION - Same structure as Family Info tab nav */}
         {/* ─────────────────────────────────────────────────────────────── */}
         <div 
-          className="sticky z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 py-5 transition-shadow duration-200"
+          className="sticky z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 py-5 header-sticky-stable opacity-0"
           style={{ 
             top: '120px',
             boxShadow: isScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none'
@@ -1260,9 +1312,9 @@ const Meals: React.FC<MealsProps> = ({
       </div>
 
         {/* ─────────────────────────────────────────────────────────────── */}
-        {/* MAIN CONTENT - Hidden until scroll completes to prevent flicker */}
+        {/* MAIN CONTENT */}
         {/* ─────────────────────────────────────────────────────────────── */}
-        <div className="pt-1" style={{ opacity: contentReady ? 1 : 0 }}>
+        <div className="pt-1">
 
       {/* Day View */}
       {view === 'day' ? (
@@ -1294,7 +1346,7 @@ const Meals: React.FC<MealsProps> = ({
                 <div 
                   key={dateStr} 
                   id={`day-${dateStr}`} 
-                  className="bg-card rounded-xl overflow-hidden shadow-sm "
+                  className="bg-card rounded-xl overflow-hidden shadow-sm"
                 >
                   {/* Prominent Date Header Bar */}
                   <div className={`px-4 py-3 ${isToday ? 'bg-primary' : 'bg-card'}`}>

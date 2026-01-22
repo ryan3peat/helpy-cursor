@@ -1150,9 +1150,25 @@ const Meals: React.FC<MealsProps> = ({
       >
         <div className="max-w-2xl mx-auto px-4 sm:px-6">
           <div className="flex items-end pb-3" style={{ height: '120px' }}>
-            <h1 className="text-display text-foreground header-title-stable">
-              {mealsTitle}
-            </h1>
+            <div className="flex items-center justify-between w-full">
+              <h1 className="text-display text-foreground header-title-stable">
+                {mealsTitle}
+              </h1>
+              <div className="flex items-center gap-1 text-muted-foreground">
+                {view === 'week' && (
+                  <button className="p-2 rounded-full">
+                    {exportingPdf ? (
+                      <Loader2 size={20} className="animate-spin" />
+                    ) : (
+                      <Download size={20} />
+                    )}
+                  </button>
+                )}
+                <button className="p-2 rounded-full">
+                  {view === 'day' ? <Sheet size={20} /> : <Rows3 size={20} />}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -1205,7 +1221,7 @@ const Meals: React.FC<MealsProps> = ({
             </h1>
             
             {/* Header Actions */}
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 opacity-0">
               {/* Export PDF Button - Only visible in table view */}
               {view === 'week' && (
                     <button

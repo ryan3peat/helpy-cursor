@@ -895,6 +895,13 @@ const Meals: React.FC<MealsProps> = ({
     }
   }, [view]);
 
+  // Reset scroll flag when leaving Meals page, so it scrolls again on return
+  useEffect(() => {
+    if (!isActive) {
+      hasInitiallyScrolled.current = false;
+    }
+  }, [isActive]);
+
   // ─────────────────────────────────────────────────────────────────
   // AUTO-SCROLL TO TODAY ROW IN WEEK VIEW
   // ─────────────────────────────────────────────────────────────────

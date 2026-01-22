@@ -1743,6 +1743,7 @@ const Meals: React.FC<MealsProps> = ({
         </div>
 
       </div>
+      )}
 
       {/* ─────────────────────────────────────────────────────────────── */}
       {/* MEAL MODAL - Bottom Sheet Style */}
@@ -1951,7 +1952,6 @@ const Meals: React.FC<MealsProps> = ({
           </div>
         </div>
       , document.body)}
-      )}
 
     </div>
   );

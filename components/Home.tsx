@@ -1291,7 +1291,7 @@ Give it a try:`;
         onClick={() => onNavigate('meals')}
         className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden cursor-pointer"
       >
-        <div className="bg-card px-4 py-2.5 flex justify-between items-center">
+        <div className="bg-card px-5 pt-5 pb-2.5 flex justify-between items-center">
           <h2 className="text-title text-primary">{t['dashboard.todays_menu']}</h2>
           <span className="text-body text-primary">
             {(() => {
@@ -1379,7 +1379,7 @@ Give it a try:`;
         )}
         
         {/* Header */}
-        <div className="px-4 py-3 pr-14">
+        <div className="px-5 pt-5 pb-3 pr-14">
           <span className="text-title text-foreground block">{t['dashboard.tasks'] || 'Tasks'}</span>
           <span className="text-caption text-muted-foreground">{t['dashboard.todo'] || 'To Do'}</span>
         </div>

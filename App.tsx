@@ -106,6 +106,7 @@ const AppContent: React.FC = () => {
     return () => clearTimeout(timer);
   }, []);
   const [activeView, setActiveView] = useState('dashboard');
+  const [mealsLeaving, setMealsLeaving] = useState(false);
   const [clerkLoadTimeout, setClerkLoadTimeout] = useState(false);
   const [clerkError, setClerkError] = useState<string | null>(null);
   const [editHelperUserId, setEditHelperUserId] = useState<string | null>(null);
@@ -446,6 +447,10 @@ const AppContent: React.FC = () => {
 
   // Navigation
   const handleNavigate = (view: string, data?: { section?: string; openAddSheet?: boolean }) => {
+    if (activeView === 'meals' && view !== 'meals') {
+      setMealsLeaving(true);
+      requestAnimationFrame(() => setMealsLeaving(false));
+    }
     setActiveView(view);
     setNavData(data ?? null);
     // Scroll to top when navigating to a new view
@@ -2184,6 +2189,7 @@ const AppContent: React.FC = () => {
             onDelete={handleDeleteMeal}
             t={translations}
             currentLang={lang}
+            isActive={activeView === 'meals'}
           />
         );
 
@@ -2400,6 +2406,19 @@ const AppContent: React.FC = () => {
       )}
       <Layout activeView={activeView} onNavigate={handleNavigate} t={translations}>
         {renderView()}
+        {mealsLeaving && activeView !== 'meals' && (
+          <Meals
+            meals={isDemoMode ? demoMeals : meals}
+            users={isDemoMode ? demoUsers : users}
+            currentUser={isDemoMode ? demoUsers[0] : currentUser!}
+            onAdd={handleAddMeal}
+            onUpdate={handleUpdateMeal}
+            onDelete={handleDeleteMeal}
+            t={translations}
+            currentLang={lang}
+            isActive={false}
+          />
+        )}
       </Layout>
 
       {/* NotificationPrompt - shows for first-time PWA users after onboarding */}

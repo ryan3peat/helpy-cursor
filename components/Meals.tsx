@@ -47,6 +47,7 @@ interface MealsProps extends BaseViewProps {
   onAdd: (meal: Meal) => void;
   onUpdate: (id: string, data: Partial<Meal>) => void;
   onDelete: (id: string) => void;
+  isActive?: boolean;
 }
 
 // Component for displaying translated meal description
@@ -83,7 +84,8 @@ const Meals: React.FC<MealsProps> = ({
   onUpdate,
   onDelete,
   t,
-  currentLang
+  currentLang,
+  isActive = true
 }) => {
   // ─────────────────────────────────────────────────────────────────
   // Role-based permissions
@@ -855,10 +857,13 @@ const Meals: React.FC<MealsProps> = ({
   };
 
   // ─────────────────────────────────────────────────────────────────
-  // AUTO-SCROLL TO TODAY - On initial mount AND when switching to day view
+  // AUTO-SCROLL TO TODAY - When Meals becomes active AND in day view
   // Uses multiple timed attempts for reliability
   // ─────────────────────────────────────────────────────────────────
   useEffect(() => {
+    // Skip if not active (hidden)
+    if (!isActive) return;
+    
     // Skip if not in day view
     if (view !== 'day') return;
     
@@ -881,7 +886,7 @@ const Meals: React.FC<MealsProps> = ({
         window.scrollTo({ top: elementPosition - headerOffset, behavior: 'auto' });
       }, delay);
     });
-  }, [view]);
+  }, [view, isActive]);
 
   // Reset day scroll flag when leaving day view
   useEffect(() => {
@@ -894,6 +899,9 @@ const Meals: React.FC<MealsProps> = ({
   // AUTO-SCROLL TO TODAY ROW IN WEEK VIEW
   // ─────────────────────────────────────────────────────────────────
   useEffect(() => {
+    // Skip if not active (hidden)
+    if (!isActive) return;
+    
     if (view !== 'week') {
       hasScrolledWeekView.current = false;
       return;
@@ -936,7 +944,7 @@ const Meals: React.FC<MealsProps> = ({
         didScroll = true;
         }, delay);
     });
-  }, [view, weekDays]);
+  }, [view, weekDays, isActive]);
 
   // Close quick join popover when clicking outside
   useEffect(() => {

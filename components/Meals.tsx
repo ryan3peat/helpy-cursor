@@ -1156,6 +1156,41 @@ const Meals: React.FC<MealsProps> = ({
           </div>
         </div>
       </div>
+      <div
+        className="fixed top-[120px] left-0 right-0 z-[21] pointer-events-none"
+        aria-hidden="true"
+      >
+        <div className="max-w-2xl mx-auto px-4 sm:px-6">
+          <div
+            className="bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 py-5 header-sticky-stable"
+            style={{ boxShadow: isScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none' }}
+          >
+            <div className="flex items-center gap-3">
+              <div className="relative flex-1 flex items-center justify-between px-2 rounded-xl h-12 overflow-hidden bg-muted">
+                <button className="p-2 rounded-lg text-muted-foreground z-10">
+                  <ChevronLeft size={20} />
+                </button>
+                <span className={`text-body font-semibold tabular-nums z-10 ${isCurrentWeek ? 'text-primary' : 'text-foreground'}`}>
+                  {dateRangeStr}
+                </span>
+                <button className="p-2 rounded-lg text-muted-foreground z-10">
+                  <ChevronRight size={20} />
+                </button>
+                <div className="absolute inset-0 rounded-xl pointer-events-none shadow-[inset_0_2px_4px_rgba(0,0,0,0.06)]" />
+              </div>
+              <button
+                className={`px-4 rounded-xl font-semibold text-body h-12 ${
+                  isCurrentWeek
+                    ? 'bg-muted text-muted-foreground cursor-default'
+                    : 'bg-primary text-primary-foreground shadow-sm'
+                }`}
+              >
+                {t['common.today'] || 'Today'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
       <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
         {/* ─────────────────────────────────────────────────────────────── */}
         {/* STICKY HEADER - matches Family */}
@@ -1207,7 +1242,7 @@ const Meals: React.FC<MealsProps> = ({
         {/* WEEK NAVIGATION - Same structure as Family Info tab nav */}
         {/* ─────────────────────────────────────────────────────────────── */}
         <div 
-          className="sticky z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 py-5 header-sticky-stable"
+          className="sticky z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 py-5 header-sticky-stable opacity-0"
           style={{ 
             top: '120px',
             boxShadow: isScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none'

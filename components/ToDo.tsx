@@ -881,7 +881,7 @@ const ToDo: React.FC<ToDoProps> = ({
       createdAt: new Date().toISOString(),
       nameLang: detectedLang || null,
       nameTranslations: {},
-      ...(activeSection === 'shopping' ? { quantity: '1' } : { dueDate: today }),
+      ...(activeSection === 'shopping' ? { quantity: '1' } : { dueDate: today, dueTime: '09:00' }),
     };
     
     setOptimisticItems(prev => [...prev, newItem]);
@@ -924,7 +924,7 @@ const ToDo: React.FC<ToDoProps> = ({
       unit: suggestion.unit,
       brand: suggestion.brand,
       // For tasks: use today's date
-      ...(activeSection === 'task' ? { dueDate: today } : {}),
+      ...(activeSection === 'task' ? { dueDate: today, dueTime: '09:00' } : {}),
     };
     
     setOptimisticItems(prev => [...prev, newItem]);

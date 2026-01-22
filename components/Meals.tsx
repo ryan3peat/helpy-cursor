@@ -47,15 +47,6 @@ interface MealsProps extends BaseViewProps {
   onAdd: (meal: Meal) => void;
   onUpdate: (id: string, data: Partial<Meal>) => void;
   onDelete: (id: string) => void;
-  onOverlayStateChange?: (state: {
-    mealsTitle: string;
-    view: 'day' | 'week';
-    exportingPdf: boolean;
-    dateRangeStr: string;
-    isCurrentWeek: boolean;
-    isScrolled: boolean;
-    todayLabel: string;
-  }) => void;
 }
 
 // Component for displaying translated meal description
@@ -92,8 +83,7 @@ const Meals: React.FC<MealsProps> = ({
   onUpdate,
   onDelete,
   t,
-  currentLang,
-  onOverlayStateChange
+  currentLang
 }) => {
   // ─────────────────────────────────────────────────────────────────
   // Role-based permissions
@@ -950,19 +940,6 @@ const Meals: React.FC<MealsProps> = ({
         }, delay);
     });
   }, [view, weekDays]);
-
-  useEffect(() => {
-    if (!onOverlayStateChange) return;
-    onOverlayStateChange({
-      mealsTitle,
-      view,
-      exportingPdf,
-      dateRangeStr,
-      isCurrentWeek,
-      isScrolled,
-      todayLabel: t['common.today'] || 'Today',
-    });
-  }, [onOverlayStateChange, mealsTitle, view, exportingPdf, dateRangeStr, isCurrentWeek, isScrolled, t]);
 
   // Close quick join popover when clicking outside
   useEffect(() => {

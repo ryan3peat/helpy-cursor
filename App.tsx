@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { createPortal } from 'react-dom';
 import { useClerk, useUser } from '@clerk/clerk-react';
-import { ChevronLeft, ChevronRight, Download, Loader2, Rows3, Sheet } from 'lucide-react';
 import Layout from './components/Layout';
 import Home from './components/Home';
 import ToDo from './components/ToDo';
@@ -107,16 +105,6 @@ const AppContent: React.FC = () => {
     return () => clearTimeout(timer);
   }, []);
   const [activeView, setActiveView] = useState('dashboard');
-  const [mealsLeaving, setMealsLeaving] = useState(false);
-  const [mealsOverlayState, setMealsOverlayState] = useState<{
-    mealsTitle: string;
-    view: 'day' | 'week';
-    exportingPdf: boolean;
-    dateRangeStr: string;
-    isCurrentWeek: boolean;
-    isScrolled: boolean;
-    todayLabel: string;
-  } | null>(null);
   const [clerkLoadTimeout, setClerkLoadTimeout] = useState(false);
   const [clerkError, setClerkError] = useState<string | null>(null);
   const [editHelperUserId, setEditHelperUserId] = useState<string | null>(null);
@@ -457,10 +445,6 @@ const AppContent: React.FC = () => {
 
   // Navigation
   const handleNavigate = (view: string, data?: { section?: string; openAddSheet?: boolean }) => {
-    if (activeView === 'meals' && view !== 'meals') {
-      setMealsLeaving(true);
-      requestAnimationFrame(() => setMealsLeaving(false));
-    }
     setActiveView(view);
     setNavData(data ?? null);
     // Scroll to top when navigating to a new view
@@ -477,19 +461,11 @@ const AppContent: React.FC = () => {
       if (event.data?.type === 'NAVIGATE' && event.data?.url) {
         const url = event.data.url as string;
         logger.log('[App] Received NAVIGATE message from service worker:', url);
-        const triggerMealsLeave = (nextView: string) => {
-          if (activeView === 'meals' && nextView !== 'meals') {
-            setMealsLeaving(true);
-            requestAnimationFrame(() => setMealsLeaving(false));
-          }
-        };
-        
         // Parse the hash URL and navigate in-app
         if (url.includes('#todo') || url.includes('todo')) {
           // Extract section if present (e.g., ?section=shopping or ?section=task)
           const sectionMatch = url.match(/section=(\w+)/);
           const section = sectionMatch ? sectionMatch[1] : undefined;
-          triggerMealsLeave('todo');
           setActiveView('todo');
           setNavData(section ? { section } : null);
           logger.log('[App] Navigating to ToDo', section ? `(section: ${section})` : '');
@@ -498,18 +474,15 @@ const AppContent: React.FC = () => {
           setNavData(null);
           logger.log('[App] Navigating to Meals');
         } else if (url.includes('#expenses') || url.includes('expenses')) {
-          triggerMealsLeave('expenses');
           setActiveView('expenses');
           setNavData(null);
           logger.log('[App] Navigating to Expenses');
         } else if (url.includes('#profile') || url.includes('profile')) {
-          triggerMealsLeave('profile');
           setActiveView('profile');
           setNavData(null);
           logger.log('[App] Navigating to Profile');
         } else {
           // Default to dashboard
-          triggerMealsLeave('dashboard');
           setActiveView('dashboard');
           setNavData(null);
           logger.log('[App] Navigating to Home (default)');
@@ -526,7 +499,7 @@ const AppContent: React.FC = () => {
     return () => {
       navigator.serviceWorker?.removeEventListener('message', handleServiceWorkerMessage);
     };
-  }, [activeView]);
+  }, []);
   
   // Handle edit helper from Helper Management - navigates to Profile and opens edit modal
   const handleEditHelper = (helperId: string) => {
@@ -2209,7 +2182,6 @@ const AppContent: React.FC = () => {
             onDelete={handleDeleteMeal}
             t={translations}
             currentLang={lang}
-            onOverlayStateChange={setMealsOverlayState}
           />
         );
 
@@ -2424,73 +2396,6 @@ const AppContent: React.FC = () => {
           t={translations}
         />
       )}
-      {mealsLeaving && mealsOverlayState && typeof document !== 'undefined' &&
-        createPortal(
-          <div className="pointer-events-none">
-            <div
-              className="fixed top-0 left-0 right-0 z-[19] bg-background"
-              style={{ height: '210px' }}
-            />
-            <div className="fixed top-0 left-0 right-0 z-[21]">
-              <div className="max-w-2xl mx-auto px-4 sm:px-6">
-                <div className="flex items-end pb-3" style={{ height: '120px' }}>
-                  <div className="flex items-center justify-between w-full">
-                    <h1 className="text-display text-foreground header-title-stable">
-                      {mealsOverlayState.mealsTitle}
-                    </h1>
-                    <div className="flex items-center gap-1 text-muted-foreground">
-                      {mealsOverlayState.view === 'week' && (
-                        <button className="p-2 rounded-full">
-                          {mealsOverlayState.exportingPdf ? (
-                            <Loader2 size={20} className="animate-spin" />
-                          ) : (
-                            <Download size={20} />
-                          )}
-                        </button>
-                      )}
-                      <button className="p-2 rounded-full">
-                        {mealsOverlayState.view === 'day' ? <Sheet size={20} /> : <Rows3 size={20} />}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="fixed top-[120px] left-0 right-0 z-[21]">
-              <div className="max-w-2xl mx-auto px-4 sm:px-6">
-                <div
-                  className="bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 py-5 header-sticky-stable"
-                  style={{ boxShadow: mealsOverlayState.isScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none' }}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="relative flex-1 flex items-center justify-between px-2 rounded-xl h-12 overflow-hidden bg-muted">
-                      <button className="p-2 rounded-lg text-muted-foreground z-10">
-                        <ChevronLeft size={20} />
-                      </button>
-                      <span className={`text-body font-semibold tabular-nums z-10 ${mealsOverlayState.isCurrentWeek ? 'text-primary' : 'text-foreground'}`}>
-                        {mealsOverlayState.dateRangeStr}
-                      </span>
-                      <button className="p-2 rounded-lg text-muted-foreground z-10">
-                        <ChevronRight size={20} />
-                      </button>
-                      <div className="absolute inset-0 rounded-xl pointer-events-none shadow-[inset_0_2px_4px_rgba(0,0,0,0.06)]" />
-                    </div>
-                    <button
-                      className={`px-4 rounded-xl font-semibold text-body h-12 ${
-                        mealsOverlayState.isCurrentWeek
-                          ? 'bg-muted text-muted-foreground cursor-default'
-                          : 'bg-primary text-primary-foreground shadow-sm'
-                      }`}
-                    >
-                      {mealsOverlayState.todayLabel}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>,
-          document.body
-        )}
       <Layout activeView={activeView} onNavigate={handleNavigate} t={translations}>
         {renderView()}
       </Layout>

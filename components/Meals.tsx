@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Sparkles,
@@ -855,8 +855,27 @@ const Meals: React.FC<MealsProps> = ({
   };
 
   // ─────────────────────────────────────────────────────────────────
+  // AUTO-SCROLL TO TODAY - Pre-scroll before paint to avoid "Mon → Today" jump
+  // ─────────────────────────────────────────────────────────────────
+  useLayoutEffect(() => {
+    if (view !== 'day') return;
+    if (hasInitiallyScrolled.current) return;
+
+    const headerOffset = 230;
+    const targetDateStr = formatDateStr(new Date());
+    const targetEl = document.getElementById(`day-${targetDateStr}`);
+    if (!targetEl) return;
+
+    const rect = targetEl.getBoundingClientRect();
+    const elementPosition = rect.top + window.scrollY;
+    window.scrollTo({ top: elementPosition - headerOffset, behavior: 'auto' });
+
+    hasInitiallyScrolled.current = true;
+  }, [view, weekDays]);
+
+  // ─────────────────────────────────────────────────────────────────
   // AUTO-SCROLL TO TODAY - On initial mount AND when switching to day view
-  // Uses content-visibility CSS for flicker prevention (off-screen cards don't render)
+  // Uses multiple timed attempts as fallback when DOM isn't ready
   // ─────────────────────────────────────────────────────────────────
   useEffect(() => {
     // Skip if not in day view

@@ -47,7 +47,15 @@ interface MealsProps extends BaseViewProps {
   onAdd: (meal: Meal) => void;
   onUpdate: (id: string, data: Partial<Meal>) => void;
   onDelete: (id: string) => void;
-  isActive?: boolean;
+  onOverlayStateChange?: (state: {
+    mealsTitle: string;
+    view: 'day' | 'week';
+    exportingPdf: boolean;
+    dateRangeStr: string;
+    isCurrentWeek: boolean;
+    isScrolled: boolean;
+    todayLabel: string;
+  }) => void;
 }
 
 // Component for displaying translated meal description
@@ -85,7 +93,7 @@ const Meals: React.FC<MealsProps> = ({
   onDelete,
   t,
   currentLang,
-  isActive = true
+  onOverlayStateChange
 }) => {
   // ─────────────────────────────────────────────────────────────────
   // Role-based permissions
@@ -99,7 +107,6 @@ const Meals: React.FC<MealsProps> = ({
   const [loadingAi, setLoadingAi] = useState(false);
   const [exportingPdf, setExportingPdf] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [leavingMeals, setLeavingMeals] = useState(false);
   
   
   // Scroll header hook for animation - lower threshold so shadow appears when card date gets covered
@@ -147,7 +154,6 @@ const Meals: React.FC<MealsProps> = ({
   const mealTypes = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER, MealType.SNACKS];
   const langCode = currentLang === 'en' ? 'en-GB' : currentLang;
   const mealsTitle = t['meals.title'] ?? 'Meals';
-  const showOverlays = isActive || leavingMeals;
 
   // --- Translation Helper ---
   const getMealLabel = (type: MealType) => {
@@ -863,7 +869,6 @@ const Meals: React.FC<MealsProps> = ({
   // Uses content-visibility CSS for flicker prevention (off-screen cards don't render)
   // ─────────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!isActive) return;
     // Skip if not in day view
     if (view !== 'day') return;
     
@@ -889,21 +894,19 @@ const Meals: React.FC<MealsProps> = ({
         didScroll = true;
       }, delay);
     });
-  }, [view, isActive]);
+  }, [view]);
 
   // Reset day scroll flag when leaving day view
   useEffect(() => {
-    if (!isActive) return;
     if (view !== 'day') {
       hasInitiallyScrolled.current = false;
     }
-  }, [view, isActive]);
+  }, [view]);
 
   // ─────────────────────────────────────────────────────────────────
   // AUTO-SCROLL TO TODAY ROW IN WEEK VIEW
   // ─────────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!isActive) return;
     if (view !== 'week') {
       hasScrolledWeekView.current = false;
       return;
@@ -946,16 +949,20 @@ const Meals: React.FC<MealsProps> = ({
         didScroll = true;
         }, delay);
     });
-  }, [view, weekDays, isActive]);
+  }, [view, weekDays]);
 
   useEffect(() => {
-    if (!isActive) {
-      setLeavingMeals(true);
-      const frameId = requestAnimationFrame(() => setLeavingMeals(false));
-      return () => cancelAnimationFrame(frameId);
-    }
-    setLeavingMeals(false);
-  }, [isActive]);
+    if (!onOverlayStateChange) return;
+    onOverlayStateChange({
+      mealsTitle,
+      view,
+      exportingPdf,
+      dateRangeStr,
+      isCurrentWeek,
+      isScrolled,
+      todayLabel: t['common.today'] || 'Today',
+    });
+  }, [onOverlayStateChange, mealsTitle, view, exportingPdf, dateRangeStr, isCurrentWeek, isScrolled, t]);
 
   // Close quick join popover when clicking outside
   useEffect(() => {
@@ -1156,79 +1163,74 @@ const Meals: React.FC<MealsProps> = ({
 
   return (
     <div className="min-h-screen bg-background pb-40">
-      {showOverlays && (
-        <>
-          <div 
-            className="fixed top-0 left-0 right-0 z-[19] bg-background pointer-events-none"
-            style={{ height: '210px' }}
-          />
-          <div
-            className="fixed top-0 left-0 right-0 z-[21] pointer-events-none"
-            aria-hidden="true"
-          >
-            <div className="max-w-2xl mx-auto px-4 sm:px-6">
-              <div className="flex items-end pb-3" style={{ height: '120px' }}>
-                <div className="flex items-center justify-between w-full">
-                  <h1 className="text-display text-foreground header-title-stable">
-                    {mealsTitle}
-                  </h1>
-                  <div className="flex items-center gap-1 text-muted-foreground">
-                    {view === 'week' && (
-                      <button className="p-2 rounded-full">
-                        {exportingPdf ? (
-                          <Loader2 size={20} className="animate-spin" />
-                        ) : (
-                          <Download size={20} />
-                        )}
-                      </button>
+      <div 
+        className="fixed top-0 left-0 right-0 z-[19] bg-background pointer-events-none"
+        style={{ height: '210px' }}
+      />
+      <div
+        className="fixed top-0 left-0 right-0 z-[21] pointer-events-none"
+        aria-hidden="true"
+      >
+        <div className="max-w-2xl mx-auto px-4 sm:px-6">
+          <div className="flex items-end pb-3" style={{ height: '120px' }}>
+            <div className="flex items-center justify-between w-full">
+              <h1 className="text-display text-foreground header-title-stable">
+                {mealsTitle}
+              </h1>
+              <div className="flex items-center gap-1 text-muted-foreground">
+                {view === 'week' && (
+                  <button className="p-2 rounded-full">
+                    {exportingPdf ? (
+                      <Loader2 size={20} className="animate-spin" />
+                    ) : (
+                      <Download size={20} />
                     )}
-                    <button className="p-2 rounded-full">
-                      {view === 'day' ? <Sheet size={20} /> : <Rows3 size={20} />}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div
-            className="fixed top-[120px] left-0 right-0 z-[21] pointer-events-none"
-            aria-hidden="true"
-          >
-            <div className="max-w-2xl mx-auto px-4 sm:px-6">
-              <div
-                className="bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 py-5 header-sticky-stable"
-                style={{ boxShadow: isScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none' }}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="relative flex-1 flex items-center justify-between px-2 rounded-xl h-12 overflow-hidden bg-muted">
-                    <button className="p-2 rounded-lg text-muted-foreground z-10">
-                      <ChevronLeft size={20} />
-                    </button>
-                    <span className={`text-body font-semibold tabular-nums z-10 ${isCurrentWeek ? 'text-primary' : 'text-foreground'}`}>
-                      {dateRangeStr}
-                    </span>
-                    <button className="p-2 rounded-lg text-muted-foreground z-10">
-                      <ChevronRight size={20} />
-                    </button>
-                    <div className="absolute inset-0 rounded-xl pointer-events-none shadow-[inset_0_2px_4px_rgba(0,0,0,0.06)]" />
-                  </div>
-                  <button
-                    className={`px-4 rounded-xl font-semibold text-body h-12 ${
-                      isCurrentWeek
-                        ? 'bg-muted text-muted-foreground cursor-default'
-                        : 'bg-primary text-primary-foreground shadow-sm'
-                    }`}
-                  >
-                    {t['common.today'] || 'Today'}
                   </button>
-                </div>
+                )}
+                <button className="p-2 rounded-full">
+                  {view === 'day' ? <Sheet size={20} /> : <Rows3 size={20} />}
+                </button>
               </div>
             </div>
           </div>
-        </>
-      )}
-      {isActive && (
-        <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
+        </div>
+      </div>
+      <div
+        className="fixed top-[120px] left-0 right-0 z-[21] pointer-events-none"
+        aria-hidden="true"
+      >
+        <div className="max-w-2xl mx-auto px-4 sm:px-6">
+          <div
+            className="bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 py-5 header-sticky-stable"
+            style={{ boxShadow: isScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none' }}
+          >
+            <div className="flex items-center gap-3">
+              <div className="relative flex-1 flex items-center justify-between px-2 rounded-xl h-12 overflow-hidden bg-muted">
+                <button className="p-2 rounded-lg text-muted-foreground z-10">
+                  <ChevronLeft size={20} />
+                </button>
+                <span className={`text-body font-semibold tabular-nums z-10 ${isCurrentWeek ? 'text-primary' : 'text-foreground'}`}>
+                  {dateRangeStr}
+                </span>
+                <button className="p-2 rounded-lg text-muted-foreground z-10">
+                  <ChevronRight size={20} />
+                </button>
+                <div className="absolute inset-0 rounded-xl pointer-events-none shadow-[inset_0_2px_4px_rgba(0,0,0,0.06)]" />
+              </div>
+              <button
+                className={`px-4 rounded-xl font-semibold text-body h-12 ${
+                  isCurrentWeek
+                    ? 'bg-muted text-muted-foreground cursor-default'
+                    : 'bg-primary text-primary-foreground shadow-sm'
+                }`}
+              >
+                {t['common.today'] || 'Today'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
         {/* ─────────────────────────────────────────────────────────────── */}
         {/* STICKY HEADER - matches Family */}
         {/* ─────────────────────────────────────────────────────────────── */}

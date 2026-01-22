@@ -11,9 +11,9 @@ export default function HomeContent() {
   const { language } = useLanguage();
   const t = translations[language];
   return (
-    <div className="relative min-h-screen">
-      {/* Full-width background wallpaper */}
-      <div className="fixed inset-0 z-0">
+    <div className="relative min-h-[calc(100vh-64px)]">
+      {/* Full-width background wallpaper - covers entire viewport */}
+      <div className="fixed inset-0 -z-10">
         <Image
           src="/homepage-hero.jpg"
           alt=""

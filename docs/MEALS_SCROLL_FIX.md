@@ -45,7 +45,69 @@ return (
 Key points:
 - Header is INSIDE the `page-content` wrapper
 - Header uses `-mx-4 px-4` to extend edge-to-edge
-- No background shield divs needed
+
+### 1.1 Header Flicker Fix (DO NOT REMOVE)
+
+The Meals header must be **overlay-stabilized** to prevent iOS Safari repaint flicker.
+This solution is required **at all times** and must **never be removed or overwritten**.
+
+Required elements:
+
+```tsx
+// Solid background shield behind header/tabs (must stay)
+<div
+  className="fixed top-0 left-0 right-0 z-[19] bg-background pointer-events-none"
+  style={{ height: '210px' }}
+/>
+
+// Fixed overlay for header title + actions (visuals only)
+<div className="fixed top-0 left-0 right-0 z-[21] pointer-events-none" aria-hidden="true">
+  <div className="max-w-2xl mx-auto px-4 sm:px-6">
+    <div className="flex items-end pb-3" style={{ height: '120px' }}>
+      <div className="flex items-center justify-between w-full">
+        <h1 className="text-display text-foreground header-title-stable">Meals</h1>
+        <div className="flex items-center gap-1 text-muted-foreground">
+          {/* Export icon (week only) */}
+          {/* List/Table toggle */}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+// Fixed overlay for week selector + Today button (visuals only)
+<div className="fixed top-[120px] left-0 right-0 z-[21] pointer-events-none" aria-hidden="true">
+  <div className="max-w-2xl mx-auto px-4 sm:px-6">
+    <div className="bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 py-5 header-sticky-stable">
+      {/* Week selector + Today button */}
+    </div>
+  </div>
+</div>
+```
+
+And the real interactive header elements must remain in place but be hidden:
+
+```tsx
+<h1 className="text-display text-foreground header-title-stable opacity-0">...</h1>
+<div className="flex items-center gap-1 opacity-0">{/* header actions */}</div>
+<div className="sticky ... header-sticky-stable opacity-0">{/* week selector */}</div>
+```
+
+Required CSS:
+
+```css
+.header-title-stable {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+.header-sticky-stable {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  will-change: transform;
+}
+```
 
 ### 2. Single Scroll with useLayoutEffect
 
@@ -93,6 +155,8 @@ useLayoutEffect(() => {
 | Match ToDo/Expenses structure | Proven to work without flicker |
 | Header INSIDE page-content | Consistent with other pages |
 | Use `-mx-4 px-4` on header | Extends header edge-to-edge |
+| **Keep header overlays + shield** | Prevents iOS repaint flicker |
+| **Do not remove overlay CSS** | Ensures stable compositing |
 | Use `useLayoutEffect` | Runs before paint, prevents flicker |
 | Single requestAnimationFrame | No race conditions, no multiple repaints |
 | NO multiple setTimeout attempts | This causes iOS Safari flicker! |
@@ -109,4 +173,4 @@ useLayoutEffect(() => {
 
 ---
 
-*Last updated: January 2025*
+*Last updated: January 2026*

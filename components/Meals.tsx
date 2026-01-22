@@ -1334,7 +1334,7 @@ const Meals: React.FC<MealsProps> = ({
                 <div 
                   key={dateStr} 
                   id={`day-${dateStr}`} 
-                  className={`bg-card rounded-xl overflow-hidden shadow-sm ${isToday ? '' : 'content-visibility-auto'}`}
+                  className="bg-card rounded-xl overflow-hidden shadow-sm"
                 >
                   {/* Prominent Date Header Bar */}
                   <div className={`px-4 py-3 ${isToday ? 'bg-primary' : 'bg-card'}`}>

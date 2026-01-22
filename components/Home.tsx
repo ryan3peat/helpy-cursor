@@ -1408,42 +1408,52 @@ Give it a try:`;
         
         {/* Today Section - separator only if Overdue exists before it */}
         {todayTasks.length > 0 && (
-          <>
-            {overdueTasks.length > 0 && <div className="mx-4 border-t border-border"></div>}
+          <div className="relative">
+            {overdueTasks.length > 0 && <div className="absolute top-0 left-11 right-4 border-t border-border"></div>}
             <div className="px-4 py-3 pl-11">
               <span className="text-body text-primary mb-2 block">
                 {t['dashboard.today'] || 'Today'} ({todayTasks.length})
               </span>
               <div className="space-y-2">
                 {todayTasks.slice(0, 3).map(task => (
-                  <span key={task.id} className="text-body text-foreground block truncate">{task.name}</span>
+                  <div key={task.id} className="flex justify-between items-center gap-2">
+                    <span className="text-body text-foreground truncate flex-1">{task.name}</span>
+                    {task.dueTime && (
+                      <span className="text-caption text-muted-foreground flex-shrink-0">{task.dueTime}</span>
+                    )}
+                  </div>
                 ))}
                 {todayTasks.length > 3 && (
                   <span className="text-caption text-muted-foreground">+{todayTasks.length - 3} {t['common.more'] || 'more'}</span>
                 )}
               </div>
             </div>
-          </>
+          </div>
         )}
         
         {/* Tomorrow Section - separator only if Overdue or Today exists before it */}
         {tomorrowTasks.length > 0 && (
-          <>
-            {(overdueTasks.length > 0 || todayTasks.length > 0) && <div className="mx-4 border-t border-border"></div>}
+          <div className="relative">
+            {(overdueTasks.length > 0 || todayTasks.length > 0) && <div className="absolute top-0 left-11 right-4 border-t border-border"></div>}
             <div className="px-4 py-3 pl-11">
               <span className="text-body text-muted-foreground mb-2 block">
                 {t['dashboard.tomorrow'] || 'Tomorrow'} ({tomorrowTasks.length})
               </span>
               <div className="space-y-2">
                 {tomorrowTasks.slice(0, 2).map(task => (
-                  <span key={task.id} className="text-body text-foreground block truncate">{task.name}</span>
+                  <div key={task.id} className="flex justify-between items-center gap-2">
+                    <span className="text-body text-foreground truncate flex-1">{task.name}</span>
+                    {task.dueTime && (
+                      <span className="text-caption text-muted-foreground flex-shrink-0">{task.dueTime}</span>
+                    )}
+                  </div>
                 ))}
                 {tomorrowTasks.length > 2 && (
                   <span className="text-caption text-muted-foreground">+{tomorrowTasks.length - 2} {t['common.more'] || 'more'}</span>
                 )}
               </div>
             </div>
-          </>
+          </div>
         )}
         
         {/* Empty state - compact inline with (+) button */}

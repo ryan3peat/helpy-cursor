@@ -1389,7 +1389,7 @@ Give it a try:`;
           <>
             <div className="mx-4 border-t border-border"></div>
             <div className="px-4 py-3">
-              <span className="text-caption font-semibold text-primary mb-2 block">
+              <span className="text-title text-primary mb-2 block">
                 {t['dashboard.today'] || 'Today'} ({todayTasks.length})
               </span>
               <div className="space-y-2">
@@ -1409,7 +1409,7 @@ Give it a try:`;
           <>
             <div className="mx-4 border-t border-border"></div>
             <div className="px-4 py-3">
-              <span className="text-caption font-semibold text-destructive mb-2 block">
+              <span className="text-title text-destructive mb-2 block">
                 {t['dashboard.overdue'] || 'Overdue'} ({overdueTasks.length})
               </span>
               <div className="space-y-2">
@@ -1434,7 +1434,7 @@ Give it a try:`;
           <>
             <div className="mx-4 border-t border-border"></div>
             <div className="px-4 py-3">
-              <span className="text-caption font-semibold text-muted-foreground mb-2 block">
+              <span className="text-title text-muted-foreground mb-2 block">
                 {t['dashboard.tomorrow'] || 'Tomorrow'} ({tomorrowTasks.length})
               </span>
               <div className="space-y-2">

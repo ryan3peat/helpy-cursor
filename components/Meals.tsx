@@ -868,15 +868,18 @@ const Meals: React.FC<MealsProps> = ({
     const targetDateStr = formatDateStr(new Date());
     
     // Use multiple attempts for reliability
-    const scrollAttempts = [0, 50, 150];
+    const scrollAttempts = [0, 50, 150, 300];
+    let didScroll = false;
     scrollAttempts.forEach((delay) => {
       setTimeout(() => {
+        if (didScroll) return;
         const targetEl = document.getElementById(`day-${targetDateStr}`);
         if (!targetEl) return;
         
         const rect = targetEl.getBoundingClientRect();
         const elementPosition = rect.top + window.scrollY;
         window.scrollTo({ top: elementPosition - headerOffset, behavior: 'auto' });
+        didScroll = true;
       }, delay);
     });
   }, [view]);
@@ -914,8 +917,10 @@ const Meals: React.FC<MealsProps> = ({
     
     // Use multiple attempts for reliability (DOM needs time to render)
     const scrollAttempts = [0, 50, 150, 300];
+    let didScroll = false;
     scrollAttempts.forEach((delay) => {
       setTimeout(() => {
+        if (didScroll) return;
         // Find the table row for today's date
         const dateStr = formatDateStr(weekDays[todayIndex]);
         const targetRow = document.getElementById(`week-row-${dateStr}`);
@@ -929,6 +934,7 @@ const Meals: React.FC<MealsProps> = ({
         
         // Use 'auto' for instant scroll (no visible animation)
         window.scrollTo({ top: Math.max(0, targetScroll), behavior: 'auto' });
+        didScroll = true;
       }, delay);
     });
   }, [view, weekDays]);
@@ -1132,6 +1138,10 @@ const Meals: React.FC<MealsProps> = ({
 
   return (
     <div className="min-h-screen bg-background pb-40">
+      <div
+        className="fixed top-0 left-0 right-0 z-[19] bg-background pointer-events-none"
+        style={{ height: '210px' }}
+      />
       <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
         {/* ─────────────────────────────────────────────────────────────── */}
         {/* STICKY HEADER - matches Family */}
@@ -1152,7 +1162,7 @@ const Meals: React.FC<MealsProps> = ({
                     <button
                   onClick={handleExportPDF}
                   disabled={exportingPdf}
-                  className="p-2 rounded-full text-muted-foreground transition-colors disabled:opacity-50"
+                  className="p-2 rounded-full text-muted-foreground disabled:opacity-50"
                   aria-label={t['meals.export_pdf'] || 'Export PDF'}
                 >
                   {exportingPdf ? (
@@ -1166,7 +1176,7 @@ const Meals: React.FC<MealsProps> = ({
               {/* Day/Week Toggle - Simple state change like Family tabs */}
               <button
                 onClick={() => setView(view === 'day' ? 'week' : 'day')}
-                className="p-2 rounded-full text-muted-foreground transition-colors"
+                className="p-2 rounded-full text-muted-foreground"
               >
                 {view === 'day' ? <Sheet size={20} /> : <Rows3 size={20} />}
               </button>
@@ -1183,7 +1193,7 @@ const Meals: React.FC<MealsProps> = ({
         {/* WEEK NAVIGATION - Same structure as Family Info tab nav */}
         {/* ─────────────────────────────────────────────────────────────── */}
         <div 
-          className="sticky z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 py-5 transition-shadow duration-200"
+          className="sticky z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 py-5"
           style={{ 
             top: '120px',
             boxShadow: isScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none'
@@ -1259,7 +1269,7 @@ const Meals: React.FC<MealsProps> = ({
                 <div 
                   key={dateStr} 
                   id={`day-${dateStr}`} 
-                  className="bg-card rounded-xl overflow-hidden shadow-sm content-visibility-auto"
+                  className={`bg-card rounded-xl overflow-hidden shadow-sm ${isToday ? '' : 'content-visibility-auto'}`}
                 >
                   {/* Prominent Date Header Bar */}
                   <div className={`px-4 py-3 ${isToday ? 'bg-primary' : 'bg-card'}`}>

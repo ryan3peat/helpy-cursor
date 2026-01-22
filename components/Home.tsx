@@ -1399,7 +1399,7 @@ Give it a try:`;
         {overdueTasks.length > 0 && (
           <div className="px-5 py-3">
             <span className="text-title text-destructive mb-2 block">
-              {t['dashboard.overdue'] || 'Overdue'} ({overdueTasks.length})
+              {t['dashboard.overdue'] || 'Overdue'}
             </span>
             <div className="space-y-2 pl-6">
               {overdueTasks.slice(0, 2).map(task => (
@@ -1423,7 +1423,7 @@ Give it a try:`;
             {overdueTasks.length > 0 && <div className="absolute top-0 left-5 right-5 border-t border-border"></div>}
             <div className="px-5 py-3">
               <span className="text-title text-primary mb-2 block">
-                {t['dashboard.today'] || 'Today'} ({todayTasks.length})
+                {t['dashboard.today'] || 'Today'}
               </span>
               <div className="space-y-2 pl-6">
                 {todayTasks.slice(0, 3).map(task => (
@@ -1448,7 +1448,7 @@ Give it a try:`;
             {(overdueTasks.length > 0 || todayTasks.length > 0) && <div className="absolute top-0 left-5 right-5 border-t border-border"></div>}
             <div className="px-5 py-3">
               <span className="text-title text-muted-foreground mb-2 block">
-                {t['dashboard.tomorrow'] || 'Tomorrow'} ({tomorrowTasks.length})
+                {t['dashboard.tomorrow'] || 'Tomorrow'}
               </span>
               <div className="space-y-2 pl-6">
                 {tomorrowTasks.slice(0, 2).map(task => (

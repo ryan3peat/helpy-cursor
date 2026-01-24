@@ -939,23 +939,51 @@ const Meals: React.FC<MealsProps> = ({
   }, [isActive, view, weekDays]);
 
   // ─────────────────────────────────────────────────────────────────
-  // DISABLE OVERSCROLL BOUNCE - iOS Safari rubber band effect
+  // DISABLE OVERSCROLL BOUNCE - Prevent touchmove at boundary (iOS Safari)
   // ─────────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!isActive) return;
-    
-    // Apply to both html and body for iOS Safari compatibility
+    if (!isActive || view !== 'day') return;
+
+    // Apply CSS as fallback
     const html = document.documentElement;
     const body = document.body;
-    
     html.style.overscrollBehavior = 'none';
     body.style.overscrollBehavior = 'none';
+
+    // Touch event prevention for iOS Safari
+    let startY = 0;
+    
+    const handleTouchStart = (e: TouchEvent) => {
+      startY = e.touches[0].pageY;
+    };
+    
+    const handleTouchMove = (e: TouchEvent) => {
+      const firstDayStr = formatDateStr(weekDays[0]);
+      const firstDayEl = document.getElementById(`day-${firstDayStr}`);
+      if (!firstDayEl) return;
+      
+      const headerOffset = 230;
+      const minScrollTop = firstDayEl.offsetTop - headerOffset;
+      
+      const y = e.touches[0].pageY;
+      const isScrollingUp = y > startY; // Finger moving down = trying to scroll content up
+      
+      // If at minimum scroll position and trying to scroll up further, block it
+      if (window.scrollY <= minScrollTop + 5 && isScrollingUp) {
+        e.preventDefault();
+      }
+    };
+    
+    document.addEventListener('touchstart', handleTouchStart, { passive: true });
+    document.addEventListener('touchmove', handleTouchMove, { passive: false });
     
     return () => {
       html.style.overscrollBehavior = '';
       body.style.overscrollBehavior = '';
+      document.removeEventListener('touchstart', handleTouchStart);
+      document.removeEventListener('touchmove', handleTouchMove);
     };
-  }, [isActive]);
+  }, [isActive, view, weekDays]);
 
   // ─────────────────────────────────────────────────────────────────
   // AUTO-SCROLL TO TODAY ROW IN WEEK VIEW

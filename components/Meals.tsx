@@ -903,6 +903,61 @@ const Meals: React.FC<MealsProps> = ({
   }, [isActive]);
 
   // ─────────────────────────────────────────────────────────────────
+  // SCROLL CLAMP - Prevent scrolling above first day of week
+  // ─────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!isActive || view !== 'day') return;
+
+    let ticking = false;
+    
+    const handleScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      
+      requestAnimationFrame(() => {
+        const firstDayStr = formatDateStr(weekDays[0]);
+        const firstDayEl = document.getElementById(`day-${firstDayStr}`);
+        if (!firstDayEl) {
+          ticking = false;
+          return;
+        }
+        
+        const headerOffset = 230; // Same offset used for auto-scroll
+        const minScrollTop = firstDayEl.offsetTop - headerOffset;
+        
+        // If user scrolled above the minimum allowed position, clamp it
+        if (window.scrollY < minScrollTop && minScrollTop > 0) {
+          window.scrollTo({ top: minScrollTop, behavior: 'auto' });
+        }
+        
+        ticking = false;
+      });
+    };
+    
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [isActive, view, weekDays]);
+
+  // ─────────────────────────────────────────────────────────────────
+  // DISABLE OVERSCROLL BOUNCE - iOS Safari rubber band effect
+  // ─────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!isActive) return;
+    
+    // Apply to both html and body for iOS Safari compatibility
+    const html = document.documentElement;
+    const body = document.body;
+    
+    html.style.overscrollBehavior = 'none';
+    body.style.overscrollBehavior = 'none';
+    
+    return () => {
+      html.style.overscrollBehavior = '';
+      body.style.overscrollBehavior = '';
+    };
+  }, [isActive]);
+
+  // ─────────────────────────────────────────────────────────────────
   // AUTO-SCROLL TO TODAY ROW IN WEEK VIEW
   // ─────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -1151,7 +1206,7 @@ const Meals: React.FC<MealsProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-background pb-40">
+    <div className="min-h-screen bg-background pb-40" style={{ overscrollBehavior: 'none' }}>
       <div 
         className="fixed top-0 left-0 right-0 z-[19] bg-background pointer-events-none"
         style={{ height: '210px' }}

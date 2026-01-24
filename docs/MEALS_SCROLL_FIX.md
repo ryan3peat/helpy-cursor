@@ -66,6 +66,28 @@ When landing on Meals, cards render at top (Mon) then scroll to today, causing v
 
 ---
 
+## Part 3: Scroll Boundary Clamp
+
+### Problem
+Users could scroll above the first day of the week (e.g., Mon 19 Jan), creating empty white space above the cards.
+
+### Solution: Scroll Clamp + Overscroll Disable
+
+**Scroll Clamp** (useEffect in Meals.tsx):
+- Listens to scroll events in day view when active
+- If user scrolls above first day card, snaps back to minimum position
+- Uses `requestAnimationFrame` for smooth performance
+- Same 230px header offset as auto-scroll
+
+**Overscroll Behavior** (useEffect in Meals.tsx):
+- Sets `overscroll-behavior: none` on html + body when Meals is active
+- Removes iOS Safari rubber band bounce effect
+- Cleaned up when leaving Meals page
+
+**DO NOT REMOVE** these scroll boundary controls.
+
+---
+
 ## Rules - DO NOT BREAK
 
 | Rule | Why |
@@ -75,6 +97,8 @@ When landing on Meals, cards render at top (Mon) then scroll to today, causing v
 | **Keep Meals always-mounted in App.tsx** | Preserves state, enables instant show |
 | **Keep isActive prop flow** | Controls when scroll runs |
 | **Keep scroll reset on !isActive** | Ensures scroll runs on every visit |
+| **Keep scroll clamp effect** | Prevents scrolling above first day |
+| **Keep overscroll-behavior effect** | Disables iOS rubber band bounce |
 | **Do NOT use content-visibility on cards** | Causes delayed rendering |
 | **Do NOT use useLayoutEffect for scroll** | Causes inconsistent positioning |
 | **Do NOT add key={} to Meals wrapper** | Would destroy state on navigation |
@@ -102,6 +126,8 @@ If git pull conflicts with any of these protected patterns:
 - [ ] Navigate away and back - same behavior, no blank page
 - [ ] Switch Day/Week view - scroll works correctly
 - [ ] Dark mode - header overlays match theme
+- [ ] Try scrolling above first day card - should stop at boundary
+- [ ] No rubber band bounce effect on iOS Safari
 
 ---
 

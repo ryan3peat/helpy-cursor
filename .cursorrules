@@ -89,6 +89,14 @@ import { createPortal } from 'react-dom';
 
 **DO NOT** use useLayoutEffect or change the scroll timing.
 
+#### Scroll Boundary Clamp (Meals.tsx)
+- Prevents scrolling above first day of week
+- Clamps scroll position to first card minus 230px header offset
+- Disables iOS rubber band bounce via `overscroll-behavior: none` on html/body
+- Only active when `isActive && view === 'day'`
+
+**DO NOT REMOVE** the scroll clamp or overscroll-behavior effects.
+
 #### Git Pull Warning
 If `git pull` conflicts with Meals.tsx, App.tsx, or index.css:
 - **KEEP LOCAL VERSION** with `git checkout --ours <file>`

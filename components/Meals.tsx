@@ -1239,7 +1239,7 @@ const Meals: React.FC<MealsProps> = ({
         ['--meals-bottom-nav-h' as any]: `${bottomNavHeight}px`,
       }}
     >
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 h-full overflow-hidden flex flex-col">
         {/* ─────────────────────────────────────────────────────────────── */}
         {/* STICKY HEADER - matches Family */}
         {/* ─────────────────────────────────────────────────────────────── */}

@@ -935,7 +935,7 @@ const Meals: React.FC<MealsProps> = ({
     window.addEventListener('resize', measure);
     window.addEventListener('orientationchange', measure);
 
-    return () => {
+      return () => {
       cancelAnimationFrame(rafId);
       window.removeEventListener('resize', measure);
       window.removeEventListener('orientationchange', measure);
@@ -977,7 +977,7 @@ const Meals: React.FC<MealsProps> = ({
     html.style.overscrollBehavior = 'none';
     body.style.overscrollBehavior = 'none';
 
-    return () => {
+      return () => {
       html.style.overscrollBehavior = '';
       body.style.overscrollBehavior = '';
     };
@@ -1244,7 +1244,7 @@ const Meals: React.FC<MealsProps> = ({
         {/* STICKY HEADER - matches Family */}
         {/* ─────────────────────────────────────────────────────────────── */}
         <header 
-          className="sticky top-0 z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 pb-3 flex items-end" 
+          className="z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 pb-3 flex items-end" 
           style={{ 
             height: '120px', 
             boxShadow: '0 10px 0 0 hsl(var(--background))' 
@@ -1252,10 +1252,10 @@ const Meals: React.FC<MealsProps> = ({
         >
           <div className="w-full">
             <div className="flex items-center justify-between">
-              <h1 className="text-display text-foreground">
+            <h1 className="text-display text-foreground">
                 {mealsTitle}
-              </h1>
-              
+            </h1>
+            
               {/* Header Actions */}
               <div className="flex items-center gap-2 shrink-0">
               {/* Export PDF Button - Only visible in table view */}
@@ -1281,8 +1281,8 @@ const Meals: React.FC<MealsProps> = ({
               >
                 {view === 'day' ? <Sheet size={20} /> : <Rows3 size={20} />}
               </button>
+              </div>
             </div>
-          </div>
           </div>
         </header>
         {/* Error Banner */}
@@ -1296,9 +1296,8 @@ const Meals: React.FC<MealsProps> = ({
         {/* ─────────────────────────────────────────────────────────────── */}
         <div 
           ref={weekNavOverlayRef}
-          className="sticky z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 py-5 transition-shadow duration-200"
+          className="z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 py-5 transition-shadow duration-200"
           style={{ 
-            top: '120px',
             boxShadow: isContainerScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none'
           }}
         >

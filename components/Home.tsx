@@ -887,7 +887,7 @@ const Home: React.FC<HomeProps> = ({
       haptics.success(); // Haptic feedback on successful save
     } catch (err) {
       logger.error('Failed to save notes:', err);
-      setError(t['error.save_notes'] || 'Failed to save notes. Please try again.');
+      setError(t['error.save_notes'] || "Couldn't save notes. Try closing and reopening the app, or log out and back in.");
       haptics.error();
     } finally {
       setIsSavingNotes(false);
@@ -958,7 +958,7 @@ Give it a try:`;
       setIsEditingNotes(false);
     } catch (err) {
       logger.error('Failed to delete notes:', err);
-      setError(t['error.delete_notes'] || 'Failed to delete notes. Please try again.');
+      setError(t['error.delete_notes'] || "Couldn't delete notes. Try closing and reopening the app, or log out and back in.");
     } finally {
       setIsDeletingNotes(false);
     }
@@ -1341,7 +1341,7 @@ Give it a try:`;
       )}
 
       {/* Date Header */}
-      <div className="text-title text-foreground font-bold pl-5 pt-4">
+      <div className="text-title text-foreground font-bold pt-4">
         {(() => {
           const d = new Date();
           const locale = currentLang === 'en' ? 'en-GB' : currentLang;

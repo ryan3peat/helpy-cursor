@@ -809,7 +809,7 @@ const Family: React.FC<FamilyProps> = ({
       }
     } catch (err) {
       logger.error("Failed to save:", err);
-      setError(t['error.save_place'] || 'Failed to save. Please try again.');
+      setError(t['error.save_place'] || "Couldn't save. Try closing and reopening the app, or log out and back in.");
     }
   };
 
@@ -826,7 +826,7 @@ const Family: React.FC<FamilyProps> = ({
       await onDeletePlace(itemToDelete.id);
     } catch (err) {
       logger.error("Failed to delete:", err);
-      setError(t['error.delete_place'] || 'Failed to delete. Please try again.');
+      setError(t['error.delete_place'] || "Couldn't delete. Try closing and reopening the app, or log out and back in.");
     }
   };
 
@@ -945,7 +945,7 @@ const Family: React.FC<FamilyProps> = ({
       }
     } catch (err) {
       logger.error("Failed to save house routine:", err);
-      setError(t['error.save_practice'] || 'Failed to save. Please try again.');
+      setError(t['error.save_practice'] || "Couldn't save. Try closing and reopening the app, or log out and back in.");
     }
   };
 
@@ -962,7 +962,7 @@ const Family: React.FC<FamilyProps> = ({
       await onDeletePractice(itemToDelete.id);
     } catch (err) {
       logger.error("Failed to delete house routine:", err);
-      setError(t['error.delete_practice'] || 'Failed to delete. Please try again.');
+      setError(t['error.delete_practice'] || "Couldn't delete. Try closing and reopening the app, or log out and back in.");
     }
   };
 
@@ -1023,7 +1023,7 @@ const Family: React.FC<FamilyProps> = ({
       setSelectedPresetIds(new Set());
     } catch (err) {
       logger.error("Failed to add presets:", err);
-      setError(t['error.save_practice'] || 'Failed to save. Please try again.');
+      setError(t['error.save_practice'] || "Couldn't save. Try closing and reopening the app, or log out and back in.");
       haptics.error();
       setShowAddPresetsConfirm(false);
     } finally {

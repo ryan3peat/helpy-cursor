@@ -350,7 +350,7 @@ const Meals: React.FC<MealsProps> = ({
       }
     } catch (err) {
       logger.error('Failed to update meal:', err);
-      setError(t['error.update_meal'] || 'Failed to update meal. Please try again.');
+      setError(t['error.update_meal'] || "Couldn't update meal. Try closing and reopening the app, or log out and back in.");
     }
   };
 
@@ -372,7 +372,7 @@ const Meals: React.FC<MealsProps> = ({
       onAdd(newMeal);
     } catch (err) {
       logger.error('Failed to add meal:', err);
-      setError(t['error.add_meal'] || 'Failed to add meal. Please try again.');
+      setError(t['error.add_meal'] || "Couldn't save meal. Try closing and reopening the app, or log out and back in.");
     }
   };
 
@@ -476,7 +476,7 @@ const Meals: React.FC<MealsProps> = ({
       setIsModalOpen(false);
     } catch (err) {
       logger.error('Failed to save meal:', err);
-      setError(t['error.save_meal'] || 'Failed to save meal. Please try again.');
+      setError(t['error.save_meal'] || "Couldn't save meal. Try closing and reopening the app, or log out and back in.");
     }
   };
 
@@ -487,7 +487,7 @@ const Meals: React.FC<MealsProps> = ({
         setIsModalOpen(false);
       } catch (err) {
         logger.error('Failed to delete meal:', err);
-        setError(t['error.delete_meal'] || 'Failed to delete meal. Please try again.');
+        setError(t['error.delete_meal'] || "Couldn't delete meal. Try closing and reopening the app, or log out and back in.");
       }
     }
   };
@@ -843,7 +843,7 @@ const Meals: React.FC<MealsProps> = ({
       }
       logger.error('Failed to export PDF:', err);
       haptics.error();
-      setError(t['error.export_pdf'] || 'Failed to export PDF. Please try again.');
+      setError(t['error.export_pdf'] || "Couldn't export PDF. Try closing and reopening the app, or log out and back in.");
     } finally {
       setExportingPdf(false);
     }

@@ -1015,7 +1015,7 @@ const ToDo: React.FC<ToDoProps> = ({
     } catch (err) {
       logger.error('Failed to add item:', err);
       setOptimisticItems(prev => prev.filter(i => i.id !== optimisticId));
-      setError(t['error.add_item'] || 'Failed to add item. Please try again.');
+      setError(t['error.add_item'] || "Couldn't save. Try closing and reopening the app, or log out and back in.");
     }
   };
   
@@ -1055,7 +1055,7 @@ const ToDo: React.FC<ToDoProps> = ({
     } catch (err) {
       logger.error('Failed to add item:', err);
       setOptimisticItems(prev => prev.filter(i => i.id !== optimisticId));
-      setError(t['error.add_item'] || 'Failed to add item. Please try again.');
+      setError(t['error.add_item'] || "Couldn't save. Try closing and reopening the app, or log out and back in.");
     }
   };
   
@@ -1110,7 +1110,7 @@ const ToDo: React.FC<ToDoProps> = ({
           delete next[id];
           return next;
         });
-        setError(t['error.update_item'] || 'Failed to update item. Please try again.');
+        setError(t['error.update_item'] || "Couldn't update. Try closing and reopening the app, or log out and back in.");
       }
     } else {
       // Uncompleting: instant, no animation
@@ -1125,7 +1125,7 @@ const ToDo: React.FC<ToDoProps> = ({
           delete next[id];
           return next;
         });
-        setError(t['error.update_item'] || 'Failed to update item. Please try again.');
+        setError(t['error.update_item'] || "Couldn't update. Try closing and reopening the app, or log out and back in.");
       }
     }
   };
@@ -1151,7 +1151,7 @@ const ToDo: React.FC<ToDoProps> = ({
         next.delete(id);
         return next;
       });
-      setError(t['error.delete_item'] || 'Failed to delete item. Please try again.');
+      setError(t['error.delete_item'] || "Couldn't delete. Try closing and reopening the app, or log out and back in.");
     }
   };
   
@@ -1183,7 +1183,7 @@ const ToDo: React.FC<ToDoProps> = ({
           return next;
         });
       });
-      setError(t['error.delete_items'] || 'Failed to delete some items. Please try again.');
+      setError(t['error.delete_items'] || "Couldn't delete. Try closing and reopening the app, or log out and back in.");
     }
   };
   
@@ -1311,7 +1311,7 @@ const ToDo: React.FC<ToDoProps> = ({
           return rest;
         });
         logger.error('Failed to update item:', err);
-        setError(t['error.update_item'] || 'Failed to update item. Please try again.');
+        setError(t['error.update_item'] || "Couldn't update. Try closing and reopening the app, or log out and back in.");
       } finally {
         setIsSaving(false);
       }
@@ -1350,7 +1350,7 @@ const ToDo: React.FC<ToDoProps> = ({
       } catch (err) {
         logger.error('Failed to add item:', err);
         setOptimisticItems(prev => prev.filter(i => i.id !== optimisticId));
-        setError(t['error.add_item'] || 'Failed to add item. Please try again.');
+        setError(t['error.add_item'] || "Couldn't save. Try closing and reopening the app, or log out and back in.");
       } finally {
         setIsSaving(false);
       }

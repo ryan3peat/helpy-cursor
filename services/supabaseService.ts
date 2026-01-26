@@ -17,25 +17,52 @@ function getSupabaseClient() {
 }
 
 /**
- * Check if an error is JWT/auth related and should trigger a retry
+ * Check if an error is JWT/auth related and should trigger a retry.
+ * 
+ * IMPORTANT: Be AGGRESSIVE in detecting auth errors. The cost of retrying
+ * unnecessarily is low, but the cost of NOT retrying an auth error (user
+ * sees "Failed to add item" and has to logout/login) is high.
  */
 function isJwtError(error: any): boolean {
   if (!error) return false;
   
-  // Check error code
-  if (error.code === 'PGRST303') return true;
+  // Check HTTP status codes
+  if (error.status === 401 || error.status === 403) return true;
   
-  // Check error message for JWT-related issues
-  const message = error.message?.toLowerCase() || '';
-  if (message.includes('jwt expired')) return true;
-  if (message.includes('jwt') && message.includes('expired')) return true;
-  if (message.includes('invalid jwt')) return true;
-  if (message.includes('jwt malformed')) return true;
+  // Check Supabase/PostgREST error codes
+  if (error.code === 'PGRST303') return true; // JWT expired
+  if (error.code === 'PGRST301') return true; // JWT required
+  if (error.code === '42501') return true; // RLS/permission error - often auth related
+  if (error.code === '28000') return true; // Invalid authorization
+  if (error.code === '28P01') return true; // Invalid password (auth failure)
   
-  // Check for RLS/permission errors that might be auth-related
-  // Note: Be careful - not all RLS errors are token issues
-  // Only retry if it looks like a session/token problem
-  if (error.code === '42501' && message.includes('policy')) return true;
+  // Check error message for auth-related keywords
+  const message = (error.message || '').toLowerCase();
+  const hint = (error.hint || '').toLowerCase();
+  const details = (error.details || '').toLowerCase();
+  const combined = `${message} ${hint} ${details}`;
+  
+  // JWT-related
+  if (combined.includes('jwt')) return true;
+  if (combined.includes('token')) return true;
+  
+  // Auth-related
+  if (combined.includes('auth')) return true;
+  if (combined.includes('unauthorized')) return true;
+  if (combined.includes('forbidden')) return true;
+  if (combined.includes('permission')) return true;
+  if (combined.includes('not allowed')) return true;
+  if (combined.includes('access denied')) return true;
+  
+  // Session-related
+  if (combined.includes('session')) return true;
+  if (combined.includes('expired')) return true;
+  if (combined.includes('invalid')) return true;
+  
+  // RLS policy errors
+  if (combined.includes('policy')) return true;
+  if (combined.includes('rls')) return true;
+  if (combined.includes('row-level security')) return true;
   
   return false;
 }

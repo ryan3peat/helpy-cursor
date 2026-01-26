@@ -792,20 +792,53 @@ Give it a try:`,
   'common.na': 'N/A',
   'common.adding': 'Adding...',
 
-  // Error Messages
-  'error.add_user': 'Failed to add user. Please try again.',
-  'error.generate_invite': 'Failed to generate new invite link',
+  // Error Messages - Item Operations (user-friendly, non-technical)
+  // Format: "Couldn't [action]. Try closing and reopening the app, or log out and back in."
+  'error.add_item': "Couldn't save. Try closing and reopening the app, or log out and back in.",
+  'error.update_item': "Couldn't update. Try closing and reopening the app, or log out and back in.",
+  'error.delete_item': "Couldn't delete. Try closing and reopening the app, or log out and back in.",
+  'error.delete_items': "Couldn't delete. Try closing and reopening the app, or log out and back in.",
+  
+  // Error Messages - Meals
+  'error.add_meal': "Couldn't save meal. Try closing and reopening the app, or log out and back in.",
+  'error.update_meal': "Couldn't update meal. Try closing and reopening the app, or log out and back in.",
+  'error.delete_meal': "Couldn't delete meal. Try closing and reopening the app, or log out and back in.",
+  'error.save_meal': "Couldn't save meal. Try closing and reopening the app, or log out and back in.",
+  
+  // Error Messages - Expenses
+  'error.save_expense': "Couldn't save expense. Try closing and reopening the app, or log out and back in.",
+  'error.update_expense': "Couldn't update expense. Try closing and reopening the app, or log out and back in.",
+  'error.delete_expense': "Couldn't delete expense. Try closing and reopening the app, or log out and back in.",
+  
+  // Error Messages - Family Board
+  'error.save_notes': "Couldn't save notes. Try closing and reopening the app, or log out and back in.",
+  'error.delete_notes': "Couldn't delete notes. Try closing and reopening the app, or log out and back in.",
+  
+  // Error Messages - Places & Practices
+  'error.save_place': "Couldn't save. Try closing and reopening the app, or log out and back in.",
+  'error.delete_place': "Couldn't delete. Try closing and reopening the app, or log out and back in.",
+  'error.save_practice': "Couldn't save. Try closing and reopening the app, or log out and back in.",
+  'error.delete_practice': "Couldn't delete. Try closing and reopening the app, or log out and back in.",
+  
+  // Error Messages - User Operations
+  'error.add_user': "Couldn't add member. Try closing and reopening the app, or log out and back in.",
+  'error.generate_invite': "Couldn't generate invite link. Try closing and reopening the app, or log out and back in.",
   'error.select_image': 'Please select an image file',
   'error.image_too_large': 'Image size must be less than 5MB',
-  'error.upload_image': 'Failed to upload image. Please try again.',
-  'error.cancel_subscription': 'Failed to cancel subscription. Please try again.',
-  'error.delete_account_unable': 'Unable to delete account. Please try again.',
-  'error.delete_account': 'Failed to delete account. Please try again or contact support.',
-  'error.export_pdf': 'Failed to export PDF. Please try again.',
+  'error.upload_image': "Couldn't upload image. Try closing and reopening the app, or log out and back in.",
+  'error.cancel_subscription': "Couldn't cancel subscription. Try closing and reopening the app, or log out and back in.",
+  'error.delete_account_unable': "Couldn't delete account. Try closing and reopening the app, or log out and back in.",
+  'error.delete_account': "Couldn't delete account. Try closing and reopening the app, or log out and back in.",
+  'error.export_pdf': "Couldn't export PDF. Try closing and reopening the app, or log out and back in.",
   'error.helper_limit_title': 'Helper Limit Reached',
   'error.family_limit_title': 'Family Member Limit Reached',
   'error.upgrade_to_add_more': 'Upgrade your plan to add more members to your household.',
-  'error.save_contract': 'Failed to save employment details. Please try again.',
+  
+  // Error Messages - Helper Management
+  'error.save_contract': "Couldn't save employment details. Try closing and reopening the app, or log out and back in.",
+  'error.delete_slip': "Couldn't delete salary slip. Try closing and reopening the app, or log out and back in.",
+  'error.sign_slip': "Couldn't sign. Try closing and reopening the app, or log out and back in.",
+  'error.load_data': "Couldn't load data. Try closing and reopening the app, or log out and back in.",
 
   // Settings - Push Notifications
   'settings.push_not_supported': 'Not supported in this browser',

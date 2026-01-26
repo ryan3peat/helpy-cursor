@@ -35,8 +35,10 @@ let globalGetToken: ((options?: { template: string }) => Promise<string | null>)
  * - Returns the fresh token
  * 
  * This is how Netflix/Spotify handle auth - call the token provider fresh on each request.
+ * 
+ * @param forceRefresh - If true, bypasses Clerk's cache and forces a fresh token from the server
  */
-export const getFreshClerkToken = async (): Promise<string | null> => {
+export const getFreshClerkToken = async (forceRefresh: boolean = false): Promise<string | null> => {
   if (!globalGetToken) {
     logger.warn('[SupabaseContext] getFreshClerkToken called but globalGetToken not set');
     return null;
@@ -44,19 +46,33 @@ export const getFreshClerkToken = async (): Promise<string | null> => {
   
   try {
     const templateName = import.meta.env.VITE_CLERK_JWT_TEMPLATE_NAME || 'supabase';
-    const token = await globalGetToken({ template: templateName });
+    
+    // Clerk's getToken options:
+    // - template: The JWT template to use
+    // - skipCache: If true, bypasses the cache and fetches a new token from the server
+    const options: any = { template: templateName };
+    if (forceRefresh) {
+      options.skipCache = true;
+      logger.log('[SupabaseContext] 🔄 Forcing fresh token (skipCache=true)...');
+    }
+    
+    const token = await globalGetToken(options);
     
     if (token) {
       // Update the cached token for backwards compatibility with existing code
       updateCurrentToken(token);
+      if (forceRefresh) {
+        logger.log('[SupabaseContext] ✅ Forced fresh token obtained successfully');
+      }
     }
     
     return token;
   } catch (error) {
     logger.error('[SupabaseContext] getFreshClerkToken error:', error);
-    // Try basic token as fallback
+    // Try basic token as fallback (without template)
     try {
-      const basicToken = await globalGetToken({} as any);
+      const basicOptions: any = forceRefresh ? { skipCache: true } : {};
+      const basicToken = await globalGetToken(basicOptions);
       if (basicToken) {
         updateCurrentToken(basicToken);
       }

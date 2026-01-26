@@ -23,6 +23,7 @@
       --accent-orange: #f0883e;
       --accent-green: #3fb950;
       --accent-purple: #a371f7;
+      --accent-red: #f85149;
       --border-color: #30363d;
       --today-bg: rgba(88, 166, 255, 0.15);
     }
@@ -203,9 +204,35 @@
       display: block;
     }
 
+    /* Days Toggle (3/7 days) */
+    .days-toggle {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      padding: 0 16px 12px;
+    }
+
+    .days-toggle-btn {
+      padding: 6px 16px;
+      border: 1px solid var(--border-color);
+      background: transparent;
+      color: var(--text-secondary);
+      font-size: 13px;
+      font-weight: 500;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .days-toggle-btn.active {
+      background: var(--accent-blue);
+      border-color: var(--accent-blue);
+      color: white;
+    }
+
     .week-header {
       display: grid;
-      grid-template-columns: 50px repeat(7, 1fr);
+      grid-template-columns: 50px repeat(var(--days-count, 7), 1fr);
       border-bottom: 1px solid var(--border-color);
       position: sticky;
       top: 120px;
@@ -247,21 +274,50 @@
       margin-top: 2px;
     }
 
-    /* All-Day Section */
+    /* All-Day Section - Collapsible Rows */
     .all-day-section {
       display: grid;
-      grid-template-columns: 50px repeat(7, 1fr);
+      grid-template-columns: 70px repeat(var(--days-count, 7), 1fr);
       border-bottom: 1px solid var(--border-color);
-      min-height: 80px;
+      min-height: 40px;
       background: var(--bg-secondary);
+      transition: min-height 0.2s ease;
+    }
+
+    .all-day-section.collapsed {
+      min-height: 32px;
+    }
+
+    .all-day-section.collapsed .all-day-column {
+      display: none;
     }
 
     .all-day-label {
-      font-size: 10px;
+      font-size: 9px;
       color: var(--text-muted);
-      padding: 8px 4px;
+      padding: 6px 4px;
       text-align: center;
       border-right: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.2s;
+    }
+
+    .all-day-label:hover {
+      background: var(--bg-tertiary);
+    }
+
+    .all-day-label .collapse-icon {
+      font-size: 8px;
+      transition: transform 0.2s;
+    }
+
+    .all-day-section.collapsed .collapse-icon {
+      transform: rotate(-90deg);
     }
 
     .all-day-column {
@@ -270,6 +326,7 @@
       display: flex;
       flex-direction: column;
       gap: 2px;
+      overflow: hidden;
     }
 
     .all-day-event {
@@ -287,9 +344,14 @@
       color: white;
     }
 
-    .all-day-event.expense {
-      background: var(--accent-green);
+    .all-day-event.shopping {
+      background: var(--accent-purple);
       color: white;
+      cursor: pointer;
+    }
+
+    .all-day-event.shopping:hover {
+      opacity: 0.9;
     }
 
     .all-day-event.task-allday {
@@ -297,10 +359,24 @@
       color: white;
     }
 
+    .all-day-event.holiday {
+      background: var(--accent-red, #f85149);
+      color: white;
+    }
+
+    /* Section-specific backgrounds */
+    .all-day-section.shopping-row {
+      background: var(--bg-tertiary);
+    }
+
+    .all-day-section.holiday-row {
+      background: rgba(248, 81, 73, 0.08);
+    }
+
     /* Time Grid */
     .time-grid {
       display: grid;
-      grid-template-columns: 50px repeat(7, 1fr);
+      grid-template-columns: 50px repeat(var(--days-count, 7), 1fr);
       position: relative;
     }
 
@@ -586,8 +662,12 @@
         <span>Meals</span>
       </div>
       <div class="legend-item">
-        <div class="legend-dot" style="background: var(--accent-green)"></div>
-        <span>Expenses</span>
+        <div class="legend-dot" style="background: var(--accent-purple)"></div>
+        <span>Shopping</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot" style="background: var(--accent-red)"></div>
+        <span>Holiday</span>
       </div>
     </div>
   </div>
@@ -595,50 +675,38 @@
   <!-- Week View -->
   <div id="weekView" class="week-view">
     <div class="month-nav">
-      <button onclick="prevWeek()">‹</button>
+      <button onclick="prevPeriod()">‹</button>
       <span id="weekLabel">Jan 26 - Feb 1, 2026</span>
-      <button onclick="nextWeek()">›</button>
+      <button onclick="nextPeriod()">›</button>
     </div>
-    <div class="week-header">
+    <div class="days-toggle">
+      <button class="days-toggle-btn" data-days="3" onclick="setDaysCount(3)">3 Days</button>
+      <button class="days-toggle-btn active" data-days="7" onclick="setDaysCount(7)">7 Days</button>
+    </div>
+    <div class="week-header" id="weekHeader">
       <div class="week-header-spacer"></div>
-      <div class="week-day-header" id="weekDay0">
-        <div class="week-day-name">Sun</div>
-        <div class="week-day-num">26</div>
-      </div>
-      <div class="week-day-header today" id="weekDay1">
-        <div class="week-day-name">Mon</div>
-        <div class="week-day-num">27</div>
-      </div>
-      <div class="week-day-header" id="weekDay2">
-        <div class="week-day-name">Tue</div>
-        <div class="week-day-num">28</div>
-      </div>
-      <div class="week-day-header" id="weekDay3">
-        <div class="week-day-name">Wed</div>
-        <div class="week-day-num">29</div>
-      </div>
-      <div class="week-day-header" id="weekDay4">
-        <div class="week-day-name">Thu</div>
-        <div class="week-day-num">30</div>
-      </div>
-      <div class="week-day-header" id="weekDay5">
-        <div class="week-day-name">Fri</div>
-        <div class="week-day-num">31</div>
-      </div>
-      <div class="week-day-header" id="weekDay6">
-        <div class="week-day-name">Sat</div>
-        <div class="week-day-num">1</div>
-      </div>
+      <!-- Day headers will be rendered dynamically -->
     </div>
-    <div class="all-day-section">
-      <div class="all-day-label">All<br>Day</div>
-      <div class="all-day-column" id="allDay0"></div>
-      <div class="all-day-column" id="allDay1"></div>
-      <div class="all-day-column" id="allDay2"></div>
-      <div class="all-day-column" id="allDay3"></div>
-      <div class="all-day-column" id="allDay4"></div>
-      <div class="all-day-column" id="allDay5"></div>
-      <div class="all-day-column" id="allDay6"></div>
+    <div class="all-day-section" id="mealsSection">
+      <div class="all-day-label" onclick="toggleSection('mealsSection')">
+        <span class="collapse-icon">▼</span>
+        <span>Meals</span>
+      </div>
+      <!-- Meals columns will be rendered dynamically -->
+    </div>
+    <div class="all-day-section shopping-row" id="shoppingSection">
+      <div class="all-day-label" onclick="toggleSection('shoppingSection')">
+        <span class="collapse-icon">▼</span>
+        <span>Shopping</span>
+      </div>
+      <!-- Shopping columns will be rendered dynamically (only today) -->
+    </div>
+    <div class="all-day-section holiday-row" id="holidaySection">
+      <div class="all-day-label" onclick="toggleSection('holidaySection')">
+        <span class="collapse-icon">▼</span>
+        <span>Holiday</span>
+      </div>
+      <!-- Helper holidays will be rendered dynamically -->
     </div>
     <div class="time-grid" id="timeGrid"></div>
   </div>
@@ -705,15 +773,37 @@
       { id: 15, date: formatDate(addDays(today, 6)), type: 'Dinner', desc: 'Leftover BBQ' },
     ];
     
-    // Expenses
-    const expenses = [
-      { id: 1, date: formatDate(addDays(today, -2)), amount: 980, merchant: 'Wellcome', category: 'Groceries' },
-      { id: 2, date: formatDate(addDays(today, -1)), amount: 350, merchant: 'Mannings', category: 'Health' },
-      { id: 3, date: formatDate(today), amount: 280, merchant: 'Wet Market', category: 'Groceries' },
-      { id: 4, date: formatDate(addDays(today, 1)), amount: 650, merchant: 'ParknShop', category: 'Groceries' },
-      { id: 5, date: formatDate(addDays(today, 3)), amount: 400, merchant: 'Octopus Top-up', category: 'Transport' },
-      { id: 6, date: formatDate(addDays(today, 5)), amount: 320, merchant: 'Ocean Park', category: 'Entertainment' },
+    // Shopping Items (no dates - always shown on "today")
+    const shoppingItems = [
+      { id: 1, name: 'Eggs (1 dozen)', category: 'Supermarket', completed: false },
+      { id: 2, name: 'Milk 2L', category: 'Supermarket', completed: false },
+      { id: 3, name: 'Fresh salmon', category: 'Wet Market', completed: false },
+      { id: 4, name: 'Bok choy', category: 'Wet Market', completed: false },
+      { id: 5, name: 'Rice 5kg', category: 'Supermarket', completed: false },
+      { id: 6, name: 'Soy sauce', category: 'Supermarket', completed: true },
+      { id: 7, name: 'Garlic', category: 'Wet Market', completed: false },
+      { id: 8, name: 'Cooking oil', category: 'Supermarket', completed: false },
     ];
+    
+    // Helper Holidays (approved leave)
+    const helperHolidays = [
+      // Anna's holidays
+      { id: 1, helperName: 'Anna', startDate: formatDate(addDays(today, 3)), endDate: formatDate(addDays(today, 5)), type: 'annual', status: 'approved' },
+      // Maria's holidays (second helper)
+      { id: 2, helperName: 'Maria', startDate: formatDate(addDays(today, 10)), endDate: formatDate(addDays(today, 12)), type: 'annual', status: 'approved' },
+      // Anna's single day
+      { id: 3, helperName: 'Anna', startDate: formatDate(addDays(today, 14)), endDate: formatDate(addDays(today, 14)), type: 'sick', status: 'approved' },
+    ];
+    
+    // Helper to check if a date falls within a holiday range
+    function isDateInHoliday(dateStr, holiday) {
+      return dateStr >= holiday.startDate && dateStr <= holiday.endDate;
+    }
+    
+    // Get holidays for a specific date
+    function getHolidaysForDate(dateStr) {
+      return helperHolidays.filter(h => isDateInHoliday(dateStr, h) && h.status === 'approved');
+    }
     
     // ============================================================================
     // STATE
@@ -722,13 +812,40 @@
     let currentView = 'month';
     let currentMonth = new Date(today.getFullYear(), today.getMonth(), 1);
     let currentWeekStart = getWeekStart(today);
+    let currentPeriodStart = new Date(today); // For 3-day view, starts from selected date
     let selectedDate = formatDate(today);
+    let daysCount = 7; // 3 or 7
     
     function getWeekStart(d) {
       const result = new Date(d);
       const day = result.getDay();
       result.setDate(result.getDate() - day);
       return result;
+    }
+    
+    function setDaysCount(count) {
+      daysCount = count;
+      document.querySelectorAll('.days-toggle-btn').forEach(btn => {
+        btn.classList.toggle('active', parseInt(btn.dataset.days) === count);
+      });
+      
+      // Update CSS variable
+      document.getElementById('weekView').style.setProperty('--days-count', count);
+      
+      // For 3-day view, center on today
+      if (count === 3) {
+        currentPeriodStart = addDays(today, -1); // Yesterday, today, tomorrow
+      } else {
+        currentPeriodStart = getWeekStart(today);
+      }
+      
+      renderWeekView();
+    }
+    
+    // Toggle collapse/expand for sections
+    function toggleSection(sectionId) {
+      const section = document.getElementById(sectionId);
+      section.classList.toggle('collapsed');
     }
     
     // ============================================================================
@@ -792,20 +909,22 @@
       const cell = document.createElement('div');
       cell.className = 'day-cell';
       if (isOtherMonth) cell.classList.add('other-month');
-      if (formatDate(date) === formatDate(today)) cell.classList.add('today');
+      const isToday = formatDate(date) === formatDate(today);
+      if (isToday) cell.classList.add('today');
       if (formatDate(date) === selectedDate) cell.classList.add('selected');
       
       const dateStr = formatDate(date);
       const dayTasks = tasks.filter(t => t.date === dateStr);
       const dayMeals = meals.filter(m => m.date === dateStr);
-      const dayExpenses = expenses.filter(e => e.date === dateStr);
+      // Shopping only shows on today
+      const hasUncompleted = shoppingItems.filter(s => !s.completed).length > 0;
       
       cell.innerHTML = `
         <div class="day-number">${date.getDate()}</div>
         <div class="day-dots">
           ${dayTasks.length > 0 ? '<div class="dot task"></div>' : ''}
           ${dayMeals.length > 0 ? '<div class="dot meal"></div>' : ''}
-          ${dayExpenses.length > 0 ? '<div class="dot expense"></div>' : ''}
+          ${isToday && hasUncompleted ? '<div class="dot" style="background:var(--accent-purple)"></div>' : ''}
         </div>
       `;
       
@@ -823,7 +942,8 @@
       const dateStr = formatDate(date);
       const dayTasks = tasks.filter(t => t.date === dateStr);
       const dayMeals = meals.filter(m => m.date === dateStr);
-      const dayExpenses = expenses.filter(e => e.date === dateStr);
+      const isToday = formatDate(date) === formatDate(today);
+      const uncompletedShopping = shoppingItems.filter(s => !s.completed);
       
       document.getElementById('panelDate').textContent = 
         date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
@@ -855,17 +975,18 @@
         `;
       });
       
-      dayExpenses.forEach(e => {
+      // Shopping only shown on today
+      if (isToday && uncompletedShopping.length > 0) {
         content += `
-          <div class="panel-item">
-            <div class="panel-item-icon expense">💰</div>
+          <div class="panel-item" style="background:rgba(163,113,247,0.1);border-radius:8px;padding:12px;margin-top:8px;">
+            <div class="panel-item-icon" style="background:rgba(163,113,247,0.2)">🛒</div>
             <div style="flex:1">
-              <div style="font-weight:500">$${e.amount}</div>
-              <div style="font-size:13px;color:var(--text-secondary)">${e.merchant}</div>
+              <div style="font-weight:500">${uncompletedShopping.length} shopping items</div>
+              <div style="font-size:13px;color:var(--text-secondary)">Tap to view list</div>
             </div>
           </div>
         `;
-      });
+      }
       
       if (!content) {
         content = '<div style="text-align:center;color:var(--text-muted);padding:20px">No events</div>';
@@ -896,33 +1017,59 @@
     // ============================================================================
     
     function renderWeekView() {
-      // Update header
-      const weekEnd = addDays(currentWeekStart, 6);
-      const startMonth = currentWeekStart.toLocaleDateString('en-US', { month: 'short' });
-      const endMonth = weekEnd.toLocaleDateString('en-US', { month: 'short' });
-      document.getElementById('weekLabel').textContent = 
-        `${startMonth} ${currentWeekStart.getDate()} - ${endMonth} ${weekEnd.getDate()}, ${weekEnd.getFullYear()}`;
+      // Preserve collapsed states
+      const mealsCollapsed = document.getElementById('mealsSection')?.classList.contains('collapsed');
+      const shoppingCollapsed = document.getElementById('shoppingSection')?.classList.contains('collapsed');
+      const holidayCollapsed = document.getElementById('holidaySection')?.classList.contains('collapsed');
       
-      // Update day headers
+      // Set CSS variable for days count
+      document.getElementById('weekView').style.setProperty('--days-count', daysCount);
+      document.getElementById('mealsSection').style.setProperty('--days-count', daysCount);
+      document.getElementById('shoppingSection').style.setProperty('--days-count', daysCount);
+      document.getElementById('holidaySection').style.setProperty('--days-count', daysCount);
+      
+      // Determine start date based on view mode
+      const startDate = daysCount === 7 ? currentWeekStart : currentPeriodStart;
+      const endDate = addDays(startDate, daysCount - 1);
+      
+      // Update header label
+      const startMonth = startDate.toLocaleDateString('en-US', { month: 'short' });
+      const endMonth = endDate.toLocaleDateString('en-US', { month: 'short' });
+      document.getElementById('weekLabel').textContent = 
+        `${startMonth} ${startDate.getDate()} - ${endMonth} ${endDate.getDate()}, ${endDate.getFullYear()}`;
+      
+      // Render day headers
+      const weekHeader = document.getElementById('weekHeader');
+      weekHeader.innerHTML = '<div class="week-header-spacer"></div>';
+      
       const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-      for (let i = 0; i < 7; i++) {
-        const date = addDays(currentWeekStart, i);
-        const header = document.getElementById(`weekDay${i}`);
-        header.className = 'week-day-header' + (formatDate(date) === formatDate(today) ? ' today' : '');
+      for (let i = 0; i < daysCount; i++) {
+        const date = addDays(startDate, i);
+        const isToday = formatDate(date) === formatDate(today);
+        const header = document.createElement('div');
+        header.className = 'week-day-header' + (isToday ? ' today' : '');
         header.innerHTML = `
-          <div class="week-day-name">${dayNames[i]}</div>
+          <div class="week-day-name">${dayNames[date.getDay()]}</div>
           <div class="week-day-num">${date.getDate()}</div>
         `;
+        weekHeader.appendChild(header);
       }
       
-      // Render all-day section
-      for (let i = 0; i < 7; i++) {
-        const date = addDays(currentWeekStart, i);
+      // Render MEALS section
+      const mealsSection = document.getElementById('mealsSection');
+      mealsSection.innerHTML = `<div class="all-day-label" onclick="toggleSection('mealsSection')">
+        <span class="collapse-icon">▼</span>
+        <span>Meals</span>
+      </div>`;
+      if (mealsCollapsed) mealsSection.classList.add('collapsed');
+      
+      for (let i = 0; i < daysCount; i++) {
+        const date = addDays(startDate, i);
         const dateStr = formatDate(date);
-        const col = document.getElementById(`allDay${i}`);
-        col.innerHTML = '';
+        const col = document.createElement('div');
+        col.className = 'all-day-column';
         
-        // Meals (all-day)
+        // Meals for this day
         meals.filter(m => m.date === dateStr).forEach(m => {
           const el = document.createElement('div');
           el.className = 'all-day-event meal';
@@ -930,21 +1077,86 @@
           col.appendChild(el);
         });
         
-        // Expenses (all-day)
-        expenses.filter(e => e.date === dateStr).forEach(e => {
-          const el = document.createElement('div');
-          el.className = 'all-day-event expense';
-          el.textContent = `💰 $${e.amount}`;
-          col.appendChild(el);
-        });
+        mealsSection.appendChild(col);
+      }
+      
+      // Render SHOPPING section (only shows on today)
+      const shoppingSection = document.getElementById('shoppingSection');
+      shoppingSection.innerHTML = `<div class="all-day-label" onclick="toggleSection('shoppingSection')">
+        <span class="collapse-icon">▼</span>
+        <span>Shopping</span>
+      </div>`;
+      if (shoppingCollapsed) shoppingSection.classList.add('collapsed');
+      
+      const uncompletedShopping = shoppingItems.filter(s => !s.completed);
+      
+      for (let i = 0; i < daysCount; i++) {
+        const date = addDays(startDate, i);
+        const isToday = formatDate(date) === formatDate(today);
+        const col = document.createElement('div');
+        col.className = 'all-day-column';
+        
+        // Shopping only shows on today column - show top 3 items + "X more"
+        if (isToday && uncompletedShopping.length > 0) {
+          const maxToShow = 3;
+          const itemsToShow = uncompletedShopping.slice(0, maxToShow);
+          const remaining = uncompletedShopping.length - maxToShow;
+          
+          itemsToShow.forEach(s => {
+            const el = document.createElement('div');
+            el.className = 'all-day-event shopping';
+            el.textContent = `🛒 ${s.name}`;
+            el.onclick = (e) => { e.stopPropagation(); alert('Navigate to Shopping List'); };
+            col.appendChild(el);
+          });
+          
+          if (remaining > 0) {
+            const moreEl = document.createElement('div');
+            moreEl.className = 'all-day-event shopping';
+            moreEl.style.opacity = '0.7';
+            moreEl.textContent = `+${remaining} more`;
+            moreEl.onclick = (e) => { e.stopPropagation(); alert('Navigate to Shopping List:\n\n' + uncompletedShopping.map(s => '• ' + s.name).join('\n')); };
+            col.appendChild(moreEl);
+          }
+        }
         
         // Tasks without time (all-day)
+        const dateStr = formatDate(date);
         tasks.filter(t => t.date === dateStr && !t.time).forEach(t => {
           const el = document.createElement('div');
           el.className = 'all-day-event task-allday';
           el.textContent = `✓ ${t.name}`;
           col.appendChild(el);
         });
+        
+        shoppingSection.appendChild(col);
+      }
+      
+      // Render HOLIDAY section (helper holidays)
+      const holidaySection = document.getElementById('holidaySection');
+      holidaySection.innerHTML = `<div class="all-day-label" onclick="toggleSection('holidaySection')">
+        <span class="collapse-icon">▼</span>
+        <span>Holiday</span>
+      </div>`;
+      if (holidayCollapsed) holidaySection.classList.add('collapsed');
+      
+      for (let i = 0; i < daysCount; i++) {
+        const date = addDays(startDate, i);
+        const dateStr = formatDate(date);
+        const col = document.createElement('div');
+        col.className = 'all-day-column';
+        
+        // Helper holidays for this day
+        const dayHolidays = getHolidaysForDate(dateStr);
+        dayHolidays.forEach(h => {
+          const el = document.createElement('div');
+          el.className = 'all-day-event holiday';
+          el.textContent = `🏖️ ${h.helperName}`;
+          el.title = `${h.helperName}'s ${h.type} leave (${h.startDate} to ${h.endDate})`;
+          col.appendChild(el);
+        });
+        
+        holidaySection.appendChild(col);
       }
       
       // Render time grid
@@ -963,8 +1175,8 @@
       timeGrid.appendChild(timeCol);
       
       // Day columns with events
-      for (let i = 0; i < 7; i++) {
-        const date = addDays(currentWeekStart, i);
+      for (let i = 0; i < daysCount; i++) {
+        const date = addDays(startDate, i);
         const dateStr = formatDate(date);
         const col = document.createElement('div');
         col.className = 'day-column' + (formatDate(date) === formatDate(today) ? ' today-col' : '');
@@ -1007,13 +1219,21 @@
       }
     }
     
-    function prevWeek() {
-      currentWeekStart = addDays(currentWeekStart, -7);
+    function prevPeriod() {
+      if (daysCount === 7) {
+        currentWeekStart = addDays(currentWeekStart, -7);
+      } else {
+        currentPeriodStart = addDays(currentPeriodStart, -daysCount);
+      }
       renderWeekView();
     }
     
-    function nextWeek() {
-      currentWeekStart = addDays(currentWeekStart, 7);
+    function nextPeriod() {
+      if (daysCount === 7) {
+        currentWeekStart = addDays(currentWeekStart, 7);
+      } else {
+        currentPeriodStart = addDays(currentPeriodStart, daysCount);
+      }
       renderWeekView();
     }
     
@@ -1029,7 +1249,8 @@
       const dateStr = selectedDate;
       const dayTasks = tasks.filter(t => t.date === dateStr);
       const dayMeals = meals.filter(m => m.date === dateStr);
-      const dayExpenses = expenses.filter(e => e.date === dateStr);
+      const isToday = selectedDate === formatDate(today);
+      const uncompletedShopping = shoppingItems.filter(s => !s.completed);
       
       let content = '';
       
@@ -1071,18 +1292,19 @@
         content += '</div>';
       }
       
-      // Expenses section
-      if (dayExpenses.length > 0) {
+      // Shopping section (only on today)
+      if (isToday && uncompletedShopping.length > 0) {
         content += `<div class="day-section">
-          <div class="day-section-title">Expenses</div>`;
-        dayExpenses.forEach(e => {
+          <div class="day-section-title">Shopping List</div>`;
+        uncompletedShopping.forEach(s => {
           content += `
             <div class="day-item">
-              <div class="day-item-dot" style="background:var(--accent-green)"></div>
+              <div class="day-item-dot" style="background:var(--accent-purple)"></div>
               <div class="day-item-content">
-                <div class="day-item-title">$${e.amount} HKD</div>
-                <div class="day-item-meta">${e.merchant} · ${e.category}</div>
+                <div class="day-item-title">${s.name}</div>
+                <div class="day-item-meta">${s.category}</div>
               </div>
+              <div class="day-item-time">🛒</div>
             </div>
           `;
         });
@@ -1104,6 +1326,7 @@
       selectedDate = formatDate(today);
       currentMonth = new Date(today.getFullYear(), today.getMonth(), 1);
       currentWeekStart = getWeekStart(today);
+      currentPeriodStart = addDays(today, -1); // For 3-day: yesterday, today, tomorrow
       
       if (currentView === 'month') renderMonthGrid();
       else if (currentView === 'week') renderWeekView();

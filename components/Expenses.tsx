@@ -1010,7 +1010,7 @@ const Expenses: React.FC<ExpensesProps> = ({
     } catch (addError) {
       logger.error('[Expenses] Error saving expense:', addError);
       if (!expenseLikelySaved) {
-        setError(t['error.save_expense'] || 'Could not save expense. Please try again.');
+        setError(t['error.save_expense'] || "Couldn't save expense. Try closing and reopening the app, or log out and back in.");
         haptics.error();
       } else {
         // Expense was likely saved (optimistic or returned), so avoid blocking banner
@@ -1111,7 +1111,7 @@ const Expenses: React.FC<ExpensesProps> = ({
       closeExistingModal();
     } catch (err) {
       logger.error('Failed to update expense:', err);
-      setError(t['error.update_expense'] || 'Could not update expense. Please try again.');
+      setError(t['error.update_expense'] || "Couldn't update expense. Try closing and reopening the app, or log out and back in.");
     } finally {
       setSavingExisting(false);
     }
@@ -1129,7 +1129,7 @@ const Expenses: React.FC<ExpensesProps> = ({
       closeExistingModal();
     } catch (err) {
       logger.error('Failed to delete expense:', err);
-      setError(t['error.delete_expense'] || 'Could not delete expense. Please try again.');
+      setError(t['error.delete_expense'] || "Couldn't delete expense. Try closing and reopening the app, or log out and back in.");
     } finally {
       setSavingExisting(false);
     }

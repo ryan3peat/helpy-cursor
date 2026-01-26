@@ -1088,7 +1088,7 @@ const Profile: React.FC<ProfileProps> = ({
       } else {
         showAlert(
           t['error.add_user_title'] || 'Add User Failed',
-          t['error.add_user'] || 'Failed to add user. Please try again.',
+          t['error.add_user'] || "Couldn't add member. Try closing and reopening the app, or log out and back in.",
           'error'
         );
         setAddUserStep('form');
@@ -1148,7 +1148,7 @@ const Profile: React.FC<ProfileProps> = ({
       logger.error('Failed to resend invite:', error);
       showAlert(
         t['error.invite_title'] || 'Invite Failed',
-        t['error.generate_invite'] || 'Failed to generate new invite link',
+        t['error.generate_invite'] || "Couldn't generate invite link. Try closing and reopening the app, or log out and back in.",
         'error'
       );
       closeAddUserModal();
@@ -1286,7 +1286,7 @@ const Profile: React.FC<ProfileProps> = ({
       logger.error('❌ Failed to upload avatar:', error);
       showAlert(
         t['error.upload_failed_title'] || 'Upload Failed',
-        t['error.upload_image'] || 'Failed to upload image. Please try again.',
+        t['error.upload_image'] || "Couldn't upload image. Try closing and reopening the app, or log out and back in.",
         'error'
       );
     } finally {
@@ -2483,7 +2483,7 @@ const Profile: React.FC<ProfileProps> = ({
       logger.error('Error deleting account:', error);
       showAlert(
         t['error.delete_account_title'] || 'Delete Failed',
-        t['error.delete_account'] || 'Failed to delete account. Please try again or contact support.',
+        t['error.delete_account'] || "Couldn't delete account. Try closing and reopening the app, or log out and back in.",
         'error'
       );
       setIsDeletingAccount(false);

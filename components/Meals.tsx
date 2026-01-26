@@ -1341,7 +1341,7 @@ const Meals: React.FC<MealsProps> = ({
         {/* ─────────────────────────────────────────────────────────────── */}
         {/* MAIN CONTENT */}
         {/* ─────────────────────────────────────────────────────────────── */}
-        <div className="flex-1 min-h-0 overflow-hidden pt-1">
+        <div className="flex-1 min-h-0 overflow-hidden">
 
       {/* Day View */}
       {view === 'day' ? (
@@ -1619,7 +1619,7 @@ const Meals: React.FC<MealsProps> = ({
       ) : (
           /* Week View - Simple HTML Table */
           <div
-            className="h-full rounded-xl bg-card shadow-sm overflow-hidden"
+            className="h-full rounded-xl bg-card shadow-sm overflow-y-auto"
             style={{
               overscrollBehavior: 'contain',
             }}

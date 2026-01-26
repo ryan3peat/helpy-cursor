@@ -40,6 +40,60 @@ interface NotificationPayload {
   item_count?: number;
 }
 
+// =============================================================================
+// HELPER: Format due date context for tasks
+// Returns "(due today)", "(due tomorrow)", "(overdue!)" or ""
+// =============================================================================
+function formatDueDateContext(dueDate: string | null | undefined): string {
+  if (!dueDate) return '';
+  
+  try {
+    // Parse YYYY-MM-DD format (timezone-safe, no Date object)
+    const [year, month, day] = dueDate.split('-').map(Number);
+    
+    // Get current date in local timezone
+    const now = new Date();
+    const todayYear = now.getFullYear();
+    const todayMonth = now.getMonth() + 1; // 0-indexed
+    const todayDay = now.getDate();
+    
+    // Calculate days difference using simple date math
+    // Convert both dates to days since epoch for comparison
+    const dueDays = year * 365 + month * 30 + day;
+    const todayDays = todayYear * 365 + todayMonth * 30 + todayDay;
+    const diff = dueDays - todayDays;
+    
+    if (diff < 0) return '(overdue!)';
+    if (diff === 0) return '(due today)';
+    if (diff === 1) return '(due tomorrow)';
+    
+    return ''; // More than 1 day away, no special label
+  } catch {
+    return '';
+  }
+}
+
+// =============================================================================
+// HELPER: Get assignee name from household users
+// Returns first name only for cleaner notifications
+// =============================================================================
+function getAssigneeName(
+  assigneeId: string | null | undefined,
+  creatorId: string | null | undefined,
+  householdUsers?: Array<{ id: string; name: string; clerk_id?: string }>
+): string | null {
+  // No assignee or same as creator = don't show
+  if (!assigneeId || !householdUsers || assigneeId === creatorId) return null;
+  
+  // Look up by Supabase UUID
+  const assignee = householdUsers.find(u => u.id === assigneeId);
+  if (assignee && assignee.name) {
+    return assignee.name.split(' ')[0]; // First name only
+  }
+  
+  return null;
+}
+
 // CORS headers for edge function
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -72,11 +126,16 @@ function buildNotificationMessage(
       const itemName = record.name as string || 'an item';
       const isCompleted = record.completed as boolean;
       const wasCompleted = oldRecord?.completed as boolean;
+      const dueDate = record.due_date as string | null;
+      const assigneeId = record.assignee_id as string | null;
       
       // SOFT DELETE DETECTION: Check if deleted_at was set (null → timestamp)
       const isDeleted = record.deleted_at !== null && record.deleted_at !== undefined;
       const wasDeleted = oldRecord?.deleted_at !== null && oldRecord?.deleted_at !== undefined;
       const isSoftDelete = event === 'UPDATE' && isDeleted && !wasDeleted;
+      
+      // UN-COMPLETE DETECTION: completed changed true → false/null
+      const isUncompletion = event === 'UPDATE' && wasCompleted && !isCompleted;
       
       // If this is a soft delete of an ALREADY COMPLETED item, skip notification
       if (isSoftDelete && wasCompleted) {
@@ -87,6 +146,24 @@ function buildNotificationMessage(
         };
       }
       
+      // Get due date context for INSERT (today/tomorrow/overdue)
+      const dueDateContext = event === 'INSERT' ? formatDueDateContext(dueDate) : '';
+      
+      // Get assignee name for INSERT (if assigned to someone else)
+      const assigneeName = event === 'INSERT' 
+        ? getAssigneeName(assigneeId, creatorId, householdUsers)
+        : null;
+      
+      // Build item label with optional context
+      // Format: "Item name → Assignee (due today)" or just "Item name"
+      let itemLabel = itemName;
+      if (assigneeName) {
+        itemLabel += ` → ${assigneeName}`;
+      }
+      if (dueDateContext) {
+        itemLabel += ` ${dueDateContext}`;
+      }
+      
       if (itemType === 'shopping') {
         // Shopping List notifications
         if (event === 'UPDATE' && isCompleted && !wasCompleted) {
@@ -94,6 +171,13 @@ function buildNotificationMessage(
           return {
             title: '✅ Shopping',
             body: `${itemName}\nbought by ${creatorName}`,
+            type: 'shopping'
+          };
+        } else if (isUncompletion) {
+          // Item was marked as NOT bought (completed changed true → false)
+          return {
+            title: '🛒 Shopping',
+            body: `${itemName}\nmarked as not bought by ${creatorName}`,
             type: 'shopping'
           };
         } else if (event === 'DELETE' || isSoftDelete) {
@@ -110,10 +194,10 @@ function buildNotificationMessage(
             type: 'shopping'
           };
         } else {
-          // INSERT (default)
+          // INSERT (default) - includes assignee and due date context
           return {
             title: '🛒 Shopping',
-            body: `${itemName}\nadded by ${creatorName}`,
+            body: `${itemLabel}\nadded by ${creatorName}`,
             type: 'shopping'
           };
         }
@@ -126,6 +210,13 @@ function buildNotificationMessage(
             body: `${itemName}\ndone by ${creatorName}`,
             type: 'task'
           };
+        } else if (isUncompletion) {
+          // Task was marked as NOT done (completed changed true → false)
+          return {
+            title: '📝 Tasks',
+            body: `${itemName}\nmarked as incomplete by ${creatorName}`,
+            type: 'task'
+          };
         } else if (event === 'DELETE' || isSoftDelete) {
           // Real delete OR soft delete of non-completed item
           return {
@@ -140,10 +231,10 @@ function buildNotificationMessage(
             type: 'task'
           };
         } else {
-          // INSERT (default)
+          // INSERT (default) - includes assignee and due date context
           return {
             title: '📝 Tasks',
-            body: `${itemName}\nadded by ${creatorName}`,
+            body: `${itemLabel}\nadded by ${creatorName}`,
             type: 'task'
           };
         }
@@ -415,6 +506,13 @@ function buildBatchedNotificationMessage(
     return isCompleted && !wasCompleted;
   });
   
+  // UN-COMPLETE DETECTION for batches (items marked as NOT bought/done)
+  const isUncompletionBatch = event === 'UPDATE' && items.some(item => {
+    const isCompleted = item.record.completed as boolean;
+    const wasCompleted = item.old_record?.completed as boolean;
+    return wasCompleted && !isCompleted;
+  });
+  
   // SOFT DELETE DETECTION for batches
   const isSoftDeleteBatch = event === 'UPDATE' && items.some(item => {
     const isDeleted = item.record.deleted_at !== null && item.record.deleted_at !== undefined;
@@ -453,6 +551,15 @@ function buildBatchedNotificationMessage(
         return {
           title: isShopping ? '✅ Shopping' : '✅ Tasks',
           body: `${formatItemsList()}\n${isShopping ? 'bought' : 'done'} by ${creatorName}`,
+          type: isShopping ? 'shopping' : 'task'
+        };
+      }
+      
+      // UN-COMPLETION batch (marked as NOT bought/done)
+      if (isUncompletionBatch) {
+        return {
+          title: isShopping ? '🛒 Shopping' : '📝 Tasks',
+          body: `${formatItemsList()}\nmarked as ${isShopping ? 'not bought' : 'incomplete'} by ${creatorName}`,
           type: isShopping ? 'shopping' : 'task'
         };
       }

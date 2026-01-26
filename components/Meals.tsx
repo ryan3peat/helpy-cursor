@@ -942,15 +942,22 @@ const Meals: React.FC<MealsProps> = ({
   // DISABLE OVERSCROLL BOUNCE - Prevent touchmove at boundary (iOS Safari)
   // ─────────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!isActive || view !== 'day') return;
+    if (!isActive) return;
 
-    // Apply CSS as fallback
+    // Apply CSS as fallback - works for both views
     const html = document.documentElement;
     const body = document.body;
     html.style.overscrollBehavior = 'none';
     body.style.overscrollBehavior = 'none';
 
-    // Touch event prevention for iOS Safari
+    // Touch event prevention only needed for day view (has scroll clamping)
+    if (view !== 'day') {
+      return () => {
+        html.style.overscrollBehavior = '';
+        body.style.overscrollBehavior = '';
+      };
+    }
+
     let startY = 0;
     
     const handleTouchStart = (e: TouchEvent) => {
@@ -1685,7 +1692,7 @@ const Meals: React.FC<MealsProps> = ({
                   <tr>
                     {/* Corner cell - sticky horizontally */}
                     <th 
-                      className="p-2 bg-muted sticky left-0 z-10 border-b border-border"
+                      className="p-2 bg-muted sticky left-0 z-[5] border-b border-border"
                       style={{ 
                         boxShadow: '1px 0 0 0 #d1d5db',
                         minWidth: '90px'
@@ -1722,7 +1729,7 @@ const Meals: React.FC<MealsProps> = ({
                         {/* Date label cell - sticky horizontally */}
                         <td 
                       onClick={() => handleWeekCellClick(day)}
-                          className={`p-2 text-center align-middle sticky left-0 z-10 cursor-pointer border-r border-border ${!isLastRow ? 'border-b border-border' : ''} ${isToday ? 'bg-primary' : 'bg-card'}`}
+                          className={`p-2 text-center align-middle sticky left-0 z-[5] cursor-pointer border-r border-border ${!isLastRow ? 'border-b border-border' : ''} ${isToday ? 'bg-primary' : 'bg-card'}`}
                           style={{ 
                             boxShadow: '1px 0 0 0 #d1d5db',
                             minWidth: '90px'

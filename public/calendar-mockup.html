@@ -1,0 +1,1120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Helpy Calendar Mockup</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    :root {
+      --bg-primary: #0f1419;
+      --bg-secondary: #1a1f26;
+      --bg-tertiary: #252b33;
+      --text-primary: #ffffff;
+      --text-secondary: #8b949e;
+      --text-muted: #6e7681;
+      --accent-blue: #58a6ff;
+      --accent-orange: #f0883e;
+      --accent-green: #3fb950;
+      --accent-purple: #a371f7;
+      --border-color: #30363d;
+      --today-bg: rgba(88, 166, 255, 0.15);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Header */
+    .header {
+      position: sticky;
+      top: 0;
+      background: var(--bg-primary);
+      padding: 16px;
+      border-bottom: 1px solid var(--border-color);
+      z-index: 100;
+    }
+
+    .header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .header-title {
+      font-size: 24px;
+      font-weight: 600;
+    }
+
+    .today-btn {
+      background: var(--accent-blue);
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    /* View Toggle */
+    .view-toggle {
+      display: flex;
+      background: var(--bg-secondary);
+      border-radius: 10px;
+      padding: 4px;
+      gap: 4px;
+    }
+
+    .view-btn {
+      flex: 1;
+      padding: 10px 16px;
+      border: none;
+      background: transparent;
+      color: var(--text-secondary);
+      font-size: 14px;
+      font-weight: 500;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .view-btn.active {
+      background: var(--accent-blue);
+      color: white;
+    }
+
+    /* Month Navigation */
+    .month-nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px;
+    }
+
+    .month-nav button {
+      background: var(--bg-secondary);
+      border: none;
+      color: var(--text-primary);
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .month-nav span {
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    /* Month View */
+    .month-view {
+      padding: 0 16px;
+    }
+
+    .weekday-header {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      text-align: center;
+      padding: 8px 0;
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .month-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 2px;
+    }
+
+    .day-cell {
+      aspect-ratio: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 4px;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: background 0.2s;
+      position: relative;
+    }
+
+    .day-cell:hover {
+      background: var(--bg-secondary);
+    }
+
+    .day-cell.today {
+      background: var(--today-bg);
+    }
+
+    .day-cell.selected {
+      background: var(--accent-blue);
+    }
+
+    .day-cell.other-month {
+      color: var(--text-muted);
+    }
+
+    .day-number {
+      font-size: 14px;
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+
+    .day-dots {
+      display: flex;
+      gap: 3px;
+      min-height: 6px;
+    }
+
+    .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+    }
+
+    .dot.task { background: var(--accent-blue); }
+    .dot.meal { background: var(--accent-orange); }
+    .dot.expense { background: var(--accent-green); }
+
+    /* Week View */
+    .week-view {
+      display: none;
+    }
+
+    .week-view.active {
+      display: block;
+    }
+
+    .week-header {
+      display: grid;
+      grid-template-columns: 50px repeat(7, 1fr);
+      border-bottom: 1px solid var(--border-color);
+      position: sticky;
+      top: 120px;
+      background: var(--bg-primary);
+      z-index: 50;
+    }
+
+    .week-header-spacer {
+      background: var(--bg-primary);
+    }
+
+    .week-day-header {
+      text-align: center;
+      padding: 8px 4px;
+      border-left: 1px solid var(--border-color);
+    }
+
+    .week-day-name {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    .week-day-num {
+      font-size: 18px;
+      font-weight: 600;
+      margin-top: 4px;
+    }
+
+    .week-day-header.today .week-day-num {
+      background: var(--accent-blue);
+      color: white;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 2px;
+    }
+
+    /* All-Day Section */
+    .all-day-section {
+      display: grid;
+      grid-template-columns: 50px repeat(7, 1fr);
+      border-bottom: 1px solid var(--border-color);
+      min-height: 80px;
+      background: var(--bg-secondary);
+    }
+
+    .all-day-label {
+      font-size: 10px;
+      color: var(--text-muted);
+      padding: 8px 4px;
+      text-align: center;
+      border-right: 1px solid var(--border-color);
+    }
+
+    .all-day-column {
+      border-left: 1px solid var(--border-color);
+      padding: 4px 2px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .all-day-event {
+      font-size: 10px;
+      padding: 3px 6px;
+      border-radius: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-weight: 500;
+    }
+
+    .all-day-event.meal {
+      background: var(--accent-orange);
+      color: white;
+    }
+
+    .all-day-event.expense {
+      background: var(--accent-green);
+      color: white;
+    }
+
+    .all-day-event.task-allday {
+      background: var(--accent-blue);
+      color: white;
+    }
+
+    /* Time Grid */
+    .time-grid {
+      display: grid;
+      grid-template-columns: 50px repeat(7, 1fr);
+      position: relative;
+    }
+
+    .time-column {
+      border-right: 1px solid var(--border-color);
+    }
+
+    .time-slot {
+      height: 60px;
+      border-bottom: 1px solid var(--border-color);
+      font-size: 10px;
+      color: var(--text-muted);
+      text-align: right;
+      padding-right: 8px;
+      padding-top: 4px;
+    }
+
+    .day-column {
+      border-left: 1px solid var(--border-color);
+      position: relative;
+    }
+
+    .day-column.today-col {
+      background: var(--today-bg);
+    }
+
+    .hour-line {
+      height: 60px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    /* Time-based Events */
+    .time-event {
+      position: absolute;
+      left: 2px;
+      right: 2px;
+      background: var(--accent-blue);
+      border-radius: 4px;
+      padding: 4px 6px;
+      font-size: 10px;
+      font-weight: 500;
+      color: white;
+      overflow: hidden;
+      z-index: 10;
+    }
+
+    .time-event .event-time {
+      font-size: 9px;
+      opacity: 0.8;
+    }
+
+    .time-event .event-title {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Day View */
+    .day-view {
+      display: none;
+      padding: 16px;
+    }
+
+    .day-view.active {
+      display: block;
+    }
+
+    .day-view-date {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .day-section {
+      margin-bottom: 24px;
+    }
+
+    .day-section-title {
+      font-size: 12px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      font-weight: 600;
+    }
+
+    .day-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 12px;
+      background: var(--bg-secondary);
+      border-radius: 12px;
+      margin-bottom: 8px;
+    }
+
+    .day-item-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      margin-top: 4px;
+    }
+
+    .day-item-content {
+      flex: 1;
+    }
+
+    .day-item-title {
+      font-size: 15px;
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+
+    .day-item-meta {
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    .day-item-time {
+      font-size: 13px;
+      color: var(--text-muted);
+      min-width: 50px;
+      text-align: right;
+    }
+
+    /* Selected Day Panel (shown in month view) */
+    .selected-day-panel {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: var(--bg-secondary);
+      border-top-left-radius: 20px;
+      border-top-right-radius: 20px;
+      padding: 20px;
+      max-height: 40vh;
+      overflow-y: auto;
+      transform: translateY(100%);
+      transition: transform 0.3s ease;
+      z-index: 200;
+    }
+
+    .selected-day-panel.open {
+      transform: translateY(0);
+    }
+
+    .panel-handle {
+      width: 40px;
+      height: 4px;
+      background: var(--border-color);
+      border-radius: 2px;
+      margin: 0 auto 16px;
+    }
+
+    .panel-date {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 16px;
+    }
+
+    .panel-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .panel-item:last-child {
+      border-bottom: none;
+    }
+
+    .panel-item-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+    }
+
+    .panel-item-icon.meal { background: rgba(240, 136, 62, 0.2); }
+    .panel-item-icon.task { background: rgba(88, 166, 255, 0.2); }
+    .panel-item-icon.expense { background: rgba(63, 185, 80, 0.2); }
+
+    /* Backdrop */
+    .backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+      z-index: 150;
+    }
+
+    .backdrop.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    /* Legend */
+    .legend {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      padding: 16px;
+      border-top: 1px solid var(--border-color);
+      margin-top: 16px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    /* Hide scrollbar */
+    ::-webkit-scrollbar {
+      display: none;
+    }
+
+    /* Responsive */
+    @media (max-width: 400px) {
+      .day-number {
+        font-size: 12px;
+      }
+      .dot {
+        width: 4px;
+        height: 4px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="header-top">
+      <h1 class="header-title">Calendar</h1>
+      <button class="today-btn" onclick="goToToday()">Today</button>
+    </div>
+    <div class="view-toggle">
+      <button class="view-btn" data-view="day" onclick="switchView('day')">Day</button>
+      <button class="view-btn" data-view="week" onclick="switchView('week')">Week</button>
+      <button class="view-btn active" data-view="month" onclick="switchView('month')">Month</button>
+    </div>
+  </div>
+
+  <!-- Month View -->
+  <div id="monthView" class="month-view">
+    <div class="month-nav">
+      <button onclick="prevMonth()">‹</button>
+      <span id="monthLabel">January 2026</span>
+      <button onclick="nextMonth()">›</button>
+    </div>
+    <div class="weekday-header">
+      <div>Sun</div>
+      <div>Mon</div>
+      <div>Tue</div>
+      <div>Wed</div>
+      <div>Thu</div>
+      <div>Fri</div>
+      <div>Sat</div>
+    </div>
+    <div id="monthGrid" class="month-grid"></div>
+    <div class="legend">
+      <div class="legend-item">
+        <div class="legend-dot" style="background: var(--accent-blue)"></div>
+        <span>Tasks</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot" style="background: var(--accent-orange)"></div>
+        <span>Meals</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot" style="background: var(--accent-green)"></div>
+        <span>Expenses</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Week View -->
+  <div id="weekView" class="week-view">
+    <div class="month-nav">
+      <button onclick="prevWeek()">‹</button>
+      <span id="weekLabel">Jan 26 - Feb 1, 2026</span>
+      <button onclick="nextWeek()">›</button>
+    </div>
+    <div class="week-header">
+      <div class="week-header-spacer"></div>
+      <div class="week-day-header" id="weekDay0">
+        <div class="week-day-name">Sun</div>
+        <div class="week-day-num">26</div>
+      </div>
+      <div class="week-day-header today" id="weekDay1">
+        <div class="week-day-name">Mon</div>
+        <div class="week-day-num">27</div>
+      </div>
+      <div class="week-day-header" id="weekDay2">
+        <div class="week-day-name">Tue</div>
+        <div class="week-day-num">28</div>
+      </div>
+      <div class="week-day-header" id="weekDay3">
+        <div class="week-day-name">Wed</div>
+        <div class="week-day-num">29</div>
+      </div>
+      <div class="week-day-header" id="weekDay4">
+        <div class="week-day-name">Thu</div>
+        <div class="week-day-num">30</div>
+      </div>
+      <div class="week-day-header" id="weekDay5">
+        <div class="week-day-name">Fri</div>
+        <div class="week-day-num">31</div>
+      </div>
+      <div class="week-day-header" id="weekDay6">
+        <div class="week-day-name">Sat</div>
+        <div class="week-day-num">1</div>
+      </div>
+    </div>
+    <div class="all-day-section">
+      <div class="all-day-label">All<br>Day</div>
+      <div class="all-day-column" id="allDay0"></div>
+      <div class="all-day-column" id="allDay1"></div>
+      <div class="all-day-column" id="allDay2"></div>
+      <div class="all-day-column" id="allDay3"></div>
+      <div class="all-day-column" id="allDay4"></div>
+      <div class="all-day-column" id="allDay5"></div>
+      <div class="all-day-column" id="allDay6"></div>
+    </div>
+    <div class="time-grid" id="timeGrid"></div>
+  </div>
+
+  <!-- Day View -->
+  <div id="dayView" class="day-view">
+    <div class="day-view-date" id="dayViewDate">Monday, January 26, 2026</div>
+    <div id="dayViewContent"></div>
+  </div>
+
+  <!-- Selected Day Panel (for month view) -->
+  <div class="backdrop" id="backdrop" onclick="closePanel()"></div>
+  <div class="selected-day-panel" id="selectedDayPanel">
+    <div class="panel-handle"></div>
+    <div class="panel-date" id="panelDate">Monday, January 26</div>
+    <div id="panelContent"></div>
+  </div>
+
+  <script>
+    // ============================================================================
+    // DEMO DATA
+    // ============================================================================
+    
+    const today = new Date();
+    const formatDate = (d) => d.toISOString().split('T')[0];
+    const addDays = (d, n) => { const r = new Date(d); r.setDate(r.getDate() + n); return r; };
+    
+    // Tasks with due dates and times
+    const tasks = [
+      { id: 1, name: 'Vacuum living room', date: formatDate(today), time: '09:00', assignee: 'Anna' },
+      { id: 2, name: 'Pick up Ethan from school', date: formatDate(today), time: '15:30', assignee: 'Anna' },
+      { id: 3, name: 'Prepare dinner ingredients', date: formatDate(today), time: '16:00', assignee: 'Anna' },
+      { id: 4, name: 'Water plants', date: formatDate(addDays(today, 1)), time: '08:00', assignee: 'Anna' },
+      { id: 5, name: 'Grocery shopping', date: formatDate(addDays(today, 1)), time: '10:00', assignee: 'Anna' },
+      { id: 6, name: 'Clean bathroom', date: formatDate(addDays(today, 2)), time: '09:00', assignee: 'Anna' },
+      { id: 7, name: 'Take grandma to doctor', date: formatDate(addDays(today, 2)), time: '14:00', assignee: 'Michelle' },
+      { id: 8, name: 'Laundry', date: formatDate(addDays(today, 3)), time: '08:00', assignee: 'Anna' },
+      { id: 9, name: 'Iron clothes', date: formatDate(addDays(today, 3)), time: '10:00', assignee: 'Anna' },
+      { id: 10, name: 'Birthday party', date: formatDate(addDays(today, 5)), time: '12:00', assignee: 'Everyone' },
+      { id: 11, name: 'Deep clean refrigerator', date: formatDate(addDays(today, 7)), time: '09:00', assignee: 'Anna' },
+      { id: 12, name: 'Pay rent', date: formatDate(addDays(today, 10)), time: null, assignee: 'David' },
+    ];
+    
+    // Meals
+    const meals = [
+      // Today
+      { id: 1, date: formatDate(today), type: 'Breakfast', desc: 'Congee with Century Egg' },
+      { id: 2, date: formatDate(today), type: 'Lunch', desc: 'Char Siu Rice' },
+      { id: 3, date: formatDate(today), type: 'Dinner', desc: 'Steamed Fish with Ginger' },
+      // Tomorrow
+      { id: 4, date: formatDate(addDays(today, 1)), type: 'Breakfast', desc: 'Dim Sum Variety' },
+      { id: 5, date: formatDate(addDays(today, 1)), type: 'Lunch', desc: 'Wonton Noodle Soup' },
+      { id: 6, date: formatDate(addDays(today, 1)), type: 'Dinner', desc: 'Braised Pork Belly' },
+      // Day after
+      { id: 7, date: formatDate(addDays(today, 2)), type: 'Breakfast', desc: 'Toast & Eggs' },
+      { id: 8, date: formatDate(addDays(today, 2)), type: 'Dinner', desc: 'Hot Pot' },
+      // More days
+      { id: 9, date: formatDate(addDays(today, 3)), type: 'Breakfast', desc: 'Milk & Cereal' },
+      { id: 10, date: formatDate(addDays(today, 3)), type: 'Lunch', desc: 'Sandwich' },
+      { id: 11, date: formatDate(addDays(today, 3)), type: 'Dinner', desc: 'Spaghetti Bolognese' },
+      { id: 12, date: formatDate(addDays(today, 4)), type: 'Dinner', desc: 'Roast Chicken' },
+      { id: 13, date: formatDate(addDays(today, 5)), type: 'Lunch', desc: 'Birthday Cake! 🎂' },
+      { id: 14, date: formatDate(addDays(today, 5)), type: 'Dinner', desc: 'BBQ Party' },
+      { id: 15, date: formatDate(addDays(today, 6)), type: 'Dinner', desc: 'Leftover BBQ' },
+    ];
+    
+    // Expenses
+    const expenses = [
+      { id: 1, date: formatDate(addDays(today, -2)), amount: 980, merchant: 'Wellcome', category: 'Groceries' },
+      { id: 2, date: formatDate(addDays(today, -1)), amount: 350, merchant: 'Mannings', category: 'Health' },
+      { id: 3, date: formatDate(today), amount: 280, merchant: 'Wet Market', category: 'Groceries' },
+      { id: 4, date: formatDate(addDays(today, 1)), amount: 650, merchant: 'ParknShop', category: 'Groceries' },
+      { id: 5, date: formatDate(addDays(today, 3)), amount: 400, merchant: 'Octopus Top-up', category: 'Transport' },
+      { id: 6, date: formatDate(addDays(today, 5)), amount: 320, merchant: 'Ocean Park', category: 'Entertainment' },
+    ];
+    
+    // ============================================================================
+    // STATE
+    // ============================================================================
+    
+    let currentView = 'month';
+    let currentMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    let currentWeekStart = getWeekStart(today);
+    let selectedDate = formatDate(today);
+    
+    function getWeekStart(d) {
+      const result = new Date(d);
+      const day = result.getDay();
+      result.setDate(result.getDate() - day);
+      return result;
+    }
+    
+    // ============================================================================
+    // VIEW SWITCHING
+    // ============================================================================
+    
+    function switchView(view) {
+      currentView = view;
+      document.querySelectorAll('.view-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.view === view);
+      });
+      document.getElementById('monthView').style.display = view === 'month' ? 'block' : 'none';
+      document.getElementById('weekView').classList.toggle('active', view === 'week');
+      document.getElementById('dayView').classList.toggle('active', view === 'day');
+      
+      if (view === 'week') renderWeekView();
+      if (view === 'day') renderDayView();
+      if (view === 'month') renderMonthGrid();
+    }
+    
+    // ============================================================================
+    // MONTH VIEW
+    // ============================================================================
+    
+    function renderMonthGrid() {
+      const grid = document.getElementById('monthGrid');
+      grid.innerHTML = '';
+      
+      const year = currentMonth.getFullYear();
+      const month = currentMonth.getMonth();
+      const firstDay = new Date(year, month, 1).getDay();
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const daysInPrevMonth = new Date(year, month, 0).getDate();
+      
+      document.getElementById('monthLabel').textContent = 
+        currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      
+      // Previous month days
+      for (let i = firstDay - 1; i >= 0; i--) {
+        const day = daysInPrevMonth - i;
+        const date = new Date(year, month - 1, day);
+        grid.appendChild(createDayCell(date, true));
+      }
+      
+      // Current month days
+      for (let day = 1; day <= daysInMonth; day++) {
+        const date = new Date(year, month, day);
+        grid.appendChild(createDayCell(date, false));
+      }
+      
+      // Next month days
+      const totalCells = grid.children.length;
+      const remaining = 42 - totalCells;
+      for (let day = 1; day <= remaining; day++) {
+        const date = new Date(year, month + 1, day);
+        grid.appendChild(createDayCell(date, true));
+      }
+    }
+    
+    function createDayCell(date, isOtherMonth) {
+      const cell = document.createElement('div');
+      cell.className = 'day-cell';
+      if (isOtherMonth) cell.classList.add('other-month');
+      if (formatDate(date) === formatDate(today)) cell.classList.add('today');
+      if (formatDate(date) === selectedDate) cell.classList.add('selected');
+      
+      const dateStr = formatDate(date);
+      const dayTasks = tasks.filter(t => t.date === dateStr);
+      const dayMeals = meals.filter(m => m.date === dateStr);
+      const dayExpenses = expenses.filter(e => e.date === dateStr);
+      
+      cell.innerHTML = `
+        <div class="day-number">${date.getDate()}</div>
+        <div class="day-dots">
+          ${dayTasks.length > 0 ? '<div class="dot task"></div>' : ''}
+          ${dayMeals.length > 0 ? '<div class="dot meal"></div>' : ''}
+          ${dayExpenses.length > 0 ? '<div class="dot expense"></div>' : ''}
+        </div>
+      `;
+      
+      cell.onclick = () => selectDay(date);
+      return cell;
+    }
+    
+    function selectDay(date) {
+      selectedDate = formatDate(date);
+      renderMonthGrid();
+      showDayPanel(date);
+    }
+    
+    function showDayPanel(date) {
+      const dateStr = formatDate(date);
+      const dayTasks = tasks.filter(t => t.date === dateStr);
+      const dayMeals = meals.filter(m => m.date === dateStr);
+      const dayExpenses = expenses.filter(e => e.date === dateStr);
+      
+      document.getElementById('panelDate').textContent = 
+        date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+      
+      let content = '';
+      
+      dayMeals.forEach(m => {
+        content += `
+          <div class="panel-item">
+            <div class="panel-item-icon meal">🍽️</div>
+            <div style="flex:1">
+              <div style="font-weight:500">${m.desc}</div>
+              <div style="font-size:13px;color:var(--text-secondary)">${m.type}</div>
+            </div>
+          </div>
+        `;
+      });
+      
+      dayTasks.forEach(t => {
+        content += `
+          <div class="panel-item">
+            <div class="panel-item-icon task">✓</div>
+            <div style="flex:1">
+              <div style="font-weight:500">${t.name}</div>
+              <div style="font-size:13px;color:var(--text-secondary)">${t.assignee}</div>
+            </div>
+            ${t.time ? `<div style="color:var(--text-muted);font-size:13px">${t.time}</div>` : ''}
+          </div>
+        `;
+      });
+      
+      dayExpenses.forEach(e => {
+        content += `
+          <div class="panel-item">
+            <div class="panel-item-icon expense">💰</div>
+            <div style="flex:1">
+              <div style="font-weight:500">$${e.amount}</div>
+              <div style="font-size:13px;color:var(--text-secondary)">${e.merchant}</div>
+            </div>
+          </div>
+        `;
+      });
+      
+      if (!content) {
+        content = '<div style="text-align:center;color:var(--text-muted);padding:20px">No events</div>';
+      }
+      
+      document.getElementById('panelContent').innerHTML = content;
+      document.getElementById('selectedDayPanel').classList.add('open');
+      document.getElementById('backdrop').classList.add('visible');
+    }
+    
+    function closePanel() {
+      document.getElementById('selectedDayPanel').classList.remove('open');
+      document.getElementById('backdrop').classList.remove('visible');
+    }
+    
+    function prevMonth() {
+      currentMonth.setMonth(currentMonth.getMonth() - 1);
+      renderMonthGrid();
+    }
+    
+    function nextMonth() {
+      currentMonth.setMonth(currentMonth.getMonth() + 1);
+      renderMonthGrid();
+    }
+    
+    // ============================================================================
+    // WEEK VIEW
+    // ============================================================================
+    
+    function renderWeekView() {
+      // Update header
+      const weekEnd = addDays(currentWeekStart, 6);
+      const startMonth = currentWeekStart.toLocaleDateString('en-US', { month: 'short' });
+      const endMonth = weekEnd.toLocaleDateString('en-US', { month: 'short' });
+      document.getElementById('weekLabel').textContent = 
+        `${startMonth} ${currentWeekStart.getDate()} - ${endMonth} ${weekEnd.getDate()}, ${weekEnd.getFullYear()}`;
+      
+      // Update day headers
+      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      for (let i = 0; i < 7; i++) {
+        const date = addDays(currentWeekStart, i);
+        const header = document.getElementById(`weekDay${i}`);
+        header.className = 'week-day-header' + (formatDate(date) === formatDate(today) ? ' today' : '');
+        header.innerHTML = `
+          <div class="week-day-name">${dayNames[i]}</div>
+          <div class="week-day-num">${date.getDate()}</div>
+        `;
+      }
+      
+      // Render all-day section
+      for (let i = 0; i < 7; i++) {
+        const date = addDays(currentWeekStart, i);
+        const dateStr = formatDate(date);
+        const col = document.getElementById(`allDay${i}`);
+        col.innerHTML = '';
+        
+        // Meals (all-day)
+        meals.filter(m => m.date === dateStr).forEach(m => {
+          const el = document.createElement('div');
+          el.className = 'all-day-event meal';
+          el.textContent = `${getMealIcon(m.type)} ${m.desc}`;
+          col.appendChild(el);
+        });
+        
+        // Expenses (all-day)
+        expenses.filter(e => e.date === dateStr).forEach(e => {
+          const el = document.createElement('div');
+          el.className = 'all-day-event expense';
+          el.textContent = `💰 $${e.amount}`;
+          col.appendChild(el);
+        });
+        
+        // Tasks without time (all-day)
+        tasks.filter(t => t.date === dateStr && !t.time).forEach(t => {
+          const el = document.createElement('div');
+          el.className = 'all-day-event task-allday';
+          el.textContent = `✓ ${t.name}`;
+          col.appendChild(el);
+        });
+      }
+      
+      // Render time grid
+      const timeGrid = document.getElementById('timeGrid');
+      timeGrid.innerHTML = '';
+      
+      // Time column
+      const timeCol = document.createElement('div');
+      timeCol.className = 'time-column';
+      for (let hour = 7; hour <= 20; hour++) {
+        const slot = document.createElement('div');
+        slot.className = 'time-slot';
+        slot.textContent = `${hour}:00`;
+        timeCol.appendChild(slot);
+      }
+      timeGrid.appendChild(timeCol);
+      
+      // Day columns with events
+      for (let i = 0; i < 7; i++) {
+        const date = addDays(currentWeekStart, i);
+        const dateStr = formatDate(date);
+        const col = document.createElement('div');
+        col.className = 'day-column' + (formatDate(date) === formatDate(today) ? ' today-col' : '');
+        
+        // Hour lines
+        for (let hour = 7; hour <= 20; hour++) {
+          const line = document.createElement('div');
+          line.className = 'hour-line';
+          col.appendChild(line);
+        }
+        
+        // Timed tasks
+        tasks.filter(t => t.date === dateStr && t.time).forEach(t => {
+          const [hours, mins] = t.time.split(':').map(Number);
+          if (hours >= 7 && hours <= 20) {
+            const top = (hours - 7) * 60 + mins;
+            const event = document.createElement('div');
+            event.className = 'time-event';
+            event.style.top = `${top}px`;
+            event.style.height = '50px';
+            event.innerHTML = `
+              <div class="event-time">${t.time}</div>
+              <div class="event-title">${t.name}</div>
+            `;
+            col.appendChild(event);
+          }
+        });
+        
+        timeGrid.appendChild(col);
+      }
+    }
+    
+    function getMealIcon(type) {
+      switch(type) {
+        case 'Breakfast': return '☀️';
+        case 'Lunch': return '🌤️';
+        case 'Dinner': return '🌙';
+        case 'Snacks': return '🍪';
+        default: return '🍽️';
+      }
+    }
+    
+    function prevWeek() {
+      currentWeekStart = addDays(currentWeekStart, -7);
+      renderWeekView();
+    }
+    
+    function nextWeek() {
+      currentWeekStart = addDays(currentWeekStart, 7);
+      renderWeekView();
+    }
+    
+    // ============================================================================
+    // DAY VIEW
+    // ============================================================================
+    
+    function renderDayView() {
+      const date = new Date(selectedDate);
+      document.getElementById('dayViewDate').textContent = 
+        date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+      
+      const dateStr = selectedDate;
+      const dayTasks = tasks.filter(t => t.date === dateStr);
+      const dayMeals = meals.filter(m => m.date === dateStr);
+      const dayExpenses = expenses.filter(e => e.date === dateStr);
+      
+      let content = '';
+      
+      // Meals section
+      if (dayMeals.length > 0) {
+        content += `<div class="day-section">
+          <div class="day-section-title">Meals</div>`;
+        dayMeals.forEach(m => {
+          content += `
+            <div class="day-item">
+              <div class="day-item-dot" style="background:var(--accent-orange)"></div>
+              <div class="day-item-content">
+                <div class="day-item-title">${m.desc}</div>
+                <div class="day-item-meta">${m.type}</div>
+              </div>
+              <div class="day-item-time">${getMealIcon(m.type)}</div>
+            </div>
+          `;
+        });
+        content += '</div>';
+      }
+      
+      // Tasks section
+      if (dayTasks.length > 0) {
+        content += `<div class="day-section">
+          <div class="day-section-title">Tasks</div>`;
+        dayTasks.sort((a, b) => (a.time || '99:99').localeCompare(b.time || '99:99')).forEach(t => {
+          content += `
+            <div class="day-item">
+              <div class="day-item-dot" style="background:var(--accent-blue)"></div>
+              <div class="day-item-content">
+                <div class="day-item-title">${t.name}</div>
+                <div class="day-item-meta">${t.assignee}</div>
+              </div>
+              <div class="day-item-time">${t.time || 'All day'}</div>
+            </div>
+          `;
+        });
+        content += '</div>';
+      }
+      
+      // Expenses section
+      if (dayExpenses.length > 0) {
+        content += `<div class="day-section">
+          <div class="day-section-title">Expenses</div>`;
+        dayExpenses.forEach(e => {
+          content += `
+            <div class="day-item">
+              <div class="day-item-dot" style="background:var(--accent-green)"></div>
+              <div class="day-item-content">
+                <div class="day-item-title">$${e.amount} HKD</div>
+                <div class="day-item-meta">${e.merchant} · ${e.category}</div>
+              </div>
+            </div>
+          `;
+        });
+        content += '</div>';
+      }
+      
+      if (!content) {
+        content = '<div style="text-align:center;color:var(--text-muted);padding:40px">No events for this day</div>';
+      }
+      
+      document.getElementById('dayViewContent').innerHTML = content;
+    }
+    
+    // ============================================================================
+    // TODAY BUTTON
+    // ============================================================================
+    
+    function goToToday() {
+      selectedDate = formatDate(today);
+      currentMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+      currentWeekStart = getWeekStart(today);
+      
+      if (currentView === 'month') renderMonthGrid();
+      else if (currentView === 'week') renderWeekView();
+      else if (currentView === 'day') renderDayView();
+    }
+    
+    // ============================================================================
+    // INIT
+    // ============================================================================
+    
+    renderMonthGrid();
+  </script>
+</body>
+</html>

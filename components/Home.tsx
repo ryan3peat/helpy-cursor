@@ -1340,6 +1340,19 @@ Give it a try:`;
         document.body
       )}
 
+      {/* Date Header */}
+      <div className="text-title text-foreground font-bold pl-5 pt-4">
+        {(() => {
+          const d = new Date();
+          const locale = currentLang === 'en' ? 'en-GB' : currentLang;
+          const weekday = d.toLocaleDateString(locale, { weekday: 'short' });
+          const day = d.getDate();
+          const month = d.toLocaleDateString(locale, { month: 'short' });
+          const year = d.getFullYear();
+          return `${weekday}, ${day} ${month} ${year}`;
+        })()}
+      </div>
+
       {/* Tasks Widget - Priority-Stacked Layout */}
       <div
           onClick={() => onNavigate('todo', { section: 'task' })}
@@ -1366,76 +1379,41 @@ Give it a try:`;
           </div>
         )}
         
-        {/* Header */}
-        <div className="px-5 pt-5 pb-3 pr-14">
-          <span className="text-primary font-bold block" style={{ fontSize: '20px' }}>
-            {(() => {
-              const d = new Date();
-              const locale = currentLang === 'en' ? 'en-GB' : currentLang;
-              const weekday = d.toLocaleDateString(locale, { weekday: 'short' });
-              const day = d.getDate();
-              const month = d.toLocaleDateString(locale, { month: 'short' });
-              return `${weekday}, ${day} ${month}`;
-            })()}
-          </span>
+        {/* Widget Title - Today's Tasks */}
+        <div className="bg-card px-5 pt-5 pb-2.5 pr-14">
+          <h2 className="text-title text-primary">{t['dashboard.todays_tasks'] || "Today's Tasks"}</h2>
         </div>
         
-        {/* Overdue Section - FIRST (no separator before first section) */}
-        {overdueTasks.length > 0 && (
-          <div className="px-5 py-3">
-            <span className="text-title text-destructive mb-2 block">
-              {t['dashboard.overdue_tasks'] || 'Overdue Tasks'}
-            </span>
-            <div className="space-y-2 pl-6">
-              {overdueTasks.slice(0, 2).map(task => (
+        {/* Today's Tasks Content */}
+        <div className="px-5 py-4">
+          {todayTasks.length > 0 ? (
+            <div className="space-y-3">
+              {todayTasks.slice(0, 3).map(task => (
                 <div key={task.id} className="flex justify-between items-center gap-2">
                   <span className="text-body text-foreground truncate flex-1">{task.name}</span>
-                  {task.dueDate && (
-                    <span className="text-caption text-destructive flex-shrink-0">{getDaysOverdue(task.dueDate)}d</span>
+                  {task.dueTime && (
+                    <span className="text-caption text-muted-foreground flex-shrink-0">{task.dueTime.slice(0, 5)}</span>
                   )}
                 </div>
               ))}
-              {overdueTasks.length > 2 && (
-                <span className="text-caption text-muted-foreground">+{overdueTasks.length - 2} {t['common.more'] || 'more'}</span>
+              {todayTasks.length > 3 && (
+                <span className="text-caption text-muted-foreground">+{todayTasks.length - 3} {t['common.more'] || 'more'}</span>
               )}
             </div>
-          </div>
-        )}
+          ) : (
+            <span className="text-body text-muted-foreground">{t['dashboard.no_tasks_today'] || 'No tasks for today'}</span>
+          )}
+        </div>
         
-        {/* Today Section - separator only if Overdue exists before it */}
-        {todayTasks.length > 0 && (
-          <div className="relative">
-            {overdueTasks.length > 0 && <div className="absolute top-0 left-5 right-5 border-t border-border"></div>}
-            <div className="px-5 py-3">
-              <span className="text-title text-primary mb-2 block">
-                {t['dashboard.todays_tasks'] || "Today's Tasks"}
-              </span>
-              <div className="space-y-2 pl-6">
-                {todayTasks.slice(0, 3).map(task => (
-                  <div key={task.id} className="flex justify-between items-center gap-2">
-                    <span className="text-body text-foreground truncate flex-1">{task.name}</span>
-                    {task.dueTime && (
-                      <span className="text-caption text-muted-foreground flex-shrink-0">{task.dueTime.slice(0, 5)}</span>
-                    )}
-                  </div>
-                ))}
-                {todayTasks.length > 3 && (
-                  <span className="text-caption text-muted-foreground">+{todayTasks.length - 3} {t['common.more'] || 'more'}</span>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-        
-        {/* Tomorrow Section - separator only if Overdue or Today exists before it */}
+        {/* Tomorrow Section */}
         {tomorrowTasks.length > 0 && (
           <div className="relative">
-            {(overdueTasks.length > 0 || todayTasks.length > 0) && <div className="absolute top-0 left-5 right-5 border-t border-border"></div>}
+            <div className="absolute top-0 left-5 right-5 border-t border-border"></div>
             <div className="px-5 py-3">
-              <span className="text-title text-muted-foreground mb-2 block">
-                {t['dashboard.tomorrows_tasks'] || "Tomorrow's Tasks"}
+              <span className="text-body text-muted-foreground mb-2 block">
+                {t['dashboard.tomorrow'] || 'Tomorrow'}
               </span>
-              <div className="space-y-2 pl-6">
+              <div className="space-y-2">
                 {tomorrowTasks.slice(0, 2).map(task => (
                   <div key={task.id} className="flex justify-between items-center gap-2">
                     <span className="text-body text-foreground truncate flex-1">{task.name}</span>
@@ -1452,10 +1430,34 @@ Give it a try:`;
           </div>
         )}
         
-        {/* Empty state - compact inline with (+) button, aligned with header */}
+        {/* Overdue Section */}
+        {overdueTasks.length > 0 && (
+          <div className="relative">
+            <div className="absolute top-0 left-5 right-5 border-t border-border"></div>
+            <div className="px-5 py-3">
+              <span className="text-body text-destructive mb-2 block">
+                {t['dashboard.overdue'] || 'Overdue'}
+              </span>
+              <div className="space-y-2">
+                {overdueTasks.slice(0, 2).map(task => (
+                  <div key={task.id} className="flex justify-between items-center gap-2">
+                    <span className="text-body text-foreground truncate flex-1">{task.name}</span>
+                    {task.dueDate && (
+                      <span className="text-caption text-destructive flex-shrink-0">{getDaysOverdue(task.dueDate)}d</span>
+                    )}
+                  </div>
+                ))}
+                {overdueTasks.length > 2 && (
+                  <span className="text-caption text-muted-foreground">+{overdueTasks.length - 2} {t['common.more'] || 'more'}</span>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* Empty state - when no tasks at all */}
         {todayTasks.length === 0 && overdueTasks.length === 0 && tomorrowTasks.length === 0 && (
-          <div className="px-5 py-3 flex justify-between items-center">
-            <span className="text-body text-muted-foreground">{t['dashboard.no_tasks'] || 'No tasks'}</span>
+          <div className="absolute bottom-3 right-3 w-9 h-9 flex items-center justify-center">
             <div
               onClick={(e) => {
                 e.stopPropagation();
@@ -1611,6 +1613,8 @@ Give it a try:`;
 
       {/* Expenses - Hidden for Helper */}
       {!isHelper && (
+      <>
+      <div className="border-t border-border"></div>
       <StatCard
         title={t['dashboard.expenses']}
         count={formatCurrency(totalExpenses)}
@@ -1627,6 +1631,7 @@ Give it a try:`;
         showAddButton={true}
         onAddClick={() => onNavigate('expenses', { openAddSheet: true })}
       />
+      </>
       )}
 
       {/* Family Carousel */}

@@ -372,6 +372,106 @@ const TranslatedItemName: React.FC<{
 };
 
 // ─────────────────────────────────────────────────────────────────
+// Suggestion Card Component (with translation support)
+// ─────────────────────────────────────────────────────────────────
+
+const SuggestionCard: React.FC<{
+  item: ToDoItem;
+  currentLang: string;
+  activeSection: 'shopping' | 'task';
+  onUpdate?: (id: string, data: Partial<ToDoItem>) => Promise<void>;
+  onClick: () => void;
+  getUserName: (id: string | null | undefined) => string;
+  getCategoryIconColor: (category: string) => string;
+  getShoppingCategoryIcon: (category: string) => React.ReactNode;
+  getTaskCategoryIcon: (category: string) => React.ReactNode;
+}> = ({ 
+  item, 
+  currentLang, 
+  activeSection, 
+  onUpdate, 
+  onClick, 
+  getUserName,
+  getCategoryIconColor,
+  getShoppingCategoryIcon,
+  getTaskCategoryIcon,
+}) => {
+  const translatedName = useTranslatedContent({
+    content: item.name,
+    contentLang: item.nameLang,
+    currentLang,
+    translations: item.nameTranslations || {},
+    onTranslationUpdate: async (translation) => {
+      if (onUpdate) {
+        const updatedTranslations = {
+          ...(item.nameTranslations || {}),
+          [currentLang]: translation,
+        };
+        await onUpdate(item.id, { nameTranslations: updatedTranslations });
+      }
+    },
+  });
+
+  return (
+    <button
+      onClick={onClick}
+      className="relative flex-shrink-0 bg-card rounded-lg px-3 py-2 shadow-sm text-left flex"
+      style={{ width: '144px', height: '72px' }}
+    >
+      {/* Left: Text content */}
+      <div className="flex-1 flex flex-col justify-between min-w-0">
+        {activeSection === 'shopping' ? (
+          <>
+            {/* Shopping: Line 1 - Name */}
+            <p className="text-body text-foreground font-semibold truncate">
+              {translatedName}
+            </p>
+            {/* Shopping: Line 2 - Brand */}
+            <p className={`text-caption truncate ${item.brand ? 'text-muted-foreground' : 'text-transparent'}`}>
+              {item.brand || '-'}
+            </p>
+            {/* Shopping: Line 3 - Quantity */}
+            <p className={`text-caption truncate ${(item.quantity && item.unit) || (item.quantity && item.quantity !== '1') ? 'text-muted-foreground' : 'text-transparent'}`}>
+              {item.quantity && item.unit ? `${item.quantity} ${item.unit}` : (item.quantity && item.quantity !== '1' ? item.quantity : '-')}
+            </p>
+          </>
+        ) : (
+          <>
+            {/* Tasks: Lines 1-2 - Name (2-line clamp) */}
+            <p 
+              className="text-body text-foreground font-semibold leading-tight"
+              style={{ 
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+                overflow: 'hidden'
+              }}
+            >
+              {translatedName}
+            </p>
+            {/* Tasks: Line 3 - Assignee */}
+            <p className="text-caption text-muted-foreground truncate">
+              {getUserName(item.assigneeId) || '-'}
+            </p>
+          </>
+        )}
+      </div>
+      
+      {/* Right: Icons column (vertically aligned) */}
+      <div className="flex flex-col justify-between items-center shrink-0 ml-2">
+        <div className={`mt-0.5 ${getCategoryIconColor(item.category)}`}>
+          {activeSection === 'shopping' 
+            ? getShoppingCategoryIcon(item.category)
+            : getTaskCategoryIcon(item.category)
+          }
+        </div>
+        <Plus size={18} className="text-foreground" />
+      </div>
+    </button>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────────
 // Section Divider Component (for date-grouped task list)
 // ─────────────────────────────────────────────────────────────────
 
@@ -1542,62 +1642,18 @@ const ToDo: React.FC<ToDoProps> = ({
             <div className="overflow-x-auto scrollbar-hide -mx-4 px-4 sm:-mx-6 sm:px-6 pb-2">
               <div className="flex gap-3" style={{ paddingRight: '1rem' }}>
                 {suggestions.map((s) => (
-                  <button
+                  <SuggestionCard
                     key={s.id}
+                    item={s}
+                    currentLang={currentLang}
+                    activeSection={activeSection}
+                    onUpdate={onUpdate}
                     onClick={() => handleSuggestionClick(s)}
-                    className="relative flex-shrink-0 bg-card rounded-lg px-3 py-2 shadow-sm text-left flex"
-                    style={{ width: '144px', height: '72px' }}
-                  >
-                      {/* Left: Text content */}
-                      <div className="flex-1 flex flex-col justify-between min-w-0">
-                        {activeSection === 'shopping' ? (
-                          <>
-                            {/* Shopping: Line 1 - Name */}
-                            <p className="text-body text-foreground font-semibold truncate">
-                              {s.name}
-                            </p>
-                            {/* Shopping: Line 2 - Brand */}
-                            <p className={`text-caption truncate ${s.brand ? 'text-muted-foreground' : 'text-transparent'}`}>
-                              {s.brand || '-'}
-                            </p>
-                            {/* Shopping: Line 3 - Quantity */}
-                            <p className={`text-caption truncate ${(s.quantity && s.unit) || (s.quantity && s.quantity !== '1') ? 'text-muted-foreground' : 'text-transparent'}`}>
-                              {s.quantity && s.unit ? `${s.quantity} ${s.unit}` : (s.quantity && s.quantity !== '1' ? s.quantity : '-')}
-                            </p>
-                          </>
-                        ) : (
-                          <>
-                            {/* Tasks: Lines 1-2 - Name (2-line clamp) */}
-                            <p 
-                              className="text-body text-foreground font-semibold leading-tight"
-                              style={{ 
-                                display: '-webkit-box',
-                                WebkitLineClamp: 2,
-                                WebkitBoxOrient: 'vertical',
-                                overflow: 'hidden'
-                              }}
-                            >
-                              {s.name}
-                            </p>
-                            {/* Tasks: Line 3 - Assignee */}
-                            <p className="text-caption text-muted-foreground truncate">
-                              {getUserName(s.assigneeId) || '-'}
-                            </p>
-                          </>
-                        )}
-                      </div>
-                      
-                      {/* Right: Icons column (vertically aligned) */}
-                      <div className="flex flex-col justify-between items-center shrink-0 ml-2">
-                        <div className={`mt-0.5 ${getCategoryIconColor(s.category)}`}>
-                          {activeSection === 'shopping' 
-                            ? getShoppingCategoryIcon(s.category)
-                            : getTaskCategoryIcon(s.category)
-                          }
-                        </div>
-                        <Plus size={18} className="text-foreground" />
-                    </div>
-                  </button>
+                    getUserName={getUserName}
+                    getCategoryIconColor={getCategoryIconColor}
+                    getShoppingCategoryIcon={getShoppingCategoryIcon}
+                    getTaskCategoryIcon={getTaskCategoryIcon}
+                  />
                 ))}
               </div>
             </div>

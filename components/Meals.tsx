@@ -1644,7 +1644,7 @@ const Meals: React.FC<MealsProps> = ({
                   ))}
                 </colgroup>
                 {/* Table Header - Meal type names */}
-                <thead>
+                <thead style={{ touchAction: 'none' }}>
                   <tr>
                     {/* Corner cell - sticky horizontally */}
                     <th 

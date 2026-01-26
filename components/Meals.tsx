@@ -1341,13 +1341,13 @@ const Meals: React.FC<MealsProps> = ({
         {/* ─────────────────────────────────────────────────────────────── */}
         {/* MAIN CONTENT */}
         {/* ─────────────────────────────────────────────────────────────── */}
-        <div className="flex-1 min-h-0 overflow-hidden">
+        <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
 
       {/* Day View */}
       {view === 'day' ? (
         <div
           ref={dayViewRef}
-          className="h-full overflow-y-auto scrollbar-hide"
+          className="flex-1 min-h-0 overflow-y-auto scrollbar-hide"
           style={{
             overscrollBehavior: 'contain',
             WebkitOverflowScrolling: 'touch',
@@ -1620,7 +1620,7 @@ const Meals: React.FC<MealsProps> = ({
           /* Week View - Simple HTML Table */
           <div
             ref={weekScrollRef}
-            className="h-full rounded-xl bg-card shadow-sm overflow-auto scrollbar-hide"
+            className="flex-1 min-h-0 rounded-xl bg-card shadow-sm overflow-auto scrollbar-hide"
             style={{
               overscrollBehavior: 'contain',
               WebkitOverflowScrolling: 'touch',
@@ -1642,7 +1642,7 @@ const Meals: React.FC<MealsProps> = ({
                   ))}
                 </colgroup>
                 {/* Table Header - Meal type names */}
-                <thead style={{ touchAction: 'none' }}>
+                <thead style={{ touchAction: 'pan-x' }}>
                   <tr>
                     {/* Corner cell - sticky horizontally */}
                     <th 

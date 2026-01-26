@@ -4,9 +4,9 @@
 import { SUPPORTED_LANGUAGES } from '../constants';
 
 /**
- * Detects the input language based on browser settings
- * Falls back to current UI language if detection fails
- * Returns null if language cannot be determined
+ * Detects the input language for user-generated content
+ * Uses the app's current UI language (user's explicit choice) as the primary source
+ * Falls back to browser language only if UI language isn't supported
  * 
  * @param currentUILang - The current UI language code (e.g., 'en', 'zh-CN')
  * @returns Detected language code or null if undetectable
@@ -15,7 +15,13 @@ export const detectInputLanguage = (currentUILang: string): string | null => {
   // Get supported language codes
   const supportedCodes = SUPPORTED_LANGUAGES.map(lang => lang.code);
   
-  // Try to detect from browser language
+  // PRIMARY: Use the app's UI language (user's explicit choice)
+  // If user switched app to Chinese, they're typing in Chinese
+  if (supportedCodes.includes(currentUILang)) {
+    return currentUILang;
+  }
+  
+  // FALLBACK: Try browser language only if UI language isn't supported
   if (typeof navigator !== 'undefined') {
     // Check primary language
     if (navigator.language) {
@@ -30,11 +36,6 @@ export const detectInputLanguage = (currentUILang: string): string | null => {
         if (detected) return detected;
       }
     }
-  }
-  
-  // Fallback to current UI language if it's supported
-  if (supportedCodes.includes(currentUILang)) {
-    return currentUILang;
   }
   
   // If all else fails, return null (will display original)

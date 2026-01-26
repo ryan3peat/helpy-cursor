@@ -37,7 +37,11 @@ import {
   Lock,
   Smartphone,
   UserCog,
-  MessageSquareShare
+  MessageSquareShare,
+  Utensils,
+  Store,
+  LampCeiling,
+  Stone
 } from 'lucide-react';
 import Avatar from './ui/Avatar';
 import ErrorBanner from './ui/ErrorBanner';
@@ -606,9 +610,47 @@ const Home: React.FC<HomeProps> = ({
     );
   };
 
+  // Read shopping sort preference from localStorage (synced with ToDo page)
+  const [shoppingSortOrder, setShoppingSortOrder] = useState<'addedDate-desc' | 'addedDate-asc'>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('helpy_shopping_sort');
+      if (saved === 'addedDate-desc' || saved === 'addedDate-asc') {
+        return saved;
+      }
+    }
+    return 'addedDate-desc';
+  });
+  
+  // Listen for storage changes (when user changes sort on ToDo page)
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const saved = localStorage.getItem('helpy_shopping_sort');
+      if (saved === 'addedDate-desc' || saved === 'addedDate-asc') {
+        setShoppingSortOrder(saved);
+      }
+    };
+    
+    // Check on focus (for same-tab navigation)
+    window.addEventListener('focus', handleStorageChange);
+    // Check on storage event (for multi-tab)
+    window.addEventListener('storage', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('focus', handleStorageChange);
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
+  
   const shoppingItems = useMemo(() => {
-    return todoItems.filter(i => i.type === 'shopping' && !i.completed);
-  }, [todoItems]);
+    const items = todoItems.filter(i => i.type === 'shopping' && !i.completed);
+    
+    // Sort based on user preference (synced with ToDo page)
+    return items.sort((a, b) => {
+      const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return shoppingSortOrder === 'addedDate-desc' ? dateB - dateA : dateA - dateB;
+    });
+  }, [todoItems, shoppingSortOrder]);
   const shoppingCount = shoppingItems.length;
   
   // ─────────────────────────────────────────────────────────────────
@@ -1013,7 +1055,7 @@ Give it a try:`;
         </span>
         <div>
           <span className="text-title text-foreground block leading-tight">{title}</span>
-          <span className="text-caption text-muted-foreground">{label}</span>
+          <span className="text-title text-foreground">{label}</span>
         </div>
       </div>
       {/* Add Button - bottom right corner, aligned with top icon */}
@@ -1298,14 +1340,35 @@ Give it a try:`;
         document.body
       )}
 
-      {/* Today's Menu */}
+      {/* Tasks Widget - Priority-Stacked Layout */}
       <div
-        onClick={() => onNavigate('meals')}
-        className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden cursor-pointer"
+          onClick={() => onNavigate('todo', { section: 'task' })}
+        className="relative bg-card rounded-2xl shadow-sm border border-border overflow-hidden cursor-pointer"
       >
-        <div className="bg-card px-5 pt-5 pb-2.5 flex justify-between items-center">
-          <h2 className="text-title text-primary">{t['dashboard.todays_menu']}</h2>
-          <span className="text-body text-primary">
+        {/* Top icon - same position as StatCard */}
+        <div className="absolute top-3 right-3 w-9 h-9 flex items-center justify-center opacity-80">
+          <ClipboardList size={20} className="text-primary" />
+        </div>
+        
+        {/* Add Button - bottom right corner, only when has tasks */}
+        {(todayTasks.length > 0 || overdueTasks.length > 0 || tomorrowTasks.length > 0) && (
+          <div className="absolute bottom-3 right-3 w-9 h-9 flex items-center justify-center z-10">
+            <div
+              onClick={(e) => {
+                e.stopPropagation();
+                haptics.light();
+                onNavigate('todo', { section: 'task', openAddSheet: true });
+              }}
+              className="p-1.5 rounded-full bg-primary flex items-center justify-center shadow-sm"
+            >
+              <Plus size={16} className="text-primary-foreground" />
+            </div>
+          </div>
+        )}
+        
+        {/* Header */}
+        <div className="px-5 pt-5 pb-3 pr-14">
+          <span className="text-primary font-bold block" style={{ fontSize: '20px' }}>
             {(() => {
               const d = new Date();
               const locale = currentLang === 'en' ? 'en-GB' : currentLang;
@@ -1315,6 +1378,114 @@ Give it a try:`;
               return `${weekday}, ${day} ${month}`;
             })()}
           </span>
+        </div>
+        
+        {/* Overdue Section - FIRST (no separator before first section) */}
+        {overdueTasks.length > 0 && (
+          <div className="px-5 py-3">
+            <span className="text-title text-destructive mb-2 block">
+              {t['dashboard.overdue_tasks'] || 'Overdue Tasks'}
+            </span>
+            <div className="space-y-2 pl-6">
+              {overdueTasks.slice(0, 2).map(task => (
+                <div key={task.id} className="flex justify-between items-center gap-2">
+                  <span className="text-body text-foreground truncate flex-1">{task.name}</span>
+                  {task.dueDate && (
+                    <span className="text-caption text-destructive flex-shrink-0">{getDaysOverdue(task.dueDate)}d</span>
+                  )}
+                </div>
+              ))}
+              {overdueTasks.length > 2 && (
+                <span className="text-caption text-muted-foreground">+{overdueTasks.length - 2} {t['common.more'] || 'more'}</span>
+              )}
+            </div>
+          </div>
+        )}
+        
+        {/* Today Section - separator only if Overdue exists before it */}
+        {todayTasks.length > 0 && (
+          <div className="relative">
+            {overdueTasks.length > 0 && <div className="absolute top-0 left-5 right-5 border-t border-border"></div>}
+            <div className="px-5 py-3">
+              <span className="text-title text-primary mb-2 block">
+                {t['dashboard.todays_tasks'] || "Today's Tasks"}
+              </span>
+              <div className="space-y-2 pl-6">
+                {todayTasks.slice(0, 3).map(task => (
+                  <div key={task.id} className="flex justify-between items-center gap-2">
+                    <span className="text-body text-foreground truncate flex-1">{task.name}</span>
+                    {task.dueTime && (
+                      <span className="text-caption text-muted-foreground flex-shrink-0">{task.dueTime.slice(0, 5)}</span>
+                    )}
+                  </div>
+                ))}
+                {todayTasks.length > 3 && (
+                  <span className="text-caption text-muted-foreground">+{todayTasks.length - 3} {t['common.more'] || 'more'}</span>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* Tomorrow Section - separator only if Overdue or Today exists before it */}
+        {tomorrowTasks.length > 0 && (
+          <div className="relative">
+            {(overdueTasks.length > 0 || todayTasks.length > 0) && <div className="absolute top-0 left-5 right-5 border-t border-border"></div>}
+            <div className="px-5 py-3">
+              <span className="text-title text-muted-foreground mb-2 block">
+                {t['dashboard.tomorrows_tasks'] || "Tomorrow's Tasks"}
+              </span>
+              <div className="space-y-2 pl-6">
+                {tomorrowTasks.slice(0, 2).map(task => (
+                  <div key={task.id} className="flex justify-between items-center gap-2">
+                    <span className="text-body text-foreground truncate flex-1">{task.name}</span>
+                    {task.dueTime && (
+                      <span className="text-caption text-muted-foreground flex-shrink-0">{task.dueTime.slice(0, 5)}</span>
+                    )}
+                  </div>
+                ))}
+                {tomorrowTasks.length > 2 && (
+                  <span className="text-caption text-muted-foreground">+{tomorrowTasks.length - 2} {t['common.more'] || 'more'}</span>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* Empty state - compact inline with (+) button, aligned with header */}
+        {todayTasks.length === 0 && overdueTasks.length === 0 && tomorrowTasks.length === 0 && (
+          <div className="px-5 py-3 flex justify-between items-center">
+            <span className="text-body text-muted-foreground">{t['dashboard.no_tasks'] || 'No tasks'}</span>
+            <div
+              onClick={(e) => {
+                e.stopPropagation();
+                haptics.light();
+                onNavigate('todo', { section: 'task', openAddSheet: true });
+              }}
+              className="p-1.5 rounded-full bg-primary flex items-center justify-center shadow-sm"
+            >
+              <Plus size={16} className="text-primary-foreground" />
+            </div>
+          </div>
+        )}
+        
+        {/* Bottom padding for (+) button clearance */}
+        {(todayTasks.length > 0 || overdueTasks.length > 0 || tomorrowTasks.length > 0) && (
+          <div className="h-12"></div>
+        )}
+      </div>
+
+      {/* Today's Menu */}
+      <div
+        onClick={() => onNavigate('meals')}
+        className="relative bg-card rounded-2xl shadow-sm border border-border overflow-hidden cursor-pointer"
+      >
+        {/* Top icon - same position as StatCard */}
+        <div className="absolute top-3 right-3 w-9 h-9 flex items-center justify-center opacity-80">
+          <Utensils size={20} className="text-primary" />
+        </div>
+        <div className="bg-card px-5 pt-5 pb-2.5 pr-14">
+          <h2 className="text-title text-primary">{t['dashboard.todays_menu']}</h2>
         </div>
         <div className="px-5 py-4">
           {todaysMenu.length > 0 ? (
@@ -1371,144 +1542,72 @@ Give it a try:`;
         </div>
       </div>
 
-      {/* Tasks Widget - Priority-Stacked Layout */}
-      <div
-          onClick={() => onNavigate('todo', { section: 'task' })}
-        className="relative bg-card rounded-2xl shadow-sm border border-border overflow-hidden cursor-pointer"
-      >
-        {/* Top icon - same position as StatCard */}
-        <div className="absolute top-3 right-3 w-9 h-9 flex items-center justify-center opacity-80">
-          <ClipboardList size={20} className="text-primary" />
-        </div>
-        
-        {/* Add Button - bottom right corner, only when has tasks */}
-        {(todayTasks.length > 0 || overdueTasks.length > 0 || tomorrowTasks.length > 0) && (
-          <div className="absolute bottom-3 right-3 w-9 h-9 flex items-center justify-center z-10">
-            <div
-              onClick={(e) => {
-                e.stopPropagation();
-                haptics.light();
-                onNavigate('todo', { section: 'task', openAddSheet: true });
-              }}
-              className="p-1.5 rounded-full bg-primary flex items-center justify-center shadow-sm"
-            >
-              <Plus size={16} className="text-primary-foreground" />
-            </div>
-          </div>
-        )}
-        
-        {/* Header */}
-        <div className="px-5 pt-5 pb-3 pr-14">
-          <span className="text-title text-foreground block">{t['dashboard.tasks'] || 'Tasks'}</span>
-          <span className="text-caption text-muted-foreground">{t['dashboard.todo'] || 'To Do'}</span>
-        </div>
-        
-        {/* Overdue Section - FIRST (no separator before first section) */}
-        {overdueTasks.length > 0 && (
-          <div className="px-5 py-3">
-            <span className="text-title text-destructive mb-2 block">
-              {t['dashboard.overdue'] || 'Overdue'}
-            </span>
-            <div className="space-y-2 pl-6">
-              {overdueTasks.slice(0, 2).map(task => (
-                <div key={task.id} className="flex justify-between items-center gap-2">
-                  <span className="text-body text-foreground truncate flex-1">{task.name}</span>
-                  {task.dueDate && (
-                    <span className="text-caption text-destructive flex-shrink-0">{getDaysOverdue(task.dueDate)}d</span>
-                  )}
-                </div>
-              ))}
-              {overdueTasks.length > 2 && (
-                <span className="text-caption text-muted-foreground">+{overdueTasks.length - 2} {t['common.more'] || 'more'}</span>
-              )}
-            </div>
-          </div>
-        )}
-        
-        {/* Today Section - separator only if Overdue exists before it */}
-        {todayTasks.length > 0 && (
-          <div className="relative">
-            {overdueTasks.length > 0 && <div className="absolute top-0 left-5 right-5 border-t border-border"></div>}
-            <div className="px-5 py-3">
-              <span className="text-title text-primary mb-2 block">
-                {t['dashboard.today'] || 'Today'}
-              </span>
-              <div className="space-y-2 pl-6">
-                {todayTasks.slice(0, 3).map(task => (
-                  <div key={task.id} className="flex justify-between items-center gap-2">
-                    <span className="text-body text-foreground truncate flex-1">{task.name}</span>
-                    {task.dueTime && (
-                      <span className="text-caption text-muted-foreground flex-shrink-0">{task.dueTime.slice(0, 5)}</span>
-                    )}
-                  </div>
-                ))}
-                {todayTasks.length > 3 && (
-                  <span className="text-caption text-muted-foreground">+{todayTasks.length - 3} {t['common.more'] || 'more'}</span>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-        
-        {/* Tomorrow Section - separator only if Overdue or Today exists before it */}
-        {tomorrowTasks.length > 0 && (
-          <div className="relative">
-            {(overdueTasks.length > 0 || todayTasks.length > 0) && <div className="absolute top-0 left-5 right-5 border-t border-border"></div>}
-            <div className="px-5 py-3">
-              <span className="text-title text-muted-foreground mb-2 block">
-                {t['dashboard.tomorrow'] || 'Tomorrow'}
-              </span>
-              <div className="space-y-2 pl-6">
-                {tomorrowTasks.slice(0, 2).map(task => (
-                  <div key={task.id} className="flex justify-between items-center gap-2">
-                    <span className="text-body text-foreground truncate flex-1">{task.name}</span>
-                    {task.dueTime && (
-                      <span className="text-caption text-muted-foreground flex-shrink-0">{task.dueTime.slice(0, 5)}</span>
-                    )}
-                  </div>
-                ))}
-                {tomorrowTasks.length > 2 && (
-                  <span className="text-caption text-muted-foreground">+{tomorrowTasks.length - 2} {t['common.more'] || 'more'}</span>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-        
-        {/* Empty state - compact inline with (+) button, aligned with header */}
-        {todayTasks.length === 0 && overdueTasks.length === 0 && tomorrowTasks.length === 0 && (
-          <div className="px-5 py-3 flex justify-between items-center">
-            <span className="text-body text-muted-foreground">{t['dashboard.no_tasks'] || 'No tasks'}</span>
-            <div
-              onClick={(e) => {
-                e.stopPropagation();
-                haptics.light();
-                onNavigate('todo', { section: 'task', openAddSheet: true });
-              }}
-              className="p-1.5 rounded-full bg-primary flex items-center justify-center shadow-sm"
-            >
-              <Plus size={16} className="text-primary-foreground" />
-            </div>
-          </div>
-        )}
-        
-        {/* Bottom padding for (+) button clearance */}
-        {(todayTasks.length > 0 || overdueTasks.length > 0 || tomorrowTasks.length > 0) && (
-          <div className="h-12"></div>
-        )}
-      </div>
-
       {/* Shopping Widget - Full Width */}
-        <StatCard
-        title={t['dashboard.shopping'] || 'Shopping'}
-          count={shoppingCount}
-          icon={ShoppingCart}
-        label={t['dashboard.todo'] || 'To Do'}
-          colorClass="text-primary"
-          onClick={() => onNavigate('todo', { section: 'shopping' })}
-          showAddButton={true}
-          onAddClick={() => onNavigate('todo', { section: 'shopping', openAddSheet: true })}
-        />
+      <div
+        onClick={() => onNavigate('todo', { section: 'shopping' })}
+        className="relative w-full p-4 rounded-2xl bg-card shadow-sm border border-border cursor-pointer"
+      >
+        {/* Top icon */}
+        <div className="absolute top-3 right-3 w-9 h-9 flex items-center justify-center opacity-80">
+          <ShoppingCart size={20} className="text-primary" />
+        </div>
+        
+        {/* Add Button - bottom right corner */}
+        <div className="absolute bottom-3 right-3 w-9 h-9 flex items-center justify-center">
+          <div
+            onClick={(e) => {
+              e.stopPropagation();
+              haptics.light();
+              onNavigate('todo', { section: 'shopping', openAddSheet: true });
+            }}
+            className="p-1.5 rounded-full bg-primary flex items-center justify-center shadow-sm"
+          >
+            <Plus size={16} className="text-primary-foreground" />
+          </div>
+        </div>
+        
+        {/* Content: Big number on left (25%), Item list on right (75%) */}
+        <div className="flex gap-4 pr-10">
+          {/* Left side - Big number */}
+          <div className="flex-shrink-0" style={{ width: '25%' }}>
+            <span className="text-display text-foreground block mb-1">
+              {shoppingCount}
+            </span>
+            <span className="text-title text-foreground block leading-tight">{t['dashboard.items'] || 'Items'}</span>
+            <span className="text-title text-foreground">{t['dashboard.to_buy'] || 'to buy'}</span>
+          </div>
+          
+          {/* Vertical separator */}
+          <div className="w-px bg-border self-stretch"></div>
+          
+          {/* Right side - Item list */}
+          <div className="flex-1 min-w-0 pl-2">
+            {shoppingItems.length > 0 ? (
+              <div className="space-y-1.5">
+                {shoppingItems.slice(0, 3).map(item => (
+                  <div key={item.id} className="flex items-center gap-2">
+                    {item.category === 'Supermarket' ? (
+                      <Store size={16} className="text-[#4CAF50] flex-shrink-0" />
+                    ) : item.category === 'Wet Market' ? (
+                      <LampCeiling size={16} className="text-[#F06292] flex-shrink-0" />
+                    ) : (
+                      <Stone size={16} className="text-muted-foreground flex-shrink-0" />
+                    )}
+                    <span className="text-body text-foreground truncate">{item.name}</span>
+                  </div>
+                ))}
+                {shoppingItems.length > 3 && (
+                  <span className="text-body text-muted-foreground">
+                    +{shoppingItems.length - 3} {t['common.more'] || 'more'}
+                  </span>
+                )}
+              </div>
+            ) : (
+              <span className="text-body text-muted-foreground">{t['dashboard.no_items'] || 'No items'}</span>
+            )}
+          </div>
+        </div>
+      </div>
 
       {/* Expenses - Hidden for Helper */}
       {!isHelper && (

@@ -596,10 +596,26 @@ const ToDo: React.FC<ToDoProps> = ({
   }>({ id: null, startX: 0, offset: 0, isDragging: false });
   
   // Sort & Filter
-  const [sortBy, setSortBy] = useState<SortOption>('addedDate-desc');
+  // Initialize shopping sort from localStorage for cross-component sync (Home widget)
+  const [sortBy, setSortBy] = useState<SortOption>(() => {
+    if (typeof window !== 'undefined') {
+      const savedShoppingSort = localStorage.getItem('helpy_shopping_sort');
+      if (savedShoppingSort && (savedShoppingSort === 'addedDate-desc' || savedShoppingSort === 'addedDate-asc')) {
+        return savedShoppingSort as SortOption;
+      }
+    }
+    return 'addedDate-desc';
+  });
   const [showOnlyMine, setShowOnlyMine] = useState(false);
   const [isFilterDropdownOpen, setIsFilterDropdownOpen] = useState(false);
   const filterDropdownRef = useRef<HTMLDivElement>(null);
+  
+  // Persist shopping sort preference to localStorage for Home widget sync
+  useEffect(() => {
+    if (activeSection === 'shopping') {
+      localStorage.setItem('helpy_shopping_sort', sortBy);
+    }
+  }, [sortBy, activeSection]);
   
   // Close dropdown when clicking outside
   useEffect(() => {

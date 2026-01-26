@@ -1244,7 +1244,7 @@ const Meals: React.FC<MealsProps> = ({
         {/* STICKY HEADER - matches Family */}
         {/* ─────────────────────────────────────────────────────────────── */}
         <header 
-          className="z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 pb-3 flex items-end" 
+          className="flex-shrink-0 z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 pb-3 flex items-end" 
           style={{ 
             height: '120px', 
             boxShadow: '0 10px 0 0 hsl(var(--background))' 
@@ -1296,7 +1296,7 @@ const Meals: React.FC<MealsProps> = ({
         {/* ─────────────────────────────────────────────────────────────── */}
         <div 
           ref={weekNavOverlayRef}
-          className="z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 py-5 transition-shadow duration-200"
+          className="flex-shrink-0 z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 py-5 transition-shadow duration-200"
           style={{ 
             boxShadow: isContainerScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none'
           }}
@@ -1339,18 +1339,16 @@ const Meals: React.FC<MealsProps> = ({
         {/* ─────────────────────────────────────────────────────────────── */}
         {/* MAIN CONTENT */}
         {/* ─────────────────────────────────────────────────────────────── */}
-        <div className="pt-1">
+        <div className="flex-1 min-h-0 overflow-hidden pt-1">
 
       {/* Day View */}
       {view === 'day' ? (
         <div
           ref={dayViewRef}
-          className="overflow-y-auto scrollbar-hide"
+          className="h-full overflow-y-auto scrollbar-hide"
           style={{
-            height: 'calc(100vh - 210px - var(--meals-bottom-nav-h, 64px) - env(safe-area-inset-bottom, 0px))',
             overscrollBehavior: 'contain',
             WebkitOverflowScrolling: 'touch',
-            marginTop: '-1px', // prevent gap
           }}
         >
           <div className="space-y-4 pb-6">
@@ -1619,9 +1617,8 @@ const Meals: React.FC<MealsProps> = ({
       ) : (
           /* Week View - Simple HTML Table */
           <div
-            className="rounded-xl bg-card shadow-sm overflow-hidden"
+            className="h-full rounded-xl bg-card shadow-sm overflow-hidden"
             style={{
-              height: 'calc(100vh - 210px - var(--meals-bottom-nav-h, 64px) - env(safe-area-inset-bottom, 0px))',
               overscrollBehavior: 'contain',
             }}
           >

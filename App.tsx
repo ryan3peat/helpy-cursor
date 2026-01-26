@@ -2473,19 +2473,17 @@ const AppContent: React.FC = () => {
       {/* Meals rendered separately to preserve scroll position (always mounted, hidden when not active) */}
       {currentUser && (
         <div style={{ display: activeView === 'meals' ? 'block' : 'none' }}>
-          <div className="min-h-screen pb-20 bg-background">
-            <Meals
-              meals={isDemoMode ? demoMeals : meals}
-              users={isDemoMode ? demoUsers : users}
-              currentUser={isDemoMode ? demoUsers[0] : currentUser!}
-              onAdd={handleAddMeal}
-              onUpdate={handleUpdateMeal}
-              onDelete={handleDeleteMeal}
-              t={translations}
-              currentLang={lang}
-              isActive={activeView === 'meals'}
-            />
-          </div>
+          <Meals
+            meals={isDemoMode ? demoMeals : meals}
+            users={isDemoMode ? demoUsers : users}
+            currentUser={isDemoMode ? demoUsers[0] : currentUser!}
+            onAdd={handleAddMeal}
+            onUpdate={handleUpdateMeal}
+            onDelete={handleDeleteMeal}
+            t={translations}
+            currentLang={lang}
+            isActive={activeView === 'meals'}
+          />
         </div>
       )}
 

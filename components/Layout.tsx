@@ -26,9 +26,13 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, onNavigate, t }) 
   };
 
   return (
-    <div className="min-h-screen pb-20 bg-background">
-      {/* Main Content Area - key forces remount, animation triggers on mount */}
-      <div key={activeView} className="flex-1 page-fade-in">{children}</div>
+    <>
+      {/* Main Content Area - only render wrapper when there are children */}
+      {children && (
+        <div className="min-h-screen pb-20 bg-background">
+          <div key={activeView} className="flex-1 page-fade-in">{children}</div>
+        </div>
+      )}
 
       {/* Bottom Navigation - iOS Style */}
       <nav
@@ -77,7 +81,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, onNavigate, t }) 
           })}
         </div>
       </nav>
-    </div>
+    </>
   );
 };
 

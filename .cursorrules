@@ -65,15 +65,23 @@ import { createPortal } from 'react-dom';
 
 ### Meals Page - LOCKED PATTERN (DO NOT MODIFY)
 
-**The Meals page has a special implementation to prevent iOS Safari flicker. DO NOT CHANGE.**
+**The Meals page uses container-based scrolling. DO NOT CHANGE.**
 
-#### Header Overlays (Meals.tsx)
-- Fixed background shield at z-[19]
-- Fixed title overlay at z-[21] with `pointer-events-none`
-- Fixed week selector overlay at z-[21] with `pointer-events-none`
-- Real interactive elements have `opacity-0`
+#### Container-Based Scroll (Meals.tsx)
+- Outer container: `h-screen bg-background overflow-hidden` (locked to viewport)
+- Cards container: `overflow-y-auto scrollbar-hide` with calculated height
+- All scrolling happens INSIDE the cards container only
+- No page-level scroll, no dual-scroll confusion
+- Footer (`helpy-footer`) is INSIDE the cards container
 
-**DO NOT REMOVE** the header overlays or change their z-index.
+**DO NOT** change the outer container from `h-screen overflow-hidden`.
+
+#### Header Structure (Meals.tsx)
+- Standard sticky header matching ToDo (120px, `boxShadow` for bleed-through)
+- Week nav has shadow controlled by `isContainerScrolled` state
+- **NO overlays** - uses real elements directly
+
+**DO NOT** add overlay patterns or opacity-0 elements.
 
 #### Always-Mounted Pattern (App.tsx)
 - Meals is rendered OUTSIDE Layout's keyed container
@@ -82,23 +90,21 @@ import { createPortal } from 'react-dom';
 
 **DO NOT** move Meals back into renderView() or add key={} to its wrapper.
 
-#### Scroll Logic (Meals.tsx)
-- Uses `isActive` prop to control when scroll runs
-- Multiple timed attempts [0, 50, 150]ms
-- Resets `hasInitiallyScrolled` when `!isActive`
+#### Layout Fragment Pattern (Layout.tsx)
+- When children is null (Meals active), wrapper div is not rendered
+- Only bottom nav is rendered, preventing empty 80px div above Meals
 
-**DO NOT** use useLayoutEffect or change the scroll timing.
+**DO NOT** change back to always-render wrapper pattern.
 
-#### Scroll Boundary Clamp (Meals.tsx)
-- Prevents scrolling above first day of week
-- Clamps scroll position to first card minus 230px header offset
-- Disables iOS rubber band bounce via `overscroll-behavior: none` on html/body
-- Only active when `isActive && view === 'day'`
+#### Scroll-to-Today Logic (Meals.tsx)
+- Uses `getBoundingClientRect()` for accurate container-relative positioning
+- Multiple timed attempts [0, 50, 150]ms for reliability
+- `hasInitiallyScrolled` ref prevents duplicate scrolls
 
-**DO NOT REMOVE** the scroll clamp or overscroll-behavior effects.
+**DO NOT** change to `offsetTop` or window scroll.
 
 #### Git Pull Warning
-If `git pull` conflicts with Meals.tsx, App.tsx, or index.css:
+If `git pull` conflicts with Meals.tsx, App.tsx, or Layout.tsx:
 - **KEEP LOCAL VERSION** with `git checkout --ours <file>`
 
 See `docs/MEALS_SCROLL_FIX.md` for full details.

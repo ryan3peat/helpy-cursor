@@ -1,8 +1,8 @@
-# Meals Page - Header & Cards Implementation
+# Meals Page - Container-Based Scroll Implementation
 
 ## ⚠️ CRITICAL - DO NOT MODIFY THIS PATTERN
 
-**Status: 100% flicker-free (header + body).**
+**Status: Clean, flicker-free implementation using contained scrolling.**
 
 This solution is **permanent** and **must not be changed, removed, or overwritten**.
 All agents must treat this as a locked pattern.
@@ -11,80 +11,171 @@ All agents must treat this as a locked pattern.
 
 ---
 
-## Protected Files
+## Overview
 
-These files contain the locked implementation:
+The Meals page uses a **container-based scroll** approach:
+- The outer page is **locked to viewport** (`h-screen overflow-hidden`)
+- All scrolling happens inside the **cards container** only
+- No page-level scroll, no dual-scroll confusion
+- Shadow appears under week nav when cards are scrolled
+
+This is **much simpler** than the previous overlay-based approach.
+
+---
+
+## Protected Files
 
 | File | What's Protected |
 |------|------------------|
-| `components/Meals.tsx` | Header overlays, scroll logic, isActive prop |
+| `components/Meals.tsx` | Container scroll, header structure, isActive prop |
+| `components/Layout.tsx` | Fragment pattern for null children |
 | `App.tsx` | Meals always-mounted pattern, isActive prop |
-| `index.css` | `.header-title-stable`, `.header-sticky-stable` |
 
 ---
 
-## Part 1: Header Flicker Fix
+## Key Implementation Details
 
-### Problem
-iOS Safari flickers the header area during scroll and page transitions due to compositor repaint timing.
+### 1. Outer Container - Locked to Viewport
 
-### Solution: Fixed Overlay Pattern
+```tsx
+<div className="h-screen bg-background overflow-hidden">
+```
 
-The Meals header uses **fixed visual overlays** that never reflow:
+- `h-screen` - Fixed to viewport height
+- `overflow-hidden` - No page scroll
+- This prevents confusing dual-scroll behavior
 
-1. **Solid background shield** at z-[19]
-2. **Fixed title overlay** at z-[21] (pointer-events-none, aria-hidden)
-3. **Fixed week selector overlay** at z-[21] (pointer-events-none, aria-hidden)
-4. **Real interactive elements** with opacity-0 (invisible but clickable)
+### 2. Header - Standard Sticky (No Overlays!)
 
-Required CSS in index.css:
-- `.header-title-stable` - GPU layer for title
-- `.header-sticky-stable` - GPU layer for sticky elements
+```tsx
+<header 
+  className="sticky top-0 z-20 bg-background ..."
+  style={{ 
+    height: '120px', 
+    boxShadow: '0 10px 0 0 hsl(var(--background))' 
+  }}
+>
+```
 
-**DO NOT REMOVE** these overlays or CSS classes.
+- **No fixed overlays** - real elements are visible
+- **No opacity-0** - removed the overlay pattern
+- Same structure as ToDo header
+- `boxShadow` prevents content bleed-through
+
+### 3. Week Navigation - Shadow on Container Scroll
+
+```tsx
+<div 
+  className="sticky z-20 bg-background ... transition-shadow duration-200"
+  style={{ 
+    top: '120px',
+    boxShadow: isContainerScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none'
+  }}
+>
+```
+
+- Shadow controlled by `isContainerScrolled` state
+- Tracks scroll of the cards container, not window
+
+### 4. Cards Container - Self-Contained Scroll
+
+```tsx
+<div
+  ref={dayViewRef}
+  className="overflow-y-auto scrollbar-hide"
+  style={{
+    height: 'calc(100vh - 210px - var(--meals-bottom-nav-h, 64px) - env(safe-area-inset-bottom, 0px))',
+    overscrollBehavior: 'contain',
+    WebkitOverflowScrolling: 'touch',
+  }}
+>
+  <div className="space-y-4 pb-6">
+    {/* Day cards */}
+    
+    {/* Footer inside scroll container */}
+    <div className="helpy-footer">
+      <span className="helpy-logo">helpy</span>
+    </div>
+  </div>
+</div>
+```
+
+- Container has **calculated height** to fill remaining space
+- `scrollbar-hide` - Hidden scrollbar, scroll still works
+- `overscrollBehavior: 'contain'` - No overscroll beyond container
+- **Footer inside container** - Visible when scrolled to bottom
+
+### 5. Scroll-to-Today Logic
+
+```tsx
+// Uses getBoundingClientRect for accurate positioning
+const containerTop = scrollContainer.getBoundingClientRect().top;
+const elementTop = targetEl.getBoundingClientRect().top;
+const currentScroll = scrollContainer.scrollTop;
+const scrollToPosition = currentScroll + (elementTop - containerTop);
+scrollContainer.scrollTo({ top: scrollToPosition, behavior: 'auto' });
+```
+
+- Multiple timed attempts [0, 50, 150]ms for reliability
+- `hasInitiallyScrolled` ref prevents duplicate scrolls
+- Resets when `isActive` becomes false
+
+### 6. Container Scroll Tracking
+
+```tsx
+useEffect(() => {
+  if (!isActive || view !== 'day') {
+    setIsContainerScrolled(false);
+    return;
+  }
+  
+  const container = dayViewRef.current;
+  if (!container) return;
+  
+  const handleScroll = () => {
+    setIsContainerScrolled(container.scrollTop > 10);
+  };
+  
+  container.addEventListener('scroll', handleScroll, { passive: true });
+  return () => container.removeEventListener('scroll', handleScroll);
+}, [isActive, view]);
+```
 
 ---
 
-## Part 2: Cards Scroll Fix
+## Layout.tsx - Fragment Pattern
 
-### Problem
-When landing on Meals, cards render at top (Mon) then scroll to today, causing visible "jump".
+When Meals is active, Layout receives `null` children. Updated to use fragment:
 
-### Solution: Always-Mounted + isActive Prop
+```tsx
+return (
+  <>
+    {children && (
+      <div className="min-h-screen pb-20 bg-background">
+        <div key={activeView} className="flex-1 page-fade-in">{children}</div>
+      </div>
+    )}
+    <nav>...</nav>
+  </>
+);
+```
 
-**App.tsx** renders Meals **outside Layout's keyed container** so it stays mounted:
-
-- In renderView(), meals case returns null
-- Meals rendered separately with display:block/none based on activeView
-- isActive={activeView === 'meals'} passed to Meals
-
-**Meals.tsx** scroll effect:
-- Only runs when isActive is true
-- Uses multiple timed attempts [0, 50, 150]ms
-- hasInitiallyScrolled ref prevents duplicate scrolls
-- **Resets** when isActive becomes false (user leaves page)
+This prevents an empty 80px div from appearing above Meals when scrolling.
 
 ---
 
-## Part 3: Scroll Boundary Clamp
+## What Was Removed (No Longer Needed)
 
-### Problem
-Users could scroll above the first day of the week (e.g., Mon 19 Jan), creating empty white space above the cards.
-
-### Solution: Scroll Clamp + Overscroll Disable
-
-**Scroll Clamp** (useEffect in Meals.tsx):
-- Listens to scroll events in day view when active
-- If user scrolls above first day card, snaps back to minimum position
-- Uses `requestAnimationFrame` for smooth performance
-- Same 230px header offset as auto-scroll
-
-**Overscroll Behavior** (useEffect in Meals.tsx):
-- Sets `overscroll-behavior: none` on html + body when Meals is active
-- Removes iOS Safari rubber band bounce effect
-- Cleaned up when leaving Meals page
-
-**DO NOT REMOVE** these scroll boundary controls.
+| Old Pattern | Why Removed |
+|-------------|-------------|
+| Fixed background shield (z-[19]) | Container scroll eliminates flicker |
+| Fixed title overlay (z-[21]) | No longer needed |
+| Fixed week-nav overlay (z-[21]) | No longer needed |
+| `opacity-0` on real elements | No longer needed |
+| `.header-title-stable` CSS class | No longer needed |
+| `.header-sticky-stable` CSS class | No longer needed |
+| Window scroll clamp | Container handles boundaries |
+| TouchMove preventDefault | Container handles overscroll |
 
 ---
 
@@ -92,44 +183,30 @@ Users could scroll above the first day of the week (e.g., Mon 19 Jan), creating 
 
 | Rule | Why |
 |------|-----|
-| **Keep header overlays + shield** | Prevents iOS repaint flicker |
-| **Keep opacity-0 on real header elements** | Overlays provide visuals |
-| **Keep Meals always-mounted in App.tsx** | Preserves state, enables instant show |
+| **Keep outer container `h-screen overflow-hidden`** | Prevents page scroll |
+| **Keep cards container with calculated height** | Proper scroll boundaries |
+| **Keep `scrollbar-hide` on cards container** | Clean mobile appearance |
+| **Keep `overscrollBehavior: contain`** | Prevents rubber band effect |
+| **Keep footer inside cards container** | Visible on scroll to bottom |
+| **Keep Meals always-mounted in App.tsx** | Preserves state |
 | **Keep isActive prop flow** | Controls when scroll runs |
-| **Keep scroll reset on !isActive** | Ensures scroll runs on every visit |
-| **Keep scroll clamp effect** | Prevents scrolling above first day |
-| **Keep overscroll-behavior effect** | Disables iOS rubber band bounce |
-| **Do NOT use content-visibility on cards** | Causes delayed rendering |
-| **Do NOT use useLayoutEffect for scroll** | Causes inconsistent positioning |
-| **Do NOT add key={} to Meals wrapper** | Would destroy state on navigation |
-
----
-
-## Git Conflict Resolution
-
-If git pull conflicts with any of these protected patterns:
-
-1. **ALWAYS keep local version** for:
-   - Header overlay structure in Meals.tsx
-   - Always-mounted Meals in App.tsx
-   - CSS classes in index.css
-   - Scroll effect logic with isActive
-
-2. Use `git checkout --ours <file>` if needed
+| **Keep Layout fragment pattern** | Prevents empty div above Meals |
 
 ---
 
 ## Testing Checklist
 
-- [ ] Land on Meals from any page - header appears instantly, no flicker
-- [ ] Today's card scrolls into view smoothly
-- [ ] Navigate away and back - same behavior, no blank page
-- [ ] Switch Day/Week view - scroll works correctly
-- [ ] Dark mode - header overlays match theme
-- [ ] Try scrolling above first day card - should stop at boundary
-- [ ] No rubber band bounce effect on iOS Safari
+- [ ] Land on Meals from any page - today's card visible immediately
+- [ ] Scroll cards - shadow appears under week nav
+- [ ] Scroll to bottom - helpy footer visible
+- [ ] No scrollbar visible on mobile
+- [ ] No overscroll/rubber band effect
+- [ ] Header area cannot be scrolled (no empty space above)
+- [ ] Navigate away and back - same behavior
+- [ ] Switch Day/Week view - works correctly
+- [ ] Dark mode - all elements correct
 
 ---
 
 *Last updated: January 2026*
-*This pattern is LOCKED - do not modify without explicit approval.*
+*Container-based scroll pattern - LOCKED*

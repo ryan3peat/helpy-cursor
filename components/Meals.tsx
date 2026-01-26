@@ -100,6 +100,8 @@ const Meals: React.FC<MealsProps> = ({
   const [exportingPdf, setExportingPdf] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
+  // Track if cards container has scrolled (for shadow under week nav)
+  const [isContainerScrolled, setIsContainerScrolled] = useState(false);
   
   // Scroll header hook for animation - lower threshold so shadow appears when card date gets covered
   const { isScrolled } = useScrollHeader({ collapseThreshold: 20 });
@@ -136,6 +138,9 @@ const Meals: React.FC<MealsProps> = ({
   
   // Ref: Week view horizontal scroll container for auto-scroll to today column
   const weekScrollRef = useRef<HTMLDivElement | null>(null);
+  const weekNavOverlayRef = useRef<HTMLDivElement | null>(null);
+  const [headerHeight, setHeaderHeight] = useState(230);
+  const [bottomNavHeight, setBottomNavHeight] = useState(64);
 
   // ─────────────────────────────────────────────────────────────────
   // AUTO-SCROLL TO TODAY - Only on initial mount
@@ -869,21 +874,26 @@ const Meals: React.FC<MealsProps> = ({
     
     // Skip if already scrolled in this day view session
     if (hasInitiallyScrolled.current) return;
-    hasInitiallyScrolled.current = true;
 
-    const headerOffset = 230;
     const targetDateStr = formatDateStr(new Date());
     
     // Use multiple attempts for reliability
     const scrollAttempts = [0, 50, 150];
     scrollAttempts.forEach((delay) => {
       setTimeout(() => {
+        if (hasInitiallyScrolled.current) return;
         const targetEl = document.getElementById(`day-${targetDateStr}`);
         if (!targetEl) return;
         
-        const rect = targetEl.getBoundingClientRect();
-        const elementPosition = rect.top + window.scrollY;
-        window.scrollTo({ top: elementPosition - headerOffset, behavior: 'auto' });
+        const scrollContainer = dayViewRef.current;
+        if (!scrollContainer) return;
+        // Calculate position relative to scroll container using getBoundingClientRect
+        const containerTop = scrollContainer.getBoundingClientRect().top;
+        const elementTop = targetEl.getBoundingClientRect().top;
+        const currentScroll = scrollContainer.scrollTop;
+        const scrollToPosition = currentScroll + (elementTop - containerTop);
+        scrollContainer.scrollTo({ top: Math.max(0, scrollToPosition), behavior: 'auto' });
+        hasInitiallyScrolled.current = true;
       }, delay);
     });
   }, [view, isActive]);
@@ -903,152 +913,75 @@ const Meals: React.FC<MealsProps> = ({
     }
   }, [isActive]);
 
-  // ─────────────────────────────────────────────────────────────────
-  // SCROLL BOUNDARY (DAY VIEW) - Debounced snap back after scroll settles
-  // ─────────────────────────────────────────────────────────────────
+  // Measure header/nav heights to size scroll containers dynamically
   useEffect(() => {
-    if (!isActive || view !== 'day') return;
+    if (!isActive) return;
 
-    let scrollTimeout: ReturnType<typeof setTimeout>;
-    
-    const correctScroll = () => {
-      const firstDayStr = formatDateStr(weekDays[0]);
-      const firstDayEl = document.getElementById(`day-${firstDayStr}`);
-      if (!firstDayEl) return;
-      
-      const headerOffset = 230;
-      const minScrollTop = firstDayEl.offsetTop - headerOffset;
-      
-      if (window.scrollY < minScrollTop && minScrollTop > 0) {
-        window.scrollTo(0, minScrollTop);
+    const measure = () => {
+      const headerEl = weekNavOverlayRef.current;
+      if (headerEl) {
+        const headerRect = headerEl.getBoundingClientRect();
+        setHeaderHeight(Math.round(headerRect.bottom));
+      }
+
+      const navEl = document.querySelector('nav');
+      if (navEl) {
+        const navRect = navEl.getBoundingClientRect();
+        setBottomNavHeight(Math.round(navRect.height));
       }
     };
-    
-    const handleScrollEnd = () => {
-      clearTimeout(scrollTimeout);
-      scrollTimeout = setTimeout(correctScroll, 50);
-    };
-    
-    window.addEventListener('scroll', handleScrollEnd, { passive: true });
+
+    const rafId = requestAnimationFrame(measure);
+    window.addEventListener('resize', measure);
+    window.addEventListener('orientationchange', measure);
+
     return () => {
-      window.removeEventListener('scroll', handleScrollEnd);
-      clearTimeout(scrollTimeout);
-    };
-  }, [isActive, view, weekDays]);
-
-  // ─────────────────────────────────────────────────────────────────
-  // SCROLL BOUNDARY (TABLE VIEW) - Debounced snap back after scroll settles
-  // ─────────────────────────────────────────────────────────────────
-  useEffect(() => {
-    if (!isActive || view !== 'week') return;
-
-    let scrollTimeout: ReturnType<typeof setTimeout>;
-    
-    const getScrollBounds = () => {
-      const tableContainer = weekScrollRef.current?.closest('.rounded-xl');
-      if (!tableContainer) return null;
-      
-      const headerOffset = 230;
-      const tableTop = (tableContainer as HTMLElement).offsetTop;
-      const minScroll = Math.max(0, tableTop - headerOffset);
-      const maxScroll = minScroll + 50;
-      return { minScroll, maxScroll };
-    };
-    
-    const correctScroll = () => {
-      const bounds = getScrollBounds();
-      if (!bounds) return;
-      
-      if (window.scrollY < bounds.minScroll) {
-        window.scrollTo(0, bounds.minScroll);
-      } else if (window.scrollY > bounds.maxScroll) {
-        window.scrollTo(0, bounds.maxScroll);
-      }
-    };
-    
-    const handleScrollEnd = () => {
-      clearTimeout(scrollTimeout);
-      scrollTimeout = setTimeout(correctScroll, 50);
-    };
-    
-    // Initial scroll to correct position
-    setTimeout(() => {
-      const bounds = getScrollBounds();
-      if (bounds) {
-        window.scrollTo(0, bounds.minScroll);
-      }
-    }, 0);
-    
-    window.addEventListener('scroll', handleScrollEnd, { passive: true });
-    return () => {
-      window.removeEventListener('scroll', handleScrollEnd);
-      clearTimeout(scrollTimeout);
+      cancelAnimationFrame(rafId);
+      window.removeEventListener('resize', measure);
+      window.removeEventListener('orientationchange', measure);
     };
   }, [isActive, view]);
 
   // ─────────────────────────────────────────────────────────────────
-  // DISABLE OVERSCROLL BOUNCE - Touch prevention for both views (iOS Safari)
+  // TRACK CONTAINER SCROLL - For shadow under week nav
+  // ─────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!isActive || view !== 'day') {
+      setIsContainerScrolled(false);
+      return;
+    }
+    
+    const container = dayViewRef.current;
+    if (!container) return;
+    
+    const handleScroll = () => {
+      setIsContainerScrolled(container.scrollTop > 10);
+    };
+    
+    container.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll(); // Check initial state
+    
+    return () => {
+      container.removeEventListener('scroll', handleScroll);
+    };
+  }, [isActive, view]);
+
+  // ─────────────────────────────────────────────────────────────────
+  // DISABLE OVERSCROLL BOUNCE - CSS only (list uses its own scroll container)
   // ─────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!isActive) return;
 
-    // Apply CSS as fallback - works for both views
     const html = document.documentElement;
     const body = document.body;
     html.style.overscrollBehavior = 'none';
     body.style.overscrollBehavior = 'none';
 
-    let startY = 0;
-    
-    const handleTouchStart = (e: TouchEvent) => {
-      startY = e.touches[0].pageY;
-    };
-    
-    const handleTouchMove = (e: TouchEvent) => {
-      const y = e.touches[0].pageY;
-      const isScrollingUp = y > startY; // Finger moving down = trying to scroll content up
-      const isScrollingDown = y < startY; // Finger moving up = trying to scroll content down
-      
-      if (view === 'day') {
-        // Day view: prevent scrolling above first card
-        const firstDayStr = formatDateStr(weekDays[0]);
-        const firstDayEl = document.getElementById(`day-${firstDayStr}`);
-        if (!firstDayEl) return;
-        
-        const headerOffset = 230;
-        const minScrollTop = firstDayEl.offsetTop - headerOffset;
-        
-        if (window.scrollY <= minScrollTop + 5 && isScrollingUp) {
-          e.preventDefault();
-        }
-      } else if (view === 'week') {
-        // Table view: prevent scrolling above/below table bounds
-        const tableContainer = weekScrollRef.current?.closest('.rounded-xl');
-        if (!tableContainer) return;
-        
-        const headerOffset = 230;
-        const tableTop = (tableContainer as HTMLElement).offsetTop;
-        const minScroll = Math.max(0, tableTop - headerOffset);
-        const maxScroll = minScroll + 50;
-        
-        if (window.scrollY <= minScroll + 5 && isScrollingUp) {
-          e.preventDefault();
-        } else if (window.scrollY >= maxScroll - 5 && isScrollingDown) {
-          e.preventDefault();
-        }
-      }
-    };
-    
-    document.addEventListener('touchstart', handleTouchStart, { passive: true });
-    document.addEventListener('touchmove', handleTouchMove, { passive: false });
-
     return () => {
       html.style.overscrollBehavior = '';
       body.style.overscrollBehavior = '';
-      document.removeEventListener('touchstart', handleTouchStart);
-      document.removeEventListener('touchmove', handleTouchMove);
     };
-  }, [isActive, view, weekDays]);
+  }, [isActive]);
 
   // ─────────────────────────────────────────────────────────────────
   // AUTO-SCROLL TO TODAY ROW IN WEEK VIEW
@@ -1299,89 +1232,32 @@ const Meals: React.FC<MealsProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-background pb-40" style={{ overscrollBehavior: 'none' }}>
-      <div 
-        className="fixed top-0 left-0 right-0 z-[19] bg-background pointer-events-none"
-        style={{ height: '210px' }}
-      />
-      <div
-        className="fixed top-0 left-0 right-0 z-[21] pointer-events-none"
-        aria-hidden="true"
-      >
-        <div className="max-w-2xl mx-auto px-4 sm:px-6">
-          <div className="flex items-end pb-3" style={{ height: '120px' }}>
-            <div className="flex items-center justify-between w-full">
-              <h1 className="text-display text-foreground header-title-stable">
-                {mealsTitle}
-              </h1>
-              <div className="flex items-center gap-1 text-muted-foreground">
-                {view === 'week' && (
-                  <button className="p-2 rounded-full">
-                    {exportingPdf ? (
-                      <Loader2 size={20} className="animate-spin" />
-                    ) : (
-                      <Download size={20} />
-                    )}
-                  </button>
-                )}
-                <button className="p-2 rounded-full">
-                  {view === 'day' ? <Sheet size={20} /> : <Rows3 size={20} />}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div
-        className="fixed top-[120px] left-0 right-0 z-[21] pointer-events-none"
-        aria-hidden="true"
-      >
-        <div className="max-w-2xl mx-auto px-4 sm:px-6">
-          <div
-            className="bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 py-5 header-sticky-stable"
-            style={{ boxShadow: isScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none' }}
-          >
-            <div className="flex items-center gap-3">
-              <div className="relative flex-1 flex items-center justify-between px-2 rounded-xl h-12 overflow-hidden bg-muted">
-                <button className="p-2 rounded-lg text-muted-foreground z-10">
-                  <ChevronLeft size={20} />
-                </button>
-                <span className={`text-body font-semibold tabular-nums z-10 ${isCurrentWeek ? 'text-primary' : 'text-foreground'}`}>
-                  {dateRangeStr}
-                </span>
-                <button className="p-2 rounded-lg text-muted-foreground z-10">
-                  <ChevronRight size={20} />
-                </button>
-                <div className="absolute inset-0 rounded-xl pointer-events-none shadow-[inset_0_2px_4px_rgba(0,0,0,0.06)]" />
-              </div>
-              <button
-                className={`px-4 rounded-xl font-semibold text-body h-12 ${
-                  isCurrentWeek
-                    ? 'bg-muted text-muted-foreground cursor-default'
-                    : 'bg-primary text-primary-foreground shadow-sm'
-                }`}
-              >
-                {t['common.today'] || 'Today'}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+    <div
+      className="h-screen bg-background overflow-hidden"
+      style={{
+        ['--meals-header-h' as any]: `${headerHeight}px`,
+        ['--meals-bottom-nav-h' as any]: `${bottomNavHeight}px`,
+      }}
+    >
       <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
         {/* ─────────────────────────────────────────────────────────────── */}
         {/* STICKY HEADER - matches Family */}
         {/* ─────────────────────────────────────────────────────────────── */}
         <header 
-          className="sticky top-0 z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 pb-3 flex items-end header-sticky-stable" 
-          style={{ height: '120px' }}
+          className="sticky top-0 z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 pb-3 flex items-end" 
+          style={{ 
+            height: '120px', 
+            boxShadow: '0 10px 0 0 hsl(var(--background))' 
+          }}
         >
-          <div className="flex items-center justify-between w-full">
-            <h1 className="text-display text-foreground header-title-stable opacity-0">
-              {mealsTitle}
-            </h1>
-            
-            {/* Header Actions */}
-            <div className="flex items-center gap-1 opacity-0">
+          <div className="w-full">
+            <div className="flex items-center justify-between">
+              <h1 className="text-display text-foreground">
+                {mealsTitle}
+              </h1>
+              
+              {/* Header Actions */}
+              <div className="flex items-center gap-2 shrink-0">
               {/* Export PDF Button - Only visible in table view */}
               {view === 'week' && (
                     <button
@@ -1407,6 +1283,7 @@ const Meals: React.FC<MealsProps> = ({
               </button>
             </div>
           </div>
+          </div>
         </header>
         {/* Error Banner */}
         <ErrorBanner 
@@ -1418,10 +1295,11 @@ const Meals: React.FC<MealsProps> = ({
         {/* WEEK NAVIGATION - Same structure as Family Info tab nav */}
         {/* ─────────────────────────────────────────────────────────────── */}
         <div 
-          className="sticky z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 py-5 header-sticky-stable opacity-0"
+          ref={weekNavOverlayRef}
+          className="sticky z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 py-5 transition-shadow duration-200"
           style={{ 
             top: '120px',
-            boxShadow: isScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none'
+            boxShadow: isContainerScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none'
           }}
         >
           <div className="flex items-center gap-3">
@@ -1466,7 +1344,17 @@ const Meals: React.FC<MealsProps> = ({
 
       {/* Day View */}
       {view === 'day' ? (
-        <div ref={dayViewRef} className="space-y-4">
+        <div
+          ref={dayViewRef}
+          className="overflow-y-auto scrollbar-hide"
+          style={{
+            height: 'calc(100vh - 210px - var(--meals-bottom-nav-h, 64px) - env(safe-area-inset-bottom, 0px))',
+            overscrollBehavior: 'contain',
+            WebkitOverflowScrolling: 'touch',
+            marginTop: '-1px', // prevent gap
+          }}
+        >
+          <div className="space-y-4 pb-6">
             {weekDays.map((dayDate) => {
               const dateStr = formatDateStr(dayDate);
               const isToday = dayDate.toDateString() === new Date().toDateString();
@@ -1722,10 +1610,22 @@ const Meals: React.FC<MealsProps> = ({
                 </div>
               );
             })}
+            
+            {/* Footer inside scroll container */}
+            <div className="helpy-footer">
+              <span className="helpy-logo">helpy</span>
+            </div>
+          </div>
         </div>
       ) : (
           /* Week View - Simple HTML Table */
-          <div className="rounded-xl bg-card shadow-sm overflow-hidden" style={{ overscrollBehavior: 'none' }}>
+          <div
+            className="rounded-xl bg-card shadow-sm overflow-hidden"
+            style={{
+              height: 'calc(100vh - 210px - var(--meals-bottom-nav-h, 64px) - env(safe-area-inset-bottom, 0px))',
+              overscrollBehavior: 'contain',
+            }}
+          >
             <div 
               ref={weekScrollRef}
               className="overflow-x-auto scrollbar-hide"
@@ -1875,11 +1775,6 @@ const Meals: React.FC<MealsProps> = ({
 
         </div>
         {/* End of MAIN CONTENT */}
-
-        {/* Footer */}
-        <div className="helpy-footer">
-          <span className="helpy-logo">helpy</span>
-        </div>
 
       </div>
 

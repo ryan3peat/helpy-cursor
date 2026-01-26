@@ -1247,7 +1247,8 @@ const Meals: React.FC<MealsProps> = ({
           className="flex-shrink-0 z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 pb-3 flex items-end" 
           style={{ 
             height: '120px', 
-            boxShadow: '0 10px 0 0 hsl(var(--background))' 
+            boxShadow: '0 10px 0 0 hsl(var(--background))',
+            touchAction: 'none',
           }}
         >
           <div className="w-full">
@@ -1298,7 +1299,8 @@ const Meals: React.FC<MealsProps> = ({
           ref={weekNavOverlayRef}
           className="flex-shrink-0 z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 py-5 transition-shadow duration-200"
           style={{ 
-            boxShadow: isContainerScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none'
+            boxShadow: isContainerScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none',
+            touchAction: 'none',
           }}
         >
           <div className="flex items-center gap-3">

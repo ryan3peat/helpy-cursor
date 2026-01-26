@@ -1619,16 +1619,14 @@ const Meals: React.FC<MealsProps> = ({
       ) : (
           /* Week View - Simple HTML Table */
           <div
-            className="h-full rounded-xl bg-card shadow-sm overflow-y-auto"
+            ref={weekScrollRef}
+            className="h-full rounded-xl bg-card shadow-sm overflow-auto scrollbar-hide"
             style={{
               overscrollBehavior: 'contain',
+              WebkitOverflowScrolling: 'touch',
+              touchAction: 'pan-x pan-y',
             }}
           >
-            <div 
-              ref={weekScrollRef}
-              className="overflow-x-auto scrollbar-hide"
-              style={{ overscrollBehavior: 'none' }}
-            >
               <table style={{ 
                 borderCollapse: 'separate', 
                 borderSpacing: 0, 
@@ -1767,7 +1765,6 @@ const Meals: React.FC<MealsProps> = ({
                 })}
                 </tbody>
               </table>
-            </div>
           </div>
       )}
 

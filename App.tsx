@@ -1575,6 +1575,85 @@ const AppContent: React.FC = () => {
     // This ensures a single source of truth and prevents duplicate instances
   };
 
+  // Update recurring series template AND all future non-completed instances
+  const handleUpdateTodoSeries = async (seriesId: string, data: Partial<ToDoItem>) => {
+    if (!hid) return;
+    
+    // Demo mode: skip database operation
+    if (isDemoMode) {
+      logger.log('📷 Demo mode: skipping series update to database');
+      return;
+    }
+    
+    logger.log('🔄 Updating recurring series:', seriesId, data);
+    
+    // Optimistically update UI - update all items with this seriesId that are not completed
+    setTodoItems(prev => prev.map(item => {
+      if (item.seriesId === seriesId && !item.completed && !item.isException) {
+        return { ...item, ...data };
+      }
+      return item;
+    }));
+    
+    try {
+      // Update the series template
+      const seriesUpdates: Record<string, any> = {};
+      if (data.name !== undefined) seriesUpdates.name = data.name;
+      if (data.category !== undefined) seriesUpdates.category = data.category;
+      if (data.assigneeId !== undefined) seriesUpdates.assigneeId = data.assigneeId;
+      if (data.dueTime !== undefined) seriesUpdates.dueTime = data.dueTime;
+      if (data.recurrence?.frequency !== undefined) seriesUpdates.frequency = data.recurrence.frequency;
+      if (data.recurrence?.dayOfWeek !== undefined) seriesUpdates.dayOfWeek = data.recurrence.dayOfWeek;
+      if (data.recurrence?.dayOfMonth !== undefined) seriesUpdates.dayOfMonth = data.recurrence.dayOfMonth;
+      
+      // Update series template
+      await updateItem(hid, 'recurring_series', seriesId, seriesUpdates);
+      
+      // Update all future non-completed, non-exception instances
+      // Build the recurrence JSONB for instances
+      const recurrenceJson = data.recurrence ? {
+        frequency: data.recurrence.frequency,
+        dayOfWeek: data.recurrence.dayOfWeek,
+        dayOfMonth: data.recurrence.dayOfMonth,
+      } : undefined;
+      
+      // Fetch all future instances and update them
+      const authClient = getAuthenticatedSupabaseClient() || supabase;
+      const today = getLocalDateString();
+      
+      const { data: futureInstances } = await authClient
+        .from('todo_items')
+        .select('id')
+        .eq('series_id', seriesId)
+        .eq('completed', false)
+        .or('is_exception.is.null,is_exception.eq.false')
+        .gte('due_date', today)
+        .is('deleted_at', null);
+      
+      if (futureInstances && futureInstances.length > 0) {
+        logger.log(`🔄 Updating ${futureInstances.length} future instances`);
+        
+        // Build update data for instances
+        const instanceUpdates: Record<string, any> = {};
+        if (data.name !== undefined) instanceUpdates.name = data.name;
+        if (data.category !== undefined) instanceUpdates.category = data.category;
+        if (data.assigneeId !== undefined) instanceUpdates.assignee_id = data.assigneeId;
+        if (data.dueTime !== undefined) instanceUpdates.due_time = data.dueTime;
+        if (recurrenceJson) instanceUpdates.recurrence = recurrenceJson;
+        
+        // Update each instance
+        for (const instance of futureInstances) {
+          await updateItem(hid, 'todo_items', instance.id, instanceUpdates);
+        }
+      }
+      
+      logger.log('✅ Successfully updated series and future instances');
+    } catch (error) {
+      logger.error('❌ Failed to update recurring series:', error);
+      // The optimistic update will be corrected by real-time sync
+    }
+  };
+
   const handleDeleteTodoItem = async (id: string) => {
     if (!hid) return;
     
@@ -2164,6 +2243,7 @@ const AppContent: React.FC = () => {
             onAdd={handleAddTodoItem}
             onUpdate={handleUpdateTodoItem}
             onDelete={handleDeleteTodoItem}
+            onUpdateSeries={handleUpdateTodoSeries}
             t={translations}
             currentLang={lang}
             initialSection={navData?.section as 'shopping' | 'task' | undefined}

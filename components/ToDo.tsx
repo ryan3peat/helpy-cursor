@@ -45,6 +45,7 @@ interface ToDoProps extends BaseViewProps {
   onAdd: (item: ToDoItem) => Promise<void>;
   onUpdate: (id: string, data: Partial<ToDoItem>) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
+  onUpdateSeries?: (seriesId: string, data: Partial<ToDoItem>) => Promise<void>; // Update recurring series + future instances
   initialSection?: 'shopping' | 'task';
   onSectionChange?: (section: string) => void;
   autoOpenSheet?: boolean; // Auto-open add sheet when navigating from Home (+) button
@@ -413,6 +414,7 @@ const ToDo: React.FC<ToDoProps> = ({
   onAdd,
   onUpdate,
   onDelete,
+  onUpdateSeries,
   t,
   currentLang,
   initialSection,
@@ -1120,6 +1122,7 @@ const ToDo: React.FC<ToDoProps> = ({
       dueDate: item.dueDate,
       dueTime: item.dueTime,
       recurrence: item.recurrence,
+      seriesId: item.seriesId, // Keep track of series for update (recurring tasks)
     });
     setIsSheetOpen(true);
   };
@@ -1164,6 +1167,7 @@ const ToDo: React.FC<ToDoProps> = ({
       };
       
       const itemId = editingItemId; // Capture before clearing
+      const seriesId = sheetForm.seriesId;
       
       // Apply optimistic edit IMMEDIATELY for instant feedback
       setOptimisticEdits(prev => ({ ...prev, [itemId]: updates }));
@@ -1171,7 +1175,14 @@ const ToDo: React.FC<ToDoProps> = ({
       setEditingItemId(null);
       
       try {
-        await onUpdate(itemId, updates);
+        // For recurring tasks: ALWAYS update the series template + all future instances
+        if (seriesId && onUpdateSeries) {
+          await onUpdateSeries(seriesId, updates);
+          logger.log('✅ Updated recurring series and all future instances');
+        } else {
+          // Non-recurring: just update this item
+          await onUpdate(itemId, updates);
+        }
         // Clear optimistic edit after success (real data now in props)
         setOptimisticEdits(prev => {
           const { [itemId]: _, ...rest } = prev;

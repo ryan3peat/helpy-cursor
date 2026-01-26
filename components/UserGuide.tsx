@@ -641,7 +641,7 @@ const UserGuide: React.FC<UserGuideProps> = ({ currentUser, t, onNavigateToPlan,
             {t['guide.need_help'] || 'Need Help?'}
           </h3>
           <p className="text-body text-muted-foreground">
-            {t['guide.feedback_cta'] || 'Have a question? Tap Feedback in Settings.'}
+            {t['guide.feedback_cta'] || 'Have a question? Tap to send us feedback.'}
           </p>
         </div>
         <ChevronRight size={20} className="text-muted-foreground flex-shrink-0" />

@@ -895,18 +895,19 @@ const Meals: React.FC<MealsProps> = ({
     }
   }, [view]);
 
-  // Reset scroll flag when leaving Meals page, so it scrolls again on return
+  // Reset scroll flag and view when leaving Meals page
   useEffect(() => {
     if (!isActive) {
       hasInitiallyScrolled.current = false;
+      setView('day'); // Always return to list view on next visit
     }
   }, [isActive]);
 
   // ─────────────────────────────────────────────────────────────────
-  // SCROLL CLAMP - Prevent scrolling above first day of week
+  // SCROLL CLAMP FOR TABLE VIEW - Keep table visible, prevent over-scrolling
   // ─────────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!isActive || view !== 'day') return;
+    if (!isActive || view !== 'week') return;
 
     let ticking = false;
     
@@ -915,28 +916,43 @@ const Meals: React.FC<MealsProps> = ({
       ticking = true;
       
       requestAnimationFrame(() => {
-        const firstDayStr = formatDateStr(weekDays[0]);
-        const firstDayEl = document.getElementById(`day-${firstDayStr}`);
-        if (!firstDayEl) {
+        // Find the table container
+        const tableContainer = weekScrollRef.current?.closest('.rounded-xl');
+        if (!tableContainer) {
           ticking = false;
           return;
         }
         
-        const headerOffset = 230; // Same offset used for auto-scroll
-        const minScrollTop = firstDayEl.offsetTop - headerOffset;
+        const headerOffset = 230;
+        const tableTop = (tableContainer as HTMLElement).offsetTop;
+        const minScroll = Math.max(0, tableTop - headerOffset);
+        const maxScroll = minScroll + 50; // Allow small range, prevent scrolling table off screen
         
-        // If user scrolled above the minimum allowed position, clamp it
-        if (window.scrollY < minScrollTop && minScrollTop > 0) {
-          window.scrollTo({ top: minScrollTop, behavior: 'auto' });
+        // Clamp scroll position
+        if (window.scrollY < minScroll) {
+          window.scrollTo({ top: minScroll, behavior: 'auto' });
+        } else if (window.scrollY > maxScroll) {
+          window.scrollTo({ top: maxScroll, behavior: 'auto' });
         }
         
         ticking = false;
       });
     };
     
+    // Initial scroll to correct position
+    setTimeout(() => {
+      const tableContainer = weekScrollRef.current?.closest('.rounded-xl');
+      if (tableContainer) {
+        const headerOffset = 230;
+        const tableTop = (tableContainer as HTMLElement).offsetTop;
+        const targetScroll = Math.max(0, tableTop - headerOffset);
+        window.scrollTo({ top: targetScroll, behavior: 'auto' });
+      }
+    }, 0);
+    
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
-  }, [isActive, view, weekDays]);
+  }, [isActive, view]);
 
   // ─────────────────────────────────────────────────────────────────
   // DISABLE OVERSCROLL BOUNCE - Prevent touchmove at boundary (iOS Safari)
@@ -983,8 +999,8 @@ const Meals: React.FC<MealsProps> = ({
     
     document.addEventListener('touchstart', handleTouchStart, { passive: true });
     document.addEventListener('touchmove', handleTouchMove, { passive: false });
-    
-    return () => {
+
+      return () => {
       html.style.overscrollBehavior = '';
       body.style.overscrollBehavior = '';
       document.removeEventListener('touchstart', handleTouchStart);
@@ -1667,7 +1683,7 @@ const Meals: React.FC<MealsProps> = ({
         </div>
       ) : (
           /* Week View - Simple HTML Table */
-          <div className="rounded-xl bg-card shadow-sm overflow-hidden">
+          <div className="rounded-xl bg-card shadow-sm overflow-hidden" style={{ overscrollBehavior: 'none' }}>
             <div 
               ref={weekScrollRef}
               className="overflow-x-auto scrollbar-hide"

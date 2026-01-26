@@ -1671,6 +1671,21 @@ const Profile: React.FC<ProfileProps> = ({
                 </button>
               )}
             </div>
+
+            {/* Feedback Card */}
+            <button
+              onClick={() => setActiveSection('feedback')}
+              className="w-full bg-card rounded-2xl shadow-sm overflow-hidden px-5 py-4 flex items-center justify-between"
+            >
+              <div className="flex items-center gap-3">
+                <MessageCircleQuestionMark size={18} className="text-primary" />
+                <div className="text-left">
+                  <p className="font-bold text-foreground text-title">{t['feedback.title'] || 'Feedback'}</p>
+                  <p className="text-caption text-muted-foreground">{t['profile.share_feedback'] || 'Share your thoughts with us'}</p>
+                </div>
+              </div>
+              <ChevronRight size={20} className="text-muted-foreground" />
+            </button>
           </div>
 
           {/* Footer */}
@@ -3886,7 +3901,7 @@ const Profile: React.FC<ProfileProps> = ({
         currentUser={currentUser}
         householdId={currentUser.householdId}
         t={t}
-        onBack={() => setActiveSection('settings')}
+        onBack={() => setActiveSection('main')}
       />
     );
   }
@@ -3907,7 +3922,6 @@ const Profile: React.FC<ProfileProps> = ({
                 { id: 'security', label: t['common.security'] || 'Account', icon: Shield, helperHidden: false },
                 { id: 'appearance', label: t['settings.appearance'] || 'Appearance', icon: Palette, helperHidden: false },
                 { id: 'timezone', label: t['settings.timezone'] || 'Time Zone', icon: Globe, helperHidden: false, isStatic: true },
-                { id: 'feedback', label: t['feedback.title'] || 'Feedback', icon: MessageCircleQuestionMark, helperHidden: false },
               ]
                 .filter(item => !isHelper || !item.helperHidden)
                 .map((item, index, filteredArray) => (

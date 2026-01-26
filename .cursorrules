@@ -103,10 +103,6 @@ import { createPortal } from 'react-dom';
 
 **DO NOT** change to `offsetTop` or window scroll.
 
-#### Git Pull Warning
-If `git pull` conflicts with Meals.tsx, App.tsx, or Layout.tsx:
-- **KEEP LOCAL VERSION** with `git checkout --ours <file>`
-
 See `docs/MEALS_SCROLL_FIX.md` for full details.
 
 ---

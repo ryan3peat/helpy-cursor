@@ -7,8 +7,6 @@
 This solution is **permanent** and **must not be changed, removed, or overwritten**.
 All agents must treat this as a locked pattern.
 
-**If git pull causes conflicts with these files, KEEP THE LOCAL VERSION.**
-
 ---
 
 ## Overview

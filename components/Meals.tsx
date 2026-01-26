@@ -904,58 +904,90 @@ const Meals: React.FC<MealsProps> = ({
   }, [isActive]);
 
   // ─────────────────────────────────────────────────────────────────
-  // SCROLL CLAMP FOR TABLE VIEW - Keep table visible, prevent over-scrolling
+  // SCROLL BOUNDARY (DAY VIEW) - Debounced snap back after scroll settles
+  // ─────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!isActive || view !== 'day') return;
+
+    let scrollTimeout: ReturnType<typeof setTimeout>;
+    
+    const correctScroll = () => {
+      const firstDayStr = formatDateStr(weekDays[0]);
+      const firstDayEl = document.getElementById(`day-${firstDayStr}`);
+      if (!firstDayEl) return;
+      
+      const headerOffset = 230;
+      const minScrollTop = firstDayEl.offsetTop - headerOffset;
+      
+      if (window.scrollY < minScrollTop && minScrollTop > 0) {
+        window.scrollTo(0, minScrollTop);
+      }
+    };
+    
+    const handleScrollEnd = () => {
+      clearTimeout(scrollTimeout);
+      scrollTimeout = setTimeout(correctScroll, 50);
+    };
+    
+    window.addEventListener('scroll', handleScrollEnd, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', handleScrollEnd);
+      clearTimeout(scrollTimeout);
+    };
+  }, [isActive, view, weekDays]);
+
+  // ─────────────────────────────────────────────────────────────────
+  // SCROLL BOUNDARY (TABLE VIEW) - Debounced snap back after scroll settles
   // ─────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!isActive || view !== 'week') return;
 
-    let ticking = false;
+    let scrollTimeout: ReturnType<typeof setTimeout>;
     
-    const handleScroll = () => {
-      if (ticking) return;
-      ticking = true;
+    const getScrollBounds = () => {
+      const tableContainer = weekScrollRef.current?.closest('.rounded-xl');
+      if (!tableContainer) return null;
       
-      requestAnimationFrame(() => {
-        // Find the table container
-        const tableContainer = weekScrollRef.current?.closest('.rounded-xl');
-        if (!tableContainer) {
-          ticking = false;
-          return;
-        }
-        
-        const headerOffset = 230;
-        const tableTop = (tableContainer as HTMLElement).offsetTop;
-        const minScroll = Math.max(0, tableTop - headerOffset);
-        const maxScroll = minScroll + 50; // Allow small range, prevent scrolling table off screen
-        
-        // Clamp scroll position
-        if (window.scrollY < minScroll) {
-          window.scrollTo({ top: minScroll, behavior: 'auto' });
-        } else if (window.scrollY > maxScroll) {
-          window.scrollTo({ top: maxScroll, behavior: 'auto' });
-        }
-        
-        ticking = false;
-      });
+      const headerOffset = 230;
+      const tableTop = (tableContainer as HTMLElement).offsetTop;
+      const minScroll = Math.max(0, tableTop - headerOffset);
+      const maxScroll = minScroll + 50;
+      return { minScroll, maxScroll };
+    };
+    
+    const correctScroll = () => {
+      const bounds = getScrollBounds();
+      if (!bounds) return;
+      
+      if (window.scrollY < bounds.minScroll) {
+        window.scrollTo(0, bounds.minScroll);
+      } else if (window.scrollY > bounds.maxScroll) {
+        window.scrollTo(0, bounds.maxScroll);
+      }
+    };
+    
+    const handleScrollEnd = () => {
+      clearTimeout(scrollTimeout);
+      scrollTimeout = setTimeout(correctScroll, 50);
     };
     
     // Initial scroll to correct position
     setTimeout(() => {
-      const tableContainer = weekScrollRef.current?.closest('.rounded-xl');
-      if (tableContainer) {
-        const headerOffset = 230;
-        const tableTop = (tableContainer as HTMLElement).offsetTop;
-        const targetScroll = Math.max(0, tableTop - headerOffset);
-        window.scrollTo({ top: targetScroll, behavior: 'auto' });
+      const bounds = getScrollBounds();
+      if (bounds) {
+        window.scrollTo(0, bounds.minScroll);
       }
     }, 0);
     
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
+    window.addEventListener('scroll', handleScrollEnd, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', handleScrollEnd);
+      clearTimeout(scrollTimeout);
+    };
   }, [isActive, view]);
 
   // ─────────────────────────────────────────────────────────────────
-  // DISABLE OVERSCROLL BOUNCE - Prevent touchmove at boundary (iOS Safari)
+  // DISABLE OVERSCROLL BOUNCE - Touch prevention for both views (iOS Safari)
   // ─────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!isActive) return;
@@ -966,14 +998,6 @@ const Meals: React.FC<MealsProps> = ({
     html.style.overscrollBehavior = 'none';
     body.style.overscrollBehavior = 'none';
 
-    // Touch event prevention only needed for day view (has scroll clamping)
-    if (view !== 'day') {
-      return () => {
-        html.style.overscrollBehavior = '';
-        body.style.overscrollBehavior = '';
-      };
-    }
-
     let startY = 0;
     
     const handleTouchStart = (e: TouchEvent) => {
@@ -981,26 +1005,44 @@ const Meals: React.FC<MealsProps> = ({
     };
     
     const handleTouchMove = (e: TouchEvent) => {
-      const firstDayStr = formatDateStr(weekDays[0]);
-      const firstDayEl = document.getElementById(`day-${firstDayStr}`);
-      if (!firstDayEl) return;
-      
-      const headerOffset = 230;
-      const minScrollTop = firstDayEl.offsetTop - headerOffset;
-      
       const y = e.touches[0].pageY;
       const isScrollingUp = y > startY; // Finger moving down = trying to scroll content up
+      const isScrollingDown = y < startY; // Finger moving up = trying to scroll content down
       
-      // If at minimum scroll position and trying to scroll up further, block it
-      if (window.scrollY <= minScrollTop + 5 && isScrollingUp) {
-        e.preventDefault();
+      if (view === 'day') {
+        // Day view: prevent scrolling above first card
+        const firstDayStr = formatDateStr(weekDays[0]);
+        const firstDayEl = document.getElementById(`day-${firstDayStr}`);
+        if (!firstDayEl) return;
+        
+        const headerOffset = 230;
+        const minScrollTop = firstDayEl.offsetTop - headerOffset;
+        
+        if (window.scrollY <= minScrollTop + 5 && isScrollingUp) {
+          e.preventDefault();
+        }
+      } else if (view === 'week') {
+        // Table view: prevent scrolling above/below table bounds
+        const tableContainer = weekScrollRef.current?.closest('.rounded-xl');
+        if (!tableContainer) return;
+        
+        const headerOffset = 230;
+        const tableTop = (tableContainer as HTMLElement).offsetTop;
+        const minScroll = Math.max(0, tableTop - headerOffset);
+        const maxScroll = minScroll + 50;
+        
+        if (window.scrollY <= minScroll + 5 && isScrollingUp) {
+          e.preventDefault();
+        } else if (window.scrollY >= maxScroll - 5 && isScrollingDown) {
+          e.preventDefault();
+        }
       }
     };
     
     document.addEventListener('touchstart', handleTouchStart, { passive: true });
     document.addEventListener('touchmove', handleTouchMove, { passive: false });
 
-      return () => {
+    return () => {
       html.style.overscrollBehavior = '';
       body.style.overscrollBehavior = '';
       document.removeEventListener('touchstart', handleTouchStart);

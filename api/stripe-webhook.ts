@@ -355,21 +355,16 @@ async function handleWebhookRequest(req: any, res: any) {
       const period = session.metadata?.period;
       const hid = session.metadata?.household_id;
 
-      logger.log(`✅ checkout.session.completed event received`);
-      logger.log(`📋 Session details:`, {
-        session_id: session.id,
-        customer: session.customer,
-        subscription: session.subscription,
-        metadata: session.metadata,
-        household_id: hid,
-        plan: plan,
-        period: period,
-      });
+      // IMPORTANT: Using console.log for production visibility
+      console.log(`✅ [WEBHOOK] checkout.session.completed event received`);
+      console.log(`📋 [WEBHOOK] Session metadata:`, JSON.stringify(session.metadata));
 
       // Handle referral code tracking
       const referralCode = session.metadata?.referral_code;
       const agencyId = session.metadata?.agency_id;
       const referralCodeId = session.metadata?.referral_code_id;
+      
+      console.log(`📋 [WEBHOOK] Extracted values - hid: ${hid}, plan: ${plan}, referralCode: "${referralCode}", agencyId: "${agencyId}", referralCodeId: "${referralCodeId}"`);
 
       // Validate required fields before proceeding
       if (!hid) {
@@ -480,24 +475,27 @@ async function handleWebhookRequest(req: any, res: any) {
       }
 
       // Handle referral code tracking
-      logger.log(`🎁 Referral code tracking check:`, {
+      // IMPORTANT: Using console.log directly to ensure visibility in production logs
+      console.log(`🎁 [REFERRAL] Tracking check:`, JSON.stringify({
         referralCode,
         referralCodeId,
         agencyId,
         hid,
         hasReferralCode: !!referralCode,
+        referralCodeType: typeof referralCode,
         referralCodeLength: referralCode?.length,
-      });
+        fullMetadata: session.metadata,
+      }));
 
       if (referralCode && hid) {
-        logger.log(`🎁 Processing referral code: ${referralCode} for household: ${hid}`);
+        console.log(`🎁 [REFERRAL] Processing referral code: ${referralCode} for household: ${hid}`);
 
         // Calculate trial end date
         const trialEnd = session.subscription && typeof session.subscription === 'object' && session.subscription.trial_end
           ? new Date((session.subscription.trial_end as number) * 1000).toISOString()
           : null;
 
-        logger.log(`🎁 Trial end date calculated:`, { trialEnd });
+        console.log(`🎁 [REFERRAL] Trial end date calculated:`, { trialEnd });
 
         // Update household with referral info
         const { error: householdUpdateError } = await supabase.from('households').update({
@@ -508,9 +506,9 @@ async function handleWebhookRequest(req: any, res: any) {
         }).eq('id', hid);
 
         if (householdUpdateError) {
-          logger.error(`❌ Error updating household with referral info:`, householdUpdateError);
+          console.error(`❌ [REFERRAL] Error updating household with referral info:`, householdUpdateError);
         } else {
-          logger.log(`✅ Household ${hid} updated with referral info`);
+          console.log(`✅ [REFERRAL] Household ${hid} updated with referral info`);
         }
 
         // Record referral usage
@@ -524,7 +522,7 @@ async function handleWebhookRequest(req: any, res: any) {
           subscription_plan: plan,
         };
 
-        logger.log(`🎁 Inserting referral_usage record:`, referralUsageData);
+        console.log(`🎁 [REFERRAL] Inserting referral_usage record:`, JSON.stringify(referralUsageData));
 
         const { data: insertData, error: insertError } = await supabase
           .from('referral_usage')
@@ -532,28 +530,28 @@ async function handleWebhookRequest(req: any, res: any) {
           .select();
 
         if (insertError) {
-          logger.error(`❌ Error inserting referral_usage:`, {
+          console.error(`❌ [REFERRAL] Error inserting referral_usage:`, JSON.stringify({
             error: insertError,
             code: insertError.code,
             message: insertError.message,
             details: insertError.details,
             hint: insertError.hint,
-          });
+          }));
         } else {
-          logger.log(`✅ Referral usage recorded successfully:`, insertData);
+          console.log(`✅ [REFERRAL] Referral usage recorded successfully:`, JSON.stringify(insertData));
         }
 
         // Increment usage count on referral code
         if (referralCodeId) {
           const { error: rpcError } = await supabase.rpc('increment_referral_usage', { code_id: referralCodeId });
           if (rpcError) {
-            logger.error(`❌ Error incrementing referral usage count:`, rpcError);
+            console.error(`❌ [REFERRAL] Error incrementing referral usage count:`, rpcError);
           } else {
-            logger.log(`✅ Referral code usage count incremented for: ${referralCodeId}`);
+            console.log(`✅ [REFERRAL] Referral code usage count incremented for: ${referralCodeId}`);
           }
         }
       } else {
-        logger.log(`ℹ️ No referral code to process (referralCode: "${referralCode}", hid: "${hid}")`);
+        console.log(`ℹ️ [REFERRAL] No referral code to process - referralCode: "${referralCode}", hid: "${hid}"`);
       }
       break;
     }

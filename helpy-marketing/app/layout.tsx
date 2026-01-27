@@ -1,6 +1,6 @@
 import "./globals.css";
 import { ReactNode } from "react";
-import Script from "next/script";
+import { GoogleAnalytics } from "@next/third-parties/google";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { LanguageProvider } from "@/contexts/LanguageContext";
@@ -24,21 +24,6 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
-      <head>
-        {/* Google tag (gtag.js) - using beforeInteractive to inject in head */}
-        <Script
-          src="https://www.googletagmanager.com/gtag/js?id=G-MQ53SNR4QZ"
-          strategy="beforeInteractive"
-        />
-        <Script id="google-analytics" strategy="beforeInteractive">
-          {`
-            window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
-            gtag('js', new Date());
-            gtag('config', 'G-MQ53SNR4QZ');
-          `}
-        </Script>
-      </head>
       <body className="flex min-h-screen flex-col bg-background text-foreground">
         <LanguageProvider>
           <MetadataUpdater />
@@ -46,6 +31,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <main className="flex-1">{children}</main>
           <Footer />
         </LanguageProvider>
+        <GoogleAnalytics gaId="G-MQ53SNR4QZ" />
       </body>
     </html>
   );

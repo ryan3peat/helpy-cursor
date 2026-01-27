@@ -223,8 +223,8 @@ const FamilyCardWithGlow: React.FC<{
         <div className="p-4 flex-1 flex flex-col">
           {/* Name + Pending Status - Same row */}
           <div className="flex items-center justify-between mt-1">
-            <h3 className="text-title font-bold text-foreground truncate">
-              {user.name.split(' ')[0]} {isCurrent ? `(${t['common.you'] || 'You'})` : ''}
+            <h3 className={`text-title font-bold truncate ${isCurrent ? 'text-primary' : 'text-foreground'}`}>
+              {user.name.split(' ')[0]}
             </h3>
             {user.status === 'pending' && (
               <span className="text-body font-medium text-muted-foreground flex-shrink-0 ml-2">
@@ -1054,7 +1054,7 @@ Give it a try:`;
         <Icon size={20} className={colorClass} />
       </div>
       <div className="mt-auto">
-        <span className="text-display text-foreground block mb-1">
+        <span className="text-display text-primary block mb-1">
           {count}
         </span>
         <div>
@@ -1576,7 +1576,7 @@ Give it a try:`;
         <div className="flex gap-4 pr-10 items-center">
           {/* Left side - Big number */}
           <div className="flex-shrink-0 flex flex-col items-center justify-center text-center" style={{ width: '25%' }}>
-            <span className="text-display text-foreground block mb-1">
+            <span className="text-display text-primary block mb-1">
               {shoppingCount}
             </span>
             <span className="text-title text-foreground block leading-tight">{t['dashboard.items'] || 'Items'}</span>

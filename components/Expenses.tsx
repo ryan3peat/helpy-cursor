@@ -1419,7 +1419,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                         
                         {/* Info - 3 Lines */}
                         <div className="flex-1 min-w-0">
-                          <p className="text-title text-foreground truncate">
+                          <p className="text-body font-bold text-foreground truncate">
                             <TranslatedMerchantName expense={expense} currentLang={currentLang} onUpdate={onUpdate} />
                           </p>
                           <p className="text-caption text-muted-foreground">{getCategoryLabel(expense.category)}</p>

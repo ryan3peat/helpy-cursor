@@ -1780,7 +1780,7 @@ const Family: React.FC<FamilyProps> = ({
                                   {isSelected && <Check size={14} className="text-primary-foreground" strokeWidth={3} />}
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <p className="text-body font-semibold text-foreground">{t[`practice.preset.${preset.id}.name`] || preset.name}</p>
+                                  <p className="text-body font-medium text-foreground">{t[`practice.preset.${preset.id}.name`] || preset.name}</p>
                                   <p className="text-caption text-muted-foreground mt-1">{t[`practice.preset.${preset.id}.note`] || preset.note}</p>
                                 </div>
                               </div>

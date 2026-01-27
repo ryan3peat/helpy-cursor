@@ -83,6 +83,7 @@ const AppContent: React.FC = () => {
   const { setStaticTranslating, isAnyTranslating } = useTranslationContext();
   const isSupabaseReady = useSupabaseReady(); // Wait for authenticated Supabase client
   const tokenRefreshCount = useTokenRefreshCount(); // Triggers data refetch when token is refreshed
+  const [pushDataRefreshTrigger, setPushDataRefreshTrigger] = useState(0); // Triggers data refetch when push notification received
   
   // Demo mode for marketing screenshots
   const { 
@@ -455,10 +456,20 @@ const AppContent: React.FC = () => {
     }
   };
 
-  // Listen for service worker NAVIGATE messages (from notification clicks)
-  // This allows in-app navigation without full page reload, preventing Clerk auth flash
+  // Listen for service worker messages (NAVIGATE for notification clicks, DATA_CHANGED for push updates)
+  // NAVIGATE: Allows in-app navigation without full page reload, preventing Clerk auth flash
+  // DATA_CHANGED: Safety net when realtime websocket misses updates - triggers data refetch
   useEffect(() => {
     const handleServiceWorkerMessage = (event: MessageEvent) => {
+      // Handle DATA_CHANGED: Push notification received, trigger data refetch
+      if (event.data?.type === 'DATA_CHANGED') {
+        logger.log('[App] 📢 Received DATA_CHANGED from service worker:', event.data.dataType);
+        // Increment trigger to cause subscription re-run
+        setPushDataRefreshTrigger(prev => prev + 1);
+        return;
+      }
+      
+      // Handle NAVIGATE: Notification clicked, navigate in-app
       if (event.data?.type === 'NAVIGATE' && event.data?.url) {
         const url = event.data.url as string;
         logger.log('[App] Received NAVIGATE message from service worker:', url);
@@ -1055,7 +1066,9 @@ const AppContent: React.FC = () => {
       logger.log('[App] ⏳ Waiting for authenticated Supabase client...');
       return;
     }
-    if (tokenRefreshCount > 0) {
+    if (pushDataRefreshTrigger > 0) {
+      logger.log(`[App] 📢 Push notification received (trigger: ${pushDataRefreshTrigger}) - re-subscribing for fresh data`);
+    } else if (tokenRefreshCount > 0) {
       logger.log(`[App] 🔄 Token refreshed (count: ${tokenRefreshCount}) - re-subscribing for fresh data`);
     } else {
       logger.log('[App] ✅ Supabase ready, setting up subscriptions');
@@ -1218,7 +1231,9 @@ const AppContent: React.FC = () => {
     // tokenRefreshCount: When token is proactively refreshed (e.g., on app visibility change),
     // re-run subscriptions to ensure data is fetched with the fresh token.
     // This fixes the "helper can't see data" issue where stale tokens cause empty reads.
-  }, [currentUser?.householdId, isSupabaseReady, tokenRefreshCount]);
+    // pushDataRefreshTrigger: When a push notification is received, re-run subscriptions.
+    // This is a safety net in case realtime websocket missed the update.
+  }, [currentUser?.householdId, isSupabaseReady, tokenRefreshCount, pushDataRefreshTrigger]);
 
   // Sync currentUser with users array when user data changes (e.g., role updates)
   // This ensures role changes take effect immediately without requiring logout/login

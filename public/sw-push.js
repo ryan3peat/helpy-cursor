@@ -353,6 +353,26 @@ self.addEventListener('push', (event) => {
       
       // Increment app badge count
       await incrementBadge();
+      
+      // NOTIFY APP: Send DATA_CHANGED message to any open app windows
+      // This triggers a data refetch in case the realtime subscription missed the update
+      // (realtime websockets can silently disconnect/stale)
+      try {
+        const windowClients = await clients.matchAll({ type: 'window', includeUncontrolled: true });
+        console.log('[SW] 📢 Notifying', windowClients.length, 'app window(s) of data change...');
+        for (const client of windowClients) {
+          if (client.url.startsWith(APP_BASE_URL)) {
+            client.postMessage({
+              type: 'DATA_CHANGED',
+              dataType: data.type, // 'todo_item', 'meal', 'expense', etc.
+              timestamp: Date.now()
+            });
+            console.log('[SW] ✅ Sent DATA_CHANGED to:', client.url);
+          }
+        }
+      } catch (msgError) {
+        console.log('[SW] Could not notify app windows:', msgError.message);
+      }
     } catch (error) {
       console.error('[SW] ❌ Failed to show notification:', {
         error: error.message || String(error),

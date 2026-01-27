@@ -423,7 +423,7 @@ const SuggestionCard: React.FC<{
         {activeSection === 'shopping' ? (
           <>
             {/* Shopping: Line 1 - Name */}
-            <p className="text-body text-foreground font-semibold truncate">
+            <p className="text-body text-foreground font-medium truncate">
               {translatedName}
             </p>
             {/* Shopping: Line 2 - Brand */}
@@ -439,7 +439,7 @@ const SuggestionCard: React.FC<{
           <>
             {/* Tasks: Lines 1-2 - Name (2-line clamp) */}
             <p 
-              className="text-body text-foreground font-semibold leading-tight"
+              className="text-body text-foreground font-medium leading-tight"
               style={{ 
                 display: '-webkit-box',
                 WebkitLineClamp: 2,

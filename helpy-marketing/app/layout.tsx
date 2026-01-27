@@ -1,6 +1,6 @@
 import "./globals.css";
 import { ReactNode } from "react";
-import { GoogleAnalytics } from "@next/third-parties/google";
+import Script from "next/script";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { LanguageProvider } from "@/contexts/LanguageContext";
@@ -24,6 +24,20 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
+      <head>
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-MQ53SNR4QZ"
+          strategy="afterInteractive"
+        />
+        <Script id="gtag-init" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-MQ53SNR4QZ');
+          `}
+        </Script>
+      </head>
       <body className="flex min-h-screen flex-col bg-background text-foreground">
         <LanguageProvider>
           <MetadataUpdater />
@@ -31,7 +45,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <main className="flex-1">{children}</main>
           <Footer />
         </LanguageProvider>
-        <GoogleAnalytics gaId="G-MQ53SNR4QZ" />
       </body>
     </html>
   );

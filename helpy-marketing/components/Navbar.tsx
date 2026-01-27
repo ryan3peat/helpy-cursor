@@ -60,7 +60,7 @@ export const Navbar = () => {
       <nav className="mx-auto flex max-w-6xl items-center justify-between py-3">
         <Link href="/home" className="flex items-center gap-2">
           <Image
-            src="/helpy-logo-text.PNG"
+            src="/helpy-logo-text.png"
             alt="helpy"
             width={75}
             height={36}

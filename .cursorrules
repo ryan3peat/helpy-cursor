@@ -65,23 +65,28 @@ import { createPortal } from 'react-dom';
 
 ### Meals Page - LOCKED PATTERN (DO NOT MODIFY)
 
-**The Meals page uses container-based scrolling. DO NOT CHANGE.**
+**The Meals page uses fixed headers + container scrolling. DO NOT CHANGE.**
 
-#### Container-Based Scroll (Meals.tsx)
+#### Fixed Headers (Meals.tsx)
+- Header: `position: fixed; top: 0` with `paddingTop: env(safe-area-inset-top)`
+- Week nav: `position: fixed` with `top: calc(env(safe-area-inset-top) + 120px)`
+- Both have `touchAction: 'none'` to prevent scroll on touch
+- Shadow on week nav controlled by `isContainerScrolled` state
+
+**Why Fixed Instead of Sticky:**
+- `position: fixed` is relative to the **viewport**, not scroll container
+- Immune to iOS Safari stacking context and layout bugs
+- Never moves regardless of scroll position or touch behavior
+
+**DO NOT** change headers to sticky positioning.
+
+#### Content Area (Meals.tsx)
+- Has `paddingTop: calc(env(safe-area-inset-top) + 208px)` for fixed headers
 - Outer container: `h-screen bg-background overflow-hidden` (locked to viewport)
-- Cards container: `overflow-y-auto scrollbar-hide` with calculated height
-- All scrolling happens INSIDE the cards container only
-- No page-level scroll, no dual-scroll confusion
-- Footer (`helpy-footer`) is INSIDE the cards container
+- Day view: `overflow-y-auto` with `touchAction: 'pan-y'` (vertical only)
+- Week view: `overflow-auto` with `touchAction: 'pan-x pan-y'` (both directions)
 
 **DO NOT** change the outer container from `h-screen overflow-hidden`.
-
-#### Header Structure (Meals.tsx)
-- Standard sticky header matching ToDo (120px, `boxShadow` for bleed-through)
-- Week nav has shadow controlled by `isContainerScrolled` state
-- **NO overlays** - uses real elements directly
-
-**DO NOT** add overlay patterns or opacity-0 elements.
 
 #### Always-Mounted Pattern (App.tsx)
 - Meals is rendered OUTSIDE Layout's keyed container

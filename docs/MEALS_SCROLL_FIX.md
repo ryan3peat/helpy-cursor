@@ -1,8 +1,8 @@
-# Meals Page - Container-Based Scroll Implementation
+# Meals Page - Fixed Header + Container Scroll Implementation
 
 ## ⚠️ CRITICAL - DO NOT MODIFY THIS PATTERN
 
-**Status: Clean, flicker-free implementation using contained scrolling.**
+**Status: Clean, iOS-stable implementation using fixed headers and contained scrolling.**
 
 This solution is **permanent** and **must not be changed, removed, or overwritten**.
 All agents must treat this as a locked pattern.
@@ -11,13 +11,13 @@ All agents must treat this as a locked pattern.
 
 ## Overview
 
-The Meals page uses a **container-based scroll** approach:
-- The outer page is **locked to viewport** (`h-screen overflow-hidden`)
-- All scrolling happens inside the **cards container** only
-- No page-level scroll, no dual-scroll confusion
-- Shadow appears under week nav when cards are scrolled
+The Meals page uses a **fixed header + container scroll** approach:
+- **Fixed headers** positioned relative to viewport (immune to iOS layout bugs)
+- **Content area** has padding to account for fixed headers
+- **Scrolling happens inside** the content containers only
+- Shadow appears under week nav when content is scrolled
 
-This is **much simpler** than the previous overlay-based approach.
+This approach is more stable than sticky positioning on iOS Safari.
 
 ---
 
@@ -25,7 +25,7 @@ This is **much simpler** than the previous overlay-based approach.
 
 | File | What's Protected |
 |------|------------------|
-| `components/Meals.tsx` | Container scroll, header structure, isActive prop |
+| `components/Meals.tsx` | Fixed headers, container scroll, isActive prop |
 | `components/Layout.tsx` | Fragment pattern for null children |
 | `App.tsx` | Meals always-mounted pattern, isActive prop |
 
@@ -43,82 +43,138 @@ This is **much simpler** than the previous overlay-based approach.
 - `overflow-hidden` - No page scroll
 - This prevents confusing dual-scroll behavior
 
-### 2. Header - Standard Sticky (No Overlays!)
+### 2. Fixed Header - Viewport-Relative (NOT Sticky!)
 
 ```tsx
 <header 
-  className="sticky top-0 z-20 bg-background ..."
+  className="fixed top-0 left-0 right-0 z-30 bg-background"
   style={{ 
-    height: '120px', 
-    boxShadow: '0 10px 0 0 hsl(var(--background))' 
+    paddingTop: 'env(safe-area-inset-top)',
+    touchAction: 'none',
   }}
 >
+  <div 
+    className="max-w-2xl mx-auto px-4 sm:px-6 pb-3 flex items-end" 
+    style={{ 
+      height: '120px', 
+      boxShadow: '0 10px 0 0 hsl(var(--background))' 
+    }}
+  >
+    {/* Title and action buttons */}
+  </div>
+</header>
 ```
 
-- **No fixed overlays** - real elements are visible
-- **No opacity-0** - removed the overlay pattern
-- Same structure as ToDo header
-- `boxShadow` prevents content bleed-through
+**Why Fixed Instead of Sticky:**
+- `position: fixed` is relative to the **viewport**, not the scroll container
+- Immune to iOS Safari stacking context and layout bugs
+- Never moves regardless of scroll position or touch behavior
+- `touchAction: 'none'` prevents touch-triggered scroll on header area
 
-### 3. Week Navigation - Shadow on Container Scroll
+### 3. Fixed Week Navigation - Below Fixed Header
 
 ```tsx
 <div 
-  className="sticky z-20 bg-background ... transition-shadow duration-200"
+  ref={weekNavOverlayRef}
+  className="fixed left-0 right-0 z-20 bg-background transition-shadow duration-200"
   style={{ 
-    top: '120px',
-    boxShadow: isContainerScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none'
+    top: 'calc(env(safe-area-inset-top) + 120px)',
+    boxShadow: isContainerScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none',
+    touchAction: 'none',
   }}
 >
-```
-
-- Shadow controlled by `isContainerScrolled` state
-- Tracks scroll of the cards container, not window
-
-### 4. Cards Container - Self-Contained Scroll
-
-```tsx
-<div
-  ref={dayViewRef}
-  className="overflow-y-auto scrollbar-hide"
-  style={{
-    height: 'calc(100vh - 210px - var(--meals-bottom-nav-h, 64px) - env(safe-area-inset-bottom, 0px))',
-    overscrollBehavior: 'contain',
-    WebkitOverflowScrolling: 'touch',
-  }}
->
-  <div className="space-y-4 pb-6">
-    {/* Day cards */}
-    
-    {/* Footer inside scroll container */}
-    <div className="helpy-footer">
-      <span className="helpy-logo">helpy</span>
-    </div>
+  <div className="max-w-2xl mx-auto px-4 sm:px-6 py-5">
+    {/* Week selector and Today button */}
   </div>
 </div>
 ```
 
-- Container has **calculated height** to fill remaining space
-- `scrollbar-hide` - Hidden scrollbar, scroll still works
-- `overscrollBehavior: 'contain'` - No overscroll beyond container
-- **Footer inside container** - Visible when scrolled to bottom
+- Positioned directly below header using `top: calc(env(safe-area-inset-top) + 120px)`
+- Shadow controlled by `isContainerScrolled` state
+- `touchAction: 'none'` prevents scroll on touch
 
-### 5. Scroll-to-Today Logic
+### 4. Content Area - Padding for Fixed Headers
+
+```tsx
+<div 
+  className="max-w-2xl mx-auto px-4 sm:px-6 h-full flex flex-col"
+  style={{ 
+    paddingTop: 'calc(env(safe-area-inset-top) + 208px)',  /* 120px header + 88px week nav */
+    touchAction: 'none',
+  }}
+>
+  {/* Error banner and main content */}
+</div>
+```
+
+- `paddingTop` creates space for the fixed headers
+- Uses `calc()` to handle safe area + header heights
+- Content flows naturally below the fixed elements
+
+### 5. Day View - Scrollable Container
+
+```tsx
+<div
+  ref={dayViewRef}
+  className="flex-1 min-h-0 overflow-y-auto scrollbar-hide"
+  style={{
+    overscrollBehavior: 'contain',
+    WebkitOverflowScrolling: 'touch',
+    touchAction: 'pan-y',
+  }}
+>
+  <div className="space-y-4 pb-40 px-1">
+    {/* Day cards */}
+  </div>
+</div>
+```
+
+- `flex-1 min-h-0` - Fills remaining space, allows shrinking
+- `overflow-y-auto` - Vertical scroll only
+- `overscrollBehavior: 'contain'` - No overscroll beyond container
+- `touchAction: 'pan-y'` - Only vertical scroll gestures
+
+### 6. Week View (Table) - Bidirectional Scroll
+
+```tsx
+<div
+  ref={weekScrollRef}
+  className="flex-1 min-h-0 overflow-auto scrollbar-hide"
+  style={{
+    overscrollBehavior: 'none',
+    WebkitOverflowScrolling: 'touch',
+    touchAction: 'pan-x pan-y',
+  }}
+>
+  <table style={{ minHeight: 'calc(100vh - 200px)' }}>
+    {/* Table with sticky thead and sticky first column */}
+  </table>
+</div>
+```
+
+- `overflow-auto` - Both horizontal and vertical scroll
+- `overscrollBehavior: 'none'` - No bounce effect
+- `touchAction: 'pan-x pan-y'` - Allow both scroll directions
+- Table has `minHeight` to ensure enough scrollable area
+
+### 7. Scroll-to-Today Logic
 
 ```tsx
 // Uses getBoundingClientRect for accurate positioning
 const containerTop = scrollContainer.getBoundingClientRect().top;
 const elementTop = targetEl.getBoundingClientRect().top;
 const currentScroll = scrollContainer.scrollTop;
-const scrollToPosition = currentScroll + (elementTop - containerTop);
-scrollContainer.scrollTo({ top: scrollToPosition, behavior: 'auto' });
+const topOffset = 12; // Small gap between today card and container top
+const scrollToPosition = currentScroll + (elementTop - containerTop) - topOffset;
+scrollContainer.scrollTo({ top: Math.max(0, scrollToPosition), behavior: 'auto' });
 ```
 
 - Multiple timed attempts [0, 50, 150]ms for reliability
 - `hasInitiallyScrolled` ref prevents duplicate scrolls
 - Resets when `isActive` becomes false
+- Uses container refs (not window) for both day and week views
 
-### 6. Container Scroll Tracking
+### 8. Container Scroll Tracking
 
 ```tsx
 useEffect(() => {
@@ -158,22 +214,19 @@ return (
 );
 ```
 
-This prevents an empty 80px div from appearing above Meals when scrolling.
+This prevents an empty div from appearing above Meals.
 
 ---
 
-## What Was Removed (No Longer Needed)
+## Z-Index Hierarchy
 
-| Old Pattern | Why Removed |
-|-------------|-------------|
-| Fixed background shield (z-[19]) | Container scroll eliminates flicker |
-| Fixed title overlay (z-[21]) | No longer needed |
-| Fixed week-nav overlay (z-[21]) | No longer needed |
-| `opacity-0` on real elements | No longer needed |
-| `.header-title-stable` CSS class | No longer needed |
-| `.header-sticky-stable` CSS class | No longer needed |
-| Window scroll clamp | Container handles boundaries |
-| TouchMove preventDefault | Container handles overscroll |
+| Element | Z-Index | Position |
+|---------|---------|----------|
+| Fixed Header | `z-30` | `fixed top-0` |
+| Fixed Week Nav | `z-20` | `fixed` below header |
+| Table thead | `z-10` | `sticky top-0` within table |
+| Table corner cell | `z-[15]` | `sticky left-0` |
+| Table date cells | `z-[5]` | `sticky left-0` |
 
 ---
 
@@ -181,11 +234,13 @@ This prevents an empty 80px div from appearing above Meals when scrolling.
 
 | Rule | Why |
 |------|-----|
+| **Keep headers as `position: fixed`** | Immune to iOS layout bugs |
+| **Keep `touchAction: 'none'` on header areas** | Prevents scroll on header touch |
+| **Keep content `paddingTop` calc** | Creates space for fixed headers |
 | **Keep outer container `h-screen overflow-hidden`** | Prevents page scroll |
-| **Keep cards container with calculated height** | Proper scroll boundaries |
-| **Keep `scrollbar-hide` on cards container** | Clean mobile appearance |
-| **Keep `overscrollBehavior: contain`** | Prevents rubber band effect |
-| **Keep footer inside cards container** | Visible on scroll to bottom |
+| **Keep day view `touchAction: 'pan-y'`** | Vertical scroll only |
+| **Keep week view `touchAction: 'pan-x pan-y'`** | Both scroll directions |
+| **Keep `overscrollBehavior: none/contain`** | Prevents rubber band effect |
 | **Keep Meals always-mounted in App.tsx** | Preserves state |
 | **Keep isActive prop flow** | Controls when scroll runs |
 | **Keep Layout fragment pattern** | Prevents empty div above Meals |
@@ -194,17 +249,18 @@ This prevents an empty 80px div from appearing above Meals when scrolling.
 
 ## Testing Checklist
 
-- [ ] Land on Meals from any page - today's card visible immediately
-- [ ] Scroll cards - shadow appears under week nav
-- [ ] Scroll to bottom - helpy footer visible
-- [ ] No scrollbar visible on mobile
+- [ ] Header stays completely fixed while scrolling content
+- [ ] Touching header area does NOT scroll content
+- [ ] Day view scrolls vertically only
+- [ ] Week view scrolls both horizontally and vertically
+- [ ] Shadow appears under week nav when scrolled
+- [ ] Today card/row scrolls into view on page load
 - [ ] No overscroll/rubber band effect
-- [ ] Header area cannot be scrolled (no empty space above)
+- [ ] Works on iOS Safari (the target platform)
 - [ ] Navigate away and back - same behavior
 - [ ] Switch Day/Week view - works correctly
-- [ ] Dark mode - all elements correct
 
 ---
 
 *Last updated: January 2026*
-*Container-based scroll pattern - LOCKED*
+*Fixed header + container scroll pattern - LOCKED*

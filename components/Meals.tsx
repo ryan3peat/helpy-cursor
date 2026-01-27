@@ -1269,21 +1269,19 @@ const Meals: React.FC<MealsProps> = ({
               
               {/* Header Actions */}
               <div className="flex items-center gap-2 shrink-0">
-                {/* Export PDF Button - Only visible in table view */}
-                {view === 'week' && (
-                  <button
-                    onClick={handleExportPDF}
-                    disabled={exportingPdf}
-                    className="p-2 rounded-full text-muted-foreground disabled:opacity-50"
-                    aria-label={t['meals.export_pdf'] || 'Export PDF'}
-                  >
-                    {exportingPdf ? (
-                      <Loader2 size={20} className="animate-spin" />
-                    ) : (
-                      <Download size={20} />
-                    )}
-                  </button>
-                )}
+                {/* Export PDF Button - Available in both views */}
+                <button
+                  onClick={handleExportPDF}
+                  disabled={exportingPdf}
+                  className="p-2 rounded-full text-muted-foreground disabled:opacity-50"
+                  aria-label={t['meals.export_pdf'] || 'Export PDF'}
+                >
+                  {exportingPdf ? (
+                    <Loader2 size={20} className="animate-spin" />
+                  ) : (
+                    <Download size={20} />
+                  )}
+                </button>
                 
                 {/* Day/Week Toggle - Simple state change like Family tabs */}
                 <button

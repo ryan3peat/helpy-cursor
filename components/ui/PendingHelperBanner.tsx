@@ -90,12 +90,48 @@ const PendingHelperBanner: React.FC<PendingHelperBannerProps> = ({
       const result = await resendInvite(pendingHelper.id, householdId);
       
       logger.log('[PendingHelperBanner] Invite resent for:', pendingHelper.name);
-      setResendSuccess(true);
       
-      // Notify parent about the invite link if callback provided
-      if (onInviteLinkGenerated && result.inviteLink) {
-        onInviteLinkGenerated(result.inviteLink, pendingHelper.name);
+      if (result.inviteLink) {
+        // Build share message (similar format to Profile.tsx invite sharing)
+        const inviterName = currentUser.name || 'Someone';
+        const inviteeName = pendingHelper.name || '';
+        const greeting = inviteeName ? `${t['profile.invite_hi'] || 'Hi'} ${inviteeName}, ` : '';
+        const signupGuidance = t['profile.invite_signup_guidance'] || 'Signing up is quick:\n- Fastest: Use "Sign Up with Google" (1 click, no verification needed)\n- Or use email: Make sure you have access to the email you use - we\'ll send a 6-digit code to verify. Check your spam/junk folder if you don\'t see it!';
+        const accessApp = t['profile.invite_access_app'] || 'Once you sign up, you can always access the app at: app.helpyfam.com';
+        const shareText = `${greeting}${inviterName} ${t['profile.invite_join_family'] || 'would like you to join the family in the Helpy app!'}\n\n${t['profile.invite_app_description'] || 'Helpy is the home management app connecting families and helpers, organizing meals, tasks, and expenses in one place.'}\n\n${signupGuidance}\n\n${t['profile.invite_click_below'] || 'Click below to join:'}\n\n----------\n\n${accessApp}`;
+        
+        // Use Web Share API if available (mobile devices)
+        if (navigator.share) {
+          try {
+            await navigator.share({
+              title: t['profile.invite_title'] || 'Join Helpy',
+              text: shareText,
+              url: result.inviteLink,
+            });
+            logger.log('[PendingHelperBanner] Share dialog opened for:', pendingHelper.name);
+          } catch (shareError) {
+            // User cancelled share - that's okay, still mark as success
+            if ((shareError as Error).name !== 'AbortError') {
+              logger.error('[PendingHelperBanner] Share failed:', shareError);
+            }
+          }
+        } else {
+          // Fallback: copy to clipboard
+          try {
+            await navigator.clipboard.writeText(result.inviteLink);
+            logger.log('[PendingHelperBanner] Link copied to clipboard for:', pendingHelper.name);
+          } catch {
+            logger.error('[PendingHelperBanner] Clipboard copy failed');
+          }
+        }
+        
+        // Notify parent about the invite link if callback provided
+        if (onInviteLinkGenerated) {
+          onInviteLinkGenerated(result.inviteLink, pendingHelper.name);
+        }
       }
+      
+      setResendSuccess(true);
       
       // Auto-dismiss after success (with delay for user to see success state)
       setTimeout(() => {

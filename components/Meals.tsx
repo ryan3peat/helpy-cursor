@@ -1628,7 +1628,7 @@ const Meals: React.FC<MealsProps> = ({
             ref={weekScrollRef}
             className="flex-1 min-h-0 overflow-auto scrollbar-hide"
             style={{
-              overscrollBehavior: 'contain',
+              overscrollBehavior: 'none',
               WebkitOverflowScrolling: 'touch',
               touchAction: 'pan-x pan-y',
             }}
@@ -1642,6 +1642,7 @@ const Meals: React.FC<MealsProps> = ({
                 marginBottom: '160px',
                 borderRight: '1px solid hsl(var(--border))',
                 borderBottom: '1px solid hsl(var(--border))',
+                minHeight: 'calc(100vh - 200px)',
               }}>
                 {/* Define column minimum widths - 90px for date, 100px for each meal type */}
                 <colgroup>

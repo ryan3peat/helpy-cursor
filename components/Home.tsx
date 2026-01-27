@@ -46,6 +46,7 @@ import {
 } from 'lucide-react';
 import Avatar from './ui/Avatar';
 import ErrorBanner from './ui/ErrorBanner';
+import PendingHelperBanner from './ui/PendingHelperBanner';
 import { ToDoItem, Meal, User, MealType, TranslationDictionary, UserRole, Expense } from '../types';
 import { formatCurrency } from '../currencyConfig';
 import { useScrollHeader } from '../hooks/useScrollHeader';
@@ -1172,6 +1173,19 @@ Give it a try:`;
         error={error} 
         onDismiss={() => setError(null)} 
         title={t['common.error'] || 'Error'}
+      />
+
+      {/* Pending Helper Banner - Shows when helpers haven't activated their account */}
+      <PendingHelperBanner
+        users={users}
+        currentUser={currentUser}
+        householdId={currentUser.householdId}
+        t={t}
+        onInviteLinkGenerated={(link, helperName) => {
+          // Show success and copy link to clipboard
+          navigator.clipboard?.writeText(link).catch(() => {});
+          logger.log(`[Home] Invite link for ${helperName} generated:`, link);
+        }}
       />
 
       {/* Family Notes */}

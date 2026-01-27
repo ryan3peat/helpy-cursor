@@ -1544,4 +1544,10 @@ Give it a try:`,
   'trial.spending_summary_expired': 'Spending summary trial ended',
   'trial.spending_summary_upgrade_title': 'Trial Ended',
   'trial.spending_summary_upgrade_desc': 'Upgrade to Core or Pro to view monthly spending summaries.',
+
+  // Pending Helper Notification
+  'notification.pending_helper': 'Oh no! It looks like {name} has not activated their account yet. Would you like to resend the invite?',
+  'notification.resend': 'Resend',
+  'notification.resend_success': 'Invite resent successfully!',
+  'notification.resend_error': 'Failed to resend invite. Please try again.',
 };

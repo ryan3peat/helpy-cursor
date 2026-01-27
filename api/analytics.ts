@@ -134,6 +134,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const totalUsers = usersByStatus.active + usersByStatus.pending;
 
     // Fetch Betty promo redemptions with user details
+    logger.log('Fetching Betty redemptions with date range:', {
+      dateFilter,
+      dateStart: dateStart.toISOString(),
+      dateEnd: dateEnd.toISOString(),
+    });
+
     const { data: bettyRedemptions, error: bettyError } = await supabase
       .from('referral_usage')
       .select(`
@@ -155,6 +161,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // Continue without Betty data - don't fail the whole request
     }
 
+    logger.log('Betty redemptions found:', {
+      count: bettyRedemptions?.length || 0,
+      redemptions: bettyRedemptions,
+    });
+
     // Get household IDs for Betty redemptions to fetch user details
     const householdIds = (bettyRedemptions || [])
       .map(r => r.household_id)
@@ -163,15 +174,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Fetch users (account owners) for these households
     let bettyUsersMap: Record<string, { email: string; name: string }> = {};
     if (householdIds.length > 0) {
+      logger.log('Looking up users for household IDs:', householdIds);
+
       const { data: householdUsers, error: usersError } = await supabase
         .from('users')
         .select('household_id, email, name, role')
         .in('household_id', householdIds)
-        .eq('role', 'admin'); // Get the admin (account owner) for each household
+        .in('role', ['Admin', 'SuperAdmin']); // Get the admin (account owner) for each household
 
       if (usersError) {
         logger.error('Betty users query error:', usersError);
       } else if (householdUsers) {
+        logger.log('Found household users:', householdUsers);
         for (const u of householdUsers) {
           if (u.household_id) {
             bettyUsersMap[u.household_id] = {
@@ -181,6 +195,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           }
         }
       }
+    } else {
+      logger.log('No household IDs to look up - redemptions may have null household_id');
     }
 
     // Build Betty redemptions with user details

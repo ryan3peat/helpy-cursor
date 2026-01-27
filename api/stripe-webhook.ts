@@ -480,35 +480,80 @@ async function handleWebhookRequest(req: any, res: any) {
       }
 
       // Handle referral code tracking
+      logger.log(`🎁 Referral code tracking check:`, {
+        referralCode,
+        referralCodeId,
+        agencyId,
+        hid,
+        hasReferralCode: !!referralCode,
+        referralCodeLength: referralCode?.length,
+      });
+
       if (referralCode && hid) {
+        logger.log(`🎁 Processing referral code: ${referralCode} for household: ${hid}`);
+
         // Calculate trial end date
         const trialEnd = session.subscription && typeof session.subscription === 'object' && session.subscription.trial_end
           ? new Date((session.subscription.trial_end as number) * 1000).toISOString()
           : null;
 
+        logger.log(`🎁 Trial end date calculated:`, { trialEnd });
+
         // Update household with referral info
-        await supabase.from('households').update({
+        const { error: householdUpdateError } = await supabase.from('households').update({
           is_trial: !!trialEnd,
           trial_ends_at: trialEnd,
           referral_code_used: referralCode,
           referred_by_agency_id: agencyId || null,
         }).eq('id', hid);
 
+        if (householdUpdateError) {
+          logger.error(`❌ Error updating household with referral info:`, householdUpdateError);
+        } else {
+          logger.log(`✅ Household ${hid} updated with referral info`);
+        }
+
         // Record referral usage
-        await supabase.from('referral_usage').insert({
-          referral_code_id: referralCodeId,
-          agency_id: agencyId,
+        const referralUsageData = {
+          referral_code_id: referralCodeId || null,
+          agency_id: agencyId || null,
           household_id: hid,
           code_used: referralCode,
           trial_started_at: new Date().toISOString(),
           trial_ends_at: trialEnd,
           subscription_plan: plan,
-        });
+        };
+
+        logger.log(`🎁 Inserting referral_usage record:`, referralUsageData);
+
+        const { data: insertData, error: insertError } = await supabase
+          .from('referral_usage')
+          .insert(referralUsageData)
+          .select();
+
+        if (insertError) {
+          logger.error(`❌ Error inserting referral_usage:`, {
+            error: insertError,
+            code: insertError.code,
+            message: insertError.message,
+            details: insertError.details,
+            hint: insertError.hint,
+          });
+        } else {
+          logger.log(`✅ Referral usage recorded successfully:`, insertData);
+        }
 
         // Increment usage count on referral code
         if (referralCodeId) {
-          await supabase.rpc('increment_referral_usage', { code_id: referralCodeId });
+          const { error: rpcError } = await supabase.rpc('increment_referral_usage', { code_id: referralCodeId });
+          if (rpcError) {
+            logger.error(`❌ Error incrementing referral usage count:`, rpcError);
+          } else {
+            logger.log(`✅ Referral code usage count incremented for: ${referralCodeId}`);
+          }
         }
+      } else {
+        logger.log(`ℹ️ No referral code to process (referralCode: "${referralCode}", hid: "${hid}")`);
       }
       break;
     }

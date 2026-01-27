@@ -829,8 +829,8 @@ const Profile: React.FC<ProfileProps> = ({
     await handleSelectPlan(
       pendingPlan.plan,
       pendingPlan.period,
-      undefined,
-      referralCodeValid ? referralCodeInput : undefined
+      referralCodeValid ? referralCodeInput : undefined, // referralCode
+      undefined // skipConfirmation
     );
   };
 

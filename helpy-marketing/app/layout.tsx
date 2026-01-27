@@ -1,6 +1,5 @@
 import "./globals.css";
 import { ReactNode } from "react";
-import Script from "next/script";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { LanguageProvider } from "@/contexts/LanguageContext";
@@ -24,20 +23,21 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
-      <body className="flex min-h-screen flex-col bg-background text-foreground">
+      <head>
         {/* Google tag (gtag.js) */}
-        <Script
-          src="https://www.googletagmanager.com/gtag/js?id=G-MQ53SNR4QZ"
-          strategy="afterInteractive"
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-MQ53SNR4QZ"></script>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.dataLayer = window.dataLayer || [];
+              function gtag(){dataLayer.push(arguments);}
+              gtag('js', new Date());
+              gtag('config', 'G-MQ53SNR4QZ');
+            `,
+          }}
         />
-        <Script id="google-analytics" strategy="afterInteractive">
-          {`
-            window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
-            gtag('js', new Date());
-            gtag('config', 'G-MQ53SNR4QZ');
-          `}
-        </Script>
+      </head>
+      <body className="flex min-h-screen flex-col bg-background text-foreground">
         <LanguageProvider>
           <MetadataUpdater />
           <Navbar />

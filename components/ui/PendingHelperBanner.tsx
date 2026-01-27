@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { AlertCircle, X, Loader2, Check, Send } from 'lucide-react';
 import { resendInvite } from '../../services/inviteService';
 import type { User, TranslationDictionary } from '../../types';
@@ -14,9 +14,6 @@ interface PendingHelperBannerProps {
   onInviteLinkGenerated?: (link: string, helperName: string) => void;
 }
 
-// LocalStorage key for dismissed helpers (per household)
-const getDismissedKey = (householdId: string) => `helpy_dismissed_pending_helpers_${householdId}`;
-
 /**
  * PendingHelperBanner Component
  * 
@@ -26,9 +23,9 @@ const getDismissedKey = (householdId: string) => `helpy_dismissed_pending_helper
  * Features:
  * - Only shows for Admin/SuperAdmin/Spouse roles (who can manage invites)
  * - Shows for each pending helper (one at a time)
- * - "Resend" button regenerates invite link
- * - "Dismiss" button hides the notification (stored in localStorage)
- * - Dismissal is per-helper and resets if the helper is re-invited
+ * - "Resend" button regenerates invite link and opens share dialog
+ * - "Dismiss" button hides the notification for the current session only
+ * - Notification reappears on every login if helper is still pending
  */
 const PendingHelperBanner: React.FC<PendingHelperBannerProps> = ({
   users,
@@ -40,14 +37,8 @@ const PendingHelperBanner: React.FC<PendingHelperBannerProps> = ({
   const [isResending, setIsResending] = useState(false);
   const [resendSuccess, setResendSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [dismissedHelpers, setDismissedHelpers] = useState<Set<string>>(() => {
-    try {
-      const stored = localStorage.getItem(getDismissedKey(householdId));
-      return stored ? new Set(JSON.parse(stored)) : new Set();
-    } catch {
-      return new Set();
-    }
-  });
+  // Session-only dismissal - resets on logout/login so admins keep getting reminded
+  const [dismissedHelpers, setDismissedHelpers] = useState<Set<string>>(new Set());
 
   // Only Admin, SuperAdmin, and Spouse can manage invites
   const canManageInvites = 
@@ -55,7 +46,7 @@ const PendingHelperBanner: React.FC<PendingHelperBannerProps> = ({
     currentUser.role === UserRole.SUPERADMIN || 
     currentUser.role === UserRole.SPOUSE;
 
-  // Find pending helpers that haven't been dismissed
+  // Find pending helpers that haven't been dismissed (in this session)
   const pendingHelpers = users.filter(
     user => 
       user.role === UserRole.HELPER && 
@@ -65,16 +56,6 @@ const PendingHelperBanner: React.FC<PendingHelperBannerProps> = ({
 
   // Get the first pending helper to show (one at a time)
   const pendingHelper = pendingHelpers[0];
-
-  // Persist dismissed helpers to localStorage
-  useEffect(() => {
-    if (dismissedHelpers.size > 0) {
-      localStorage.setItem(
-        getDismissedKey(householdId),
-        JSON.stringify([...dismissedHelpers])
-      );
-    }
-  }, [dismissedHelpers, householdId]);
 
   // Don't render if user can't manage invites or no pending helpers
   if (!canManageInvites || !pendingHelper) {

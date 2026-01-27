@@ -171,8 +171,10 @@ export interface SalarySlipReminderState {
   dismissed: boolean;
   /** Timestamp when dismissed */
   dismissedAt: number;
-  /** Whether user clicked "remind later" (shows on next app open) */
+  /** Whether user clicked "remind later" (shows after 24 hours) */
   remindLater: boolean;
+  /** Timestamp when "remind later" was clicked */
+  remindLaterAt: number;
   /** Whether user already completed the action */
   completed: boolean;
 }
@@ -191,6 +193,7 @@ export function getSalarySlipReminderState(userId: string): SalarySlipReminderSt
       dismissed: false,
       dismissedAt: 0,
       remindLater: false,
+      remindLaterAt: 0,
       completed: false,
     };
   }
@@ -202,6 +205,7 @@ export function getSalarySlipReminderState(userId: string): SalarySlipReminderSt
       dismissed: false,
       dismissedAt: 0,
       remindLater: false,
+      remindLaterAt: 0,
       completed: false,
     };
   }
@@ -225,16 +229,18 @@ export function setSalarySlipReminderState(userId: string, action: SalarySlipRem
         dismissed: false,
         dismissedAt: 0,
         remindLater: false,
+        remindLaterAt: 0,
         completed: true,
       };
       break;
       
     case 'remind_later':
-      // User clicked "Remind me Later" - clear dismissed state so it shows next time
+      // User clicked "Remind me Later" - show again after 24 hours
       state = {
         dismissed: false,
         dismissedAt: 0,
         remindLater: true,
+        remindLaterAt: Date.now(),
         completed: false,
       };
       break;
@@ -245,6 +251,7 @@ export function setSalarySlipReminderState(userId: string, action: SalarySlipRem
         dismissed: true,
         dismissedAt: Date.now(),
         remindLater: false,
+        remindLaterAt: 0,
         completed: false,
       };
       break;

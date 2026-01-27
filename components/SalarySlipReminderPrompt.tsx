@@ -133,8 +133,14 @@ const SalarySlipReminderPrompt: React.FC<SalarySlipReminderPromptProps> = ({
     // 6. Check localStorage state
     const reminderState = getSalarySlipReminderState(currentUser.id);
     
+    // If user clicked "Show me how", don't show again
+    if (reminderState.completed) {
+      logger.log('[SalarySlipReminder] Not showing: user already completed the action');
+      return false;
+    }
+    
+    // If dismissed, check if 7 days have passed
     if (reminderState.dismissed) {
-      // Check if 7 days have passed since dismissal
       const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
       if (Date.now() < reminderState.dismissedAt + sevenDaysMs) {
         logger.log('[SalarySlipReminder] Not showing: dismissed less than 7 days ago');
@@ -142,8 +148,14 @@ const SalarySlipReminderPrompt: React.FC<SalarySlipReminderPromptProps> = ({
       }
     }
 
-    // If "remind later" was selected, we should show it (that's the intended behavior)
-    // If never shown before, show it
+    // If "remind later" was selected, check if 24 hours have passed
+    if (reminderState.remindLater) {
+      const twentyFourHoursMs = 24 * 60 * 60 * 1000;
+      if (Date.now() < reminderState.remindLaterAt + twentyFourHoursMs) {
+        logger.log('[SalarySlipReminder] Not showing: remind later cooldown not passed (24 hours)');
+        return false;
+      }
+    }
     
     logger.log('[SalarySlipReminder] Showing prompt for user:', currentUser.id);
     return true;

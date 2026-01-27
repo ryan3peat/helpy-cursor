@@ -158,3 +158,113 @@ export function clearPromptTracking(userId: string): void {
   logger.log('[PWA] Prompt tracking cleared for user:', userId);
 }
 
+// ============================================================================
+// SALARY SLIP REMINDER TRACKING
+// ============================================================================
+
+const SALARY_REMINDER_KEY = 'helpy_salary_slip_reminder_';
+
+export type SalarySlipReminderAction = 'show_me_how' | 'remind_later' | 'dismiss';
+
+export interface SalarySlipReminderState {
+  /** Whether the prompt was dismissed (for 7 days) */
+  dismissed: boolean;
+  /** Timestamp when dismissed */
+  dismissedAt: number;
+  /** Whether user clicked "remind later" (shows on next app open) */
+  remindLater: boolean;
+  /** Whether user already completed the action */
+  completed: boolean;
+}
+
+/**
+ * Get the current state of the salary slip reminder for a user.
+ * 
+ * @param userId - The user ID to check
+ */
+export function getSalarySlipReminderState(userId: string): SalarySlipReminderState {
+  const key = `${SALARY_REMINDER_KEY}${userId}`;
+  const stored = localStorage.getItem(key);
+  
+  if (!stored) {
+    return {
+      dismissed: false,
+      dismissedAt: 0,
+      remindLater: false,
+      completed: false,
+    };
+  }
+  
+  try {
+    return JSON.parse(stored);
+  } catch {
+    return {
+      dismissed: false,
+      dismissedAt: 0,
+      remindLater: false,
+      completed: false,
+    };
+  }
+}
+
+/**
+ * Set the salary slip reminder state based on user action.
+ * 
+ * @param userId - The user ID
+ * @param action - The action taken by the user
+ */
+export function setSalarySlipReminderState(userId: string, action: SalarySlipReminderAction): void {
+  const key = `${SALARY_REMINDER_KEY}${userId}`;
+  
+  let state: SalarySlipReminderState;
+  
+  switch (action) {
+    case 'show_me_how':
+      // User clicked "Show me how" - mark as completed
+      state = {
+        dismissed: false,
+        dismissedAt: 0,
+        remindLater: false,
+        completed: true,
+      };
+      break;
+      
+    case 'remind_later':
+      // User clicked "Remind me Later" - clear dismissed state so it shows next time
+      state = {
+        dismissed: false,
+        dismissedAt: 0,
+        remindLater: true,
+        completed: false,
+      };
+      break;
+      
+    case 'dismiss':
+      // User clicked "Dismiss" - dismiss for 7 days
+      state = {
+        dismissed: true,
+        dismissedAt: Date.now(),
+        remindLater: false,
+        completed: false,
+      };
+      break;
+      
+    default:
+      return;
+  }
+  
+  localStorage.setItem(key, JSON.stringify(state));
+  logger.log('[PWA] Salary slip reminder state updated:', action, state);
+}
+
+/**
+ * Clear salary slip reminder tracking for testing/debugging.
+ * 
+ * @param userId - The user ID to clear tracking for
+ */
+export function clearSalarySlipReminderTracking(userId: string): void {
+  const key = `${SALARY_REMINDER_KEY}${userId}`;
+  localStorage.removeItem(key);
+  logger.log('[PWA] Salary slip reminder tracking cleared for user:', userId);
+}
+

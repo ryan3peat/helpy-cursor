@@ -100,9 +100,11 @@ interface FamilyProps extends BaseViewProps {
   salarySlips: SalarySlip[];
   onHelperContractsChange: (contracts: HelperContract[]) => void;
   onSalarySlipsChange: (slips: SalarySlip[]) => void;
-  // Section control for onboarding
-  initialSection?: 'places' | 'practice';
+  // Section control for onboarding and navigation
+  initialSection?: 'places' | 'practice' | 'helper';
   onSectionChange?: (section: string) => void;
+  // Auto-open Create Salary Slip sheet (for salary slip reminder notification)
+  autoOpenCreateSalarySlip?: boolean;
   // Navigation callback
   onNavigateToProfile?: () => void;
   // Direct edit helper callback (opens edit modal directly)
@@ -528,6 +530,7 @@ const Family: React.FC<FamilyProps> = ({
   usageStatus,
   onShowUsageLimitModal,
   onUsageStatusChange,
+  autoOpenCreateSalarySlip,
 }) => {
   // Get authenticated Supabase client (with JWT for RLS)
   const supabase = useSupabase();
@@ -632,6 +635,17 @@ const Family: React.FC<FamilyProps> = ({
   
   // Create Salary Slip sheet state
   const [showCreateSlipSheet, setShowCreateSlipSheet] = useState(false);
+  
+  // Auto-open Create Salary Slip sheet when navigating from salary slip reminder
+  useEffect(() => {
+    if (autoOpenCreateSalarySlip && activeSection === 'helper' && helpers.length > 0) {
+      // Small delay to let the section transition complete
+      const timer = setTimeout(() => {
+        setShowCreateSlipSheet(true);
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [autoOpenCreateSalarySlip, activeSection, helpers.length]);
   
   // Maps choice modal state (when Google Maps not installed on iOS)
   const [showMapsChoiceModal, setShowMapsChoiceModal] = useState(false);

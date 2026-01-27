@@ -38,6 +38,7 @@ import { initializePushNotifications, autoSubscribeIfNeeded, validateAndSyncSubs
 import UpdateToast from './components/ui/UpdateToast';
 import ErrorBoundary from './components/ui/ErrorBoundary';
 import NotificationPrompt from './components/NotificationPrompt';
+import SalarySlipReminderPrompt from './components/SalarySlipReminderPrompt';
 import type { Place, CreatePlace } from '@src/types/place';
 import type { Practice, CreatePractice } from '@src/types/practice';
 import type { HelperContract, SalarySlip } from '@src/types/helperManagement';
@@ -130,6 +131,9 @@ const AppContent: React.FC = () => {
   
   // NotificationPrompt visibility state (for coordinating with UpdateToast)
   const [isNotifPromptVisible, setNotifPromptVisible] = useState(false);
+  
+  // SalarySlipReminderPrompt visibility state
+  const [isSalaryReminderVisible, setSalaryReminderVisible] = useState(false);
 
   // Listen for service worker update events
   useEffect(() => {
@@ -442,8 +446,8 @@ const AppContent: React.FC = () => {
     }
   }, [signOut]);
 
-  // Navigation data (e.g., initialSection for ToDo, openAddSheet to auto-open add sheet)
-  const [navData, setNavData] = useState<{ section?: string; openAddSheet?: boolean } | null>(null);
+  // Navigation data (e.g., initialSection for ToDo, openAddSheet to auto-open add sheet, openCreateSalarySlip for Family helper section)
+  const [navData, setNavData] = useState<{ section?: string; openAddSheet?: boolean; openCreateSalarySlip?: boolean } | null>(null);
 
   // Navigation
   const handleNavigate = (view: string, data?: { section?: string; openAddSheet?: boolean }) => {
@@ -2339,6 +2343,8 @@ const AppContent: React.FC = () => {
             onSalarySlipsChange={setSalarySlips}
             t={translations}
             currentLang={lang}
+            initialSection={navData?.section as 'places' | 'practice' | 'helper' | undefined}
+            autoOpenCreateSalarySlip={navData?.openCreateSalarySlip}
             onNavigateToProfile={() => {
               localStorage.setItem('helpy_profile_target_section', 'plan');
               handleNavigate('profile');
@@ -2534,10 +2540,27 @@ const AppContent: React.FC = () => {
         />
       )}
 
-      {/* PWA Update Toast - shows when new version is available */}
+      {/* Salary Slip Reminder Prompt - shows for admin/spouse users without January 2026 salary slip */}
       {/* Hidden during onboarding AND when NotificationPrompt is visible */}
+      {currentUser && !(onboardingStep > 0 && pwaModalHandled) && !isNotifPromptVisible && (
+        <SalarySlipReminderPrompt
+          currentUser={currentUser}
+          users={users}
+          salarySlips={salarySlips}
+          t={translations}
+          isOnboardingActive={onboardingStep > 0 && pwaModalHandled}
+          onVisibilityChange={setSalaryReminderVisible}
+          onShowMeHow={() => {
+            // Navigate to Family > Helper section and open Create Salary Slip sheet
+            handleNavigate('info', { section: 'helper', openCreateSalarySlip: true });
+          }}
+        />
+      )}
+
+      {/* PWA Update Toast - shows when new version is available */}
+      {/* Hidden during onboarding AND when NotificationPrompt or SalarySlipReminder is visible */}
       <UpdateToast
-        isVisible={showUpdateToast && !(onboardingStep > 0 && pwaModalHandled) && !isNotifPromptVisible}
+        isVisible={showUpdateToast && !(onboardingStep > 0 && pwaModalHandled) && !isNotifPromptVisible && !isSalaryReminderVisible}
         onUpdate={handleUpdateApp}
         onDismiss={handleDismissUpdate}
         t={translations}

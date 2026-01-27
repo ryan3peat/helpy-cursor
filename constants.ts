@@ -1397,6 +1397,12 @@ Give it a try:`,
   'salary.info_title': 'Important Information',
   'salary.info_message': 'Salary records will be removed if you delete the helper user. If you would like to keep the salary records, please use the Export All function to download all slips before deletion.',
 
+  // Salary Slip Reminder Notification
+  'salary_reminder.title': "Don't forget!",
+  'salary_reminder.description': "It's nearly the end of the month, use Helpy to create a salary slip for your helper that can be e-signed!",
+  'salary_reminder.show_me_how': 'Show me how',
+  'salary_reminder.remind_later': 'Remind me Later',
+
   // ToDo - Section Labels
   'tasks.section.overdue': 'Overdue',
   'tasks.section.noDate': 'No Due Date',

@@ -1362,7 +1362,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                       >
                         <div className="flex items-center gap-3">
                           <div
-                            className="w-9 h-9 rounded-full flex items-center justify-center"
+                            className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
                             style={{ backgroundColor: item.config.bgColor, color: item.config.color }}
                           >
                             {item.config.icon}

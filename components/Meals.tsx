@@ -1244,70 +1244,73 @@ const Meals: React.FC<MealsProps> = ({
         touchAction: 'none',
       }}
     >
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 h-full overflow-hidden flex flex-col" style={{ touchAction: 'none' }}>
-        {/* ─────────────────────────────────────────────────────────────── */}
-        {/* STICKY HEADER - matches Family */}
-        {/* ─────────────────────────────────────────────────────────────── */}
-        <header 
-          className="flex-shrink-0 z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 pb-3 flex items-end" 
+      {/* ─────────────────────────────────────────────────────────────── */}
+      {/* FIXED HEADER - viewport-relative, immune to iOS layout bugs */}
+      {/* ─────────────────────────────────────────────────────────────── */}
+      <header 
+        className="fixed top-0 left-0 right-0 z-30 bg-background"
+        style={{ 
+          paddingTop: 'env(safe-area-inset-top)',
+          touchAction: 'none',
+        }}
+      >
+        <div 
+          className="max-w-2xl mx-auto px-4 sm:px-6 pb-3 flex items-end" 
           style={{ 
             height: '120px', 
             boxShadow: '0 10px 0 0 hsl(var(--background))',
-            touchAction: 'none',
           }}
         >
           <div className="w-full">
             <div className="flex items-center justify-between">
-            <h1 className="text-display text-foreground">
+              <h1 className="text-display text-foreground">
                 {mealsTitle}
-            </h1>
-            
+              </h1>
+              
               {/* Header Actions */}
               <div className="flex items-center gap-2 shrink-0">
-              {/* Export PDF Button - Only visible in table view */}
-              {view === 'week' && (
-                    <button
-                  onClick={handleExportPDF}
-                  disabled={exportingPdf}
-                  className="p-2 rounded-full text-muted-foreground disabled:opacity-50"
-                  aria-label={t['meals.export_pdf'] || 'Export PDF'}
+                {/* Export PDF Button - Only visible in table view */}
+                {view === 'week' && (
+                  <button
+                    onClick={handleExportPDF}
+                    disabled={exportingPdf}
+                    className="p-2 rounded-full text-muted-foreground disabled:opacity-50"
+                    aria-label={t['meals.export_pdf'] || 'Export PDF'}
+                  >
+                    {exportingPdf ? (
+                      <Loader2 size={20} className="animate-spin" />
+                    ) : (
+                      <Download size={20} />
+                    )}
+                  </button>
+                )}
+                
+                {/* Day/Week Toggle - Simple state change like Family tabs */}
+                <button
+                  onClick={() => setView(view === 'day' ? 'week' : 'day')}
+                  className="p-2 rounded-full text-muted-foreground"
                 >
-                  {exportingPdf ? (
-                    <Loader2 size={20} className="animate-spin" />
-                  ) : (
-                    <Download size={20} />
-                      )}
-                    </button>
-              )}
-              
-              {/* Day/Week Toggle - Simple state change like Family tabs */}
-              <button
-                onClick={() => setView(view === 'day' ? 'week' : 'day')}
-                className="p-2 rounded-full text-muted-foreground"
-              >
-                {view === 'day' ? <Sheet size={20} /> : <Rows3 size={20} />}
-              </button>
+                  {view === 'day' ? <Sheet size={20} /> : <Rows3 size={20} />}
+                </button>
               </div>
             </div>
           </div>
-        </header>
-        {/* Error Banner */}
-        <ErrorBanner 
-          error={error} 
-          onDismiss={() => setError(null)} 
-          title={t['common.error'] || 'Error'}
-        />
-        {/* ─────────────────────────────────────────────────────────────── */}
-        {/* WEEK NAVIGATION - Same structure as Family Info tab nav */}
-        {/* ─────────────────────────────────────────────────────────────── */}
-        <div 
-          ref={weekNavOverlayRef}
-          className="flex-shrink-0 z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 py-5 transition-shadow duration-200"
-          style={{ 
-            boxShadow: isContainerScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none',
-            touchAction: 'none',
-          }}
-        >
+        </div>
+      </header>
+
+      {/* ─────────────────────────────────────────────────────────────── */}
+      {/* FIXED WEEK NAVIGATION - positioned below fixed header */}
+      {/* ─────────────────────────────────────────────────────────────── */}
+      <div 
+        ref={weekNavOverlayRef}
+        className="fixed left-0 right-0 z-20 bg-background transition-shadow duration-200"
+        style={{ 
+          top: 'calc(env(safe-area-inset-top) + 120px)',
+          boxShadow: isContainerScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none',
+          touchAction: 'none',
+        }}
+      >
+        <div className="max-w-2xl mx-auto px-4 sm:px-6 py-5">
           <div className="flex items-center gap-3">
             {/* Week Selector */}
             <div className="relative flex-1 flex items-center justify-between px-2 rounded-xl h-12 overflow-hidden bg-muted">
@@ -1329,7 +1332,7 @@ const Meals: React.FC<MealsProps> = ({
             </div>
 
             {/* Today Button */}
-              <button
+            <button
               onClick={goToToday}
               disabled={isCurrentWeek}
               className={`px-4 rounded-xl font-semibold text-body h-12 ${
@@ -1339,12 +1342,30 @@ const Meals: React.FC<MealsProps> = ({
               }`}
             >
               {t['meals.today'] ?? 'Today'}
-              </button>
+            </button>
+          </div>
         </div>
       </div>
 
+      {/* ─────────────────────────────────────────────────────────────── */}
+      {/* CONTENT AREA - with padding for fixed headers */}
+      {/* ─────────────────────────────────────────────────────────────── */}
+      <div 
+        className="max-w-2xl mx-auto px-4 sm:px-6 h-full flex flex-col"
+        style={{ 
+          paddingTop: 'calc(env(safe-area-inset-top) + 208px)',  /* 120px header + 88px week nav */
+          touchAction: 'none',
+        }}
+      >
+        {/* Error Banner - now at top of content area */}
+        <ErrorBanner 
+          error={error} 
+          onDismiss={() => setError(null)} 
+          title={t['common.error'] || 'Error'}
+        />
+
         {/* ─────────────────────────────────────────────────────────────── */}
-        {/* MAIN CONTENT */}
+        {/* MAIN CONTENT - unchanged day/week view containers */}
         {/* ─────────────────────────────────────────────────────────────── */}
         <div className="flex-1 min-h-0 overflow-hidden flex flex-col" style={{ touchAction: 'none' }}>
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Loader2, Users, Home } from 'lucide-react';
+import { ArrowLeft, Loader2, Users, Home, Gift, ChevronDown, Calendar } from 'lucide-react';
 import { useScrollHeader } from '../hooks/useScrollHeader';
 import { TranslationDictionary } from '../types';
 import { logger } from '../utils/logger';
@@ -7,6 +7,17 @@ import { logger } from '../utils/logger';
 interface AnalyticsProps {
   onBack: () => void;
   t: TranslationDictionary;
+}
+
+interface BettyRedemption {
+  id: string;
+  codeUsed: string;
+  createdAt: string;
+  trialStartedAt: string | null;
+  trialEndsAt: string | null;
+  convertedToPaidAt: string | null;
+  userEmail: string;
+  userName: string;
 }
 
 interface AnalyticsData {
@@ -20,19 +31,39 @@ interface AnalyticsData {
     pending: number;
     total: number;
   };
+  bettyPromo: {
+    totalAllTime: number;
+    filteredCount: number;
+    redemptions: BettyRedemption[];
+    dateFilter: string;
+  };
 }
+
+type DateFilter = 'this_week' | 'last_week' | 'this_month' | 'last_month' | 'last_30_days' | 'ytd';
+
+const DATE_FILTER_OPTIONS: { value: DateFilter; label: string }[] = [
+  { value: 'this_week', label: 'This Week' },
+  { value: 'last_week', label: 'Last Week' },
+  { value: 'this_month', label: 'This Month' },
+  { value: 'last_month', label: 'Last Month' },
+  { value: 'last_30_days', label: 'Last 30 Days' },
+  { value: 'ytd', label: 'Year to Date' },
+];
 
 const Analytics: React.FC<AnalyticsProps> = ({ onBack, t }) => {
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [dateFilter, setDateFilter] = useState<DateFilter>('last_30_days');
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
   const { isScrolled } = useScrollHeader({ collapseThreshold: 50, expandThreshold: 110 });
 
   useEffect(() => {
     const fetchAnalytics = async () => {
       try {
+        setLoading(true);
         const apiUrl = import.meta.env?.VITE_API_URL || '';
-        const response = await fetch(`${apiUrl}/api/analytics`);
+        const response = await fetch(`${apiUrl}/api/analytics?dateFilter=${dateFilter}`);
         
         if (!response.ok) {
           throw new Error('Failed to fetch analytics');
@@ -49,7 +80,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ onBack, t }) => {
     };
 
     fetchAnalytics();
-  }, []);
+  }, [dateFilter]);
 
   const StatCard = ({ 
     title, 
@@ -150,6 +181,118 @@ const Analytics: React.FC<AnalyticsProps> = ({ onBack, t }) => {
                 pending={data.users.pending}
                 total={data.users.total}
               />
+
+              {/* Betty Promo Redemptions */}
+              <div className="bg-card rounded-2xl p-6 shadow-sm">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-[#9C27B0]/10 flex items-center justify-center">
+                      <Gift size={20} className="text-[#9C27B0]" />
+                    </div>
+                    <h3 className="text-title font-bold text-foreground">Betty Promo</h3>
+                  </div>
+                  
+                  {/* Date Filter Dropdown */}
+                  <div className="relative">
+                    <button
+                      onClick={() => setIsFilterOpen(!isFilterOpen)}
+                      className="flex items-center gap-2 px-3 py-2 bg-secondary rounded-xl text-body font-medium text-foreground"
+                    >
+                      <Calendar size={16} className="text-muted-foreground" />
+                      <span>{DATE_FILTER_OPTIONS.find(o => o.value === dateFilter)?.label}</span>
+                      <ChevronDown size={16} className={`text-muted-foreground transition-transform ${isFilterOpen ? 'rotate-180' : ''}`} />
+                    </button>
+                    
+                    {isFilterOpen && (
+                      <div className="absolute right-0 mt-2 w-48 bg-card rounded-xl shadow-lg border border-border z-30 overflow-hidden">
+                        {DATE_FILTER_OPTIONS.map(option => (
+                          <button
+                            key={option.value}
+                            onClick={() => {
+                              setDateFilter(option.value);
+                              setIsFilterOpen(false);
+                            }}
+                            className={`w-full px-4 py-3 text-left text-body font-medium hover:bg-secondary transition-colors ${
+                              dateFilter === option.value ? 'text-primary bg-primary/5' : 'text-foreground'
+                            }`}
+                          >
+                            {option.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Stats Summary */}
+                <div className="space-y-3 mb-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-body font-medium text-muted-foreground">Total (All Time)</span>
+                    <span className="text-display text-foreground">{data.bettyPromo.totalAllTime}</span>
+                  </div>
+                  <div className="h-px bg-border" />
+                  <div className="flex justify-between items-center">
+                    <span className="text-body font-medium text-muted-foreground">
+                      {DATE_FILTER_OPTIONS.find(o => o.value === dateFilter)?.label}
+                    </span>
+                    <span className="text-title text-[#9C27B0] font-semibold">{data.bettyPromo.filteredCount}</span>
+                  </div>
+                </div>
+
+                {/* Redemptions List */}
+                {data.bettyPromo.redemptions.length > 0 ? (
+                  <div className="mt-4">
+                    <div className="text-caption font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                      Redemptions
+                    </div>
+                    <div className="space-y-3 max-h-80 overflow-y-auto">
+                      {data.bettyPromo.redemptions.map((redemption) => (
+                        <div 
+                          key={redemption.id} 
+                          className="bg-secondary/50 rounded-xl p-4 space-y-2"
+                        >
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-body font-semibold text-foreground truncate">
+                                {redemption.userName}
+                              </p>
+                              <p className="text-caption text-muted-foreground truncate">
+                                {redemption.userEmail}
+                              </p>
+                            </div>
+                            {redemption.convertedToPaidAt && (
+                              <span className="ml-2 px-2 py-1 bg-primary/10 text-primary text-caption font-semibold rounded-lg whitespace-nowrap">
+                                Converted
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-4 text-caption text-muted-foreground">
+                            <span>
+                              Redeemed: {new Date(redemption.createdAt).toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric'
+                              })}
+                            </span>
+                            {redemption.trialEndsAt && (
+                              <span>
+                                Trial ends: {new Date(redemption.trialEndsAt).toLocaleDateString('en-US', {
+                                  month: 'short',
+                                  day: 'numeric'
+                                })}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-4 text-center py-6 text-body text-muted-foreground">
+                    No redemptions in this period
+                  </div>
+                )}
+              </div>
             </>
           ) : null}
         </div>

@@ -1189,7 +1189,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                 setPickerYear(selectedYear ?? now.getFullYear());
                 setIsMonthPickerOpen(true);
               }}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-full bg-secondary text-foreground text-body"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-full bg-secondary text-foreground text-body font-medium"
             >
               <Calendar size={16} />
               <span>{selectedMonth === null || selectedYear === null ? t['common.all_expenses'] : `${MONTH_NAMES[selectedMonth]} ${selectedYear}`}</span>
@@ -1232,7 +1232,7 @@ const Expenses: React.FC<ExpensesProps> = ({
             <div className="flex p-1 overflow-x-auto scrollbar-hide">
               <button
                 onClick={() => setView('list')}
-                className={`flex-1 px-4 py-2 rounded-full text-body whitespace-nowrap transition-all flex items-center justify-center gap-2 ${
+                className={`flex-1 px-4 py-2 rounded-full text-body font-medium whitespace-nowrap transition-all flex items-center justify-center gap-2 ${
                   view === 'list'
                     ? 'bg-card text-primary shadow-sm'
                     : 'text-muted-foreground'
@@ -1249,7 +1249,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                     setView('chart');
                   }
                 }}
-                className={`flex-1 px-4 py-2 rounded-full text-body whitespace-nowrap transition-all flex items-center justify-center gap-2 ${
+                className={`flex-1 px-4 py-2 rounded-full text-body font-medium whitespace-nowrap transition-all flex items-center justify-center gap-2 ${
                   view === 'chart' && !isSpendingSummaryRestricted
                     ? 'bg-card text-primary shadow-sm'
                     : 'text-muted-foreground'
@@ -1277,7 +1277,7 @@ const Expenses: React.FC<ExpensesProps> = ({
               <AlertCircle className="text-destructive flex-shrink-0 mt-0.5" size={20} />
           <div className="flex-1">
                 <p className="text-title text-destructive">{t['expenses.error'] || 'Error'}</p>
-                <p className="text-body text-destructive/80">{error}</p>
+                <p className="text-body font-medium text-destructive/80">{error}</p>
           </div>
               <button onClick={() => setError(null)} className="text-destructive/60">
             <X size={16} />
@@ -1290,7 +1290,7 @@ const Expenses: React.FC<ExpensesProps> = ({
             <div className="mb-4 p-4 bg-primary/10 rounded-xl text-center">
               <div className="flex items-center justify-center gap-3">
                 <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
-                <p className="text-body text-primary">{t['expenses.analyzing']}</p>
+                <p className="text-body font-medium text-primary">{t['expenses.analyzing']}</p>
               </div>
       </div>
           )}
@@ -1339,7 +1339,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                       <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-secondary flex items-center justify-center">
                         <PieIcon size={28} className="text-muted-foreground" />
                       </div>
-                      <p className="text-body text-foreground">{t['expenses.no_data'] || 'No expense data'}</p>
+                      <p className="text-body font-medium text-foreground">{t['expenses.no_data'] || 'No expense data'}</p>
                       <p className="text-caption text-muted-foreground mt-1">
                         {t['expenses.add_to_start'] || 'Add an expense to get started'}
                       </p>
@@ -1368,7 +1368,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                             {item.config.icon}
                           </div>
                           <div>
-                            <span className="text-body text-foreground">{getCategoryLabel(item.category)}</span>
+                            <span className="text-body font-medium text-foreground">{getCategoryLabel(item.category)}</span>
                             <span className="text-caption text-muted-foreground ml-2">{percentage}%</span>
                           </div>
                         </div>
@@ -1387,7 +1387,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                   <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-secondary flex items-center justify-center">
                     <Receipt size={28} className="text-muted-foreground" />
                   </div>
-                      <p className="text-body text-foreground">
+                      <p className="text-body font-medium text-foreground">
                         {selectedMonth === null 
                           ? (t['expenses.no_expenses_yet'] || 'No expenses yet') 
                           : `${t['expenses.no_expenses_month'] || 'No expenses in'} ${MONTH_NAMES_FULL[selectedMonth]}`}
@@ -1658,7 +1658,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                         type="date"
                         value={editDate}
                         onChange={(e) => setEditDate(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl bg-muted border border-transparent focus:border-primary outline-none transition-all text-body"
+                    className="w-full px-4 py-3 rounded-xl bg-muted border border-transparent focus:border-primary outline-none transition-all text-body font-medium"
                       />
                     </div>
 
@@ -1679,7 +1679,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                         }, 100);
                       }}
                     placeholder={t['expenses.merchant_placeholder'] || "e.g., Wellcome, McDonald's"}
-                    className="w-full px-4 py-3 rounded-xl bg-muted border border-transparent focus:border-primary outline-none transition-all text-body"
+                    className="w-full px-4 py-3 rounded-xl bg-muted border border-transparent focus:border-primary outline-none transition-all text-body font-medium"
                     />
                   </div>
 
@@ -1694,7 +1694,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                       setEditCategory(e.target.value);
                       haptics.selection();
                     }}
-                    className="w-full px-4 py-3 rounded-xl bg-muted border border-transparent focus:border-primary outline-none transition-all text-body appearance-none cursor-pointer"
+                    className="w-full px-4 py-3 rounded-xl bg-muted border border-transparent focus:border-primary outline-none transition-all text-body font-medium appearance-none cursor-pointer"
                     style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239CA3AF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}
                   >
                     {EXPENSE_CATEGORIES.map((cat) => (
@@ -1777,7 +1777,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                   type="date"
                   value={editDate}
                   onChange={(e) => setEditDate(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl bg-muted border border-transparent focus:border-primary outline-none transition-all text-body"
+                    className="w-full px-4 py-3 rounded-xl bg-muted border border-transparent focus:border-primary outline-none transition-all text-body font-medium"
                 />
                     </div>
 
@@ -1798,7 +1798,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                     }, 100);
                   }}
                     placeholder={t['expenses.merchant_placeholder'] || "e.g., Wellcome, McDonald's"}
-                    className="w-full px-4 py-3 rounded-xl bg-muted border border-transparent focus:border-primary outline-none transition-all text-body"
+                    className="w-full px-4 py-3 rounded-xl bg-muted border border-transparent focus:border-primary outline-none transition-all text-body font-medium"
                 />
               </div>
 
@@ -1813,7 +1813,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                       setEditCategory(e.target.value);
                       haptics.selection();
                     }}
-                    className="w-full px-4 py-3 rounded-xl bg-muted border border-transparent focus:border-primary outline-none transition-all text-body appearance-none cursor-pointer"
+                    className="w-full px-4 py-3 rounded-xl bg-muted border border-transparent focus:border-primary outline-none transition-all text-body font-medium appearance-none cursor-pointer"
                     style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239CA3AF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}
                   >
                     {EXPENSE_CATEGORIES.map((cat) => (
@@ -1983,7 +1983,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                       </label>
                       <input
                         type="date"
-                      className="w-full px-4 py-3 rounded-xl bg-muted border border-transparent focus:border-primary outline-none transition-all text-body"
+                      className="w-full px-4 py-3 rounded-xl bg-muted border border-transparent focus:border-primary outline-none transition-all text-body font-medium"
                         value={exDate}
                         onChange={(e) => setExDate(e.target.value)}
                       />
@@ -1997,7 +1997,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                     <input
                       type="text"
                       autoComplete="one-time-code"
-                      className="w-full px-4 py-3 rounded-xl bg-muted border border-transparent focus:border-primary outline-none transition-all text-body"
+                      className="w-full px-4 py-3 rounded-xl bg-muted border border-transparent focus:border-primary outline-none transition-all text-body font-medium"
                       value={exMerchant}
                       onChange={(e) => setExMerchant(e.target.value)}
                       onFocus={(e) => {
@@ -2021,7 +2021,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                         setExCategory(e.target.value);
                         haptics.selection();
                       }}
-                      className="w-full px-4 py-3 rounded-xl bg-muted border border-transparent focus:border-primary outline-none transition-all text-body appearance-none cursor-pointer"
+                      className="w-full px-4 py-3 rounded-xl bg-muted border border-transparent focus:border-primary outline-none transition-all text-body font-medium appearance-none cursor-pointer"
                       style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239CA3AF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}
                     >
                       {EXPENSE_CATEGORIES.map((cat) => (
@@ -2043,7 +2043,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                 <div className="px-5"><div className="h-px bg-border w-full"></div></div>
                 {/* Delete Confirmation Actions */}
                 <div className="shrink-0 p-5 pb-8 space-y-3">
-                  <p className="text-body text-foreground text-center mb-3">
+                  <p className="text-body font-medium text-foreground text-center mb-3">
                     {t['confirm.delete_expense'] || 'Are you sure you want to delete this receipt/expense?'}
                   </p>
                 <div className="flex items-center gap-3">
@@ -2179,7 +2179,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                         }
                       }}
                       disabled={isFuture}
-                      className={`py-3 rounded-xl text-body transition-all ${
+                      className={`py-3 rounded-xl text-body font-medium transition-all ${
                         isSelected
                           ? 'bg-primary text-primary-foreground shadow-sm'
                           : isFuture
@@ -2202,7 +2202,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                   setSelectedYear(now.getFullYear());
                   setIsMonthPickerOpen(false);
                 }}
-                className="w-full py-3.5 rounded-xl bg-secondary text-foreground text-body "
+                className="w-full py-3.5 rounded-xl bg-secondary text-foreground text-body font-medium"
               >
                 {t['expenses.go_current_month'] || 'Go to Current Month'}
               </button>
@@ -2212,7 +2212,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                   setSelectedYear(null);
                   setIsMonthPickerOpen(false);
                 }}
-                className="w-full mt-3 py-3.5 rounded-xl bg-card text-foreground text-body border border-border"
+                className="w-full mt-3 py-3.5 rounded-xl bg-card text-foreground text-body font-medium border border-border"
               >
                 {t['expenses.show_all_expenses'] || 'Show All Expenses'}
               </button>
@@ -2258,7 +2258,7 @@ const Expenses: React.FC<ExpensesProps> = ({
 
             {/* Content */}
             <div className="p-5">
-              <p className="text-body text-muted-foreground">
+              <p className="text-body font-medium text-muted-foreground">
                 {t['expenses.summary_upgrade_desc'] || "Get insights into your spending habits. View your expenses broken down by category with visual charts, and track your monthly totals at a glance."}
               </p>
             </div>

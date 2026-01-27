@@ -77,7 +77,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
 
           {/* Content */}
           <div className="p-5">
-            <p className="text-body text-muted-foreground">
+            <p className="text-body font-medium text-muted-foreground">
               {alertModal.message}
             </p>
           </div>
@@ -86,7 +86,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
           <div className="p-5 pb-8 border-t border-border shrink-0">
             <button
               onClick={() => setAlertModal(prev => ({ ...prev, isOpen: false }))}
-              className={`w-full py-3.5 rounded-xl text-body ${
+              className={`w-full py-3.5 rounded-xl text-body font-medium ${
                 alertModal.type === 'error' 
                   ? 'bg-destructive/10 text-destructive' 
                   : alertModal.type === 'success'
@@ -986,7 +986,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
             {/* Header - left aligned */}
             <div className="mb-8">
               <h1 className="text-display font-bold text-foreground mb-2">Welcome back</h1>
-              <p className="text-body text-muted-foreground">Sign in to continue to Helpy</p>
+              <p className="text-body font-medium text-muted-foreground">Sign in to continue to Helpy</p>
             </div>
 
             {/* Clerk Auth Component */}
@@ -1038,7 +1038,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
             
               {/* Custom Sign Up Button */}
               <div className="mt-6">
-                <p className="text-body text-muted-foreground">
+                <p className="text-body font-medium text-muted-foreground">
                   Don't have an account?{' '}
                   <button
                     onClick={() => setShowSignUp(true)}
@@ -1054,7 +1054,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
             <div className="mt-8">
               <a
                 href="https://helpyfam.com"
-                className="text-primary text-body"
+                className="text-primary text-body font-medium"
               >
                 See Helpyfam Features
               </a>

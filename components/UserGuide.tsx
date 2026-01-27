@@ -106,7 +106,7 @@ const FeatureCard: React.FC<{
 const AbilityItem: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <div className="flex items-start gap-2 py-1.5">
     <CheckCircle2 size={14} className="text-muted-foreground mt-0.5 flex-shrink-0" />
-    <span className="text-body text-foreground">{children}</span>
+    <span className="text-body font-medium text-foreground">{children}</span>
   </div>
 );
 
@@ -114,7 +114,7 @@ const AbilityItem: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 const RestrictionItem: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <div className="flex items-start gap-2 py-1.5">
     <X size={14} className="text-destructive mt-0.5 flex-shrink-0" />
-    <span className="text-body text-foreground">{children}</span>
+    <span className="text-body font-medium text-foreground">{children}</span>
   </div>
 );
 
@@ -122,7 +122,7 @@ const RestrictionItem: React.FC<{ children: React.ReactNode }> = ({ children }) 
 const BulletItem: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <div className="flex items-start gap-2 py-1.5">
     <span className="text-primary mt-0.5 flex-shrink-0">•</span>
-    <span className="text-body text-foreground">{children}</span>
+    <span className="text-body font-medium text-foreground">{children}</span>
   </div>
 );
 
@@ -151,7 +151,7 @@ const RoleCard: React.FC<{
               </span>
             )}
           </div>
-          <p className="text-body text-muted-foreground mt-0.5">{description}</p>
+          <p className="text-body font-medium text-muted-foreground mt-0.5">{description}</p>
         </div>
         {isOpen ? (
           <ChevronDown size={18} className="text-muted-foreground flex-shrink-0" />
@@ -177,7 +177,7 @@ const TipCard: React.FC<{ title: string; description: string }> = ({ title, desc
       <Lightbulb size={16} className="text-muted-foreground mt-0.5 flex-shrink-0" />
       <div>
         <h4 className="text-body font-semibold text-foreground">{title}</h4>
-        <p className="text-body text-muted-foreground mt-1">{description}</p>
+        <p className="text-body font-medium text-muted-foreground mt-1">{description}</p>
       </div>
     </div>
   </div>
@@ -226,7 +226,7 @@ const UserGuide: React.FC<UserGuideProps> = ({ currentUser, t, onNavigateToPlan,
             <Languages size={18} className="text-foreground" />
             {t['guide.languages_title'] || 'Multi-Language Support'}
           </h3>
-          <p className="text-body text-muted-foreground mb-3">
+          <p className="text-body font-medium text-muted-foreground mb-3">
             {t['guide.languages_desc'] ||
               'Helpy automatically translates content. You can change your language anytime from the dashboard.'}
           </p>
@@ -249,7 +249,7 @@ const UserGuide: React.FC<UserGuideProps> = ({ currentUser, t, onNavigateToPlan,
             <Bell size={18} className="text-foreground" />
             {t['guide.notifications_title'] || 'Push Notifications'}
           </h3>
-          <p className="text-body text-muted-foreground">
+          <p className="text-body font-medium text-muted-foreground">
             {t['guide.notifications_desc'] ||
               'Get notified when new tasks, meals, or expenses are added. Enable in Profile > Settings.'}
           </p>
@@ -262,7 +262,7 @@ const UserGuide: React.FC<UserGuideProps> = ({ currentUser, t, onNavigateToPlan,
         icon={<Users size={20} />}
         defaultOpen={false}
       >
-        <p className="text-body text-muted-foreground mb-4">
+        <p className="text-body font-medium text-muted-foreground mb-4">
           {t['guide.roles_desc'] || 'Helpy has different roles with different permissions. Learn what each role can do.'}
         </p>
 
@@ -346,7 +346,7 @@ const UserGuide: React.FC<UserGuideProps> = ({ currentUser, t, onNavigateToPlan,
             <NAV_ITEMS.dashboard.icon size={18} className="text-foreground" />
             {t['guide.dashboard_title'] || 'Home'}
           </h3>
-          <p className="text-body text-foreground mt-1 ml-6">
+          <p className="text-body font-medium text-foreground mt-1 ml-6">
             {t['guide.dashboard_desc'] ||
               'Your home screen shows a quick overview of everything: shopping items needed, pending tasks, upcoming meals, and monthly expenses.'}
           </p>
@@ -370,7 +370,7 @@ const UserGuide: React.FC<UserGuideProps> = ({ currentUser, t, onNavigateToPlan,
             <NAV_ITEMS.todo.icon size={18} className="text-foreground" />
             {t['guide.todo_title'] || 'To-Do'}
           </h3>
-          <p className="text-body text-foreground mt-1 ml-6">
+          <p className="text-body font-medium text-foreground mt-1 ml-6">
             {t['guide.todo_desc'] || 'Manage shopping lists and household tasks in one place.'}
           </p>
         </div>
@@ -403,7 +403,7 @@ const UserGuide: React.FC<UserGuideProps> = ({ currentUser, t, onNavigateToPlan,
             <NAV_ITEMS.meals.icon size={18} className="text-foreground" />
             {t['guide.meals_title'] || 'Meals'}
           </h3>
-          <p className="text-body text-foreground mt-1 ml-6">
+          <p className="text-body font-medium text-foreground mt-1 ml-6">
             {t['guide.meals_desc'] || 'Plan breakfast, lunch, dinner, and snacks for your family.'}
           </p>
         </div>
@@ -433,7 +433,7 @@ const UserGuide: React.FC<UserGuideProps> = ({ currentUser, t, onNavigateToPlan,
                 <NAV_ITEMS.expenses.icon size={18} className="text-foreground" />
                 {t['guide.expenses_title'] || 'Expenses'}
               </h3>
-              <p className="text-body text-foreground mt-1 ml-6">
+              <p className="text-body font-medium text-foreground mt-1 ml-6">
                 {t['guide.expenses_desc'] || 'Track household spending with categories and visual breakdowns.'}
               </p>
             </div>
@@ -467,7 +467,7 @@ const UserGuide: React.FC<UserGuideProps> = ({ currentUser, t, onNavigateToPlan,
             <NAV_ITEMS.info.icon size={18} className="text-foreground" />
             {t['guide.info_title'] || 'Family'}
           </h3>
-          <p className="text-body text-foreground mt-1 ml-6">
+          <p className="text-body font-medium text-foreground mt-1 ml-6">
             {t['guide.info_desc'] || 'Store important places, house routines, and manage helpers.'}
           </p>
         </div>
@@ -512,7 +512,7 @@ const UserGuide: React.FC<UserGuideProps> = ({ currentUser, t, onNavigateToPlan,
           icon={<Crown size={20} />}
         >
           <div className="overflow-x-auto -mx-2">
-            <table className="w-full text-body">
+            <table className="w-full text-body font-medium">
               <thead>
                 <tr className="border-b border-border">
                   <th className="text-left py-2 px-2 font-semibold text-muted-foreground">
@@ -640,7 +640,7 @@ const UserGuide: React.FC<UserGuideProps> = ({ currentUser, t, onNavigateToPlan,
           <h3 className="text-title font-bold text-foreground">
             {t['guide.need_help'] || 'Need Help?'}
           </h3>
-          <p className="text-body text-muted-foreground">
+          <p className="text-body font-medium text-muted-foreground">
             {t['guide.feedback_cta'] || 'Have a question? Tap to send us feedback.'}
           </p>
         </div>

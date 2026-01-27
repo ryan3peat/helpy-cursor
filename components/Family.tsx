@@ -329,7 +329,7 @@ const FamilyProfileCarousel: React.FC<FamilyProfileCarouselProps> = ({ users, cu
                   <div>
                     <div className="flex items-center gap-2 mb-2">
                       <Info size={16} className="text-destructive" />
-                      <span className="text-body text-foreground">
+                      <span className="text-body font-medium text-foreground">
                         {t['common.allergy_medical'] || 'Allergy & Medical'}
                       </span>
                     </div>
@@ -364,7 +364,7 @@ const FamilyProfileCarousel: React.FC<FamilyProfileCarouselProps> = ({ users, cu
                   <div>
                     <div className="flex items-center gap-2 mb-2">
                       <Heart size={16} className="text-foreground" />
-                      <span className="text-body text-foreground">
+                      <span className="text-body font-medium text-foreground">
                         {t['profile.preferences']}
                       </span>
                     </div>
@@ -1182,7 +1182,7 @@ const Family: React.FC<FamilyProps> = ({
               <div className="flex p-1 overflow-x-auto scrollbar-hide">
                 <button
                   onClick={() => setSelectedPlaceCategory("All")}
-                  className={`px-4 py-2 rounded-full text-body whitespace-nowrap transition-all ${
+                  className={`px-4 py-2 rounded-full text-body font-medium whitespace-nowrap transition-all ${
                     selectedPlaceCategory === "All"
                       ? "bg-card text-primary shadow-sm"
                       : "text-muted-foreground"
@@ -1206,7 +1206,7 @@ const Family: React.FC<FamilyProps> = ({
                     <button
                       key={cat}
                       onClick={() => setSelectedPlaceCategory(cat)}
-                      className={`px-4 py-2 rounded-full text-body whitespace-nowrap transition-all flex items-center gap-1.5 ${
+                      className={`px-4 py-2 rounded-full text-body font-medium whitespace-nowrap transition-all flex items-center gap-1.5 ${
                         selectedPlaceCategory === cat
                           ? "bg-card text-primary shadow-sm"
                           : "text-muted-foreground"
@@ -1236,7 +1236,7 @@ const Family: React.FC<FamilyProps> = ({
               <div className="flex p-1 overflow-x-auto scrollbar-hide">
                 <button
                   onClick={() => setSelectedPracticeCategory("All")}
-                  className={`px-4 py-2 rounded-full text-body whitespace-nowrap transition-all ${
+                  className={`px-4 py-2 rounded-full text-body font-medium whitespace-nowrap transition-all ${
                     selectedPracticeCategory === "All"
                       ? "bg-card text-primary shadow-sm"
                       : "text-muted-foreground"
@@ -1248,7 +1248,7 @@ const Family: React.FC<FamilyProps> = ({
                     <button
                       key={cat}
                       onClick={() => setSelectedPracticeCategory(cat)}
-                      className={`px-4 py-2 rounded-full text-body whitespace-nowrap transition-all flex items-center gap-1.5 ${
+                      className={`px-4 py-2 rounded-full text-body font-medium whitespace-nowrap transition-all flex items-center gap-1.5 ${
                         selectedPracticeCategory === cat
                           ? "bg-card text-primary shadow-sm"
                           : "text-muted-foreground"
@@ -1279,7 +1279,7 @@ const Family: React.FC<FamilyProps> = ({
                   <button
                     key={helper.id}
                     onClick={() => setSelectedHelperId(helper.id)}
-                    className={`px-4 py-2 rounded-full text-body whitespace-nowrap transition-all flex items-center gap-1.5 ${
+                    className={`px-4 py-2 rounded-full text-body font-medium whitespace-nowrap transition-all flex items-center gap-1.5 ${
                       selectedHelperId === helper.id
                         ? "bg-card text-primary shadow-sm"
                         : "text-muted-foreground"
@@ -1321,7 +1321,7 @@ const Family: React.FC<FamilyProps> = ({
                   <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-secondary flex items-center justify-center">
                     <MapPin size={28} className="text-muted-foreground" />
                   </div>
-                  <p className="text-body text-foreground">{t['info.no_places_yet'] || 'No places yet'}</p>
+                  <p className="text-body font-medium text-foreground">{t['info.no_places_yet'] || 'No places yet'}</p>
                   <p className="text-caption text-muted-foreground mt-1">
                     {t['info.add_places_hint'] || 'Add important places and contacts for your household'}
                   </p>
@@ -1358,7 +1358,7 @@ const Family: React.FC<FamilyProps> = ({
                   <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-secondary flex items-center justify-center">
                     <ListChecks size={28} className="text-muted-foreground" />
                   </div>
-                  <p className="text-body text-foreground">{t['info.no_practice_yet'] || 'No practices yet'}</p>
+                  <p className="text-body font-medium text-foreground">{t['info.no_practice_yet'] || 'No practices yet'}</p>
                   <p className="text-caption text-muted-foreground mt-1">
                     {t['info.add_practice_hint'] || 'Add household practices and instructions'}
                   </p>
@@ -1393,7 +1393,7 @@ const Family: React.FC<FamilyProps> = ({
                 <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-secondary flex items-center justify-center">
                   <Lock size={28} className="text-muted-foreground" />
                 </div>
-                <p className="text-body text-foreground mb-2">
+                <p className="text-body font-medium text-foreground mb-2">
                   {t['helper.upgrade_required_title'] || 'Helper Management'}
                 </p>
                 <p className="text-caption text-muted-foreground mb-4">
@@ -1438,7 +1438,7 @@ const Family: React.FC<FamilyProps> = ({
                 
                 {helpers.length === 0 && (
                   <div className="text-center py-12">
-                    <p className="text-body text-muted-foreground">
+                    <p className="text-body font-medium text-muted-foreground">
                       {t['helper.no_helpers'] || 'No helpers in this household'}
                     </p>
                   </div>
@@ -1585,7 +1585,7 @@ const Family: React.FC<FamilyProps> = ({
 
             {/* Content */}
             <div className="p-5">
-              <p className="text-body text-muted-foreground">
+              <p className="text-body font-medium text-muted-foreground">
                 {t['helper.upgrade_modal_desc'] || "Manage your domestic helper's employment records. Track when they work on statutory holidays, record overtime or time-in-lieu, and confirm monthly payslips with digital signatures from both employer and helper."}
               </p>
             </div>
@@ -1626,7 +1626,7 @@ const Family: React.FC<FamilyProps> = ({
             {/* Header */}
             <div className="pt-6 pb-3 px-5">
               <h2 className="text-title text-foreground">{t['maps.open_in_maps'] || 'Open in Maps'}</h2>
-              <p className="text-body text-muted-foreground mt-1">
+              <p className="text-body font-medium text-muted-foreground mt-1">
                 {t['maps.choose_app'] || 'Choose your preferred maps app'}
               </p>
             </div>
@@ -1688,7 +1688,7 @@ const Family: React.FC<FamilyProps> = ({
             {/* Title and description - left aligned */}
             <div className="pr-12">
               <h2 className="text-title text-foreground">{t['info.practice_ideas_title'] || 'Practice Ideas'}</h2>
-              <p className="text-body text-muted-foreground mt-1">
+              <p className="text-body font-medium text-muted-foreground mt-1">
                 {t['info.practice_ideas_subtitle'] || 'Choose from commonly used templates to help organize your home.'}
               </p>
               <p className="text-caption text-muted-foreground mt-3">
@@ -1705,7 +1705,7 @@ const Family: React.FC<FamilyProps> = ({
               className="shrink-0 px-4 py-3 flex items-center justify-between transition-shadow duration-200"
               style={{ boxShadow: presetsScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none' }}
             >
-              <span className="text-body text-foreground">
+              <span className="text-body font-medium text-foreground">
                 {selectedPresetIds.size} {t['info.practice_ideas_selected'] || 'selected'}
               </span>
               <button
@@ -1730,7 +1730,7 @@ const Family: React.FC<FamilyProps> = ({
                 <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center">
                   <Check size={28} className="text-primary" />
                 </div>
-                <p className="text-body text-foreground">{t['info.practice_ideas_all_added'] || "You've added all suggested ideas!"}</p>
+                <p className="text-body font-medium text-foreground">{t['info.practice_ideas_all_added'] || "You've added all suggested ideas!"}</p>
                 <p className="text-caption text-muted-foreground mt-1">
                   {t['info.practice_ideas_all_added_desc'] || 'Great job setting up your household practices.'}
                 </p>
@@ -1839,7 +1839,7 @@ const Family: React.FC<FamilyProps> = ({
               <h3 className="text-title text-foreground text-center mb-2">
                 {(t['info.practice_ideas_confirm_title'] || 'Add {count} Practice Ideas?').replace('{count}', String(selectedPresetIds.size))}
               </h3>
-              <p className="text-body text-muted-foreground text-center">
+              <p className="text-body font-medium text-muted-foreground text-center">
                 {t['info.practice_ideas_confirm_desc'] || 'You can edit or delete them anytime after adding.'}
               </p>
             </div>
@@ -1955,7 +1955,7 @@ const PlaceCard: React.FC<PlaceCardProps> = ({
           className="w-full text-left flex items-start gap-2 py-1.5 group"
         >
           <MapPin size={16} className="text-muted-foreground mt-0.5 flex-shrink-0" />
-          <span className="text-body text-foreground">{item.address}</span>
+          <span className="text-body font-medium text-foreground">{item.address}</span>
         </button>
       )}
 
@@ -1966,7 +1966,7 @@ const PlaceCard: React.FC<PlaceCardProps> = ({
           className="w-full text-left flex items-center gap-2 py-1.5 group"
         >
           <Phone size={16} className="text-muted-foreground flex-shrink-0" />
-          <span className="text-body text-foreground">
+          <span className="text-body font-medium text-foreground">
             {item.countryCode} {item.phone}
           </span>
         </button>
@@ -1976,7 +1976,7 @@ const PlaceCard: React.FC<PlaceCardProps> = ({
       {item.note && (
         <div className="flex items-start gap-2 py-1.5">
           <FileText size={16} className="text-muted-foreground mt-0.5 flex-shrink-0" />
-          <span className="text-body text-muted-foreground whitespace-pre-wrap">
+          <span className="text-body font-medium text-muted-foreground whitespace-pre-wrap">
             <TranslatedPlaceNote 
               info={item} 
               currentLang={currentLang} 
@@ -2083,7 +2083,7 @@ const PracticeCard: React.FC<PracticeCardProps> = ({
           className="mt-3 pt-3 cursor-pointer"
           onClick={handleTap}
         >
-          <p className="text-body text-muted-foreground whitespace-pre-wrap">
+          <p className="text-body font-medium text-muted-foreground whitespace-pre-wrap">
             <TranslatedPracticeNote 
               item={item} 
               currentLang={currentLang} 
@@ -2227,7 +2227,7 @@ const PlaceModal: React.FC<PlaceModalProps> = ({
                     key={cat}
                     type="button"
                     onClick={() => setForm({ ...form, category: cat })}
-                    className={`px-3 py-2 rounded-xl text-body transition-all flex items-center justify-start gap-1.5 ${
+                    className={`px-3 py-2 rounded-xl text-body font-medium transition-all flex items-center justify-start gap-1.5 ${
                       isSelected
                         ? "bg-primary text-primary-foreground shadow-sm"
                         : "bg-card text-foreground ring-1 ring-border"
@@ -2254,7 +2254,7 @@ const PlaceModal: React.FC<PlaceModalProps> = ({
                 value={form.address}
                 onChange={(e) => setForm({ ...form, address: e.target.value })}
                 placeholder={t['info.address_placeholder'] || '123 Main St, City'}
-                className="w-full pl-11 pr-4 py-3 rounded-xl bg-muted border border-transparent focus:border-primary outline-none transition-all text-body"
+                className="w-full pl-11 pr-4 py-3 rounded-xl bg-muted border border-transparent focus:border-primary outline-none transition-all text-body font-medium"
               />
             </div>
           </div>
@@ -2273,7 +2273,7 @@ const PlaceModal: React.FC<PlaceModalProps> = ({
                   value={form.countryCode}
                   onClick={() => setShowCountryCodeDropdown(true)}
                   placeholder="+852"
-                  className="w-full px-4 py-3 rounded-xl bg-muted border border-transparent focus:border-primary outline-none cursor-pointer transition-all text-body"
+                  className="w-full px-4 py-3 rounded-xl bg-muted border border-transparent focus:border-primary outline-none cursor-pointer transition-all text-body font-medium"
                 />
                 <Globe size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                 {showCountryCodeDropdown && (
@@ -2292,12 +2292,12 @@ const PlaceModal: React.FC<PlaceModalProps> = ({
                             }}
                             className="w-full text-left px-4 py-2 flex items-center justify-between"
                           >
-                            <span className="text-body text-foreground">{item.country}</span>
+                            <span className="text-body font-medium text-foreground">{item.country}</span>
                             <span className="text-body font-medium text-muted-foreground">{item.code}</span>
                           </button>
                         ))
                       ) : (
-                        <div className="px-4 py-2 text-body text-muted-foreground">{t['info.no_countries_found'] || 'No countries found'}</div>
+                        <div className="px-4 py-2 text-body font-medium text-muted-foreground">{t['info.no_countries_found'] || 'No countries found'}</div>
                       )}
                     </div>
                     {/* Search input - at bottom when dropdown opens upward */}
@@ -2308,7 +2308,7 @@ const PlaceModal: React.FC<PlaceModalProps> = ({
                         value={countryCodeSearch}
                         onChange={(e) => setCountryCodeSearch(e.target.value)}
                         placeholder={t['placeholder.search_country'] || 'Search country...'}
-                        className="w-full bg-muted border border-transparent rounded-xl px-3 py-2 text-body focus:outline-none focus:border-primary transition-colors"
+                        className="w-full bg-muted border border-transparent rounded-xl px-3 py-2 text-body font-medium focus:outline-none focus:border-primary transition-colors"
                       />
                     </div>
                   </div>
@@ -2327,7 +2327,7 @@ const PlaceModal: React.FC<PlaceModalProps> = ({
                     setForm({ ...form, phone: value });
                   }}
                   placeholder={t['placeholder.mobile_number'] || 'Mobile number'}
-                  className="w-full pl-11 pr-4 py-3 rounded-xl bg-muted border border-transparent focus:border-primary outline-none transition-all text-body"
+                  className="w-full pl-11 pr-4 py-3 rounded-xl bg-muted border border-transparent focus:border-primary outline-none transition-all text-body font-medium"
                 />
               </div>
             </div>
@@ -2344,7 +2344,7 @@ const PlaceModal: React.FC<PlaceModalProps> = ({
               onChange={(e) => setForm({ ...form, note: e.target.value })}
               placeholder={t['info.note_placeholder'] || 'Any additional details...'}
               rows={2}
-              className="w-full px-4 py-3 rounded-xl bg-muted border border-transparent focus:border-primary outline-none transition-all text-body resize-none"
+              className="w-full px-4 py-3 rounded-xl bg-muted border border-transparent focus:border-primary outline-none transition-all text-body font-medium resize-none"
             />
           </div>
         </div>
@@ -2471,7 +2471,7 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
               onChange={(e) => setForm({ ...form, note: e.target.value })}
               placeholder={t['info.routine_note_placeholder'] || 'Enter the instructions, steps, or details...'}
               rows={4}
-              className="w-full px-4 py-3 rounded-xl bg-muted border border-transparent focus:border-primary outline-none transition-all resize-none text-body"
+              className="w-full px-4 py-3 rounded-xl bg-muted border border-transparent focus:border-primary outline-none transition-all resize-none text-body font-medium"
             />
           </div>
 
@@ -2644,7 +2644,7 @@ const PracticeViewModal: React.FC<PracticeViewModalProps> = ({
 
           <div className="prose prose-gray prose-sm">
             {item.note ? (
-              <div className="whitespace-pre-wrap text-body text-foreground">
+              <div className="whitespace-pre-wrap text-body font-medium text-foreground">
                 <TranslatedPracticeNote 
                   item={item} 
                   currentLang={currentLang} 
@@ -2652,7 +2652,7 @@ const PracticeViewModal: React.FC<PracticeViewModalProps> = ({
                 />
               </div>
             ) : (
-              <p className="text-body text-muted-foreground">{t['info.no_note'] || 'No details provided.'}</p>
+              <p className="text-body font-medium text-muted-foreground">{t['info.no_note'] || 'No details provided.'}</p>
             )}
           </div>
         </div>

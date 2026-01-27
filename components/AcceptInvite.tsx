@@ -254,7 +254,7 @@ const AcceptInvite: React.FC<AcceptInviteProps> = ({ onComplete }) => {
             <XCircle className="w-8 h-8 text-destructive" />
             <h1 className="text-display font-bold text-foreground">Invitation Error</h1>
           </div>
-          <p className="text-body text-muted-foreground mb-8">
+          <p className="text-body font-medium text-muted-foreground mb-8">
             {errorMessage || 'This invitation is invalid or has expired.'}
           </p>
           <button
@@ -280,7 +280,7 @@ const AcceptInvite: React.FC<AcceptInviteProps> = ({ onComplete }) => {
           />
           <CheckCircle className="w-16 h-16 text-[#4CAF50] mx-auto mb-4" />
           <h1 className="text-display font-bold text-foreground mb-2">Welcome to Helpy!</h1>
-          <p className="text-body text-muted-foreground">Your account is ready. Redirecting...</p>
+          <p className="text-body font-medium text-muted-foreground">Your account is ready. Redirecting...</p>
         </div>
       </div>
     );
@@ -305,14 +305,14 @@ const AcceptInvite: React.FC<AcceptInviteProps> = ({ onComplete }) => {
             <h1 className="text-display font-bold text-foreground mb-2">
               Check your {verificationType === 'email' ? 'email' : 'phone'}
             </h1>
-            <p className="text-body text-muted-foreground">
+            <p className="text-body font-medium text-muted-foreground">
               We sent a verification code to<br />
               <span className="text-foreground font-medium">{verifyTarget}</span>
             </p>
           </div>
 
           {errorMessage && (
-            <div className="mb-6 p-4 bg-destructive/10 border border-destructive/20 rounded-xl text-destructive text-body">
+            <div className="mb-6 p-4 bg-destructive/10 border border-destructive/20 rounded-xl text-destructive text-body font-medium">
               {errorMessage}
             </div>
           )}
@@ -332,7 +332,7 @@ const AcceptInvite: React.FC<AcceptInviteProps> = ({ onComplete }) => {
                 }}
                 required
                 maxLength={6}
-                className="w-full px-4 py-3.5 rounded-xl bg-white border border-border text-foreground placeholder:text-muted-foreground focus:border-primary outline-none transition-all text-body tracking-widest text-center"
+                className="w-full px-4 py-3.5 rounded-xl bg-white border border-border text-foreground placeholder:text-muted-foreground focus:border-primary outline-none transition-all text-body font-medium tracking-widest text-center"
                 placeholder="Enter 6-digit code"
               />
             </div>
@@ -373,12 +373,12 @@ const AcceptInvite: React.FC<AcceptInviteProps> = ({ onComplete }) => {
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-display font-bold text-foreground mb-2">Join Your Household</h1>
-          <p className="text-body text-muted-foreground">Complete your account setup</p>
+          <p className="text-body font-medium text-muted-foreground">Complete your account setup</p>
         </div>
 
         {/* Error message */}
         {errorMessage && (
-          <div className="mb-6 p-4 bg-destructive/10 border border-destructive/20 rounded-xl text-destructive text-body">
+          <div className="mb-6 p-4 bg-destructive/10 border border-destructive/20 rounded-xl text-destructive text-body font-medium">
             {errorMessage}
           </div>
         )}
@@ -394,7 +394,7 @@ const AcceptInvite: React.FC<AcceptInviteProps> = ({ onComplete }) => {
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
                 required
-                className="w-full px-4 py-3.5 rounded-xl bg-white border border-border text-foreground placeholder:text-muted-foreground focus:border-primary outline-none transition-all text-body"
+                className="w-full px-4 py-3.5 rounded-xl bg-white border border-border text-foreground placeholder:text-muted-foreground focus:border-primary outline-none transition-all text-body font-medium"
                 placeholder="John"
               />
             </div>
@@ -406,7 +406,7 @@ const AcceptInvite: React.FC<AcceptInviteProps> = ({ onComplete }) => {
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
                 required
-                className="w-full px-4 py-3.5 rounded-xl bg-white border border-border text-foreground placeholder:text-muted-foreground focus:border-primary outline-none transition-all text-body"
+                className="w-full px-4 py-3.5 rounded-xl bg-white border border-border text-foreground placeholder:text-muted-foreground focus:border-primary outline-none transition-all text-body font-medium"
                 placeholder="Doe"
               />
             </div>
@@ -421,7 +421,7 @@ const AcceptInvite: React.FC<AcceptInviteProps> = ({ onComplete }) => {
               autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-3.5 rounded-xl bg-white border border-border text-foreground placeholder:text-muted-foreground focus:border-primary outline-none transition-all text-body"
+              className="w-full px-4 py-3.5 rounded-xl bg-white border border-border text-foreground placeholder:text-muted-foreground focus:border-primary outline-none transition-all text-body font-medium"
               placeholder="john@example.com"
             />
           </div>
@@ -439,7 +439,7 @@ const AcceptInvite: React.FC<AcceptInviteProps> = ({ onComplete }) => {
                 const value = e.target.value.replace(/[^\d\s\-()+ ]/g, '');
                 setPhoneNumber(value);
               }}
-              className="w-full px-4 py-3.5 rounded-xl bg-white border border-border text-foreground placeholder:text-muted-foreground focus:border-primary outline-none transition-all text-body"
+              className="w-full px-4 py-3.5 rounded-xl bg-white border border-border text-foreground placeholder:text-muted-foreground focus:border-primary outline-none transition-all text-body font-medium"
               placeholder="+1 (555) 123-4567"
             />
             <p className="text-caption text-muted-foreground mt-1.5">Provide at least one: email or phone number</p>
@@ -453,7 +453,7 @@ const AcceptInvite: React.FC<AcceptInviteProps> = ({ onComplete }) => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="w-full px-4 py-3.5 rounded-xl bg-white border border-border text-foreground placeholder:text-muted-foreground focus:border-primary outline-none transition-all text-body"
+              className="w-full px-4 py-3.5 rounded-xl bg-white border border-border text-foreground placeholder:text-muted-foreground focus:border-primary outline-none transition-all text-body font-medium"
               placeholder="Enter password"
             />
             <p className="text-caption text-muted-foreground mt-2 ml-1">

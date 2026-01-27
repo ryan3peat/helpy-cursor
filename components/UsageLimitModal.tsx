@@ -101,7 +101,7 @@ export const UsageLimitModal: React.FC<UsageLimitModalProps> = ({
           </h2>
 
           {/* Message */}
-          <p className="text-body text-foreground mb-2">
+          <p className="text-body font-medium text-foreground mb-2">
             {content.message}
           </p>
 

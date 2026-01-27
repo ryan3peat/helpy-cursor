@@ -61,7 +61,7 @@ const RemovedFromHousehold: React.FC<RemovedFromHouseholdProps> = ({
           <h1 className="text-display font-bold text-foreground mb-2">
             Removed from Household
           </h1>
-          <p className="text-body text-muted-foreground">
+          <p className="text-body font-medium text-muted-foreground">
             You have been removed from your household
           </p>
         </div>
@@ -161,7 +161,7 @@ const RemovedFromHousehold: React.FC<RemovedFromHouseholdProps> = ({
 
             {/* Content */}
             <div className="p-5">
-              <p className="text-body text-muted-foreground">
+              <p className="text-body font-medium text-muted-foreground">
                 This action cannot be undone. Your account and all associated data will be permanently deleted.
               </p>
             </div>
@@ -171,14 +171,14 @@ const RemovedFromHousehold: React.FC<RemovedFromHouseholdProps> = ({
               <button
                 onClick={() => setShowDeleteConfirm(false)}
                 disabled={isDeleting}
-                className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body disabled:opacity-50"
+                className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body font-medium disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 onClick={handleDeleteAccount}
                 disabled={isDeleting}
-                className="flex-1 py-3.5 rounded-xl bg-destructive/10 text-destructive text-body disabled:opacity-50 flex items-center justify-center gap-2"
+                className="flex-1 py-3.5 rounded-xl bg-destructive/10 text-destructive text-body font-medium disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {isDeleting ? (
                   <>

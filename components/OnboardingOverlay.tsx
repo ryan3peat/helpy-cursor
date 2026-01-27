@@ -409,7 +409,7 @@ const OnboardingOverlay: React.FC<OnboardingOverlayProps> = ({
             <h3 className="text-xl font-bold text-foreground mb-3 text-center">
               {t['onboarding.skip_confirm_title'] || 'Skip Tutorial?'}
             </h3>
-            <p className="text-body text-muted-foreground leading-relaxed mb-8 text-center">
+            <p className="text-body font-medium text-muted-foreground leading-relaxed mb-8 text-center">
               {t['onboarding.skip_confirm_desc'] || 'You can redo the tutorial anytime by tapping your profile photo and scrolling down to "Tutorial".'}
             </p>
             <div className="flex flex-col items-center gap-3">
@@ -449,7 +449,7 @@ const OnboardingOverlay: React.FC<OnboardingOverlayProps> = ({
             <h3 className="text-xl font-bold text-foreground mb-3 text-center">
               {currentStep.title}
             </h3>
-            <p className="text-body text-muted-foreground leading-relaxed mb-8 text-center whitespace-pre-line">
+            <p className="text-body font-medium text-muted-foreground leading-relaxed mb-8 text-center whitespace-pre-line">
               {currentStep.description}
             </p>
             <div className="flex flex-col items-center gap-3">
@@ -500,7 +500,7 @@ const OnboardingOverlay: React.FC<OnboardingOverlayProps> = ({
             <h3 className="text-xl font-bold text-foreground mb-2 pr-8">
               {currentStep.title}
             </h3>
-            <p className="text-body text-muted-foreground leading-relaxed mb-6 whitespace-pre-line">
+            <p className="text-body font-medium text-muted-foreground leading-relaxed mb-6 whitespace-pre-line">
               {currentStep.description}
             </p>
             <div className="flex items-center justify-end">

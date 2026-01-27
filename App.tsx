@@ -24,7 +24,7 @@ import { getStaticTranslations } from './services/translationService';
 import { TranslationProvider, useTranslationContext } from './contexts/TranslationContext';
 import { DemoModeProvider, useDemoMode } from './contexts/DemoModeContext';
 import { supabase } from './services/supabase';
-import { useSupabaseReady, getAuthenticatedSupabaseClient } from './contexts/SupabaseContext';
+import { useSupabaseReady, getAuthenticatedSupabaseClient, useTokenRefreshCount } from './contexts/SupabaseContext';
 import {
   subscribeToCollection,
   addItem,
@@ -82,6 +82,7 @@ const AppContent: React.FC = () => {
   const { user: clerkUser, isSignedIn, isLoaded: clerkLoaded } = useUser();
   const { setStaticTranslating, isAnyTranslating } = useTranslationContext();
   const isSupabaseReady = useSupabaseReady(); // Wait for authenticated Supabase client
+  const tokenRefreshCount = useTokenRefreshCount(); // Triggers data refetch when token is refreshed
   
   // Demo mode for marketing screenshots
   const { 
@@ -1054,7 +1055,11 @@ const AppContent: React.FC = () => {
       logger.log('[App] ⏳ Waiting for authenticated Supabase client...');
       return;
     }
-    logger.log('[App] ✅ Supabase ready, setting up subscriptions');
+    if (tokenRefreshCount > 0) {
+      logger.log(`[App] 🔄 Token refreshed (count: ${tokenRefreshCount}) - re-subscribing for fresh data`);
+    } else {
+      logger.log('[App] ✅ Supabase ready, setting up subscriptions');
+    }
     const hid = currentUser.householdId;
     
     const unsubUsers = subscribeToCollection(hid, 'users', (data) => {
@@ -1210,7 +1215,10 @@ const AppContent: React.FC = () => {
       unsubPlaces();
       unsubPractices();
     };
-  }, [currentUser?.householdId, isSupabaseReady]);
+    // tokenRefreshCount: When token is proactively refreshed (e.g., on app visibility change),
+    // re-run subscriptions to ensure data is fetched with the fresh token.
+    // This fixes the "helper can't see data" issue where stale tokens cause empty reads.
+  }, [currentUser?.householdId, isSupabaseReady, tokenRefreshCount]);
 
   // Sync currentUser with users array when user data changes (e.g., role updates)
   // This ensures role changes take effect immediately without requiring logout/login
@@ -2218,6 +2226,10 @@ const AppContent: React.FC = () => {
               localStorage.setItem('helpy_profile_target_section', 'guide');
               setActiveView('profile');
             }}
+            onOpenFeedback={() => {
+              localStorage.setItem('helpy_profile_target_section', 'feedback');
+              setActiveView('profile');
+            }}
             onOpenAddFamily={() => {
               localStorage.setItem('helpy_profile_target_section', 'add_family');
               setActiveView('profile');
@@ -2560,7 +2572,7 @@ const AppContent: React.FC = () => {
 
             {/* Content */}
             <div className="p-5">
-              <p className="text-body text-muted-foreground">
+              <p className="text-body font-medium text-muted-foreground">
                 {alertModal.message}
               </p>
             </div>
@@ -2569,7 +2581,7 @@ const AppContent: React.FC = () => {
             <div className="p-5 pb-8 border-t border-border shrink-0">
               <button
                 onClick={() => setAlertModal(prev => ({ ...prev, isOpen: false }))}
-                className={`w-full py-3.5 rounded-xl text-body ${
+                className={`w-full py-3.5 rounded-xl text-body font-medium ${
                   alertModal.type === 'error' 
                     ? 'bg-destructive/10 text-destructive' 
                     : alertModal.type === 'success'

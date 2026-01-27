@@ -85,7 +85,7 @@ const HouseholdSwitchModal: React.FC<HouseholdSwitchModalProps> = ({
           
           <button
             onClick={onStay}
-            className="w-full rounded-xl py-3.5 bg-secondary text-foreground text-body flex items-center justify-center gap-2"
+            className="w-full rounded-xl py-3.5 bg-secondary text-foreground text-body font-medium flex items-center justify-center gap-2"
           >
             <Home size={18} />
             {t['household.stay_in_current'] || 'Stay in Current Household'}

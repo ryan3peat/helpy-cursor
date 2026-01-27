@@ -422,7 +422,7 @@ const CreateSalarySlipSheet: React.FC<Props> = ({
                 <select
                   value={selectedHelperId}
                   onChange={(e) => setSelectedHelperId(e.target.value)}
-                  className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
+                  className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body font-medium"
                 >
                   <option value="">{t['salary.select_helper'] || 'Select helper'}</option>
                   {helpers.map(helper => (
@@ -443,7 +443,7 @@ const CreateSalarySlipSheet: React.FC<Props> = ({
                     type="date"
                     value={paymentPeriodStart}
                     onChange={(e) => setPaymentPeriodStart(e.target.value)}
-                    className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
+                    className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body font-medium"
                   />
                 </div>
                 <div>
@@ -454,7 +454,7 @@ const CreateSalarySlipSheet: React.FC<Props> = ({
                     type="date"
                     value={paymentPeriodEnd}
                     onChange={(e) => setPaymentPeriodEnd(e.target.value)}
-                    className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
+                    className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body font-medium"
                   />
                 </div>
               </div>
@@ -608,7 +608,7 @@ const CreateSalarySlipSheet: React.FC<Props> = ({
                   onChange={(e) => setNote(e.target.value)}
                   placeholder={t['salary.note_placeholder'] || 'Optional notes...'}
                   rows={3}
-                  className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body resize-none"
+                  className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body font-medium resize-none"
                 />
               </div>
             </div>
@@ -660,24 +660,24 @@ const CreateSalarySlipSheet: React.FC<Props> = ({
               
               {/* Summary */}
               <div className="p-4 bg-secondary/50 rounded-xl space-y-3">
-                <p className="text-body text-muted-foreground">
+                <p className="text-body font-medium text-muted-foreground">
                   {t['salary.confirm_message'] || 'A salary slip will be generated for:'}
                 </p>
                 
                 <div className="space-y-2">
                   <div className="flex justify-between">
-                    <span className="text-body text-muted-foreground">{t['salary.helper'] || 'Helper'}</span>
+                    <span className="text-body font-medium text-muted-foreground">{t['salary.helper'] || 'Helper'}</span>
                     <span className="text-body font-semibold">
                       {selectedHelper?.firstName || selectedHelper?.name?.split(' ')[0] || 'Helper'}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-body text-muted-foreground">{t['salary.total_salary'] || 'Total Salary'}</span>
+                    <span className="text-body font-medium text-muted-foreground">{t['salary.total_salary'] || 'Total Salary'}</span>
                     <span className="text-body font-bold text-primary">HK${totalPayout.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-body text-muted-foreground">{t['salary.payment_period'] || 'Payment Period'}</span>
-                    <span className="text-body">
+                    <span className="text-body font-medium text-muted-foreground">{t['salary.payment_period'] || 'Payment Period'}</span>
+                    <span className="text-body font-medium">
                       {formatDate(paymentPeriodStart)} - {formatDate(paymentPeriodEnd)}
                     </span>
                   </div>

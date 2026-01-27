@@ -1412,7 +1412,7 @@ const Meals: React.FC<MealsProps> = ({
                                 {getMealLabel(meal.type)}
                               </span>
                               {hasDish ? (
-                                <span className="text-body font-semibold text-foreground leading-tight block">
+                                <span className="text-body font-medium text-foreground leading-tight block">
                                   <TranslatedMealDescription meal={meal} currentLang={currentLang} onUpdate={onUpdate} />
                                 </span>
                               ) : (
@@ -1562,7 +1562,7 @@ const Meals: React.FC<MealsProps> = ({
                                 onClick={() => openAddModal(dayDate, MealType.DINNER)}
                                 className="h-full p-3 cursor-pointer  flex flex-col justify-center min-w-0"
                               >
-                                <button className="text-body font-semibold text-muted-foreground flex items-center gap-1.5">
+                                <button className="text-body font-medium text-muted-foreground flex items-center gap-1.5">
                                   <Plus size={16} />
                                   {t['meals.add_meal_plan'] ?? 'Add Meal Plan'}
                                 </button>
@@ -1912,7 +1912,7 @@ const Meals: React.FC<MealsProps> = ({
                           <button
                             key={aud}
                             onClick={() => handleAudienceChange(aud)}
-                          className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-body transition-colors ${
+                          className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-body font-medium transition-colors ${
                             active
                               ? 'bg-primary text-primary-foreground'
                               : 'bg-card text-foreground ring-1 ring-border'
@@ -1937,7 +1937,7 @@ const Meals: React.FC<MealsProps> = ({
                         <button
                           key={user.id}
                           onClick={() => toggleUser(user.id)}
-                          className={`flex items-center justify-start gap-2 px-3 py-2 rounded-xl text-body transition-colors ${
+                          className={`flex items-center justify-start gap-2 px-3 py-2 rounded-xl text-body font-medium transition-colors ${
                             isSelected
                               ? 'bg-primary text-primary-foreground'
                               : 'bg-card text-foreground ring-1 ring-border'

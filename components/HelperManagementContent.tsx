@@ -1208,18 +1208,18 @@ export const HelperManagementContent: React.FC<Props> = ({
           {contract ? (
             <div className="space-y-2">
               <div className="flex justify-between">
-                <span className="text-body text-muted-foreground">{t['salary.start_date'] || 'Employment Start Date'}</span>
-                <span className="text-body text-foreground">
+                <span className="text-body font-medium text-muted-foreground">{t['salary.start_date'] || 'Employment Start Date'}</span>
+                <span className="text-body font-medium text-foreground">
                   {new Date(contract.employmentStartDate).toLocaleDateString(langCode, { day: 'numeric', month: 'short', year: 'numeric' })}
                       </span>
                   </div>
               <div className="flex justify-between">
-                <span className="text-body text-muted-foreground">{t['salary.base_salary'] || 'Base Salary'}</span>
-                <span className="text-body text-foreground">HK${contract.baseSalary.toLocaleString()}</span>
+                <span className="text-body font-medium text-muted-foreground">{t['salary.base_salary'] || 'Base Salary'}</span>
+                <span className="text-body font-medium text-foreground">HK${contract.baseSalary.toLocaleString()}</span>
                 </div>
               <div className="flex justify-between">
-                <span className="text-body text-muted-foreground">{t['salary.food_allowance'] || 'Food Allowance'}</span>
-                <span className="text-body text-foreground">HK${contract.foodAllowance.toLocaleString()}</span>
+                <span className="text-body font-medium text-muted-foreground">{t['salary.food_allowance'] || 'Food Allowance'}</span>
+                <span className="text-body font-medium text-foreground">HK${contract.foodAllowance.toLocaleString()}</span>
               </div>
               <div className="flex justify-between pt-2 border-t border-border">
                 <span className="text-body font-bold text-foreground">{t['salary.monthly_total'] || 'Monthly Total'}</span>
@@ -1228,7 +1228,7 @@ export const HelperManagementContent: React.FC<Props> = ({
             </div>
           ) : (
             <div className="text-center py-4">
-              <p className="text-body text-muted-foreground mb-3">
+              <p className="text-body font-medium text-muted-foreground mb-3">
                 {t['salary.no_contract'] || 'No details set up yet'}
               </p>
               {canManage && (
@@ -1266,7 +1266,7 @@ export const HelperManagementContent: React.FC<Props> = ({
               <button
               onClick={handleExportAllPDFs}
               disabled={isExportingAll}
-              className="flex items-center gap-2 text-body text-muted-foreground disabled:opacity-50"
+              className="flex items-center gap-2 text-body font-medium text-muted-foreground disabled:opacity-50"
             >
               {isExportingAll ? (
                 <Loader2 size={16} className="animate-spin" />
@@ -1280,7 +1280,7 @@ export const HelperManagementContent: React.FC<Props> = ({
         
         {salarySlips.length === 0 ? (
           <div className="bg-card rounded-xl p-4 shadow-sm text-center py-6">
-            <p className="text-body text-muted-foreground">
+            <p className="text-body font-medium text-muted-foreground">
               {t['salary.no_slips'] || 'No salary slips yet'}
             </p>
           </div>
@@ -1325,7 +1325,7 @@ export const HelperManagementContent: React.FC<Props> = ({
                     ) : (
                       <ChevronRight size={16} className="text-muted-foreground" />
                     )}
-                    <span className="text-body text-muted-foreground">
+                    <span className="text-body font-medium text-muted-foreground">
                       {t['salary.past_signed'] || 'Past & Signed Slips'} ({signedSlips.length})
                     </span>
                   </button>
@@ -1437,7 +1437,7 @@ export const HelperManagementContent: React.FC<Props> = ({
               type="date"
               value={contractForm.employmentStartDate}
               onChange={(e) => setContractForm(prev => ({ ...prev, employmentStartDate: e.target.value }))}
-              className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body"
+              className="w-full px-4 py-3 rounded-lg bg-secondary border border-border focus:border-primary outline-none transition-all text-body font-medium"
             />
             </div>
 
@@ -1510,7 +1510,7 @@ export const HelperManagementContent: React.FC<Props> = ({
           </div>
         </BottomSheet.Header>
         <BottomSheet.Body>
-          <p className="text-body text-muted-foreground">
+          <p className="text-body font-medium text-muted-foreground">
             {t['salary.delete_confirm_message'] || 'This action cannot be undone. The salary slip will be permanently deleted.'}
           </p>
         </BottomSheet.Body>
@@ -1518,7 +1518,7 @@ export const HelperManagementContent: React.FC<Props> = ({
           <div className="flex gap-3">
               <button
               onClick={() => setShowDeleteConfirm(null)}
-                className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body"
+                className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body font-medium"
               >
                 {t['common.cancel'] || 'Cancel'}
               </button>
@@ -1548,7 +1548,7 @@ export const HelperManagementContent: React.FC<Props> = ({
               </div>
         </BottomSheet.Header>
         <BottomSheet.Body>
-          <p className="text-body text-muted-foreground">
+          <p className="text-body font-medium text-muted-foreground">
             {t['salary.sign_confirm_message'] || 'This action CANNOT be reversed. Please make sure you have checked everything before signing.'}
           </p>
         </BottomSheet.Body>
@@ -1556,7 +1556,7 @@ export const HelperManagementContent: React.FC<Props> = ({
           <div className="flex gap-3">
               <button
               onClick={() => setShowSignConfirm(null)}
-                className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body"
+                className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body font-medium"
               >
                 {t['common.cancel'] || 'Cancel'}
               </button>
@@ -1586,7 +1586,7 @@ export const HelperManagementContent: React.FC<Props> = ({
         </div>
         </BottomSheet.Header>
         <BottomSheet.Body>
-          <p className="text-body text-muted-foreground">
+          <p className="text-body font-medium text-muted-foreground">
             {t['salary.info_message'] || 'Salary records will be removed if you delete the helper user. If you would like to keep the salary records, please use the Export All function to download all slips before deletion.'}
           </p>
         </BottomSheet.Body>
@@ -1689,20 +1689,20 @@ const SalarySlipCard: React.FC<SalarySlipCardProps> = ({
       {/* Salary Breakdown */}
           <div className="space-y-2 mb-4 pr-6">
             <div className="flex justify-between">
-              <span className="text-body text-muted-foreground">{t['salary.base_salary'] || 'Base Salary'}</span>
-              <span className="text-body tabular-nums">HK${slip.baseSalary.toLocaleString()}</span>
+              <span className="text-body font-medium text-muted-foreground">{t['salary.base_salary'] || 'Base Salary'}</span>
+              <span className="text-body font-medium tabular-nums">HK${slip.baseSalary.toLocaleString()}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-body text-muted-foreground">{t['salary.food_allowance'] || 'Food Allowance'}</span>
-              <span className="text-body tabular-nums">HK${slip.foodAllowance.toLocaleString()}</span>
+              <span className="text-body font-medium text-muted-foreground">{t['salary.food_allowance'] || 'Food Allowance'}</span>
+              <span className="text-body font-medium tabular-nums">HK${slip.foodAllowance.toLocaleString()}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-body text-muted-foreground">{t['salary.extra_salary'] || 'Additional Pay'}</span>
-              <span className="text-body tabular-nums">HK${slip.extraSalary.toLocaleString()}</span>
+              <span className="text-body font-medium text-muted-foreground">{t['salary.extra_salary'] || 'Additional Pay'}</span>
+              <span className="text-body font-medium tabular-nums">HK${slip.extraSalary.toLocaleString()}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-body text-muted-foreground">{t['salary.deduction'] || 'Pay Deduction'}</span>
-              <span className="text-body text-destructive tabular-nums">HK${slip.salaryDeduction.toLocaleString()}</span>
+              <span className="text-body font-medium text-muted-foreground">{t['salary.deduction'] || 'Pay Deduction'}</span>
+              <span className="text-body font-medium text-destructive tabular-nums">HK${slip.salaryDeduction.toLocaleString()}</span>
             </div>
             <div className="flex justify-between pt-2 border-t border-border">
               <span className="text-body font-bold">{t['salary.total_salary'] || 'Total Salary'}</span>
@@ -1713,7 +1713,7 @@ const SalarySlipCard: React.FC<SalarySlipCardProps> = ({
           {/* Note */}
           {slip.note && (
             <div className="mb-4 p-3 bg-secondary/50 rounded-lg">
-              <p className="text-body text-muted-foreground">{slip.note}</p>
+              <p className="text-body font-medium text-muted-foreground">{slip.note}</p>
     </div>
       )}
       
@@ -1721,15 +1721,15 @@ const SalarySlipCard: React.FC<SalarySlipCardProps> = ({
           <div className="grid grid-cols-2 gap-4 mb-4">
             {/* Employer Signature */}
         <div>
-              <p className="text-body text-muted-foreground mb-2">{t['salary.employer'] || 'Employer'}</p>
+              <p className="text-body font-medium text-muted-foreground mb-2">{t['salary.employer'] || 'Employer'}</p>
               {slip.employerSignedAt ? (
                 <div className="rounded-xl p-3 bg-green-50 dark:bg-green-900/20">
               <div className="flex items-center gap-1 text-green-600">
                 <Signature size={16} />
                     <span className="text-body font-medium">{t['salary.signed'] || 'Signed'}</span>
               </div>
-                  <p className="text-body text-muted-foreground mt-1">{slip.employerSignerName}</p>
-                  <p className="text-body text-muted-foreground">
+                  <p className="text-body font-medium text-muted-foreground mt-1">{slip.employerSignerName}</p>
+                  <p className="text-body font-medium text-muted-foreground">
                     {formatFullDate(new Date(slip.employerSignedAt))}
                   </p>
             </div>
@@ -1739,7 +1739,7 @@ const SalarySlipCard: React.FC<SalarySlipCardProps> = ({
                   <select
                     value={selectedSigner || ''}
                     onChange={(e) => onSignerChange(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-body"
+                    className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-body font-medium"
                   >
                     <option value="">{t['salary.select_signer'] || 'Select signer'}</option>
                     {eligibleSigners.map(signer => (
@@ -1751,44 +1751,44 @@ const SalarySlipCard: React.FC<SalarySlipCardProps> = ({
         <button 
                     onClick={onSignEmployer}
                     disabled={!selectedSigner}
-                    className="w-full px-4 py-2 rounded-xl bg-secondary text-foreground text-body disabled:opacity-50"
+                    className="w-full px-4 py-2 rounded-xl bg-secondary text-foreground text-body font-medium disabled:opacity-50"
                   >
                     {t['salary.sign'] || 'Sign'}
         </button>
       </div>
               ) : (
                 <div className="rounded-xl p-3 bg-muted">
-                  <p className="text-body text-muted-foreground">{t['salary.not_signed'] || 'Not signed'}</p>
+                  <p className="text-body font-medium text-muted-foreground">{t['salary.not_signed'] || 'Not signed'}</p>
                 </div>
                     )}
                   </div>
         
             {/* Helper Signature */}
         <div>
-              <p className="text-body text-muted-foreground mb-2">{t['salary.helper'] || 'Helper'}</p>
+              <p className="text-body font-medium text-muted-foreground mb-2">{t['salary.helper'] || 'Helper'}</p>
               {slip.helperSignedAt ? (
                 <div className="rounded-xl p-3 bg-green-50 dark:bg-green-900/20">
               <div className="flex items-center gap-1 text-green-600">
                 <Signature size={16} />
                     <span className="text-body font-medium">{t['salary.signed'] || 'Signed'}</span>
                 </div>
-                  <p className="text-body text-muted-foreground mt-1">
+                  <p className="text-body font-medium text-muted-foreground mt-1">
                     {helper.firstName || helper.name?.split(' ')[0]}
                   </p>
-                  <p className="text-body text-muted-foreground">
+                  <p className="text-body font-medium text-muted-foreground">
                     {formatFullDate(new Date(slip.helperSignedAt))}
                   </p>
                 </div>
               ) : canSignAsHelper ? (
             <button
                   onClick={onSignHelper}
-                  className="w-full px-4 py-2 rounded-xl bg-secondary text-foreground text-body"
+                  className="w-full px-4 py-2 rounded-xl bg-secondary text-foreground text-body font-medium"
                 >
                   {t['salary.sign'] || 'Sign'}
             </button>
               ) : (
                 <div className="rounded-xl p-3 bg-muted">
-                  <p className="text-body text-muted-foreground">{t['salary.awaiting_signature'] || 'Awaiting signature'}</p>
+                  <p className="text-body font-medium text-muted-foreground">{t['salary.awaiting_signature'] || 'Awaiting signature'}</p>
               </div>
           )}
           </div>

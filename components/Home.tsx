@@ -38,6 +38,7 @@ import {
   Smartphone,
   UserCog,
   MessageSquareShare,
+  MessageCircle,
   Utensils,
   Store,
   LampCeiling,
@@ -84,6 +85,8 @@ interface HomeProps {
   onRestartTutorial?: () => void;
   /** Open the user guide page */
   onOpenUserGuide?: () => void;
+  /** Open the feedback page */
+  onOpenFeedback?: () => void;
   /** Open the add family member sheet in Profile */
   onOpenAddFamily?: () => void;
   /** Navigate to Profile and select a specific family member */
@@ -224,7 +227,7 @@ const FamilyCardWithGlow: React.FC<{
               {user.name.split(' ')[0]} {isCurrent ? `(${t['common.you'] || 'You'})` : ''}
             </h3>
             {user.status === 'pending' && (
-              <span className="text-body text-muted-foreground flex-shrink-0 ml-2">
+              <span className="text-body font-medium text-muted-foreground flex-shrink-0 ml-2">
                 {t['common.pending'] || 'Pending'}
               </span>
             )}
@@ -482,6 +485,7 @@ const Home: React.FC<HomeProps> = ({
   realtimeStatus = 'connected',
   onRestartTutorial,
   onOpenUserGuide,
+  onOpenFeedback,
   onOpenAddFamily,
   onSelectFamilyMember,
   householdLimits = { maxFamily: 3, maxHelpers: 1 },
@@ -580,7 +584,7 @@ const Home: React.FC<HomeProps> = ({
   ) => {
     if (!items || items.length === 0) {
       return (
-        <span className="text-body text-muted-foreground">
+        <span className="text-body font-medium text-muted-foreground">
           {t['profile.none'] || 'None listed'}
         </span>
       );
@@ -1196,7 +1200,7 @@ Give it a try:`;
                 value={tempNotes}
                 onChange={(e) => setTempNotes(e.target.value)}
                 disabled={isSavingNotes || isDeletingNotes}
-                className="w-full bg-white/10 border border-white/20 rounded-xl p-3 text-body text-white placeholder:text-white/60 focus:ring-2 focus:ring-white/50 focus:border-transparent outline-none resize-none leading-relaxed disabled:opacity-50"
+                className="w-full bg-white/10 border border-white/20 rounded-xl p-3 text-body font-medium text-white placeholder:text-white/60 focus:ring-2 focus:ring-white/50 focus:border-transparent outline-none resize-none leading-relaxed disabled:opacity-50"
                 rows={3}
                 placeholder={t['dashboard.type_note']}
               />
@@ -1231,7 +1235,7 @@ Give it a try:`;
           ) : (
             <div onClick={() => !isHelper && setIsEditingNotes(true)} className={`min-h-[40px] ${!isHelper ? 'cursor-pointer' : ''}`}>
               {familyNotes ? (
-                <p className="text-white text-body leading-relaxed whitespace-pre-line">
+                <p className="text-white text-body font-medium leading-relaxed whitespace-pre-line">
                   <TranslatedFamilyNotes
                     notes={familyNotes}
                     notesLang={familyNotesLang}
@@ -1242,7 +1246,7 @@ Give it a try:`;
                 </p>
               ) : (
                 <div className="flex items-center gap-2 py-1 text-white/70">
-                  <span className="text-body">{t['dashboard.tap_to_pin']}</span>
+                  <span className="text-body font-medium">{t['dashboard.tap_to_pin']}</span>
                 </div>
               )}
             </div>
@@ -1290,15 +1294,15 @@ Give it a try:`;
               {isIosDevice() ? (
                 // iOS Instructions
                 <ol className="list-decimal pl-5 space-y-3">
-                  <li className="text-body text-foreground">
+                  <li className="text-body font-medium text-foreground">
                     {t['pwa.step_tap_share'] || 'Tap Share'} <Share size={16} className="inline-block text-muted-foreground ml-1" />
                   </li>
-                  <li className="text-body text-foreground">
+                  <li className="text-body font-medium text-foreground">
                     {t['pwa.step_add_home'] || 'Add to Home Screen'} <SquarePlus size={16} className="inline-block text-muted-foreground ml-1" />
                     <p className="text-caption text-muted-foreground mt-1">{t['pwa.step_open_as_webapp'] || 'Switch on "Open as Web App" if available'}</p>
                   </li>
-                  <li className="text-body text-foreground">{t['pwa.step_tap_add'] || 'Tap Add'}</li>
-                  <li className="text-body text-foreground">{t['pwa.step_done'] || 'Done and open Helpy from your homescreen'}</li>
+                  <li className="text-body font-medium text-foreground">{t['pwa.step_tap_add'] || 'Tap Add'}</li>
+                  <li className="text-body font-medium text-foreground">{t['pwa.step_done'] || 'Done and open Helpy from your homescreen'}</li>
                 </ol>
               ) : isAndroidDevice() ? (
                 // Android Instructions
@@ -1321,16 +1325,16 @@ Give it a try:`;
                       : (t['pwa.follow_steps'] || 'Follow these steps:')}
                   </p>
                   <ol className="list-decimal pl-5 space-y-3">
-                    <li className="text-body text-foreground">
+                    <li className="text-body font-medium text-foreground">
                       {t['pwa.step_tap_menu'] || 'Tap the menu'} <MoreVertical size={16} className="inline-block text-muted-foreground ml-1" />
                       <p className="text-caption text-muted-foreground mt-1">{t['pwa.step_menu_location'] || '(three dots in the top right corner)'}</p>
                     </li>
-                    <li className="text-body text-foreground">
+                    <li className="text-body font-medium text-foreground">
                       {t['pwa.step_add_home'] || 'Add to Home Screen'} <SquarePlus size={16} className="inline-block text-muted-foreground ml-1" />
                       <p className="text-caption text-muted-foreground mt-1">{t['pwa.step_or_install'] || 'Or look for "Install app" option'}</p>
                     </li>
-                    <li className="text-body text-foreground">{t['pwa.step_confirm_add'] || 'Confirm by tapping Add or Install'}</li>
-                    <li className="text-body text-foreground">{t['pwa.step_done'] || 'Done and open Helpy from your homescreen'}</li>
+                    <li className="text-body font-medium text-foreground">{t['pwa.step_confirm_add'] || 'Confirm by tapping Add or Install'}</li>
+                    <li className="text-body font-medium text-foreground">{t['pwa.step_done'] || 'Done and open Helpy from your homescreen'}</li>
                   </ol>
                 </>
               ) : null}
@@ -1390,7 +1394,7 @@ Give it a try:`;
             <div className="space-y-3">
               {todayTasks.slice(0, 3).map(task => (
                 <div key={task.id} className="flex justify-between items-center gap-2">
-                  <span className="text-body text-foreground truncate flex-1">{task.name}</span>
+                  <span className="text-body font-medium text-foreground truncate flex-1">{task.name}</span>
                   {task.dueTime && (
                     <span className="text-caption text-muted-foreground flex-shrink-0">{task.dueTime.slice(0, 5)}</span>
                   )}
@@ -1401,7 +1405,7 @@ Give it a try:`;
               )}
             </div>
           ) : (
-            <span className="text-body text-muted-foreground">{t['dashboard.no_tasks_today'] || 'No tasks for today'}</span>
+            <span className="text-body font-medium text-muted-foreground">{t['dashboard.no_tasks_today'] || 'No tasks for today'}</span>
           )}
         </div>
         
@@ -1410,13 +1414,13 @@ Give it a try:`;
           <div className="relative">
             <div className="absolute top-0 left-5 right-5 border-t border-border"></div>
             <div className="px-5 py-3">
-              <span className="text-body text-muted-foreground mb-2 block">
+              <span className="text-body font-medium text-muted-foreground mb-2 block">
                 {t['dashboard.tomorrow'] || 'Tomorrow'}
               </span>
               <div className="space-y-2">
                 {tomorrowTasks.slice(0, 2).map(task => (
                   <div key={task.id} className="flex justify-between items-center gap-2">
-                    <span className="text-body text-foreground truncate flex-1">{task.name}</span>
+                    <span className="text-body font-medium text-foreground truncate flex-1">{task.name}</span>
                     {task.dueTime && (
                       <span className="text-caption text-muted-foreground flex-shrink-0">{task.dueTime.slice(0, 5)}</span>
                     )}
@@ -1435,13 +1439,13 @@ Give it a try:`;
           <div className="relative">
             <div className="absolute top-0 left-5 right-5 border-t border-border"></div>
             <div className="px-5 py-3">
-              <span className="text-body text-destructive mb-2 block">
+              <span className="text-body font-medium text-destructive mb-2 block">
                 {t['dashboard.overdue'] || 'Overdue'}
               </span>
               <div className="space-y-2">
                 {overdueTasks.slice(0, 2).map(task => (
                   <div key={task.id} className="flex justify-between items-center gap-2">
-                    <span className="text-body text-foreground truncate flex-1">{task.name}</span>
+                    <span className="text-body font-medium text-foreground truncate flex-1">{task.name}</span>
                     {task.dueDate && (
                       <span className="text-caption text-destructive flex-shrink-0">{getDaysOverdue(task.dueDate)}d</span>
                     )}
@@ -1502,13 +1506,13 @@ Give it a try:`;
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-start">
-                          <span className="text-body text-muted-foreground mb-0.5 block">
+                          <span className="text-body font-medium text-muted-foreground mb-0.5 block">
                             {t[`meal.type.${meal.type.toLowerCase()}`] ?? meal.type}
                           </span>
                           {renderAudienceIcons(meal.forUserIds)}
                         </div>
                         {meal.description ? (
-                          <p className="text-body text-foreground leading-tight line-clamp-2">
+                          <p className="text-body font-medium text-foreground leading-tight line-clamp-2">
                             <TranslatedMealDescription 
                               meal={meal} 
                               currentLang={currentLang}
@@ -1516,7 +1520,7 @@ Give it a try:`;
                             />
                           </p>
                         ) : (
-                          <p className="text-body text-muted-foreground leading-tight">
+                          <p className="text-body font-medium text-muted-foreground leading-tight">
                             {t['meals.hungry_no_menu'] ?? "Someone's joining. No menu yet"}
                           </p>
                         )}
@@ -1528,7 +1532,7 @@ Give it a try:`;
             </div>
           ) : (
             <div className="py-2 flex justify-between items-center">
-              <span className="text-body text-muted-foreground">{t['dashboard.no_meals_today'] || 'No meals remaining for today'}</span>
+              <span className="text-body font-medium text-muted-foreground">{t['dashboard.no_meals_today'] || 'No meals remaining for today'}</span>
               <div
                 onClick={(e) => {
                   e.stopPropagation();
@@ -1569,9 +1573,9 @@ Give it a try:`;
         </div>
         
         {/* Content: Big number on left (25%), Item list on right (75%) */}
-        <div className="flex gap-4 pr-10">
+        <div className="flex gap-4 pr-10 items-center">
           {/* Left side - Big number */}
-          <div className="flex-shrink-0" style={{ width: '25%' }}>
+          <div className="flex-shrink-0 flex flex-col items-center justify-center text-center" style={{ width: '25%' }}>
             <span className="text-display text-foreground block mb-1">
               {shoppingCount}
             </span>
@@ -1595,17 +1599,17 @@ Give it a try:`;
                     ) : (
                       <Stone size={16} className="text-muted-foreground flex-shrink-0" />
                     )}
-                    <span className="text-body text-foreground truncate">{item.name}</span>
+                    <span className="text-body font-medium text-foreground truncate">{item.name}</span>
                   </div>
                 ))}
                 {shoppingItems.length > 3 && (
-                  <span className="text-body text-muted-foreground">
+                  <span className="text-body font-medium text-muted-foreground">
                     +{shoppingItems.length - 3} {t['common.more'] || 'more'}
                   </span>
                 )}
               </div>
             ) : (
-              <span className="text-body text-muted-foreground">{t['dashboard.no_items'] || 'No items'}</span>
+              <span className="text-body font-medium text-muted-foreground">{t['dashboard.no_items'] || 'No items'}</span>
             )}
           </div>
         </div>
@@ -1676,21 +1680,21 @@ Give it a try:`;
                 <Plus size={28} className="text-primary" />
               )}
             </div>
-            <span className="text-body font-semibold text-foreground mt-3">
+            <span className="text-body font-semibold text-foreground mt-3 text-center px-2 whitespace-pre-line">
               {isAtMemberLimit 
                 ? (t['common.upgrade'] || 'Upgrade')
-                : (t['common.add'] || 'Add')
+                : (t['dashboard.add_family_or_helper'] || 'Add Family Member\nor Helper')
               }
             </span>
             {isAtMemberLimit && (
-              <span className="text-body text-muted-foreground">
+              <span className="text-body font-medium text-muted-foreground">
                 {t['common.to_add_more'] || 'to add more'}
               </span>
             )}
-            <span className="text-body text-muted-foreground mt-2">
+            <span className="text-body font-medium text-muted-foreground mt-2">
               {totalMemberCount} {t['common.of'] || 'of'} {totalMaxSlots}
             </span>
-            <span className="text-body text-muted-foreground">
+            <span className="text-body font-medium text-muted-foreground">
               {t['dashboard.member_slots_used'] || 'member slots used'}
             </span>
           </div>
@@ -1718,48 +1722,44 @@ Give it a try:`;
         </div>
       )}
 
-      {/* How to use Helpy */}
-      <div className="bg-card rounded-2xl p-6 shadow-sm">
-        <p className="text-title font-bold text-foreground mb-6">{t['dashboard.need_help'] || 'Need Help Getting Started?'}</p>
-        <div className="flex items-stretch justify-center">
+      {/* Need Help Getting Started - iOS Share Sheet Style */}
+      <div className="pt-4">
+        <p className="text-title font-bold text-foreground mb-5">{t['dashboard.need_help'] || 'Need Help Getting Started?'}</p>
+        <div className="grid grid-cols-4 gap-3">
+          {/* Send Feedback */}
+          {onOpenFeedback && (
+            <button onClick={onOpenFeedback} className="flex flex-col items-center">
+              <div className="w-14 h-14 rounded-full bg-secondary flex items-center justify-center mb-2">
+                <MessageCircle size={24} className="text-foreground" />
+              </div>
+              <span className="text-caption font-medium text-foreground text-center leading-tight">{t['dashboard.send_feedback'] || 'Send Feedback'}</span>
+            </button>
+          )}
+          {/* Tutorial */}
           {onRestartTutorial && (
-            <button onClick={onRestartTutorial} className="flex-1 flex flex-col items-center">
-              <div className="h-8 flex items-center justify-center">
-                <GraduationCap size={24} className="text-primary" />
+            <button onClick={onRestartTutorial} className="flex flex-col items-center">
+              <div className="w-14 h-14 rounded-full bg-secondary flex items-center justify-center mb-2">
+                <GraduationCap size={24} className="text-foreground" />
               </div>
-              <span className="text-body font-medium text-foreground mt-2">{t['common.tutorial'] || 'Tutorial'}</span>
+              <span className="text-caption font-medium text-foreground text-center leading-tight">{t['common.tutorial'] || 'Tutorial'}</span>
             </button>
           )}
-          {/* Vertical Divider */}
-          <div className="w-px bg-border mx-4 self-stretch"></div>
+          {/* User Guide */}
           {onOpenUserGuide && (
-            <button onClick={onOpenUserGuide} className="flex-1 flex flex-col items-center">
-              <div className="h-8 flex items-center justify-center">
-                <BookOpen size={24} className="text-primary" />
+            <button onClick={onOpenUserGuide} className="flex flex-col items-center">
+              <div className="w-14 h-14 rounded-full bg-secondary flex items-center justify-center mb-2">
+                <BookOpen size={24} className="text-foreground" />
               </div>
-              <span className="text-body font-medium text-foreground mt-2">{t['guide.title'] || 'User Guide'}</span>
+              <span className="text-caption font-medium text-foreground text-center leading-tight">{t['guide.title'] || 'User Guide'}</span>
             </button>
           )}
-          {/* Tell Others - Share app */}
-          <div className="w-px bg-border mx-4 self-stretch"></div>
-          <button onClick={handleShareApp} className="flex-1 flex flex-col items-center">
-            <div className="h-8 flex items-center justify-center">
-              <MessageSquareShare size={24} className="text-primary" />
+          {/* Tell Others */}
+          <button onClick={handleShareApp} className="flex flex-col items-center">
+            <div className="w-14 h-14 rounded-full bg-secondary flex items-center justify-center mb-2">
+              <MessageSquareShare size={24} className="text-foreground" />
             </div>
-            <span className="text-body font-medium text-foreground mt-2">{t['dashboard.tell_others'] || 'Tell Others'}</span>
+            <span className="text-caption font-medium text-foreground text-center leading-tight">{t['dashboard.tell_others'] || 'Tell Others'}</span>
           </button>
-          {/* Add to Homescreen - Only show on mobile when not installed */}
-          {isMobile && !isPwaInstalled && (
-            <>
-              <div className="w-px bg-border mx-4 self-stretch"></div>
-              <button onClick={openPwaModal} className="flex-1 flex flex-col items-center">
-                <div className="h-8 flex items-center justify-center">
-                  <Smartphone size={24} className="text-primary" />
-                </div>
-                <span className="text-body font-medium text-foreground mt-2 text-center">{t['pwa.add_to_homescreen'] || 'Add to Homescreen'}</span>
-              </button>
-            </>
-          )}
         </div>
       </div>
 
@@ -2004,7 +2004,7 @@ Give it a try:`;
                         : 'bg-secondary text-foreground font-medium'
                     }`}
                   >
-                    <span className="text-body">{getDisplayName(lang.code)}</span>
+                    <span className="text-body font-medium">{getDisplayName(lang.code)}</span>
                     {currentLang === lang.code && <Check size={18} />}
                   </button>
                 );

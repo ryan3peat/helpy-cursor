@@ -221,7 +221,7 @@ const NotificationPrompt: React.FC<NotificationPromptProps> = ({
           </h2>
 
           {/* Description */}
-          <p className="text-body text-muted-foreground mb-6">
+          <p className="text-body font-medium text-muted-foreground mb-6">
             {t['notifications.prompt_description'] || 'Get notified when family members add items, complete tasks, or plan meals.'}
           </p>
 
@@ -229,7 +229,7 @@ const NotificationPrompt: React.FC<NotificationPromptProps> = ({
           {error && (
             <div className="flex items-center gap-2 p-3 mb-4 bg-destructive/10 text-destructive rounded-lg">
               <AlertCircle size={18} className="shrink-0" />
-              <p className="text-body text-left">{error}</p>
+              <p className="text-body font-medium text-left">{error}</p>
             </div>
           )}
 

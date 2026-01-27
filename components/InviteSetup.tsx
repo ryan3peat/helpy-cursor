@@ -136,7 +136,7 @@ const InviteSetup: React.FC<InviteSetupProps> = ({ householdId, userId, onComple
             />
           </div>
           <h1 className="text-display font-bold text-destructive mb-4">Invitation Error</h1>
-          <p className="text-body text-muted-foreground mb-8">
+          <p className="text-body font-medium text-muted-foreground mb-8">
             {error || "Invitation invalid or expired."}
           </p>
           <button
@@ -165,7 +165,7 @@ const InviteSetup: React.FC<InviteSetupProps> = ({ householdId, userId, onComple
           <h1 className="text-display font-bold text-foreground mb-2">
             Welcome, {invitedUser.name ?? "Guest"}!
           </h1>
-          <p className="text-body text-muted-foreground">
+          <p className="text-body font-medium text-muted-foreground">
             Accept invitation for {invitedUser.email ?? "your account"}.
           </p>
         </div>

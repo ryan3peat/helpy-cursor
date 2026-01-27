@@ -391,7 +391,7 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
           {/* Header */}
           <div className="mb-8">
             <h1 className="text-display font-bold text-foreground mb-2">Check your email</h1>
-            <p className="text-body text-muted-foreground">
+            <p className="text-body font-medium text-muted-foreground">
               We sent a verification code to<br />
               <span className="text-foreground font-medium">{formData.email}</span>
             </p>
@@ -421,7 +421,7 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
                 placeholder="Enter 6-digit code"
                 required
                 maxLength={6}
-                className="w-full px-4 py-3.5 rounded-xl bg-white border border-border text-foreground placeholder:text-muted-foreground focus:border-primary outline-none transition-all text-body tracking-widest text-center"
+                className="w-full px-4 py-3.5 rounded-xl bg-white border border-border text-foreground placeholder:text-muted-foreground focus:border-primary outline-none transition-all text-body font-medium tracking-widest text-center"
               />
             </div>
 
@@ -467,7 +467,7 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
           className="flex items-center gap-2 text-muted-foreground mb-6"
         >
           <ArrowLeft size={18} />
-          <span className="text-body">Back to Sign In</span>
+          <span className="text-body font-medium">Back to Sign In</span>
         </button>
 
         {/* Header */}
@@ -527,7 +527,7 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
                 onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
                 placeholder="John"
                 required
-                className="w-full px-4 py-3.5 rounded-2xl bg-white border border-border text-foreground placeholder:text-muted-foreground focus:border-primary outline-none transition-all text-body"
+                className="w-full px-4 py-3.5 rounded-2xl bg-white border border-border text-foreground placeholder:text-muted-foreground focus:border-primary outline-none transition-all text-body font-medium"
               />
             </div>
             <div>
@@ -541,7 +541,7 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
                 onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
                 placeholder="Doe"
                 required
-                className="w-full px-4 py-3.5 rounded-2xl bg-white border border-border text-foreground placeholder:text-muted-foreground focus:border-primary outline-none transition-all text-body"
+                className="w-full px-4 py-3.5 rounded-2xl bg-white border border-border text-foreground placeholder:text-muted-foreground focus:border-primary outline-none transition-all text-body font-medium"
               />
             </div>
           </div>
@@ -557,7 +557,7 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               placeholder="john@example.com"
               required
-              className="w-full px-4 py-3.5 rounded-2xl bg-white border border-border text-foreground placeholder:text-muted-foreground focus:border-primary outline-none transition-all text-body"
+              className="w-full px-4 py-3.5 rounded-2xl bg-white border border-border text-foreground placeholder:text-muted-foreground focus:border-primary outline-none transition-all text-body font-medium"
             />
           </div>
 
@@ -572,7 +572,7 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
               placeholder="Enter password"
               required
-              className="w-full px-4 py-3.5 rounded-2xl bg-white border border-border text-foreground placeholder:text-muted-foreground focus:border-primary outline-none transition-all text-body"
+              className="w-full px-4 py-3.5 rounded-2xl bg-white border border-border text-foreground placeholder:text-muted-foreground focus:border-primary outline-none transition-all text-body font-medium"
             />
             <p className="text-caption text-muted-foreground mt-2 ml-1">
               Min. 8 characters, 1 lowercase, 1 uppercase, 1 special character
@@ -599,7 +599,7 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
         </form>
 
         {/* Footer */}
-        <p className="mt-6 text-body text-muted-foreground">
+        <p className="mt-6 text-body font-medium text-muted-foreground">
           Already have an account?{' '}
           <button onClick={onBackToSignIn} className="text-primary font-semibold">
             Sign In
@@ -610,7 +610,7 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
         <div className="mt-8">
           <a
             href="https://helpyfam.com"
-            className="text-primary text-body"
+            className="text-primary text-body font-medium"
           >
             See Helpyfam Features
           </a>

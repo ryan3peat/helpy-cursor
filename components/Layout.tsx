@@ -68,7 +68,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, onNavigate, t }) 
                 </div>
                 {/* Text with truncation to prevent wrapping */}
                 <span 
-                  className={`text-micro transition-colors duration-200 mt-0.5 max-w-full px-1 truncate ${
+                  className={`text-micro font-medium transition-colors duration-200 mt-0.5 max-w-full px-1 truncate ${
                     isActive 
                       ? 'text-primary' 
                       : 'text-muted-foreground'

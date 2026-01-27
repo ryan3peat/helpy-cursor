@@ -1,15 +1,16 @@
 // contexts/SupabaseContext.tsx
 // Provides authenticated Supabase client with Clerk JWT token for RLS policies
 
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { useAuth, useUser } from '@clerk/clerk-react';
-import { createAuthenticatedClient, SupabaseClient, supabase, updateCurrentToken, setFreshTokenGetter } from '../services/supabase';
+import { createAuthenticatedClient, SupabaseClient, supabase, updateCurrentToken, setFreshTokenGetter, isTokenExpiredOrExpiring, getTokenExpirySeconds } from '../services/supabase';
 import { logger } from '../utils/logger';
 
 type SupabaseContextValue = {
   client: SupabaseClient | null;
   isAuthClient: boolean; // true only when client was created with JWT
   refreshToken: () => Promise<void>; // Function to manually refresh token
+  tokenRefreshCount: number; // Increments each time token is refreshed - components can watch this to refetch
 };
 
 const SupabaseContext = createContext<SupabaseContextValue | null>(null);
@@ -122,6 +123,25 @@ export const useSupabaseReady = (): boolean => {
 };
 
 /**
+ * Hook to watch for token refreshes.
+ * When the token is proactively refreshed (e.g., on app visibility change),
+ * this counter increments. Components can use this as a dependency to refetch data.
+ * 
+ * This fixes the "stale data after app was backgrounded" issue where:
+ * - User backgrounds the app for a while
+ * - Token expires
+ * - User returns to app
+ * - Token gets refreshed proactively
+ * - But data was fetched with OLD token and shows stale/empty results
+ * 
+ * By watching tokenRefreshCount, components can trigger a refetch when the token is refreshed.
+ */
+export const useTokenRefreshCount = (): number => {
+  const context = useContext(SupabaseContext);
+  return context?.tokenRefreshCount ?? 0;
+};
+
+/**
  * Check if Supabase auth client is ready from outside React components
  * Used by services that need to verify auth is available before making queries
  */
@@ -153,6 +173,8 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
   });
   const [client, setClient] = useState<SupabaseClient | null>(null);
   const [isAuthClient, setIsAuthClient] = useState(false);
+  const [tokenRefreshCount, setTokenRefreshCount] = useState(0);
+  const lastVisibilityRefreshRef = useRef<number>(0);
   // Note: refreshIntervalRef removed - no longer needed with fresh token on every request
 
   logger.log('[SupabaseContext] 📊 Current state:', { 
@@ -423,6 +445,74 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
   // - Returns fresh token seamlessly
   // This is the proper way to handle tokens (like Netflix/Spotify do).
 
+  // PROACTIVE TOKEN REFRESH ON VISIBILITY CHANGE
+  // When user returns to app (switches back from another tab/app):
+  // - Check if token is expired or about to expire
+  // - If so, refresh proactively BEFORE any request fails
+  // - Increment tokenRefreshCount so components know to refetch data
+  // This fixes the "helper can't see data" issue where stale tokens cause empty reads
+  useEffect(() => {
+    if (!isSignedIn || !getToken) return;
+    
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState !== 'visible') return;
+      
+      // Throttle: Don't check more than once per 10 seconds
+      const now = Date.now();
+      if (now - lastVisibilityRefreshRef.current < 10000) {
+        logger.log('[SupabaseContext] 👀 Visibility change throttled (too recent)');
+        return;
+      }
+      lastVisibilityRefreshRef.current = now;
+      
+      logger.log('[SupabaseContext] 👀 App became visible - checking token freshness...');
+      
+      try {
+        // Get current token and check expiry
+        const templateName = import.meta.env.VITE_CLERK_JWT_TEMPLATE_NAME || 'supabase';
+        const currentToken = await getToken({ template: templateName });
+        
+        if (!currentToken) {
+          logger.warn('[SupabaseContext] ⚠️ No token available on visibility change');
+          return;
+        }
+        
+        // Check if token is expired or will expire within 60 seconds
+        if (isTokenExpiredOrExpiring(currentToken, 60)) {
+          logger.log('[SupabaseContext] 🔄 Token expired/expiring - proactively refreshing...');
+          
+          // Force a fresh token from Clerk
+          const freshToken = await getToken({ template: templateName, skipCache: true } as any);
+          
+          if (freshToken) {
+            logger.log('[SupabaseContext] ✅ Proactive token refresh successful');
+            updateCurrentToken(freshToken);
+            
+            // Increment counter so components know to refetch
+            setTokenRefreshCount(prev => prev + 1);
+            logger.log('[SupabaseContext] 📢 Token refresh count incremented - components should refetch');
+          } else {
+            logger.warn('[SupabaseContext] ⚠️ Proactive refresh returned no token');
+          }
+        } else {
+          const expirySeconds = getTokenExpirySeconds(currentToken);
+          logger.log(`[SupabaseContext] ✅ Token still fresh (expires in ${expirySeconds}s)`);
+        }
+      } catch (error) {
+        logger.error('[SupabaseContext] ❌ Error during proactive token refresh:', error);
+      }
+    };
+    
+    // Also check on initial mount (in case app was backgrounded for a long time)
+    handleVisibilityChange();
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [isSignedIn, getToken]);
+
   // Expose diagnostic function globally for console debugging
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -474,7 +564,7 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
   }, [isSignedIn, getToken]);
 
   return (
-    <SupabaseContext.Provider value={{ client, isAuthClient, refreshToken }}>
+    <SupabaseContext.Provider value={{ client, isAuthClient, refreshToken, tokenRefreshCount }}>
       {children}
     </SupabaseContext.Provider>
   );

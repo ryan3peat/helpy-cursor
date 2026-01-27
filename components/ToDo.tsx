@@ -1478,7 +1478,7 @@ const ToDo: React.FC<ToDoProps> = ({
                           <button
                             key={option.value}
                             onClick={() => setSortBy(option.value as SortOption)}
-                            className={`w-full text-left px-3 py-2 rounded-lg text-body transition-colors flex items-center justify-between ${
+                            className={`w-full text-left px-3 py-2 rounded-lg text-body font-medium transition-colors flex items-center justify-between ${
                               sortBy === option.value
                                 ? 'bg-primary/10 text-primary'
                                 : 'text-foreground'
@@ -1500,7 +1500,7 @@ const ToDo: React.FC<ToDoProps> = ({
                     <p className="text-caption text-muted-foreground tracking-wide mb-2">{t['common.show']}</p>
                     <button
                       onClick={() => setShowOnlyMine(!showOnlyMine)}
-                      className={`w-full text-left px-3 py-2 rounded-lg text-body transition-colors flex items-center justify-between ${
+                      className={`w-full text-left px-3 py-2 rounded-lg text-body font-medium transition-colors flex items-center justify-between ${
                         showOnlyMine
                           ? 'bg-primary/10 text-primary'
                           : 'text-foreground'
@@ -1528,7 +1528,7 @@ const ToDo: React.FC<ToDoProps> = ({
                             setSortBy('addedDate-desc');
                             setShowOnlyMine(false);
                           }}
-                          className="w-full px-3 py-2 rounded-lg text-body text-muted-foreground text-center"
+                          className="w-full px-3 py-2 rounded-lg text-body font-medium text-muted-foreground text-center"
                         >
                           {t['common.reset_to_default']}
                         </button>
@@ -1607,7 +1607,7 @@ const ToDo: React.FC<ToDoProps> = ({
             <div className="flex p-1 overflow-x-auto scrollbar-hide">
               <button
                 onClick={() => setSelectedCategory('All')}
-                className={`px-4 py-2 rounded-full text-body whitespace-nowrap transition-all ${
+                className={`px-4 py-2 rounded-full text-body font-medium whitespace-nowrap transition-all ${
                   selectedCategory === 'All'
                     ? 'bg-card text-primary shadow-sm'
                     : 'text-muted-foreground'
@@ -1632,7 +1632,7 @@ const ToDo: React.FC<ToDoProps> = ({
                   <button
                     key={cat}
                     onClick={() => setSelectedCategory(cat)}
-                    className={`px-4 py-2 rounded-full text-body whitespace-nowrap transition-all flex items-center gap-1.5 ${
+                    className={`px-4 py-2 rounded-full text-body font-medium whitespace-nowrap transition-all flex items-center gap-1.5 ${
                       selectedCategory === cat
                         ? 'bg-card text-primary shadow-sm'
                         : 'text-muted-foreground'
@@ -1786,7 +1786,7 @@ const ToDo: React.FC<ToDoProps> = ({
                   <div className="flex-1 min-w-0">
                     {/* Task name */}
                     <div className="flex items-center">
-                      <span className={`text-body ${isCompleting ? 'text-muted-foreground line-through' : 'text-foreground'}`}>
+                      <span className={`text-body font-medium ${isCompleting ? 'text-muted-foreground line-through' : 'text-foreground'}`}>
                         <TranslatedItemName item={item} currentLang={currentLang} onUpdate={onUpdate} />
                       </span>
             </div>
@@ -1923,7 +1923,7 @@ const ToDo: React.FC<ToDoProps> = ({
                   
                   <div className="flex-1 min-w-0">
                     {/* Item name with brand */}
-                    <div className={`text-body ${isCompleting ? 'text-muted-foreground line-through' : 'text-foreground'}`}>
+                    <div className={`text-body font-medium ${isCompleting ? 'text-muted-foreground line-through' : 'text-foreground'}`}>
                       <TranslatedItemName item={item} currentLang={currentLang} onUpdate={onUpdate} />
                       {item.brand && (
                         <span className="text-muted-foreground font-normal">
@@ -1994,10 +1994,10 @@ const ToDo: React.FC<ToDoProps> = ({
                           }
                         }}
                         placeholder={t['todo.add_hint'] || 'Press Enter to add | tap + to set details'}
-                        className="flex-1 bg-transparent text-body text-foreground placeholder-light/50 outline-none"
+                        className="flex-1 bg-transparent text-body font-medium text-foreground placeholder-light/50 outline-none"
                       />
                     ) : (
-                      <span className="flex-1 text-body text-muted-foreground">
+                      <span className="flex-1 text-body font-medium text-muted-foreground">
                         {activeSection === 'shopping' ? (t['todo.add_item'] || 'Add item...') : (t['todo.add_task'] || 'Add task...')}
                     </span>
                   )}
@@ -2055,7 +2055,7 @@ const ToDo: React.FC<ToDoProps> = ({
           {/* Empty State */}
           {activeItems.length === 0 && !isAddingInline && (
             <div className="p-8 text-center">
-              <p className="text-body text-foreground">
+              <p className="text-body font-medium text-foreground">
                 {activeSection === 'shopping' 
                   ? (t['todo.no_shopping'] || 'No shopping items yet')
                   : (t['todo.no_tasks'] || 'No tasks yet')
@@ -2081,7 +2081,7 @@ const ToDo: React.FC<ToDoProps> = ({
                 ) : (
                   <ChevronRight size={16} className="text-muted-foreground" />
                 )}
-                <span className="text-body text-muted-foreground">
+                <span className="text-body font-medium text-muted-foreground">
                   {t['todo.completed'] || 'Completed'} ({completedItems.length})
                 </span>
               </button>
@@ -2117,7 +2117,7 @@ const ToDo: React.FC<ToDoProps> = ({
                     </button>
                     
                     <div className="flex-1 min-w-0">
-                      <span className="text-body text-muted-foreground line-through">
+                      <span className="text-body font-medium text-muted-foreground line-through">
                         <TranslatedItemName item={item} currentLang={currentLang} onUpdate={onUpdate} />
                       </span>
                       <span className={`ml-2 px-1.5 py-0.5 rounded text-micro opacity-50 ${getCategoryBadgeStyle(item.category)}`}>
@@ -2242,7 +2242,7 @@ const ToDo: React.FC<ToDoProps> = ({
                     value={sheetForm.brand || ''}
                     onChange={e => setSheetForm(prev => ({ ...prev, brand: e.target.value }))}
                     placeholder={t['common.brand_placeholder'] || 'Your favorite brand'}
-                    className="w-full px-4 py-3 bg-muted rounded-xl text-body text-foreground placeholder-light outline-none border border-transparent focus:border-primary transition-colors"
+                    className="w-full px-4 py-3 bg-muted rounded-xl text-body font-medium text-foreground placeholder-light outline-none border border-transparent focus:border-primary transition-colors"
                   />
                 </div>
               )}
@@ -2266,7 +2266,7 @@ const ToDo: React.FC<ToDoProps> = ({
                       }}
                       onFocus={e => e.target.select()}
                       placeholder={t['common.qty']}
-                      className="w-full px-4 py-3 bg-muted rounded-xl text-body text-foreground outline-none border border-transparent focus:border-primary transition-colors placeholder:text-muted-foreground"
+                      className="w-full px-4 py-3 bg-muted rounded-xl text-body font-medium text-foreground outline-none border border-transparent focus:border-primary transition-colors placeholder:text-muted-foreground"
                     />
                   </div>
                   <div className="flex-1 relative">
@@ -2288,7 +2288,7 @@ const ToDo: React.FC<ToDoProps> = ({
                         setTimeout(() => setShowUnitSuggestions(false), 150);
                       }}
                       placeholder={t['common.unit_placeholder']}
-                      className="w-full px-4 py-3 bg-muted rounded-xl text-body text-foreground placeholder-light outline-none border border-transparent focus:border-primary transition-colors"
+                      className="w-full px-4 py-3 bg-muted rounded-xl text-body font-medium text-foreground placeholder-light outline-none border border-transparent focus:border-primary transition-colors"
                     />
                     
                     {/* Unit suggestions dropdown */}
@@ -2309,7 +2309,7 @@ const ToDo: React.FC<ToDoProps> = ({
                                 setShowUnitSuggestions(false);
                                 unitInputRef.current?.blur();
                               }}
-                              className="w-full px-4 py-2.5 text-left text-body text-foreground transition-colors first:rounded-t-xl last:rounded-b-xl"
+                              className="w-full px-4 py-2.5 text-left text-body font-medium text-foreground transition-colors first:rounded-t-xl last:rounded-b-xl"
                             >
                               {unit}
                             </button>
@@ -2339,7 +2339,7 @@ const ToDo: React.FC<ToDoProps> = ({
                     <div className="relative">
                       {/* Visual display layer (underneath, for display only) */}
                       <div 
-                        className="w-full px-4 py-3 bg-muted rounded-xl text-body border border-transparent flex items-center justify-between"
+                        className="w-full px-4 py-3 bg-muted rounded-xl text-body font-medium border border-transparent flex items-center justify-between"
                       >
                         <span className={sheetForm.dueDate ? 'text-foreground' : 'text-muted-foreground'}>
                           {sheetForm.dueDate 
@@ -2388,7 +2388,7 @@ const ToDo: React.FC<ToDoProps> = ({
                           },
                         }));
                       }}
-                      className="w-full px-4 py-3 bg-muted rounded-xl text-body text-foreground outline-none border border-transparent focus:border-primary transition-colors"
+                      className="w-full px-4 py-3 bg-muted rounded-xl text-body font-medium text-foreground outline-none border border-transparent focus:border-primary transition-colors"
                     >
                       {RECURRENCE_OPTIONS.map(opt => (
                         <option key={opt.value} value={opt.value}>
@@ -2437,7 +2437,7 @@ const ToDo: React.FC<ToDoProps> = ({
                       <button
                         key={cat}
                         onClick={() => setSheetForm(prev => ({ ...prev, category: cat }))}
-                        className={`flex-1 px-2 py-2 rounded-xl text-body transition-all flex items-center justify-start gap-1 ${
+                        className={`flex-1 px-2 py-2 rounded-xl text-body font-medium transition-all flex items-center justify-start gap-1 ${
                           sheetForm.category === cat
                             ? 'bg-primary text-primary-foreground'
                             : 'bg-card text-foreground ring-1 ring-border'
@@ -2461,7 +2461,7 @@ const ToDo: React.FC<ToDoProps> = ({
                     <button
                       key={user.id}
                       onClick={() => setSheetForm(prev => ({ ...prev, assigneeId: user.id }))}
-                      className={`flex items-center justify-start gap-2 px-3 py-2 rounded-xl text-body transition-all ${
+                      className={`flex items-center justify-start gap-2 px-3 py-2 rounded-xl text-body font-medium transition-all ${
                         sheetForm.assigneeId === user.id
                           ? 'bg-primary text-primary-foreground'
                           : 'bg-card text-foreground ring-1 ring-border'
@@ -2602,7 +2602,7 @@ const ToDo: React.FC<ToDoProps> = ({
                     : (t['todo.no_items_in_category'] || 'No items in this category')
                   }
                 </p>
-                <p className="text-body text-muted-foreground/70 mt-2">
+                <p className="text-body font-medium text-muted-foreground/70 mt-2">
                   {t['todo.add_items_first'] || 'Add items to your shopping list first'}
                 </p>
               </div>
@@ -2729,7 +2729,7 @@ const ToDo: React.FC<ToDoProps> = ({
           {/* Footer with item count */}
           <div className="shrink-0 px-5 py-4 bg-primary" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 1rem)' }}>
             <div className="flex items-center justify-between">
-              <span className="text-body text-primary-foreground">
+              <span className="text-body font-medium text-primary-foreground">
                 {shoppingModeItems.length} {shoppingModeItems.length === 1 
                   ? (t['todo.item_remaining'] || 'item remaining')
                   : (t['todo.items_remaining'] || 'items remaining')
@@ -2770,7 +2770,7 @@ const ToDo: React.FC<ToDoProps> = ({
 
             {/* Content */}
             <div className="p-5">
-              <p className="text-body text-muted-foreground">
+              <p className="text-body font-medium text-muted-foreground">
                 {t['confirm.clear_completed'] || 'Delete all completed items? This action cannot be undone.'}
               </p>
             </div>
@@ -2779,13 +2779,13 @@ const ToDo: React.FC<ToDoProps> = ({
             <div className="p-5 pb-8 border-t border-border flex gap-3 shrink-0">
               <button
                 onClick={() => setShowClearCompletedConfirm(false)}
-                className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body"
+                className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body font-medium"
               >
                 {t['common.cancel'] || 'Cancel'}
               </button>
               <button
                 onClick={confirmClearAllCompleted}
-                className="flex-1 py-3.5 rounded-xl bg-destructive/10 text-destructive text-body"
+                className="flex-1 py-3.5 rounded-xl bg-destructive/10 text-destructive text-body font-medium"
               >
                 {t['common.clear_all'] || 'Clear All'}
               </button>

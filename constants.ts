@@ -51,7 +51,9 @@ export const BASE_TRANSLATIONS: Record<string, string> = {
   'dashboard.eating': 'eating',
   'dashboard.language': 'Language',
   'dashboard.need_help': 'Need Help Getting Started?',
+  'dashboard.send_feedback': 'Send Feedback',
   'dashboard.tell_others': 'Tell Others',
+  'dashboard.add_family_or_helper': 'Add Family Member\nor Helper',
   'share.app_text': `Hey! I found this great app called Helpy - it's a home management app that helps families and helpers stay organized together.
 
 It handles:

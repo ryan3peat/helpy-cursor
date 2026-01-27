@@ -74,16 +74,16 @@ const Analytics: React.FC<AnalyticsProps> = ({ onBack, t }) => {
       
       <div className="space-y-3">
         <div className="flex justify-between items-center">
-          <span className="text-body text-muted-foreground">Total</span>
+          <span className="text-body font-medium text-muted-foreground">Total</span>
           <span className="text-display text-foreground">{total}</span>
         </div>
         <div className="h-px bg-border" />
         <div className="flex justify-between items-center">
-          <span className="text-body text-muted-foreground">Active</span>
+          <span className="text-body font-medium text-muted-foreground">Active</span>
           <span className="text-title text-primary font-semibold">{active}</span>
         </div>
         <div className="flex justify-between items-center">
-          <span className="text-body text-muted-foreground">Pending</span>
+          <span className="text-body font-medium text-muted-foreground">Pending</span>
           <span className="text-title text-[#FF9800] font-semibold">{pending}</span>
         </div>
       </div>

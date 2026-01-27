@@ -389,7 +389,7 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
             />
           </div>
           <h1 className="text-display font-bold text-destructive mb-4">Invitation Error</h1>
-          <p className="text-body text-muted-foreground mb-8">
+          <p className="text-body font-medium text-muted-foreground mb-8">
             {error || inviteInfo?.error || 'This invitation is invalid or has expired.'}
           </p>
           <button
@@ -418,7 +418,7 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
 
           <div className="mb-8">
             <h1 className="text-display font-bold text-foreground mb-2">Check your email</h1>
-            <p className="text-body text-muted-foreground">
+            <p className="text-body font-medium text-muted-foreground">
               We sent a verification code to<br />
               <span className="text-foreground font-medium">{formData.email}</span>
             </p>
@@ -448,7 +448,7 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
                 placeholder="Enter 6-digit code"
                 required
                 maxLength={6}
-                className="w-full px-4 py-3.5 rounded-xl bg-white border border-border text-foreground placeholder:text-muted-foreground focus:border-primary outline-none transition-all text-body tracking-widest text-center"
+                className="w-full px-4 py-3.5 rounded-xl bg-white border border-border text-foreground placeholder:text-muted-foreground focus:border-primary outline-none transition-all text-body font-medium tracking-widest text-center"
               />
             </div>
 
@@ -494,7 +494,7 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
             {/* Clerk SignUp Component for OAuth */}
             <button
               onClick={() => setShowGoogleOAuth(false)}
-              className="flex items-center gap-2 text-muted-foreground mb-6 text-body"
+              className="flex items-center gap-2 text-muted-foreground mb-6 text-body font-medium"
             >
               <ArrowRight size={16} className="rotate-180" />
               <span>Back</span>
@@ -526,7 +526,7 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
             {/* Welcome Header */}
             <div className="mb-8">
               <h1 className="text-display font-bold text-foreground mb-2">Welcome!</h1>
-              <p className="text-body text-muted-foreground">{welcomeText}</p>
+              <p className="text-body font-medium text-muted-foreground">{welcomeText}</p>
               {inviteInfo.pendingUserName && (
                 <p className="text-caption text-muted-foreground mt-2">
                   You'll be added as: <span className="font-semibold text-foreground">{inviteInfo.pendingUserName}</span>
@@ -559,7 +559,7 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
             </div>
 
             {/* Sign In Link */}
-            <p className="mt-8 text-body text-muted-foreground">
+            <p className="mt-8 text-body font-medium text-muted-foreground">
               Already have an account?{' '}
               <button
                 onClick={handleEmailSignIn}
@@ -574,7 +574,7 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
             {/* Sign Up Form */}
             <button
               onClick={() => setShowSignUp(false)}
-              className="flex items-center gap-2 text-muted-foreground mb-6 text-body"
+              className="flex items-center gap-2 text-muted-foreground mb-6 text-body font-medium"
             >
               <ArrowRight size={16} className="rotate-180" />
               <span>Back</span>
@@ -603,7 +603,7 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
                     onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
                     placeholder="John"
                     required
-                    className="w-full px-4 py-3.5 rounded-xl bg-white border border-border text-foreground placeholder:text-muted-foreground focus:border-primary outline-none transition-all text-body"
+                    className="w-full px-4 py-3.5 rounded-xl bg-white border border-border text-foreground placeholder:text-muted-foreground focus:border-primary outline-none transition-all text-body font-medium"
                   />
                 </div>
                 <div>
@@ -617,7 +617,7 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
                     onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
                     placeholder="Doe"
                     required
-                    className="w-full px-4 py-3.5 rounded-xl bg-white border border-border text-foreground placeholder:text-muted-foreground focus:border-primary outline-none transition-all text-body"
+                    className="w-full px-4 py-3.5 rounded-xl bg-white border border-border text-foreground placeholder:text-muted-foreground focus:border-primary outline-none transition-all text-body font-medium"
                   />
                 </div>
               </div>
@@ -633,7 +633,7 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   placeholder="john@example.com"
                   required
-                  className="w-full px-4 py-3.5 rounded-xl bg-white border border-border text-foreground placeholder:text-muted-foreground focus:border-primary outline-none transition-all text-body"
+                  className="w-full px-4 py-3.5 rounded-xl bg-white border border-border text-foreground placeholder:text-muted-foreground focus:border-primary outline-none transition-all text-body font-medium"
                 />
               </div>
 
@@ -648,7 +648,7 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   placeholder="Enter password"
                   required
-                  className="w-full px-4 py-3.5 rounded-xl bg-white border border-border text-foreground placeholder:text-muted-foreground focus:border-primary outline-none transition-all text-body"
+                  className="w-full px-4 py-3.5 rounded-xl bg-white border border-border text-foreground placeholder:text-muted-foreground focus:border-primary outline-none transition-all text-body font-medium"
                 />
                 <p className="text-caption text-muted-foreground mt-2 ml-1">
                   Min. 8 characters, 1 lowercase, 1 uppercase, 1 special character

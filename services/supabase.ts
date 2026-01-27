@@ -88,6 +88,79 @@ export const updateCurrentToken = (token: string | null) => {
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 /**
+ * TOKEN EXPIRY CHECKER
+ * 
+ * Decode JWT and check if it's expired or about to expire.
+ * This allows PROACTIVE token refresh before requests fail.
+ * 
+ * @param token - JWT token to check
+ * @param bufferSeconds - Refresh this many seconds BEFORE expiry (default 60s)
+ * @returns true if token is expired or will expire within buffer
+ */
+export function isTokenExpiredOrExpiring(token: string | null, bufferSeconds: number = 60): boolean {
+  if (!token) return true;
+  
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return true;
+    
+    // Decode base64 payload
+    const payload = parts[1];
+    const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = atob(base64);
+    const claims = JSON.parse(jsonPayload);
+    
+    if (!claims.exp) {
+      logger.warn('[Supabase] Token has no exp claim, treating as expired');
+      return true;
+    }
+    
+    const expiryTime = claims.exp * 1000; // Convert to milliseconds
+    const now = Date.now();
+    const bufferMs = bufferSeconds * 1000;
+    
+    // Return true if expired OR will expire within buffer
+    const isExpiring = now >= (expiryTime - bufferMs);
+    
+    if (isExpiring) {
+      const timeLeft = Math.round((expiryTime - now) / 1000);
+      logger.log(`[Supabase] ⏰ Token ${timeLeft <= 0 ? 'EXPIRED' : `expires in ${timeLeft}s`} (buffer: ${bufferSeconds}s)`);
+    }
+    
+    return isExpiring;
+  } catch (e) {
+    logger.warn('[Supabase] Failed to decode token for expiry check:', e);
+    return true; // Treat decode errors as expired
+  }
+}
+
+/**
+ * Get token expiry time in seconds from now (or negative if expired)
+ */
+export function getTokenExpirySeconds(token: string | null): number | null {
+  if (!token) return null;
+  
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    
+    const payload = parts[1];
+    const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = atob(base64);
+    const claims = JSON.parse(jsonPayload);
+    
+    if (!claims.exp) return null;
+    
+    const expiryTime = claims.exp * 1000;
+    const now = Date.now();
+    
+    return Math.round((expiryTime - now) / 1000);
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Get a fresh token with retry logic.
  * This is the KEY to fixing the stale token bug.
  * 

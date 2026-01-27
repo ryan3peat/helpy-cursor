@@ -4,7 +4,7 @@ import {
   AlertCircle, AlertTriangle, Heart, Settings, Plus, Trash2, X, Save, Camera,
   Image as ImageIcon, LogOut, Copy, Check, ChevronLeft, ChevronRight, ArrowLeft,
   Shield, Lock, Crown, Mail, Share2, Bell, BellOff, Phone, CheckCircle, Loader2, GraduationCap,
-  MessageCircleQuestionMark, Palette, Monitor, BookOpen, Pencil, CircleStar,
+  MessageCircle, Palette, Monitor, BookOpen, Pencil, CircleStar,
   MoreVertical, Globe
 } from 'lucide-react';
 import FeedbackSection from './FeedbackSection';
@@ -91,6 +91,12 @@ const Profile: React.FC<ProfileProps> = ({
       // Navigate through settings first, then to guide
       setActiveSection('settings');
       setTimeout(() => setActiveSection('guide'), 100);
+      // Clear the flag
+      localStorage.removeItem('helpy_profile_target_section');
+    } else if (targetSection === 'feedback') {
+      // Navigate through settings first, then to feedback
+      setActiveSection('settings');
+      setTimeout(() => setActiveSection('feedback'), 100);
       // Clear the flag
       localStorage.removeItem('helpy_profile_target_section');
     } else if (targetSection === 'add_family') {
@@ -1509,7 +1515,7 @@ const Profile: React.FC<ProfileProps> = ({
                       return (
                         <>
                           <BellOff size={16} className="text-muted-foreground shrink-0 mt-0.5" />
-                          <span className="text-body text-muted-foreground">
+                          <span className="text-body font-medium text-muted-foreground">
                             {t['notifications.child'] || "Children accounts don't receive notifications."}
                           </span>
                         </>
@@ -1521,7 +1527,7 @@ const Profile: React.FC<ProfileProps> = ({
                       return (
                         <>
                           <BellOff size={16} className="text-destructive shrink-0 mt-0.5" />
-                          <div className="text-body text-muted-foreground">
+                          <div className="text-body font-medium text-muted-foreground">
                              <p className="font-bold text-foreground mb-1">{t['notifications.off'] || 'Notifications off.'}</p>
                              <ol className="list-decimal pl-4 space-y-1">
                                <li>{t['notifications.off_step1'] || 'Enable in'} <strong>{t['notifications.off_step1_settings'] || 'Settings'}</strong> {t['notifications.off_step1_below'] || 'below'}</li>
@@ -1537,7 +1543,7 @@ const Profile: React.FC<ProfileProps> = ({
                       return (
                         <>
                           <BellOff size={16} className="text-orange-500 shrink-0 mt-0.5" />
-                          <div className="text-body text-muted-foreground">
+                          <div className="text-body font-medium text-muted-foreground">
                              <p className="font-bold text-foreground mb-1">{t['notifications.incomplete'] || 'Notification setup is incomplete.'} <span className="font-normal">{(t['notifications.ask_to'] || 'Ask {name} to:').replace('{name}', selectedUser.name.split(' ')[0])}</span></p>
                              <ol className="list-decimal pl-4 space-y-1">
                                <li>{t['notifications.step_add_home'] || 'Add to Home Screen (iPhone/Android)'}</li>
@@ -1678,7 +1684,7 @@ const Profile: React.FC<ProfileProps> = ({
               className="w-full bg-card rounded-2xl shadow-sm overflow-hidden px-5 py-4 flex items-center justify-between"
             >
               <div className="flex items-center gap-3">
-                <MessageCircleQuestionMark size={18} className="text-primary" />
+                <MessageCircle size={18} className="text-primary" />
                 <div className="text-left">
                   <p className="font-bold text-foreground text-title">{t['feedback.title'] || 'Feedback'}</p>
                   <p className="text-caption text-muted-foreground">{t['profile.share_feedback'] || 'Share your thoughts with us'}</p>
@@ -1765,7 +1771,7 @@ const Profile: React.FC<ProfileProps> = ({
                           <button
                             type="button"
                             onClick={() => setNewRole(UserRole.SPOUSE)}
-                            className={`flex-1 px-3 py-2 rounded-xl text-body transition-all flex items-center justify-start ${
+                            className={`flex-1 px-3 py-2 rounded-xl text-body font-medium transition-all flex items-center justify-start ${
                               newRole === UserRole.SPOUSE
                                 ? 'bg-primary text-primary-foreground'
                                 : 'bg-card text-foreground ring-1 ring-border'
@@ -1776,7 +1782,7 @@ const Profile: React.FC<ProfileProps> = ({
                           <button
                             type="button"
                             onClick={() => setNewRole(UserRole.HELPER)}
-                            className={`flex-1 px-3 py-2 rounded-xl text-body transition-all flex items-center justify-start ${
+                            className={`flex-1 px-3 py-2 rounded-xl text-body font-medium transition-all flex items-center justify-start ${
                               newRole === UserRole.HELPER
                                 ? 'bg-primary text-primary-foreground'
                                 : 'bg-card text-foreground ring-1 ring-border'
@@ -1787,7 +1793,7 @@ const Profile: React.FC<ProfileProps> = ({
                           <button
                             type="button"
                             onClick={() => setNewRole(UserRole.CHILD)}
-                            className={`flex-1 px-3 py-2 rounded-xl text-body transition-all flex items-center justify-start ${
+                            className={`flex-1 px-3 py-2 rounded-xl text-body font-medium transition-all flex items-center justify-start ${
                               newRole === UserRole.CHILD
                                 ? 'bg-primary text-primary-foreground'
                                 : 'bg-card text-foreground ring-1 ring-border'
@@ -1798,7 +1804,7 @@ const Profile: React.FC<ProfileProps> = ({
                           <button
                             type="button"
                             onClick={() => setNewRole(UserRole.OTHER)}
-                            className={`flex-1 px-3 py-2 rounded-xl text-body transition-all flex items-center justify-start ${
+                            className={`flex-1 px-3 py-2 rounded-xl text-body font-medium transition-all flex items-center justify-start ${
                               newRole === UserRole.OTHER
                                 ? 'bg-primary text-primary-foreground'
                                 : 'bg-card text-foreground ring-1 ring-border'
@@ -1821,7 +1827,7 @@ const Profile: React.FC<ProfileProps> = ({
                               <p className="text-body font-semibold text-foreground mb-1">
                                 {roleConfig.displayName}
                               </p>
-                              <p className="text-body text-muted-foreground mb-3">
+                              <p className="text-body font-medium text-muted-foreground mb-3">
                                 {roleConfig.description}
                               </p>
                               
@@ -1835,7 +1841,7 @@ const Profile: React.FC<ProfileProps> = ({
                                     {roleConfig.profileFor.map((item) => (
                                       <div key={item.key} className="flex items-start gap-2">
                                         <span className="text-primary mt-0.5 flex-shrink-0">•</span>
-                                        <span className="text-body text-foreground">{item.label}</span>
+                                        <span className="text-body font-medium text-foreground">{item.label}</span>
                                       </div>
                                     ))}
                                   </div>
@@ -1858,7 +1864,7 @@ const Profile: React.FC<ProfileProps> = ({
                             <p className="text-body font-semibold text-foreground mb-1">
                               {roleConfig.displayName}
                             </p>
-                            <p className="text-body text-muted-foreground mb-3">
+                            <p className="text-body font-medium text-muted-foreground mb-3">
                               {roleConfig.description}
                             </p>
                             
@@ -1872,7 +1878,7 @@ const Profile: React.FC<ProfileProps> = ({
                                   {roleConfig.abilities.map((ability) => (
                                     <div key={ability.key} className="flex items-start gap-2">
                                       <Check size={14} className="text-primary mt-0.5 flex-shrink-0" />
-                                      <span className="text-body text-foreground">{ability.label}</span>
+                                      <span className="text-body font-medium text-foreground">{ability.label}</span>
                                     </div>
                                   ))}
                                 </div>
@@ -1889,7 +1895,7 @@ const Profile: React.FC<ProfileProps> = ({
                                   {roleConfig.restrictions.map((restriction) => (
                                     <div key={restriction.key} className="flex items-start gap-2">
                                       <X size={14} className="text-destructive mt-0.5 flex-shrink-0" />
-                                      <span className="text-body text-foreground">{restriction.label}</span>
+                                      <span className="text-body font-medium text-foreground">{restriction.label}</span>
                                     </div>
                                   ))}
                                 </div>
@@ -1951,7 +1957,7 @@ const Profile: React.FC<ProfileProps> = ({
                   <>
                     <div className="flex-1 flex flex-col items-center justify-center px-5">
                       <Loader2 size={40} className="text-primary animate-spin mb-4" />
-                      <p className="text-body text-muted-foreground">
+                      <p className="text-body font-medium text-muted-foreground">
                         {t['profile.creating_invite'] || 'Creating invite...'}
                       </p>
                     </div>
@@ -1992,7 +1998,7 @@ const Profile: React.FC<ProfileProps> = ({
                         </div>
                       </div>
                       
-                      <p className="text-body text-muted-foreground text-center">
+                      <p className="text-body font-medium text-muted-foreground text-center">
                         {addedUserName} {t['profile.added'] || 'added'}! {t['profile.share_link_text'] || 'Share this link with them to join:'}
                       </p>
                       
@@ -2045,7 +2051,7 @@ const Profile: React.FC<ProfileProps> = ({
                           : (t['error.family_limit_title'] || 'Family Member Limit Reached')
                         }
                       </p>
-                      <p className="text-body text-muted-foreground text-center">
+                      <p className="text-body font-medium text-muted-foreground text-center">
                         {t['error.upgrade_to_add_more'] || 'Upgrade your plan to add more members to your household.'}
                       </p>
                     </div>
@@ -2120,7 +2126,7 @@ const Profile: React.FC<ProfileProps> = ({
 
                 {/* Content */}
                 <div className="p-5">
-                  <p className="text-body text-muted-foreground text-center">
+                  <p className="text-body font-medium text-muted-foreground text-center">
                     {t['profile.confirmDelete'] || 'Are you sure you want to delete this family member? This action cannot be undone.'}
                   </p>
                 </div>
@@ -2219,7 +2225,7 @@ const Profile: React.FC<ProfileProps> = ({
                     <select
                       value={editRole}
                       onChange={(e) => setEditRole(e.target.value as UserRole)}
-                      className="w-full px-4 py-3 rounded-xl bg-muted border border-transparent focus:border-primary outline-none transition-all text-body"
+                      className="w-full px-4 py-3 rounded-xl bg-muted border border-transparent focus:border-primary outline-none transition-all text-body font-medium"
                     >
                       <option value={UserRole.MASTER}>{t['profile.role_admin'] || 'Admin'}</option>
                       <option value={UserRole.SPOUSE}>{t['profile.role_spouse'] || 'Spouse'}</option>
@@ -2240,7 +2246,7 @@ const Profile: React.FC<ProfileProps> = ({
                         value={newAllergyInput}
                         onChange={(e) => setNewAllergyInput(e.target.value)}
                         onKeyPress={(e) => e.key === 'Enter' && addAllergy()}
-                        className="flex-1 px-4 py-3 rounded-xl bg-muted border border-transparent focus:border-primary outline-none transition-all text-body"
+                        className="flex-1 px-4 py-3 rounded-xl bg-muted border border-transparent focus:border-primary outline-none transition-all text-body font-medium"
                         placeholder={t['common.add_allergy']}
                       />
                       <button onClick={addAllergy} className="w-10 h-10 bg-primary text-primary-foreground rounded-full flex items-center justify-center">
@@ -2269,7 +2275,7 @@ const Profile: React.FC<ProfileProps> = ({
                         value={newPreferenceInput}
                         onChange={(e) => setNewPreferenceInput(e.target.value)}
                         onKeyPress={(e) => e.key === 'Enter' && addPreference()}
-                        className="flex-1 px-4 py-3 rounded-xl bg-muted border border-transparent focus:border-primary outline-none transition-all text-body"
+                        className="flex-1 px-4 py-3 rounded-xl bg-muted border border-transparent focus:border-primary outline-none transition-all text-body font-medium"
                         placeholder={t['common.add_preference']}
                       />
                       <button onClick={addPreference} className="w-10 h-10 bg-primary text-primary-foreground rounded-full flex items-center justify-center">
@@ -2739,7 +2745,7 @@ const Profile: React.FC<ProfileProps> = ({
                   </div>
                   <div className="text-right">
                     <p 
-                      className="text-body mb-1"
+                      className="text-body font-medium mb-1"
                       style={{ color: currentPlanColors.textMuted }}
                     >
                       {t['common.price'] || 'Price'}
@@ -2789,7 +2795,7 @@ const Profile: React.FC<ProfileProps> = ({
                     style={{ borderColor: currentPlanColors.border }}
                   >
                     <p 
-                      className="text-body"
+                      className="text-body font-medium"
                       style={{ color: currentPlanColors.textMuted }}
                     >
                       {t['common.no_active_subscription'] || 'No active subscription'}
@@ -2804,7 +2810,7 @@ const Profile: React.FC<ProfileProps> = ({
                     style={{ borderColor: currentPlanColors.border }}
                   >
                     <p 
-                      className="text-body"
+                      className="text-body font-medium"
                       style={{ color: currentPlanColors.textMuted }}
                     >
                       {t['subscription.trial_ends'] || 'Free trial ends'}: <span className="font-semibold" style={{ color: currentPlanColors.text }}>{formatDate(subscriptionInfo.trialEndsAt)}</span>
@@ -2855,7 +2861,7 @@ const Profile: React.FC<ProfileProps> = ({
 
               {!isAdmin && (
                 <div className="mb-4 p-4 bg-muted rounded-xl border border-border">
-                  <p className="text-body text-muted-foreground">
+                  <p className="text-body font-medium text-muted-foreground">
                     {t['subscription.admin_only'] || 'Only Admin can make changes to the subscription'}
                   </p>
                 </div>
@@ -3007,7 +3013,7 @@ const Profile: React.FC<ProfileProps> = ({
                                   HK${price}
                                 </span>
                                 <span 
-                                  className="text-body"
+                                  className="text-body font-medium"
                                   style={{ color: hasColoredBg ? 'rgba(255,255,255,0.8)' : 'hsl(var(--muted-foreground))' }}
                                 >
                                   /{billingPeriod === 'monthly' ? t['common.mo'] : t['common.yr']}
@@ -3258,7 +3264,7 @@ const Profile: React.FC<ProfileProps> = ({
                 {/* Scrollable Content */}
                 <div className="flex-1 overflow-y-auto max-h-[60vh]">
                 <div className="p-5 space-y-3">
-                  <p className="text-body text-foreground">
+                  <p className="text-body font-medium text-foreground">
                     {(t['subscription.upgrade_to'] || 'You are about to upgrade to the {plan} plan.').replace('{plan}', pendingPlan.plan === 'core' ? 'Core' : pendingPlan.plan === 'pro' ? 'Pro' : 'Test')}
                   </p>
 
@@ -3320,7 +3326,7 @@ const Profile: React.FC<ProfileProps> = ({
                       setReferralCodeValid(false);
                     }}
                     disabled={loadingPlan !== null}
-                    className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body  disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {t['common.cancel'] || 'Cancel'}
                   </button>
@@ -3374,7 +3380,7 @@ const Profile: React.FC<ProfileProps> = ({
 
                 {/* Content */}
                 <div className="p-5">
-                  <p className="text-body text-muted-foreground">
+                  <p className="text-body font-medium text-muted-foreground">
                     {pendingDowngrade.type === 'paid_to_free' 
                       ? (t['subscription.downgrade_to_free_desc'] || 'This is immediate and you will NOT receive a refund for your remaining paid period. You will lose access to premium features.')
                       : (t['subscription.downgrade_plan_desc'] || 'Your unused time will be credited toward your next invoice. This change takes effect immediately.')
@@ -3386,7 +3392,7 @@ const Profile: React.FC<ProfileProps> = ({
                 <div className="p-5 pb-8 border-t border-border shrink-0 flex gap-3">
                   <button
                     onClick={handleCancelDowngrade}
-                    className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body"
+                    className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body font-medium"
                   >
                     {t['common.cancel'] || 'Cancel'}
                   </button>
@@ -3420,7 +3426,7 @@ const Profile: React.FC<ProfileProps> = ({
 
                 {/* Content */}
                 <div className="p-5">
-                  <p className="text-body text-muted-foreground">
+                  <p className="text-body font-medium text-muted-foreground">
                     {t['subscription.confirm_cancel'] || 'Are you sure you want to cancel your subscription? You will lose access to premium features at the end of your billing period.'}
                   </p>
                 </div>
@@ -3429,13 +3435,13 @@ const Profile: React.FC<ProfileProps> = ({
                 <div className="p-5 pb-8 border-t border-border flex gap-3 shrink-0">
                   <button
                     onClick={() => setShowCancelSubConfirm(false)}
-                    className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body"
+                    className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body font-medium"
                   >
                     {t['common.keep_subscription'] || 'Keep Subscription'}
                   </button>
                   <button
                     onClick={confirmCancelSubscription}
-                    className="flex-1 py-3.5 rounded-xl bg-destructive/10 text-destructive text-body"
+                    className="flex-1 py-3.5 rounded-xl bg-destructive/10 text-destructive text-body font-medium"
                   >
                     {t['common.cancel_subscription'] || 'Cancel'}
                   </button>
@@ -3513,7 +3519,7 @@ const Profile: React.FC<ProfileProps> = ({
                                 value={countryCodeSearch}
                                 onChange={e => setCountryCodeSearch(e.target.value)}
                                 placeholder={t['placeholder.search_country'] || 'Search country...'}
-                                className="w-full bg-muted border border-border rounded-lg px-3 py-2 text-body focus:outline-none focus:border-primary transition-colors"
+                                className="w-full bg-muted border border-border rounded-lg px-3 py-2 text-body font-medium focus:outline-none focus:border-primary transition-colors"
                               />
                             </div>
                             <div className="py-1">
@@ -3529,12 +3535,12 @@ const Profile: React.FC<ProfileProps> = ({
                                     }}
                                     className="w-full text-left px-4 py-2  flex items-center justify-between"
                                   >
-                                    <span className="text-body text-foreground">{item.country}</span>
+                                    <span className="text-body font-medium text-foreground">{item.country}</span>
                                     <span className="text-body font-medium text-muted-foreground">{item.code}</span>
                                   </button>
                                 ))
                               ) : (
-                                <div className="px-4 py-2 text-body text-muted-foreground">{t['info.no_countries_found'] || 'No countries found'}</div>
+                                <div className="px-4 py-2 text-body font-medium text-muted-foreground">{t['info.no_countries_found'] || 'No countries found'}</div>
                               )}
                             </div>
                           </div>
@@ -3612,7 +3618,7 @@ const Profile: React.FC<ProfileProps> = ({
                   )}
                   {isGoogleAuth && (
                     <div className="bg-primary/10 border border-primary/20 rounded-xl p-4">
-                      <p className="text-body text-primary">
+                      <p className="text-body font-medium text-primary">
                         {t['profile.google_managed'] || 'Your account is managed through Google. Password changes must be made through your Google account settings.'}
                       </p>
                     </div>
@@ -3687,7 +3693,7 @@ const Profile: React.FC<ProfileProps> = ({
 
               {/* Content */}
               <div className="p-5">
-                <p className="text-body text-muted-foreground">
+                <p className="text-body font-medium text-muted-foreground">
                   {t['confirm.delete_account'] || 'Are you sure you want to delete your account? This change will be permanent.'}
                 </p>
               </div>
@@ -3696,13 +3702,13 @@ const Profile: React.FC<ProfileProps> = ({
               <div className="p-5 pb-8 border-t border-border flex gap-3 shrink-0">
                 <button
                   onClick={() => setIsDeleteAccountModalOpen(false)}
-                  className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body "
+                  className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body font-medium"
                 >
                   {t['common.cancel'] || 'Cancel'}
                 </button>
                 <button
                   onClick={handleFirstDeleteConfirm}
-                  className="flex-1 py-3.5 rounded-xl bg-destructive/10 text-destructive text-body "
+                  className="flex-1 py-3.5 rounded-xl bg-destructive/10 text-destructive text-body font-medium"
                 >
                   {t['common.continue'] || 'Continue'}
                 </button>
@@ -3733,12 +3739,12 @@ const Profile: React.FC<ProfileProps> = ({
                 {subscriptionInfo?.status === 'active' && subscriptionInfo?.periodEnd && (
                   <div className="mb-4 p-4 bg-primary/10 border border-primary/20 rounded-lg">
                     <p className="text-body text-primary font-semibold mb-1">{t['profile.subscription_info'] || 'Subscription Information'}</p>
-                    <p className="text-body text-primary">
+                    <p className="text-body font-medium text-primary">
                       {t['subscription.active_until'] || 'Your subscription is active until'} {formatDate(subscriptionInfo.periodEnd)}
                     </p>
                   </div>
                 )}
-                <p className="text-body text-muted-foreground">
+                <p className="text-body font-medium text-muted-foreground">
                   {t['confirm.delete_account_final'] || 'Are you sure you want to delete? After deletion it will be immediate.'}
                 </p>
               </div>
@@ -3751,14 +3757,14 @@ const Profile: React.FC<ProfileProps> = ({
                     setIsDeletingAccount(false);
                   }}
                   disabled={isDeletingAccount}
-                  className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body  disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {t['common.cancel'] || 'Cancel'}
                 </button>
                 <button
                   onClick={handleDeleteAccount}
                   disabled={isDeletingAccount}
-                  className="flex-1 py-3.5 rounded-xl bg-destructive text-destructive-foreground text-body disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 py-3.5 rounded-xl bg-destructive text-destructive-foreground text-body font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isDeletingAccount ? (t['common.deleting'] || 'Deleting...') : (t['profile.delete_account'] || 'Delete Account')}
                 </button>
@@ -3791,12 +3797,12 @@ const Profile: React.FC<ProfileProps> = ({
                     <CheckCircle size={32} className="text-primary" />
                   </div>
                 </div>
-                <p className="text-body text-foreground mb-4">
+                <p className="text-body font-medium text-foreground mb-4">
                   {t['subscription.canceled_success'] || 'Your subscription has been successfully canceled.'}
                 </p>
                 <div className="p-4 bg-muted rounded-xl border border-border">
                   <p className="text-caption text-muted-foreground mb-2">{t['profile.what_happens_next'] || 'What happens next?'}</p>
-                  <ul className="text-body text-foreground space-y-2">
+                  <ul className="text-body font-medium text-foreground space-y-2">
                     <li className="flex items-start gap-2">
                       <span className="text-primary mt-1">•</span>
                       <span>{t['profile.access_until_end'] || "You'll continue to have access to premium features until the end of your current billing period."}</span>
@@ -3980,10 +3986,10 @@ const Profile: React.FC<ProfileProps> = ({
                       <div className="bg-secondary/50 rounded-xl p-4">
                         {isIosDevice() ? (
                           <>
-                            <p className="text-body text-muted-foreground mb-3">
+                            <p className="text-body font-medium text-muted-foreground mb-3">
                               {t['pwa.notification_requires_install'] || 'To receive notifications, add Helpy to your home screen:'}
                             </p>
-                            <ol className="text-body text-muted-foreground space-y-2 list-decimal pl-4">
+                            <ol className="text-body font-medium text-muted-foreground space-y-2 list-decimal pl-4">
                               <li>
                                 {t['pwa.ios_step1_tap_share'] || 'Tap the'} <strong>{t['pwa.share'] || 'Share'}</strong> {t['pwa.ios_step1_button'] || 'button'} <Share2 size={14} className="inline text-primary" />
                                 <p className="text-caption text-muted-foreground mt-0.5">{t['pwa.ios_share_location'] || '(at the bottom of the screen)'}</p>
@@ -3998,10 +4004,10 @@ const Profile: React.FC<ProfileProps> = ({
                           </>
                         ) : isAndroidDevice() ? (
                           <>
-                            <p className="text-body text-muted-foreground mb-3">
+                            <p className="text-body font-medium text-muted-foreground mb-3">
                               {t['pwa.notification_requires_install'] || 'To receive notifications, add Helpy to your home screen:'}
                             </p>
-                            <ol className="text-body text-muted-foreground space-y-2 list-decimal pl-4">
+                            <ol className="text-body font-medium text-muted-foreground space-y-2 list-decimal pl-4">
                               <li>
                                 {t['pwa.android_step1_tap'] || 'Tap the'} <strong>{t['pwa.menu'] || 'menu'}</strong> <MoreVertical size={14} className="inline text-primary" />
                                 <p className="text-caption text-muted-foreground mt-0.5">{t['pwa.android_menu_location'] || '(three dots in the top right corner)'}</p>
@@ -4016,10 +4022,10 @@ const Profile: React.FC<ProfileProps> = ({
                           </>
                         ) : (
                           <>
-                            <p className="text-body text-muted-foreground mb-2">
+                            <p className="text-body font-medium text-muted-foreground mb-2">
                               <strong>{t['pwa.desktop_mobile_best'] || 'Notifications work best on mobile.'}</strong>
                             </p>
-                            <p className="text-body text-muted-foreground">
+                            <p className="text-body font-medium text-muted-foreground">
                               {t['pwa.desktop_install_mobile'] || 'Install Helpy on your iPhone or Android to receive notifications on the go.'}
                             </p>
                           </>
@@ -4043,23 +4049,23 @@ const Profile: React.FC<ProfileProps> = ({
                         </div>
                       </div>
                       <div className="bg-destructive/10 rounded-xl p-4">
-                        <p className="text-body text-destructive mb-3">
+                        <p className="text-body font-medium text-destructive mb-3">
                           {t['notifications.blocked_explanation'] || 'Notifications are blocked. To enable them:'}
                         </p>
                         {isIosDevice() ? (
-                          <ol className="text-body text-destructive space-y-2 list-decimal pl-4">
+                          <ol className="text-body font-medium text-destructive space-y-2 list-decimal pl-4">
                             <li>{t['notifications.ios_unblock_1'] || 'Open Settings on your iPhone'}</li>
                             <li>{t['notifications.ios_unblock_2'] || 'Scroll down and tap "Helpy"'}</li>
                             <li>{t['notifications.ios_unblock_3'] || 'Tap "Notifications" and enable "Allow Notifications"'}</li>
                           </ol>
                         ) : isAndroidDevice() ? (
-                          <ol className="text-body text-destructive space-y-2 list-decimal pl-4">
+                          <ol className="text-body font-medium text-destructive space-y-2 list-decimal pl-4">
                             <li>{t['notifications.android_unblock_1'] || 'Open Settings on your phone'}</li>
                             <li>{t['notifications.android_unblock_2'] || 'Tap "Apps" then find "Helpy"'}</li>
                             <li>{t['notifications.android_unblock_3'] || 'Tap "Notifications" and enable them'}</li>
                           </ol>
                         ) : (
-                          <ol className="text-body text-destructive space-y-2 list-decimal pl-4">
+                          <ol className="text-body font-medium text-destructive space-y-2 list-decimal pl-4">
                             <li>{t['notifications.desktop_unblock_1'] || 'Click the lock icon in the address bar'}</li>
                             <li>{t['notifications.desktop_unblock_2'] || 'Find "Notifications" and change to "Allow"'}</li>
                           </ol>
@@ -4267,7 +4273,7 @@ const Profile: React.FC<ProfileProps> = ({
 
               {/* Content */}
               <div className="p-5">
-                <p className="text-body text-muted-foreground">
+                <p className="text-body font-medium text-muted-foreground">
                   {alertModal.message}
                 </p>
               </div>
@@ -4276,7 +4282,7 @@ const Profile: React.FC<ProfileProps> = ({
               <div className="p-5 pb-8 border-t border-border shrink-0">
                 <button
                   onClick={() => setAlertModal(prev => ({ ...prev, isOpen: false }))}
-                  className={`w-full py-3.5 rounded-xl text-body ${
+                  className={`w-full py-3.5 rounded-xl text-body font-medium ${
                     alertModal.type === 'error' 
                       ? 'bg-destructive/10 text-destructive' 
                       : alertModal.type === 'success'

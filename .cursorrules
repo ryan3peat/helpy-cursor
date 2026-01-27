@@ -105,6 +105,78 @@ import { createPortal } from 'react-dom';
 
 See `docs/MEALS_SCROLL_FIX.md` for full details.
 
+#### Meals Table View (Week View) - LOCKED PATTERN
+
+**The Meals table view has specific patterns for sticky headers/columns and borders. DO NOT CHANGE.**
+
+##### Scroll Containment
+- Table is inside a scroll container with `overflow-auto`
+- Parent containers have `touchAction: 'none'` to prevent page scroll
+- Table container has `touchAction: 'pan-x pan-y'` for horizontal/vertical scroll within table only
+- Auto-scroll uses `weekScrollRef.current.scrollTo()` - **NEVER use `window.scrollTo()`**
+
+##### Sticky Header Row (thead)
+- `position: sticky; top: 0; zIndex: 10` on `<thead>`
+- Header cells have `border-t border-b border-border` via Tailwind
+- **Table has NO top border** - header cells provide their own top border so it stays visible when scrolling
+
+##### Sticky First Column (Date Column)
+- Date cells and corner cell have `sticky left-0`
+- Corner cell: `z-[15]` (above both header row and date column)
+- Date cells: `z-[5]`
+- First column cells have `borderLeft` via **inline styles** (Tailwind `bg-*` classes break borders)
+- **Table has NO left border** - first column cells provide their own left border
+
+##### Border Pattern - CRITICAL
+| Element | Border Method | Why |
+|---------|---------------|-----|
+| Table outer | Inline style: `borderRight`, `borderBottom` only | Top/left provided by cells |
+| Header cells | Tailwind: `border-t border-b border-r border-border` | Works with `bg-muted` |
+| Corner cell | Tailwind + Inline: `border-t border-b border-r` + inline `borderLeft` | Left via inline to work with bg |
+| Date cells | Tailwind + Inline: `border-r border-b` + inline `borderLeft`, `backgroundColor` | **Background MUST be inline** |
+| Content cells | Tailwind + Inline: `border-r border-b` + inline `backgroundColor` | **Background MUST be inline** |
+| Breakfast column | Additional inline: `borderLeft: 'none'` | Prevents double border with date column |
+
+##### Why Inline Styles for Backgrounds?
+**Tailwind `bg-card` and `bg-primary` classes interfere with Tailwind border classes.**
+When you add `bg-card` via Tailwind, borders stop rendering. Solution: use inline `backgroundColor` instead.
+
+```tsx
+// WRONG - borders will break
+className="border-b border-border bg-card"
+
+// CORRECT - borders work
+className="border-b border-border"
+style={{ backgroundColor: 'hsl(var(--card))' }}
+```
+
+##### No Box-Shadow for Borders
+**DO NOT use `boxShadow` to create visual borders.** It causes double/thick borders when combined with real borders.
+
+##### Table Structure Summary
+```
+<table style={{ borderRight, borderBottom, marginBottom: 160px }}>
+  <thead style={{ position: sticky, top: 0, zIndex: 10 }}>
+    <tr>
+      <th>Corner - sticky left-0 z-[15], border-t/b/r + inline borderLeft</th>
+      <th>Breakfast - border-t/b/r</th>
+      <th>Lunch - border-t/b/r</th>
+      <th>Dinner - border-t/b/r</th>
+      <th>Snacks - border-t/b (no border-r, table provides)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Date - sticky left-0, inline borderLeft + backgroundColor</td>
+      <td>Breakfast - inline backgroundColor, borderLeft: none</td>
+      <td>Lunch - inline backgroundColor</td>
+      <td>Dinner - inline backgroundColor</td>
+      <td>Snacks - inline backgroundColor</td>
+    </tr>
+  </tbody>
+</table>
+```
+
 ---
 
 ## Code Style

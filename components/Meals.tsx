@@ -891,7 +891,8 @@ const Meals: React.FC<MealsProps> = ({
         const containerTop = scrollContainer.getBoundingClientRect().top;
         const elementTop = targetEl.getBoundingClientRect().top;
         const currentScroll = scrollContainer.scrollTop;
-        const scrollToPosition = currentScroll + (elementTop - containerTop);
+        const topOffset = 12; // Small gap between today card and container top
+        const scrollToPosition = currentScroll + (elementTop - containerTop) - topOffset;
         scrollContainer.scrollTo({ top: Math.max(0, scrollToPosition), behavior: 'auto' });
         hasInitiallyScrolled.current = true;
       }, delay);
@@ -1003,10 +1004,9 @@ const Meals: React.FC<MealsProps> = ({
     const today = new Date();
     const todayIndex = weekDays.findIndex(d => d.toDateString() === today.toDateString());
     
-    // Only scroll vertically if today is in the current week
+    // Scroll container to top if today not in current week
     if (todayIndex === -1) {
-      // Still scroll to top to show table header
-        window.scrollTo({ top: 0, behavior: 'auto' });
+      weekScrollRef.current?.scrollTo({ top: 0, behavior: 'auto' });
       return;
     }
     
@@ -1016,21 +1016,25 @@ const Meals: React.FC<MealsProps> = ({
     scrollAttempts.forEach((delay) => {
       setTimeout(() => {
         if (didScroll) return;
+        const scrollContainer = weekScrollRef.current;
+        if (!scrollContainer) return;
+        
         // Find the table row for today's date
         const dateStr = formatDateStr(weekDays[todayIndex]);
         const targetRow = document.getElementById(`week-row-${dateStr}`);
         if (!targetRow) return;
         
-        // Calculate scroll position to center today's row
-        const headerOffset = 250; // Approximate header height
-        const rect = targetRow.getBoundingClientRect();
-        const elementPosition = rect.top + window.scrollY;
-        const targetScroll = elementPosition - headerOffset - (window.innerHeight / 2) + (rect.height / 2);
+        // Calculate position relative to scroll container using getBoundingClientRect
+        const containerTop = scrollContainer.getBoundingClientRect().top;
+        const elementTop = targetRow.getBoundingClientRect().top;
+        const currentScroll = scrollContainer.scrollTop;
+        const topOffset = 12; // Small gap between today row and container top
+        const scrollToPosition = currentScroll + (elementTop - containerTop) - topOffset;
         
         // Use 'auto' for instant scroll (no visible animation)
-        window.scrollTo({ top: Math.max(0, targetScroll), behavior: 'auto' });
+        scrollContainer.scrollTo({ top: Math.max(0, scrollToPosition), behavior: 'auto' });
         didScroll = true;
-        }, delay);
+      }, delay);
     });
   }, [view, weekDays, isActive]);
 
@@ -1237,9 +1241,10 @@ const Meals: React.FC<MealsProps> = ({
       style={{
         ['--meals-header-h' as any]: `${headerHeight}px`,
         ['--meals-bottom-nav-h' as any]: `${bottomNavHeight}px`,
+        touchAction: 'none',
       }}
     >
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 h-full overflow-hidden flex flex-col">
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 h-full overflow-hidden flex flex-col" style={{ touchAction: 'none' }}>
         {/* ─────────────────────────────────────────────────────────────── */}
         {/* STICKY HEADER - matches Family */}
         {/* ─────────────────────────────────────────────────────────────── */}
@@ -1341,7 +1346,7 @@ const Meals: React.FC<MealsProps> = ({
         {/* ─────────────────────────────────────────────────────────────── */}
         {/* MAIN CONTENT */}
         {/* ─────────────────────────────────────────────────────────────── */}
-        <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+        <div className="flex-1 min-h-0 overflow-hidden flex flex-col" style={{ touchAction: 'none' }}>
 
       {/* Day View */}
       {view === 'day' ? (
@@ -1351,9 +1356,10 @@ const Meals: React.FC<MealsProps> = ({
           style={{
             overscrollBehavior: 'contain',
             WebkitOverflowScrolling: 'touch',
+            touchAction: 'pan-y',
           }}
         >
-          <div className="space-y-4 pb-6">
+          <div className="space-y-4 pb-40 px-1">
             {weekDays.map((dayDate) => {
               const dateStr = formatDateStr(dayDate);
               const isToday = dayDate.toDateString() === new Date().toDateString();
@@ -1620,7 +1626,7 @@ const Meals: React.FC<MealsProps> = ({
           /* Week View - Simple HTML Table */
           <div
             ref={weekScrollRef}
-            className="flex-1 min-h-0 rounded-xl bg-card shadow-sm overflow-auto scrollbar-hide"
+            className="flex-1 min-h-0 overflow-auto scrollbar-hide"
             style={{
               overscrollBehavior: 'contain',
               WebkitOverflowScrolling: 'touch',
@@ -1632,7 +1638,10 @@ const Meals: React.FC<MealsProps> = ({
                 borderSpacing: 0, 
                 tableLayout: 'auto',
                 minWidth: '490px',
-                width: '100%'
+                width: '100%',
+                marginBottom: '160px',
+                borderRight: '1px solid hsl(var(--border))',
+                borderBottom: '1px solid hsl(var(--border))',
               }}>
                 {/* Define column minimum widths - 90px for date, 100px for each meal type */}
                 <colgroup>
@@ -1641,15 +1650,20 @@ const Meals: React.FC<MealsProps> = ({
                     <col key={type} style={{ minWidth: '100px', width: '100px' }} />
                   ))}
                 </colgroup>
-                {/* Table Header - Meal type names */}
-                <thead style={{ touchAction: 'pan-x' }}>
+                {/* Table Header - Meal type names (sticky row) */}
+                <thead style={{ 
+                  position: 'sticky',
+                  top: 0,
+                  zIndex: 10,
+                  touchAction: 'pan-x',
+                }}>
                   <tr>
-                    {/* Corner cell - sticky horizontally */}
+                    {/* Corner cell - sticky both horizontally and vertically */}
                     <th 
-                      className="p-2 bg-muted sticky left-0 z-[5] border-b border-border"
+                      className="p-2 bg-muted sticky left-0 z-[15] border-b border-t border-r border-border"
                       style={{ 
-                        boxShadow: '1px 0 0 0 #d1d5db',
-                        minWidth: '90px'
+                        minWidth: '90px',
+                        borderLeft: '1px solid hsl(var(--border))',
                       }}
                     />
                     {/* Meal type headers - no sticky, scrolls with content */}
@@ -1658,7 +1672,7 @@ const Meals: React.FC<MealsProps> = ({
                       return (
                         <th 
                           key={type}
-                          className={`p-2 text-center border-b border-border ${!isLastCol ? 'border-r' : ''} bg-muted`}
+                          className={`p-2 text-center border-b border-t border-border ${!isLastCol ? 'border-r' : ''} bg-muted`}
                         >
                           <div className="flex flex-col items-center gap-0.5">
                             {getMealIcon(type)}
@@ -1683,10 +1697,11 @@ const Meals: React.FC<MealsProps> = ({
                         {/* Date label cell - sticky horizontally */}
                         <td 
                       onClick={() => handleWeekCellClick(day)}
-                          className={`p-2 text-center align-middle sticky left-0 z-[5] cursor-pointer border-r border-border ${!isLastRow ? 'border-b border-border' : ''} ${isToday ? 'bg-primary' : 'bg-card'}`}
+                          className={`p-2 text-center align-middle sticky left-0 z-[5] cursor-pointer border-r border-border ${!isLastRow ? 'border-b border-border' : ''}`}
                           style={{ 
-                            boxShadow: '1px 0 0 0 #d1d5db',
-                            minWidth: '90px'
+                            minWidth: '90px',
+                            borderLeft: '1px solid hsl(var(--border))',
+                            backgroundColor: isToday ? 'hsl(var(--primary))' : 'hsl(var(--card))',
                           }}
                     >
                       <span className={`text-caption font-semibold block ${isToday ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
@@ -1707,7 +1722,11 @@ const Meals: React.FC<MealsProps> = ({
                               key={`${dateStr}-${type}`}
                             onClick={() => handleWeekCellClick(day)}
                               className={`p-1.5 cursor-pointer align-top ${!isLastRow ? 'border-b border-border' : ''} ${!isLastCol ? 'border-r border-border' : ''}`}
-                              style={{ minWidth: '100px' }}
+                              style={{ 
+                                minWidth: '100px',
+                                backgroundColor: 'hsl(var(--card))',
+                                ...(typeIndex === 0 ? { borderLeft: 'none' } : {}),
+                              }}
                           >
                             {slotMeals.length > 0 ? (
                               <div className="space-y-1">

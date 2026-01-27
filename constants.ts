@@ -1497,9 +1497,9 @@ Give it a try:`,
   'error.delete_practice': 'Failed to delete. Please try again.',
 
   // Error Messages - Helper/Salary
-  'error.load_data': 'Failed to load data. Please try again.',
+  'error.salary_load_data': 'Failed to load data. Please try again.',
   'error.required_fields': 'Please fill in all required fields',
-  'error.delete_slip': 'Failed to delete salary slip. Please try again.',
+  'error.salary_delete_slip': 'Failed to delete salary slip. Please try again.',
   'error.sign_slip': 'Failed to sign. Please try again.',
   'error.select_helper': 'Please select a helper',
   'error.select_dates': 'Please select payment period dates',

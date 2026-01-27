@@ -15,6 +15,17 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-11-17.clover',
 });
 
+// Type helper for Stripe subscription with expected properties
+type StripeSubscriptionWithPeriod = Stripe.Subscription & {
+  current_period_end?: number | null;
+  cancel_at?: number | null;
+};
+
+// Type helper for Stripe invoice with subscription reference
+type StripeInvoiceWithSubscription = Stripe.Invoice & {
+  subscription?: string | Stripe.Subscription | null;
+};
+
 const supabase = createClient(
   process.env.SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -407,10 +418,10 @@ async function handleWebhookRequest(req: any, res: any) {
             ? session.subscription
             : session.subscription.id;
 
-          const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+          const subscriptionData = await stripe.subscriptions.retrieve(subscriptionId) as StripeSubscriptionWithPeriod;
 
           // Safely convert period end to ISO string, validating it's a valid timestamp
-          const periodEnd = timestampToISO(subscription.current_period_end);
+          const periodEnd = timestampToISO(subscriptionData.current_period_end);
 
           const { data: updateData, error: updateError } = await supabase.from('households').update({
             stripe_customer_id: session.customer as string,
@@ -558,7 +569,7 @@ async function handleWebhookRequest(req: any, res: any) {
 
     case 'customer.subscription.created': {
       // Subscription created - backup handler for initial creation
-      const subscription = event.data.object as Stripe.Subscription;
+      const subscription = event.data.object as StripeSubscriptionWithPeriod;
       const hid = subscription.metadata?.household_id;
 
       logger.log(`📦 customer.subscription.created for household: ${hid}`);
@@ -587,7 +598,7 @@ async function handleWebhookRequest(req: any, res: any) {
 
     case 'customer.subscription.updated': {
       // Subscription updated - handles plan changes, status changes, renewals, cancellations
-      const subscription = event.data.object as Stripe.Subscription;
+      const subscription = event.data.object as StripeSubscriptionWithPeriod;
       const hid = subscription.metadata?.household_id;
 
       // Check if trial just ended (status changed from trialing to active)
@@ -619,14 +630,10 @@ async function handleWebhookRequest(req: any, res: any) {
       // Safely log timestamps - convert to primitives to avoid Date serialization issues
       const safeCurrentPeriodEnd = typeof subscription.current_period_end === 'number' 
         ? subscription.current_period_end 
-        : (subscription.current_period_end instanceof Date 
-          ? subscription.current_period_end.getTime() / 1000 
-          : subscription.current_period_end);
+        : subscription.current_period_end;
       const safeCancelAt = typeof subscription.cancel_at === 'number' 
         ? subscription.cancel_at 
-        : (subscription.cancel_at instanceof Date 
-          ? subscription.cancel_at.getTime() / 1000 
-          : subscription.cancel_at);
+        : subscription.cancel_at;
       
       logger.log('🔍 subscription.updated raw timestamps', {
         hid,
@@ -719,7 +726,7 @@ async function handleWebhookRequest(req: any, res: any) {
 
     case 'invoice.paid': {
       // Continue provisioning as payments continue
-      const invoice = event.data.object as Stripe.Invoice;
+      const invoice = event.data.object as StripeInvoiceWithSubscription;
       
       logger.log(`💰 invoice.paid event received`);
       logger.log(`📋 Invoice details:`, {
@@ -737,9 +744,9 @@ async function handleWebhookRequest(req: any, res: any) {
       if (invoice.subscription) {
         if (typeof invoice.subscription === 'string') {
           subscriptionId = invoice.subscription;
-        } else if (typeof invoice.subscription === 'object' && invoice.subscription.id) {
+        } else if (typeof invoice.subscription === 'object' && (invoice.subscription as Stripe.Subscription).id) {
           // Expanded subscription object
-          subscriptionId = invoice.subscription.id;
+          subscriptionId = (invoice.subscription as Stripe.Subscription).id;
         }
       }
 
@@ -751,7 +758,7 @@ async function handleWebhookRequest(req: any, res: any) {
       logger.log(`🔍 invoice.paid: Processing subscription ${subscriptionId}`);
 
       try {
-        const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+        const subscription = await stripe.subscriptions.retrieve(subscriptionId) as StripeSubscriptionWithPeriod;
         const hid = subscription.metadata?.household_id;
         
         if (!hid) {

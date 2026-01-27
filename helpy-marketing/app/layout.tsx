@@ -24,7 +24,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
-      <head>
+      <body className="flex min-h-screen flex-col bg-background text-foreground">
         {/* Google tag (gtag.js) */}
         <Script
           src="https://www.googletagmanager.com/gtag/js?id=G-MQ53SNR4QZ"
@@ -38,8 +38,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             gtag('config', 'G-MQ53SNR4QZ');
           `}
         </Script>
-      </head>
-      <body className="flex min-h-screen flex-col bg-background text-foreground">
         <LanguageProvider>
           <MetadataUpdater />
           <Navbar />

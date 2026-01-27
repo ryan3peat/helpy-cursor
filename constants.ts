@@ -807,11 +807,6 @@ Give it a try:`,
   'error.delete_meal': "Couldn't delete meal. Try closing and reopening the app, or log out and back in.",
   'error.save_meal': "Couldn't save meal. Try closing and reopening the app, or log out and back in.",
   
-  // Error Messages - Expenses
-  'error.save_expense': "Couldn't save expense. Try closing and reopening the app, or log out and back in.",
-  'error.update_expense': "Couldn't update expense. Try closing and reopening the app, or log out and back in.",
-  'error.delete_expense': "Couldn't delete expense. Try closing and reopening the app, or log out and back in.",
-  
   // Error Messages - Family Board
   'error.save_notes': "Couldn't save notes. Try closing and reopening the app, or log out and back in.",
   'error.delete_notes': "Couldn't delete notes. Try closing and reopening the app, or log out and back in.",

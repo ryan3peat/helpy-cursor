@@ -13,24 +13,43 @@
     }
 
     :root {
-      --bg-primary: #0f1419;
-      --bg-secondary: #1a1f26;
-      --bg-tertiary: #252b33;
-      --text-primary: #ffffff;
-      --text-secondary: #8b949e;
-      --text-muted: #6e7681;
-      --accent-blue: #58a6ff;
-      --accent-orange: #f0883e;
-      --accent-green: #3fb950;
-      --accent-purple: #a371f7;
-      --accent-red: #f85149;
-      --border-color: #30363d;
-      --today-bg: rgba(88, 166, 255, 0.15);
+      /* Helpy Light Mode Theme */
+      --bg-primary: #FAFAFA;
+      --bg-secondary: #F5F5F5;
+      --bg-tertiary: #EEEEEE;
+      --text-primary: #474747;
+      --text-secondary: #757575;
+      --text-muted: #9CA3AF;
+      
+      /* Helpy Brand Colors */
+      --helpy-blue: #3EAFD2;
+      --helpy-pink: #F06292;
+      
+      /* Meal Type Colors */
+      --meal-breakfast: #FF9800;
+      --meal-lunch: #4CAF50;
+      --meal-dinner: #7E57C2;
+      --meal-snacks: #F06292;
+      
+      /* Accent Colors */
+      --accent-blue: #3EAFD2;
+      --accent-orange: #FF9800;
+      --accent-green: #4CAF50;
+      --accent-purple: #7E57C2;
+      --accent-pink: #F06292;
+      
+      /* UI */
+      --border-color: #E0E0E0;
+      --card-bg: #FFFFFF;
+      --today-bg: rgba(62, 175, 210, 0.12);
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
+      --shadow-md: 0 4px 12px rgba(72,60,50,0.05);
     }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-      background: var(--bg-primary);
+      font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: linear-gradient(to right bottom, #fafafa, #f9f9fa, #f8f8fa, #f6f8f9, #f4f7f9, #f3f7f9, #f1f6f8, #f0f6f8, #f0f6f8, #eff6f8, #eff6f8, #eef6f8);
+      background-attachment: fixed;
       color: var(--text-primary);
       min-height: 100vh;
       overflow-x: hidden;
@@ -40,10 +59,11 @@
     .header {
       position: sticky;
       top: 0;
-      background: var(--bg-primary);
+      background: var(--card-bg);
       padding: 16px;
       border-bottom: 1px solid var(--border-color);
       z-index: 100;
+      box-shadow: var(--shadow-sm);
     }
 
     .header-top {
@@ -56,24 +76,31 @@
     .header-title {
       font-size: 24px;
       font-weight: 600;
+      color: var(--text-primary);
     }
 
     .today-btn {
-      background: var(--accent-blue);
+      background: var(--helpy-blue);
       color: white;
       border: none;
       padding: 8px 16px;
-      border-radius: 8px;
+      border-radius: 12px;
       font-size: 14px;
-      font-weight: 500;
+      font-weight: 600;
       cursor: pointer;
+      box-shadow: var(--shadow-sm);
+      transition: opacity 0.2s;
+    }
+
+    .today-btn:hover {
+      opacity: 0.9;
     }
 
     /* View Toggle */
     .view-toggle {
       display: flex;
       background: var(--bg-secondary);
-      border-radius: 10px;
+      border-radius: 12px;
       padding: 4px;
       gap: 4px;
     }
@@ -86,14 +113,15 @@
       color: var(--text-secondary);
       font-size: 14px;
       font-weight: 500;
-      border-radius: 8px;
+      border-radius: 10px;
       cursor: pointer;
       transition: all 0.2s;
     }
 
     .view-btn.active {
-      background: var(--accent-blue);
+      background: var(--helpy-blue);
       color: white;
+      box-shadow: var(--shadow-sm);
     }
 
     /* Month Navigation */
@@ -105,8 +133,8 @@
     }
 
     .month-nav button {
-      background: var(--bg-secondary);
-      border: none;
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
       color: var(--text-primary);
       width: 36px;
       height: 36px;
@@ -116,11 +144,18 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      box-shadow: var(--shadow-sm);
+      transition: background 0.2s;
+    }
+
+    .month-nav button:hover {
+      background: var(--bg-secondary);
     }
 
     .month-nav span {
       font-size: 18px;
       font-weight: 600;
+      color: var(--text-primary);
     }
 
     /* Month View */
@@ -166,7 +201,8 @@
     }
 
     .day-cell.selected {
-      background: var(--accent-blue);
+      background: var(--helpy-blue);
+      color: white;
     }
 
     .day-cell.other-month {
@@ -177,6 +213,15 @@
       font-size: 14px;
       font-weight: 500;
       margin-bottom: 4px;
+      color: var(--text-primary);
+    }
+
+    .day-cell.selected .day-number {
+      color: white;
+    }
+
+    .day-cell.other-month .day-number {
+      color: var(--text-muted);
     }
 
     .day-dots {
@@ -191,9 +236,10 @@
       border-radius: 50%;
     }
 
-    .dot.task { background: var(--accent-blue); }
-    .dot.meal { background: var(--accent-orange); }
-    .dot.expense { background: var(--accent-green); }
+    .dot.task { background: var(--helpy-blue); }
+    .dot.meal { background: var(--meal-breakfast); }
+    .dot.shopping { background: var(--accent-purple); }
+    .dot.holiday { background: var(--helpy-pink); }
 
     /* Week View - Table-based with frozen row/column */
     .week-view {
@@ -219,7 +265,7 @@
     .days-toggle-btn {
       padding: 6px 16px;
       border: 1px solid var(--border-color);
-      background: transparent;
+      background: var(--card-bg);
       color: var(--text-secondary);
       font-size: 13px;
       font-weight: 500;
@@ -228,9 +274,13 @@
       transition: all 0.2s;
     }
 
+    .days-toggle-btn:hover {
+      background: var(--bg-secondary);
+    }
+
     .days-toggle-btn.active {
-      background: var(--accent-blue);
-      border-color: var(--accent-blue);
+      background: var(--helpy-blue);
+      border-color: var(--helpy-blue);
       color: white;
     }
 
@@ -273,7 +323,7 @@
       position: sticky;
       left: 0;
       z-index: 25;
-      background: var(--bg-primary);
+      background: var(--bg-secondary);
       border-bottom: 1px solid var(--border-color);
       border-right: 1px solid var(--border-color);
     }
@@ -282,7 +332,7 @@
     .week-table .day-header {
       text-align: center;
       padding: 8px 4px;
-      background: var(--bg-primary);
+      background: var(--bg-secondary);
       border-bottom: 1px solid var(--border-color);
       border-right: 1px solid var(--border-color);
     }
@@ -295,16 +345,18 @@
       font-size: 11px;
       color: var(--text-muted);
       text-transform: uppercase;
+      font-weight: 500;
     }
 
     .week-day-num {
       font-size: 18px;
       font-weight: 600;
       margin-top: 4px;
+      color: var(--text-primary);
     }
 
     .week-table .day-header.today .week-day-num {
-      background: var(--accent-blue);
+      background: var(--helpy-blue);
       color: white;
       width: 32px;
       height: 32px;
@@ -320,8 +372,9 @@
       position: sticky;
       left: 0;
       z-index: 15;
-      font-size: 10px;
-      color: var(--text-muted);
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-secondary);
       padding: 6px 4px;
       text-align: center;
       border-right: 1px solid var(--border-color);
@@ -333,7 +386,7 @@
     }
 
     .week-table .row-label:hover {
-      background: var(--bg-tertiary);
+      filter: brightness(0.95);
     }
 
     .week-table .row-label .label-content {
@@ -346,29 +399,26 @@
     .week-table .row-label .collapse-icon {
       font-size: 8px;
       transition: transform 0.2s;
+      color: var(--text-muted);
     }
 
     .week-table .row-label.collapsed .collapse-icon {
       transform: rotate(-90deg);
     }
 
-    /* Section rows - different backgrounds */
-    .week-table .meals-row .row-label {
-      background: var(--bg-secondary);
-    }
-
-    .week-table .shopping-row .row-label {
-      background: var(--bg-tertiary);
-    }
-
+    /* Section rows - neutral labels with black text */
+    .week-table .meals-row .row-label,
+    .week-table .shopping-row .row-label,
     .week-table .holiday-row .row-label {
-      background: rgba(248, 81, 73, 0.15);
+      background: var(--bg-secondary);
+      color: var(--text-primary);
     }
 
     .week-table .time-row .row-label {
-      background: var(--bg-primary);
+      background: var(--card-bg);
       text-align: right;
       padding-right: 8px;
+      color: var(--text-muted);
     }
 
     /* Content cells */
@@ -384,28 +434,19 @@
       border-right: none;
     }
 
-    /* Section row backgrounds */
-    .week-table .meals-row .content-cell {
-      background: var(--bg-secondary);
-    }
-
-    .week-table .shopping-row .content-cell {
-      background: var(--bg-tertiary);
-    }
-
+    /* Section row content cells - keep neutral background */
+    .week-table .meals-row .content-cell,
+    .week-table .shopping-row .content-cell,
     .week-table .holiday-row .content-cell {
-      background: rgba(248, 81, 73, 0.08);
+      background: var(--card-bg);
     }
 
     .week-table .time-row .content-cell {
-      background: var(--bg-primary);
+      background: var(--card-bg);
       height: 60px;
       position: relative;
     }
 
-    .week-table .time-row .content-cell.today-col {
-      background: var(--today-bg);
-    }
 
     /* Collapsed rows */
     .week-table tr.collapsed .content-cell {
@@ -429,37 +470,80 @@
     /* All-day events */
     .all-day-event {
       font-size: 10px;
-      padding: 3px 6px;
-      border-radius: 4px;
+      padding: 4px 8px;
+      border-radius: 6px;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
       font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 4px;
     }
 
+    .all-day-event .event-icon {
+      display: inline-flex;
+      align-items: center;
+      flex-shrink: 0;
+    }
+
+    .all-day-event .event-icon svg {
+      width: 12px;
+      height: 12px;
+    }
+
+    /* Meal events with individual colors */
     .all-day-event.meal {
-      background: var(--accent-orange);
-      color: white;
+      background: rgba(255, 152, 0, 0.15);
+      color: var(--meal-breakfast);
+      border: 1px solid rgba(255, 152, 0, 0.3);
+    }
+
+    .all-day-event.meal.breakfast {
+      background: rgba(255, 152, 0, 0.12);
+      color: #E65100;
+      border: 1px solid rgba(255, 152, 0, 0.25);
+    }
+
+    .all-day-event.meal.lunch {
+      background: rgba(76, 175, 80, 0.12);
+      color: #2E7D32;
+      border: 1px solid rgba(76, 175, 80, 0.25);
+    }
+
+    .all-day-event.meal.dinner {
+      background: rgba(126, 87, 194, 0.12);
+      color: #5E35B1;
+      border: 1px solid rgba(126, 87, 194, 0.25);
+    }
+
+    .all-day-event.meal.snacks {
+      background: rgba(240, 98, 146, 0.12);
+      color: #C2185B;
+      border: 1px solid rgba(240, 98, 146, 0.25);
     }
 
     .all-day-event.shopping {
-      background: var(--accent-purple);
-      color: white;
+      background: rgba(156, 163, 175, 0.12);
+      color: #4B5563;
+      border: 1px solid rgba(156, 163, 175, 0.3);
       cursor: pointer;
     }
 
     .all-day-event.shopping:hover {
-      opacity: 0.9;
+      background: rgba(156, 163, 175, 0.2);
     }
 
     .all-day-event.task-allday {
-      background: var(--accent-blue);
-      color: white;
+      background: rgba(62, 175, 210, 0.12);
+      color: #0288D1;
+      border: 1px solid rgba(62, 175, 210, 0.25);
     }
 
     .all-day-event.holiday {
-      background: var(--accent-red, #f85149);
-      color: white;
+      background: rgba(240, 98, 146, 0.12);
+      color: #C2185B;
+      border: 1px solid rgba(240, 98, 146, 0.25);
     }
 
     /* Time-based Events */
@@ -467,25 +551,43 @@
       position: absolute;
       left: 2px;
       right: 2px;
-      background: var(--accent-blue);
+      background: rgba(62, 175, 210, 0.15);
       border-radius: 4px;
       padding: 4px 6px;
       font-size: 10px;
       font-weight: 500;
-      color: white;
+      color: #0288D1;
       overflow: hidden;
       z-index: 10;
     }
 
     .time-event .event-time {
       font-size: 9px;
-      opacity: 0.8;
+      opacity: 0.7;
     }
 
     .time-event .event-title {
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+    }
+
+    .time-event .event-avatar {
+      position: absolute;
+      bottom: 4px;
+      right: 4px;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--helpy-blue);
+      color: white;
+      font-size: 9px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1.5px solid white;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.1);
     }
 
     /* Day View */
@@ -504,6 +606,7 @@
       margin-bottom: 16px;
       padding-bottom: 16px;
       border-bottom: 1px solid var(--border-color);
+      color: var(--text-primary);
     }
 
     .day-section {
@@ -523,9 +626,11 @@
       align-items: flex-start;
       gap: 12px;
       padding: 12px;
-      background: var(--bg-secondary);
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
       border-radius: 12px;
       margin-bottom: 8px;
+      box-shadow: var(--shadow-sm);
     }
 
     .day-item-dot {
@@ -544,6 +649,7 @@
       font-size: 15px;
       font-weight: 500;
       margin-bottom: 4px;
+      color: var(--text-primary);
     }
 
     .day-item-meta {
@@ -564,7 +670,7 @@
       bottom: 0;
       left: 0;
       right: 0;
-      background: var(--bg-secondary);
+      background: var(--card-bg);
       border-top-left-radius: 20px;
       border-top-right-radius: 20px;
       padding: 20px;
@@ -573,6 +679,7 @@
       transform: translateY(100%);
       transition: transform 0.3s ease;
       z-index: 200;
+      box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
     }
 
     .selected-day-panel.open {
@@ -591,6 +698,7 @@
       font-size: 16px;
       font-weight: 600;
       margin-bottom: 16px;
+      color: var(--text-primary);
     }
 
     .panel-item {
@@ -615,15 +723,15 @@
       font-size: 16px;
     }
 
-    .panel-item-icon.meal { background: rgba(240, 136, 62, 0.2); }
-    .panel-item-icon.task { background: rgba(88, 166, 255, 0.2); }
-    .panel-item-icon.expense { background: rgba(63, 185, 80, 0.2); }
+    .panel-item-icon.meal { background: rgba(255, 152, 0, 0.12); }
+    .panel-item-icon.task { background: rgba(62, 175, 210, 0.12); }
+    .panel-item-icon.shopping { background: rgba(126, 87, 194, 0.12); }
 
     /* Backdrop */
     .backdrop {
       position: fixed;
       inset: 0;
-      background: rgba(0, 0, 0, 0.5);
+      background: rgba(0, 0, 0, 0.3);
       opacity: 0;
       pointer-events: none;
       transition: opacity 0.3s;
@@ -708,11 +816,11 @@
     <div id="monthGrid" class="month-grid"></div>
     <div class="legend">
       <div class="legend-item">
-        <div class="legend-dot" style="background: var(--accent-blue)"></div>
+        <div class="legend-dot" style="background: var(--helpy-blue)"></div>
         <span>Tasks</span>
       </div>
       <div class="legend-item">
-        <div class="legend-dot" style="background: var(--accent-orange)"></div>
+        <div class="legend-dot" style="background: var(--meal-breakfast)"></div>
         <span>Meals</span>
       </div>
       <div class="legend-item">
@@ -720,7 +828,7 @@
         <span>Shopping</span>
       </div>
       <div class="legend-item">
-        <div class="legend-dot" style="background: var(--accent-red)"></div>
+        <div class="legend-dot" style="background: var(--helpy-pink)"></div>
         <span>Holiday</span>
       </div>
     </div>
@@ -1092,7 +1200,7 @@
       dates.forEach(date => {
         const isToday = formatDate(date) === formatDate(today);
         headerRow += `
-          <th class="day-header${isToday ? ' today' : ''}">
+          <th class="day-header${isToday ? ' today today-col' : ''}">
             <div class="week-day-name">${dayNames[date.getDay()]}</div>
             <div class="week-day-num">${date.getDate()}</div>
           </th>
@@ -1110,17 +1218,19 @@
       bodyHTML += `<tr class="meals-row${mealsCollapsedClass}" id="mealsRow">`;
       bodyHTML += `<td class="row-label${mealsCollapsedClass}" onclick="toggleSection('meals')">
         <div class="label-content">
-          <span class="collapse-icon">▼</span>
           <span>Meals</span>
+          <span class="collapse-icon">▼</span>
         </div>
       </td>`;
       
       dates.forEach(date => {
         const dateStr = formatDate(date);
+        const isToday = formatDate(date) === formatDate(today);
         const dayMeals = meals.filter(m => m.date === dateStr);
-        bodyHTML += `<td class="content-cell"><div class="cell-content">`;
+        bodyHTML += `<td class="content-cell${isToday ? ' today-col' : ''}"><div class="cell-content">`;
         dayMeals.forEach(m => {
-          bodyHTML += `<div class="all-day-event meal">${getMealIcon(m.type)} ${m.desc}</div>`;
+          const mealClass = getMealClass(m.type);
+          bodyHTML += `<div class="all-day-event meal ${mealClass}"><span class="event-icon">${getMealIcon(m.type)}</span> ${m.desc}</div>`;
         });
         bodyHTML += `</div></td>`;
       });
@@ -1133,15 +1243,15 @@
       bodyHTML += `<tr class="shopping-row${shoppingCollapsedClass}" id="shoppingRow">`;
       bodyHTML += `<td class="row-label${shoppingCollapsedClass}" onclick="toggleSection('shopping')">
         <div class="label-content">
-          <span class="collapse-icon">▼</span>
           <span>Shopping</span>
+          <span class="collapse-icon">▼</span>
         </div>
       </td>`;
       
       dates.forEach(date => {
         const isToday = formatDate(date) === formatDate(today);
         const dateStr = formatDate(date);
-        bodyHTML += `<td class="content-cell"><div class="cell-content">`;
+        bodyHTML += `<td class="content-cell${isToday ? ' today-col' : ''}"><div class="cell-content">`;
         
         // Shopping only shows on today
         if (isToday && uncompletedShopping.length > 0) {
@@ -1150,7 +1260,7 @@
           const remaining = uncompletedShopping.length - maxToShow;
           
           itemsToShow.forEach(s => {
-            bodyHTML += `<div class="all-day-event shopping" onclick="event.stopPropagation(); alert('Navigate to Shopping List')">🛒 ${s.name}</div>`;
+            bodyHTML += `<div class="all-day-event shopping" onclick="event.stopPropagation(); alert('Navigate to Shopping List')"><span class="event-icon">${getShoppingIcon()}</span> ${s.name}</div>`;
           });
           
           if (remaining > 0) {
@@ -1173,15 +1283,16 @@
       bodyHTML += `<tr class="holiday-row${holidayCollapsedClass}" id="holidayRow">`;
       bodyHTML += `<td class="row-label${holidayCollapsedClass}" onclick="toggleSection('holiday')">
         <div class="label-content">
-          <span class="collapse-icon">▼</span>
           <span>Holiday</span>
+          <span class="collapse-icon">▼</span>
         </div>
       </td>`;
       
       dates.forEach(date => {
         const dateStr = formatDate(date);
+        const isToday = formatDate(date) === formatDate(today);
         const dayHolidays = getHolidaysForDate(dateStr);
-        bodyHTML += `<td class="content-cell"><div class="cell-content">`;
+        bodyHTML += `<td class="content-cell${isToday ? ' today-col' : ''}"><div class="cell-content">`;
         dayHolidays.forEach(h => {
           bodyHTML += `<div class="all-day-event holiday" title="${h.helperName}'s ${h.type} leave (${h.startDate} to ${h.endDate})">🏖️ ${h.helperName}</div>`;
         });
@@ -1208,10 +1319,12 @@
           
           hourTasks.forEach(t => {
             const [, mins] = t.time.split(':').map(Number);
+            const initial = t.assignee ? t.assignee.charAt(0).toUpperCase() : '?';
             bodyHTML += `
               <div class="time-event" style="top: ${mins}px; height: 50px;">
                 <div class="event-time">${t.time}</div>
                 <div class="event-title">${t.name}</div>
+                <div class="event-avatar">${initial}</div>
               </div>
             `;
           });
@@ -1224,13 +1337,37 @@
       tbody.innerHTML = bodyHTML;
     }
     
+    // Lucide SVG icons (same as Helpy app)
+    const ICONS = {
+      coffee: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v2"/><path d="M14 2v2"/><path d="M16 8a1 1 0 0 1 1 1v8a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1h14a4 4 0 1 1 0 8h-1"/><path d="M6 2v2"/></svg>`,
+      sun: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>`,
+      moon: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>`,
+      cookie: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 10 10 4 4 0 0 1-5-5 4 4 0 0 1-5-5"/><path d="M8.5 8.5v.01"/><path d="M16 15.5v.01"/><path d="M12 12v.01"/><path d="M11 17v.01"/><path d="M7 14v.01"/></svg>`,
+      shoppingCart: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>`,
+      utensils: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg>`
+    };
+    
     function getMealIcon(type) {
       switch(type) {
-        case 'Breakfast': return '☀️';
-        case 'Lunch': return '🌤️';
-        case 'Dinner': return '🌙';
-        case 'Snacks': return '🍪';
-        default: return '🍽️';
+        case 'Breakfast': return ICONS.coffee;
+        case 'Lunch': return ICONS.sun;
+        case 'Dinner': return ICONS.moon;
+        case 'Snacks': return ICONS.cookie;
+        default: return ICONS.utensils;
+      }
+    }
+    
+    function getShoppingIcon() {
+      return ICONS.shoppingCart;
+    }
+    
+    function getMealClass(type) {
+      switch(type) {
+        case 'Breakfast': return 'breakfast';
+        case 'Lunch': return 'lunch';
+        case 'Dinner': return 'dinner';
+        case 'Snacks': return 'snacks';
+        default: return '';
       }
     }
     
@@ -1276,7 +1413,7 @@
         dayMeals.forEach(m => {
           content += `
             <div class="day-item">
-              <div class="day-item-dot" style="background:var(--accent-orange)"></div>
+              <div class="day-item-dot" style="background:var(--meal-breakfast)"></div>
               <div class="day-item-content">
                 <div class="day-item-title">${m.desc}</div>
                 <div class="day-item-meta">${m.type}</div>
@@ -1295,7 +1432,7 @@
         dayTasks.sort((a, b) => (a.time || '99:99').localeCompare(b.time || '99:99')).forEach(t => {
           content += `
             <div class="day-item">
-              <div class="day-item-dot" style="background:var(--accent-blue)"></div>
+              <div class="day-item-dot" style="background:var(--helpy-blue)"></div>
               <div class="day-item-content">
                 <div class="day-item-title">${t.name}</div>
                 <div class="day-item-meta">${t.assignee}</div>

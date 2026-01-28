@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Sparkles,
@@ -147,6 +147,9 @@ const Meals: React.FC<MealsProps> = ({
   // ─────────────────────────────────────────────────────────────────
   const hasInitiallyScrolled = useRef(false);
   const hasScrolledWeekView = useRef(false);
+  
+  // Track when scroll is ready (prevents flicker on first visit from display:none → block)
+  const [isScrollReady, setIsScrollReady] = useState(false);
 
   const mealTypes = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER, MealType.SNACKS];
   const langCode = currentLang === 'en' ? 'en-GB' : currentLang;
@@ -863,30 +866,32 @@ const Meals: React.FC<MealsProps> = ({
 
   // ─────────────────────────────────────────────────────────────────
   // AUTO-SCROLL TO TODAY - When Meals becomes active AND in day view
-  // Uses multiple timed attempts for reliability
+  // Uses requestAnimationFrame to wait for display:none → block layout
+  // Container stays hidden until scroll is complete (no flicker)
   // ─────────────────────────────────────────────────────────────────
-  useEffect(() => {
+  useLayoutEffect(() => {
     // Skip if not active (hidden)
-    if (!isActive) return;
+    if (!isActive) {
+      setIsScrollReady(false);
+      return;
+    }
     
     // Skip if not in day view
     if (view !== 'day') return;
     
-    // Skip if already scrolled in this day view session
-    if (hasInitiallyScrolled.current) return;
+    // If already scrolled, just mark as ready
+    if (hasInitiallyScrolled.current) {
+      setIsScrollReady(true);
+      return;
+    }
 
-    const targetDateStr = formatDateStr(new Date());
-    
-    // Use multiple attempts for reliability
-    const scrollAttempts = [0, 50, 150];
-    scrollAttempts.forEach((delay) => {
-      setTimeout(() => {
-        if (hasInitiallyScrolled.current) return;
-        const targetEl = document.getElementById(`day-${targetDateStr}`);
-        if (!targetEl) return;
-        
-        const scrollContainer = dayViewRef.current;
-        if (!scrollContainer) return;
+    // Single rAF to wait for display:none → block layout calculation
+    const rafId = requestAnimationFrame(() => {
+      const targetDateStr = formatDateStr(new Date());
+      const targetEl = document.getElementById(`day-${targetDateStr}`);
+      const scrollContainer = dayViewRef.current;
+      
+      if (targetEl && scrollContainer) {
         // Calculate position relative to scroll container using getBoundingClientRect
         const containerTop = scrollContainer.getBoundingClientRect().top;
         const elementTop = targetEl.getBoundingClientRect().top;
@@ -894,9 +899,13 @@ const Meals: React.FC<MealsProps> = ({
         const topOffset = 12; // Small gap between today card and container top
         const scrollToPosition = currentScroll + (elementTop - containerTop) - topOffset;
         scrollContainer.scrollTo({ top: Math.max(0, scrollToPosition), behavior: 'auto' });
-        hasInitiallyScrolled.current = true;
-      }, delay);
+      }
+      
+      hasInitiallyScrolled.current = true;
+      setIsScrollReady(true);
     });
+    
+    return () => cancelAnimationFrame(rafId);
   }, [view, isActive]);
 
   // Reset day scroll flag when leaving day view
@@ -910,6 +919,8 @@ const Meals: React.FC<MealsProps> = ({
   useEffect(() => {
     if (!isActive) {
       hasInitiallyScrolled.current = false;
+      hasScrolledWeekView.current = false;
+      setIsScrollReady(false);
       setView('day'); // Always return to list view on next visit
     }
   }, [isActive]);
@@ -986,8 +997,10 @@ const Meals: React.FC<MealsProps> = ({
 
   // ─────────────────────────────────────────────────────────────────
   // AUTO-SCROLL TO TODAY ROW IN WEEK VIEW
+  // Uses requestAnimationFrame to wait for display:none → block layout
+  // Container stays hidden until scroll is complete (no flicker)
   // ─────────────────────────────────────────────────────────────────
-  useEffect(() => {
+  useLayoutEffect(() => {
     // Skip if not active (hidden)
     if (!isActive) return;
     
@@ -996,46 +1009,46 @@ const Meals: React.FC<MealsProps> = ({
       return;
     }
     
-    // Only scroll once per week view entry
-    if (hasScrolledWeekView.current) return;
-    hasScrolledWeekView.current = true;
-    
-    // Find today's index in the week (0-6)
-    const today = new Date();
-    const todayIndex = weekDays.findIndex(d => d.toDateString() === today.toDateString());
-    
-    // Scroll container to top if today not in current week
-    if (todayIndex === -1) {
-      weekScrollRef.current?.scrollTo({ top: 0, behavior: 'auto' });
+    // If already scrolled, just mark as ready
+    if (hasScrolledWeekView.current) {
+      setIsScrollReady(true);
       return;
     }
     
-    // Use multiple attempts for reliability (DOM needs time to render)
-    const scrollAttempts = [0, 50, 150, 300];
-    let didScroll = false;
-    scrollAttempts.forEach((delay) => {
-      setTimeout(() => {
-        if (didScroll) return;
-        const scrollContainer = weekScrollRef.current;
-        if (!scrollContainer) return;
-        
+    // Single rAF to wait for display:none → block layout calculation
+    const rafId = requestAnimationFrame(() => {
+      // Find today's index in the week (0-6)
+      const today = new Date();
+      const todayIndex = weekDays.findIndex(d => d.toDateString() === today.toDateString());
+      
+      const scrollContainer = weekScrollRef.current;
+      
+      // Scroll container to top if today not in current week
+      if (todayIndex === -1) {
+        scrollContainer?.scrollTo({ top: 0, behavior: 'auto' });
+      } else if (scrollContainer) {
         // Find the table row for today's date
         const dateStr = formatDateStr(weekDays[todayIndex]);
         const targetRow = document.getElementById(`week-row-${dateStr}`);
-        if (!targetRow) return;
         
-        // Calculate position relative to scroll container using getBoundingClientRect
-        const containerTop = scrollContainer.getBoundingClientRect().top;
-        const elementTop = targetRow.getBoundingClientRect().top;
-        const currentScroll = scrollContainer.scrollTop;
-        const topOffset = 12; // Small gap between today row and container top
-        const scrollToPosition = currentScroll + (elementTop - containerTop) - topOffset;
-        
-        // Use 'auto' for instant scroll (no visible animation)
-        scrollContainer.scrollTo({ top: Math.max(0, scrollToPosition), behavior: 'auto' });
-        didScroll = true;
-      }, delay);
+        if (targetRow) {
+          // Calculate position relative to scroll container using getBoundingClientRect
+          const containerTop = scrollContainer.getBoundingClientRect().top;
+          const elementTop = targetRow.getBoundingClientRect().top;
+          const currentScroll = scrollContainer.scrollTop;
+          const topOffset = 12; // Small gap between today row and container top
+          const scrollToPosition = currentScroll + (elementTop - containerTop) - topOffset;
+          
+          // Use 'auto' for instant scroll (no visible animation)
+          scrollContainer.scrollTo({ top: Math.max(0, scrollToPosition), behavior: 'auto' });
+        }
+      }
+      
+      hasScrolledWeekView.current = true;
+      setIsScrollReady(true);
     });
+    
+    return () => cancelAnimationFrame(rafId);
   }, [view, weekDays, isActive]);
 
   // Close quick join popover when clicking outside
@@ -1301,10 +1314,10 @@ const Meals: React.FC<MealsProps> = ({
       {/* ─────────────────────────────────────────────────────────────── */}
       <div 
         ref={weekNavOverlayRef}
-        className="fixed left-0 right-0 z-20 bg-background transition-shadow duration-200"
+        className="fixed left-0 right-0 z-20 bg-background"
         style={{ 
           top: 'calc(env(safe-area-inset-top) + 120px)',
-          boxShadow: isContainerScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none',
+          boxShadow: (view === 'day' && isContainerScrolled) ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none',
           touchAction: 'none',
         }}
       >
@@ -1376,6 +1389,7 @@ const Meals: React.FC<MealsProps> = ({
             overscrollBehavior: 'contain',
             WebkitOverflowScrolling: 'touch',
             touchAction: 'pan-y',
+            visibility: isScrollReady ? 'visible' : 'hidden',
           }}
         >
           <div className="space-y-4 pb-40 px-1">
@@ -1650,6 +1664,7 @@ const Meals: React.FC<MealsProps> = ({
               overscrollBehavior: 'none',
               WebkitOverflowScrolling: 'touch',
               touchAction: 'pan-x pan-y',
+              visibility: isScrollReady ? 'visible' : 'hidden',
             }}
           >
               <table style={{ 

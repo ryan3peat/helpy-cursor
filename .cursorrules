@@ -103,12 +103,79 @@ import { createPortal } from 'react-dom';
 
 #### Scroll-to-Today Logic (Meals.tsx)
 - Uses `getBoundingClientRect()` for accurate container-relative positioning
-- Multiple timed attempts [0, 50, 150]ms for reliability
+- Uses `useLayoutEffect` with single `requestAnimationFrame` for proper timing
 - `hasInitiallyScrolled` ref prevents duplicate scrolls
 
 **DO NOT** change to `offsetTop` or window scroll.
 
 See `docs/MEALS_SCROLL_FIX.md` for full details.
+
+#### View Switch Flicker Prevention (Meals.tsx) - LOCKED PATTERN
+
+**The Meals page uses specific patterns to prevent visual flicker when switching between day/week views.**
+
+##### Problem: display:none → block Transition
+- Meals component is always mounted but hidden with `display: none` when not active
+- When becoming visible, `getBoundingClientRect()` needs one frame to return accurate values
+- Without protection, users see content at wrong scroll position for one frame
+
+##### Solution: visibility + requestAnimationFrame + isScrollReady State
+
+```tsx
+const [isScrollReady, setIsScrollReady] = useState(false);
+
+useLayoutEffect(() => {
+  if (!isActive) {
+    setIsScrollReady(false);
+    return;
+  }
+  if (hasInitiallyScrolled.current) {
+    setIsScrollReady(true);
+    return;
+  }
+  
+  // Single rAF to wait for display:none → block layout
+  requestAnimationFrame(() => {
+    // ... scroll logic ...
+    hasInitiallyScrolled.current = true;
+    setIsScrollReady(true);
+  });
+}, [view, isActive]);
+
+// Container hidden until scroll ready
+<div style={{ visibility: isScrollReady ? 'visible' : 'hidden' }}>
+```
+
+**Why This Works:**
+1. Container starts hidden (`visibility: hidden`)
+2. `requestAnimationFrame` waits for browser to calculate layout
+3. Scroll executes at correct position
+4. `isScrollReady` reveals container with content already positioned
+5. All happens in ~16ms (one frame), imperceptible to user
+
+**DO NOT** remove `isScrollReady` state or `visibility` control.
+**DO NOT** change `requestAnimationFrame` to `setTimeout`.
+**DO NOT** use `useEffect` instead of `useLayoutEffect` for this logic.
+
+#### Week Nav Shadow (Meals.tsx) - LOCKED PATTERN
+
+**The shadow under week nav MUST be conditional on view type.**
+
+```tsx
+// CORRECT - shadow only shows in day view
+boxShadow: (view === 'day' && isContainerScrolled) ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none'
+
+// WRONG - causes flicker on view switch (stale state shows shadow on table view)
+boxShadow: isContainerScrolled ? '...' : 'none'
+```
+
+**Why This Pattern:**
+- When switching from day (scrolled) to table, `isContainerScrolled` state is still `true` for one frame
+- By checking `view === 'day'` in the render, shadow never appears on table view regardless of state timing
+- No CSS transition on shadow - changes are instant to prevent delayed show/hide
+
+**DO NOT** add `transition-shadow` class to week nav.
+**DO NOT** remove the `view === 'day'` check from the shadow condition.
 
 #### Meals Table View (Week View) - LOCKED PATTERN
 

@@ -195,13 +195,16 @@
     .dot.meal { background: var(--accent-orange); }
     .dot.expense { background: var(--accent-green); }
 
-    /* Week View */
+    /* Week View - Table-based with frozen row/column */
     .week-view {
       display: none;
+      height: calc(100vh - 140px);
+      overflow: hidden;
     }
 
     .week-view.active {
-      display: block;
+      display: flex;
+      flex-direction: column;
     }
 
     /* Days Toggle (3/7 days) */
@@ -210,6 +213,7 @@
       justify-content: center;
       gap: 8px;
       padding: 0 16px 12px;
+      flex-shrink: 0;
     }
 
     .days-toggle-btn {
@@ -230,24 +234,61 @@
       color: white;
     }
 
-    .week-header {
-      display: grid;
-      grid-template-columns: 50px repeat(var(--days-count, 7), 1fr);
-      border-bottom: 1px solid var(--border-color);
+    /* Week Table Container - scrollable both directions */
+    .week-table-container {
+      flex: 1;
+      min-height: 0;
+      overflow: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* Week Table */
+    .week-table {
+      border-collapse: separate;
+      border-spacing: 0;
+      table-layout: fixed;
+      width: 100%;
+      min-width: 500px;
+    }
+
+    /* Column widths */
+    .week-table col.label-col {
+      width: 70px;
+      min-width: 70px;
+    }
+
+    .week-table col.day-col {
+      min-width: 100px;
+    }
+
+    /* Frozen header row */
+    .week-table thead {
       position: sticky;
-      top: 120px;
-      background: var(--bg-primary);
-      z-index: 50;
+      top: 0;
+      z-index: 20;
     }
 
-    .week-header-spacer {
+    /* Corner cell - frozen both ways */
+    .week-table .corner-cell {
+      position: sticky;
+      left: 0;
+      z-index: 25;
       background: var(--bg-primary);
+      border-bottom: 1px solid var(--border-color);
+      border-right: 1px solid var(--border-color);
     }
 
-    .week-day-header {
+    /* Day header cells */
+    .week-table .day-header {
       text-align: center;
       padding: 8px 4px;
-      border-left: 1px solid var(--border-color);
+      background: var(--bg-primary);
+      border-bottom: 1px solid var(--border-color);
+      border-right: 1px solid var(--border-color);
+    }
+
+    .week-table .day-header:last-child {
+      border-right: none;
     }
 
     .week-day-name {
@@ -262,7 +303,7 @@
       margin-top: 4px;
     }
 
-    .week-day-header.today .week-day-num {
+    .week-table .day-header.today .week-day-num {
       background: var(--accent-blue);
       color: white;
       width: 32px;
@@ -274,61 +315,118 @@
       margin-top: 2px;
     }
 
-    /* All-Day Section - Collapsible Rows */
-    .all-day-section {
-      display: grid;
-      grid-template-columns: 70px repeat(var(--days-count, 7), 1fr);
-      border-bottom: 1px solid var(--border-color);
-      min-height: 40px;
-      background: var(--bg-secondary);
-      transition: min-height 0.2s ease;
-    }
-
-    .all-day-section.collapsed {
-      min-height: 32px;
-    }
-
-    .all-day-section.collapsed .all-day-column {
-      display: none;
-    }
-
-    .all-day-label {
-      font-size: 9px;
+    /* Row label cells - frozen left column */
+    .week-table .row-label {
+      position: sticky;
+      left: 0;
+      z-index: 15;
+      font-size: 10px;
       color: var(--text-muted);
       padding: 6px 4px;
       text-align: center;
       border-right: 1px solid var(--border-color);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 4px;
+      border-bottom: 1px solid var(--border-color);
+      vertical-align: top;
       cursor: pointer;
       user-select: none;
       transition: background 0.2s;
     }
 
-    .all-day-label:hover {
+    .week-table .row-label:hover {
       background: var(--bg-tertiary);
     }
 
-    .all-day-label .collapse-icon {
+    .week-table .row-label .label-content {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+    }
+
+    .week-table .row-label .collapse-icon {
       font-size: 8px;
       transition: transform 0.2s;
     }
 
-    .all-day-section.collapsed .collapse-icon {
+    .week-table .row-label.collapsed .collapse-icon {
       transform: rotate(-90deg);
     }
 
-    .all-day-column {
-      border-left: 1px solid var(--border-color);
+    /* Section rows - different backgrounds */
+    .week-table .meals-row .row-label {
+      background: var(--bg-secondary);
+    }
+
+    .week-table .shopping-row .row-label {
+      background: var(--bg-tertiary);
+    }
+
+    .week-table .holiday-row .row-label {
+      background: rgba(248, 81, 73, 0.15);
+    }
+
+    .week-table .time-row .row-label {
+      background: var(--bg-primary);
+      text-align: right;
+      padding-right: 8px;
+    }
+
+    /* Content cells */
+    .week-table .content-cell {
       padding: 4px 2px;
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
+      border-right: 1px solid var(--border-color);
+      border-bottom: 1px solid var(--border-color);
+      vertical-align: top;
+      min-height: 40px;
+    }
+
+    .week-table .content-cell:last-child {
+      border-right: none;
+    }
+
+    /* Section row backgrounds */
+    .week-table .meals-row .content-cell {
+      background: var(--bg-secondary);
+    }
+
+    .week-table .shopping-row .content-cell {
+      background: var(--bg-tertiary);
+    }
+
+    .week-table .holiday-row .content-cell {
+      background: rgba(248, 81, 73, 0.08);
+    }
+
+    .week-table .time-row .content-cell {
+      background: var(--bg-primary);
+      height: 60px;
+      position: relative;
+    }
+
+    .week-table .time-row .content-cell.today-col {
+      background: var(--today-bg);
+    }
+
+    /* Collapsed rows */
+    .week-table tr.collapsed .content-cell {
+      padding: 0;
+      height: 0;
+      min-height: 0;
       overflow: hidden;
     }
 
+    .week-table tr.collapsed .content-cell .cell-content {
+      display: none;
+    }
+
+    /* Cell content wrapper */
+    .cell-content {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    /* All-day events */
     .all-day-event {
       font-size: 10px;
       padding: 3px 6px;
@@ -362,50 +460,6 @@
     .all-day-event.holiday {
       background: var(--accent-red, #f85149);
       color: white;
-    }
-
-    /* Section-specific backgrounds */
-    .all-day-section.shopping-row {
-      background: var(--bg-tertiary);
-    }
-
-    .all-day-section.holiday-row {
-      background: rgba(248, 81, 73, 0.08);
-    }
-
-    /* Time Grid */
-    .time-grid {
-      display: grid;
-      grid-template-columns: 50px repeat(var(--days-count, 7), 1fr);
-      position: relative;
-    }
-
-    .time-column {
-      border-right: 1px solid var(--border-color);
-    }
-
-    .time-slot {
-      height: 60px;
-      border-bottom: 1px solid var(--border-color);
-      font-size: 10px;
-      color: var(--text-muted);
-      text-align: right;
-      padding-right: 8px;
-      padding-top: 4px;
-    }
-
-    .day-column {
-      border-left: 1px solid var(--border-color);
-      position: relative;
-    }
-
-    .day-column.today-col {
-      background: var(--today-bg);
-    }
-
-    .hour-line {
-      height: 60px;
-      border-bottom: 1px solid var(--border-color);
     }
 
     /* Time-based Events */
@@ -683,32 +737,20 @@
       <button class="days-toggle-btn" data-days="3" onclick="setDaysCount(3)">3 Days</button>
       <button class="days-toggle-btn active" data-days="7" onclick="setDaysCount(7)">7 Days</button>
     </div>
-    <div class="week-header" id="weekHeader">
-      <div class="week-header-spacer"></div>
-      <!-- Day headers will be rendered dynamically -->
+    <!-- Scrollable table container -->
+    <div class="week-table-container" id="weekTableContainer">
+      <table class="week-table" id="weekTable">
+        <colgroup id="weekColgroup">
+          <!-- Columns will be rendered dynamically -->
+        </colgroup>
+        <thead id="weekTableHead">
+          <!-- Header row will be rendered dynamically -->
+        </thead>
+        <tbody id="weekTableBody">
+          <!-- Body rows will be rendered dynamically -->
+        </tbody>
+      </table>
     </div>
-    <div class="all-day-section" id="mealsSection">
-      <div class="all-day-label" onclick="toggleSection('mealsSection')">
-        <span class="collapse-icon">▼</span>
-        <span>Meals</span>
-      </div>
-      <!-- Meals columns will be rendered dynamically -->
-    </div>
-    <div class="all-day-section shopping-row" id="shoppingSection">
-      <div class="all-day-label" onclick="toggleSection('shoppingSection')">
-        <span class="collapse-icon">▼</span>
-        <span>Shopping</span>
-      </div>
-      <!-- Shopping columns will be rendered dynamically (only today) -->
-    </div>
-    <div class="all-day-section holiday-row" id="holidaySection">
-      <div class="all-day-label" onclick="toggleSection('holidaySection')">
-        <span class="collapse-icon">▼</span>
-        <span>Holiday</span>
-      </div>
-      <!-- Helper holidays will be rendered dynamically -->
-    </div>
-    <div class="time-grid" id="timeGrid"></div>
   </div>
 
   <!-- Day View -->
@@ -829,9 +871,6 @@
         btn.classList.toggle('active', parseInt(btn.dataset.days) === count);
       });
       
-      // Update CSS variable
-      document.getElementById('weekView').style.setProperty('--days-count', count);
-      
       // For 3-day view, center on today
       if (count === 3) {
         currentPeriodStart = addDays(today, -1); // Yesterday, today, tomorrow
@@ -840,12 +879,6 @@
       }
       
       renderWeekView();
-    }
-    
-    // Toggle collapse/expand for sections
-    function toggleSection(sectionId) {
-      const section = document.getElementById(sectionId);
-      section.classList.toggle('collapsed');
     }
     
     // ============================================================================
@@ -1013,21 +1046,22 @@
     }
     
     // ============================================================================
-    // WEEK VIEW
+    // WEEK VIEW - Table-based with frozen row/column
     // ============================================================================
     
+    // Track collapsed state
+    let collapsedSections = {
+      meals: false,
+      shopping: false,
+      holiday: false
+    };
+    
+    function toggleSection(sectionKey) {
+      collapsedSections[sectionKey] = !collapsedSections[sectionKey];
+      renderWeekView();
+    }
+    
     function renderWeekView() {
-      // Preserve collapsed states
-      const mealsCollapsed = document.getElementById('mealsSection')?.classList.contains('collapsed');
-      const shoppingCollapsed = document.getElementById('shoppingSection')?.classList.contains('collapsed');
-      const holidayCollapsed = document.getElementById('holidaySection')?.classList.contains('collapsed');
-      
-      // Set CSS variable for days count
-      document.getElementById('weekView').style.setProperty('--days-count', daysCount);
-      document.getElementById('mealsSection').style.setProperty('--days-count', daysCount);
-      document.getElementById('shoppingSection').style.setProperty('--days-count', daysCount);
-      document.getElementById('holidaySection').style.setProperty('--days-count', daysCount);
-      
       // Determine start date based on view mode
       const startDate = daysCount === 7 ? currentWeekStart : currentPeriodStart;
       const endDate = addDays(startDate, daysCount - 1);
@@ -1038,175 +1072,156 @@
       document.getElementById('weekLabel').textContent = 
         `${startMonth} ${startDate.getDate()} - ${endMonth} ${endDate.getDate()}, ${endDate.getFullYear()}`;
       
-      // Render day headers
-      const weekHeader = document.getElementById('weekHeader');
-      weekHeader.innerHTML = '<div class="week-header-spacer"></div>';
+      // Build dates array
+      const dates = [];
+      for (let i = 0; i < daysCount; i++) {
+        dates.push(addDays(startDate, i));
+      }
       
+      // Render colgroup
+      const colgroup = document.getElementById('weekColgroup');
+      colgroup.innerHTML = `<col class="label-col">`;
+      for (let i = 0; i < daysCount; i++) {
+        colgroup.innerHTML += `<col class="day-col">`;
+      }
+      
+      // Render header row
+      const thead = document.getElementById('weekTableHead');
       const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-      for (let i = 0; i < daysCount; i++) {
-        const date = addDays(startDate, i);
+      let headerRow = '<tr><th class="corner-cell"></th>';
+      dates.forEach(date => {
         const isToday = formatDate(date) === formatDate(today);
-        const header = document.createElement('div');
-        header.className = 'week-day-header' + (isToday ? ' today' : '');
-        header.innerHTML = `
-          <div class="week-day-name">${dayNames[date.getDay()]}</div>
-          <div class="week-day-num">${date.getDate()}</div>
+        headerRow += `
+          <th class="day-header${isToday ? ' today' : ''}">
+            <div class="week-day-name">${dayNames[date.getDay()]}</div>
+            <div class="week-day-num">${date.getDate()}</div>
+          </th>
         `;
-        weekHeader.appendChild(header);
-      }
+      });
+      headerRow += '</tr>';
+      thead.innerHTML = headerRow;
       
-      // Render MEALS section
-      const mealsSection = document.getElementById('mealsSection');
-      mealsSection.innerHTML = `<div class="all-day-label" onclick="toggleSection('mealsSection')">
-        <span class="collapse-icon">▼</span>
-        <span>Meals</span>
-      </div>`;
-      if (mealsCollapsed) mealsSection.classList.add('collapsed');
+      // Render body rows
+      const tbody = document.getElementById('weekTableBody');
+      let bodyHTML = '';
       
-      for (let i = 0; i < daysCount; i++) {
-        const date = addDays(startDate, i);
+      // === MEALS ROW ===
+      const mealsCollapsedClass = collapsedSections.meals ? ' collapsed' : '';
+      bodyHTML += `<tr class="meals-row${mealsCollapsedClass}" id="mealsRow">`;
+      bodyHTML += `<td class="row-label${mealsCollapsedClass}" onclick="toggleSection('meals')">
+        <div class="label-content">
+          <span class="collapse-icon">▼</span>
+          <span>Meals</span>
+        </div>
+      </td>`;
+      
+      dates.forEach(date => {
         const dateStr = formatDate(date);
-        const col = document.createElement('div');
-        col.className = 'all-day-column';
-        
-        // Meals for this day
-        meals.filter(m => m.date === dateStr).forEach(m => {
-          const el = document.createElement('div');
-          el.className = 'all-day-event meal';
-          el.textContent = `${getMealIcon(m.type)} ${m.desc}`;
-          col.appendChild(el);
+        const dayMeals = meals.filter(m => m.date === dateStr);
+        bodyHTML += `<td class="content-cell"><div class="cell-content">`;
+        dayMeals.forEach(m => {
+          bodyHTML += `<div class="all-day-event meal">${getMealIcon(m.type)} ${m.desc}</div>`;
         });
-        
-        mealsSection.appendChild(col);
-      }
+        bodyHTML += `</div></td>`;
+      });
+      bodyHTML += '</tr>';
       
-      // Render SHOPPING section (only shows on today)
-      const shoppingSection = document.getElementById('shoppingSection');
-      shoppingSection.innerHTML = `<div class="all-day-label" onclick="toggleSection('shoppingSection')">
-        <span class="collapse-icon">▼</span>
-        <span>Shopping</span>
-      </div>`;
-      if (shoppingCollapsed) shoppingSection.classList.add('collapsed');
-      
+      // === SHOPPING ROW ===
+      const shoppingCollapsedClass = collapsedSections.shopping ? ' collapsed' : '';
       const uncompletedShopping = shoppingItems.filter(s => !s.completed);
       
-      for (let i = 0; i < daysCount; i++) {
-        const date = addDays(startDate, i);
+      bodyHTML += `<tr class="shopping-row${shoppingCollapsedClass}" id="shoppingRow">`;
+      bodyHTML += `<td class="row-label${shoppingCollapsedClass}" onclick="toggleSection('shopping')">
+        <div class="label-content">
+          <span class="collapse-icon">▼</span>
+          <span>Shopping</span>
+        </div>
+      </td>`;
+      
+      dates.forEach(date => {
         const isToday = formatDate(date) === formatDate(today);
-        const col = document.createElement('div');
-        col.className = 'all-day-column';
+        const dateStr = formatDate(date);
+        bodyHTML += `<td class="content-cell"><div class="cell-content">`;
         
-        // Shopping only shows on today column - show top 3 items + "X more"
+        // Shopping only shows on today
         if (isToday && uncompletedShopping.length > 0) {
           const maxToShow = 3;
           const itemsToShow = uncompletedShopping.slice(0, maxToShow);
           const remaining = uncompletedShopping.length - maxToShow;
           
           itemsToShow.forEach(s => {
-            const el = document.createElement('div');
-            el.className = 'all-day-event shopping';
-            el.textContent = `🛒 ${s.name}`;
-            el.onclick = (e) => { e.stopPropagation(); alert('Navigate to Shopping List'); };
-            col.appendChild(el);
+            bodyHTML += `<div class="all-day-event shopping" onclick="event.stopPropagation(); alert('Navigate to Shopping List')">🛒 ${s.name}</div>`;
           });
           
           if (remaining > 0) {
-            const moreEl = document.createElement('div');
-            moreEl.className = 'all-day-event shopping';
-            moreEl.style.opacity = '0.7';
-            moreEl.textContent = `+${remaining} more`;
-            moreEl.onclick = (e) => { e.stopPropagation(); alert('Navigate to Shopping List:\n\n' + uncompletedShopping.map(s => '• ' + s.name).join('\n')); };
-            col.appendChild(moreEl);
+            bodyHTML += `<div class="all-day-event shopping" style="opacity:0.7" onclick="event.stopPropagation(); alert('Navigate to Shopping List')">+${remaining} more</div>`;
           }
         }
         
-        // Tasks without time (all-day)
-        const dateStr = formatDate(date);
+        // All-day tasks
         tasks.filter(t => t.date === dateStr && !t.time).forEach(t => {
-          const el = document.createElement('div');
-          el.className = 'all-day-event task-allday';
-          el.textContent = `✓ ${t.name}`;
-          col.appendChild(el);
+          bodyHTML += `<div class="all-day-event task-allday">✓ ${t.name}</div>`;
         });
         
-        shoppingSection.appendChild(col);
-      }
+        bodyHTML += `</div></td>`;
+      });
+      bodyHTML += '</tr>';
       
-      // Render HOLIDAY section (helper holidays)
-      const holidaySection = document.getElementById('holidaySection');
-      holidaySection.innerHTML = `<div class="all-day-label" onclick="toggleSection('holidaySection')">
-        <span class="collapse-icon">▼</span>
-        <span>Holiday</span>
-      </div>`;
-      if (holidayCollapsed) holidaySection.classList.add('collapsed');
+      // === HOLIDAY ROW ===
+      const holidayCollapsedClass = collapsedSections.holiday ? ' collapsed' : '';
       
-      for (let i = 0; i < daysCount; i++) {
-        const date = addDays(startDate, i);
+      bodyHTML += `<tr class="holiday-row${holidayCollapsedClass}" id="holidayRow">`;
+      bodyHTML += `<td class="row-label${holidayCollapsedClass}" onclick="toggleSection('holiday')">
+        <div class="label-content">
+          <span class="collapse-icon">▼</span>
+          <span>Holiday</span>
+        </div>
+      </td>`;
+      
+      dates.forEach(date => {
         const dateStr = formatDate(date);
-        const col = document.createElement('div');
-        col.className = 'all-day-column';
-        
-        // Helper holidays for this day
         const dayHolidays = getHolidaysForDate(dateStr);
+        bodyHTML += `<td class="content-cell"><div class="cell-content">`;
         dayHolidays.forEach(h => {
-          const el = document.createElement('div');
-          el.className = 'all-day-event holiday';
-          el.textContent = `🏖️ ${h.helperName}`;
-          el.title = `${h.helperName}'s ${h.type} leave (${h.startDate} to ${h.endDate})`;
-          col.appendChild(el);
+          bodyHTML += `<div class="all-day-event holiday" title="${h.helperName}'s ${h.type} leave (${h.startDate} to ${h.endDate})">🏖️ ${h.helperName}</div>`;
         });
-        
-        holidaySection.appendChild(col);
-      }
+        bodyHTML += `</div></td>`;
+      });
+      bodyHTML += '</tr>';
       
-      // Render time grid
-      const timeGrid = document.getElementById('timeGrid');
-      timeGrid.innerHTML = '';
-      
-      // Time column
-      const timeCol = document.createElement('div');
-      timeCol.className = 'time-column';
+      // === TIME ROWS (7:00 - 20:00) ===
       for (let hour = 7; hour <= 20; hour++) {
-        const slot = document.createElement('div');
-        slot.className = 'time-slot';
-        slot.textContent = `${hour}:00`;
-        timeCol.appendChild(slot);
-      }
-      timeGrid.appendChild(timeCol);
-      
-      // Day columns with events
-      for (let i = 0; i < daysCount; i++) {
-        const date = addDays(startDate, i);
-        const dateStr = formatDate(date);
-        const col = document.createElement('div');
-        col.className = 'day-column' + (formatDate(date) === formatDate(today) ? ' today-col' : '');
+        bodyHTML += `<tr class="time-row">`;
+        bodyHTML += `<td class="row-label">${hour}:00</td>`;
         
-        // Hour lines
-        for (let hour = 7; hour <= 20; hour++) {
-          const line = document.createElement('div');
-          line.className = 'hour-line';
-          col.appendChild(line);
-        }
-        
-        // Timed tasks
-        tasks.filter(t => t.date === dateStr && t.time).forEach(t => {
-          const [hours, mins] = t.time.split(':').map(Number);
-          if (hours >= 7 && hours <= 20) {
-            const top = (hours - 7) * 60 + mins;
-            const event = document.createElement('div');
-            event.className = 'time-event';
-            event.style.top = `${top}px`;
-            event.style.height = '50px';
-            event.innerHTML = `
-              <div class="event-time">${t.time}</div>
-              <div class="event-title">${t.name}</div>
+        dates.forEach(date => {
+          const dateStr = formatDate(date);
+          const isToday = formatDate(date) === formatDate(today);
+          bodyHTML += `<td class="content-cell${isToday ? ' today-col' : ''}" data-date="${dateStr}" data-hour="${hour}">`;
+          
+          // Find timed tasks for this hour
+          const hourTasks = tasks.filter(t => {
+            if (t.date !== dateStr || !t.time) return false;
+            const [h] = t.time.split(':').map(Number);
+            return h === hour;
+          });
+          
+          hourTasks.forEach(t => {
+            const [, mins] = t.time.split(':').map(Number);
+            bodyHTML += `
+              <div class="time-event" style="top: ${mins}px; height: 50px;">
+                <div class="event-time">${t.time}</div>
+                <div class="event-title">${t.name}</div>
+              </div>
             `;
-            col.appendChild(event);
-          }
+          });
+          
+          bodyHTML += `</td>`;
         });
-        
-        timeGrid.appendChild(col);
+        bodyHTML += '</tr>';
       }
+      
+      tbody.innerHTML = bodyHTML;
     }
     
     function getMealIcon(type) {

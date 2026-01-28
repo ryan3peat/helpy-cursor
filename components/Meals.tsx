@@ -150,6 +150,12 @@ const Meals: React.FC<MealsProps> = ({
   
   // Track when scroll is ready (prevents flicker on first visit from display:none → block)
   const [isScrollReady, setIsScrollReady] = useState(false);
+  
+  // Track meals data signature to detect significant changes (e.g., account switch)
+  const prevMealsSignature = useRef<string | null>(null);
+  
+  // Key to force scroll effects to re-run when meals data changes
+  const [scrollTriggerKey, setScrollTriggerKey] = useState(0);
 
   const mealTypes = [MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER, MealType.SNACKS];
   const langCode = currentLang === 'en' ? 'en-GB' : currentLang;
@@ -906,7 +912,7 @@ const Meals: React.FC<MealsProps> = ({
     });
     
     return () => cancelAnimationFrame(rafId);
-  }, [view, isActive]);
+  }, [view, isActive, scrollTriggerKey]);
 
   // Reset day scroll flag when leaving day view
   useEffect(() => {
@@ -924,6 +930,37 @@ const Meals: React.FC<MealsProps> = ({
       setView('day'); // Always return to list view on next visit
     }
   }, [isActive]);
+
+  // ─────────────────────────────────────────────────────────────────
+  // DETECT MEALS DATA CHANGES - Reset scroll state when data changes
+  // This handles account switches (demo/normal) and data syncs
+  // ─────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    // Create a signature from meals data for the current week
+    // This detects when meals data changes significantly (e.g., account switch)
+    const weekMealIds = weekDays
+      .map(day => formatDateStr(day))
+      .flatMap(dateStr => meals.filter(m => m.date === dateStr).map(m => m.id))
+      .sort()
+      .join(',');
+    const signature = `${meals.length}:${weekMealIds}`;
+    
+    // On first run, just store the signature
+    if (prevMealsSignature.current === null) {
+      prevMealsSignature.current = signature;
+      return;
+    }
+    
+    // If signature changed, reset scroll state and trigger fresh scroll
+    if (prevMealsSignature.current !== signature) {
+      prevMealsSignature.current = signature;
+      hasInitiallyScrolled.current = false;
+      hasScrolledWeekView.current = false;
+      setIsScrollReady(false);
+      // Increment trigger key to force scroll effects to re-run
+      setScrollTriggerKey(k => k + 1);
+    }
+  }, [meals, weekDays]);
 
   // Measure header/nav heights to size scroll containers dynamically
   useEffect(() => {
@@ -1049,7 +1086,7 @@ const Meals: React.FC<MealsProps> = ({
     });
     
     return () => cancelAnimationFrame(rafId);
-  }, [view, weekDays, isActive]);
+  }, [view, weekDays, isActive, scrollTriggerKey]);
 
   // Close quick join popover when clicking outside
   useEffect(() => {

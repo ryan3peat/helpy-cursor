@@ -5,6 +5,11 @@ import './index.css';
 import App from './App';
 import { SupabaseProvider } from './contexts/SupabaseContext';
 import { logger } from './utils/logger';
+import { initMetaPixel } from './services/metaPixel';
+
+// Initialize Meta Pixel BEFORE React loads to ensure all page views are tracked
+// This must be called synchronously before React mounts
+initMetaPixel();
 
 // Capture PWA install prompt IMMEDIATELY before React loads
 // This ensures we never miss Chrome's beforeinstallprompt event

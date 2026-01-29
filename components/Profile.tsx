@@ -29,6 +29,7 @@ import { compressImageForAvatar } from '../utils/imageCompression';
 import { getRoleConfig } from '../config/rolePermissions';
 import { isRunningAsPwa, isIosDevice, isAndroidDevice } from '../utils/pwaUtils';
 import { useDemoMode } from '../contexts/DemoModeContext';
+import { trackCheckoutInitiated, trackPurchase, trackSubscriptionPlanSelection } from '../services/metaPixel';
 
 interface ProfileProps extends BaseViewProps {
   users: User[];
@@ -536,6 +537,18 @@ const Profile: React.FC<ProfileProps> = ({
         
         if (syncResult.success) {
           logger.log('[Profile] Sync successful:', syncResult);
+          
+          // Track purchase completion for Meta Pixel
+          // We use the plan from sync result and estimate the value based on common pricing
+          if (syncResult.plan && syncResult.plan !== 'free') {
+            const purchasePrices: Record<string, { monthly: number; yearly: number }> = { 
+              core: { monthly: 88, yearly: 845 }, 
+              pro: { monthly: 118, yearly: 1133 } 
+            };
+            // Default to monthly pricing if period unknown (more conservative estimate)
+            const estimatedValue = purchasePrices[syncResult.plan]?.monthly || 0;
+            trackPurchase(syncResult.plan, 'subscription', estimatedValue);
+          }
           // Small delay to ensure database update is committed
           await new Promise(resolve => setTimeout(resolve, 500));
           // Force refresh subscription info from database
@@ -836,6 +849,13 @@ const Profile: React.FC<ProfileProps> = ({
 
   // Stripe Checkout Handler - handles both new subscriptions and plan changes
   const handleSelectPlan = async (plan: 'core' | 'pro' | 'test', period: 'monthly' | 'yearly', referralCode?: string, skipConfirmation?: boolean) => {
+    // Calculate price for Meta Pixel tracking
+    const planPrices = { core: { monthly: 88, yearly: 845 }, pro: { monthly: 118, yearly: 1133 }, test: { monthly: 1, yearly: 1 } };
+    const trackingValue = planPrices[plan]?.[period] || 0;
+    
+    // Track subscription plan selection for Meta Pixel
+    trackSubscriptionPlanSelection(plan, period, trackingValue);
+    
     try {
       setLoadingPlan(plan);
       
@@ -892,6 +912,9 @@ const Profile: React.FC<ProfileProps> = ({
           referralCode,
           currentUser.id
         );
+        
+        // Track checkout initiation for Meta Pixel
+        trackCheckoutInitiated(plan, period, trackingValue);
         
         // Redirect to Stripe Checkout
         window.location.href = checkoutUrl;

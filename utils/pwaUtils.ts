@@ -274,4 +274,3 @@ export function clearSalarySlipReminderTracking(userId: string): void {
   localStorage.removeItem(key);
   logger.log('[PWA] Salary slip reminder tracking cleared for user:', userId);
 }
-

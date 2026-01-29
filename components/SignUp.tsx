@@ -5,6 +5,7 @@ import { useSignUp, useSignIn } from '@clerk/clerk-react';
 import { Loader2, ArrowLeft } from 'lucide-react';
 import ErrorBanner from './ui/ErrorBanner';
 import { logger } from '../utils/logger';
+import { trackSignupComplete } from '../services/metaPixel';
 
 interface SignUpProps {
   onBackToSignIn: () => void;
@@ -103,6 +104,11 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
         // Check if signUp is complete after OAuth
         if (signUp.status === 'complete' && signUp.createdSessionId) {
           setIsOAuthProcessing(true);
+          // Track signup completion for Meta Pixel (Lead event)
+          trackSignupComplete({
+            content_name: 'Trial Signup - Google OAuth',
+            content_category: 'oauth_signup',
+          });
           await setActive({ session: signUp.createdSessionId });
           // User will be redirected by Auth component
           return;
@@ -244,6 +250,11 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
         if (isInvite && hid && uid) {
           window.history.replaceState({}, '', `/?invite=true&hid=${hid}&uid=${uid}`);
         }
+        // Track signup completion for Meta Pixel (Lead event)
+        trackSignupComplete({
+          content_name: 'Trial Signup - Email',
+          content_category: 'email_signup',
+        });
         // No verification needed, sign up is complete
         await setActive({ session: signUp.createdSessionId! });
         // User will be redirected by Auth component
@@ -288,6 +299,12 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
         if (isInvite && hid && uid) {
           window.history.replaceState({}, '', `/?invite=true&hid=${hid}&uid=${uid}`);
         }
+        
+        // Track signup completion for Meta Pixel (Lead event)
+        trackSignupComplete({
+          content_name: 'Trial Signup - Email Verified',
+          content_category: 'email_signup',
+        });
         
         await setActive({ session: result.createdSessionId });
         // User will be redirected by Auth component

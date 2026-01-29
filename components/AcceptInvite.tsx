@@ -6,6 +6,7 @@ import React, { useEffect, useState } from 'react';
 import { useSignUp, useSignIn, useUser } from '@clerk/clerk-react';
 import { Loader2, CheckCircle, XCircle } from 'lucide-react';
 import { logger } from '../utils/logger';
+import { trackSignupComplete } from '../services/metaPixel';
 
 // Helper function to get user-friendly error message from Clerk errors
 function getClerkErrorMessage(err: any): string {
@@ -149,6 +150,11 @@ const AcceptInvite: React.FC<AcceptInviteProps> = ({ onComplete }) => {
       });
 
       if (result.status === 'complete') {
+        // Track signup completion for Meta Pixel (Lead event)
+        trackSignupComplete({
+          content_name: 'Trial Signup - Invite',
+          content_category: 'invite_signup',
+        });
         await setActiveSignUp({ session: result.createdSessionId });
         setStatus('complete');
         setTimeout(() => {
@@ -207,6 +213,11 @@ const AcceptInvite: React.FC<AcceptInviteProps> = ({ onComplete }) => {
       }
 
       if (result.status === 'complete') {
+        // Track signup completion for Meta Pixel (Lead event)
+        trackSignupComplete({
+          content_name: 'Trial Signup - Invite Verified',
+          content_category: 'invite_signup',
+        });
         await setActiveSignUp({ session: result.createdSessionId });
         setStatus('complete');
         setTimeout(() => {

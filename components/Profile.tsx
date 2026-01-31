@@ -1739,12 +1739,7 @@ const Profile: React.FC<ProfileProps> = ({
               className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
               onClick={(e) => { if (e.target === e.currentTarget) setIsAddModalOpen(false); }}
             >
-              {/* Safe area bottom cover */}
-              <div 
-                className="absolute bottom-0 left-0 right-0 bg-card"
-                style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
-              />
-              <div className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ minHeight: '400px', maxHeight: '80vh', marginBottom: 'env(safe-area-inset-bottom, 34px)', marginTop: 'env(safe-area-inset-top)' }}>
+              <div className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ minHeight: '400px', maxHeight: '80vh', marginTop: 'env(safe-area-inset-top)' }}>
                 {/* Header with X left, Title center (no ✓ for Add Family Member) */}
                 <div className="flex items-center justify-between px-5 pt-5 pb-4 shrink-0">
                   {/* X Close Button or Back Button (left) */}
@@ -2125,12 +2120,7 @@ const Profile: React.FC<ProfileProps> = ({
               className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
               onClick={(e) => { if (e.target === e.currentTarget) setDeleteConfirmOpen(false); }}
             >
-              {/* Safe area bottom cover */}
-              <div 
-                className="absolute bottom-0 left-0 right-0 bg-card"
-                style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
-              />
-              <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)', marginTop: 'env(safe-area-inset-top)' }}>
+              <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginTop: 'env(safe-area-inset-top)' }}>
                 {/* Header with X left, Title center */}
                 <div className="flex items-center justify-between px-5 pt-5 pb-4 shrink-0">
                   {/* X Close Button (left) */}
@@ -2193,12 +2183,7 @@ const Profile: React.FC<ProfileProps> = ({
               className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
               onClick={(e) => { if (e.target === e.currentTarget) setIsEditModalOpen(false); }}
             >
-              {/* Safe area bottom cover - fills the gap below the sheet */}
-              <div 
-                className="absolute bottom-0 left-0 right-0 bg-card"
-                style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
-              />
-              <div className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ maxHeight: '80vh', marginBottom: 'env(safe-area-inset-bottom, 34px)', marginTop: 'env(safe-area-inset-top)' }}>
+              <div className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ maxHeight: '80vh', marginTop: 'env(safe-area-inset-top)' }}>
                 {/* Header with X left, Title center, ✓ right */}
                 <div className="flex items-center justify-between px-5 pt-5 pb-4 shrink-0">
                   {/* X Close Button (left) */}
@@ -2364,14 +2349,9 @@ const Profile: React.FC<ProfileProps> = ({
             className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
             onClick={(e) => { if (e.target === e.currentTarget) setShowPhotoOptions(false); }}
           >
-            {/* Safe area bottom cover */}
-            <div 
-              className="absolute bottom-0 left-0 right-0 bg-card"
-              style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
-            />
             <div 
               className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col"
-              style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)', marginTop: 'env(safe-area-inset-top)' }}
+              style={{ marginTop: 'env(safe-area-inset-top)' }}
             >
               {/* Header */}
               <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
@@ -3283,12 +3263,7 @@ const Profile: React.FC<ProfileProps> = ({
               className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end md:items-center justify-center bottom-sheet-backdrop"
               onClick={(e) => { if (e.target === e.currentTarget) setIsPlanConfirmOpen(false); }}
             >
-              {/* Safe area bottom cover */}
-              <div 
-                className="absolute bottom-0 left-0 right-0 bg-card"
-                style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
-              />
-              <div className="bg-card w-full max-w-md rounded-t-2xl md:rounded-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)', marginTop: 'env(safe-area-inset-top)' }}>
+              <div className="bg-card w-full max-w-md rounded-t-2xl md:rounded-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginTop: 'env(safe-area-inset-top)' }}>
                 {/* Header */}
                 <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
                   <h2 className="text-title text-foreground">{t['subscription.change_plan'] || 'Change Plan'}</h2>
@@ -3381,12 +3356,7 @@ const Profile: React.FC<ProfileProps> = ({
               className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
               onClick={(e) => { if (e.target === e.currentTarget) setShowDowngradeModal(false); }}
             >
-              {/* Safe area bottom cover */}
-              <div 
-                className="absolute bottom-0 left-0 right-0 bg-card"
-                style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
-              />
-              <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)', marginTop: 'env(safe-area-inset-top)' }}>
+              <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginTop: 'env(safe-area-inset-top)' }}>
                 {/* Close Button */}
                 <button 
                   onClick={handleCancelDowngrade} 
@@ -3446,12 +3416,7 @@ const Profile: React.FC<ProfileProps> = ({
               className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
               onClick={(e) => { if (e.target === e.currentTarget) setShowCancelSubConfirm(false); }}
             >
-              {/* Safe area bottom cover */}
-              <div 
-                className="absolute bottom-0 left-0 right-0 bg-card"
-                style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
-              />
-              <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)', marginTop: 'env(safe-area-inset-top)' }}>
+              <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginTop: 'env(safe-area-inset-top)' }}>
                 {/* Header */}
                 <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
                   <h2 className="text-title text-foreground">{t['subscription.cancel_title'] || 'Cancel Subscription'}</h2>
@@ -3713,12 +3678,7 @@ const Profile: React.FC<ProfileProps> = ({
             className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
             onClick={(e) => { if (e.target === e.currentTarget) setIsDeleteAccountModalOpen(false); }}
           >
-            {/* Safe area bottom cover */}
-            <div 
-              className="absolute bottom-0 left-0 right-0 bg-card"
-              style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
-            />
-            <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)', marginTop: 'env(safe-area-inset-top)' }}>
+            <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginTop: 'env(safe-area-inset-top)' }}>
               {/* Header */}
               <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
                 <h2 className="text-title text-foreground">{t['profile.delete_account'] || 'Delete Account'}</h2>
@@ -3756,12 +3716,7 @@ const Profile: React.FC<ProfileProps> = ({
             className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
             onClick={(e) => { if (e.target === e.currentTarget) setIsFinalDeleteConfirmOpen(false); }}
           >
-            {/* Safe area bottom cover */}
-            <div 
-              className="absolute bottom-0 left-0 right-0 bg-card"
-              style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
-            />
-            <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)', marginTop: 'env(safe-area-inset-top)' }}>
+            <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginTop: 'env(safe-area-inset-top)' }}>
               {/* Header */}
               <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
                 <h2 className="text-title text-foreground">{t['profile.delete_account'] || 'Delete Account'}</h2>
@@ -3812,12 +3767,7 @@ const Profile: React.FC<ProfileProps> = ({
             className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
             onClick={(e) => { if (e.target === e.currentTarget) setSubscriptionCanceled(false); }}
           >
-            {/* Safe area bottom cover */}
-            <div 
-              className="absolute bottom-0 left-0 right-0 bg-card"
-              style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
-            />
-            <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)', marginTop: 'env(safe-area-inset-top)' }}>
+            <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginTop: 'env(safe-area-inset-top)' }}>
               {/* Header */}
               <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
                 <h2 className="text-title text-foreground">{t['profile.subscription_canceled'] || 'Subscription Canceled'}</h2>
@@ -4291,12 +4241,7 @@ const Profile: React.FC<ProfileProps> = ({
             className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
             onClick={(e) => { if (e.target === e.currentTarget) setAlertModal(prev => ({ ...prev, isOpen: false })); }}
           >
-            {/* Safe area bottom cover */}
-            <div 
-              className="absolute bottom-0 left-0 right-0 bg-card"
-              style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
-            />
-            <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)', marginTop: 'env(safe-area-inset-top)' }}>
+            <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginTop: 'env(safe-area-inset-top)' }}>
               {/* Header */}
               <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
                 <h2 className={`text-title ${alertModal.type === 'error' ? 'text-destructive' : alertModal.type === 'success' ? 'text-primary' : 'text-foreground'}`}>

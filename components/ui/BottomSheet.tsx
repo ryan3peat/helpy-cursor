@@ -216,14 +216,6 @@ const BottomSheet: React.FC<BottomSheetProps> & {
         }
       }}
     >
-      {/* Safe area bottom cover - fills the gap below the sheet */}
-      {!centered && (
-        <div 
-          className="absolute bottom-0 left-0 right-0 bg-card"
-          style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
-        />
-      )}
-      
       <div 
         ref={sheetContentRef}
         className={`bg-card w-full ${maxWidthClass} ${
@@ -231,7 +223,6 @@ const BottomSheet: React.FC<BottomSheetProps> & {
         } overflow-hidden bottom-sheet-content relative flex flex-col`}
         style={{ 
           maxHeight,
-          marginBottom: centered ? 0 : 'env(safe-area-inset-bottom, 34px)',
           marginTop: centered ? 0 : 'env(safe-area-inset-top)',
         }}
       >

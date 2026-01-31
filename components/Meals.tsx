@@ -1872,14 +1872,9 @@ const Meals: React.FC<MealsProps> = ({
           className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
           onClick={(e) => { if (e.target === e.currentTarget) setIsModalOpen(false); }}
         >
-          {/* Safe area bottom cover - fills the gap below the sheet */}
-          <div 
-            className="absolute bottom-0 left-0 right-0 bg-card"
-            style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
-          />
           <div 
             className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col"
-            style={{ maxHeight: '88vh', marginBottom: 'env(safe-area-inset-bottom, 34px)', marginTop: 'env(safe-area-inset-top)' }}
+            style={{ maxHeight: '88vh', marginTop: 'env(safe-area-inset-top)' }}
           >
             {/* Header with X left, Title center, ✓ right */}
             <div className="flex items-center justify-between px-5 pt-5 pb-4 shrink-0">

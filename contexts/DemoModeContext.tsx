@@ -167,8 +167,12 @@ const createDemoTodoItems = (): ToDoItem[] => {
     });
   });
   
-  // Tasks spread across a month for calendar view testing (16 total)
+  // Tasks spread across a month for calendar view testing (18 total)
   const taskList: { name: string; category: string; daysOffset: number; time?: string; assignee?: string; recurrence?: any }[] = [
+    // Overdue
+    { name: 'Call insurance company', category: TaskCategory.OTHERS, daysOffset: -3, time: '10:00', assignee: 'demo-dad-001' },
+    { name: 'Submit school forms', category: TaskCategory.FAMILY_CARE, daysOffset: -2, time: '09:00', assignee: 'demo-mom-002' },
+    
     // Today
     { name: 'Pick up Ethan from school', category: TaskCategory.FAMILY_CARE, daysOffset: 0, time: '15:30', recurrence: { frequency: 'WEEKLY', dayOfWeek: today.getDay() } },
     { name: 'Prepare dinner', category: TaskCategory.HOME_CARE, daysOffset: 0, time: '17:00' },

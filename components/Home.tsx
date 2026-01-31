@@ -1411,14 +1411,20 @@ Give it a try:`;
         <div className="px-5 py-4">
           {todayTasks.length > 0 ? (
             <div className="space-y-3">
-              {todayTasks.slice(0, 3).map(task => (
-                <div key={task.id} className="flex justify-between items-center gap-2">
-                  <span className="text-body font-medium text-foreground truncate flex-1">{task.name}</span>
-                  {task.dueTime && (
-                    <span className="text-caption text-muted-foreground flex-shrink-0">{task.dueTime.slice(0, 5)}</span>
-                  )}
-                </div>
-              ))}
+              {todayTasks.slice(0, 3).map(task => {
+                const assignee = users.find(u => u.id === task.assigneeId);
+                return (
+                  <div key={task.id} className="flex items-center gap-2">
+                    {task.dueTime && (
+                      <span className="text-caption text-primary flex-shrink-0 w-10">{task.dueTime.slice(0, 5)}</span>
+                    )}
+                    <span className="text-body font-medium text-foreground truncate flex-1">{task.name}</span>
+                    {assignee && (
+                      <Avatar user={assignee} size="xs" className="flex-shrink-0" />
+                    )}
+                  </div>
+                );
+              })}
               {todayTasks.length > 3 && (
                 <span className="text-caption text-muted-foreground">+{todayTasks.length - 3} {t['common.more'] || 'more'}</span>
               )}
@@ -1437,14 +1443,20 @@ Give it a try:`;
                 {t['dashboard.tomorrow'] || 'Tomorrow'}
               </span>
               <div className="space-y-2">
-                {tomorrowTasks.slice(0, 2).map(task => (
-                  <div key={task.id} className="flex justify-between items-center gap-2">
-                    <span className="text-body font-medium text-foreground truncate flex-1">{task.name}</span>
-                    {task.dueTime && (
-                      <span className="text-caption text-muted-foreground flex-shrink-0">{task.dueTime.slice(0, 5)}</span>
-                    )}
-                  </div>
-                ))}
+                {tomorrowTasks.slice(0, 2).map(task => {
+                  const assignee = users.find(u => u.id === task.assigneeId);
+                  return (
+                    <div key={task.id} className="flex items-center gap-2">
+                      {task.dueTime && (
+                        <span className="text-caption text-muted-foreground flex-shrink-0 w-10">{task.dueTime.slice(0, 5)}</span>
+                      )}
+                      <span className="text-body font-medium text-foreground truncate flex-1">{task.name}</span>
+                      {assignee && (
+                        <Avatar user={assignee} size="xs" className="flex-shrink-0" />
+                      )}
+                    </div>
+                  );
+                })}
                 {tomorrowTasks.length > 2 && (
                   <span className="text-caption text-muted-foreground">+{tomorrowTasks.length - 2} {t['common.more'] || 'more'}</span>
                 )}
@@ -1462,14 +1474,20 @@ Give it a try:`;
                 {t['dashboard.overdue'] || 'Overdue'}
               </span>
               <div className="space-y-2">
-                {overdueTasks.slice(0, 2).map(task => (
-                  <div key={task.id} className="flex justify-between items-center gap-2">
-                    <span className="text-body font-medium text-foreground truncate flex-1">{task.name}</span>
-                    {task.dueDate && (
-                      <span className="text-caption text-destructive flex-shrink-0">{getDaysOverdue(task.dueDate)}d</span>
-                    )}
-                  </div>
-                ))}
+                {overdueTasks.slice(0, 2).map(task => {
+                  const assignee = users.find(u => u.id === task.assigneeId);
+                  return (
+                    <div key={task.id} className="flex items-center gap-2">
+                      {task.dueDate && (
+                        <span className="text-caption text-destructive flex-shrink-0 w-10">{getDaysOverdue(task.dueDate)}d</span>
+                      )}
+                      <span className="text-body font-medium text-foreground truncate flex-1">{task.name}</span>
+                      {assignee && (
+                        <Avatar user={assignee} size="xs" className="flex-shrink-0" />
+                      )}
+                    </div>
+                  );
+                })}
                 {overdueTasks.length > 2 && (
                   <span className="text-caption text-muted-foreground">+{overdueTasks.length - 2} {t['common.more'] || 'more'}</span>
                 )}
@@ -1518,9 +1536,9 @@ Give it a try:`;
               {todaysMenu.map((meal, idx) => {
                 return (
                   <div key={meal.id} className="relative">
-                    {idx > 0 && <div className="absolute -top-2 left-8 right-0 border-t border-border"></div>}
-                    <div className="flex items-start gap-3">
-                      <div className={`mt-0.5 ${getMealTypeColor(meal.type)}`}>
+                    {idx > 0 && <div className="absolute -top-2 left-12 right-0 border-t border-border"></div>}
+                    <div className="flex items-start gap-2">
+                      <div className={`w-10 flex-shrink-0 flex items-center justify-center ${getMealTypeColor(meal.type)}`}>
                         {getMealTypeIcon(meal.type)}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -1531,7 +1549,7 @@ Give it a try:`;
                           {renderAudienceIcons(meal.forUserIds)}
                         </div>
                         {meal.description ? (
-                          <p className="text-body font-medium text-foreground leading-tight line-clamp-2">
+                          <p className="text-body font-medium text-foreground leading-tight line-clamp-2 pr-14">
                             <TranslatedMealDescription 
                               meal={meal} 
                               currentLang={currentLang}
@@ -1539,7 +1557,7 @@ Give it a try:`;
                             />
                           </p>
                         ) : (
-                          <p className="text-body font-medium text-muted-foreground leading-tight">
+                          <p className="text-body font-medium text-muted-foreground leading-tight pr-14">
                             {t['meals.hungry_no_menu'] ?? "Someone's joining. No menu yet"}
                           </p>
                         )}

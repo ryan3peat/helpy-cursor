@@ -1057,7 +1057,7 @@ const Family: React.FC<FamilyProps> = ({
         {/* ─────────────────────────────────────────────────────────────── */}
         <header 
           className="sticky top-0 z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6" 
-          style={{ paddingTop: 'env(safe-area-inset-top)' }}
+          style={{ marginTop: 'env(safe-area-inset-top)' }}
         >
           <div 
             className="pb-3 flex items-end"
@@ -1580,7 +1580,7 @@ const Family: React.FC<FamilyProps> = ({
             className="absolute bottom-0 left-0 right-0 bg-card"
             style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
           />
-          <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)', paddingTop: 'env(safe-area-inset-top)' }}>
+          <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)', marginTop: 'env(safe-area-inset-top)' }}>
             {/* Close Button */}
             <button 
               onClick={() => setShowHelperUpgradeModal(false)} 
@@ -1639,7 +1639,7 @@ const Family: React.FC<FamilyProps> = ({
           />
           <div 
             className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" 
-            style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)', paddingTop: 'env(safe-area-inset-top)' }}
+            style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)', marginTop: 'env(safe-area-inset-top)' }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
@@ -1688,7 +1688,7 @@ const Family: React.FC<FamilyProps> = ({
       {isPracticeIdeasModalOpen && createPortal(
         <div 
           className="fixed inset-0 bg-background z-[60] flex flex-col"
-          style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}
+          style={{ marginTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}
         >
           {/* Header */}
           <div className="shrink-0 px-4 pt-4 pb-3 relative">
@@ -2170,7 +2170,7 @@ const PlaceModal: React.FC<PlaceModalProps> = ({
         className="absolute bottom-0 left-0 right-0 bg-card"
         style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
       />
-      <div className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ maxHeight: '90vh', marginBottom: 'env(safe-area-inset-bottom, 34px)', paddingTop: 'env(safe-area-inset-top)' }}>
+      <div className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ maxHeight: '90vh', marginBottom: 'env(safe-area-inset-bottom, 34px)', marginTop: 'env(safe-area-inset-top)' }}>
         {/* Header with X left, Title center, ✓ right */}
         <div className="flex items-center justify-between px-5 pt-5 pb-4 shrink-0">
           {/* X Close Button (left) */}
@@ -2427,7 +2427,7 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
         className="absolute bottom-0 left-0 right-0 bg-card"
         style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
       />
-      <div className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ maxHeight: '80vh', marginBottom: 'env(safe-area-inset-bottom, 34px)', paddingTop: 'env(safe-area-inset-top)' }}>
+      <div className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ maxHeight: '80vh', marginBottom: 'env(safe-area-inset-bottom, 34px)', marginTop: 'env(safe-area-inset-top)' }}>
         {/* Header with X left, Title center, ✓ right */}
         <div className="flex items-center justify-between px-5 pt-5 pb-4 shrink-0">
           {/* X Close Button (left) */}
@@ -2619,7 +2619,7 @@ const PracticeViewModal: React.FC<PracticeViewModalProps> = ({
         className="absolute bottom-0 left-0 right-0 bg-card"
         style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
       />
-      <div className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ maxHeight: '80vh', marginBottom: 'env(safe-area-inset-bottom, 34px)', paddingTop: 'env(safe-area-inset-top)' }}>
+      <div className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ maxHeight: '80vh', marginBottom: 'env(safe-area-inset-bottom, 34px)', marginTop: 'env(safe-area-inset-top)' }}>
         {/* Header with X left, Title center */}
         <div className="flex items-center justify-between px-5 pt-5 pb-4 shrink-0">
           {/* X Close Button (left) */}

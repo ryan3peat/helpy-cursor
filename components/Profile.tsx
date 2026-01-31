@@ -1351,7 +1351,7 @@ const Profile: React.FC<ProfileProps> = ({
   const renderSettingsHeader = (title: string, onBackOverride?: () => void) => (
     <header 
       className="sticky top-0 z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6" 
-      style={{ paddingTop: 'env(safe-area-inset-top)' }}
+      style={{ marginTop: 'env(safe-area-inset-top)' }}
     >
       <div 
         className="pb-3 flex items-end"
@@ -1380,7 +1380,7 @@ const Profile: React.FC<ProfileProps> = ({
           {/* Header with Logout */}
           <header 
             className="sticky top-0 z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6" 
-            style={{ paddingTop: 'env(safe-area-inset-top)' }}
+            style={{ marginTop: 'env(safe-area-inset-top)' }}
           >
             <div 
               className="pb-3 flex items-end"
@@ -1744,7 +1744,7 @@ const Profile: React.FC<ProfileProps> = ({
                 className="absolute bottom-0 left-0 right-0 bg-card"
                 style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
               />
-              <div className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ minHeight: '400px', maxHeight: '80vh', marginBottom: 'env(safe-area-inset-bottom, 34px)', paddingTop: 'env(safe-area-inset-top)' }}>
+              <div className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ minHeight: '400px', maxHeight: '80vh', marginBottom: 'env(safe-area-inset-bottom, 34px)', marginTop: 'env(safe-area-inset-top)' }}>
                 {/* Header with X left, Title center (no ✓ for Add Family Member) */}
                 <div className="flex items-center justify-between px-5 pt-5 pb-4 shrink-0">
                   {/* X Close Button or Back Button (left) */}
@@ -2130,7 +2130,7 @@ const Profile: React.FC<ProfileProps> = ({
                 className="absolute bottom-0 left-0 right-0 bg-card"
                 style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
               />
-              <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)', paddingTop: 'env(safe-area-inset-top)' }}>
+              <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)', marginTop: 'env(safe-area-inset-top)' }}>
                 {/* Header with X left, Title center */}
                 <div className="flex items-center justify-between px-5 pt-5 pb-4 shrink-0">
                   {/* X Close Button (left) */}
@@ -2198,7 +2198,7 @@ const Profile: React.FC<ProfileProps> = ({
                 className="absolute bottom-0 left-0 right-0 bg-card"
                 style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
               />
-              <div className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ maxHeight: '80vh', marginBottom: 'env(safe-area-inset-bottom, 34px)', paddingTop: 'env(safe-area-inset-top)' }}>
+              <div className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ maxHeight: '80vh', marginBottom: 'env(safe-area-inset-bottom, 34px)', marginTop: 'env(safe-area-inset-top)' }}>
                 {/* Header with X left, Title center, ✓ right */}
                 <div className="flex items-center justify-between px-5 pt-5 pb-4 shrink-0">
                   {/* X Close Button (left) */}
@@ -2371,7 +2371,7 @@ const Profile: React.FC<ProfileProps> = ({
             />
             <div 
               className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col"
-              style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)', paddingTop: 'env(safe-area-inset-top)' }}
+              style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)', marginTop: 'env(safe-area-inset-top)' }}
             >
               {/* Header */}
               <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
@@ -3288,7 +3288,7 @@ const Profile: React.FC<ProfileProps> = ({
                 className="absolute bottom-0 left-0 right-0 bg-card"
                 style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
               />
-              <div className="bg-card w-full max-w-md rounded-t-2xl md:rounded-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)', paddingTop: 'env(safe-area-inset-top)' }}>
+              <div className="bg-card w-full max-w-md rounded-t-2xl md:rounded-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)', marginTop: 'env(safe-area-inset-top)' }}>
                 {/* Header */}
                 <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
                   <h2 className="text-title text-foreground">{t['subscription.change_plan'] || 'Change Plan'}</h2>
@@ -3386,7 +3386,7 @@ const Profile: React.FC<ProfileProps> = ({
                 className="absolute bottom-0 left-0 right-0 bg-card"
                 style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
               />
-              <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)', paddingTop: 'env(safe-area-inset-top)' }}>
+              <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)', marginTop: 'env(safe-area-inset-top)' }}>
                 {/* Close Button */}
                 <button 
                   onClick={handleCancelDowngrade} 
@@ -3451,7 +3451,7 @@ const Profile: React.FC<ProfileProps> = ({
                 className="absolute bottom-0 left-0 right-0 bg-card"
                 style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
               />
-              <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)', paddingTop: 'env(safe-area-inset-top)' }}>
+              <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)', marginTop: 'env(safe-area-inset-top)' }}>
                 {/* Header */}
                 <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
                   <h2 className="text-title text-foreground">{t['subscription.cancel_title'] || 'Cancel Subscription'}</h2>
@@ -3718,7 +3718,7 @@ const Profile: React.FC<ProfileProps> = ({
               className="absolute bottom-0 left-0 right-0 bg-card"
               style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
             />
-            <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)', paddingTop: 'env(safe-area-inset-top)' }}>
+            <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)', marginTop: 'env(safe-area-inset-top)' }}>
               {/* Header */}
               <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
                 <h2 className="text-title text-foreground">{t['profile.delete_account'] || 'Delete Account'}</h2>
@@ -3761,7 +3761,7 @@ const Profile: React.FC<ProfileProps> = ({
               className="absolute bottom-0 left-0 right-0 bg-card"
               style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
             />
-            <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)', paddingTop: 'env(safe-area-inset-top)' }}>
+            <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)', marginTop: 'env(safe-area-inset-top)' }}>
               {/* Header */}
               <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
                 <h2 className="text-title text-foreground">{t['profile.delete_account'] || 'Delete Account'}</h2>
@@ -3817,7 +3817,7 @@ const Profile: React.FC<ProfileProps> = ({
               className="absolute bottom-0 left-0 right-0 bg-card"
               style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
             />
-            <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)', paddingTop: 'env(safe-area-inset-top)' }}>
+            <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)', marginTop: 'env(safe-area-inset-top)' }}>
               {/* Header */}
               <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
                 <h2 className="text-title text-foreground">{t['profile.subscription_canceled'] || 'Subscription Canceled'}</h2>
@@ -4296,7 +4296,7 @@ const Profile: React.FC<ProfileProps> = ({
               className="absolute bottom-0 left-0 right-0 bg-card"
               style={{ height: 'env(safe-area-inset-bottom, 34px)' }}
             />
-            <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)', paddingTop: 'env(safe-area-inset-top)' }}>
+            <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginBottom: 'env(safe-area-inset-bottom, 34px)', marginTop: 'env(safe-area-inset-top)' }}>
               {/* Header */}
               <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
                 <h2 className={`text-title ${alertModal.type === 'error' ? 'text-destructive' : alertModal.type === 'success' ? 'text-primary' : 'text-foreground'}`}>

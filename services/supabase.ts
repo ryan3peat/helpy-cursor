@@ -179,7 +179,7 @@ export interface JwtDiagnosticResult {
   allClaims: Record<string, any> | null;
 }
 
-export async function diagnoseJwtToken(context: string): Promise<JwtDiagnosticResult> {
+export async function diagnoseJwtToken(context: string, verbose: boolean = false): Promise<JwtDiagnosticResult> {
   const result: JwtDiagnosticResult = {
     hasToken: false,
     clerkId: null,
@@ -201,7 +201,11 @@ export async function diagnoseJwtToken(context: string): Promise<JwtDiagnosticRe
     }
     
     if (!token) {
-      logger.warn(`[JWT Diagnostic: ${context}] ❌ NO TOKEN AVAILABLE - This explains empty data!`);
+      // Only log if verbose mode (e.g., called from console)
+      // During normal app load, no token is expected initially
+      if (verbose) {
+        logger.warn(`[JWT Diagnostic: ${context}] ❌ NO TOKEN AVAILABLE`);
+      }
       return result;
     }
     
@@ -230,19 +234,21 @@ export async function diagnoseJwtToken(context: string): Promise<JwtDiagnosticRe
       result.isExpired = claims.exp < now;
     }
     
-    // Log diagnostic info
-    logger.log(`[JWT Diagnostic: ${context}] 🔍 Token Analysis:`);
-    logger.log(`  - Has token: ✅`);
-    logger.log(`  - clerk_id: ${result.clerkId || '❌ MISSING - RLS WILL FAIL!'}`);
-    logger.log(`  - sub: ${result.sub || 'not set'}`);
-    logger.log(`  - Expires in: ${result.expiresIn !== null ? `${result.expiresIn}s` : 'unknown'}`);
-    logger.log(`  - Is expired: ${result.isExpired ? '❌ YES' : '✅ No'}`);
-    
-    if (!result.clerkId) {
-      logger.error(`[JWT Diagnostic: ${context}] ⚠️ CRITICAL: clerk_id claim is MISSING!`);
-      logger.error(`  This means RLS policies will return empty results.`);
-      logger.error(`  User needs to logout and login again to get a valid token.`);
-      logger.error(`  All claims present:`, Object.keys(claims));
+    // Only log details in verbose mode (e.g., when called from console)
+    if (verbose) {
+      logger.log(`[JWT Diagnostic: ${context}] 🔍 Token Analysis:`);
+      logger.log(`  - Has token: ✅`);
+      logger.log(`  - clerk_id: ${result.clerkId || '❌ MISSING - RLS WILL FAIL!'}`);
+      logger.log(`  - sub: ${result.sub || 'not set'}`);
+      logger.log(`  - Expires in: ${result.expiresIn !== null ? `${result.expiresIn}s` : 'unknown'}`);
+      logger.log(`  - Is expired: ${result.isExpired ? '❌ YES' : '✅ No'}`);
+      
+      if (!result.clerkId) {
+        logger.error(`[JWT Diagnostic: ${context}] ⚠️ CRITICAL: clerk_id claim is MISSING!`);
+        logger.error(`  This means RLS policies will return empty results.`);
+        logger.error(`  User needs to logout and login again to get a valid token.`);
+        logger.error(`  All claims present:`, Object.keys(claims));
+      }
     }
     
     return result;
@@ -555,7 +561,7 @@ export const createAuthenticatedClient = async (clerkToken: string | null, token
 if (typeof window !== 'undefined') {
   (window as any).helpyDiagnoseJwt = async () => {
     console.log('\n🔍 Running JWT diagnostic from console...\n');
-    const result = await diagnoseJwtToken('Console Debug');
+    const result = await diagnoseJwtToken('Console Debug', true); // verbose mode for console
     console.log('\n📋 Full diagnostic result:', result);
     return result;
   };

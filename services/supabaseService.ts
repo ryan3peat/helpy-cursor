@@ -1276,12 +1276,19 @@ export function subscribeToNotes(
   }) => void
 ): () => void {
   // Initial fetch
+  // Use .maybeSingle() instead of .single() to avoid 406 error when token isn't ready yet
+  // The query might return 0 rows if RLS blocks it (no token), which is fine - we just skip the callback
   getSupabaseClient()
     .from('households')
     .select('family_notes, family_notes_lang, family_notes_translations')
     .eq('id', householdId)
-    .single()
-    .then(({ data }) => {
+    .maybeSingle()
+    .then(({ data, error }) => {
+      // Silently ignore errors (likely RLS/timing issues) - data will load via subscription later
+      if (error) {
+        // Don't log - this is expected during initial load before token is ready
+        return;
+      }
       if (data) {
         callback({
           notes: data.family_notes || '',

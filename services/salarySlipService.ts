@@ -197,16 +197,16 @@ export async function getHelperContracts(
   
   const contracts = (data || []).map(mapContractFromDb);
   
-  // DIAGNOSTIC: If no contracts returned, check if this is a token issue
+  // DIAGNOSTIC: If no contracts returned, silently check token state
+  // Empty results are common during initial load (timing issue) - only log if there's a real token problem
   if (contracts.length === 0) {
-    logger.warn(`[salarySlipService] ⚠️ getHelperContracts returned 0 results for household ${householdId}`);
-    logger.warn(`[salarySlipService] This could be normal (no helpers) or a JWT/RLS issue.`);
-    
-    // Run JWT diagnostic to capture token state
+    // Run JWT diagnostic silently - only log if there's an actual token issue AND this isn't initial load
     const jwtDiag = await diagnoseJwtToken('getHelperContracts - Empty Result');
     
-    if (!jwtDiag.clerkId) {
-      logger.error(`[salarySlipService] 🚨 EMPTY HELPER CONTRACTS WITH MISSING clerk_id - USER NEEDS TO RE-LOGIN!`);
+    // Only log as warning if token is available but clerk_id is missing (indicates real problem)
+    // If no token at all, it's likely just initial load timing - don't spam console
+    if (jwtDiag.hasToken && !jwtDiag.clerkId) {
+      logger.warn(`[salarySlipService] ⚠️ Token exists but clerk_id missing - user may need to re-login`);
     }
   }
   
@@ -467,16 +467,16 @@ export async function getAllSalarySlips(
   
   const slips = (data || []).map(mapSlipFromDb);
   
-  // DIAGNOSTIC: If no salary slips returned, check if this is a token issue
+  // DIAGNOSTIC: If no salary slips returned, silently check token state
+  // Empty results are common during initial load (timing issue) - only log if there's a real token problem
   if (slips.length === 0) {
-    logger.warn(`[salarySlipService] ⚠️ getAllSalarySlips returned 0 results for household ${householdId}`);
-    logger.warn(`[salarySlipService] This could be normal (no slips exist) or a JWT/RLS issue.`);
-    
-    // Run JWT diagnostic to capture token state
+    // Run JWT diagnostic silently - only log if there's an actual token issue
     const jwtDiag = await diagnoseJwtToken('getAllSalarySlips - Empty Result');
     
-    if (!jwtDiag.clerkId) {
-      logger.error(`[salarySlipService] 🚨 EMPTY SALARY SLIPS WITH MISSING clerk_id - USER NEEDS TO RE-LOGIN!`);
+    // Only log as warning if token is available but clerk_id is missing (indicates real problem)
+    // If no token at all, it's likely just initial load timing - don't spam console
+    if (jwtDiag.hasToken && !jwtDiag.clerkId) {
+      logger.warn(`[salarySlipService] ⚠️ Token exists but clerk_id missing - user may need to re-login`);
     }
   }
   

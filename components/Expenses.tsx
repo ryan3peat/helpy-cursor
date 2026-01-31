@@ -955,8 +955,8 @@ const Expenses: React.FC<ExpensesProps> = ({
     };
 
     let savedExpenseId: string | null = null;
-    // UI already shows the expense via optimistic update (handleAddExpense), so treat as "likely saved"
-    let expenseLikelySaved = true;
+    // Track whether save actually succeeded - only set to true AFTER successful save
+    let expenseLikelySaved = false;
 
     try {
       if (onAdd) {
@@ -1007,20 +1007,25 @@ const Expenses: React.FC<ExpensesProps> = ({
       // Haptic feedback on successful save
       haptics.success();
       
+      // Success - close the modal
+      closeAddExpenseSheet();
+      
     } catch (addError) {
       logger.error('[Expenses] Error saving expense:', addError);
       if (!expenseLikelySaved) {
-        setError(t['error.save_expense'] || "Couldn't save expense. Try closing and reopening the app, or log out and back in.");
+        // Save failed - show error and keep modal open so user can retry
+        setError(t['error.save_expense'] || "Couldn't save expense. Please try again.");
         haptics.error();
+        // DON'T close modal - let user see the error and retry
       } else {
-        // Expense was likely saved (optimistic or returned), so avoid blocking banner
-        logger.warn('[Expenses] Expense likely saved; suppressing error banner.');
+        // Expense was likely saved (optimistic or returned), so close modal
+        logger.warn('[Expenses] Expense likely saved; closing modal.');
         setError(null);
         haptics.success();
+        closeAddExpenseSheet();
       }
     } finally {
-      // Always close dialog and clear saving state so the user isn't stuck
-      closeAddExpenseSheet();
+      // Always clear saving state so the user isn't stuck
       setIsSaving(false);
     }
   };
@@ -1579,10 +1584,12 @@ const Expenses: React.FC<ExpensesProps> = ({
                         <span className="text-body font-semibold">{t['expenses.scan_receipt'] || 'Scan Receipt'}</span>
                       </button>
                     </div>
-                    {/* Show remaining scans badge for free users */}
-                    {!hasPaidSubscription && usageStatus && usageStatus.aiScanRemaining < FREE_AI_SCAN_LIMIT && (
+                    {/* Show used scans badge for free users */}
+                    {!hasPaidSubscription && usageStatus && (
                       <p className="text-caption text-center text-muted-foreground">
-                        {(t['trial.ai_scan_badge'] || '{count} of 5 free').replace('{count}', usageStatus.aiScanRemaining.toString())}
+                        {(t['trial.ai_scan_badge'] || '{used} of {total} free scans used')
+                          .replace('{used}', usageStatus.aiScanCount.toString())
+                          .replace('{total}', FREE_AI_SCAN_LIMIT.toString())}
                       </p>
                     )}
                   </>

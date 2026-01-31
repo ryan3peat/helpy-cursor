@@ -178,19 +178,12 @@ const CreateSalarySlipSheet: React.FC<Props> = ({
       setError(null);
       setContract(null);
       
-      // Set default payment period to PREVIOUS month in Hong Kong timezone
+      // Set default payment period to CURRENT month in Hong Kong timezone
       const hkDate = getHongKongDateParts();
-      // Calculate previous month
-      let prevMonth = hkDate.month - 1;
-      let prevYear = hkDate.year;
-      if (prevMonth < 0) {
-        prevMonth = 11; // December
-        prevYear -= 1;
-      }
-      // First day of previous month
-      const firstDay = new Date(prevYear, prevMonth, 1);
-      // Last day of previous month (day 0 of current month)
-      const lastDay = new Date(prevYear, prevMonth + 1, 0);
+      // First day of current month
+      const firstDay = new Date(hkDate.year, hkDate.month, 1);
+      // Last day of current month (day 0 of next month)
+      const lastDay = new Date(hkDate.year, hkDate.month + 1, 0);
       setPaymentPeriodStart(formatDateForInput(firstDay));
       setPaymentPeriodEnd(formatDateForInput(lastDay));
       

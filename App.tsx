@@ -134,6 +134,9 @@ const AppContent: React.FC = () => {
   
   // SalarySlipReminderPrompt visibility state
   const [isSalaryReminderVisible, setSalaryReminderVisible] = useState(false);
+  
+  // Session expired modal state (triggered by max token refresh failures)
+  const [showSessionExpiredModal, setShowSessionExpiredModal] = useState(false);
 
   // Listen for service worker update events
   useEffect(() => {
@@ -149,6 +152,20 @@ const AppContent: React.FC = () => {
     window.addEventListener('swUpdateAvailable', handleUpdateAvailable as EventListener);
     return () => {
       window.removeEventListener('swUpdateAvailable', handleUpdateAvailable as EventListener);
+    };
+  }, []);
+
+  // Listen for session expired event (triggered by SupabaseContext after max token refresh failures)
+  // This provides a graceful logout experience with user feedback
+  useEffect(() => {
+    const handleSessionExpired = (e: CustomEvent<{ reason: string; attempts: number }>) => {
+      logger.error('[App] 🚨 Session expired event received:', e.detail);
+      setShowSessionExpiredModal(true);
+    };
+
+    window.addEventListener('helpy:session-expired', handleSessionExpired as EventListener);
+    return () => {
+      window.removeEventListener('helpy:session-expired', handleSessionExpired as EventListener);
     };
   }, []);
 
@@ -1848,16 +1865,26 @@ const AppContent: React.FC = () => {
     const newExpense = { ...expense, id: tempId };
     setExpenses(prev => [...prev, newExpense]);  // Optimistic
     
-    // Create expense without ID so Supabase generates UUID
-    const expenseWithoutId = { ...expense };
-    delete expenseWithoutId.id; // Remove ID so Supabase generates UUID
-    // Keep createdBy for notifications - expenses table has created_by column (migration 018)
-    logger.log('[App] Adding expense without ID, will get UUID from DB');
-    const savedExpense = await addItem(hid, 'expenses', expenseWithoutId);
-    logger.log('[App] Expense saved with UUID:', savedExpense.id);
-    
-    // Return the expense with the actual UUID from database
-    return savedExpense as Expense;
+    try {
+      // Create expense without ID so Supabase generates UUID
+      const expenseWithoutId = { ...expense };
+      delete expenseWithoutId.id; // Remove ID so Supabase generates UUID
+      // Keep createdBy for notifications - expenses table has created_by column (migration 018)
+      logger.log('[App] Adding expense without ID, will get UUID from DB');
+      const savedExpense = await addItem(hid, 'expenses', expenseWithoutId);
+      logger.log('[App] Expense saved with UUID:', savedExpense.id);
+      
+      // Replace temp expense with saved expense (with real UUID)
+      setExpenses(prev => prev.map(e => e.id === tempId ? savedExpense as Expense : e));
+      
+      // Return the expense with the actual UUID from database
+      return savedExpense as Expense;
+    } catch (error) {
+      // ROLLBACK: Remove the optimistic expense on failure
+      logger.error('[App] Failed to save expense, rolling back optimistic update:', error);
+      setExpenses(prev => prev.filter(e => e.id !== tempId));
+      throw error; // Re-throw so Expenses.tsx can show the error
+    }
   };
 
   const handleUpdateExpense = async (expense: Expense) => {
@@ -2632,6 +2659,42 @@ const AppContent: React.FC = () => {
                 }`}
               >
                 {translations['common.ok'] || 'OK'}
+              </button>
+            </div>
+          </div>
+        </div>
+      , document.body)}
+
+      {/* Session Expired Modal - shown when token refresh fails repeatedly */}
+      {showSessionExpiredModal && createPortal(
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[70] flex items-center justify-center bottom-sheet-backdrop">
+          <div className="bg-card w-full max-w-sm mx-4 rounded-2xl overflow-hidden shadow-2xl">
+            {/* Header with icon */}
+            <div className="pt-8 pb-4 px-6 text-center">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-600 dark:text-amber-400">
+                  <circle cx="12" cy="12" r="10"/>
+                  <polyline points="12 6 12 12 16 14"/>
+                </svg>
+              </div>
+              <h2 className="text-title text-foreground mb-2">
+                {translations['error.session_expired_title'] || 'Session Expired'}
+              </h2>
+              <p className="text-body font-medium text-muted-foreground">
+                {translations['error.session_expired'] || 'Your session has expired. Please sign in again to continue.'}
+              </p>
+            </div>
+
+            {/* Footer */}
+            <div className="p-6 pt-2">
+              <button
+                onClick={async () => {
+                  setShowSessionExpiredModal(false);
+                  await handleLogout();
+                }}
+                className="w-full py-3.5 rounded-xl text-body font-semibold bg-primary text-primary-foreground"
+              >
+                {translations['auth.sign_in_again'] || 'Sign In Again'}
               </button>
             </div>
           </div>

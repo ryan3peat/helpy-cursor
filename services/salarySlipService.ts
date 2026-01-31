@@ -28,16 +28,52 @@ function getSupabase() {
 }
 
 /**
- * Check if an error is JWT/auth related and should trigger a retry
+ * Check if an error is JWT/auth related and should trigger a retry.
+ * 
+ * IMPORTANT: Be AGGRESSIVE in detecting auth errors. The cost of retrying
+ * unnecessarily is low, but the cost of NOT retrying an auth error (user
+ * sees "Failed to save" and has to logout/login) is high.
  */
 function isJwtError(error: any): boolean {
   if (!error) return false;
-  if (error.code === 'PGRST303') return true;
-  const message = error.message?.toLowerCase() || '';
-  if (message.includes('jwt expired')) return true;
-  if (message.includes('jwt') && message.includes('expired')) return true;
-  if (message.includes('invalid jwt')) return true;
-  if (error.code === '42501' && message.includes('policy')) return true;
+  
+  // Check HTTP status codes
+  if (error.status === 401 || error.status === 403) return true;
+  
+  // Check Supabase/PostgREST error codes
+  if (error.code === 'PGRST303') return true; // JWT expired
+  if (error.code === 'PGRST301') return true; // JWT required
+  if (error.code === '42501') return true; // RLS/permission error - often auth related
+  if (error.code === '28000') return true; // Invalid authorization
+  if (error.code === '28P01') return true; // Invalid password (auth failure)
+  
+  // Check error message for auth-related keywords
+  const message = (error.message || '').toLowerCase();
+  const hint = (error.hint || '').toLowerCase();
+  const details = (error.details || '').toLowerCase();
+  const combined = `${message} ${hint} ${details}`;
+  
+  // JWT-related
+  if (combined.includes('jwt')) return true;
+  if (combined.includes('token')) return true;
+  
+  // Auth-related
+  if (combined.includes('auth')) return true;
+  if (combined.includes('unauthorized')) return true;
+  if (combined.includes('forbidden')) return true;
+  if (combined.includes('permission')) return true;
+  if (combined.includes('not allowed')) return true;
+  if (combined.includes('access denied')) return true;
+  
+  // Session-related
+  if (combined.includes('session')) return true;
+  if (combined.includes('expired')) return true;
+  
+  // RLS policy errors
+  if (combined.includes('policy')) return true;
+  if (combined.includes('rls')) return true;
+  if (combined.includes('row-level security')) return true;
+  
   return false;
 }
 
@@ -121,15 +157,41 @@ export async function getHelperContract(
 
 /**
  * Get all helper contracts for a household
+ * Includes JWT retry logic for self-healing on token expiration
  */
 export async function getHelperContracts(
   householdId: string
 ): Promise<HelperContract[]> {
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from('helper_contracts')
     .select('*')
     .eq('household_id', householdId)
     .order('created_at', { ascending: false });
+
+  // SELF-HEALING: If JWT error, refresh token and retry ONCE
+  if (error && isJwtError(error)) {
+    logger.warn('[salarySlipService] ⚠️ JWT error on getHelperContracts, refreshing token and retrying...');
+    try {
+      await refreshSupabaseToken();
+      
+      const retryResult = await getSupabase()
+        .from('helper_contracts')
+        .select('*')
+        .eq('household_id', householdId)
+        .order('created_at', { ascending: false });
+      
+      if (!retryResult.error) {
+        logger.log('[salarySlipService] ✅ getHelperContracts retry successful after token refresh');
+        data = retryResult.data;
+        error = null;
+      } else {
+        logger.error('[salarySlipService] ❌ getHelperContracts retry also failed:', retryResult.error);
+        error = retryResult.error;
+      }
+    } catch (refreshError) {
+      logger.error('[salarySlipService] ❌ Token refresh failed:', refreshError);
+    }
+  }
     
   if (error) throw error;
   
@@ -138,6 +200,7 @@ export async function getHelperContracts(
 
 /**
  * Create a new helper contract
+ * Includes JWT retry logic for self-healing on token expiration
  */
 export async function createHelperContract(
   contract: CreateHelperContract
@@ -148,26 +211,55 @@ export async function createHelperContract(
     throw new Error('Could not resolve helper user ID. Please try again.');
   }
   
-  const { data, error } = await supabase
+  const insertData = {
+    user_id: helperUuid,
+    household_id: contract.householdId,
+    status: contract.status || 'active',
+    employment_start_date: contract.employmentStartDate,
+    base_salary: contract.baseSalary,
+    food_allowance: contract.foodAllowance || 0,
+  };
+  
+  let { data, error } = await supabase
     .from('helper_contracts')
-    .insert({
-      user_id: helperUuid,
-      household_id: contract.householdId,
-      status: contract.status || 'active',
-      employment_start_date: contract.employmentStartDate,
-      base_salary: contract.baseSalary,
-      food_allowance: contract.foodAllowance || 0,
-    })
+    .insert(insertData)
     .select()
     .single();
+
+  // SELF-HEALING: If JWT error, refresh token and retry ONCE
+  if (error && isJwtError(error)) {
+    logger.warn('[salarySlipService] ⚠️ JWT error on createHelperContract, refreshing token and retrying...');
+    try {
+      await refreshSupabaseToken();
+      
+      const retryResult = await getSupabase()
+        .from('helper_contracts')
+        .insert(insertData)
+        .select()
+        .single();
+      
+      if (!retryResult.error) {
+        logger.log('[salarySlipService] ✅ createHelperContract retry successful after token refresh');
+        data = retryResult.data;
+        error = null;
+      } else {
+        logger.error('[salarySlipService] ❌ createHelperContract retry also failed:', retryResult.error);
+        error = retryResult.error;
+      }
+    } catch (refreshError) {
+      logger.error('[salarySlipService] ❌ Token refresh failed:', refreshError);
+    }
+  }
     
   if (error) throw error;
   
+  logger.log('[salarySlipService] ✅ Helper contract created:', data.id);
   return mapContractFromDb(data);
 }
 
 /**
  * Update a helper contract
+ * Includes JWT retry logic for self-healing on token expiration
  */
 export async function updateHelperContract(
   contractId: string,
@@ -182,28 +274,81 @@ export async function updateHelperContract(
   if (updates.baseSalary !== undefined) updateData.base_salary = updates.baseSalary;
   if (updates.foodAllowance !== undefined) updateData.food_allowance = updates.foodAllowance;
   
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from('helper_contracts')
     .update(updateData)
     .eq('id', contractId)
     .select()
     .single();
+
+  // SELF-HEALING: If JWT error, refresh token and retry ONCE
+  if (error && isJwtError(error)) {
+    logger.warn('[salarySlipService] ⚠️ JWT error on updateHelperContract, refreshing token and retrying...');
+    try {
+      await refreshSupabaseToken();
+      
+      const retryResult = await getSupabase()
+        .from('helper_contracts')
+        .update(updateData)
+        .eq('id', contractId)
+        .select()
+        .single();
+      
+      if (!retryResult.error) {
+        logger.log('[salarySlipService] ✅ updateHelperContract retry successful after token refresh');
+        data = retryResult.data;
+        error = null;
+      } else {
+        logger.error('[salarySlipService] ❌ updateHelperContract retry also failed:', retryResult.error);
+        error = retryResult.error;
+      }
+    } catch (refreshError) {
+      logger.error('[salarySlipService] ❌ Token refresh failed:', refreshError);
+    }
+  }
     
   if (error) throw error;
   
+  logger.log('[salarySlipService] ✅ Helper contract updated:', contractId);
   return mapContractFromDb(data);
 }
 
 /**
  * Delete a helper contract
+ * Includes JWT retry logic for self-healing on token expiration
  */
 export async function deleteHelperContract(contractId: string): Promise<void> {
-  const { error } = await supabase
+  let { error } = await supabase
     .from('helper_contracts')
     .delete()
     .eq('id', contractId);
+
+  // SELF-HEALING: If JWT error, refresh token and retry ONCE
+  if (error && isJwtError(error)) {
+    logger.warn('[salarySlipService] ⚠️ JWT error on deleteHelperContract, refreshing token and retrying...');
+    try {
+      await refreshSupabaseToken();
+      
+      const retryResult = await getSupabase()
+        .from('helper_contracts')
+        .delete()
+        .eq('id', contractId);
+      
+      if (!retryResult.error) {
+        logger.log('[salarySlipService] ✅ deleteHelperContract retry successful after token refresh');
+        error = null;
+      } else {
+        logger.error('[salarySlipService] ❌ deleteHelperContract retry also failed:', retryResult.error);
+        error = retryResult.error;
+      }
+    } catch (refreshError) {
+      logger.error('[salarySlipService] ❌ Token refresh failed:', refreshError);
+    }
+  }
     
   if (error) throw error;
+  
+  logger.log('[salarySlipService] ✅ Helper contract deleted:', contractId);
 }
 
 // ============================================================================
@@ -213,6 +358,7 @@ export async function deleteHelperContract(contractId: string): Promise<void> {
 /**
  * Get all salary slips for a helper
  * Returns empty array if helper UUID cannot be resolved (cache not populated yet)
+ * Includes JWT retry logic for self-healing on token expiration
  */
 export async function getSalarySlips(
   helperId: string,
@@ -226,12 +372,38 @@ export async function getSalarySlips(
     return [];
   }
   
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from('salary_slips')
     .select('*')
     .eq('helper_id', helperUuid)
     .eq('household_id', householdId)
     .order('payment_period_start', { ascending: false });
+
+  // SELF-HEALING: If JWT error, refresh token and retry ONCE
+  if (error && isJwtError(error)) {
+    logger.warn('[salarySlipService] ⚠️ JWT error on getSalarySlips, refreshing token and retrying...');
+    try {
+      await refreshSupabaseToken();
+      
+      const retryResult = await getSupabase()
+        .from('salary_slips')
+        .select('*')
+        .eq('helper_id', helperUuid)
+        .eq('household_id', householdId)
+        .order('payment_period_start', { ascending: false });
+      
+      if (!retryResult.error) {
+        logger.log('[salarySlipService] ✅ getSalarySlips retry successful after token refresh');
+        data = retryResult.data;
+        error = null;
+      } else {
+        logger.error('[salarySlipService] ❌ getSalarySlips retry also failed:', retryResult.error);
+        error = retryResult.error;
+      }
+    } catch (refreshError) {
+      logger.error('[salarySlipService] ❌ Token refresh failed:', refreshError);
+    }
+  }
     
   if (error) throw error;
   
@@ -240,15 +412,41 @@ export async function getSalarySlips(
 
 /**
  * Get all salary slips for a household (for admin view)
+ * Includes JWT retry logic for self-healing on token expiration
  */
 export async function getAllSalarySlips(
   householdId: string
 ): Promise<SalarySlip[]> {
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from('salary_slips')
     .select('*')
     .eq('household_id', householdId)
     .order('payment_period_start', { ascending: false });
+
+  // SELF-HEALING: If JWT error, refresh token and retry ONCE
+  if (error && isJwtError(error)) {
+    logger.warn('[salarySlipService] ⚠️ JWT error on getAllSalarySlips, refreshing token and retrying...');
+    try {
+      await refreshSupabaseToken();
+      
+      const retryResult = await getSupabase()
+        .from('salary_slips')
+        .select('*')
+        .eq('household_id', householdId)
+        .order('payment_period_start', { ascending: false });
+      
+      if (!retryResult.error) {
+        logger.log('[salarySlipService] ✅ getAllSalarySlips retry successful after token refresh');
+        data = retryResult.data;
+        error = null;
+      } else {
+        logger.error('[salarySlipService] ❌ getAllSalarySlips retry also failed:', retryResult.error);
+        error = retryResult.error;
+      }
+    } catch (refreshError) {
+      logger.error('[salarySlipService] ❌ Token refresh failed:', refreshError);
+    }
+  }
     
   if (error) throw error;
   
@@ -273,6 +471,7 @@ export async function getSalarySlip(slipId: string): Promise<SalarySlip | null> 
 
 /**
  * Create a new salary slip
+ * Includes JWT retry logic for self-healing on token expiration
  */
 export async function createSalarySlip(
   slip: CreateSalarySlip
@@ -301,34 +500,63 @@ export async function createSalarySlip(
     }
   }
   
-  const { data, error } = await supabase
+  const insertData = {
+    household_id: slip.householdId,
+    helper_id: helperUuid,
+    contract_id: slip.contractId || null,
+    payment_period_start: slip.paymentPeriodStart,
+    payment_period_end: slip.paymentPeriodEnd,
+    base_salary: slip.baseSalary,
+    food_allowance: slip.foodAllowance,
+    extra_salary: slip.extraSalary,
+    salary_deduction: slip.salaryDeduction,
+    total_payout: slip.totalPayout,
+    note: slip.note || null,
+    employer_signer_id: signerUuid,
+    employer_signer_name: slip.employerSignerName || null,
+    created_by: creatorUuid,
+  };
+  
+  let { data, error } = await supabase
     .from('salary_slips')
-    .insert({
-      household_id: slip.householdId,
-      helper_id: helperUuid,
-      contract_id: slip.contractId || null,
-      payment_period_start: slip.paymentPeriodStart,
-      payment_period_end: slip.paymentPeriodEnd,
-      base_salary: slip.baseSalary,
-      food_allowance: slip.foodAllowance,
-      extra_salary: slip.extraSalary,
-      salary_deduction: slip.salaryDeduction,
-      total_payout: slip.totalPayout,
-      note: slip.note || null,
-      employer_signer_id: signerUuid,
-      employer_signer_name: slip.employerSignerName || null,
-      created_by: creatorUuid,
-    })
+    .insert(insertData)
     .select()
     .single();
+
+  // SELF-HEALING: If JWT error, refresh token and retry ONCE
+  if (error && isJwtError(error)) {
+    logger.warn('[salarySlipService] ⚠️ JWT error on createSalarySlip, refreshing token and retrying...');
+    try {
+      await refreshSupabaseToken();
+      
+      const retryResult = await getSupabase()
+        .from('salary_slips')
+        .insert(insertData)
+        .select()
+        .single();
+      
+      if (!retryResult.error) {
+        logger.log('[salarySlipService] ✅ createSalarySlip retry successful after token refresh');
+        data = retryResult.data;
+        error = null;
+      } else {
+        logger.error('[salarySlipService] ❌ createSalarySlip retry also failed:', retryResult.error);
+        error = retryResult.error;
+      }
+    } catch (refreshError) {
+      logger.error('[salarySlipService] ❌ Token refresh failed:', refreshError);
+    }
+  }
     
   if (error) throw error;
   
+  logger.log('[salarySlipService] ✅ Salary slip created:', data.id);
   return mapSlipFromDb(data);
 }
 
 /**
  * Update a salary slip (for editing before signing)
+ * Includes JWT retry logic for self-healing on token expiration
  */
 export async function updateSalarySlip(
   slipId: string,
@@ -367,32 +595,86 @@ export async function updateSalarySlip(
   }
   if (updates.employerSignerName !== undefined) updateData.employer_signer_name = updates.employerSignerName;
   
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from('salary_slips')
     .update(updateData)
     .eq('id', slipId)
     .select()
     .single();
+
+  // SELF-HEALING: If JWT error, refresh token and retry ONCE
+  if (error && isJwtError(error)) {
+    logger.warn('[salarySlipService] ⚠️ JWT error on updateSalarySlip, refreshing token and retrying...');
+    try {
+      await refreshSupabaseToken();
+      
+      const retryResult = await getSupabase()
+        .from('salary_slips')
+        .update(updateData)
+        .eq('id', slipId)
+        .select()
+        .single();
+      
+      if (!retryResult.error) {
+        logger.log('[salarySlipService] ✅ updateSalarySlip retry successful after token refresh');
+        data = retryResult.data;
+        error = null;
+      } else {
+        logger.error('[salarySlipService] ❌ updateSalarySlip retry also failed:', retryResult.error);
+        error = retryResult.error;
+      }
+    } catch (refreshError) {
+      logger.error('[salarySlipService] ❌ Token refresh failed:', refreshError);
+    }
+  }
     
   if (error) throw error;
   
+  logger.log('[salarySlipService] ✅ Salary slip updated:', slipId);
   return mapSlipFromDb(data);
 }
 
 /**
  * Delete a salary slip
+ * Includes JWT retry logic for self-healing on token expiration
  */
 export async function deleteSalarySlip(slipId: string): Promise<void> {
-  const { error } = await supabase
+  let { error } = await supabase
     .from('salary_slips')
     .delete()
     .eq('id', slipId);
+
+  // SELF-HEALING: If JWT error, refresh token and retry ONCE
+  if (error && isJwtError(error)) {
+    logger.warn('[salarySlipService] ⚠️ JWT error on deleteSalarySlip, refreshing token and retrying...');
+    try {
+      await refreshSupabaseToken();
+      
+      const retryResult = await getSupabase()
+        .from('salary_slips')
+        .delete()
+        .eq('id', slipId);
+      
+      if (!retryResult.error) {
+        logger.log('[salarySlipService] ✅ deleteSalarySlip retry successful after token refresh');
+        error = null;
+      } else {
+        logger.error('[salarySlipService] ❌ deleteSalarySlip retry also failed:', retryResult.error);
+        error = retryResult.error;
+      }
+    } catch (refreshError) {
+      logger.error('[salarySlipService] ❌ Token refresh failed:', refreshError);
+    }
+  }
     
   if (error) throw error;
+  
+  logger.log('[salarySlipService] ✅ Salary slip deleted:', slipId);
 }
 
 /**
  * Sign a salary slip as employer
+ * Includes JWT retry logic for self-healing on token expiration
  */
 export async function signAsEmployer(
   slipId: string,
@@ -418,19 +700,48 @@ export async function signAsEmployer(
     throw new Error('Could not resolve signer user ID. Please try again.');
   }
   
-  const { data, error } = await supabase
+  const updateData = {
+    employer_signer_id: signerUuid,
+    employer_signer_name: signerName,
+    employer_signed_at: new Date().toISOString(),
+  };
+  
+  let { data, error } = await supabase
     .from('salary_slips')
-    .update({
-      employer_signer_id: signerUuid,
-      employer_signer_name: signerName,
-      employer_signed_at: new Date().toISOString(),
-    })
+    .update(updateData)
     .eq('id', slipId)
     .select()
     .single();
+
+  // SELF-HEALING: If JWT error, refresh token and retry ONCE
+  if (error && isJwtError(error)) {
+    logger.warn('[salarySlipService] ⚠️ JWT error on signAsEmployer, refreshing token and retrying...');
+    try {
+      await refreshSupabaseToken();
+      
+      const retryResult = await getSupabase()
+        .from('salary_slips')
+        .update(updateData)
+        .eq('id', slipId)
+        .select()
+        .single();
+      
+      if (!retryResult.error) {
+        logger.log('[salarySlipService] ✅ signAsEmployer retry successful after token refresh');
+        data = retryResult.data;
+        error = null;
+      } else {
+        logger.error('[salarySlipService] ❌ signAsEmployer retry also failed:', retryResult.error);
+        error = retryResult.error;
+      }
+    } catch (refreshError) {
+      logger.error('[salarySlipService] ❌ Token refresh failed:', refreshError);
+    }
+  }
     
   if (error) throw error;
   
+  logger.log('[salarySlipService] ✅ Salary slip signed by employer:', slipId);
   return mapSlipFromDb(data);
 }
 
@@ -438,6 +749,7 @@ export async function signAsEmployer(
  * Sign a salary slip as helper
  * @param slipId - The salary slip ID
  * @param currentUserId - The current user's ID (Clerk ID or Supabase UUID)
+ * Includes JWT retry logic for self-healing on token expiration
  */
 export async function signAsHelper(slipId: string, currentUserId: string): Promise<SalarySlip> {
   // First check if already signed AND verify the current user is the helper for this slip
@@ -464,17 +776,46 @@ export async function signAsHelper(slipId: string, currentUserId: string): Promi
     throw new Error('Salary slip already signed by helper');
   }
   
-  const { data, error } = await supabase
+  const updateData = {
+    helper_signed_at: new Date().toISOString(),
+  };
+  
+  let { data, error } = await supabase
     .from('salary_slips')
-    .update({
-      helper_signed_at: new Date().toISOString(),
-    })
+    .update(updateData)
     .eq('id', slipId)
     .select()
     .single();
+
+  // SELF-HEALING: If JWT error, refresh token and retry ONCE
+  if (error && isJwtError(error)) {
+    logger.warn('[salarySlipService] ⚠️ JWT error on signAsHelper, refreshing token and retrying...');
+    try {
+      await refreshSupabaseToken();
+      
+      const retryResult = await getSupabase()
+        .from('salary_slips')
+        .update(updateData)
+        .eq('id', slipId)
+        .select()
+        .single();
+      
+      if (!retryResult.error) {
+        logger.log('[salarySlipService] ✅ signAsHelper retry successful after token refresh');
+        data = retryResult.data;
+        error = null;
+      } else {
+        logger.error('[salarySlipService] ❌ signAsHelper retry also failed:', retryResult.error);
+        error = retryResult.error;
+      }
+    } catch (refreshError) {
+      logger.error('[salarySlipService] ❌ Token refresh failed:', refreshError);
+    }
+  }
     
   if (error) throw error;
   
+  logger.log('[salarySlipService] ✅ Salary slip signed by helper:', slipId);
   return mapSlipFromDb(data);
 }
 
@@ -504,6 +845,7 @@ export async function hasContract(
 /**
  * Subscribe to real-time changes for helper contracts
  * This ensures all household members see updates to employment details immediately
+ * Includes retry logic for initial fetch and proper status handling
  */
 export function subscribeToHelperContracts(
   householdId: string,
@@ -511,10 +853,23 @@ export function subscribeToHelperContracts(
 ): () => void {
   logger.log(`🔔 [salarySlipService] Subscribing to helper_contracts for household ${householdId}`);
   
-  // Initial fetch
-  getHelperContracts(householdId)
-    .then(callback)
-    .catch(err => logger.error('[salarySlipService] Initial helper_contracts fetch failed:', err));
+  // Initial fetch with retry
+  const fetchWithRetry = async (retryCount = 0) => {
+    try {
+      const data = await getHelperContracts(householdId);
+      callback(data);
+      logger.log('[salarySlipService] ✅ Initial helper_contracts fetch successful');
+    } catch (err) {
+      logger.error('[salarySlipService] Initial helper_contracts fetch failed:', err);
+      // Retry once after 1 second if this was the first attempt
+      if (retryCount === 0) {
+        logger.log('[salarySlipService] 🔄 Retrying initial helper_contracts fetch in 1s...');
+        setTimeout(() => fetchWithRetry(1), 1000);
+      }
+    }
+  };
+  
+  fetchWithRetry();
 
   // Subscribe to changes via realtime
   const channelName = `helper-contracts-${householdId}`;
@@ -537,8 +892,15 @@ export function subscribeToHelperContracts(
           .catch(err => logger.error('[salarySlipService] helper_contracts refetch failed:', err));
       }
     )
-    .subscribe((status) => {
-      logger.log(`📡 [salarySlipService] helper_contracts subscription status:`, status);
+    .subscribe((status, err) => {
+      if (status === 'SUBSCRIBED') {
+        logger.log(`📡 [salarySlipService] ✅ helper_contracts subscription active`);
+      } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+        logger.warn(`📡 [salarySlipService] ⚠️ helper_contracts subscription ${status}:`, err);
+        // The App.tsx useEffect watches tokenRefreshCount and will re-create subscriptions
+      } else {
+        logger.log(`📡 [salarySlipService] helper_contracts subscription status: ${status}`);
+      }
     });
 
   // Return unsubscribe function
@@ -551,6 +913,7 @@ export function subscribeToHelperContracts(
 /**
  * Subscribe to real-time changes for salary slips
  * This ensures all household members see new salary slips immediately
+ * Includes retry logic for initial fetch and proper status handling
  */
 export function subscribeToSalarySlips(
   householdId: string,
@@ -558,10 +921,23 @@ export function subscribeToSalarySlips(
 ): () => void {
   logger.log(`🔔 [salarySlipService] Subscribing to salary_slips for household ${householdId}`);
   
-  // Initial fetch
-  getAllSalarySlips(householdId)
-    .then(callback)
-    .catch(err => logger.error('[salarySlipService] Initial salary_slips fetch failed:', err));
+  // Initial fetch with retry
+  const fetchWithRetry = async (retryCount = 0) => {
+    try {
+      const data = await getAllSalarySlips(householdId);
+      callback(data);
+      logger.log('[salarySlipService] ✅ Initial salary_slips fetch successful');
+    } catch (err) {
+      logger.error('[salarySlipService] Initial salary_slips fetch failed:', err);
+      // Retry once after 1 second if this was the first attempt
+      if (retryCount === 0) {
+        logger.log('[salarySlipService] 🔄 Retrying initial salary_slips fetch in 1s...');
+        setTimeout(() => fetchWithRetry(1), 1000);
+      }
+    }
+  };
+  
+  fetchWithRetry();
 
   // Subscribe to changes via realtime
   const channelName = `salary-slips-${householdId}`;
@@ -584,8 +960,15 @@ export function subscribeToSalarySlips(
           .catch(err => logger.error('[salarySlipService] salary_slips refetch failed:', err));
       }
     )
-    .subscribe((status) => {
-      logger.log(`📡 [salarySlipService] salary_slips subscription status:`, status);
+    .subscribe((status, err) => {
+      if (status === 'SUBSCRIBED') {
+        logger.log(`📡 [salarySlipService] ✅ salary_slips subscription active`);
+      } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+        logger.warn(`📡 [salarySlipService] ⚠️ salary_slips subscription ${status}:`, err);
+        // The App.tsx useEffect watches tokenRefreshCount and will re-create subscriptions
+      } else {
+        logger.log(`📡 [salarySlipService] salary_slips subscription status: ${status}`);
+      }
     });
 
   // Return unsubscribe function

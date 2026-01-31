@@ -176,6 +176,11 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
   const [tokenRefreshCount, setTokenRefreshCount] = useState(0);
   const lastVisibilityRefreshRef = useRef<number>(0);
   // Note: refreshIntervalRef removed - no longer needed with fresh token on every request
+  
+  // Track consecutive token refresh failures for graceful logout
+  // After MAX_TOKEN_REFRESH_FAILURES consecutive failures, trigger session expired event
+  const tokenRefreshFailuresRef = useRef<number>(0);
+  const MAX_TOKEN_REFRESH_FAILURES = 3;
 
   logger.log('[SupabaseContext] 📊 Current state:', { 
     isSignedIn,
@@ -214,13 +219,29 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
       }
 
       if (!token) {
-        logger.error('[SupabaseContext] ❌ Token refresh failed - no token received');
+        // Increment failure counter
+        tokenRefreshFailuresRef.current += 1;
+        const failures = tokenRefreshFailuresRef.current;
+        logger.error(`[SupabaseContext] ❌ Token refresh failed - no token received (attempt ${failures}/${MAX_TOKEN_REFRESH_FAILURES})`);
+        
         // Only reset auth state on actual failure to get a token
         setIsAuthClient(false);
         globalIsAuthClientReady = false;
+        
+        // After max consecutive failures, dispatch session expired event
+        // This allows App.tsx to show a modal and gracefully logout
+        if (failures >= MAX_TOKEN_REFRESH_FAILURES) {
+          logger.error('[SupabaseContext] 🚨 Max token refresh failures reached - triggering session expired');
+          tokenRefreshFailuresRef.current = 0; // Reset counter to prevent multiple events
+          window.dispatchEvent(new CustomEvent('helpy:session-expired', {
+            detail: { reason: 'max_refresh_failures', attempts: failures }
+          }));
+        }
         return;
       }
 
+      // Success! Reset failure counter
+      tokenRefreshFailuresRef.current = 0;
       logger.log('[SupabaseContext] ✅ Token refreshed successfully');
       // Update the stored token
       updateCurrentToken(token);
@@ -231,9 +252,22 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
       setIsAuthClient(true);
       globalIsAuthClientReady = true;
     } catch (error: any) {
-      logger.error('[SupabaseContext] ❌ Token refresh error:', error);
+      // Increment failure counter
+      tokenRefreshFailuresRef.current += 1;
+      const failures = tokenRefreshFailuresRef.current;
+      logger.error(`[SupabaseContext] ❌ Token refresh error (attempt ${failures}/${MAX_TOKEN_REFRESH_FAILURES}):`, error);
+      
       setIsAuthClient(false);
       globalIsAuthClientReady = false;
+      
+      // After max consecutive failures, dispatch session expired event
+      if (failures >= MAX_TOKEN_REFRESH_FAILURES) {
+        logger.error('[SupabaseContext] 🚨 Max token refresh failures reached - triggering session expired');
+        tokenRefreshFailuresRef.current = 0; // Reset counter to prevent multiple events
+        window.dispatchEvent(new CustomEvent('helpy:session-expired', {
+          detail: { reason: 'max_refresh_failures', attempts: failures }
+        }));
+      }
     }
   }, [getToken, isSignedIn]);
 

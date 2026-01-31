@@ -1968,7 +1968,7 @@ Give it a try:`;
         >
           <div 
             className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content flex flex-col absolute bottom-0 left-0 right-0 mx-auto" 
-            style={{ maxHeight: '80vh', marginTop: 'env(safe-area-inset-top)' }}
+            style={{ maxHeight: 'min(80vh, calc(100dvh - env(safe-area-inset-top)))' }}
           >
             {/* Close Button */}
             <button

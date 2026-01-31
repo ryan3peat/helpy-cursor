@@ -362,7 +362,7 @@ const CreateSalarySlipSheet: React.FC<Props> = ({
     >
       <div 
         className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content flex flex-col absolute bottom-0 left-0 right-0 mx-auto"
-        style={{ maxHeight: '90vh', marginTop: 'env(safe-area-inset-top)' }}
+        style={{ maxHeight: 'min(90vh, calc(100dvh - env(safe-area-inset-top)))' }}
       >
         {step === 'form' ? (
           <>

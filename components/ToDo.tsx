@@ -2159,7 +2159,7 @@ const ToDo: React.FC<ToDoProps> = ({
         >
           <div 
             className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content flex flex-col absolute bottom-0 left-0 right-0 mx-auto"
-            style={{ maxHeight: 'calc(100dvh - 60px)', marginTop: 'env(safe-area-inset-top)' }}
+            style={{ maxHeight: 'min(calc(100dvh - 60px), calc(100dvh - env(safe-area-inset-top)))' }}
           >
             {/* Header with X left, Title center, ✓ right */}
             <div className="flex items-center justify-between px-5 pt-5 pb-4 shrink-0">
@@ -2756,7 +2756,7 @@ const ToDo: React.FC<ToDoProps> = ({
           className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] bottom-sheet-backdrop"
           onClick={(e) => { if (e.target === e.currentTarget) setShowClearCompletedConfirm(false); }}
         >
-          <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content flex flex-col absolute bottom-0 left-0 right-0 mx-auto" style={{ marginTop: 'env(safe-area-inset-top)' }}>
+          <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content flex flex-col absolute bottom-0 left-0 right-0 mx-auto" style={{ maxHeight: 'calc(100dvh - env(safe-area-inset-top))' }}>
             {/* Header */}
             <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
               <h2 className="text-title text-foreground">{t['todo.clear_completed_title'] || 'Clear Completed Items'}</h2>

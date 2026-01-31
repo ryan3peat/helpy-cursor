@@ -1499,7 +1499,7 @@ const Expenses: React.FC<ExpensesProps> = ({
         >
           <div 
             className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content flex flex-col absolute bottom-0 left-0 right-0 mx-auto"
-            style={{ maxHeight: '80vh', marginTop: 'env(safe-area-inset-top)' }}
+            style={{ maxHeight: 'min(80vh, calc(100dvh - env(safe-area-inset-top)))' }}
           >
             {/* Header with X left, Title center, ✓ right */}
             <div className="flex items-center justify-between px-5 pt-5 pb-4 shrink-0">
@@ -1844,7 +1844,7 @@ const Expenses: React.FC<ExpensesProps> = ({
         >
           <div 
             className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content flex flex-col absolute bottom-0 left-0 right-0 mx-auto" 
-            style={{ maxHeight: '80vh', marginTop: 'env(safe-area-inset-top)' }}
+            style={{ maxHeight: 'min(80vh, calc(100dvh - env(safe-area-inset-top)))' }}
           >
             {/* Header with X left, Title center, ✓ or Edit right */}
             <div className="flex items-center justify-between px-5 pt-5 pb-4 shrink-0">
@@ -2109,7 +2109,7 @@ const Expenses: React.FC<ExpensesProps> = ({
         >
           <div 
             className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content flex flex-col absolute bottom-0 left-0 right-0 mx-auto"
-            style={{ maxHeight: '80vh', marginTop: 'env(safe-area-inset-top)' }}
+            style={{ maxHeight: 'min(80vh, calc(100dvh - env(safe-area-inset-top)))' }}
           >
             {/* Header with X left, Title center */}
             <div className="flex items-center justify-between px-5 pt-5 pb-4 shrink-0">
@@ -2219,7 +2219,7 @@ const Expenses: React.FC<ExpensesProps> = ({
           className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] bottom-sheet-backdrop"
           onClick={(e) => { if (e.target === e.currentTarget) setShowSummaryUpgradeModal(false); }}
         >
-          <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content flex flex-col absolute bottom-0 left-0 right-0 mx-auto" style={{ maxHeight: '80vh', marginTop: 'env(safe-area-inset-top)' }}>
+          <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content flex flex-col absolute bottom-0 left-0 right-0 mx-auto" style={{ maxHeight: 'min(80vh, calc(100dvh - env(safe-area-inset-top)))' }}>
             {/* Close Button */}
             <button 
               onClick={() => setShowSummaryUpgradeModal(false)} 

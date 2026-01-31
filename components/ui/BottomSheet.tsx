@@ -222,8 +222,7 @@ const BottomSheet: React.FC<BottomSheetProps> & {
           centered ? 'rounded-2xl' : 'rounded-t-2xl absolute bottom-0 left-0 right-0 mx-auto'
         } overflow-hidden bottom-sheet-content flex flex-col`}
         style={{ 
-          maxHeight,
-          marginTop: centered ? 0 : 'env(safe-area-inset-top)',
+          maxHeight: centered ? maxHeight : `min(${maxHeight}, calc(100dvh - env(safe-area-inset-top)))`,
         }}
       >
         {/* Close Button */}

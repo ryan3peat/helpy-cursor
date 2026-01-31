@@ -1874,7 +1874,7 @@ const Meals: React.FC<MealsProps> = ({
         >
           <div 
             className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content flex flex-col absolute bottom-0 left-0 right-0 mx-auto"
-            style={{ maxHeight: '88vh', marginTop: 'env(safe-area-inset-top)' }}
+            style={{ maxHeight: 'min(88vh, calc(100dvh - env(safe-area-inset-top)))' }}
           >
             {/* Header with X left, Title center, ✓ right */}
             <div className="flex items-center justify-between px-5 pt-5 pb-4 shrink-0">

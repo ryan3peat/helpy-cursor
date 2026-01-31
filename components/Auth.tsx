@@ -62,7 +62,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
         className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] bottom-sheet-backdrop"
         onClick={(e) => { if (e.target === e.currentTarget) setAlertModal(prev => ({ ...prev, isOpen: false })); }}
       >
-        <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden flex flex-col absolute bottom-0 left-0 right-0 mx-auto" style={{ marginTop: 'env(safe-area-inset-top)' }}>
+        <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden flex flex-col absolute bottom-0 left-0 right-0 mx-auto" style={{ maxHeight: 'calc(100dvh - env(safe-area-inset-top))' }}>
           {/* Header */}
           <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
             <h2 className={`text-title ${alertModal.type === 'error' ? 'text-destructive' : alertModal.type === 'success' ? 'text-primary' : 'text-foreground'}`}>

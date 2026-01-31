@@ -206,9 +206,9 @@ const BottomSheet: React.FC<BottomSheetProps> & {
 
   const content = (
     <div 
-      className={`fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex ${
-        centered ? 'items-center' : 'items-end'
-      } justify-center bottom-sheet-backdrop`}
+      className={`fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] ${
+        centered ? 'flex items-center justify-center' : ''
+      } bottom-sheet-backdrop`}
       onClick={(e) => {
         // Close when clicking backdrop (not content)
         if (e.target === e.currentTarget && onClose) {
@@ -219,8 +219,8 @@ const BottomSheet: React.FC<BottomSheetProps> & {
       <div 
         ref={sheetContentRef}
         className={`bg-card w-full ${maxWidthClass} ${
-          centered ? 'rounded-2xl' : 'rounded-t-2xl'
-        } overflow-hidden bottom-sheet-content relative flex flex-col`}
+          centered ? 'rounded-2xl' : 'rounded-t-2xl absolute bottom-0 left-0 right-0 mx-auto'
+        } overflow-hidden bottom-sheet-content flex flex-col`}
         style={{ 
           maxHeight,
           marginTop: centered ? 0 : 'env(safe-area-inset-top)',

@@ -1494,11 +1494,11 @@ const Expenses: React.FC<ExpensesProps> = ({
       {/* ─────────────────────────────────────────────────────────────── */}
       {addExpenseStage !== 'closed' && createPortal(
         <div 
-          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
+          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] bottom-sheet-backdrop"
           onClick={(e) => { if (e.target === e.currentTarget) setAddExpenseStage('closed'); }}
         >
           <div 
-            className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col"
+            className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content flex flex-col absolute bottom-0 left-0 right-0 mx-auto"
             style={{ maxHeight: '80vh', marginTop: 'env(safe-area-inset-top)' }}
           >
             {/* Header with X left, Title center, ✓ right */}
@@ -1839,11 +1839,11 @@ const Expenses: React.FC<ExpensesProps> = ({
       {/* ─────────────────────────────────────────────────────────────── */}
       {selectedExpense && createPortal(
         <div 
-          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
+          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] bottom-sheet-backdrop"
           onClick={(e) => { if (e.target === e.currentTarget) setSelectedExpense(null); }}
         >
           <div 
-            className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" 
+            className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content flex flex-col absolute bottom-0 left-0 right-0 mx-auto" 
             style={{ maxHeight: '80vh', marginTop: 'env(safe-area-inset-top)' }}
           >
             {/* Header with X left, Title center, ✓ or Edit right */}
@@ -2104,11 +2104,11 @@ const Expenses: React.FC<ExpensesProps> = ({
       {/* ─────────────────────────────────────────────────────────────── */}
       {isMonthPickerOpen && createPortal(
         <div 
-          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
+          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] bottom-sheet-backdrop"
           onClick={(e) => { if (e.target === e.currentTarget) setIsMonthPickerOpen(false); }}
         >
           <div 
-            className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col"
+            className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content flex flex-col absolute bottom-0 left-0 right-0 mx-auto"
             style={{ maxHeight: '80vh', marginTop: 'env(safe-area-inset-top)' }}
           >
             {/* Header with X left, Title center */}
@@ -2216,10 +2216,10 @@ const Expenses: React.FC<ExpensesProps> = ({
       {/* ─────────────────────────────────────────────────────────────── */}
       {showSummaryUpgradeModal && createPortal(
         <div 
-          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
+          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] bottom-sheet-backdrop"
           onClick={(e) => { if (e.target === e.currentTarget) setShowSummaryUpgradeModal(false); }}
         >
-          <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ maxHeight: '80vh', marginTop: 'env(safe-area-inset-top)' }}>
+          <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content flex flex-col absolute bottom-0 left-0 right-0 mx-auto" style={{ maxHeight: '80vh', marginTop: 'env(safe-area-inset-top)' }}>
             {/* Close Button */}
             <button 
               onClick={() => setShowSummaryUpgradeModal(false)} 

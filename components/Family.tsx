@@ -1572,10 +1572,10 @@ const Family: React.FC<FamilyProps> = ({
       {/* Helper Upgrade Modal - Bottom Sheet */}
       {showHelperUpgradeModal && createPortal(
         <div 
-          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
+          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] bottom-sheet-backdrop"
           onClick={(e) => { if (e.target === e.currentTarget) setShowHelperUpgradeModal(false); }}
         >
-          <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginTop: 'env(safe-area-inset-top)' }}>
+          <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content flex flex-col absolute bottom-0 left-0 right-0 mx-auto" style={{ marginTop: 'env(safe-area-inset-top)' }}>
             {/* Close Button */}
             <button 
               onClick={() => setShowHelperUpgradeModal(false)} 
@@ -1624,11 +1624,11 @@ const Family: React.FC<FamilyProps> = ({
       {/* Maps Choice Modal (iOS) */}
       {showMapsChoiceModal && createPortal(
         <div 
-          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
+          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] bottom-sheet-backdrop"
           onClick={(e) => { if (e.target === e.currentTarget) setShowMapsChoiceModal(false); }}
         >
           <div 
-            className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" 
+            className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content flex flex-col absolute bottom-0 left-0 right-0 mx-auto" 
             style={{ marginTop: 'env(safe-area-inset-top)' }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -2152,10 +2152,10 @@ const PlaceModal: React.FC<PlaceModalProps> = ({
 
   return createPortal(
     <div 
-      className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
+      className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] bottom-sheet-backdrop"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ maxHeight: '90vh', marginTop: 'env(safe-area-inset-top)' }}>
+      <div className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content flex flex-col absolute bottom-0 left-0 right-0 mx-auto" style={{ maxHeight: '90vh', marginTop: 'env(safe-area-inset-top)' }}>
         {/* Header with X left, Title center, ✓ right */}
         <div className="flex items-center justify-between px-5 pt-5 pb-4 shrink-0">
           {/* X Close Button (left) */}
@@ -2404,10 +2404,10 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
 }) => {
   return createPortal(
     <div 
-      className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
+      className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] bottom-sheet-backdrop"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ maxHeight: '80vh', marginTop: 'env(safe-area-inset-top)' }}>
+      <div className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content flex flex-col absolute bottom-0 left-0 right-0 mx-auto" style={{ maxHeight: '80vh', marginTop: 'env(safe-area-inset-top)' }}>
         {/* Header with X left, Title center, ✓ right */}
         <div className="flex items-center justify-between px-5 pt-5 pb-4 shrink-0">
           {/* X Close Button (left) */}
@@ -2591,10 +2591,10 @@ const PracticeViewModal: React.FC<PracticeViewModalProps> = ({
 
   return createPortal(
     <div 
-      className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
+      className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] bottom-sheet-backdrop"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ maxHeight: '80vh', marginTop: 'env(safe-area-inset-top)' }}>
+      <div className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content flex flex-col absolute bottom-0 left-0 right-0 mx-auto" style={{ maxHeight: '80vh', marginTop: 'env(safe-area-inset-top)' }}>
         {/* Header with X left, Title center */}
         <div className="flex items-center justify-between px-5 pt-5 pb-4 shrink-0">
           {/* X Close Button (left) */}

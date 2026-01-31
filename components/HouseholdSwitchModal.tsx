@@ -25,10 +25,10 @@ const HouseholdSwitchModal: React.FC<HouseholdSwitchModalProps> = ({
 }) => {
   return createPortal(
     <div 
-      className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
+      className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] bottom-sheet-backdrop"
       onClick={(e) => { if (e.target === e.currentTarget) onStay(); }}
     >
-      <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginTop: 'env(safe-area-inset-top)' }}>
+      <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content flex flex-col absolute bottom-0 left-0 right-0 mx-auto" style={{ marginTop: 'env(safe-area-inset-top)' }}>
         {/* Header */}
         <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
           <div className="flex items-center gap-3">

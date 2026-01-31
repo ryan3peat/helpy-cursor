@@ -1736,10 +1736,10 @@ const Profile: React.FC<ProfileProps> = ({
         {/* Add User Modal - Multi-step Flow */}
           {isAddModalOpen && createPortal(
             <div 
-              className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
+              className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] bottom-sheet-backdrop"
               onClick={(e) => { if (e.target === e.currentTarget) setIsAddModalOpen(false); }}
             >
-              <div className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ minHeight: '400px', maxHeight: '80vh', marginTop: 'env(safe-area-inset-top)' }}>
+              <div className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content flex flex-col absolute bottom-0 left-0 right-0 mx-auto" style={{ minHeight: '400px', maxHeight: '80vh', marginTop: 'env(safe-area-inset-top)' }}>
                 {/* Header with X left, Title center (no ✓ for Add Family Member) */}
                 <div className="flex items-center justify-between px-5 pt-5 pb-4 shrink-0">
                   {/* X Close Button or Back Button (left) */}
@@ -2117,10 +2117,10 @@ const Profile: React.FC<ProfileProps> = ({
           {/* Delete Confirmation Modal */}
           {deleteConfirmOpen && createPortal(
             <div 
-              className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
+              className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] bottom-sheet-backdrop"
               onClick={(e) => { if (e.target === e.currentTarget) setDeleteConfirmOpen(false); }}
             >
-              <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginTop: 'env(safe-area-inset-top)' }}>
+              <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content flex flex-col absolute bottom-0 left-0 right-0 mx-auto" style={{ marginTop: 'env(safe-area-inset-top)' }}>
                 {/* Header with X left, Title center */}
                 <div className="flex items-center justify-between px-5 pt-5 pb-4 shrink-0">
                   {/* X Close Button (left) */}
@@ -2180,10 +2180,10 @@ const Profile: React.FC<ProfileProps> = ({
           {/* Edit User Modal */}
           {isEditModalOpen && createPortal(
             <div 
-              className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
+              className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] bottom-sheet-backdrop"
               onClick={(e) => { if (e.target === e.currentTarget) setIsEditModalOpen(false); }}
             >
-              <div className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ maxHeight: '80vh', marginTop: 'env(safe-area-inset-top)' }}>
+              <div className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content flex flex-col absolute bottom-0 left-0 right-0 mx-auto" style={{ maxHeight: '80vh', marginTop: 'env(safe-area-inset-top)' }}>
                 {/* Header with X left, Title center, ✓ right */}
                 <div className="flex items-center justify-between px-5 pt-5 pb-4 shrink-0">
                   {/* X Close Button (left) */}
@@ -2346,11 +2346,11 @@ const Profile: React.FC<ProfileProps> = ({
         {/* Photo Options Modal */}
         {showPhotoOptions && createPortal(
           <div 
-            className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
+            className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] bottom-sheet-backdrop"
             onClick={(e) => { if (e.target === e.currentTarget) setShowPhotoOptions(false); }}
           >
             <div 
-              className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col"
+              className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content flex flex-col absolute bottom-0 left-0 right-0 mx-auto"
               style={{ marginTop: 'env(safe-area-inset-top)' }}
             >
               {/* Header */}
@@ -3353,10 +3353,10 @@ const Profile: React.FC<ProfileProps> = ({
           {/* Downgrade Confirmation Modal - Bottom Sheet */}
           {showDowngradeModal && pendingDowngrade && createPortal(
             <div 
-              className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
+              className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] bottom-sheet-backdrop"
               onClick={(e) => { if (e.target === e.currentTarget) setShowDowngradeModal(false); }}
             >
-              <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginTop: 'env(safe-area-inset-top)' }}>
+              <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content flex flex-col absolute bottom-0 left-0 right-0 mx-auto" style={{ marginTop: 'env(safe-area-inset-top)' }}>
                 {/* Close Button */}
                 <button 
                   onClick={handleCancelDowngrade} 
@@ -3413,10 +3413,10 @@ const Profile: React.FC<ProfileProps> = ({
           {/* Cancel Subscription Confirmation Modal */}
           {showCancelSubConfirm && createPortal(
             <div 
-              className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
+              className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] bottom-sheet-backdrop"
               onClick={(e) => { if (e.target === e.currentTarget) setShowCancelSubConfirm(false); }}
             >
-              <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginTop: 'env(safe-area-inset-top)' }}>
+              <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content flex flex-col absolute bottom-0 left-0 right-0 mx-auto" style={{ marginTop: 'env(safe-area-inset-top)' }}>
                 {/* Header */}
                 <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
                   <h2 className="text-title text-foreground">{t['subscription.cancel_title'] || 'Cancel Subscription'}</h2>
@@ -3675,10 +3675,10 @@ const Profile: React.FC<ProfileProps> = ({
         {/* First Delete Confirmation Modal */}
         {isDeleteAccountModalOpen && createPortal(
           <div 
-            className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
+            className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] bottom-sheet-backdrop"
             onClick={(e) => { if (e.target === e.currentTarget) setIsDeleteAccountModalOpen(false); }}
           >
-            <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginTop: 'env(safe-area-inset-top)' }}>
+            <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content flex flex-col absolute bottom-0 left-0 right-0 mx-auto" style={{ marginTop: 'env(safe-area-inset-top)' }}>
               {/* Header */}
               <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
                 <h2 className="text-title text-foreground">{t['profile.delete_account'] || 'Delete Account'}</h2>
@@ -3713,10 +3713,10 @@ const Profile: React.FC<ProfileProps> = ({
         {/* Final Delete Confirmation Modal */}
         {isFinalDeleteConfirmOpen && createPortal(
           <div 
-            className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
+            className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] bottom-sheet-backdrop"
             onClick={(e) => { if (e.target === e.currentTarget) setIsFinalDeleteConfirmOpen(false); }}
           >
-            <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginTop: 'env(safe-area-inset-top)' }}>
+            <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content flex flex-col absolute bottom-0 left-0 right-0 mx-auto" style={{ marginTop: 'env(safe-area-inset-top)' }}>
               {/* Header */}
               <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
                 <h2 className="text-title text-foreground">{t['profile.delete_account'] || 'Delete Account'}</h2>
@@ -3764,10 +3764,10 @@ const Profile: React.FC<ProfileProps> = ({
         {/* Subscription Cancellation Confirmation Modal */}
         {subscriptionCanceled && createPortal(
           <div 
-            className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
+            className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] bottom-sheet-backdrop"
             onClick={(e) => { if (e.target === e.currentTarget) setSubscriptionCanceled(false); }}
           >
-            <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginTop: 'env(safe-area-inset-top)' }}>
+            <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content flex flex-col absolute bottom-0 left-0 right-0 mx-auto" style={{ marginTop: 'env(safe-area-inset-top)' }}>
               {/* Header */}
               <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
                 <h2 className="text-title text-foreground">{t['profile.subscription_canceled'] || 'Subscription Canceled'}</h2>
@@ -4238,10 +4238,10 @@ const Profile: React.FC<ProfileProps> = ({
         {/* Generic Alert Modal (replaces native alert()) */}
         {alertModal.isOpen && createPortal(
           <div 
-            className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-end justify-center bottom-sheet-backdrop"
+            className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] bottom-sheet-backdrop"
             onClick={(e) => { if (e.target === e.currentTarget) setAlertModal(prev => ({ ...prev, isOpen: false })); }}
           >
-            <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" style={{ marginTop: 'env(safe-area-inset-top)' }}>
+            <div className="bg-card w-full max-w-md rounded-t-2xl overflow-hidden bottom-sheet-content flex flex-col absolute bottom-0 left-0 right-0 mx-auto" style={{ marginTop: 'env(safe-area-inset-top)' }}>
               {/* Header */}
               <div className="pt-6 pb-4 px-5 border-b border-border shrink-0">
                 <h2 className={`text-title ${alertModal.type === 'error' ? 'text-destructive' : alertModal.type === 'success' ? 'text-primary' : 'text-foreground'}`}>

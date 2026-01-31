@@ -1088,6 +1088,7 @@ Give it a try:`;
       <header 
         className="sticky top-0 z-20 bg-background px-5 pb-3 flex items-end transition-shadow duration-200"
         style={{ 
+          paddingTop: 'env(safe-area-inset-top)',
           height: '120px',
           boxShadow: isScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none'
         }}

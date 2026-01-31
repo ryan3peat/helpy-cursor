@@ -447,28 +447,38 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
 
   // PROACTIVE TOKEN REFRESH ON VISIBILITY CHANGE
   // When user returns to app (switches back from another tab/app):
-  // - Check if token is expired or about to expire
-  // - If so, refresh proactively BEFORE any request fails
-  // - Increment tokenRefreshCount so components know to refetch data
-  // This fixes the "helper can't see data" issue where stale tokens cause empty reads
+  // - If app was backgrounded for more than 5 minutes, ALWAYS refresh token and trigger data refetch
+  // - This fixes the "stale data after returning to app" issue where family members don't see updates
+  // - Even if token isn't expired, realtime subscriptions may have disconnected
+  const lastVisibleTimestampRef = useRef<number>(Date.now());
+  const BACKGROUND_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes - if backgrounded longer, force refresh
+  
   useEffect(() => {
     if (!isSignedIn || !getToken) return;
     
     const handleVisibilityChange = async () => {
-      if (document.visibilityState !== 'visible') return;
+      const now = Date.now();
+      
+      if (document.visibilityState !== 'visible') {
+        // App going to background - record the timestamp
+        lastVisibleTimestampRef.current = now;
+        logger.log('[SupabaseContext] 📱 App going to background');
+        return;
+      }
       
       // Throttle: Don't check more than once per 10 seconds
-      const now = Date.now();
       if (now - lastVisibilityRefreshRef.current < 10000) {
         logger.log('[SupabaseContext] 👀 Visibility change throttled (too recent)');
         return;
       }
+      
+      const timeInBackground = now - lastVisibleTimestampRef.current;
+      const wasBackgroundedLong = timeInBackground > BACKGROUND_THRESHOLD_MS;
+      
+      logger.log(`[SupabaseContext] 👀 App became visible after ${Math.round(timeInBackground / 1000)}s in background`);
       lastVisibilityRefreshRef.current = now;
       
-      logger.log('[SupabaseContext] 👀 App became visible - checking token freshness...');
-      
       try {
-        // Get current token and check expiry
         const templateName = import.meta.env.VITE_CLERK_JWT_TEMPLATE_NAME || 'supabase';
         const currentToken = await getToken({ template: templateName });
         
@@ -477,29 +487,36 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
           return;
         }
         
-        // Check if token is expired or will expire within 60 seconds
-        if (isTokenExpiredOrExpiring(currentToken, 60)) {
-          logger.log('[SupabaseContext] 🔄 Token expired/expiring - proactively refreshing...');
+        // FIX: If app was backgrounded for more than 5 minutes, ALWAYS force refresh
+        // This ensures realtime subscriptions are re-established and data is refetched
+        // Even if token hasn't expired, the websocket connections may have dropped
+        const tokenExpiring = isTokenExpiredOrExpiring(currentToken, 60);
+        const shouldRefresh = tokenExpiring || wasBackgroundedLong;
+        
+        if (shouldRefresh) {
+          const reason = tokenExpiring ? 'token expiring' : `backgrounded for ${Math.round(timeInBackground / 60000)} minutes`;
+          logger.log(`[SupabaseContext] 🔄 Forcing token refresh (${reason})...`);
           
           // Force a fresh token from Clerk
           const freshToken = await getToken({ template: templateName, skipCache: true } as any);
           
           if (freshToken) {
-            logger.log('[SupabaseContext] ✅ Proactive token refresh successful');
+            logger.log('[SupabaseContext] ✅ Token refresh successful');
             updateCurrentToken(freshToken);
             
-            // Increment counter so components know to refetch
+            // CRITICAL: Increment counter so components re-subscribe and refetch data
+            // This is what triggers syncAllData and re-establishes realtime subscriptions
             setTokenRefreshCount(prev => prev + 1);
-            logger.log('[SupabaseContext] 📢 Token refresh count incremented - components should refetch');
+            logger.log('[SupabaseContext] 📢 Token refresh count incremented - triggering data refetch');
           } else {
-            logger.warn('[SupabaseContext] ⚠️ Proactive refresh returned no token');
+            logger.warn('[SupabaseContext] ⚠️ Token refresh returned no token');
           }
         } else {
           const expirySeconds = getTokenExpirySeconds(currentToken);
-          logger.log(`[SupabaseContext] ✅ Token still fresh (expires in ${expirySeconds}s)`);
+          logger.log(`[SupabaseContext] ✅ Token fresh (expires in ${expirySeconds}s), no refresh needed`);
         }
       } catch (error) {
-        logger.error('[SupabaseContext] ❌ Error during proactive token refresh:', error);
+        logger.error('[SupabaseContext] ❌ Error during token refresh:', error);
       }
     };
     

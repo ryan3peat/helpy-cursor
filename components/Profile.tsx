@@ -1351,7 +1351,7 @@ const Profile: React.FC<ProfileProps> = ({
   const renderSettingsHeader = (title: string, onBackOverride?: () => void) => (
     <header 
       className="sticky top-0 z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 pb-3 flex items-end" 
-      style={{ height: '120px' }}
+      style={{ paddingTop: 'env(safe-area-inset-top)', height: '120px' }}
     >
       <div className="flex items-center gap-2">
         <button
@@ -1375,7 +1375,7 @@ const Profile: React.FC<ProfileProps> = ({
           {/* Header with Logout */}
           <header 
             className="sticky top-0 z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 pb-3 flex items-end" 
-            style={{ height: '120px' }}
+            style={{ paddingTop: 'env(safe-area-inset-top)', height: '120px' }}
           >
             <div className="flex items-center justify-between w-full">
               <div className="flex items-center gap-2">

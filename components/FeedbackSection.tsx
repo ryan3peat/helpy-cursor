@@ -284,7 +284,7 @@ const FeedbackSection: React.FC<FeedbackSectionProps> = ({
   const renderHeader = () => (
     <header 
       className="sticky top-0 z-20 bg-background flex items-end pb-3 px-4" 
-      style={{ height: '120px' }}
+      style={{ paddingTop: 'env(safe-area-inset-top)', height: '120px' }}
     >
       <div className="flex items-center gap-3">
         <button

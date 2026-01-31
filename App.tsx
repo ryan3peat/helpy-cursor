@@ -42,7 +42,7 @@ import SalarySlipReminderPrompt from './components/SalarySlipReminderPrompt';
 import type { Place, CreatePlace } from '@src/types/place';
 import type { Practice, CreatePractice } from '@src/types/practice';
 import type { HelperContract, SalarySlip } from '@src/types/helperManagement';
-import { getHelperContracts, getAllSalarySlips } from './services/salarySlipService';
+import { getHelperContracts, getAllSalarySlips, subscribeToHelperContracts, subscribeToSalarySlips } from './services/salarySlipService';
 import { 
   subscribeToPlaces,
   createPlace,
@@ -1206,22 +1206,29 @@ const AppContent: React.FC = () => {
       });
     });
     
-    // Initial fetch for helper data (no real-time subscriptions for these tables)
-    // This ensures helper data loads on mount, not just on periodic sync
-    (async () => {
-      try {
-        logger.log('[App] Fetching initial helper data...');
-        const [contractsData, slipsData] = await Promise.all([
-          getHelperContracts(hid),
-          getAllSalarySlips(hid),
-        ]);
-        if (contractsData) setHelperContracts(contractsData);
-        if (slipsData) setSalarySlips(slipsData);
-        logger.log('[App] ✅ Initial helper data loaded');
-      } catch (err) {
-        logger.error('[App] Failed to fetch initial helper data:', err);
-      }
-    })();
+    // Subscribe to helper data via realtime (fixes sync issues between household members)
+    // Previously these were only fetched on mount/periodic sync, causing stale data
+    const unsubHelperContracts = subscribeToHelperContracts(hid, (data) => {
+      // Protect cached data: don't replace existing contracts with empty results
+      setHelperContracts(prev => {
+        if (data.length === 0 && prev.length > 0) {
+          logger.log('[App] 🛡️ Protecting cached helper contracts from empty result');
+          return prev;
+        }
+        return data;
+      });
+    });
+    
+    const unsubSalarySlips = subscribeToSalarySlips(hid, (data) => {
+      // Protect cached data: don't replace existing slips with empty results
+      setSalarySlips(prev => {
+        if (data.length === 0 && prev.length > 0) {
+          logger.log('[App] 🛡️ Protecting cached salary slips from empty result');
+          return prev;
+        }
+        return data;
+      });
+    });
     
     return () => {
       unsubUsers();
@@ -1231,6 +1238,8 @@ const AppContent: React.FC = () => {
       unsubNotes();
       unsubPlaces();
       unsubPractices();
+      unsubHelperContracts();
+      unsubSalarySlips();
     };
     // tokenRefreshCount: When token is proactively refreshed (e.g., on app visibility change),
     // re-run subscriptions to ensure data is fetched with the fresh token.

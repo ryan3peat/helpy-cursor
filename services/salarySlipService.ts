@@ -498,6 +498,104 @@ export async function hasContract(
 }
 
 // ============================================================================
+// REALTIME SUBSCRIPTIONS
+// ============================================================================
+
+/**
+ * Subscribe to real-time changes for helper contracts
+ * This ensures all household members see updates to employment details immediately
+ */
+export function subscribeToHelperContracts(
+  householdId: string,
+  callback: (data: HelperContract[]) => void
+): () => void {
+  logger.log(`🔔 [salarySlipService] Subscribing to helper_contracts for household ${householdId}`);
+  
+  // Initial fetch
+  getHelperContracts(householdId)
+    .then(callback)
+    .catch(err => logger.error('[salarySlipService] Initial helper_contracts fetch failed:', err));
+
+  // Subscribe to changes via realtime
+  const channelName = `helper-contracts-${householdId}`;
+  
+  const subscription = getSupabase()
+    .channel(channelName)
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'helper_contracts',
+        filter: `household_id=eq.${householdId}`,
+      },
+      (payload: any) => {
+        logger.log(`🔄 [salarySlipService] Real-time ${payload.eventType} on helper_contracts`);
+        // Refetch on any change to get complete data with proper RLS
+        getHelperContracts(householdId)
+          .then(callback)
+          .catch(err => logger.error('[salarySlipService] helper_contracts refetch failed:', err));
+      }
+    )
+    .subscribe((status) => {
+      logger.log(`📡 [salarySlipService] helper_contracts subscription status:`, status);
+    });
+
+  // Return unsubscribe function
+  return () => {
+    logger.log(`🔕 [salarySlipService] Unsubscribing from helper_contracts`);
+    subscription.unsubscribe();
+  };
+}
+
+/**
+ * Subscribe to real-time changes for salary slips
+ * This ensures all household members see new salary slips immediately
+ */
+export function subscribeToSalarySlips(
+  householdId: string,
+  callback: (data: SalarySlip[]) => void
+): () => void {
+  logger.log(`🔔 [salarySlipService] Subscribing to salary_slips for household ${householdId}`);
+  
+  // Initial fetch
+  getAllSalarySlips(householdId)
+    .then(callback)
+    .catch(err => logger.error('[salarySlipService] Initial salary_slips fetch failed:', err));
+
+  // Subscribe to changes via realtime
+  const channelName = `salary-slips-${householdId}`;
+  
+  const subscription = getSupabase()
+    .channel(channelName)
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'salary_slips',
+        filter: `household_id=eq.${householdId}`,
+      },
+      (payload: any) => {
+        logger.log(`🔄 [salarySlipService] Real-time ${payload.eventType} on salary_slips`);
+        // Refetch on any change to get complete data with proper RLS
+        getAllSalarySlips(householdId)
+          .then(callback)
+          .catch(err => logger.error('[salarySlipService] salary_slips refetch failed:', err));
+      }
+    )
+    .subscribe((status) => {
+      logger.log(`📡 [salarySlipService] salary_slips subscription status:`, status);
+    });
+
+  // Return unsubscribe function
+  return () => {
+    logger.log(`🔕 [salarySlipService] Unsubscribing from salary_slips`);
+    subscription.unsubscribe();
+  };
+}
+
+// ============================================================================
 // DATA MAPPING HELPERS
 // ============================================================================
 

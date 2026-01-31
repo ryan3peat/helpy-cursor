@@ -161,6 +161,107 @@ export function getTokenExpirySeconds(token: string | null): number | null {
 }
 
 /**
+ * JWT DIAGNOSTIC LOGGING
+ * 
+ * Decodes the current JWT token and logs all claims for debugging.
+ * Use this when data unexpectedly returns empty to diagnose RLS/auth issues.
+ * 
+ * @param context - A string describing where this diagnostic was called from
+ * @returns The decoded claims object, or null if no token/decode fails
+ */
+export interface JwtDiagnosticResult {
+  hasToken: boolean;
+  clerkId: string | null;
+  sub: string | null;
+  exp: number | null;
+  expiresIn: number | null;
+  isExpired: boolean;
+  allClaims: Record<string, any> | null;
+}
+
+export async function diagnoseJwtToken(context: string): Promise<JwtDiagnosticResult> {
+  const result: JwtDiagnosticResult = {
+    hasToken: false,
+    clerkId: null,
+    sub: null,
+    exp: null,
+    expiresIn: null,
+    isExpired: false,
+    allClaims: null,
+  };
+  
+  try {
+    // Get fresh token
+    let token: string | null = null;
+    if (globalGetFreshToken) {
+      token = await globalGetFreshToken(false);
+    }
+    if (!token) {
+      token = currentToken;
+    }
+    
+    if (!token) {
+      logger.warn(`[JWT Diagnostic: ${context}] ❌ NO TOKEN AVAILABLE - This explains empty data!`);
+      return result;
+    }
+    
+    result.hasToken = true;
+    
+    // Decode token
+    const parts = token.split('.');
+    if (parts.length !== 3) {
+      logger.error(`[JWT Diagnostic: ${context}] ❌ MALFORMED TOKEN - Expected 3 parts, got ${parts.length}`);
+      return result;
+    }
+    
+    const payload = parts[1];
+    const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = atob(base64);
+    const claims = JSON.parse(jsonPayload);
+    
+    result.allClaims = claims;
+    result.clerkId = claims.clerk_id || null;
+    result.sub = claims.sub || null;
+    result.exp = claims.exp || null;
+    
+    if (claims.exp) {
+      const now = Math.floor(Date.now() / 1000);
+      result.expiresIn = claims.exp - now;
+      result.isExpired = claims.exp < now;
+    }
+    
+    // Log diagnostic info
+    logger.log(`[JWT Diagnostic: ${context}] 🔍 Token Analysis:`);
+    logger.log(`  - Has token: ✅`);
+    logger.log(`  - clerk_id: ${result.clerkId || '❌ MISSING - RLS WILL FAIL!'}`);
+    logger.log(`  - sub: ${result.sub || 'not set'}`);
+    logger.log(`  - Expires in: ${result.expiresIn !== null ? `${result.expiresIn}s` : 'unknown'}`);
+    logger.log(`  - Is expired: ${result.isExpired ? '❌ YES' : '✅ No'}`);
+    
+    if (!result.clerkId) {
+      logger.error(`[JWT Diagnostic: ${context}] ⚠️ CRITICAL: clerk_id claim is MISSING!`);
+      logger.error(`  This means RLS policies will return empty results.`);
+      logger.error(`  User needs to logout and login again to get a valid token.`);
+      logger.error(`  All claims present:`, Object.keys(claims));
+    }
+    
+    return result;
+  } catch (e) {
+    logger.error(`[JWT Diagnostic: ${context}] ❌ Failed to decode token:`, e);
+    return result;
+  }
+}
+
+/**
+ * Quick check if the current token has a valid clerk_id claim
+ * Returns false if token is missing, expired, or clerk_id is missing
+ */
+export async function hasValidClerkIdClaim(): Promise<boolean> {
+  const diagnostic = await diagnoseJwtToken('Quick Validation');
+  return diagnostic.hasToken && !!diagnostic.clerkId && !diagnostic.isExpired;
+}
+
+/**
  * Get a fresh token with retry logic.
  * This is the KEY to fixing the stale token bug.
  * 
@@ -446,3 +547,18 @@ export const createAuthenticatedClient = async (clerkToken: string | null, token
   logger.log('[Supabase] ✅ Authenticated client created (singleton) with robust retry logic');
   return client;
 };
+
+// ============================================================================
+// BROWSER CONSOLE DEBUG FUNCTIONS
+// ============================================================================
+// Make JWT diagnostic available in browser console for debugging
+if (typeof window !== 'undefined') {
+  (window as any).helpyDiagnoseJwt = async () => {
+    console.log('\n🔍 Running JWT diagnostic from console...\n');
+    const result = await diagnoseJwtToken('Console Debug');
+    console.log('\n📋 Full diagnostic result:', result);
+    return result;
+  };
+  
+  logger.log('[Supabase] 💡 TIP: Run window.helpyDiagnoseJwt() in console to debug JWT issues');
+}

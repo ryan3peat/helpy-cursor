@@ -23,7 +23,7 @@ import { detectDeviceLanguage } from './services/languageDetectionService';
 import { getStaticTranslations } from './services/translationService';
 import { TranslationProvider, useTranslationContext } from './contexts/TranslationContext';
 import { DemoModeProvider, useDemoMode } from './contexts/DemoModeContext';
-import { supabase } from './services/supabase';
+import { supabase, diagnoseJwtToken } from './services/supabase';
 import { useSupabaseReady, getAuthenticatedSupabaseClient, useTokenRefreshCount } from './contexts/SupabaseContext';
 import {
   subscribeToCollection,
@@ -1232,6 +1232,15 @@ const AppContent: React.FC = () => {
           logger.log('[App] 🛡️ Protecting cached helper contracts from empty result');
           return prev;
         }
+        // DIAGNOSTIC: If empty result AND no cache, log JWT state for debugging
+        if (data.length === 0 && prev.length === 0) {
+          logger.warn('[App] ⚠️ Helper contracts empty with no cache - running JWT diagnostic...');
+          diagnoseJwtToken('App - Helper Contracts Empty').then(diag => {
+            if (!diag.clerkId) {
+              logger.error('[App] 🚨 JWT ISSUE DETECTED: No clerk_id in token. User may need to re-login.');
+            }
+          });
+        }
         return data;
       });
     });
@@ -1242,6 +1251,15 @@ const AppContent: React.FC = () => {
         if (data.length === 0 && prev.length > 0) {
           logger.log('[App] 🛡️ Protecting cached salary slips from empty result');
           return prev;
+        }
+        // DIAGNOSTIC: If empty result AND no cache, log JWT state for debugging
+        if (data.length === 0 && prev.length === 0) {
+          logger.warn('[App] ⚠️ Salary slips empty with no cache - running JWT diagnostic...');
+          diagnoseJwtToken('App - Salary Slips Empty').then(diag => {
+            if (!diag.clerkId) {
+              logger.error('[App] 🚨 JWT ISSUE DETECTED: No clerk_id in token. User may need to re-login.');
+            }
+          });
         }
         return data;
       });

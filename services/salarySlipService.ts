@@ -3,7 +3,7 @@
 // Salary Slip Service - CRUD operations for helper contracts and salary slips
 // ============================================================================
 
-import { supabase as defaultSupabase } from './supabase';
+import { supabase as defaultSupabase, diagnoseJwtToken } from './supabase';
 import { getAuthenticatedSupabaseClient, refreshSupabaseToken } from '../contexts/SupabaseContext';
 import { getCachedSupabaseUuid, getSupabaseUserId } from './supabaseService';
 import { logger } from '../utils/logger';
@@ -195,7 +195,22 @@ export async function getHelperContracts(
     
   if (error) throw error;
   
-  return (data || []).map(mapContractFromDb);
+  const contracts = (data || []).map(mapContractFromDb);
+  
+  // DIAGNOSTIC: If no contracts returned, check if this is a token issue
+  if (contracts.length === 0) {
+    logger.warn(`[salarySlipService] ⚠️ getHelperContracts returned 0 results for household ${householdId}`);
+    logger.warn(`[salarySlipService] This could be normal (no helpers) or a JWT/RLS issue.`);
+    
+    // Run JWT diagnostic to capture token state
+    const jwtDiag = await diagnoseJwtToken('getHelperContracts - Empty Result');
+    
+    if (!jwtDiag.clerkId) {
+      logger.error(`[salarySlipService] 🚨 EMPTY HELPER CONTRACTS WITH MISSING clerk_id - USER NEEDS TO RE-LOGIN!`);
+    }
+  }
+  
+  return contracts;
 }
 
 /**
@@ -450,7 +465,22 @@ export async function getAllSalarySlips(
     
   if (error) throw error;
   
-  return (data || []).map(mapSlipFromDb);
+  const slips = (data || []).map(mapSlipFromDb);
+  
+  // DIAGNOSTIC: If no salary slips returned, check if this is a token issue
+  if (slips.length === 0) {
+    logger.warn(`[salarySlipService] ⚠️ getAllSalarySlips returned 0 results for household ${householdId}`);
+    logger.warn(`[salarySlipService] This could be normal (no slips exist) or a JWT/RLS issue.`);
+    
+    // Run JWT diagnostic to capture token state
+    const jwtDiag = await diagnoseJwtToken('getAllSalarySlips - Empty Result');
+    
+    if (!jwtDiag.clerkId) {
+      logger.error(`[salarySlipService] 🚨 EMPTY SALARY SLIPS WITH MISSING clerk_id - USER NEEDS TO RE-LOGIN!`);
+    }
+  }
+  
+  return slips;
 }
 
 /**

@@ -291,8 +291,14 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
   // 3. Any in-flight or subsequent requests fail because they can't get fresh tokens
   // 4. User sees "Failed to add item" and has to kill the app
   //
-  // New pattern: Only clear on actual logout (isSignedIn becomes false)
+  // New pattern: Only clear on actual logout (isSignedIn becomes false AND clerkLoaded is true)
   // Keep last known good reference during remounts/re-renders
+  //
+  // CRITICAL FIX: Must check clerkLoaded before clearing globals!
+  // During Clerk initialization, isSignedIn is undefined (not false).
+  // !undefined = true in JavaScript, so without clerkLoaded check,
+  // we'd clear globals while Clerk is still loading, causing auth failures.
+  // See: https://clerk.com/docs - always gate auth logic behind isLoaded
   useEffect(() => {
     if (getToken && isSignedIn) {
       globalGetToken = getToken as any;
@@ -300,9 +306,9 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
       // This allows the customFetch to get fresh tokens on every request
       setFreshTokenGetter(getFreshClerkToken);
       logger.log('[SupabaseContext] ✅ Fresh token getter registered - proper auth enabled');
-    } else if (!isSignedIn) {
-      // Only clear when user is actually signed out
-      // This prevents the "stuck in broken auth state" bug
+    } else if (clerkLoaded && !isSignedIn) {
+      // Only clear when Clerk is fully loaded AND confirms user is signed out
+      // clerkLoaded ensures we don't clear during initialization (when isSignedIn is undefined)
       logger.log('[SupabaseContext] 🔓 User signed out - clearing auth globals');
       globalGetToken = null;
       globalTokenRefreshCallback = null;
@@ -310,7 +316,7 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
     }
     // NO cleanup function that nullifies - this was causing the bug!
     // The token getter should persist across remounts while user is signed in
-  }, [getToken, isSignedIn]);
+  }, [getToken, isSignedIn, clerkLoaded]);
 
   useEffect(() => {
     logger.log('[SupabaseContext] 🔄 useEffect triggered', { 

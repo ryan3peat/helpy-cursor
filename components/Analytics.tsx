@@ -126,22 +126,27 @@ const Analytics: React.FC<AnalyticsProps> = ({ onBack, t }) => {
       <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
         {/* Header */}
         <header 
-          className="sticky top-0 z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 pb-3 flex items-end transition-shadow duration-200"
+          className="sticky top-0 z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 transition-shadow duration-200"
           style={{ 
-            height: '120px',
+            paddingTop: 'env(safe-area-inset-top)',
             boxShadow: isScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none'
           }}
         >
-          <div className="flex items-center gap-4 w-full">
-            <button
-              onClick={onBack}
-              className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center text-foreground"
-            >
-              <ArrowLeft size={20} />
-            </button>
-            <div>
-              <span className="text-primary font-bold" style={{ fontSize: '20px' }}>SuperAdmin</span>
-              <h1 className="text-display text-foreground">Analytics</h1>
+          <div 
+            className="pb-3 flex items-end"
+            style={{ height: '120px' }}
+          >
+            <div className="flex items-center gap-4 w-full">
+              <button
+                onClick={onBack}
+                className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center text-foreground"
+              >
+                <ArrowLeft size={20} />
+              </button>
+              <div>
+                <span className="text-primary font-bold" style={{ fontSize: '20px' }}>SuperAdmin</span>
+                <h1 className="text-display text-foreground">Analytics</h1>
+              </div>
             </div>
           </div>
         </header>

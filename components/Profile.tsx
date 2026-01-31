@@ -1350,17 +1350,22 @@ const Profile: React.FC<ProfileProps> = ({
 
   const renderSettingsHeader = (title: string, onBackOverride?: () => void) => (
     <header 
-      className="sticky top-0 z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 pb-3 flex items-end" 
-      style={{ height: '120px' }}
+      className="sticky top-0 z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6" 
+      style={{ paddingTop: 'env(safe-area-inset-top)' }}
     >
-      <div className="flex items-center gap-2">
-        <button
-          onClick={onBackOverride || (() => setActiveSection('main'))}
-          className="p-2 rounded-full"
-        >
-          <ChevronLeft size={24} className="text-foreground" />
-        </button>
-        <h1 className="text-display text-foreground">{title}</h1>
+      <div 
+        className="pb-3 flex items-end"
+        style={{ height: '120px' }}
+      >
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onBackOverride || (() => setActiveSection('main'))}
+            className="p-2 rounded-full"
+          >
+            <ChevronLeft size={24} className="text-foreground" />
+          </button>
+          <h1 className="text-display text-foreground">{title}</h1>
+        </div>
       </div>
     </header>
   );
@@ -1374,23 +1379,28 @@ const Profile: React.FC<ProfileProps> = ({
         <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
           {/* Header with Logout */}
           <header 
-            className="sticky top-0 z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 pb-3 flex items-end" 
-            style={{ height: '120px' }}
+            className="sticky top-0 z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6" 
+            style={{ paddingTop: 'env(safe-area-inset-top)' }}
           >
-            <div className="flex items-center justify-between w-full">
-              <div className="flex items-center gap-2">
-                <button onClick={onBack} className="p-2 rounded-full">
-                  <ChevronLeft size={24} className="text-foreground" />
+            <div 
+              className="pb-3 flex items-end"
+              style={{ height: '120px' }}
+            >
+              <div className="flex items-center justify-between w-full">
+                <div className="flex items-center gap-2">
+                  <button onClick={onBack} className="p-2 rounded-full">
+                    <ChevronLeft size={24} className="text-foreground" />
+                  </button>
+                  <h1 className="text-display text-foreground">{t['nav.profile']}</h1>
+                </div>
+                <button
+                  onClick={onLogout}
+                  className="flex items-center gap-2 px-3 py-2 bg-destructive/10 text-destructive rounded-xl "
+                >
+                  <LogOut size={18} />
+                  <span className="text-body font-semibold">{t['profile.logout']}</span>
                 </button>
-                <h1 className="text-display text-foreground">{t['nav.profile']}</h1>
               </div>
-              <button
-                onClick={onLogout}
-                className="flex items-center gap-2 px-3 py-2 bg-destructive/10 text-destructive rounded-xl "
-              >
-                <LogOut size={18} />
-                <span className="text-body font-semibold">{t['profile.logout']}</span>
-              </button>
             </div>
           </header>
 

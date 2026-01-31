@@ -1056,10 +1056,13 @@ const Family: React.FC<FamilyProps> = ({
         {/* Fixed size header, collapsible content fades out */}
         {/* ─────────────────────────────────────────────────────────────── */}
         <header 
-          className="sticky top-0 z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 pb-3 flex items-end" 
-          style={{ paddingTop: 'env(safe-area-inset-top)', height: '120px', boxShadow: '0 10px 0 0 hsl(var(--background))' }}
+          className="sticky top-0 z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6" 
+          style={{ paddingTop: 'env(safe-area-inset-top)' }}
         >
-          <div className="w-full">
+          <div 
+            className="w-full pb-3 flex items-end"
+            style={{ height: '120px', boxShadow: '0 10px 0 0 hsl(var(--background))' }}
+          >
             <span className="text-primary font-bold block" style={{ fontSize: '20px' }}>{t['info.title'] || 'Family Book'}</span>
             <div className="flex items-center justify-between">
               <h1 className="text-display text-foreground">

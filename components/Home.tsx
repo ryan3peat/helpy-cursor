@@ -1086,16 +1086,13 @@ Give it a try:`;
 
       {/* Sticky Header - Push Up (No Shrink) */}
       <header 
-        className="sticky top-0 z-20 bg-background transition-shadow duration-200"
+        className="sticky top-0 z-20 bg-background px-5 pb-3 flex items-end transition-shadow duration-200"
         style={{ 
-          paddingTop: 'env(safe-area-inset-top)',
+          height: '120px',
           boxShadow: isScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none'
         }}
       >
-        <div 
-          className="flex justify-between items-center w-full px-5 pb-3 flex items-end"
-          style={{ height: '120px' }}
-        >
+        <div className="flex justify-between items-center w-full">
           <div>
             <h1>
               <span className="text-primary font-bold" style={{ fontSize: '20px' }}>{timeOfDay},</span><br />

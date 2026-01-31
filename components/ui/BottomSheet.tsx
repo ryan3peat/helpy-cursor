@@ -232,6 +232,7 @@ const BottomSheet: React.FC<BottomSheetProps> & {
         style={{ 
           maxHeight,
           marginBottom: centered ? 0 : 'env(safe-area-inset-bottom, 34px)',
+          paddingTop: centered ? 0 : 'env(safe-area-inset-top)',
         }}
       >
         {/* Close Button */}

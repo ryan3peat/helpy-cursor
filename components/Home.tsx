@@ -1973,7 +1973,7 @@ Give it a try:`;
           />
           <div 
             className="bg-card w-full max-w-lg rounded-t-2xl overflow-hidden bottom-sheet-content relative flex flex-col" 
-            style={{ maxHeight: '80vh', marginBottom: 'env(safe-area-inset-bottom, 34px)' }}
+            style={{ maxHeight: '80vh', marginBottom: 'env(safe-area-inset-bottom, 34px)', paddingTop: 'env(safe-area-inset-top)' }}
           >
             {/* Close Button */}
             <button

@@ -45,8 +45,8 @@ let globalGetFreshToken: ((forceRefresh?: boolean) => Promise<string | null>) | 
 const AUTH_RETRY_CONFIG = {
   maxAttempts: 3,
   delayMs: [0, 500, 1000], // No delay first, then 500ms, then 1s
-  waitForTokenGetterMs: 100, // Wait time when token getter is temporarily unavailable
-  maxWaitForTokenGetterAttempts: 5, // Max times to wait for token getter
+  waitForTokenGetterMs: 150, // Wait time when token getter is temporarily unavailable
+  maxWaitForTokenGetterAttempts: 10, // Max times to wait for token getter (10 * 150ms = 1.5s max)
 };
 
 /**

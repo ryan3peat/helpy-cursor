@@ -437,8 +437,33 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
           setClient(authenticatedClient);
           globalAuthenticatedClient = authenticatedClient;
           logger.log('[SupabaseContext] ✅ Authenticated Supabase client created');
-          setIsAuthClient(true);
-          globalIsAuthClientReady = true;
+          
+          // CRITICAL: Verify token getter is working BEFORE marking client as ready
+          // This prevents race condition where subscriptions start but token isn't available yet
+          // The token getter useEffect should have run by now, but we verify to be safe
+          // getFreshClerkToken is defined in this file and uses globalGetToken
+          const verificationToken = await getFreshClerkToken(false);
+          if (verificationToken) {
+            logger.log('[SupabaseContext] ✅ Token getter verification passed - safe to start subscriptions');
+            setIsAuthClient(true);
+            globalIsAuthClientReady = true;
+          } else {
+            // Token getter not working yet - wait a bit and retry
+            logger.warn('[SupabaseContext] ⚠️ Token getter verification failed, retrying...');
+            await new Promise(resolve => setTimeout(resolve, 300));
+            const retryToken = await getFreshClerkToken(false);
+            if (retryToken) {
+              logger.log('[SupabaseContext] ✅ Token getter verification passed on retry');
+              setIsAuthClient(true);
+              globalIsAuthClientReady = true;
+            } else {
+              // Still failing - set ready anyway but log warning
+              // This prevents infinite waiting, but subscriptions may fail
+              logger.error('[SupabaseContext] ❌ Token getter still not working - subscriptions may fail initially');
+              setIsAuthClient(true);
+              globalIsAuthClientReady = true;
+            }
+          }
         } catch (error: any) {
           logger.error('[SupabaseContext] Failed to create authenticated client:', error);
           

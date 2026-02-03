@@ -17,7 +17,7 @@ import { logger } from '../utils/logger';
 
 // Pixel configuration
 const PIXEL_ID = '1683194409316610';
-const DEBUG_MODE = true; // Set to false in production
+const DEBUG_MODE = false; // Set to false in production
 
 // TypeScript types for Meta Pixel events
 export interface LeadEventData {

@@ -1,4 +1,5 @@
 import "./globals.css";
+import Script from "next/script";
 import { ReactNode } from "react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
@@ -24,8 +25,25 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <head>
-        {/* Meta Pixel Code (base - required for Meta Pixel Helper detection) */}
+        {/* Google tag (gtag.js) */}
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-MQ53SNR4QZ"></script>
         <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.dataLayer = window.dataLayer || [];
+              function gtag(){dataLayer.push(arguments);}
+              gtag('js', new Date());
+
+              gtag('config', 'G-MQ53SNR4QZ');
+            `,
+          }}
+        />
+      </head>
+      <body className="flex min-h-screen flex-col bg-background text-foreground">
+        {/* Meta Pixel - beforeInteractive ensures it's in initial HTML for Meta Pixel Helper */}
+        <Script
+          id="meta-pixel"
+          strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
             __html: `
               !function(f,b,e,v,n,t,s)
@@ -50,23 +68,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             alt=""
           />
         </noscript>
-        {/* End Meta Pixel Code */}
-
-        {/* Google tag (gtag.js) */}
-        <script async src="https://www.googletagmanager.com/gtag/js?id=G-MQ53SNR4QZ"></script>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              window.dataLayer = window.dataLayer || [];
-              function gtag(){dataLayer.push(arguments);}
-              gtag('js', new Date());
-
-              gtag('config', 'G-MQ53SNR4QZ');
-            `,
-          }}
-        />
-      </head>
-      <body className="flex min-h-screen flex-col bg-background text-foreground">
         <LanguageProvider>
           <MetadataUpdater />
           <Navbar />

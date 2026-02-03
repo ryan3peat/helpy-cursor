@@ -121,8 +121,8 @@ export const initMetaPixel = (): void => {
       }
     }, 100);
 
-    // Track initial PageView
-    ReactPixel.pageView();
+    // Skip initial PageView - base pixel code in index.html already tracks it
+    // (avoids double-counting and ensures Meta Pixel Helper detects the pixel)
 
     isPixelInitialized = true;
     logger.log('[MetaPixel] ✅ Initialized successfully with Pixel ID:', PIXEL_ID);

@@ -10,6 +10,9 @@
     "translateui": "npx tsx scripts/seed-translations.ts"
   },
   "dependencies": {
+    "@capacitor/android": "^8.0.2",
+    "@capacitor/cli": "^8.0.2",
+    "@capacitor/core": "^8.0.2",
     "@clerk/clerk-react": "^5.57.0",
     "@google/genai": "^1.30.0",
     "@heroicons/react": "^2.2.0",

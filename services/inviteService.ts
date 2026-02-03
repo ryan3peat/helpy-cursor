@@ -4,6 +4,9 @@
 
 import type { User } from '../types';
 
+// Get API URL for mobile/Capacitor compatibility
+const getApiUrl = () => import.meta.env?.VITE_API_URL || '';
+
 /**
  * Create an invitation for a new household member
  * Returns a shareable link - NO email sent
@@ -14,9 +17,9 @@ export async function createInvite(params: {
   householdId: string;
   inviterId: string;
 }): Promise<{ user: User; inviteLink: string | null }> {
-  // Always use relative URL since API is on the same domain
-  // This avoids issues with hardcoded domains in environment variables
-  const response = await fetch('/api/invite', {
+  // Use VITE_API_URL for mobile/Capacitor compatibility
+  const apiUrl = getApiUrl();
+  const response = await fetch(`${apiUrl}/api/invite`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params),
@@ -38,9 +41,9 @@ export async function resendInvite(
   userId: string,
   householdId: string
 ): Promise<{ inviteLink: string }> {
-  // Always use relative URL since API is on the same domain
-  // This avoids issues with hardcoded domains in environment variables
-  const response = await fetch('/api/invite/resend', {
+  // Use VITE_API_URL for mobile/Capacitor compatibility
+  const apiUrl = getApiUrl();
+  const response = await fetch(`${apiUrl}/api/invite/resend`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ userId, householdId }),

@@ -24,7 +24,9 @@ const isNonTranslatable = (text: string): boolean => {
 // Helper function to call Gemini API through server proxy
 const callGeminiProxy = async (contents: string | any, config?: { responseMimeType?: string; responseSchema?: any }) => {
   try {
-    const response = await fetch('/api/gemini-proxy', {
+    // Use VITE_API_URL for mobile/Capacitor compatibility
+    const apiUrl = import.meta.env?.VITE_API_URL || '';
+    const response = await fetch(`${apiUrl}/api/gemini-proxy`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

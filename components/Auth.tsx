@@ -500,7 +500,9 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
       logger.log('👤 New user, creating household and user via API...');
 
       // Use the signup API route with service role key (bypasses RLS)
-      const signupResponse = await fetch('/api/signup', {
+      // IMPORTANT: Use VITE_API_URL for mobile/Capacitor compatibility
+      const apiUrl = import.meta.env?.VITE_API_URL || '';
+      const signupResponse = await fetch(`${apiUrl}/api/signup`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -130,7 +130,9 @@ const InviteWelcome: React.FC<InviteWelcomeProps> = ({ householdId, userId, onCo
 
     async function fetchInviteInfo() {
       try {
-        const response = await fetch(`/api/get-invite-info?hid=${householdId}&uid=${userId}`);
+        // Use VITE_API_URL for mobile/Capacitor compatibility
+        const apiUrl = import.meta.env?.VITE_API_URL || '';
+        const response = await fetch(`${apiUrl}/api/get-invite-info?hid=${householdId}&uid=${userId}`);
         const data = await response.json();
         
         if (!response.ok || !data.isValid) {

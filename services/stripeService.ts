@@ -66,7 +66,9 @@ export async function createCheckoutSession(
   requesterId?: string
 ): Promise<string> {
   try {
-    const response = await fetch('/api/create-checkout-session', {
+    // Use VITE_API_URL for mobile/Capacitor compatibility
+    const apiUrl = import.meta.env?.VITE_API_URL || '';
+    const response = await fetch(`${apiUrl}/api/create-checkout-session`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -107,7 +109,9 @@ export async function createCheckoutSession(
 
 export async function createPortalSession(householdId: string): Promise<string> {
   try {
-    const response = await fetch('/api/create-portal-session', {
+    // Use VITE_API_URL for mobile/Capacitor compatibility
+    const apiUrl = import.meta.env?.VITE_API_URL || '';
+    const response = await fetch(`${apiUrl}/api/create-portal-session`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ householdId }),
@@ -139,7 +143,9 @@ export async function createPortalSession(householdId: string): Promise<string> 
 
 export async function downgradeToFree(householdId: string, requesterId?: string): Promise<void> {
   try {
-    const response = await fetch('/api/cancel-subscription', {
+    // Use VITE_API_URL for mobile/Capacitor compatibility
+    const apiUrl = import.meta.env?.VITE_API_URL || '';
+    const response = await fetch(`${apiUrl}/api/cancel-subscription`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ householdId, requesterId }),
@@ -172,7 +178,9 @@ export async function changeSubscription(
   requesterId?: string
 ): Promise<{ success: boolean; plan?: string; status?: string; message?: string; error?: string }> {
   try {
-    const response = await fetch('/api/change-subscription', {
+    // Use VITE_API_URL for mobile/Capacitor compatibility
+    const apiUrl = import.meta.env?.VITE_API_URL || '';
+    const response = await fetch(`${apiUrl}/api/change-subscription`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ householdId, newPlan, newPeriod, requesterId }),
@@ -209,8 +217,10 @@ export async function syncSubscription(
   sessionId?: string
 ): Promise<{ success: boolean; plan?: string; status?: string; cancelAtPeriodEnd?: boolean; error?: string }> {
   try {
+    // Use VITE_API_URL for mobile/Capacitor compatibility
+    const apiUrl = import.meta.env?.VITE_API_URL || '';
     logger.log('[syncSubscription] Calling API for household:', householdId);
-    const response = await fetch('/api/sync-subscription', {
+    const response = await fetch(`${apiUrl}/api/sync-subscription`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ householdId, sessionId }),

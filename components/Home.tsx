@@ -1187,8 +1187,8 @@ Give it a try:`;
         householdId={currentUser.householdId}
         t={t}
         onInviteLinkGenerated={(link, helperName) => {
-          // Show success and copy link to clipboard
-          navigator.clipboard?.writeText(link).catch(() => {});
+          // Note: Clipboard copy is already handled by PendingHelperBanner
+          // Only log here to avoid duplicate clipboard operations
           logger.log(`[Home] Invite link for ${helperName} generated:`, link);
         }}
       />

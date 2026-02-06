@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { AuthenticateWithRedirectCallback, useClerk, useUser } from '@clerk/clerk-react';
+import { App as CapacitorApp } from '@capacitor/app';
+import { Capacitor } from '@capacitor/core';
 import Layout from './components/Layout';
 import Home from './components/Home';
 import ToDo from './components/ToDo';
@@ -106,6 +108,46 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     const timer = setTimeout(() => setAppReady(true), 100);
     return () => clearTimeout(timer);
+  }, []);
+
+  // Native deep-link handling (required for OAuth return from system browser).
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+
+    const sub = CapacitorApp.addListener('appUrlOpen', (event) => {
+      try {
+        console.error('[HELpyDeepLink] appUrlOpen ' + JSON.stringify({ url: event.url }));
+      } catch {
+        // ignore
+      }
+
+      const rawUrl = event.url || '';
+      if (!rawUrl) return;
+
+      try {
+        const u = new URL(rawUrl);
+
+        // If we used the custom scheme for OAuth return, forward into the WebView URL
+        // where <AuthenticateWithRedirectCallback /> is mounted.
+        if (u.protocol === 'com.helpyfam.app:') {
+          const target = `${window.location.origin}/#/sso-callback${u.search || ''}${u.hash || ''}`;
+          window.location.href = target;
+          return;
+        }
+
+        // If we get a normal https deep link to our app domain, navigate there directly.
+        if (u.protocol === 'https:' && u.host === 'app.helpyfam.com') {
+          window.location.href = rawUrl;
+          return;
+        }
+      } catch {
+        // ignore malformed urls
+      }
+    });
+
+    return () => {
+      sub.remove();
+    };
   }, []);
   const [activeView, setActiveView] = useState('dashboard');
   const [clerkLoadTimeout, setClerkLoadTimeout] = useState(false);
@@ -2505,18 +2547,27 @@ const AppContent: React.FC = () => {
    *
    * Without this, OAuth can fail to finalize the session after returning to the app.
    */
-  const isSsoCallback =
-    typeof window !== 'undefined' &&
-    (window.location.hash === '#/sso-callback' || window.location.hash.startsWith('#/sso-callback?'));
+  const isSsoCallback = typeof window !== 'undefined' && (() => {
+    const hash = window.location.hash || '';
+    const search = window.location.search || '';
+    // Primary (hash routing)
+    if (hash === '#/sso-callback' || hash.startsWith('#/sso-callback?')) return true;
+    // Fallback (some Android deep-link paths may drop fragments)
+    if (search.includes('__clerk_status') || search.includes('__clerk_created_session') || search.includes('__clerk')) return true;
+    return false;
+  })();
 
   if (isSsoCallback) {
     // Use console.log so it shows in Android Logcat even in production builds
     try {
-      console.log('[HELpyOAuth] Landed on #/sso-callback', {
-        href: window.location.href,
-        hash: window.location.hash,
-        search: window.location.search,
-      });
+      console.error(
+        '[HELpyOAuth] Landed on #/sso-callback ' +
+          JSON.stringify({
+            href: window.location.href,
+            hash: window.location.hash,
+            search: window.location.search,
+          })
+      );
     } catch {
       // ignore
     }

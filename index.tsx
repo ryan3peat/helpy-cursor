@@ -36,12 +36,14 @@ logger.log('[Index] Pathname:', window.location.pathname);
 // Always-visible startup marker for Android Logcat (production included).
 // If you don't see this in Logcat, you're not running this deployed bundle.
 try {
-  console.error('[HELpyBoot] index.tsx loaded', {
+  const bootPayload = {
     href: window.location.href,
     hash: window.location.hash,
     userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'no-navigator',
     mode: import.meta.env?.MODE,
-  });
+  };
+  // Log as a string because Logcat often prints objects as "[object Object]"
+  console.error('[HELpyBoot] index.tsx loaded ' + JSON.stringify(bootPayload));
 } catch {
   // ignore
 }
@@ -59,18 +61,30 @@ const isHelpyNativeUA =
 if (isHelpyNativeUA) {
   const logNav = (reason: string, extra?: Record<string, unknown>) => {
     try {
-      console.log(`[HELpyNav] ${reason}`, {
+      const payload = {
+        reason,
         href: window.location.href,
         origin: window.location.origin,
         pathname: window.location.pathname,
         search: window.location.search,
         hash: window.location.hash,
         ...extra,
-      });
+      };
+      // Use error level so it always appears in Logcat.
+      console.error('[HELpyNav] ' + JSON.stringify(payload));
     } catch {
       // ignore
     }
   };
+
+  try {
+    console.error(
+      '[HELpyNav] enabled ' +
+        JSON.stringify({ userAgent: navigator.userAgent, href: window.location.href })
+    );
+  } catch {
+    // ignore
+  }
 
   logNav('startup');
   window.addEventListener('hashchange', () => logNav('hashchange'));
@@ -135,6 +149,8 @@ root.render(
       // Required for native platforms (Capacitor) per Clerk docs.
       // Prevents Clerk from assuming a full browser cookie setup.
       standardBrowser={!isNative}
+      // Allow custom scheme redirects for native OAuth return.
+      allowedRedirectProtocols={['http', 'https', 'com.helpyfam.app']}
     >
       <SupabaseProvider>
         <App />

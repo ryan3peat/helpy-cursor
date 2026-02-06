@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { AuthenticateWithRedirectCallback, useClerk, useUser } from '@clerk/clerk-react';
-import { App as CapacitorApp } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 import Layout from './components/Layout';
 import Home from './components/Home';
@@ -110,44 +109,115 @@ const AppContent: React.FC = () => {
     return () => clearTimeout(timer);
   }, []);
 
+  // Marker to confirm React mounted (helps diagnose "blank screen")
+  useEffect(() => {
+    try {
+      console.error(
+        '[HELpyReact] AppContent mounted ' +
+          JSON.stringify({
+            href: window.location.href,
+            ua: navigator.userAgent,
+            platform: Capacitor.getPlatform(),
+            isNative: Capacitor.isNativePlatform(),
+          })
+      );
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  // Clerk state tracing (production-safe; visible in Android Logcat)
+  useEffect(() => {
+    const isHelpyNativeUA = typeof navigator !== 'undefined' && /HelpyApp\/\d+/i.test(navigator.userAgent || '');
+    if (!isHelpyNativeUA) return;
+    try {
+      console.error(
+        '[HELpyClerk] ' +
+          JSON.stringify({
+            href: window.location.href,
+            hash: window.location.hash,
+            clerkLoaded,
+            isSignedIn,
+            hasClerkUser: !!clerkUser,
+            clerkUserId: clerkUser?.id || null,
+          })
+      );
+    } catch {
+      // ignore
+    }
+  }, [clerkLoaded, isSignedIn, clerkUser?.id]);
+
   // Native deep-link handling (required for OAuth return from system browser).
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
 
-    const sub = CapacitorApp.addListener('appUrlOpen', (event) => {
+    let remove: null | (() => void) = null;
+
+    (async () => {
       try {
-        console.error('[HELpyDeepLink] appUrlOpen ' + JSON.stringify({ url: event.url }));
-      } catch {
-        // ignore
-      }
+        const mod = await import('@capacitor/app');
+        const AppPlugin = mod.App;
+        const sub = AppPlugin.addListener('appUrlOpen', async (event) => {
+          try {
+            console.error('[HELpyDeepLink] appUrlOpen ' + JSON.stringify({ url: event.url }));
+          } catch {
+            // ignore
+          }
 
-      const rawUrl = event.url || '';
-      if (!rawUrl) return;
+          const rawUrl = event.url || '';
+          if (!rawUrl) return;
 
-      try {
-        const u = new URL(rawUrl);
+          try {
+            const u = new URL(rawUrl);
 
-        // If we used the custom scheme for OAuth return, forward into the WebView URL
-        // where <AuthenticateWithRedirectCallback /> is mounted.
-        if (u.protocol === 'com.helpyfam.app:') {
-          const target = `${window.location.origin}/#/sso-callback${u.search || ''}${u.hash || ''}`;
-          window.location.href = target;
-          return;
+            // If we used the custom scheme for OAuth return, forward into the WebView URL
+            // where <AuthenticateWithRedirectCallback /> is mounted.
+            if (u.protocol === 'com.helpyfam.app:') {
+              const target = `${window.location.origin}/#/sso-callback${u.search || ''}${u.hash || ''}`;
+              try {
+                // Close the system browser if it's still open
+                const mod = await import('@capacitor/browser');
+                await mod.Browser.close();
+              } catch {
+                // ignore
+              }
+              window.location.href = target;
+              return;
+            }
+
+            // If we get a normal https deep link to our app domain, navigate there directly.
+            if (u.protocol === 'https:' && u.host === 'app.helpyfam.com') {
+              try {
+                // Close the system browser if it's still open
+                const mod = await import('@capacitor/browser');
+                await mod.Browser.close();
+              } catch {
+                // ignore
+              }
+              window.location.href = rawUrl;
+              return;
+            }
+          } catch {
+            // ignore malformed urls
+          }
+        });
+
+        remove = () => sub.remove();
+        try {
+          console.error('[HELpyDeepLink] listener registered');
+        } catch {
+          // ignore
         }
-
-        // If we get a normal https deep link to our app domain, navigate there directly.
-        if (u.protocol === 'https:' && u.host === 'app.helpyfam.com') {
-          window.location.href = rawUrl;
-          return;
+      } catch (e: any) {
+        try {
+          console.error('[HELpyDeepLink] failed to register ' + (e?.message || String(e)));
+        } catch {
+          // ignore
         }
-      } catch {
-        // ignore malformed urls
       }
-    });
+    })();
 
-    return () => {
-      sub.remove();
-    };
+    return () => remove?.();
   }, []);
   const [activeView, setActiveView] = useState('dashboard');
   const [clerkLoadTimeout, setClerkLoadTimeout] = useState(false);
@@ -349,6 +419,25 @@ const AppContent: React.FC = () => {
     const saved = localStorage.getItem('helpy_current_session_user');
     return saved ? JSON.parse(saved) : null;
   });
+  
+  // App auth state tracing (production-safe; visible in Android Logcat)
+  useEffect(() => {
+    const isHelpyNativeUA = typeof navigator !== 'undefined' && /HelpyApp\/\d+/i.test(navigator.userAgent || '');
+    if (!isHelpyNativeUA) return;
+    try {
+      console.error(
+        '[HELpyAuthState] ' +
+          JSON.stringify({
+            hasCurrentUser: !!currentUser,
+            currentUserId: currentUser?.id || null,
+            inviteHash: window.location.hash,
+            inviteSearch: window.location.search,
+          })
+      );
+    } catch {
+      // ignore
+    }
+  }, [currentUser?.id]);
   
   // Session verification state - ensures we verify session BEFORE showing content
   // This is the "at the door" check to catch stale sessions early

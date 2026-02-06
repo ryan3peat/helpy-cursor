@@ -48,6 +48,40 @@ try {
   // ignore
 }
 
+// Global error hooks (critical for diagnosing "blank screen" in Android WebView)
+window.addEventListener('error', (e) => {
+  try {
+    const err = (e as ErrorEvent).error as any;
+    console.error(
+      '[HELpyGlobalError] ' +
+        JSON.stringify({
+          message: (e as ErrorEvent).message,
+          filename: (e as ErrorEvent).filename,
+          lineno: (e as ErrorEvent).lineno,
+          colno: (e as ErrorEvent).colno,
+          stack: err?.stack,
+        })
+    );
+  } catch {
+    // ignore
+  }
+});
+
+window.addEventListener('unhandledrejection', (e) => {
+  try {
+    const reason: any = (e as PromiseRejectionEvent).reason;
+    console.error(
+      '[HELpyUnhandledRejection] ' +
+        JSON.stringify({
+          message: reason?.message || String(reason),
+          stack: reason?.stack,
+        })
+    );
+  } catch {
+    // ignore
+  }
+});
+
 /**
  * Debug: Log navigations + clicks in the native app.
  *

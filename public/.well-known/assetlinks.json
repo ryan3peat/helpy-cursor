@@ -1,0 +1,13 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.helpyfam.app",
+      "sha256_cert_fingerprints": [
+        "FE:C6:27:3E:C9:18:B8:EC:9D:D3:5A:BB:3C:FF:6D:85:D7:01:22:EE:2B:1D:D9:88:A2:09:3A:9E:19:0B:27:0C",
+        "REPLACE_WITH_RELEASE_SHA256"
+      ]
+    }
+  }
+]

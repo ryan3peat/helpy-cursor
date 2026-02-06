@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { SignIn, useUser, useClerk, useSignIn } from '@clerk/clerk-react';
+import { Browser } from '@capacitor/browser';
 import { useSupabase, useSupabaseReady, getAuthenticatedSupabaseClient } from '../contexts/SupabaseContext';
 import { supabase as defaultSupabase } from '../services/supabase';
 import { User, TranslationDictionary } from '../types';
@@ -951,27 +952,46 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
     logger.log('🔴 [Auth] Rendering SignIn component - Clerk loaded but no authenticated user');
     logger.log('🔴 [Auth] State:', { isLoaded, hasUser: !!user });
 
-    // Custom Google OAuth for native (Capacitor) so we can use a custom-scheme redirect
-    // and reliably return from the system browser back into the app.
+    // Custom Google OAuth so we can control redirect URLs.
+    // On native (Capacitor), we run the entire auth flow in the system browser (Custom Tabs)
+    // to keep Clerk/Google cookies consistent, then return to the app via deep link.
     const isNative = typeof navigator !== 'undefined' && /HelpyApp\/\d+/i.test(navigator.userAgent || '');
     const handleGoogleSignIn = async () => {
+      try {
+        console.error('[HELpyOAuth] google button clicked ' + JSON.stringify({ signInLoaded, hasSignIn: !!signIn, isNative }));
+      } catch {
+        // ignore
+      }
       if (!signInLoaded || !signIn) {
-        // retry shortly if Clerk isn't ready yet
-        setTimeout(() => handleGoogleSignIn(), 100);
+        showAlert('Please wait', 'Sign-in is still loading. Try again in a second.', 'info');
         return;
       }
       try {
-        const redirectUrl = isNative
-          ? 'com.helpyfam.app://sso-callback'
-          : `${window.location.origin}/#/sso-callback`;
+        // Callback route where <AuthenticateWithRedirectCallback /> is mounted
+        const callbackUrl = `${window.location.origin}/#/sso-callback`;
+
+        if (isNative) {
+          // Use an HTTPS redirect back to the app domain.
+          // Clerk hosted pages may reject custom-scheme redirect_url values and fall back
+          // to the instance "after sign in" URL (which in your case is the marketing site).
+          const signInUrl =
+            `https://accounts.helpyfam.com/sign-in` +
+            `?redirect_url=${encodeURIComponent(callbackUrl)}` +
+            `&after_sign_in_url=${encodeURIComponent(window.location.origin)}` +
+            `&after_sign_up_url=${encodeURIComponent(window.location.origin)}`;
+          console.error('[HELpyOAuth] open system browser ' + JSON.stringify({ signInUrl, callbackUrl }));
+          await Browser.open({ url: signInUrl });
+          // Completion will arrive via AppUrlOpen -> App.tsx listener
+          return;
+        }
 
         // Visible in Android Logcat even in production (helps confirm redirect action)
-        console.error('[HELpyOAuth] start google sign-in ' + JSON.stringify({ isNative, redirectUrl }));
+        console.error('[HELpyOAuth] start google sign-in ' + JSON.stringify({ isNative, redirectUrl: callbackUrl }));
 
         await signIn.authenticateWithRedirect({
           strategy: 'oauth_google',
-          redirectUrl,
-          redirectUrlComplete: redirectUrl,
+          redirectUrl: callbackUrl,
+          redirectUrlComplete: callbackUrl,
         });
       } catch (e: any) {
         console.error('[HELpyOAuth] google sign-in failed ' + (e?.message || String(e)));
@@ -994,6 +1014,22 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
             background-color: white !important;
             background: white !important;
             border: 1px solid #E5E7EB !important;
+          }
+
+          /* Hide Clerk's built-in social buttons (we render our own above). */
+          .helpy-clerk-signin [class*="cl-socialButtons"],
+          .helpy-clerk-signin [class*="cl-socialButtonsBlock"],
+          .helpy-clerk-signin [class*="cl-socialButtonsBlockButton"],
+          .helpy-clerk-signin [class*="cl-dividerRow"] {
+            display: none !important;
+          }
+
+          /* Extra safety: hide the Google button by provider attribute (Clerk) */
+          .helpy-clerk-signin button[data-provider="oauth_google"]:not([data-helpy-google]),
+          .helpy-clerk-signin button[data-provider-name="oauth_google"]:not([data-helpy-google]),
+          .helpy-clerk-signin button[data-provider="google"]:not([data-helpy-google]),
+          .helpy-clerk-signin button[data-provider-name="google"]:not([data-helpy-google]) {
+            display: none !important;
           }
         `}</style>
         <div className="min-h-screen w-full flex flex-col p-6 pt-16 page-fade-in auth-gradient-bg">
@@ -1021,6 +1057,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
               type="button"
               onClick={handleGoogleSignIn}
               disabled={!signInLoaded}
+              data-helpy-google="1"
               className="w-full py-3.5 bg-white border border-border rounded-2xl text-body font-medium text-foreground flex items-center justify-center gap-3 disabled:opacity-50 mb-5"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -1033,7 +1070,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
             </button>
 
             {/* Clerk Auth Component */}
-            <div className="w-full">
+            <div className="w-full helpy-clerk-signin">
               <SignIn 
                 appearance={{
                   variables: {
@@ -1057,6 +1094,10 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
                     // Hide Clerk's built-in social buttons (we render our own above)
                     socialButtonsBlock: "hidden",
                     dividerRow: "hidden",
+                    socialButtonsBlockButton: "hidden",
+                    socialButtonsBlockButtonText: "hidden",
+                    dividerLine: "hidden",
+                    dividerText: "hidden",
                     socialButtonsBlockButton: "!bg-white !border !border-[#E5E7EB] !rounded-2xl !font-medium !shadow-none !py-[14px]",
                     socialButtonsBlockButtonText: "!font-medium !text-sm !text-[#474747]",
                     formButtonPrimary: "!bg-[#3EAFD2] !border-0 !shadow-sm !rounded-2xl !font-semibold !py-[14px]",

@@ -3,7 +3,6 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { SignIn, useUser, useClerk, useSignIn } from '@clerk/clerk-react';
-import { Browser } from '@capacitor/browser';
 import { useSupabase, useSupabaseReady, getAuthenticatedSupabaseClient } from '../contexts/SupabaseContext';
 import { supabase as defaultSupabase } from '../services/supabase';
 import { User, TranslationDictionary } from '../types';
@@ -952,11 +951,14 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
     logger.log('🔴 [Auth] Rendering SignIn component - Clerk loaded but no authenticated user');
     logger.log('🔴 [Auth] State:', { isLoaded, hasUser: !!user });
 
-    // Custom Google OAuth so we can control redirect URLs.
-    // On native (Capacitor), we run the entire auth flow in the system browser (Custom Tabs)
-    // to keep Clerk/Google cookies consistent, then return to the app via deep link.
-    const isNative = typeof navigator !== 'undefined' && /HelpyApp\/\d+/i.test(navigator.userAgent || '');
+    // Custom Google OAuth – always use Clerk's redirect-based flow inside the WebView.
+    // The '; wv' marker is stripped from the WebView user agent in MainActivity.java so
+    // Google won't block the OAuth consent page. Keeping the entire redirect chain
+    // (Clerk → Google → Clerk → #/sso-callback) in the WebView means cookies stay in
+    // one context, preventing Clerk's "authorization_invalid" error and avoiding Chrome
+    // Custom Tab issues (not closing, user stuck in browser, etc.).
     const handleGoogleSignIn = async () => {
+      const isNative = typeof navigator !== 'undefined' && /HelpyApp\/\d+/i.test(navigator.userAgent || '');
       try {
         console.error('[HELpyOAuth] google button clicked ' + JSON.stringify({ signInLoaded, hasSignIn: !!signIn, isNative }));
       } catch {
@@ -967,25 +969,9 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
         return;
       }
       try {
-        // Callback route where <AuthenticateWithRedirectCallback /> is mounted
-        const callbackUrl = `${window.location.origin}/#/sso-callback`;
+        const appUrl = window.location.origin;
+        const callbackUrl = `${appUrl}/#/sso-callback`;
 
-        if (isNative) {
-          // Use an HTTPS redirect back to the app domain.
-          // Clerk hosted pages may reject custom-scheme redirect_url values and fall back
-          // to the instance "after sign in" URL (which in your case is the marketing site).
-          const signInUrl =
-            `https://accounts.helpyfam.com/sign-in` +
-            `?redirect_url=${encodeURIComponent(callbackUrl)}` +
-            `&after_sign_in_url=${encodeURIComponent(window.location.origin)}` +
-            `&after_sign_up_url=${encodeURIComponent(window.location.origin)}`;
-          console.error('[HELpyOAuth] open system browser ' + JSON.stringify({ signInUrl, callbackUrl }));
-          await Browser.open({ url: signInUrl });
-          // Completion will arrive via AppUrlOpen -> App.tsx listener
-          return;
-        }
-
-        // Visible in Android Logcat even in production (helps confirm redirect action)
         console.error('[HELpyOAuth] start google sign-in ' + JSON.stringify({ isNative, redirectUrl: callbackUrl }));
 
         await signIn.authenticateWithRedirect({
@@ -1119,9 +1105,10 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
                     }
                   }
                 }}
+                oauthFlow="redirect"
                 routing="hash"
                 signUpUrl={null}
-                forceRedirectUrl="https://app.helpyfam.com/"
+                forceRedirectUrl="/"
               />
             
               {/* Custom Sign Up Button */}

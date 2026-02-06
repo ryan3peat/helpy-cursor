@@ -34,8 +34,12 @@ public class MainActivity extends BridgeActivity {
         webSettings.setJavaScriptCanOpenWindowsAutomatically(true);
         webSettings.setSupportMultipleWindows(false);
         
-        // User agent - ensure it looks like a real browser
+        // User agent – strip the '; wv' marker that Android adds to WebView UA strings.
+        // Google detects this marker and blocks OAuth consent inside embedded WebViews.
+        // Removing it allows the full redirect-based OAuth flow (Clerk → Google → Clerk)
+        // to complete inside the Capacitor WebView without being rejected by Google.
         String userAgent = webSettings.getUserAgentString();
+        userAgent = userAgent.replace("; wv", "");
         webSettings.setUserAgentString(userAgent + " HelpyApp/1.0");
     }
 }

@@ -11,12 +11,14 @@ const config: CapacitorConfig = {
     allowNavigation: [
       'https://informed-guppy-42.clerk.accounts.dev',
       'https://clerk.helpyfam.com',
-      'https://clerk.helpyfam.com/*',  // ADD THIS
+      'https://clerk.helpyfam.com/*',
       'https://*.clerk.accounts.dev',
       'https://app.helpyfam.com',
+      'https://app.helpyfam.com/*',
       'https://accounts.helpyfam.com',
-      'https://accounts.google.com',   // ADD THIS - Google OAuth
-      'https://accounts.google.com/*'  // ADD THIS
+      'https://accounts.helpyfam.com/*',
+      'https://accounts.google.com',
+      'https://accounts.google.com/*'
     ]
   },
   plugins: {

@@ -147,7 +147,9 @@ const AppContent: React.FC = () => {
     }
   }, [clerkLoaded, isSignedIn, clerkUser?.id]);
 
-  // Native deep-link handling (required for OAuth return from system browser).
+  // Native deep-link handling (for invite links, shared URLs, etc.).
+  // OAuth no longer uses Chrome Custom Tabs – it completes entirely inside the WebView –
+  // so this handler only needs to forward external intents into the WebView URL space.
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
 
@@ -170,30 +172,15 @@ const AppContent: React.FC = () => {
           try {
             const u = new URL(rawUrl);
 
-            // If we used the custom scheme for OAuth return, forward into the WebView URL
-            // where <AuthenticateWithRedirectCallback /> is mounted.
+            // Custom-scheme callback (legacy / fallback for OAuth)
             if (u.protocol === 'com.helpyfam.app:') {
               const target = `${window.location.origin}/#/sso-callback${u.search || ''}${u.hash || ''}`;
-              try {
-                // Close the system browser if it's still open
-                const mod = await import('@capacitor/browser');
-                await mod.Browser.close();
-              } catch {
-                // ignore
-              }
               window.location.href = target;
               return;
             }
 
-            // If we get a normal https deep link to our app domain, navigate there directly.
+            // HTTPS deep link to our app domain – navigate the WebView there.
             if (u.protocol === 'https:' && u.host === 'app.helpyfam.com') {
-              try {
-                // Close the system browser if it's still open
-                const mod = await import('@capacitor/browser');
-                await mod.Browser.close();
-              } catch {
-                // ignore
-              }
               window.location.href = rawUrl;
               return;
             }

@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { ClerkProvider } from '@clerk/clerk-react';
+import { Capacitor } from '@capacitor/core';
 import './index.css';
 import App from './App';
 import { SupabaseProvider } from './contexts/SupabaseContext';
@@ -32,6 +33,71 @@ logger.log('[Index] App starting. URL:', window.location.href);
 logger.log('[Index] Hash:', window.location.hash);
 logger.log('[Index] Pathname:', window.location.pathname);
 
+// Always-visible startup marker for Android Logcat (production included).
+// If you don't see this in Logcat, you're not running this deployed bundle.
+try {
+  console.error('[HELpyBoot] index.tsx loaded', {
+    href: window.location.href,
+    hash: window.location.hash,
+    userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'no-navigator',
+    mode: import.meta.env?.MODE,
+  });
+} catch {
+  // ignore
+}
+
+/**
+ * Debug: Log navigations + clicks in the native app.
+ *
+ * Important: `logger.log()` is dev-only, so on production builds (like `app.helpyfam.com`)
+ * it won't show in Android Logcat. We intentionally use `console.log()` here so you can
+ * see the OAuth redirect flow in Logcat.
+ */
+const isHelpyNativeUA =
+  typeof navigator !== 'undefined' && /HelpyApp\/\d+/i.test(navigator.userAgent || '');
+
+if (isHelpyNativeUA) {
+  const logNav = (reason: string, extra?: Record<string, unknown>) => {
+    try {
+      console.log(`[HELpyNav] ${reason}`, {
+        href: window.location.href,
+        origin: window.location.origin,
+        pathname: window.location.pathname,
+        search: window.location.search,
+        hash: window.location.hash,
+        ...extra,
+      });
+    } catch {
+      // ignore
+    }
+  };
+
+  logNav('startup');
+  window.addEventListener('hashchange', () => logNav('hashchange'));
+  window.addEventListener('popstate', () => logNav('popstate'));
+  window.addEventListener('pagehide', () => logNav('pagehide'));
+  document.addEventListener('visibilitychange', () => logNav('visibilitychange', { visibilityState: document.visibilityState }));
+
+  // Capture clicks on OAuth buttons (Clerk uses data-provider="oauth_google")
+  document.addEventListener(
+    'click',
+    (e) => {
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+      const btn = target.closest?.('button') as HTMLButtonElement | null;
+      if (!btn) return;
+
+      const provider = btn.getAttribute('data-provider') || btn.getAttribute('data-provider-name');
+      const text = (btn.textContent || '').trim().slice(0, 80);
+
+      if (provider || /google/i.test(text) || /continue with google/i.test(text)) {
+        logNav('click', { provider, text });
+      }
+    },
+    true
+  );
+}
+
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 if (!clerkPubKey) {
   throw new Error('Missing Clerk Publishable Key');
@@ -59,12 +125,16 @@ const isProduction = typeof window !== 'undefined' &&
   (window.location.hostname === 'app.helpyfam.com' || 
    window.location.hostname.includes('helpyfam.com'));
 
+const isNative = Capacitor.isNativePlatform();
+
 root.render(
   <React.StrictMode>
     <ClerkProvider 
       publishableKey={clerkPubKey}
-      domain={isProduction ? 'helpyfam.com' : undefined}
       fallbackRedirectUrl={typeof window !== 'undefined' ? window.location.origin : undefined}
+      // Required for native platforms (Capacitor) per Clerk docs.
+      // Prevents Clerk from assuming a full browser cookie setup.
+      standardBrowser={!isNative}
     >
       <SupabaseProvider>
         <App />

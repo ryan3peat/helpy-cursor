@@ -77,6 +77,12 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
   // Helper function to get redirect URL with invite params preserved
   const getRedirectUrl = () => {
     const baseUrl = window.location.origin + window.location.pathname;
+    
+    // Log what we're using
+    console.log('🔵 [OAuth] window.location.origin:', window.location.origin);
+    console.log('🔵 [OAuth] window.location.href:', window.location.href);
+    console.log('🔵 [OAuth] Computed redirectUrl:', baseUrl);
+    
     const urlParams = new URLSearchParams(window.location.search);
     const hashParams = new URLSearchParams(window.location.hash.split('?')[1] || '');
     const isInvite = urlParams.get('invite') === 'true' || hashParams.get('invite') === 'true';
@@ -349,6 +355,8 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
     try {
       // Preserve invite params in redirect URL
       const redirectUrl = getRedirectUrl();
+      console.log('🔵 [OAuth] Initiating Google OAuth with redirectUrl:', redirectUrl);
+      console.log('🔵 [OAuth] redirectUrlComplete:', redirectUrl);
       
       await signUp.authenticateWithRedirect({
         strategy: 'oauth_google',
@@ -356,6 +364,8 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
         redirectUrlComplete: redirectUrl,
       });
     } catch (error: any) {
+      console.error('🔴 [OAuth] Error:', error);
+      console.error('🔴 [OAuth] Error details:', JSON.stringify(error, null, 2));
       logger.error('Google OAuth error:', error);
       
       // Check for external_account_exists error BEFORE redirect

@@ -1031,6 +1031,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
                 }}
                 routing="hash"
                 signUpUrl={null}
+                forceRedirectUrl="https://app.helpyfam.com/"
               />
             
               {/* Custom Sign Up Button */}

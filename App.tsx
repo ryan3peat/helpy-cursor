@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useClerk, useUser } from '@clerk/clerk-react';
+import { AuthenticateWithRedirectCallback, useClerk, useUser } from '@clerk/clerk-react';
 import Layout from './components/Layout';
 import Home from './components/Home';
 import ToDo from './components/ToDo';
@@ -2494,6 +2494,41 @@ const AppContent: React.FC = () => {
     }
     
     return <AppLoading />;
+  }
+
+  /**
+   * Clerk OAuth completion route.
+   *
+   * Clerk's `<SignIn />` component (with `routing="hash"`) uses `#/sso-callback` as the
+   * redirect URL for OAuth connections. Since this app does not use a router, we must
+   * explicitly render the callback handler when we land on that hash route.
+   *
+   * Without this, OAuth can fail to finalize the session after returning to the app.
+   */
+  const isSsoCallback =
+    typeof window !== 'undefined' &&
+    (window.location.hash === '#/sso-callback' || window.location.hash.startsWith('#/sso-callback?'));
+
+  if (isSsoCallback) {
+    // Use console.log so it shows in Android Logcat even in production builds
+    try {
+      console.log('[HELpyOAuth] Landed on #/sso-callback', {
+        href: window.location.href,
+        hash: window.location.hash,
+        search: window.location.search,
+      });
+    } catch {
+      // ignore
+    }
+    return (
+      <div className="min-h-screen w-full flex flex-col items-center justify-center p-6 auth-gradient-bg overflow-hidden">
+        <AuthenticateWithRedirectCallback
+          // Always return to the app root after OAuth completes
+          signInForceRedirectUrl="/"
+          signUpForceRedirectUrl="/"
+        />
+      </div>
+    );
   }
 
   // OPTION 2: Skip InviteWelcome - go directly to Auth/SignUp for faster flow

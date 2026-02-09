@@ -12,7 +12,7 @@ const logger = {
 
 // Use international endpoint for international edition accounts
 const DASHSCOPE_API_URL = 'https://dashscope-intl.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation';
-const QWEN_MODEL = 'qwen3-vl-flash-2025-10-15';
+const QWEN_MODEL = 'qwen-vl-ocr';
 
 interface QwenVLRequest {
   base64Image: string;

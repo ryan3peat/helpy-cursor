@@ -50,6 +50,8 @@ import { processReceipt, ParsedReceipt } from '../services/visionService';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { useDemoMode } from '../contexts/DemoModeContext';
 import { logger } from '../utils/logger';
+import { Capacitor } from '@capacitor/core';
+import { Camera, CameraSource, CameraResultType } from '@capacitor/camera';
 
 // Expense Category Config (colors and icons)
 type ExpenseCategoryConfig = {
@@ -904,6 +906,57 @@ const Expenses: React.FC<ExpensesProps> = ({
     }
   };
 
+  // Native camera capture: opens device camera directly (fixes Android file picker issue)
+  const handleCameraCapture = async () => {
+    if (isAiScanRestricted) {
+      showAiScanLimitModal();
+      return;
+    }
+    const isNative = Capacitor.isNativePlatform();
+    if (isNative) {
+      setAddExpenseStage('closed');
+      setIsScanning(true);
+      setError(null);
+      try {
+        const photo = await Camera.getPhoto({
+          source: CameraSource.CAMERA,
+          quality: 0.9,
+          resultType: CameraResultType.Base64,
+        });
+        if (!photo.base64String) throw new Error('No image captured');
+        const base64Data = photo.base64String;
+        const fileType = (photo.format || 'jpeg') as string;
+        const thumbnailBase64 = `data:image/${fileType};base64,${base64Data}`;
+        const knownMerchantsPromise = getKnownMerchants(householdId).catch(() => [] as string[]);
+        const { url, path } = await uploadReceiptImage(householdId, base64Data, fileType);
+        const receiptId = await createReceiptRecord(householdId, path, url);
+        const knownMerchants = await knownMerchantsPromise;
+        const parsed = await processReceipt(base64Data, { knownMerchants });
+        await updateReceiptWithOCR(receiptId, parsed);
+        logger.log('[OCR] Parsed receipt:', { total: parsed.total, merchant: parsed.merchant, lineItemsCount: parsed.lineItems?.length || 0 });
+        if (!hasPaidSubscription && onIncrementAiScan) onIncrementAiScan();
+        setPendingReceipt({ receiptId, imageUrl: url, thumbnailBase64, parsed });
+        setEditAmount(parsed.total.toFixed(2));
+        setEditMerchant(parsed.merchant);
+        setEditCategory(parsed.category || EXPENSE_CATEGORIES[0]);
+        setEditDate(parsed.date || getLocalDateString());
+        setAddExpenseStage('ocr');
+      } catch (err) {
+        const msg = (err as { message?: string })?.message ?? '';
+        if (/cancel/i.test(msg)) return; // User cancelled - don't show error
+        logger.error('Receipt processing failed:', err);
+        const errorMsg = err instanceof Error ? err.message.toLowerCase() : '';
+        setError(errorMsg.includes('rate limit') || errorMsg.includes('429')
+          ? (t['error.ocr_busy'] || 'Receipt scanning is busy. Please try again in a moment.')
+          : (t['error.ocr_failed'] || 'Could not read this receipt. Please try a clearer photo.'));
+      } finally {
+        setIsScanning(false);
+      }
+    } else {
+      cameraInputRef.current?.click();
+    }
+  };
+
   // ─────────────────────────────────────────────────────────────────
   // Save Expense (works for both OCR and Manual)
   // ─────────────────────────────────────────────────────────────────
@@ -1577,7 +1630,7 @@ const Expenses: React.FC<ExpensesProps> = ({
                         <span className="text-body font-semibold">{t['expenses.from_photos'] || 'From Photos'}</span>
                       </button>
                       <button
-                        onClick={() => cameraInputRef.current?.click()}
+                        onClick={handleCameraCapture}
                         className="px-4 py-3.5 rounded-xl bg-primary flex items-center justify-center gap-2 text-primary-foreground shadow-sm"
                       >
                         <Camera size={18} />

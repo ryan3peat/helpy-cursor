@@ -1,5 +1,5 @@
 // services/visionService.ts
-// Handles OCR processing via server-side API proxy (which uses Alibaba Cloud Qwen-VL)
+// Handles OCR processing via server-side API proxy (which uses Alibaba Cloud Qwen-VL-OCR)
 import { logger } from '../utils/logger';
 
 export interface ParsedReceipt {
@@ -30,7 +30,8 @@ interface OCRApiResponse {
 
 /**
  * Send image to server-side OCR API proxy (which calls Alibaba Cloud Qwen-VL API)
- * Why: Uses server-side proxy to avoid CORS issues and keep API key secure
+ * Why: Uses server-side proxy to avoid CORS issues and keep API key secure.
+ * Model: Qwen-VL-OCR (purpose-built for receipt/document OCR)
  */
 export async function extractTextFromImage(base64Image: string): Promise<string> {
   const response = await fetch(OCR_API_URL, {

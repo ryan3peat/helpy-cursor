@@ -59,6 +59,23 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
   const [isOAuthProcessing, setIsOAuthProcessing] = useState(false);
   const [hasCheckedOAuthRedirect, setHasCheckedOAuthRedirect] = useState(false);
 
+  // Initialize native Google Sign-In plugin once at mount (required before login() calls)
+  useEffect(() => {
+    const isNative = typeof (window as any)?.Capacitor !== 'undefined'
+      && (window as any)?.Capacitor?.isNativePlatform?.();
+    if (isNative) {
+      import('@capgo/capacitor-social-login').then(({ SocialLogin }) => {
+        SocialLogin.initialize({
+          google: {
+            webClientId: '687792783542-b3fsfqlrq1vls826ou7vc0m03e73s3q6.apps.googleusercontent.com',
+          },
+        }).catch((err: any) => {
+          console.error('[HelpyOAuth] SocialLogin.initialize() failed:', err?.message || err);
+        });
+      });
+    }
+  }, []);
+
   // Check for invite params and preserve them
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -335,7 +352,7 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
     }
   };
 
-  // Handle Google OAuth signup - directly initiate OAuth flow
+  // Handle Google OAuth signup - uses native SDK on Android/iOS, redirect flow on web.
   const handleGoogleSignUp = async () => {
     if (!signUp || !isLoaded) {
       // If signUp isn't ready, wait a bit and try again
@@ -352,23 +369,93 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
     setError('');
     setHasCheckedOAuthRedirect(false);
 
+    const isNative = typeof (window as any)?.Capacitor !== 'undefined'
+      && (window as any)?.Capacitor?.isNativePlatform?.();
+
     try {
-      // Preserve invite params in redirect URL
-      const redirectUrl = getRedirectUrl();
-      console.log('🔵 [OAuth] Initiating Google OAuth with redirectUrl:', redirectUrl);
-      console.log('🔵 [OAuth] redirectUrlComplete:', redirectUrl);
-      
-      await signUp.authenticateWithRedirect({
-        strategy: 'oauth_google',
-        redirectUrl: redirectUrl,
-        redirectUrlComplete: redirectUrl,
-      });
+      if (isNative) {
+        // ── Native: use Google Sign-In SDK (no browser at all) ──
+        const { SocialLogin } = await import('@capgo/capacitor-social-login');
+
+        console.log('🔵 [OAuth] calling SocialLogin.login()...');
+        const result = await SocialLogin.login({
+          provider: 'google',
+          options: {},
+        });
+
+        console.log('🔵 [OAuth] SocialLogin.login() result:', JSON.stringify(result));
+        const idToken = (result as any)?.result?.idToken;
+        if (!idToken) {
+          throw new Error('No ID token returned from Google Sign-In');
+        }
+
+        console.log('🔵 [OAuth] Got native Google ID token, exchanging for Clerk ticket');
+
+        // Exchange the Google ID token for a Clerk sign-in ticket via backend
+        // (backend creates the Clerk user if it doesn't exist)
+        const apiUrl = import.meta.env?.VITE_API_URL || '';
+        const res = await fetch(`${apiUrl}/api/google-native-signin`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ idToken }),
+        });
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || `Backend returned ${res.status}`);
+        }
+
+        const { ticket } = await res.json();
+
+        // Use the ticket to create a Clerk session (signIn, not signUp, because
+        // the backend already created the Clerk user if needed)
+        if (!signInLoaded || !signIn) {
+          throw new Error('Sign-in not ready');
+        }
+
+        const signInResult = await signIn.create({
+          strategy: 'ticket',
+          ticket,
+        });
+
+        if (signInResult.status === 'complete') {
+          // Track signup for Meta Pixel
+          trackSignupComplete({
+            content_name: 'Trial Signup - Google OAuth (Native)',
+            content_category: 'oauth_signup',
+          });
+          await setActiveSignIn({ session: signInResult.createdSessionId });
+          console.log('🔵 [OAuth] Native Google sign-up complete, session activated');
+        } else {
+          console.error('🔴 [OAuth] Unexpected sign-in status:', signInResult.status);
+          setError('Sign-up incomplete. Please try again.');
+          setIsOAuthProcessing(false);
+        }
+      } else {
+        // ── Web: standard Clerk redirect flow ──
+        const redirectUrl = getRedirectUrl();
+        console.log('🔵 [OAuth] Initiating Google OAuth with redirectUrl:', redirectUrl);
+        console.log('🔵 [OAuth] redirectUrlComplete:', redirectUrl);
+        
+        await signUp.authenticateWithRedirect({
+          strategy: 'oauth_google',
+          redirectUrl: redirectUrl,
+          redirectUrlComplete: redirectUrl,
+        });
+      }
     } catch (error: any) {
       console.error('🔴 [OAuth] Error:', error);
       console.error('🔴 [OAuth] Error details:', JSON.stringify(error, null, 2));
       logger.error('Google OAuth error:', error);
+
+      // Don't show error if user cancelled the native picker
+      if (error?.message?.toLowerCase().includes('cancel') || error?.message?.toLowerCase().includes('dismissed')) {
+        setIsOAuthProcessing(false);
+        setHasCheckedOAuthRedirect(false);
+        return;
+      }
       
-      // Check for external_account_exists error BEFORE redirect
+      // Check for external_account_exists error BEFORE redirect (web flow only)
       const hasExternalAccountError = error.errors?.some(
         (e: any) => e.code === 'external_account_exists' || 
                     e.code === 'form_identifier_exists' ||

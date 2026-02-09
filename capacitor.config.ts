@@ -8,17 +8,13 @@ const config: CapacitorConfig = {
     androidScheme: 'https',
     url: 'https://app.helpyfam.com',
     cleartext: true,
+    // IMPORTANT: Capacitor's HostMask matches against the HOSTNAME only.
+    // Do NOT include a scheme (https://) or path (/*) – they become part
+    // of the first host segment and silently break matching.
     allowNavigation: [
-      'https://informed-guppy-42.clerk.accounts.dev',
-      'https://clerk.helpyfam.com',
-      'https://clerk.helpyfam.com/*',
-      'https://*.clerk.accounts.dev',
-      'https://app.helpyfam.com',
-      'https://app.helpyfam.com/*',
-      'https://accounts.helpyfam.com',
-      'https://accounts.helpyfam.com/*',
-      'https://accounts.google.com',
-      'https://accounts.google.com/*'
+      '*.helpyfam.com',
+      '*.clerk.accounts.dev',
+      '*.google.com'
     ]
   },
   plugins: {
@@ -37,6 +33,17 @@ const config: CapacitorConfig = {
        * specific API calls that truly need native HTTP.
        */
       enabled: false
+    },
+    SocialLogin: {
+      google: {
+        /**
+         * This MUST be the Web client ID from Google Cloud Console
+         * (the same one configured in Clerk Dashboard → SSO → Google).
+         * It is NOT the Android client ID.
+         * Replace the placeholder below with your actual Web client ID.
+         */
+        webClientId: '687792783542-b3fsfqlrq1vls826ou7vc0m03e73s3q6.apps.googleusercontent.com',
+      }
     }
   }
 };

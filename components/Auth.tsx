@@ -34,7 +34,7 @@ interface AuthProps {
 
 const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
   const { user, isLoaded } = useUser();
-  const { signOut, redirectToSignIn } = useClerk();
+  const { signOut, redirectToSignIn, setActive } = useClerk();
   const { signIn, isLoaded: signInLoaded } = useSignIn();
   const supabaseFromContext = useSupabase(); // Authenticated client from context
   const isSupabaseReady = useSupabaseReady(); // Check if JWT is ready
@@ -109,6 +109,25 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
     newUserId: string;
   } | null>(null);
   const hasCheckedUser = React.useRef(false);
+
+  // Initialize native Google Sign-In plugin once at mount (required before login() calls)
+  React.useEffect(() => {
+    const isNative = typeof (window as any)?.Capacitor !== 'undefined'
+      && (window as any)?.Capacitor?.isNativePlatform?.();
+    if (isNative) {
+      import('@capgo/capacitor-social-login').then(({ SocialLogin }) => {
+        SocialLogin.initialize({
+          google: {
+            webClientId: '687792783542-b3fsfqlrq1vls826ou7vc0m03e73s3q6.apps.googleusercontent.com',
+          },
+        }).then(() => {
+          console.error('[HelpyOAuth] SocialLogin.initialize() succeeded');
+        }).catch((err: any) => {
+          console.error('[HelpyOAuth] SocialLogin.initialize() failed: ' + (err?.message || String(err)));
+        });
+      });
+    }
+  }, []);
 
   // Auth page styling handled by CSS only (html.auth-page class)
   React.useEffect(() => {
@@ -951,16 +970,16 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
     logger.log('🔴 [Auth] Rendering SignIn component - Clerk loaded but no authenticated user');
     logger.log('🔴 [Auth] State:', { isLoaded, hasUser: !!user });
 
-    // Custom Google OAuth – always use Clerk's redirect-based flow inside the WebView.
-    // The '; wv' marker is stripped from the WebView user agent in MainActivity.java so
-    // Google won't block the OAuth consent page. Keeping the entire redirect chain
-    // (Clerk → Google → Clerk → #/sso-callback) in the WebView means cookies stay in
-    // one context, preventing Clerk's "authorization_invalid" error and avoiding Chrome
-    // Custom Tab issues (not closing, user stuck in browser, etc.).
+    // Google Sign-In handler.
+    // On native Android/iOS, uses the native Google Sign-In SDK via @capgo/capacitor-social-login.
+    // This shows a system-level account picker (no browser/WebView involved), then exchanges
+    // the ID token for a Clerk sign-in ticket via our backend.
+    // On web, falls back to Clerk's standard redirect-based OAuth flow.
     const handleGoogleSignIn = async () => {
-      const isNative = typeof navigator !== 'undefined' && /HelpyApp\/\d+/i.test(navigator.userAgent || '');
+      const isNative = typeof (window as any)?.Capacitor !== 'undefined'
+        && (window as any)?.Capacitor?.isNativePlatform?.();
       try {
-        console.error('[HELpyOAuth] google button clicked ' + JSON.stringify({ signInLoaded, hasSignIn: !!signIn, isNative }));
+        console.error('[HelpyOAuth] google button clicked ' + JSON.stringify({ signInLoaded, hasSignIn: !!signIn, isNative }));
       } catch {
         // ignore
       }
@@ -969,18 +988,71 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
         return;
       }
       try {
-        const appUrl = window.location.origin;
-        const callbackUrl = `${appUrl}/#/sso-callback`;
+        if (isNative) {
+          // ── Native: use Google Sign-In SDK (no browser at all) ──
+          const { SocialLogin } = await import('@capgo/capacitor-social-login');
 
-        console.error('[HELpyOAuth] start google sign-in ' + JSON.stringify({ isNative, redirectUrl: callbackUrl }));
+          console.error('[HelpyOAuth] calling SocialLogin.login()...');
+          const result = await SocialLogin.login({
+            provider: 'google',
+            options: {},
+          });
 
-        await signIn.authenticateWithRedirect({
-          strategy: 'oauth_google',
-          redirectUrl: callbackUrl,
-          redirectUrlComplete: callbackUrl,
-        });
+          console.error('[HelpyOAuth] SocialLogin.login() result: ' + JSON.stringify(result));
+          const idToken = (result as any)?.result?.idToken;
+          if (!idToken) {
+            throw new Error('No ID token returned from Google Sign-In');
+          }
+
+          console.error('[HelpyOAuth] Got native Google ID token, exchanging for Clerk ticket');
+
+          // Exchange the Google ID token for a Clerk sign-in ticket via backend
+          const apiUrl = import.meta.env?.VITE_API_URL || '';
+          const res = await fetch(`${apiUrl}/api/google-native-signin`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ idToken }),
+          });
+
+          if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.error || `Backend returned ${res.status}`);
+          }
+
+          const { ticket } = await res.json();
+
+          // Use the ticket to create a Clerk session
+          const signInResult = await signIn.create({
+            strategy: 'ticket',
+            ticket,
+          });
+
+          if (signInResult.status === 'complete') {
+            await setActive({ session: signInResult.createdSessionId });
+            console.error('[HelpyOAuth] Native Google sign-in complete, session activated');
+          } else {
+            console.error('[HelpyOAuth] Unexpected sign-in status: ' + signInResult.status);
+            showAlert('Sign-in Incomplete', 'Please try again.', 'error');
+          }
+        } else {
+          // ── Web: standard Clerk redirect flow ──
+          const appUrl = window.location.origin;
+          const callbackUrl = `${appUrl}/#/sso-callback`;
+
+          console.error('[HelpyOAuth] start web google sign-in ' + JSON.stringify({ redirectUrl: callbackUrl }));
+
+          await signIn.authenticateWithRedirect({
+            strategy: 'oauth_google',
+            redirectUrl: callbackUrl,
+            redirectUrlComplete: callbackUrl,
+          });
+        }
       } catch (e: any) {
-        console.error('[HELpyOAuth] google sign-in failed ' + (e?.message || String(e)));
+        console.error('[HelpyOAuth] google sign-in failed ' + (e?.message || String(e)));
+        // Don't show error if user cancelled the native picker
+        if (e?.message?.toLowerCase().includes('cancel') || e?.message?.toLowerCase().includes('dismissed')) {
+          return;
+        }
         showAlert('Google Sign-in Failed', 'Please try again. If the issue persists, contact support.', 'error');
       }
     };

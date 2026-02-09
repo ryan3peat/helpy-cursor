@@ -748,8 +748,8 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
         // Continue anyway - Supabase data is already deleted
       }
 
-      // Redirect to homepage
-      window.location.href = 'https://helpyfam.com';
+      // Redirect to app (not marketing) so user sees sign-in screen
+      window.location.href = import.meta.env.VITE_APP_URL || import.meta.env.NEXT_PUBLIC_APP_URL || 'https://app.helpyfam.com';
       
     } catch (error: any) {
       logger.error('❌ Failed to delete account:', error);

@@ -573,7 +573,9 @@ const AppContent: React.FC = () => {
     };
 
     try {
-      await signOut();
+      // Redirect to app (not marketing) so user sees sign-in screen
+      const appUrl = import.meta.env.VITE_APP_URL || import.meta.env.NEXT_PUBLIC_APP_URL || 'https://app.helpyfam.com';
+      await signOut({ redirectUrl: appUrl });
       resetState();
     } catch (error) {
       logger.error('Logout error:', error);

@@ -1,6 +1,9 @@
 package com.helpyfam.app;
 
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.content.Intent;
+import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.webkit.CookieManager;
@@ -19,6 +22,9 @@ public class MainActivity extends BridgeActivity implements ModifiedMainActivity
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // Create notification channel for FCM push notifications (required on Android 8.0+)
+        createNotificationChannel();
         
         // Enable third-party cookies for OAuth flows (Clerk, Google, etc.)
         CookieManager cookieManager = CookieManager.getInstance();
@@ -60,6 +66,32 @@ public class MainActivity extends BridgeActivity implements ModifiedMainActivity
                 return;
             }
             ((SocialLoginPlugin) plugin).handleGoogleLoginIntent(requestCode, data);
+        }
+    }
+
+    /**
+     * Create the notification channel that matches the channel_id used in the
+     * FCM payload sent by the send-notification Edge Function.
+     *
+     * On Android 8.0+ (API 26), a notification targeting a non-existent channel
+     * is silently dropped by the OS. This must run before any FCM message arrives.
+     */
+    private void createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel = new NotificationChannel(
+                "helpy_notifications",
+                "Helpy Notifications",
+                NotificationManager.IMPORTANCE_HIGH
+            );
+            channel.setDescription("Notifications from your Helpy household");
+            channel.enableVibration(true);
+            channel.setShowBadge(true);
+
+            NotificationManager manager = getSystemService(NotificationManager.class);
+            if (manager != null) {
+                manager.createNotificationChannel(channel);
+                Log.d("MainActivity", "Notification channel 'helpy_notifications' created");
+            }
         }
     }
 

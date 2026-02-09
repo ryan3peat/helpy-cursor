@@ -7,9 +7,9 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:687792783542:android:7b67ae9e44350e88692617",
+        "mobilesdk_app_id": "1:687792783542:android:083ac695488e4918692617",
         "android_client_info": {
-          "package_name": "com.helpyfam.com"
+          "package_name": "com.helpyfam.app"
         }
       },
       "oauth_client": [

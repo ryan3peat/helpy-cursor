@@ -1096,6 +1096,190 @@ async function sendWebPushNotification(
   }
 }
 
+// =============================================================================
+// FCM (Firebase Cloud Messaging) SUPPORT
+// For native Android apps using @capacitor/push-notifications
+// =============================================================================
+
+interface FcmTokenRecord {
+  id: string;
+  token: string;
+  user_id: string;
+  platform: string;
+}
+
+/**
+ * Get an OAuth2 access token from a Firebase service account.
+ * Uses the JWT grant type to exchange service account credentials
+ * for a short-lived access token that can call FCM HTTP v1 API.
+ */
+async function getFirebaseAccessToken(serviceAccountJson: string): Promise<string | null> {
+  try {
+    const sa = JSON.parse(serviceAccountJson);
+    const now = Math.floor(Date.now() / 1000);
+    
+    // Build JWT claims for Google OAuth2
+    const header = { alg: 'RS256', typ: 'JWT' };
+    const claims = {
+      iss: sa.client_email,
+      scope: 'https://www.googleapis.com/auth/firebase.messaging',
+      aud: 'https://oauth2.googleapis.com/token',
+      iat: now,
+      exp: now + 3600, // 1 hour
+    };
+    
+    // Base64url encode header and claims
+    const encoder = new TextEncoder();
+    const headerB64 = base64Encode(encoder.encode(JSON.stringify(header)));
+    const claimsB64 = base64Encode(encoder.encode(JSON.stringify(claims)));
+    const signInput = `${headerB64}.${claimsB64}`;
+    
+    // Import RSA private key
+    // Convert PEM to DER
+    const pemContent = sa.private_key
+      .replace(/-----BEGIN PRIVATE KEY-----/g, '')
+      .replace(/-----END PRIVATE KEY-----/g, '')
+      .replace(/\s/g, '');
+    const pemBytes = Uint8Array.from(atob(pemContent), c => c.charCodeAt(0));
+    
+    const privateKey = await crypto.subtle.importKey(
+      'pkcs8',
+      pemBytes,
+      { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+      false,
+      ['sign']
+    );
+    
+    // Sign
+    const signature = await crypto.subtle.sign(
+      'RSASSA-PKCS1-v1_5',
+      privateKey,
+      encoder.encode(signInput)
+    );
+    const signatureB64 = base64Encode(new Uint8Array(signature));
+    
+    const jwt = `${headerB64}.${claimsB64}.${signatureB64}`;
+    
+    // Exchange JWT for access token
+    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${jwt}`,
+    });
+    
+    if (!tokenResponse.ok) {
+      const errText = await tokenResponse.text();
+      console.error('[FCM] Failed to get access token:', tokenResponse.status, errText);
+      return null;
+    }
+    
+    const tokenData = await tokenResponse.json();
+    return tokenData.access_token;
+  } catch (error) {
+    console.error('[FCM] Error getting access token:', error);
+    return null;
+  }
+}
+
+/**
+ * Send a notification via FCM HTTP v1 API to a native Android device.
+ */
+async function sendFcmNotification(
+  fcmToken: FcmTokenRecord,
+  payload: { title: string; body: string; type: string; referenceId?: string },
+  accessToken: string,
+  firebaseProjectId: string
+): Promise<{ success: boolean; expired: boolean; errorMessage?: string }> {
+  try {
+    // Determine click action URL based on type
+    const getActionUrl = (type: string) => {
+      switch (type) {
+        case 'todo_item':
+        case 'shopping':
+          return '/#todo?section=shopping';
+        case 'task':
+          return '/#todo?section=task';
+        case 'meal':
+          return '/#meals';
+        case 'expense':
+          return '/#expenses';
+        case 'family_board':
+          return '/#home';
+        default:
+          return '/';
+      }
+    };
+
+    const fcmPayload = {
+      message: {
+        token: fcmToken.token,
+        notification: {
+          title: payload.title,
+          body: payload.body,
+        },
+        data: {
+          type: payload.type || 'general',
+          referenceId: payload.referenceId || '',
+          url: getActionUrl(payload.type),
+        },
+        android: {
+          priority: 'high' as const,
+          notification: {
+            channel_id: 'helpy_notifications',
+            default_sound: true,
+            default_vibrate_timings: true,
+            // icon: 'ic_notification', // Uses default app icon
+          },
+        },
+      },
+    };
+
+    console.log(`[FCM] Sending to token ${fcmToken.token.substring(0, 20)}...`);
+
+    const response = await fetch(
+      `https://fcm.googleapis.com/v1/projects/${firebaseProjectId}/messages:send`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(fcmPayload),
+      }
+    );
+
+    if (response.ok) {
+      const result = await response.json();
+      console.log(`[FCM] ✅ Sent successfully:`, result.name);
+      return { success: true, expired: false };
+    }
+
+    const errorData = await response.json().catch(() => ({}));
+    const errorCode = errorData?.error?.code;
+    const errorStatus = errorData?.error?.status;
+
+    // Token is no longer valid (app uninstalled, etc.)
+    if (errorCode === 404 || errorStatus === 'NOT_FOUND' || errorStatus === 'UNREGISTERED') {
+      console.log(`[FCM] ⚠️ Token expired/unregistered: ${fcmToken.token.substring(0, 20)}...`);
+      return { success: false, expired: true };
+    }
+
+    console.error(`[FCM] ❌ Failed (${response.status}):`, errorData);
+    return { 
+      success: false, 
+      expired: false, 
+      errorMessage: `${response.status}: ${JSON.stringify(errorData).substring(0, 100)}` 
+    };
+  } catch (error) {
+    console.error('[FCM] ❌ Exception:', error);
+    return { 
+      success: false, 
+      expired: false, 
+      errorMessage: error instanceof Error ? error.message : String(error) 
+    };
+  }
+}
+
 serve(async (req: Request) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -1109,6 +1293,10 @@ serve(async (req: Request) => {
     const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY');
     const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY');
     const vapidSubject = Deno.env.get('VAPID_SUBJECT') || 'mailto:hello@helpy.app';
+    
+    // Firebase configuration for native Android push (optional - only needed if Android app exists)
+    const firebaseServiceAccountJson = Deno.env.get('FIREBASE_SERVICE_ACCOUNT_JSON');
+    const firebaseProjectId = Deno.env.get('FIREBASE_PROJECT_ID');
 
     if (!supabaseUrl || !supabaseServiceKey) {
       throw new Error('Missing Supabase configuration');
@@ -1260,7 +1448,7 @@ serve(async (req: Request) => {
       );
     }
 
-    // Get push subscriptions for recipients
+    // Get push subscriptions for recipients (Web Push)
     const recipientIds = recipients.map(u => u.id);
     console.log(`[Push] Looking for subscriptions for ${recipientIds.length} recipient(s):`, recipientIds);
     
@@ -1274,20 +1462,44 @@ serve(async (req: Request) => {
       throw subsError;
     }
 
-    console.log(`[Push] Found ${subscriptions?.length || 0} subscription(s) in database`);
+    console.log(`[Push] Found ${subscriptions?.length || 0} web push subscription(s)`);
     
+    // Get FCM tokens for recipients (native Android/iOS)
+    let fcmTokens: FcmTokenRecord[] = [];
+    try {
+      const { data: fcmData, error: fcmError } = await supabase
+        .from('fcm_tokens')
+        .select('id, token, user_id, platform')
+        .in('user_id', recipientIds);
+      
+      if (fcmError) {
+        // Table might not exist yet (migration not run) - that's OK
+        if (fcmError.code !== '42P01') {
+          console.warn('[Push] Error fetching FCM tokens:', fcmError);
+        }
+      } else {
+        fcmTokens = fcmData || [];
+      }
+    } catch (fcmErr) {
+      console.log('[Push] FCM tokens table not available (migration may not be run yet)');
+    }
+    
+    console.log(`[Push] Found ${fcmTokens.length} FCM token(s)`);
+    
+    const totalSubscriptions = (subscriptions?.length || 0) + fcmTokens.length;
+
     // Debug: Check all subscriptions in household to see what's there
     const { data: allSubs } = await supabase
       .from('push_subscriptions')
       .select('user_id, endpoint')
       .eq('household_id', household_id);
-    console.log(`[Push] All subscriptions in household:`, allSubs?.map(s => ({
+    console.log(`[Push] All web push subscriptions in household:`, allSubs?.map(s => ({
       user_id: s.user_id,
       endpoint: s.endpoint.substring(0, 50) + '...'
     })));
 
-    if (!subscriptions || subscriptions.length === 0) {
-      console.log('[Push] No push subscriptions found for recipients');
+    if (totalSubscriptions === 0) {
+      console.log('[Push] No push subscriptions or FCM tokens found for recipients');
       
       // Still save to notifications table for in-app history
       let msgForHistory: { title: string; body: string; type: string };
@@ -1355,7 +1567,7 @@ serve(async (req: Request) => {
       );
     }
 
-    console.log(`[Push] 📤 Sending to ${subscriptions.length} subscription(s)...`);
+    console.log(`[Push] 📤 Sending to ${subscriptions?.length || 0} web push + ${fcmTokens.length} FCM...`);
     console.log(`[Push] Notification details:`, {
       title: message.title,
       body: message.body,
@@ -1364,57 +1576,114 @@ serve(async (req: Request) => {
       creatorName: creatorName
     });
 
-    // Send to all subscriptions with detailed logging
-    const results = await Promise.all(
-      subscriptions.map((sub, index) => {
-        console.log(`[Push] [${index + 1}/${subscriptions.length}] Sending to subscription:`, {
-          subscriptionId: sub.id,
-          userId: sub.user_id,
-          endpoint: sub.endpoint.substring(0, 50) + '...',
-          hasKeys: !!(sub.p256dh_key && sub.auth_key)
-        });
-        return sendWebPushNotification(
-          sub,
-          { ...message, referenceId },
-          vapidPublicKey,
-          vapidPrivateKey,
-          vapidSubject
-        );
-      })
-    );
+    // =========================================================================
+    // SEND VIA WEB PUSH (PWA users)
+    // =========================================================================
+    let webPushResults: Array<{ success: boolean; expired: boolean; shouldRetry?: boolean; errorMessage?: string }> = [];
+    
+    if (subscriptions && subscriptions.length > 0) {
+      webPushResults = await Promise.all(
+        subscriptions.map((sub, index) => {
+          console.log(`[Push] [${index + 1}/${subscriptions.length}] Sending web push to:`, {
+            subscriptionId: sub.id,
+            userId: sub.user_id,
+            endpoint: sub.endpoint.substring(0, 50) + '...',
+            hasKeys: !!(sub.p256dh_key && sub.auth_key)
+          });
+          return sendWebPushNotification(
+            sub,
+            { ...message, referenceId },
+            vapidPublicKey,
+            vapidPrivateKey,
+            vapidSubject
+          );
+        })
+      );
 
-    // Remove expired subscriptions
-    const expiredSubs = subscriptions.filter((_, i) => results[i].expired);
-    if (expiredSubs.length > 0) {
-      const expiredIds = expiredSubs.map(s => s.id);
-      await supabase
-        .from('push_subscriptions')
-        .delete()
-        .in('id', expiredIds);
-      console.log(`[Push] Removed ${expiredIds.length} expired subscriptions`);
-    }
+      // Remove expired web push subscriptions
+      const expiredSubs = subscriptions.filter((_, i) => webPushResults[i].expired);
+      if (expiredSubs.length > 0) {
+        const expiredIds = expiredSubs.map(s => s.id);
+        await supabase
+          .from('push_subscriptions')
+          .delete()
+          .in('id', expiredIds);
+        console.log(`[Push] Removed ${expiredIds.length} expired web push subscriptions`);
+      }
 
-    // Queue failed pushes for retry (5xx errors)
-    const retryableSubs = subscriptions.filter((_, i) => results[i].shouldRetry);
-    if (retryableSubs.length > 0) {
-      console.log(`[Push] Queuing ${retryableSubs.length} failed push(es) for retry`);
-      for (let i = 0; i < subscriptions.length; i++) {
-        if (results[i].shouldRetry) {
-          try {
-            await supabase.rpc('queue_push_for_retry', {
-              p_subscription_id: subscriptions[i].id,
-              p_payload: { ...message, referenceId },
-              p_error_message: results[i].errorMessage || 'Unknown error'
-            });
-          } catch (retryErr) {
-            // Ignore if retry queue doesn't exist yet (migration not run)
-            console.warn('[Push] Could not queue for retry:', retryErr);
+      // Queue failed pushes for retry (5xx errors)
+      const retryableSubs = subscriptions.filter((_, i) => webPushResults[i].shouldRetry);
+      if (retryableSubs.length > 0) {
+        console.log(`[Push] Queuing ${retryableSubs.length} failed web push(es) for retry`);
+        for (let i = 0; i < subscriptions.length; i++) {
+          if (webPushResults[i].shouldRetry) {
+            try {
+              await supabase.rpc('queue_push_for_retry', {
+                p_subscription_id: subscriptions[i].id,
+                p_payload: { ...message, referenceId },
+                p_error_message: webPushResults[i].errorMessage || 'Unknown error'
+              });
+            } catch (retryErr) {
+              // Ignore if retry queue doesn't exist yet (migration not run)
+              console.warn('[Push] Could not queue for retry:', retryErr);
+            }
           }
         }
       }
     }
 
-    // Save to notifications table
+    // =========================================================================
+    // SEND VIA FCM (native Android/iOS users)
+    // =========================================================================
+    let fcmResults: Array<{ success: boolean; expired: boolean; errorMessage?: string }> = [];
+    
+    if (fcmTokens.length > 0) {
+      // Get Firebase access token (requires FIREBASE_SERVICE_ACCOUNT_JSON secret)
+      if (firebaseServiceAccountJson && firebaseProjectId) {
+        const accessToken = await getFirebaseAccessToken(firebaseServiceAccountJson);
+        
+        if (accessToken) {
+          console.log(`[FCM] 📤 Sending to ${fcmTokens.length} FCM token(s)...`);
+          
+          fcmResults = await Promise.all(
+            fcmTokens.map((fcmToken, index) => {
+              console.log(`[FCM] [${index + 1}/${fcmTokens.length}] Sending to:`, {
+                tokenId: fcmToken.id,
+                userId: fcmToken.user_id,
+                platform: fcmToken.platform,
+                tokenPreview: fcmToken.token.substring(0, 20) + '...'
+              });
+              return sendFcmNotification(
+                fcmToken,
+                { ...message, referenceId },
+                accessToken,
+                firebaseProjectId
+              );
+            })
+          );
+          
+          // Remove expired FCM tokens
+          const expiredFcmTokens = fcmTokens.filter((_, i) => fcmResults[i].expired);
+          if (expiredFcmTokens.length > 0) {
+            const expiredIds = expiredFcmTokens.map(t => t.id);
+            await supabase
+              .from('fcm_tokens')
+              .delete()
+              .in('id', expiredIds);
+            console.log(`[FCM] Removed ${expiredIds.length} expired FCM token(s)`);
+          }
+        } else {
+          console.error('[FCM] Could not get Firebase access token - skipping FCM delivery');
+        }
+      } else {
+        console.log('[FCM] Firebase not configured (missing FIREBASE_SERVICE_ACCOUNT_JSON or FIREBASE_PROJECT_ID) - skipping FCM delivery');
+        console.log('[FCM] Set these Edge Function secrets to enable native Android push notifications');
+      }
+    }
+
+    // =========================================================================
+    // SAVE TO NOTIFICATIONS TABLE (in-app history)
+    // =========================================================================
     const notificationRecords = recipients.map(user => ({
       household_id,
       recipient_user_id: user.id,
@@ -1436,25 +1705,45 @@ serve(async (req: Request) => {
       console.warn('[Push] Failed to save notifications:', notifError);
     }
 
-    const successCount = results.filter(r => r.success).length;
-    const expiredCount = results.filter(r => r.expired).length;
-    const retriedCount = results.filter(r => r.shouldRetry).length;
-    const failedCount = results.filter(r => !r.success && !r.expired && !r.shouldRetry).length;
+    // =========================================================================
+    // FINAL RESULTS
+    // =========================================================================
+    const webPushSuccess = webPushResults.filter(r => r.success).length;
+    const webPushExpired = webPushResults.filter(r => r.expired).length;
+    const webPushRetried = webPushResults.filter(r => r.shouldRetry).length;
+    const webPushFailed = webPushResults.filter(r => !r.success && !r.expired && !r.shouldRetry).length;
+    
+    const fcmSuccess = fcmResults.filter(r => r.success).length;
+    const fcmExpired = fcmResults.filter(r => r.expired).length;
+    const fcmFailed = fcmResults.filter(r => !r.success && !r.expired).length;
+    
+    const totalSuccess = webPushSuccess + fcmSuccess;
     
     console.log(`[Push] 📊 Final results:`, {
-      total: subscriptions.length,
-      successful: successCount,
-      expired: expiredCount,
-      queued_for_retry: retriedCount,
-      failed: failedCount,
-      successRate: `${Math.round((successCount / subscriptions.length) * 100)}%`
+      webPush: {
+        total: subscriptions?.length || 0,
+        successful: webPushSuccess,
+        expired: webPushExpired,
+        queued_for_retry: webPushRetried,
+        failed: webPushFailed,
+      },
+      fcm: {
+        total: fcmTokens.length,
+        successful: fcmSuccess,
+        expired: fcmExpired,
+        failed: fcmFailed,
+      },
+      totalSent: totalSuccess,
+      totalTargets: totalSubscriptions,
     });
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        sent: successCount, 
-        total: subscriptions.length 
+        sent: totalSuccess, 
+        total: totalSubscriptions,
+        webPush: { sent: webPushSuccess, total: subscriptions?.length || 0 },
+        fcm: { sent: fcmSuccess, total: fcmTokens.length },
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

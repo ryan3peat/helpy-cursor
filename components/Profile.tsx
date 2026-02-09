@@ -27,7 +27,8 @@ import {
 } from '../services/pushNotificationService';
 import { compressImageForAvatar } from '../utils/imageCompression';
 import { getRoleConfig } from '../config/rolePermissions';
-import { isRunningAsPwa, isIosDevice, isAndroidDevice } from '../utils/pwaUtils';
+import { isRunningAsPwa, isIosDevice, isAndroidDevice, isNativeApp } from '../utils/pwaUtils';
+import { isNativePushAvailable, subscribeNativePush, checkNativePermission } from '../services/nativePushService';
 import { useDemoMode } from '../contexts/DemoModeContext';
 import { trackCheckoutInitiated, trackPurchase, trackSubscriptionPlanSelection } from '../services/metaPixel';
 
@@ -3949,12 +3950,15 @@ const Profile: React.FC<ProfileProps> = ({
             <div className="bg-card rounded-2xl shadow-sm overflow-hidden mt-6">
               {(() => {
                 const isPwa = isRunningAsPwa();
-                const isWorking = pushSupported && pushPermission === 'granted' && accountData.notificationsEnabled && currentUser.hasPushSubscription;
-                const isBlocked = pushPermission === 'denied';
+                const isNative = isNativeApp(); // Capacitor Android/iOS
+                const isWorking = isNative
+                  ? accountData.notificationsEnabled  // Native: simpler check (FCM handles the rest)
+                  : pushSupported && pushPermission === 'granted' && accountData.notificationsEnabled && currentUser.hasPushSubscription;
+                const isBlocked = isNative ? false : pushPermission === 'denied'; // Native handles permissions differently
                 const isOff = !accountData.notificationsEnabled;
                 
-                // STATE 1: Not running as PWA (browser mode)
-                if (!isPwa) {
+                // STATE 1: Not running as PWA or native app (browser mode)
+                if (!isPwa && !isNative) {
                   return (
                     <div className="px-5 py-4">
                       <div className="flex items-center gap-3 mb-3">
@@ -4141,50 +4145,87 @@ const Profile: React.FC<ProfileProps> = ({
                             // Optimistically update UI
                             setAccountData({ ...accountData, notificationsEnabled: true });
                             
-                            // Check if we already have a valid subscription
-                            const capability = await checkNotificationCapability(
-                              currentUser.id,
-                              currentUser.householdId
-                            );
-                            
-                            if (capability.capable) {
-                              // Subscription already exists, just enable in database
-                              logger.log('[Profile] Re-enabling existing subscription');
-                              await onUpdate(currentUser.id, { 
-                                notificationsEnabled: true,
-                                hasPushSubscription: true
-                              });
-                            } else {
-                              // Need to set up subscription (first time or was fully unsubscribed)
-                              logger.log('[Profile] Setting up new subscription, reason:', capability.reason);
-                              
-                              const subscription = await subscribeToPush(
+                            // NATIVE APP: Use FCM-based native push
+                            if (isNative) {
+                              logger.log('[Profile] Native app: subscribing via FCM...');
+                              const success = await subscribeNativePush(
                                 currentUser.id,
                                 currentUser.householdId
                               );
                               
-                              setPushPermission(getNotificationPermission());
-                              
-                              if (subscription) {
-                                logger.log('[Profile] Notifications enabled successfully');
+                              if (success) {
+                                logger.log('[Profile] Native notifications enabled successfully');
                                 await onUpdate(currentUser.id, { 
                                   notificationsEnabled: true,
                                   hasPushSubscription: true
                                 });
                               } else {
-                                // Revert on failure
-                                const newPermission = getNotificationPermission();
-                                logger.warn('[Profile] Subscription failed');
+                                // Check if permission was denied
+                                const nativePerm = await checkNativePermission();
+                                logger.warn('[Profile] Native subscription failed, permission:', nativePerm);
                                 setAccountData({ ...accountData, notificationsEnabled: false });
                                 
-                                if (newPermission === 'denied') {
-                                  setPushPermission('denied');
+                                if (nativePerm === 'denied') {
+                                  showAlert(
+                                    t['notifications.blocked_title'] || 'Notifications Blocked',
+                                    t['notifications.blocked_native'] || 'Notifications are blocked. Please enable them in your phone Settings > Apps > Helpy > Notifications.',
+                                    'error'
+                                  );
                                 } else {
                                   showAlert(
                                     t['notifications.setup_failed_title'] || 'Setup Failed',
                                     t['notifications.setup_failed'] || 'Failed to enable notifications. Please try again.',
                                     'error'
                                   );
+                                }
+                              }
+                            } else {
+                              // PWA: Use Web Push
+                              // Check if we already have a valid subscription
+                              const capability = await checkNotificationCapability(
+                                currentUser.id,
+                                currentUser.householdId
+                              );
+                              
+                              if (capability.capable) {
+                                // Subscription already exists, just enable in database
+                                logger.log('[Profile] Re-enabling existing subscription');
+                                await onUpdate(currentUser.id, { 
+                                  notificationsEnabled: true,
+                                  hasPushSubscription: true
+                                });
+                              } else {
+                                // Need to set up subscription (first time or was fully unsubscribed)
+                                logger.log('[Profile] Setting up new subscription, reason:', capability.reason);
+                                
+                                const subscription = await subscribeToPush(
+                                  currentUser.id,
+                                  currentUser.householdId
+                                );
+                                
+                                setPushPermission(getNotificationPermission());
+                                
+                                if (subscription) {
+                                  logger.log('[Profile] Notifications enabled successfully');
+                                  await onUpdate(currentUser.id, { 
+                                    notificationsEnabled: true,
+                                    hasPushSubscription: true
+                                  });
+                                } else {
+                                  // Revert on failure
+                                  const newPermission = getNotificationPermission();
+                                  logger.warn('[Profile] Subscription failed');
+                                  setAccountData({ ...accountData, notificationsEnabled: false });
+                                  
+                                  if (newPermission === 'denied') {
+                                    setPushPermission('denied');
+                                  } else {
+                                    showAlert(
+                                      t['notifications.setup_failed_title'] || 'Setup Failed',
+                                      t['notifications.setup_failed'] || 'Failed to enable notifications. Please try again.',
+                                      'error'
+                                    );
+                                  }
                                 }
                               }
                             }

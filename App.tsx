@@ -36,6 +36,7 @@ import {
   fetchCollection,
 } from './services/supabaseService';
 import { initializePushNotifications, autoSubscribeIfNeeded, validateAndSyncSubscription, startPeriodicBatchProcessing, stopPeriodicBatchProcessing, checkNotificationCapability, autoFixNotificationIssues, ensureCurrentSubscriptionSaved, checkForUpdates, applyServiceWorkerUpdate } from './services/pushNotificationService';
+import { isNativePushAvailable, initializeNativePush, autoSubscribeNativeIfNeeded } from './services/nativePushService';
 import UpdateToast from './components/ui/UpdateToast';
 import ErrorBoundary from './components/ui/ErrorBoundary';
 import NotificationPrompt from './components/NotificationPrompt';
@@ -1008,18 +1009,44 @@ const AppContent: React.FC = () => {
 
   // Initialize push notifications service worker and batch processing
   useEffect(() => {
-    initializePushNotifications()
-      .then(() => {
-        // Check for updates AFTER service worker is registered and listeners are set up
-        // This prevents the race condition where we check before we're listening
-        logger.log('[App] SW initialized - checking for updates...');
-        checkForUpdates();
-      })
-      .catch(err => {
-        logger.warn('[App] Failed to initialize push notifications:', err);
-        // Still check for updates even if push init fails (SW might still be registered)
-        checkForUpdates();
+    // Native (Capacitor Android/iOS): Use FCM-based native push
+    if (isNativePushAvailable()) {
+      logger.log('[App] Native platform detected - initializing native push...');
+      initializeNativePush({
+        onNotificationTap: (url) => {
+          logger.log('[App] Native notification tapped, navigating to:', url);
+          // Navigate in-app (same logic as service worker NAVIGATE message)
+          if (url.startsWith('/#')) {
+            const hash = url.substring(1); // Remove leading /
+            window.location.hash = hash;
+          } else {
+            window.location.href = url;
+          }
+        },
+        onDataChanged: (dataType) => {
+          logger.log('[App] Native push received (foreground), triggering data refresh:', dataType);
+          setPushDataRefreshTrigger(prev => prev + 1);
+        },
+      }).then(ok => {
+        logger.log('[App] Native push initialized:', ok ? 'success' : 'failed');
+      }).catch(err => {
+        logger.warn('[App] Failed to initialize native push:', err);
       });
+    } else {
+      // PWA/Web: Use service worker-based Web Push
+      initializePushNotifications()
+        .then(() => {
+          // Check for updates AFTER service worker is registered and listeners are set up
+          // This prevents the race condition where we check before we're listening
+          logger.log('[App] SW initialized - checking for updates...');
+          checkForUpdates();
+        })
+        .catch(err => {
+          logger.warn('[App] Failed to initialize push notifications:', err);
+          // Still check for updates even if push init fails (SW might still be registered)
+          checkForUpdates();
+        });
+    }
     
     // Start periodic batch processing as a backup mechanism
     // This ensures notification batches are sent even if pg_cron isn't available
@@ -1065,7 +1092,8 @@ const AppContent: React.FC = () => {
       hasCurrentUser: !!currentUser,
       userId,
       householdId,
-      notificationsEnabled
+      notificationsEnabled,
+      isNative: isNativePushAvailable()
     });
     
     if (!userId || !householdId) {
@@ -1088,6 +1116,40 @@ const AppContent: React.FC = () => {
       return;
     }
     
+    // =========================================================================
+    // NATIVE APP: Use FCM auto-subscribe (much simpler than web push)
+    // =========================================================================
+    if (isNativePushAvailable()) {
+      logger.log('[App] Native platform: checking FCM auto-subscribe...');
+      notificationCheckInProgressRef.current = true;
+      lastNotificationCheckKeyRef.current = checkKey;
+      
+      autoSubscribeNativeIfNeeded(userId, householdId, notificationsEnabled === true)
+        .then(subscribed => {
+          if (subscribed) {
+            logger.log('[App] ✅ Native FCM auto-subscribe successful');
+            setCurrentUser(prev => prev ? { ...prev, hasPushSubscription: true } : prev);
+          } else if (notificationsEnabled !== true) {
+            logger.log('[App] Native notifications disabled by user preference');
+            if (currentHasPushSubscription) {
+              setCurrentUser(prev => prev ? { ...prev, hasPushSubscription: false } : prev);
+            }
+          } else {
+            logger.log('[App] Native FCM auto-subscribe skipped (permission not granted yet)');
+          }
+        })
+        .catch(err => {
+          logger.warn('[App] Native FCM auto-subscribe error:', err);
+        })
+        .finally(() => {
+          notificationCheckInProgressRef.current = false;
+        });
+      return;
+    }
+    
+    // =========================================================================
+    // PWA/WEB: Use Web Push auto-subscribe (existing logic)
+    // =========================================================================
     logger.log('[App] Checking notification capability...');
     
     // EARLY SYNC CHECK: If browser permission doesn't allow notifications but database

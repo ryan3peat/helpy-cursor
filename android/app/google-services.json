@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "687792783542",
+    "project_id": "helpy-bfac9",
+    "storage_bucket": "helpy-bfac9.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:687792783542:android:7b67ae9e44350e88692617",
+        "android_client_info": {
+          "package_name": "com.helpyfam.com"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "687792783542-b3fsfqlrq1vls826ou7vc0m03e73s3q6.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBi3SZrlHXOL66-A-YxECzRpSLbm-NQWrE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "687792783542-b3fsfqlrq1vls826ou7vc0m03e73s3q6.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

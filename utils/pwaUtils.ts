@@ -43,6 +43,37 @@ export function isAndroidDevice(): boolean {
   return /Android/.test(navigator.userAgent);
 }
 
+/**
+ * Check if the app is running as a native Capacitor app (Android/iOS)
+ * 
+ * In native mode, we use FCM (Firebase Cloud Messaging) for push notifications
+ * instead of Web Push API, which ensures reliable delivery even when the app
+ * is backgrounded or killed.
+ */
+export function isNativeApp(): boolean {
+  try {
+    const cap = (window as any).Capacitor;
+    return cap?.isNativePlatform?.() === true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Get the native platform name ('android', 'ios', or 'web')
+ */
+export function getNativePlatform(): 'android' | 'ios' | 'web' {
+  try {
+    const cap = (window as any).Capacitor;
+    if (cap?.isNativePlatform?.()) {
+      return cap.getPlatform?.() || 'web';
+    }
+  } catch {
+    // ignore
+  }
+  return 'web';
+}
+
 // ============================================================================
 // DEVICE ID MANAGEMENT
 // ============================================================================

@@ -573,9 +573,7 @@ const AppContent: React.FC = () => {
     };
 
     try {
-      // Redirect to app (not marketing) so user sees sign-in screen
-      const appUrl = import.meta.env.VITE_APP_URL || import.meta.env.NEXT_PUBLIC_APP_URL || 'https://app.helpyfam.com';
-      await signOut({ redirectUrl: appUrl });
+      await signOut();
       resetState();
     } catch (error) {
       logger.error('Logout error:', error);
@@ -2653,8 +2651,9 @@ const AppContent: React.FC = () => {
       <div className="min-h-screen w-full flex flex-col items-center justify-center p-6 auth-gradient-bg overflow-hidden">
         <AuthenticateWithRedirectCallback
           // Always return to the app root after OAuth completes
-          signInForceRedirectUrl="/"
-          signUpForceRedirectUrl="/"
+          // Use absolute URL to prevent Clerk from resolving "/" against its dashboard home URL
+          signInForceRedirectUrl={window.location.origin}
+          signUpForceRedirectUrl={window.location.origin}
         />
       </div>
     );

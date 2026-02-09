@@ -51,7 +51,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { useDemoMode } from '../contexts/DemoModeContext';
 import { logger } from '../utils/logger';
 import { Capacitor } from '@capacitor/core';
-import { Camera, CameraSource, CameraResultType } from '@capacitor/camera';
+import { Camera as CapacitorCamera, CameraSource, CameraResultType } from '@capacitor/camera';
 
 // Expense Category Config (colors and icons)
 type ExpenseCategoryConfig = {
@@ -918,7 +918,7 @@ const Expenses: React.FC<ExpensesProps> = ({
       setIsScanning(true);
       setError(null);
       try {
-        const photo = await Camera.getPhoto({
+        const photo = await CapacitorCamera.getPhoto({
           source: CameraSource.CAMERA,
           quality: 0.9,
           resultType: CameraResultType.Base64,

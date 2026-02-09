@@ -1180,7 +1180,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
                 oauthFlow="redirect"
                 routing="hash"
                 signUpUrl={null}
-                forceRedirectUrl="/"
+                forceRedirectUrl={window.location.origin}
               />
             
               {/* Custom Sign Up Button */}

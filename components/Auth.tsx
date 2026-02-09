@@ -1044,7 +1044,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
           await signIn.authenticateWithRedirect({
             strategy: 'oauth_google',
             redirectUrl: callbackUrl,
-            redirectUrlComplete: callbackUrl,
+            redirectUrlComplete: appUrl,
           });
         }
       } catch (e: any) {

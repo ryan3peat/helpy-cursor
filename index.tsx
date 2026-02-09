@@ -179,9 +179,10 @@ root.render(
   <React.StrictMode>
     <ClerkProvider 
       publishableKey={clerkPubKey}
-      // Use absolute URLs to prevent Clerk from resolving against its dashboard home URL
-      afterSignInUrl={typeof window !== 'undefined' ? window.location.origin : undefined}
-      afterSignUpUrl={typeof window !== 'undefined' ? window.location.origin : undefined}
+      // Fallback redirect URLs: used when no component-level redirect is set.
+      // Must be absolute to prevent Clerk from resolving against dashboard Home URL.
+      signInFallbackRedirectUrl={typeof window !== 'undefined' ? window.location.origin : undefined}
+      signUpFallbackRedirectUrl={typeof window !== 'undefined' ? window.location.origin : undefined}
       fallbackRedirectUrl={typeof window !== 'undefined' ? window.location.origin : undefined}
       // Required for native platforms (Capacitor) per Clerk docs.
       // Prevents Clerk from assuming a full browser cookie setup.

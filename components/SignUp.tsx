@@ -173,7 +173,7 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
             await signIn.authenticateWithRedirect({
               strategy: 'oauth_google',
               redirectUrl: redirectUrl,
-              redirectUrlComplete: redirectUrl,
+              redirectUrlComplete: window.location.origin,
             });
             return;
           } catch (transferError: any) {
@@ -185,7 +185,7 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
               await signIn.authenticateWithRedirect({
                 strategy: 'oauth_google',
                 redirectUrl: redirectUrl,
-                redirectUrlComplete: redirectUrl,
+                redirectUrlComplete: window.location.origin,
               });
               return;
             } catch (signInError: any) {
@@ -440,7 +440,7 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
         await signUp.authenticateWithRedirect({
           strategy: 'oauth_google',
           redirectUrl: redirectUrl,
-          redirectUrlComplete: redirectUrl,
+          redirectUrlComplete: window.location.origin,
         });
       }
     } catch (error: any) {
@@ -473,7 +473,7 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
           await signIn.authenticateWithRedirect({
             strategy: 'oauth_google',
             redirectUrl: redirectUrl,
-            redirectUrlComplete: redirectUrl,
+            redirectUrlComplete: window.location.origin,
           });
           return;
         } catch (signInError: any) {

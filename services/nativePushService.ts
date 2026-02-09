@@ -385,16 +385,24 @@ export async function autoSubscribeNativeIfNeeded(
     await initializeNativePush();
   }
 
-  // Check if we already have a token
+  // Check current permission status
   const permission = await checkNativePermission();
   if (permission === 'denied') {
-    logger.log('[NativePush] Auto-subscribe skipped: permission denied');
+    logger.log('[NativePush] Auto-subscribe skipped: permission denied by user');
     return false;
   }
 
   if (permission === 'prompt') {
-    // Don't auto-prompt, wait for user to toggle ON explicitly
-    logger.log('[NativePush] Auto-subscribe skipped: permission not yet granted');
+    // On native apps (Android/iOS), auto-prompt for notification permission.
+    // Unlike web, native users expect an upfront permission request.
+    // The user has already opted in by having notificationsEnabled=true.
+    logger.log('[NativePush] Permission not yet granted - requesting now...');
+    const token = await requestNativePushPermission();
+    if (token) {
+      logger.log('[NativePush] Auto-prompt succeeded, saving token...');
+      return await saveFcmToken(userId, householdId, token);
+    }
+    logger.log('[NativePush] Auto-prompt: user declined or token not received');
     return false;
   }
 
@@ -468,4 +476,108 @@ function waitForToken(timeoutMs: number): Promise<string | null> {
  */
 export function getNativePushState(): NativePushState {
   return { ..._state };
+}
+
+// ============================================================================
+// DIAGNOSTICS (call from browser console or debug UI)
+// ============================================================================
+
+/**
+ * Run a comprehensive diagnostic check on native push notification setup.
+ * Logs results to the console (visible in Android Logcat via `adb logcat`).
+ *
+ * Usage (from remote Chrome DevTools console):
+ *   window.__helpyPushDiag()
+ */
+export async function diagnosePushNotifications(): Promise<Record<string, unknown>> {
+  const results: Record<string, unknown> = {};
+
+  // 1. Platform check
+  const isNative = isNativePushAvailable();
+  results.isNativePlatform = isNative;
+  results.userAgent = navigator.userAgent;
+  console.log('[PushDiag] Native platform:', isNative);
+
+  if (!isNative) {
+    console.warn('[PushDiag] NOT on a native Capacitor platform. Native push is unavailable.');
+    return results;
+  }
+
+  // 2. Plugin availability
+  try {
+    const { PushNotifications } = await import('@capacitor/push-notifications');
+    results.pluginAvailable = true;
+    console.log('[PushDiag] @capacitor/push-notifications plugin loaded OK');
+
+    // 3. Permission check
+    const permResult = await PushNotifications.checkPermissions();
+    results.permissionStatus = permResult.receive;
+    console.log('[PushDiag] Permission status:', permResult.receive);
+
+    if (permResult.receive === 'denied') {
+      console.error('[PushDiag] PERMISSION DENIED. User must enable notifications in Android Settings > Apps > Helpyfam > Notifications.');
+    }
+  } catch (err) {
+    results.pluginAvailable = false;
+    results.pluginError = err instanceof Error ? err.message : String(err);
+    console.error('[PushDiag] Failed to load push plugin:', err);
+  }
+
+  // 4. Internal state
+  results.initialized = _state.initialized;
+  results.hasToken = !!_state.token;
+  results.tokenPreview = _state.token ? _state.token.substring(0, 30) + '...' : null;
+  results.permissionGranted = _state.permissionGranted;
+  console.log('[PushDiag] Internal state:', {
+    initialized: _state.initialized,
+    hasToken: !!_state.token,
+    permissionGranted: _state.permissionGranted,
+  });
+
+  if (!_state.initialized) {
+    console.error('[PushDiag] Push NOT initialized. initializeNativePush() was not called or failed.');
+  }
+
+  if (!_state.token) {
+    console.error('[PushDiag] No FCM token! PushNotifications.register() may have failed or the registration listener did not fire.');
+    console.error('[PushDiag] Try calling: await PushNotifications.register() manually and watch for registration/registrationError events.');
+  } else {
+    console.log('[PushDiag] FCM token (first 30 chars):', _state.token.substring(0, 30));
+  }
+
+  // 5. Notification channel check (Android only)
+  try {
+    const { PushNotifications } = await import('@capacitor/push-notifications');
+    const channels = await PushNotifications.listChannels();
+    results.notificationChannels = channels.channels.map(c => ({
+      id: c.id,
+      name: c.name,
+      importance: c.importance,
+    }));
+    console.log('[PushDiag] Notification channels:', JSON.stringify(results.notificationChannels, null, 2));
+
+    const helpyChannel = channels.channels.find(c => c.id === 'helpy_notifications');
+    if (!helpyChannel) {
+      console.error('[PushDiag] MISSING CHANNEL: "helpy_notifications" not found! Notifications will be silently dropped by Android.');
+      console.error('[PushDiag] This channel should be created in MainActivity.onCreate(). Rebuild the native app.');
+    } else {
+      console.log('[PushDiag] helpy_notifications channel exists. Importance:', helpyChannel.importance);
+      if (helpyChannel.importance !== undefined && helpyChannel.importance < 3) {
+        console.warn('[PushDiag] Channel importance is LOW. Notifications may not show as heads-up banners.');
+      }
+    }
+  } catch (err) {
+    results.channelCheckError = err instanceof Error ? err.message : String(err);
+    console.warn('[PushDiag] Could not list channels:', err);
+  }
+
+  console.log('[PushDiag] === FULL DIAGNOSTIC RESULTS ===');
+  console.log(JSON.stringify(results, null, 2));
+
+  return results;
+}
+
+// Expose diagnostic globally so it can be called from Chrome DevTools console
+if (typeof window !== 'undefined') {
+  (window as any).__helpyPushDiag = diagnosePushNotifications;
 }

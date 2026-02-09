@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { AuthenticateWithRedirectCallback, useClerk, useUser } from '@clerk/clerk-react';
 import { Capacitor } from '@capacitor/core';
 import Layout from './components/Layout';
@@ -263,9 +264,17 @@ const AppContent: React.FC = () => {
       setShowSessionExpiredModal(true);
     };
 
+    // Listen for session recovery (network came back and token refreshed successfully)
+    const handleSessionRecovered = () => {
+      logger.log('[App] ✅ Session recovered after network restoration');
+      setShowSessionExpiredModal(false);
+    };
+
     window.addEventListener('helpy:session-expired', handleSessionExpired as EventListener);
+    window.addEventListener('helpy:session-recovered', handleSessionRecovered as EventListener);
     return () => {
       window.removeEventListener('helpy:session-expired', handleSessionExpired as EventListener);
+      window.removeEventListener('helpy:session-recovered', handleSessionRecovered as EventListener);
     };
   }, []);
 
@@ -876,6 +885,13 @@ const AppContent: React.FC = () => {
   // Sync function for periodic backup fetching
   const syncAllData = useCallback(async () => {
     if (!currentUser?.householdId) return;
+    
+    // Don't attempt sync when offline - avoids flooding console with ERR_NAME_NOT_RESOLVED
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      logger.warn('[App] 📡 Device offline - skipping periodic sync');
+      return;
+    }
+    
     const hid = currentUser.householdId;
     
     logger.log('[App] Running periodic sync...');
@@ -979,6 +995,12 @@ const AppContent: React.FC = () => {
       // When app becomes visible, check if we need to refresh data
       if (document.visibilityState === 'visible') {
         logger.log('[App] 📱 App became visible, checking connection status...');
+        
+        // Don't attempt sync when offline - SupabaseContext will handle recovery via 'online' event
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+          logger.warn('[App] 📡 Device offline on resume - skipping data sync (will auto-recover when online)');
+          return;
+        }
         
         // If disconnected or connecting, immediately sync data
         if (realtimeStatus === 'disconnected' || realtimeStatus === 'connecting') {

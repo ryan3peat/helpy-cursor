@@ -6,6 +6,29 @@ import { useAuth, useUser } from '@clerk/clerk-react';
 import { createAuthenticatedClient, SupabaseClient, supabase, updateCurrentToken, setFreshTokenGetter, isTokenExpiredOrExpiring, getTokenExpirySeconds } from '../services/supabase';
 import { logger } from '../utils/logger';
 
+/**
+ * Detect if an error is a network connectivity issue (DNS failure, offline, etc.)
+ * rather than an actual auth/server error. Used to avoid treating temporary
+ * network outages as session expiry.
+ */
+function isNetworkError(error: any): boolean {
+  if (!error) return false;
+  const msg = (error?.message || error?.toString() || '').toLowerCase();
+  return (
+    msg.includes('failed to fetch') ||
+    msg.includes('networkerror') ||
+    msg.includes('network error') ||
+    msg.includes('net::err_name_not_resolved') ||
+    msg.includes('net::err_internet_disconnected') ||
+    msg.includes('net::err_network_changed') ||
+    msg.includes('net::err_connection_refused') ||
+    msg.includes('net::err_address_unreachable') ||
+    msg.includes('load failed') ||        // Safari offline error
+    msg.includes('the internet connection appears to be offline') || // Safari
+    msg.includes('type error: cancelled') // iOS fetch abort on background
+  );
+}
+
 type SupabaseContextValue = {
   client: SupabaseClient | null;
   isAuthClient: boolean; // true only when client was created with JWT
@@ -182,6 +205,10 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
   const tokenRefreshFailuresRef = useRef<number>(0);
   const MAX_TOKEN_REFRESH_FAILURES = 3;
 
+  // Circuit breaker: once session-expired has been dispatched, stop all retry loops
+  // Reset only when the user signs back in or network recovers
+  const sessionExpiredFiredRef = useRef<boolean>(false);
+
   logger.log('[SupabaseContext] 📊 Current state:', { 
     isSignedIn,
     clerkLoaded,
@@ -199,6 +226,18 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
       return;
     }
 
+    // Circuit breaker: if session-expired already fired, don't keep retrying
+    if (sessionExpiredFiredRef.current) {
+      logger.log('[SupabaseContext] ⏹️ Session already expired - not retrying token refresh');
+      return;
+    }
+
+    // Network check: don't count offline failures as auth failures
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      logger.warn('[SupabaseContext] 📡 Device offline - skipping token refresh (not counting as auth failure)');
+      return;
+    }
+
     logger.log('[SupabaseContext] 🔄 Refreshing JWT token...');
     // REMOVED: setIsAuthClient(false) - this was causing data to disappear!
     // Keep the old client working while we refresh the token
@@ -209,16 +248,31 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
 
       try {
         token = await getToken({ template: templateName });
-      } catch (templateError) {
+      } catch (templateError: any) {
+        // Check if this is a network error rather than an auth error
+        if (!navigator.onLine || isNetworkError(templateError)) {
+          logger.warn('[SupabaseContext] 📡 Network error during token refresh - not counting as auth failure');
+          return;
+        }
         logger.error('[SupabaseContext] Template token refresh failed:', templateError);
         try {
           token = await getToken();
-        } catch (basicError) {
+        } catch (basicError: any) {
+          if (!navigator.onLine || isNetworkError(basicError)) {
+            logger.warn('[SupabaseContext] 📡 Network error during fallback token refresh - not counting as auth failure');
+            return;
+          }
           logger.error('[SupabaseContext] Basic token refresh also failed:', basicError);
         }
       }
 
       if (!token) {
+        // If we're offline now (network dropped mid-request), don't count as auth failure
+        if (!navigator.onLine) {
+          logger.warn('[SupabaseContext] 📡 Went offline during token refresh - not counting as auth failure');
+          return;
+        }
+
         // Increment failure counter
         tokenRefreshFailuresRef.current += 1;
         const failures = tokenRefreshFailuresRef.current;
@@ -232,7 +286,8 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
         // This allows App.tsx to show a modal and gracefully logout
         if (failures >= MAX_TOKEN_REFRESH_FAILURES) {
           logger.error('[SupabaseContext] 🚨 Max token refresh failures reached - triggering session expired');
-          tokenRefreshFailuresRef.current = 0; // Reset counter to prevent multiple events
+          sessionExpiredFiredRef.current = true; // Circuit breaker: stop all future retries
+          tokenRefreshFailuresRef.current = 0;
           window.dispatchEvent(new CustomEvent('helpy:session-expired', {
             detail: { reason: 'max_refresh_failures', attempts: failures }
           }));
@@ -240,8 +295,9 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
         return;
       }
 
-      // Success! Reset failure counter
+      // Success! Reset failure counter and circuit breaker
       tokenRefreshFailuresRef.current = 0;
+      sessionExpiredFiredRef.current = false;
       logger.log('[SupabaseContext] ✅ Token refreshed successfully');
       // Update the stored token
       updateCurrentToken(token);
@@ -252,6 +308,12 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
       setIsAuthClient(true);
       globalIsAuthClientReady = true;
     } catch (error: any) {
+      // Don't count network errors as auth failures
+      if (!navigator.onLine || isNetworkError(error)) {
+        logger.warn('[SupabaseContext] 📡 Network error during token refresh - not counting as auth failure');
+        return;
+      }
+
       // Increment failure counter
       tokenRefreshFailuresRef.current += 1;
       const failures = tokenRefreshFailuresRef.current;
@@ -263,7 +325,8 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
       // After max consecutive failures, dispatch session expired event
       if (failures >= MAX_TOKEN_REFRESH_FAILURES) {
         logger.error('[SupabaseContext] 🚨 Max token refresh failures reached - triggering session expired');
-        tokenRefreshFailuresRef.current = 0; // Reset counter to prevent multiple events
+        sessionExpiredFiredRef.current = true; // Circuit breaker: stop all future retries
+        tokenRefreshFailuresRef.current = 0;
         window.dispatchEvent(new CustomEvent('helpy:session-expired', {
           detail: { reason: 'max_refresh_failures', attempts: failures }
         }));
@@ -531,6 +594,18 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
         return;
       }
       
+      // Circuit breaker: don't retry if session already expired
+      if (sessionExpiredFiredRef.current) {
+        logger.log('[SupabaseContext] ⏹️ Session already expired - skipping visibility refresh');
+        return;
+      }
+
+      // Network check: don't attempt refresh while offline
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        logger.warn('[SupabaseContext] 📡 Device offline on resume - skipping token refresh');
+        return;
+      }
+      
       // Throttle: Don't check more than once per 10 seconds
       if (now - lastVisibilityRefreshRef.current < 10000) {
         logger.log('[SupabaseContext] 👀 Visibility change throttled (too recent)');
@@ -569,6 +644,10 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
             logger.log('[SupabaseContext] ✅ Token refresh successful');
             updateCurrentToken(freshToken);
             
+            // Reset circuit breaker on success (e.g. if network just came back)
+            sessionExpiredFiredRef.current = false;
+            tokenRefreshFailuresRef.current = 0;
+            
             // CRITICAL: Increment counter so components re-subscribe and refetch data
             // This is what triggers syncAllData and re-establishes realtime subscriptions
             setTokenRefreshCount(prev => prev + 1);
@@ -580,8 +659,13 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
           const expirySeconds = getTokenExpirySeconds(currentToken);
           logger.log(`[SupabaseContext] ✅ Token fresh (expires in ${expirySeconds}s), no refresh needed`);
         }
-      } catch (error) {
-        logger.error('[SupabaseContext] ❌ Error during token refresh:', error);
+      } catch (error: any) {
+        // Don't log network errors as token refresh errors
+        if (!navigator.onLine || isNetworkError(error)) {
+          logger.warn('[SupabaseContext] 📡 Network error during visibility token refresh - will retry when online');
+        } else {
+          logger.error('[SupabaseContext] ❌ Error during token refresh:', error);
+        }
       }
     };
     
@@ -594,6 +678,71 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [isSignedIn, getToken]);
+
+  // AUTO-RECOVERY: When network comes back online, attempt to restore the session
+  // This handles the case where the app was offline, token refresh failed, and
+  // session-expired was triggered. When network returns, try to refresh the token
+  // instead of forcing the user to sign in again.
+  useEffect(() => {
+    if (!isSignedIn || !getToken) return;
+
+    const handleOnline = async () => {
+      logger.log('[SupabaseContext] 🌐 Network came back online');
+      
+      // Reset circuit breaker so we can try again
+      const wasExpired = sessionExpiredFiredRef.current;
+      sessionExpiredFiredRef.current = false;
+      tokenRefreshFailuresRef.current = 0;
+
+      // Small delay to let DNS/network stabilize
+      await new Promise(resolve => setTimeout(resolve, 1500));
+
+      // Only attempt recovery if we're still online
+      if (!navigator.onLine) {
+        logger.warn('[SupabaseContext] 📡 Network dropped again before recovery');
+        return;
+      }
+
+      try {
+        const templateName = import.meta.env.VITE_CLERK_JWT_TEMPLATE_NAME || 'supabase';
+        const freshToken = await getToken({ template: templateName, skipCache: true } as any);
+        
+        if (freshToken) {
+          logger.log('[SupabaseContext] ✅ Network recovery: token refresh successful');
+          updateCurrentToken(freshToken);
+          
+          const authenticatedClient = await createAuthenticatedClient(freshToken, refreshToken);
+          setClient(authenticatedClient);
+          globalAuthenticatedClient = authenticatedClient;
+          setIsAuthClient(true);
+          globalIsAuthClientReady = true;
+          
+          // Trigger data refetch for all components
+          setTokenRefreshCount(prev => prev + 1);
+          
+          // If session-expired modal was shown, dismiss it
+          if (wasExpired) {
+            logger.log('[SupabaseContext] 🔄 Dismissing session-expired state after network recovery');
+            window.dispatchEvent(new CustomEvent('helpy:session-recovered'));
+          }
+        } else {
+          logger.warn('[SupabaseContext] ⚠️ Network recovery: still no token (may need re-auth)');
+        }
+      } catch (error: any) {
+        if (isNetworkError(error)) {
+          logger.warn('[SupabaseContext] 📡 Network recovery failed - still having connectivity issues');
+        } else {
+          logger.error('[SupabaseContext] ❌ Network recovery token refresh failed:', error);
+        }
+      }
+    };
+
+    window.addEventListener('online', handleOnline);
+    
+    return () => {
+      window.removeEventListener('online', handleOnline);
+    };
+  }, [isSignedIn, getToken, refreshToken]);
 
   // Expose diagnostic function globally for console debugging
   useEffect(() => {

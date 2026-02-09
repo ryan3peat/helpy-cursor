@@ -21,6 +21,13 @@ import ee.forgr.capacitor.social.login.SocialLoginPlugin;
 public class MainActivity extends BridgeActivity implements ModifiedMainActivityForSocialLoginPlugin {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        // Enable WebView debugging so we can attach Chrome DevTools
+        // on Android devices. This is safe in debug builds and has no
+        // effect on release behavior other than allowing remote inspection.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            WebView.setWebContentsDebuggingEnabled(true);
+        }
+
         super.onCreate(savedInstanceState);
 
         // Create notification channel for FCM push notifications (required on Android 8.0+)

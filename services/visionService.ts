@@ -158,22 +158,61 @@ const VALID_CATEGORIES = [
 
 /**
  * Try to parse the Qwen response as structured JSON (new prompt format).
- * Returns null if the text isn't valid structured JSON.
+ * Handles strict JSON, markdown-fenced JSON, and loose key: value formats.
+ * Returns null if nothing recognisable can be extracted.
  */
 function tryParseStructuredJSON(text: string): QwenReceiptJSON | null {
-  try {
-    let cleaned = text.trim();
-    // Strip markdown code fences if the model wrapped them anyway
-    cleaned = cleaned.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim();
-    if (!cleaned.startsWith('{')) return null;
-    const parsed = JSON.parse(cleaned);
-    // Sanity: must have at least one expected field
-    if (parsed.merchant || parsed.total !== undefined || parsed.date) {
-      return parsed as QwenReceiptJSON;
+  let cleaned = text.trim();
+
+  // Strip markdown code fences if the model wrapped them anyway
+  cleaned = cleaned.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim();
+
+  // ── Attempt 1: strict JSON parse ──
+  if (cleaned.startsWith('{')) {
+    try {
+      const parsed = JSON.parse(cleaned);
+      if (parsed.merchant || parsed.total !== undefined || parsed.date) {
+        return parsed as QwenReceiptJSON;
+      }
+    } catch {
+      // May be malformed — try loose extraction below
     }
-  } catch {
-    // Not valid JSON
   }
+
+  // ── Attempt 2: loose key-value format ──
+  // Qwen sometimes returns "merchant: 大家樂\ntotal: 50.00" instead of JSON.
+  // Detect this by looking for multiple "key: value" lines.
+  const kvPattern = /^"?(\w+)"?\s*[:：]\s*"?(.+?)"?\s*$/;
+  const lines = cleaned.split('\n').map(l => l.trim()).filter(Boolean);
+  const kvPairs: Record<string, string> = {};
+  let kvHits = 0;
+  for (const line of lines) {
+    // Strip trailing commas (from almost-JSON)
+    const stripped = line.replace(/,\s*$/, '');
+    const m = stripped.match(kvPattern);
+    if (m) {
+      kvPairs[m[1].toLowerCase()] = m[2];
+      kvHits++;
+    }
+  }
+
+  // Need at least 2 recognised fields to treat it as structured output
+  if (kvHits >= 2 && (kvPairs.merchant || kvPairs.total || kvPairs.date)) {
+    logger.log('[VisionService] Parsed loose key-value format from Qwen response');
+    const result: QwenReceiptJSON = {};
+    if (kvPairs.merchant) result.merchant = kvPairs.merchant;
+    if (kvPairs.date) result.date = kvPairs.date;
+    if (kvPairs.currency) result.currency = kvPairs.currency;
+    if (kvPairs.total) {
+      const num = parseFloat(kvPairs.total.replace(/[^0-9.]/g, ''));
+      if (isFinite(num)) result.total = num;
+    }
+    if (kvPairs.category) result.category = kvPairs.category;
+    if (kvPairs.language) result.language = kvPairs.language;
+    // line_items are unlikely in loose KV, skip
+    return result;
+  }
+
   return null;
 }
 
@@ -250,7 +289,11 @@ export function parseReceiptText(rawText: string, options?: ProcessReceiptOption
   if (structured) {
     logger.log('[VisionService] Parsed structured JSON response from Qwen');
 
-    let merchant = (structured.merchant || 'Unknown').substring(0, 80);
+    let merchant = (structured.merchant || 'Unknown')
+      // Safety: strip any leaked JSON key prefix like "merchant: " or "merchant " from the value
+      .replace(/^"?merchant"?\s*[:：]\s*/i, '')
+      .trim()
+      .substring(0, 80);
     const total = typeof structured.total === 'number' && isFinite(structured.total) ? structured.total : 0;
     const date = validateDate(structured.date);
     const category = normalizeCategory(structured.category);
@@ -332,6 +375,9 @@ export function parseReceiptText(rawText: string, options?: ProcessReceiptOption
   const textLines = actualText.split('\n').map(l => l.trim()).filter(Boolean);
 
   // --- Extract Merchant ---
+  // Known field-name prefixes the model may include (strip these from values)
+  const FIELD_PREFIXES = /^"?(?:merchant|store|shop|vendor|name|商店|店[名鋪舖]?)["\s]*[:：]\s*"?/i;
+
   // CJK-aware: skip code-like lines but accept Chinese text
   const codePatterns = [
     /^[A-Z0-9]{10,}$/,
@@ -341,7 +387,18 @@ export function parseReceiptText(rawText: string, options?: ProcessReceiptOption
     /^[A-Z]{2,}\s*\d+/,
     /^\$\d+/,
     /^\{.*"text"/,
+    // Skip lines that are clearly other JSON fields (not merchant)
+    /^"?(?:date|total|currency|category|language|line_items)"?\s*[:：]/i,
   ];
+
+  /** Clean a candidate merchant string: strip field-name prefix and trailing quotes */
+  function cleanMerchantCandidate(raw: string): string {
+    return raw
+      .replace(FIELD_PREFIXES, '')
+      .replace(/"\s*,?\s*$/, '') // trailing quote / comma from JSON-ish
+      .trim()
+      .substring(0, 80);
+  }
 
   for (let i = 0; i < textLines.length; i++) {
     const line = textLines[i];
@@ -357,10 +414,10 @@ export function parseReceiptText(rawText: string, options?: ProcessReceiptOption
       // For lines with a numeric prefix followed by CJK/text, take the text part
       const cjkTextMatch = line.match(/^\d+\s+(.+)/);
       if (cjkTextMatch && /[\u4e00-\u9fff]/.test(cjkTextMatch[1])) {
-        merchant = cjkTextMatch[1].trim().substring(0, 80);
+        merchant = cleanMerchantCandidate(cjkTextMatch[1]);
       } else {
         const firstPhrase = line.split(/[\n,，。]{1,}|\s{3,}/)[0].trim();
-        merchant = firstPhrase.substring(0, 80);
+        merchant = cleanMerchantCandidate(firstPhrase);
       }
       break;
     }
@@ -370,10 +427,10 @@ export function parseReceiptText(rawText: string, options?: ProcessReceiptOption
     const firstLine = textLines[0];
     const cjkTextMatch = firstLine.match(/^\d+\s+(.+)/);
     if (cjkTextMatch && /[\u4e00-\u9fff]/.test(cjkTextMatch[1])) {
-      merchant = cjkTextMatch[1].trim().substring(0, 80);
+      merchant = cleanMerchantCandidate(cjkTextMatch[1]);
     } else {
       const firstPhrase = firstLine.split(/[\n,，。]{1,}|\s{3,}/)[0].trim();
-      merchant = firstPhrase.substring(0, 80);
+      merchant = cleanMerchantCandidate(firstPhrase);
     }
   }
 
@@ -517,17 +574,19 @@ export function parseReceiptText(rawText: string, options?: ProcessReceiptOption
 
 // ─── Handwriting retry prompt ────────────────────────────────────────────
 
-const HANDWRITING_RETRY_PROMPT = `This is a handwritten receipt. Focus on finding:
-1. Any numbers that could be a total amount (usually the largest number, often circled or underlined)
-2. Any text that could be a store/merchant name (often at the top or stamped)
-3. A date (often in DD/MM or DD/MM/YYYY format)
+const HANDWRITING_RETRY_PROMPT = `This is a handwritten or wet-market receipt from Hong Kong. Read it very carefully.
+
+WHAT TO LOOK FOR:
+1. MERCHANT NAME: Look for a PRE-PRINTED label (often RED or coloured) — it contains the shop/stall name in Chinese and sometimes English. Read that label text as the merchant.
+2. TOTAL AMOUNT: There is a HANDWRITTEN number scribbled in pen or marker on this receipt. This number IS the total amount spent in HKD. It may be a simple number like "35", "68", or "120". Decipher the handwritten digits carefully — even if messy, give your best reading of what number is written.
+3. DATE: Often in DD/MM or DD/MM/YYYY format, may be handwritten or stamped.
 
 IMPORTANT: This receipt may contain Chinese (繁體中文/简体中文) characters.
 Preserve all Chinese text exactly as written. Do NOT convert Chinese characters into numbers.
 
 Return as JSON:
 {
-  "merchant": "store name or best guess",
+  "merchant": "store name from the pre-printed label",
   "date": "YYYY-MM-DD",
   "currency": "HKD",
   "total": 0.00,
@@ -537,6 +596,8 @@ Return as JSON:
 }
 
 Rules:
+- The handwritten number IS the dollar amount — decipher it even if messy
+- If no decimal point is written, treat the number as whole dollars (e.g. "35" = 35.00)
 - Return your best guess even if uncertain
 - Preserve Chinese characters exactly
 - Return ONLY valid JSON, no markdown fences`;
@@ -557,9 +618,15 @@ export async function processReceipt(base64Image: string, options?: ProcessRecei
     confidence: result.confidence,
   });
 
-  // Two-pass retry: if first pass returned essentially nothing useful, try handwriting prompt
-  if (result.merchant === 'Unknown' && result.total === 0) {
-    logger.log('[VisionService] Low-confidence first pass — retrying with handwriting-specific prompt');
+  // Two-pass retry: if first pass couldn't find a total (common with handwritten
+  // wet-market receipts) or returned nothing at all, retry with a specialised prompt.
+  const needsRetry = result.total === 0 || (result.merchant === 'Unknown' && result.confidence < 0.7);
+  if (needsRetry) {
+    logger.log('[VisionService] Low-confidence first pass — retrying with handwriting/wet-market prompt', {
+      merchant: result.merchant,
+      total: result.total,
+      confidence: result.confidence,
+    });
     try {
       const retryText = await extractTextFromImage(base64Image, HANDWRITING_RETRY_PROMPT);
       const retryResult = parseReceiptText(retryText, options);
@@ -570,9 +637,18 @@ export async function processReceipt(base64Image: string, options?: ProcessRecei
         confidence: retryResult.confidence,
       });
 
-      // Use retry result if it found anything better
-      if (retryResult.merchant !== 'Unknown' || retryResult.total > 0) {
-        return retryResult;
+      // Use retry if it found a total (main goal) or a better merchant
+      if (retryResult.total > 0 || (retryResult.merchant !== 'Unknown' && result.merchant === 'Unknown')) {
+        // Merge: keep the better value for each field
+        return {
+          rawText: retryResult.rawText,
+          total: retryResult.total > 0 ? retryResult.total : result.total,
+          merchant: retryResult.merchant !== 'Unknown' ? retryResult.merchant : result.merchant,
+          date: retryResult.date !== new Date().toISOString().split('T')[0] ? retryResult.date : result.date,
+          category: retryResult.category !== 'Misc' ? retryResult.category : result.category,
+          confidence: Math.max(retryResult.confidence, result.confidence),
+          lineItems: retryResult.lineItems.length > 0 ? retryResult.lineItems : result.lineItems,
+        };
       }
     } catch (retryError) {
       logger.warn('[VisionService] Handwriting retry failed (non-fatal):', retryError);

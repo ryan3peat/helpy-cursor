@@ -113,10 +113,13 @@ characters into numbers or ASCII. If a merchant name is "大家樂", return
 If the receipt contains both Chinese and English text, return both.
 Format: "Chinese Name (English Name)" e.g. "百佳超級市場 (PARKnSHOP)"
 
-This receipt may be handwritten or from a wet market / street vendor:
-- The shop name is often on a PRE-PRINTED label (sometimes RED) at the top — read that label for the merchant name
-- The dollar amount is often HANDWRITTEN in pen/marker — it may be a single scribbled number like "35" or "120" representing the total in HKD
-- Look carefully at handwritten digits: decipher the number even if messy, it IS the total amount
+This receipt may be from a wet market / street vendor with HANDWRITTEN amounts:
+- MERCHANT: The shop name is often on a PRE-PRINTED label (sometimes RED) at the top — read that label
+- HANDWRITTEN TOTAL: Look for BLUE or BLACK ink pen/ballpoint/marker strokes on the receipt.
+  The handwritten amount is typically 2-3 large digits written in cursive/casual handwriting,
+  noticeably bigger than any printed text (roughly 30-50pt equivalent size).
+  This handwritten number IS the total amount in HKD (e.g. "35", "68", "120").
+  Decipher these ink strokes carefully — they are the most important part of this receipt.
 - Dates are often in DD/MM format
 - If text is illegible, return your best guess
 

@@ -574,15 +574,25 @@ export function parseReceiptText(rawText: string, options?: ProcessReceiptOption
 
 // ─── Handwriting retry prompt ────────────────────────────────────────────
 
-const HANDWRITING_RETRY_PROMPT = `This is a handwritten or wet-market receipt from Hong Kong. Read it very carefully.
+const HANDWRITING_RETRY_PROMPT = `This is a wet-market or street-vendor receipt from Hong Kong with a HANDWRITTEN dollar amount. Your #1 job is to decipher that handwritten number.
 
-WHAT TO LOOK FOR:
-1. MERCHANT NAME: Look for a PRE-PRINTED label (often RED or coloured) — it contains the shop/stall name in Chinese and sometimes English. Read that label text as the merchant.
-2. TOTAL AMOUNT: There is a HANDWRITTEN number scribbled in pen or marker on this receipt. This number IS the total amount spent in HKD. It may be a simple number like "35", "68", or "120". Decipher the handwritten digits carefully — even if messy, give your best reading of what number is written.
-3. DATE: Often in DD/MM or DD/MM/YYYY format, may be handwritten or stamped.
+HOW TO FIND THE HANDWRITTEN AMOUNT:
+- Look for BLUE or BLACK ink strokes from a ballpoint pen, marker, or felt-tip pen
+- The handwritten number is typically 2-3 LARGE digits, much bigger than any printed text on the receipt (roughly 30-50pt font equivalent)
+- It is written in casual/cursive handwriting — the strokes may be messy, slanted, or overlapping
+- It is usually written in an open area of the receipt, NOT inside the pre-printed text
+- Common amounts: "35", "42", "68", "85", "120", "150" — these are whole-dollar HKD amounts
+- There may also be a "$" sign or "HK$" written by hand next to the number
+- IGNORE any small printed numbers (phone numbers, addresses, dates) — focus on the LARGE handwritten ink strokes
 
-IMPORTANT: This receipt may contain Chinese (繁體中文/简体中文) characters.
-Preserve all Chinese text exactly as written. Do NOT convert Chinese characters into numbers.
+HOW TO FIND THE MERCHANT NAME:
+- Look for a PRE-PRINTED label, often RED or coloured, usually at the top of the receipt
+- It contains the shop/stall name in Chinese characters and sometimes English
+- Read that label text as the merchant name
+
+DATE: Often stamped or handwritten in DD/MM or DD/MM/YYYY format.
+
+IMPORTANT: Preserve all Chinese (繁體中文/简体中文) characters exactly as written.
 
 Return as JSON:
 {
@@ -591,14 +601,14 @@ Return as JSON:
   "currency": "HKD",
   "total": 0.00,
   "category": "one of: Food & Daily Needs, Transport & Travel, Housing & Utilities, Health & Personal Care, Fun & Lifestyle, Other",
-  "line_items": [{"name": "item", "price": 0.00}],
+  "line_items": [],
   "language": "detected language"
 }
 
 Rules:
-- The handwritten number IS the dollar amount — decipher it even if messy
-- If no decimal point is written, treat the number as whole dollars (e.g. "35" = 35.00)
-- Return your best guess even if uncertain
+- The large handwritten ink number IS the dollar amount — you MUST decipher it
+- If no decimal point is written, treat as whole dollars (e.g. "35" = 35.00)
+- If you can read even part of the number, return your best guess (e.g. if it looks like it could be "35" or "85", pick the most likely)
 - Preserve Chinese characters exactly
 - Return ONLY valid JSON, no markdown fences`;
 

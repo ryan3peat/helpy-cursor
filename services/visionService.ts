@@ -572,96 +572,180 @@ export function parseReceiptText(rawText: string, options?: ProcessReceiptOption
   return { rawText, total, merchant, date, category, confidence, lineItems };
 }
 
-// ─── Handwriting retry prompt ────────────────────────────────────────────
+// ─── Gemini-based handwriting detection (Pass 2) ────────────────────────
 
-const HANDWRITING_RETRY_PROMPT = `This is a wet-market or street-vendor receipt from Hong Kong with a HANDWRITTEN dollar amount. Your #1 job is to decipher that handwritten number.
+// Gemini proxy endpoint (same as geminiService.ts)
+const GEMINI_PROXY_URL = (() => {
+  try {
+    return (import.meta.env?.VITE_API_URL || '') + '/api/gemini-proxy';
+  } catch {
+    return '/api/gemini-proxy';
+  }
+})();
 
-HOW TO FIND THE HANDWRITTEN AMOUNT:
-- Look for BLUE or BLACK ink strokes from a ballpoint pen, marker, or felt-tip pen
-- The handwritten number is typically 2-3 LARGE digits, much bigger than any printed text on the receipt (roughly 30-50pt font equivalent)
-- It is written in casual/cursive handwriting — the strokes may be messy, slanted, or overlapping
-- It is usually written in an open area of the receipt, NOT inside the pre-printed text
-- Common amounts: "35", "42", "68", "85", "120", "150" — these are whole-dollar HKD amounts
-- There may also be a "$" sign or "HK$" written by hand next to the number
-- IGNORE any small printed numbers (phone numbers, addresses, dates) — focus on the LARGE handwritten ink strokes
+const GEMINI_HANDWRITING_PROMPT = `Look at this receipt image carefully. There is a HANDWRITTEN number on it — written by hand with a pen (blue or black ink) on the paper.
 
-HOW TO FIND THE MERCHANT NAME:
-- Look for a PRE-PRINTED label, often RED or coloured, usually at the top of the receipt
-- It contains the shop/stall name in Chinese characters and sometimes English
-- Read that label text as the merchant name
+This handwritten number is the dollar amount (HKD) paid. It is typically:
+- 2 to 3 digits (e.g. 35, 68, 120)
+- Written much LARGER than any printed text
+- In casual/cursive handwriting with ink pen strokes
+- Located in an open white area of the receipt, not inside any printed label
 
-DATE: Often stamped or handwritten in DD/MM or DD/MM/YYYY format.
+Also look for a pre-printed label (often red/coloured) at the top — that has the store name.
 
-IMPORTANT: Preserve all Chinese (繁體中文/简体中文) characters exactly as written.
-
-Return as JSON:
+Return a JSON object:
 {
-  "merchant": "store name from the pre-printed label",
-  "date": "YYYY-MM-DD",
-  "currency": "HKD",
-  "total": 0.00,
-  "category": "one of: Food & Daily Needs, Transport & Travel, Housing & Utilities, Health & Personal Care, Fun & Lifestyle, Other",
-  "line_items": [],
-  "language": "detected language"
+  "total": <the handwritten number as a decimal, e.g. 68.00>,
+  "merchant": "<store name from the printed label, preserve Chinese characters>",
+  "date": "<YYYY-MM-DD if visible, otherwise empty string>"
 }
 
 Rules:
-- The large handwritten ink number IS the dollar amount — you MUST decipher it
-- If no decimal point is written, treat as whole dollars (e.g. "35" = 35.00)
-- If you can read even part of the number, return your best guess (e.g. if it looks like it could be "35" or "85", pick the most likely)
-- Preserve Chinese characters exactly
-- Return ONLY valid JSON, no markdown fences`;
+- Focus on the HANDWRITTEN ink strokes to read the number — this is the most important part
+- If no decimal point is written, treat as whole dollars (35 becomes 35.00)
+- Give your best guess even if the handwriting is messy
+- Preserve Chinese characters exactly as written
+- Return ONLY valid JSON, no explanation or markdown`;
+
+interface GeminiHandwritingResult {
+  total?: number;
+  merchant?: string;
+  date?: string;
+}
+
+/**
+ * Use Gemini 2.5 Flash (general-purpose VLM) to read handwritten amounts.
+ * Unlike qwen-vl-ocr (specialised text-region OCR), Gemini can reason about
+ * visual properties like ink strokes, handwriting style, and spatial layout.
+ * This is used as a fallback when qwen-vl-ocr fails to detect a total (common
+ * on wet-market receipts with pen-scribbled amounts).
+ */
+async function extractAmountViaGemini(base64Image: string): Promise<GeminiHandwritingResult> {
+  logger.log('[VisionService] Calling Gemini 2.5 Flash for handwriting detection');
+
+  const response = await fetch(GEMINI_PROXY_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: {
+        parts: [
+          {
+            inlineData: {
+              mimeType: 'image/jpeg',
+              data: base64Image,
+            },
+          },
+          {
+            text: GEMINI_HANDWRITING_PROMPT,
+          },
+        ],
+      },
+      config: {
+        responseMimeType: 'application/json',
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    const errBody = await response.text();
+    throw new Error(`Gemini proxy error ${response.status}: ${errBody}`);
+  }
+
+  const data = await response.json();
+
+  // Extract text from Gemini response format (same structure as geminiService.ts)
+  let text = '';
+  if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
+    text = data.candidates[0].content.parts[0].text;
+  } else if (data.text) {
+    text = data.text;
+  }
+
+  if (!text) {
+    throw new Error('Gemini returned empty response for handwriting detection');
+  }
+
+  logger.log('[VisionService] Gemini raw response:', text.substring(0, 300));
+
+  // Parse the JSON response
+  let cleaned = text.trim()
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/```\s*$/i, '')
+    .trim();
+
+  const parsed = JSON.parse(cleaned);
+
+  const result: GeminiHandwritingResult = {};
+
+  if (typeof parsed.total === 'number' && isFinite(parsed.total) && parsed.total > 0) {
+    result.total = parsed.total;
+  } else if (typeof parsed.total === 'string') {
+    const num = parseFloat(parsed.total.replace(/[^0-9.]/g, ''));
+    if (isFinite(num) && num > 0) result.total = num;
+  }
+
+  if (parsed.merchant && typeof parsed.merchant === 'string' && parsed.merchant !== 'Unknown') {
+    result.merchant = parsed.merchant.substring(0, 80);
+  }
+
+  if (parsed.date && typeof parsed.date === 'string') {
+    result.date = parsed.date;
+  }
+
+  logger.log('[VisionService] Gemini handwriting result:', result);
+  return result;
+}
 
 /**
  * Main function: Process receipt image end-to-end.
- * Uses a two-pass approach: if the first pass yields low-confidence results
- * (unknown merchant AND zero total), retries with a handwriting-specific prompt.
+ *
+ * Pass 1: qwen-vl-ocr — great for printed receipts (supermarkets, restaurants, etc.)
+ * Pass 2: Gemini 2.5 Flash — if Pass 1 couldn't find a total, use Gemini's general
+ *         vision understanding to decipher handwritten pen-scribbled amounts (common
+ *         on wet-market / street-vendor receipts).
  */
 export async function processReceipt(base64Image: string, options?: ProcessReceiptOptions): Promise<ParsedReceipt> {
-  // First pass — standard structured prompt
+  // Pass 1 — qwen-vl-ocr (structured JSON prompt)
   const rawText = await extractTextFromImage(base64Image);
   const result = parseReceiptText(rawText, options);
 
-  logger.log('[VisionService] First pass result:', {
+  logger.log('[VisionService] Pass 1 (qwen-vl-ocr) result:', {
     merchant: result.merchant,
     total: result.total,
     confidence: result.confidence,
   });
 
-  // Two-pass retry: if first pass couldn't find a total (common with handwritten
-  // wet-market receipts) or returned nothing at all, retry with a specialised prompt.
-  const needsRetry = result.total === 0 || (result.merchant === 'Unknown' && result.confidence < 0.7);
-  if (needsRetry) {
-    logger.log('[VisionService] Low-confidence first pass — retrying with handwriting/wet-market prompt', {
-      merchant: result.merchant,
-      total: result.total,
-      confidence: result.confidence,
-    });
+  // Pass 2 — Gemini handwriting detection when Pass 1 couldn't find a total
+  // (or returned nothing at all). qwen-vl-ocr is a specialised text-region OCR model
+  // that cannot detect handwritten ink strokes; Gemini is a general-purpose VLM that can.
+  const needsGeminiFallback = result.total === 0 || (result.merchant === 'Unknown' && result.confidence < 0.7);
+  if (needsGeminiFallback) {
+    logger.log('[VisionService] Pass 1 missing total — invoking Gemini 2.5 Flash for handwriting detection');
     try {
-      const retryText = await extractTextFromImage(base64Image, HANDWRITING_RETRY_PROMPT);
-      const retryResult = parseReceiptText(retryText, options);
+      const geminiResult = await extractAmountViaGemini(base64Image);
 
-      logger.log('[VisionService] Retry result:', {
-        merchant: retryResult.merchant,
-        total: retryResult.total,
-        confidence: retryResult.confidence,
-      });
-
-      // Use retry if it found a total (main goal) or a better merchant
-      if (retryResult.total > 0 || (retryResult.merchant !== 'Unknown' && result.merchant === 'Unknown')) {
-        // Merge: keep the better value for each field
-        return {
-          rawText: retryResult.rawText,
-          total: retryResult.total > 0 ? retryResult.total : result.total,
-          merchant: retryResult.merchant !== 'Unknown' ? retryResult.merchant : result.merchant,
-          date: retryResult.date !== new Date().toISOString().split('T')[0] ? retryResult.date : result.date,
-          category: retryResult.category !== 'Misc' ? retryResult.category : result.category,
-          confidence: Math.max(retryResult.confidence, result.confidence),
-          lineItems: retryResult.lineItems.length > 0 ? retryResult.lineItems : result.lineItems,
-        };
+      // Merge: Gemini's handwriting read for total, keep Pass 1 data for everything else
+      if (geminiResult.total && geminiResult.total > 0) {
+        logger.log('[VisionService] Gemini found handwritten total:', geminiResult.total);
+        result.total = geminiResult.total;
+        result.confidence = Math.max(result.confidence, 0.75);
       }
-    } catch (retryError) {
-      logger.warn('[VisionService] Handwriting retry failed (non-fatal):', retryError);
+
+      // If Gemini also found a better merchant (e.g. from the red label), use it
+      if (geminiResult.merchant && result.merchant === 'Unknown') {
+        result.merchant = geminiResult.merchant;
+      }
+
+      // If Gemini found a date and Pass 1 didn't, use it
+      const today = new Date().toISOString().split('T')[0];
+      if (geminiResult.date && result.date === today) {
+        const validated = validateDate(geminiResult.date);
+        if (validated !== today) {
+          result.date = validated;
+        }
+      }
+    } catch (geminiError) {
+      logger.warn('[VisionService] Gemini handwriting fallback failed (non-fatal):', geminiError);
     }
   }
 

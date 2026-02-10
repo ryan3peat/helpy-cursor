@@ -16,6 +16,7 @@ const QWEN_MODEL = 'qwen-vl-ocr';
 
 interface QwenVLRequest {
   base64Image: string;
+  prompt?: string; // Optional custom prompt for retry/specialized passes
 }
 
 interface QwenVLResponse {
@@ -77,7 +78,7 @@ export default async function handler(
 
     logger.log('[OCR API] API key validated, length:', apiKey.length);
 
-    const { base64Image }: QwenVLRequest = req.body;
+    const { base64Image, prompt: customPrompt }: QwenVLRequest = req.body;
 
     if (!base64Image) {
       logger.error('[OCR API] Missing base64Image in request');
@@ -85,9 +86,45 @@ export default async function handler(
     }
 
     logger.log('[OCR API] Image received, base64 length:', base64Image.length);
+    if (customPrompt) {
+      logger.log('[OCR API] Using custom prompt (retry/handwriting pass)');
+    }
 
     // Qwen-VL expects base64 image in data URI format
     const imageDataUri = `data:image/jpeg;base64,${base64Image}`;
+
+    const defaultPrompt = `You are a receipt OCR specialist for Hong Kong.
+Extract the following fields from this receipt as JSON:
+{
+  "merchant": "store name",
+  "date": "YYYY-MM-DD",
+  "currency": "HKD",
+  "total": 0.00,
+  "category": "one of: Food & Daily Needs, Transport & Travel, Housing & Utilities, Health & Personal Care, Fun & Lifestyle, Other",
+  "line_items": [{"name": "item", "price": 0.00}],
+  "language": "detected language of receipt"
+}
+
+IMPORTANT: This receipt may contain Chinese (繁體中文/简体中文) characters.
+Preserve all Chinese text exactly as written. Do NOT transliterate Chinese
+characters into numbers or ASCII. If a merchant name is "大家樂", return
+"大家樂", not a number sequence.
+
+If the receipt contains both Chinese and English text, return both.
+Format: "Chinese Name (English Name)" e.g. "百佳超級市場 (PARKnSHOP)"
+
+This receipt may be handwritten. For handwritten text:
+- Look for total amount, usually the largest number, often circled or underlined
+- Merchant name may be at the top or stamped
+- Dates are often in DD/MM format
+- If text is illegible, return your best guess with a confidence note
+
+Rules:
+- For Chinese characters, preserve them accurately, do NOT convert to numbers
+- Preserve original merchant name including Chinese characters
+- Dates: use YYYY-MM-DD format
+- Currency: default HKD for Hong Kong receipts
+- Return ONLY valid JSON, no markdown fences`;
 
     const requestBody = {
       model: QWEN_MODEL,
@@ -100,7 +137,7 @@ export default async function handler(
                 image: imageDataUri,
               },
               {
-                text: 'Extract all text from this receipt image. Return only the raw text content exactly as it appears, preserving line breaks and formatting.',
+                text: customPrompt || defaultPrompt,
               },
             ],
           },
@@ -171,28 +208,25 @@ export default async function handler(
       });
     }
 
-    // Extract text from response
-    let fullText = data.output?.choices?.[0]?.message?.content || '';
+    // Extract text from response — content may be string, object, or array at runtime
+    // despite the interface typing, so we handle all cases defensively.
+    let fullText: string;
+    const rawContent: unknown = data.output?.choices?.[0]?.message?.content;
 
-    // Handle case where content might be an object or array
-    if (typeof fullText !== 'string') {
-      logger.log('[OCR API] Content is not a string, converting. Type:', typeof fullText);
-      if (Array.isArray(fullText)) {
-        // If it's an array, join the elements
-        fullText = fullText.map(item => 
-          typeof item === 'string' ? item : JSON.stringify(item)
-        ).join('\n');
-      } else if (typeof fullText === 'object') {
-        // If it's an object, try to extract text or stringify
-        fullText = fullText.text || fullText.content || JSON.stringify(fullText);
-      } else {
-        // Fallback: convert to string
-        fullText = String(fullText);
-      }
+    if (typeof rawContent === 'string') {
+      fullText = rawContent;
+    } else if (Array.isArray(rawContent)) {
+      logger.log('[OCR API] Content is an array, joining elements');
+      fullText = rawContent.map((item: unknown) =>
+        typeof item === 'string' ? item : JSON.stringify(item)
+      ).join('\n');
+    } else if (rawContent && typeof rawContent === 'object') {
+      logger.log('[OCR API] Content is an object, extracting text');
+      const obj = rawContent as Record<string, unknown>;
+      fullText = String(obj.text || obj.content || JSON.stringify(rawContent));
+    } else {
+      fullText = String(rawContent || '');
     }
-
-    // Ensure it's a string
-    fullText = String(fullText || '');
 
     if (!fullText || fullText.trim().length === 0) {
       logger.error('[OCR API] No text content extracted from response');

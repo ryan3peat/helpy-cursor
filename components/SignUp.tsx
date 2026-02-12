@@ -720,9 +720,9 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
           </button>
         </p>
 
-        {/* Try for Free Banner */}
-        <div className="mt-8 rounded-2xl bg-gradient-to-r from-[#3EAFD2] to-[#2B8FB3] p-5 text-center shadow-md">
-          <p className="text-xl font-bold text-white tracking-tight">Try for Free!</p>
+        {/* Free to use banner */}
+        <div className="mt-8 rounded-xl border border-primary/30 bg-primary/8 px-5 py-4 text-center">
+          <p className="text-body font-medium text-foreground">Helpy is free to use, try today</p>
         </div>
 
         {/* Features Section */}

@@ -2,7 +2,7 @@
 // NOTE: Auth screen error messages are always displayed in English regardless of user language preference
 import React, { useState, useEffect } from 'react';
 import { useSignUp, useSignIn } from '@clerk/clerk-react';
-import { Loader2, ArrowLeft } from 'lucide-react';
+import { Loader2, ArrowLeft, Home, ClipboardList, Utensils, DollarSign, BookUser, HeartHandshake } from 'lucide-react';
 import ErrorBanner from './ui/ErrorBanner';
 import { logger } from '../utils/logger';
 import { trackSignupComplete } from '../services/metaPixel';
@@ -720,14 +720,76 @@ const SignUp: React.FC<SignUpProps> = ({ onBackToSignIn }) => {
           </button>
         </p>
 
-        {/* Features Link */}
-        <div className="mt-8">
-          <a
-            href="https://helpyfam.com"
-            className="text-primary text-body font-medium"
-          >
-            See Helpyfam Features
-          </a>
+        {/* Features Section */}
+        <div className="mt-10 mb-8">
+          <h2 className="text-lg font-semibold text-foreground mb-1">A household planner app</h2>
+          <h2 className="text-lg font-semibold text-primary mb-3">made for real homes</h2>
+          <p className="text-sm text-muted-foreground leading-relaxed mb-6">
+            Helpy is the home management app that simplifies daily life. It gathers meals, tasks, and spending in one spot. The ideal family collaboration app for families and helpers to work as a team.
+          </p>
+
+          <div className="grid grid-cols-1 gap-4">
+            {[
+              {
+                icon: Home,
+                title: 'Home',
+                body: 'Discover a serene dashboard that unites your family\'s plans, reminders, and essential tools into a single, intuitive overview for effortless home management.',
+                features: 'Family Board, Widgets with quick action buttons, App Translations',
+              },
+              {
+                icon: ClipboardList,
+                title: 'To Do',
+                body: 'Keep everyone in sync with a shared task and shopping list.',
+                features: 'Task list with due dates and recurring settings. Shopping list with Shopping Mode',
+              },
+              {
+                icon: Utensils,
+                title: 'Meals',
+                body: 'Family meal scheduler to organize the week and guide your helper.',
+                features: 'Meal planner for adults and kids. Quick recipe search on YouTube. RSVP system to join the meal. PDF export for printing.',
+              },
+              {
+                icon: DollarSign,
+                title: 'Expenses',
+                body: 'Stay on budget with a simple family expense tracker. It works as a household expense manager that lets you snap and track receipts in seconds.',
+                features: 'Expenses list and summary. AI receipt scanner',
+              },
+              {
+                icon: BookUser,
+                title: 'Family',
+                body: 'A "Family Book" storing all of the important information about the family for everyone to know. Important and common places that you often visit (such as school, doctors, etc.), and how to do things your way, all on one page.',
+                features: 'Places and practices list, including contact details and instructions, and notes.',
+              },
+              {
+                icon: HeartHandshake,
+                title: 'Helper',
+                body: 'Nestled in the Family page. Managing salary slips has never been easier! Generate the slip in one click and sign it digitally!',
+                features: "Helper's start date, salary, and salary slip",
+              },
+            ].map((item, idx) => {
+              const Icon = item.icon;
+              return (
+                <div
+                  key={idx}
+                  className="relative flex flex-col rounded-2xl bg-white/60 border border-border p-5"
+                >
+                  <div className="absolute right-5 top-5 text-primary">
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <h3 className="pr-8 text-sm font-semibold text-foreground mb-1.5">
+                    {item.title}
+                  </h3>
+                  <p className="text-xs text-muted-foreground leading-relaxed mb-3">
+                    {item.body}
+                  </p>
+                  <div className="border-t border-border mb-3" />
+                  <p className="text-xs text-primary leading-relaxed">
+                    {item.features}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
     </div>

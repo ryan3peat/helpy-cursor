@@ -39,7 +39,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, t }) => {
   const supabaseFromContext = useSupabase(); // Authenticated client from context
   const isSupabaseReady = useSupabaseReady(); // Check if JWT is ready
   const [isCreatingUser, setIsCreatingUser] = React.useState(false);
-  const [showSignUp, setShowSignUp] = useState(false);
+  const [showSignUp, setShowSignUp] = useState(true);
   const [showHouseholdSwitch, setShowHouseholdSwitch] = useState(false);
   const [showRemovedFromHousehold, setShowRemovedFromHousehold] = useState(false);
   

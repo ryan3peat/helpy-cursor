@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { AuthenticateWithRedirectCallback, useClerk, useUser } from '@clerk/clerk-react';
 import { Capacitor } from '@capacitor/core';
+import { getHKDateString } from './utils/dateUtils';
 import Layout from './components/Layout';
 import Home from './components/Home';
 import ToDo from './components/ToDo';
@@ -74,11 +75,7 @@ const AppLoading = () => (
   </div>
 );
 
-// Get a date as YYYY-MM-DD string in LOCAL timezone (not UTC)
-// Using toISOString() would convert to UTC which causes date to be wrong after midnight in timezones ahead of UTC
-const getLocalDateString = (date: Date = new Date()): string => {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-};
+const getLocalDateString = getHKDateString;
 
 // Inner App component that uses the translation context
 const AppContent: React.FC = () => {
@@ -439,6 +436,10 @@ const AppContent: React.FC = () => {
   // Session verification state - ensures we verify session BEFORE showing content
   // This is the "at the door" check to catch stale sessions early
   const [sessionVerified, setSessionVerified] = useState(false);
+
+  // Data loaded state - ensures fresh data is fetched from server before showing content
+  // Combined with sessionVerified, this guarantees the user always sees up-to-date data
+  const [dataLoaded, setDataLoaded] = useState(false);
 
   // Onboarding State
   const [onboardingStep, setOnboardingStep] = useState<number>(() => {
@@ -896,8 +897,13 @@ const AppContent: React.FC = () => {
     
     logger.log('[App] Running periodic sync...');
     
-    // Use authenticated client for RLS-protected queries (fixes 406 errors)
-    const authClient = getAuthenticatedSupabaseClient() || supabase;
+    // Only sync with an authenticated client - without JWT, RLS blocks everything
+    // and we'd overwrite cached data with empty results
+    const authClient = getAuthenticatedSupabaseClient();
+    if (!authClient) {
+      logger.warn('[App] ⏭️ No authenticated client - skipping sync to preserve cached data');
+      return;
+    }
     
     try {
       // Fetch all collections in parallel (including household limits AND family notes AND usage info)
@@ -911,14 +917,12 @@ const AppContent: React.FC = () => {
         getAllSalarySlips(hid),
       ]);
       
-      // Update state with fresh data - only if data exists (don't wipe cache with empty results)
-      if (usersData.length > 0) {
-        const uniqueUsers = Array.from(new Map(usersData.map(u => [u.id, u])).values());
-        setUsers(uniqueUsers as User[]);
-      }
-      if (todoData && todoData.length > 0) setTodoItems(todoData as ToDoItem[]);
-      if (mealsData && mealsData.length > 0) setMeals(mealsData as Meal[]);
-      if (expensesData && expensesData.length > 0) setExpenses(expensesData as Expense[]);
+      // Update state with fresh data from server
+      const uniqueUsers = Array.from(new Map(usersData.map(u => [u.id, u])).values());
+      setUsers(uniqueUsers as User[]);
+      if (todoData) setTodoItems(todoData as ToDoItem[]);
+      if (mealsData) setMeals(mealsData as Meal[]);
+      if (expensesData) setExpenses(expensesData as Expense[]);
       
       // Update helper contracts and salary slips - always update (even if empty) to clear stale cache
       if (contractsData) {
@@ -1325,14 +1329,7 @@ const AppContent: React.FC = () => {
         return acc;
       }, []);
       
-      // Protect cached data: don't replace existing users with empty results
-      setUsers(prev => {
-        if (finalUsers.length === 0 && prev.length > 0) {
-          logger.log('[App] 🛡️ Protecting cached users from empty result');
-          return prev;
-        }
-        return finalUsers as User[];
-      });
+      setUsers(finalUsers as User[]);
     });
     const unsubTodoItems = subscribeToCollection(hid, 'todo_items', (data) => {
       if (!data) return;
@@ -1340,15 +1337,8 @@ const AppContent: React.FC = () => {
       // Filter out items that are pending deletion to prevent "ghost returns"
       const filteredData = (data as ToDoItem[]).filter(item => !pendingTodoDeletions.current.has(item.id));
       
-      // Merge with temp items and protect cached data
+      // Merge with temp items (optimistic adds that haven't synced yet)
       setTodoItems(prev => {
-        // Protect cached data: don't replace existing todos with empty results
-        const realPrevItems = prev.filter(item => !item.id.startsWith('temp-') && !item.id.startsWith('todo-'));
-        if (filteredData.length === 0 && realPrevItems.length > 0) {
-          logger.log('[App] 🛡️ Protecting cached todos from empty result');
-          return prev;
-        }
-        
         const tempItems = prev.filter(item => item.id.startsWith('temp-') || item.id.startsWith('todo-'));
         // Create a map of real items by their content key for deduplication
         const realItemKeys = new Set(filteredData.map(item => {
@@ -1366,26 +1356,11 @@ const AppContent: React.FC = () => {
     });
     const unsubMeals = subscribeToCollection(hid, 'meals', (data) => {
       if (!data) return;
-      // Protect cached data: don't replace existing data with empty results
-      // This prevents brief network hiccups from wiping the UI
-      setMeals(prev => {
-        if (data.length === 0 && prev.length > 0) {
-          logger.log('[App] 🛡️ Protecting cached meals from empty result');
-          return prev;
-        }
-        return data as Meal[];
-      });
+      setMeals(data as Meal[]);
     });
     const unsubExpenses = subscribeToCollection(hid, 'expenses', (data) => {
       if (!data) return;
-      // Protect cached data: don't replace existing data with empty results
-      setExpenses(prev => {
-        if (data.length === 0 && prev.length > 0) {
-          logger.log('[App] 🛡️ Protecting cached expenses from empty result');
-          return prev;
-        }
-        return data as Expense[];
-      });
+      setExpenses(data as Expense[]);
     });
     const unsubNotes = subscribeToNotes(hid, (notesData) => {
       const notes = notesData.notes || '';
@@ -1404,53 +1379,20 @@ const AppContent: React.FC = () => {
       }
     });
     const unsubPlaces = subscribeToPlaces(hid, (data) => {
-      // Protect cached data: don't replace existing places with empty results
-      // This prevents brief JWT hiccups from wiping the UI
-      setPlaces(prev => {
-        if (data.length === 0 && prev.length > 0) {
-          logger.log('[App] 🛡️ Protecting cached places from empty result');
-          return prev;
-        }
-        return data;
-      });
+      setPlaces(data);
     });
     const unsubPractices = subscribeToPractices(hid, (data) => {
-      // Protect cached data: don't replace existing practices with empty results
-      setPractices(prev => {
-        if (data.length === 0 && prev.length > 0) {
-          logger.log('[App] 🛡️ Protecting cached practices from empty result');
-          return prev;
-        }
-        return data;
-      });
+      setPractices(data);
     });
     
     // Subscribe to helper data via realtime (fixes sync issues between household members)
     // Previously these were only fetched on mount/periodic sync, causing stale data
     const unsubHelperContracts = subscribeToHelperContracts(hid, (data) => {
-      // Protect cached data: don't replace existing contracts with empty results
-      setHelperContracts(prev => {
-        if (data.length === 0 && prev.length > 0) {
-          logger.log('[App] 🛡️ Protecting cached helper contracts from empty result');
-          return prev;
-        }
-        // Empty results with no cache is normal during initial load - don't log
-        // The service-level diagnostic already handles token checking
-        return data;
-      });
+      setHelperContracts(data);
     });
     
     const unsubSalarySlips = subscribeToSalarySlips(hid, (data) => {
-      // Protect cached data: don't replace existing slips with empty results
-      setSalarySlips(prev => {
-        if (data.length === 0 && prev.length > 0) {
-          logger.log('[App] 🛡️ Protecting cached salary slips from empty result');
-          return prev;
-        }
-        // Empty results with no cache is normal during initial load - don't log
-        // The service-level diagnostic already handles token checking
-        return data;
-      });
+      setSalarySlips(data);
     });
     
     return () => {
@@ -1503,11 +1445,11 @@ const AppContent: React.FC = () => {
   
   // MASTER TIMEOUT - starts IMMEDIATELY, independent of Supabase readiness
   // This is the safety net that prevents users from being stuck on loading forever
-  // Even if Clerk/Supabase is slow, users get through after 5 seconds
+  // Even if Clerk/Supabase is slow, users get through after 7 seconds
+  // Bumped from 5s to 7s because we now also wait for fresh data fetch
   useEffect(() => {
-    // Only run for logged-in, non-demo users who haven't been verified yet
-    if (!currentUser || sessionVerified || isDemoMode) {
-      // Clear any existing timeout
+    // Only run for logged-in, non-demo users who haven't passed both gates yet
+    if (!currentUser || (sessionVerified && dataLoaded) || isDemoMode) {
       if (masterTimeoutRef.current) {
         clearTimeout(masterTimeoutRef.current);
         masterTimeoutRef.current = null;
@@ -1515,16 +1457,19 @@ const AppContent: React.FC = () => {
       return;
     }
     
-    // Start master timeout IMMEDIATELY
     if (!masterTimeoutRef.current) {
-      logger.log('[Session Verification] ⏱️ Starting 5s master timeout...');
+      logger.log('[Session Verification] ⏱️ Starting 7s master timeout...');
       masterTimeoutRef.current = setTimeout(() => {
         if (!sessionVerified) {
-          logger.warn('[Session Verification] ⏰ MASTER TIMEOUT - letting user through after 5s wait');
+          logger.warn('[Session Verification] ⏰ MASTER TIMEOUT - marking session as verified after 7s');
           setSessionVerified(true);
         }
+        if (!dataLoaded) {
+          logger.warn('[Session Verification] ⏰ MASTER TIMEOUT - using cached data after 7s');
+          setDataLoaded(true);
+        }
         masterTimeoutRef.current = null;
-      }, 5000);
+      }, 7000);
     }
     
     return () => {
@@ -1533,13 +1478,14 @@ const AppContent: React.FC = () => {
         masterTimeoutRef.current = null;
       }
     };
-  }, [currentUser, sessionVerified, isDemoMode]);
+  }, [currentUser, sessionVerified, dataLoaded, isDemoMode]);
   
   // Session verification logic - runs when Supabase is ready
   useEffect(() => {
     // Reset verification state when user logs out
     if (!currentUser) {
       setSessionVerified(false);
+      setDataLoaded(false);
       sessionVerificationRef.current = false;
       return;
     }
@@ -1573,10 +1519,25 @@ const AppContent: React.FC = () => {
       if (!client) {
         throw new Error('No authenticated Supabase client available');
       }
+
+      const isNetErr = (err: any): boolean => {
+        const msg = (err?.message || '').toLowerCase();
+        return msg.includes('failed to fetch') || msg.includes('networkerror') ||
+          msg.includes('network error') || msg.includes('load failed') ||
+          msg.includes('the internet connection appears to be offline') ||
+          (typeof navigator !== 'undefined' && !navigator.onLine);
+      };
+
+      const isAuthErr = (err: any): boolean => {
+        if (!err) return false;
+        const code = err.code || '';
+        const status = err.status;
+        if (status === 401 || status === 403) return true;
+        if (code === 'PGRST303' || code === 'PGRST301') return true;
+        const msg = (err.message || '').toLowerCase();
+        return msg.includes('jwt') || msg.includes('expired') || msg.includes('unauthorized');
+      };
       
-      // FIXED: Instead of querying by localStorage user ID (which might not match JWT),
-      // verify we can access the HOUSEHOLD. This is what matters for the session.
-      // RLS will check if our JWT has access to this household.
       const { data: householdData, error: householdError } = await client
         .from('households')
         .select('id, name')
@@ -1584,50 +1545,32 @@ const AppContent: React.FC = () => {
         .maybeSingle();
       
       if (householdError) {
-        // During initial load, errors are common due to timing - token might not be ready yet
-        // Only log as warning since this is often temporary
         logger.warn('[Session Verification] ⚠️ Household query issue:', householdError.message, householdError.code);
-        // 406/PGRST116 means RLS blocked - could be timing issue or stale session
-        // Let user through and let other queries determine if session is truly stale
-        if (householdError.code === 'PGRST116' || householdError.message?.includes('406')) {
-          logger.log('[Session Verification] ⏳ RLS blocked - likely timing issue during initial load');
-          return 'verified'; // Let user through - if session is truly stale, other queries will fail
+
+        if (isNetErr(householdError)) {
+          logger.log('[Session Verification] 📡 Network error - giving benefit of the doubt');
+          return 'verified';
         }
-        // For other errors, also let user through - master timeout is the safety net
+
+        if (isAuthErr(householdError)) {
+          logger.warn('[Session Verification] 🔒 Auth error detected - session is stale');
+          return 'stale';
+        }
+
+        // Unknown error - give benefit of the doubt (master timeout is safety net)
+        logger.log('[Session Verification] ⚠️ Unknown error type - letting user through');
         return 'verified';
       }
       
       if (!householdData) {
-        // This often happens on initial load due to timing - token might not be fully propagated yet
-        // Don't treat as error since other parts of the app will load data once token is ready
-        // The master timeout will let the user through anyway
-        logger.log('[Session Verification] ⏳ Household not accessible yet (likely timing issue during initial load)');
-        return 'verified'; // Let user through - if session is truly stale, other queries will fail and trigger re-login
+        logger.warn('[Session Verification] ⚠️ Household not accessible (RLS blocked or session dead)');
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+          return 'verified';
+        }
+        return 'stale';
       }
       
       logger.log('[Session Verification] ✅ Household access verified:', householdData.name);
-      
-      // Optional: Also verify we can see at least one user in the household
-      // This catches edge cases where household is visible but user data isn't
-      const { data: usersInHousehold, error: usersError } = await client
-        .from('users')
-        .select('id, clerk_id')
-        .eq('household_id', currentUser.householdId)
-        .limit(1);
-      
-      if (usersError) {
-        logger.warn('[Session Verification] ⚠️ Users query failed:', usersError.message);
-        // Household worked, so session is probably OK
-        return 'verified';
-      }
-      
-      if (!usersInHousehold || usersInHousehold.length === 0) {
-        logger.warn('[Session Verification] ⚠️ No users visible in household (might be OK if RLS is strict)');
-        // Household access worked, so session is valid
-        return 'verified';
-      }
-      
-      logger.log('[Session Verification] ✅ Session verified successfully');
       return 'verified';
     };
     
@@ -1666,6 +1609,39 @@ const AppContent: React.FC = () => {
         // On error, let master timeout handle it (or it already did)
       });
   }, [currentUser, isSupabaseReady, sessionVerified, isDemoMode]);
+
+  // FRESH DATA GATE: After session is verified, fetch fresh data from the server
+  // before showing the app. This ensures the user always sees up-to-date data.
+  const dataLoadAttemptedRef = useRef(false);
+  useEffect(() => {
+    if (!currentUser?.householdId || !sessionVerified || !isSupabaseReady) return;
+    if (dataLoaded || dataLoadAttemptedRef.current) return;
+    if (isDemoMode) {
+      setDataLoaded(true);
+      return;
+    }
+
+    dataLoadAttemptedRef.current = true;
+    logger.log('[Data Gate] 🔄 Fetching fresh data before showing app...');
+
+    syncAllData()
+      .then(() => {
+        logger.log('[Data Gate] ✅ Fresh data loaded successfully');
+        setDataLoaded(true);
+      })
+      .catch((err) => {
+        logger.error('[Data Gate] ❌ Fresh data fetch failed:', err);
+        // Fall back to cached data so the user isn't stuck on loading forever
+        setDataLoaded(true);
+      });
+  }, [currentUser?.householdId, sessionVerified, isSupabaseReady, isDemoMode, dataLoaded, syncAllData]);
+
+  // Reset data load ref when user changes (logout/login)
+  useEffect(() => {
+    if (!currentUser) {
+      dataLoadAttemptedRef.current = false;
+    }
+  }, [currentUser]);
 
   const hid = currentUser?.householdId ?? '';
 
@@ -2767,13 +2743,13 @@ const AppContent: React.FC = () => {
     );
   }
 
-  // "At the door" check: Don't show app content until session is verified
-  // This ensures we catch stale sessions BEFORE the user tries to do anything
-  // User sees the loading bar briefly (~200-500ms for valid sessions)
+  // "At the door" check: Don't show app content until session is verified AND fresh data is loaded
+  // This ensures users always see up-to-date data and never interact with a dead session
+  // User sees the loading bar briefly (~1-2s for valid sessions)
   // Skip on localhost to allow development without JWT template
   const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-  if (!sessionVerified && !isDemoMode && !isLocalhost) {
-    logger.log('🔐 [App] Session not yet verified, showing loading...');
+  if ((!sessionVerified || !dataLoaded) && !isDemoMode && !isLocalhost) {
+    logger.log('🔐 [App] Gate check: session verified:', sessionVerified, '| data loaded:', dataLoaded);
     return <AppLoading />;
   }
 

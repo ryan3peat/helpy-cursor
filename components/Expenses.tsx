@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { getHKDateString } from '../utils/dateUtils';
 import { createPortal } from 'react-dom';
 import {
   Camera,
@@ -73,11 +74,7 @@ const getExpenseCategoryConfig = (category: string): ExpenseCategoryConfig => {
   return EXPENSE_CATEGORY_CONFIG[category] || EXPENSE_CATEGORY_CONFIG['Misc'];
 };
 
-// Get today's date as YYYY-MM-DD string in LOCAL timezone (not UTC)
-// Using toISOString() would convert to UTC which causes date to be wrong after midnight in timezones ahead of UTC
-const getLocalDateString = (date: Date = new Date()): string => {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-};
+const getLocalDateString = getHKDateString;
 
 // Zoomable Image Component - optimized for smooth, jitter-free gestures with bounds
 const ZoomableImage: React.FC<{ imageSrc: string; onClose: () => void; t: Record<string, string> }> = ({ imageSrc, onClose, t }) => {
@@ -1169,7 +1166,7 @@ const Expenses: React.FC<ExpensesProps> = ({
       closeExistingModal();
     } catch (err) {
       logger.error('Failed to update expense:', err);
-      setError(t['error.update_expense'] || "Couldn't update expense. Try closing and reopening the app, or log out and back in.");
+      setError(t['error.update_expense'] || "Couldn't update expense. Please check your connection and try again.");
     } finally {
       setSavingExisting(false);
     }
@@ -1187,7 +1184,7 @@ const Expenses: React.FC<ExpensesProps> = ({
       closeExistingModal();
     } catch (err) {
       logger.error('Failed to delete expense:', err);
-      setError(t['error.delete_expense'] || "Couldn't delete expense. Try closing and reopening the app, or log out and back in.");
+      setError(t['error.delete_expense'] || "Couldn't delete expense. Please check your connection and try again.");
     } finally {
       setSavingExisting(false);
     }

@@ -892,7 +892,7 @@ const Home: React.FC<HomeProps> = ({
       haptics.success(); // Haptic feedback on successful save
     } catch (err) {
       logger.error('Failed to save notes:', err);
-      setError(t['error.save_notes'] || "Couldn't save notes. Try closing and reopening the app, or log out and back in.");
+      setError(t['error.save_notes'] || "Couldn't save notes. Please check your connection and try again.");
       haptics.error();
     } finally {
       setIsSavingNotes(false);
@@ -963,7 +963,7 @@ Give it a try:`;
       setIsEditingNotes(false);
     } catch (err) {
       logger.error('Failed to delete notes:', err);
-      setError(t['error.delete_notes'] || "Couldn't delete notes. Try closing and reopening the app, or log out and back in.");
+      setError(t['error.delete_notes'] || "Couldn't delete notes. Please check your connection and try again.");
     } finally {
       setIsDeletingNotes(false);
     }

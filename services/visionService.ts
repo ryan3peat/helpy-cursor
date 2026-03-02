@@ -1,6 +1,7 @@
 // services/visionService.ts
 // Handles OCR processing via server-side API proxy (which uses Alibaba Cloud Qwen-VL-OCR)
 import { logger } from '../utils/logger';
+import { getHKDateString } from '../utils/dateUtils';
 
 export interface ParsedReceipt {
   rawText: string;
@@ -221,7 +222,7 @@ function tryParseStructuredJSON(text: string): QwenReceiptJSON | null {
  * Returns the validated date or today's date as fallback.
  */
 function validateDate(dateStr: string | undefined): string {
-  const today = new Date().toISOString().split('T')[0];
+  const today = getHKDateString();
   if (!dateStr) return today;
 
   // Accept YYYY-MM-DD directly
@@ -335,7 +336,7 @@ export function parseReceiptText(rawText: string, options?: ProcessReceiptOption
 
   let total = 0;
   let merchant = 'Unknown';
-  let date = new Date().toISOString().split('T')[0];
+  let date = getHKDateString();
   let category = 'Misc';
   let confidence = 0.5;
   const lineItems: Array<{ name: string; price: number }> = [];
@@ -509,7 +510,7 @@ export function parseReceiptText(rawText: string, options?: ProcessReceiptOption
     { pattern: /((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{1,2},?\s+\d{4})/i, handler: (m: RegExpMatchArray) => {
         try {
           const parsed = new Date(m[1]);
-          if (!isNaN(parsed.getTime())) return parsed.toISOString().split('T')[0];
+          if (!isNaN(parsed.getTime())) return getHKDateString(parsed);
         } catch { /* continue */ }
         return null;
       }
@@ -531,7 +532,7 @@ export function parseReceiptText(rawText: string, options?: ProcessReceiptOption
   }
 
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-    date = new Date().toISOString().split('T')[0];
+    date = getHKDateString();
   }
 
   // --- Detect Category ---
@@ -737,7 +738,7 @@ export async function processReceipt(base64Image: string, options?: ProcessRecei
       }
 
       // If Gemini found a date and Pass 1 didn't, use it
-      const today = new Date().toISOString().split('T')[0];
+      const today = getHKDateString();
       if (geminiResult.date && result.date === today) {
         const validated = validateDate(geminiResult.date);
         if (validated !== today) {

@@ -359,7 +359,7 @@ const Meals: React.FC<MealsProps> = ({
       }
     } catch (err) {
       logger.error('Failed to update meal:', err);
-      setError(t['error.update_meal'] || "Couldn't update meal. Try closing and reopening the app, or log out and back in.");
+      setError(t['error.update_meal'] || "Couldn't update meal. Please check your connection and try again.");
     }
   };
 
@@ -381,7 +381,7 @@ const Meals: React.FC<MealsProps> = ({
       onAdd(newMeal);
     } catch (err) {
       logger.error('Failed to add meal:', err);
-      setError(t['error.add_meal'] || "Couldn't save meal. Try closing and reopening the app, or log out and back in.");
+      setError(t['error.add_meal'] || "Couldn't save meal. Please check your connection and try again.");
     }
   };
 
@@ -485,7 +485,7 @@ const Meals: React.FC<MealsProps> = ({
       setIsModalOpen(false);
     } catch (err) {
       logger.error('Failed to save meal:', err);
-      setError(t['error.save_meal'] || "Couldn't save meal. Try closing and reopening the app, or log out and back in.");
+      setError(t['error.save_meal'] || "Couldn't save meal. Please check your connection and try again.");
     }
   };
 
@@ -496,7 +496,7 @@ const Meals: React.FC<MealsProps> = ({
         setIsModalOpen(false);
       } catch (err) {
         logger.error('Failed to delete meal:', err);
-        setError(t['error.delete_meal'] || "Couldn't delete meal. Try closing and reopening the app, or log out and back in.");
+        setError(t['error.delete_meal'] || "Couldn't delete meal. Please check your connection and try again.");
       }
     }
   };
@@ -852,7 +852,7 @@ const Meals: React.FC<MealsProps> = ({
       }
       logger.error('Failed to export PDF:', err);
       haptics.error();
-      setError(t['error.export_pdf'] || "Couldn't export PDF. Try closing and reopening the app, or log out and back in.");
+      setError(t['error.export_pdf'] || "Couldn't export PDF. Please check your connection and try again.");
     } finally {
       setExportingPdf(false);
     }

@@ -796,47 +796,47 @@ Give it a try:`,
   'common.adding': 'Adding...',
 
   // Error Messages - Item Operations (user-friendly, non-technical)
-  // Format: "Couldn't [action]. Try closing and reopening the app, or log out and back in."
-  'error.add_item': "Couldn't save. Try closing and reopening the app, or log out and back in.",
-  'error.update_item': "Couldn't update. Try closing and reopening the app, or log out and back in.",
-  'error.delete_item': "Couldn't delete. Try closing and reopening the app, or log out and back in.",
-  'error.delete_items': "Couldn't delete. Try closing and reopening the app, or log out and back in.",
+  // Format: "Couldn't [action]. Please check your connection and try again."
+  'error.add_item': "Couldn't save. Please check your connection and try again.",
+  'error.update_item': "Couldn't update. Please check your connection and try again.",
+  'error.delete_item': "Couldn't delete. Please check your connection and try again.",
+  'error.delete_items': "Couldn't delete. Please check your connection and try again.",
   
   // Error Messages - Meals
-  'error.add_meal': "Couldn't save meal. Try closing and reopening the app, or log out and back in.",
-  'error.update_meal': "Couldn't update meal. Try closing and reopening the app, or log out and back in.",
-  'error.delete_meal': "Couldn't delete meal. Try closing and reopening the app, or log out and back in.",
-  'error.save_meal': "Couldn't save meal. Try closing and reopening the app, or log out and back in.",
+  'error.add_meal': "Couldn't save meal. Please check your connection and try again.",
+  'error.update_meal': "Couldn't update meal. Please check your connection and try again.",
+  'error.delete_meal': "Couldn't delete meal. Please check your connection and try again.",
+  'error.save_meal': "Couldn't save meal. Please check your connection and try again.",
   
   // Error Messages - Family Board
-  'error.save_notes': "Couldn't save notes. Try closing and reopening the app, or log out and back in.",
-  'error.delete_notes': "Couldn't delete notes. Try closing and reopening the app, or log out and back in.",
+  'error.save_notes': "Couldn't save notes. Please check your connection and try again.",
+  'error.delete_notes': "Couldn't delete notes. Please check your connection and try again.",
   
   // Error Messages - Places & Practices
-  'error.save_place': "Couldn't save. Try closing and reopening the app, or log out and back in.",
-  'error.delete_place': "Couldn't delete. Try closing and reopening the app, or log out and back in.",
-  'error.save_practice': "Couldn't save. Try closing and reopening the app, or log out and back in.",
-  'error.delete_practice': "Couldn't delete. Try closing and reopening the app, or log out and back in.",
+  'error.save_place': "Couldn't save. Please check your connection and try again.",
+  'error.delete_place': "Couldn't delete. Please check your connection and try again.",
+  'error.save_practice': "Couldn't save. Please check your connection and try again.",
+  'error.delete_practice': "Couldn't delete. Please check your connection and try again.",
   
   // Error Messages - User Operations
-  'error.add_user': "Couldn't add member. Try closing and reopening the app, or log out and back in.",
-  'error.generate_invite': "Couldn't generate invite link. Try closing and reopening the app, or log out and back in.",
+  'error.add_user': "Couldn't add member. Please check your connection and try again.",
+  'error.generate_invite': "Couldn't generate invite link. Please check your connection and try again.",
   'error.select_image': 'Please select an image file',
   'error.image_too_large': 'Image size must be less than 5MB',
-  'error.upload_image': "Couldn't upload image. Try closing and reopening the app, or log out and back in.",
-  'error.cancel_subscription': "Couldn't cancel subscription. Try closing and reopening the app, or log out and back in.",
-  'error.delete_account_unable': "Couldn't delete account. Try closing and reopening the app, or log out and back in.",
-  'error.delete_account': "Couldn't delete account. Try closing and reopening the app, or log out and back in.",
-  'error.export_pdf': "Couldn't export PDF. Try closing and reopening the app, or log out and back in.",
+  'error.upload_image': "Couldn't upload image. Please check your connection and try again.",
+  'error.cancel_subscription': "Couldn't cancel subscription. Please check your connection and try again.",
+  'error.delete_account_unable': "Couldn't delete account. Please check your connection and try again.",
+  'error.delete_account': "Couldn't delete account. Please check your connection and try again.",
+  'error.export_pdf': "Couldn't export PDF. Please check your connection and try again.",
   'error.helper_limit_title': 'Helper Limit Reached',
   'error.family_limit_title': 'Family Member Limit Reached',
   'error.upgrade_to_add_more': 'Upgrade your plan to add more members to your household.',
   
   // Error Messages - Helper Management
-  'error.save_contract': "Couldn't save employment details. Try closing and reopening the app, or log out and back in.",
-  'error.delete_slip': "Couldn't delete salary slip. Try closing and reopening the app, or log out and back in.",
-  'error.sign_slip': "Couldn't sign. Try closing and reopening the app, or log out and back in.",
-  'error.load_data': "Couldn't load data. Try closing and reopening the app, or log out and back in.",
+  'error.save_contract': "Couldn't save employment details. Please check your connection and try again.",
+  'error.delete_slip': "Couldn't delete salary slip. Please check your connection and try again.",
+  'error.sign_slip': "Couldn't sign. Please check your connection and try again.",
+  'error.load_data': "Couldn't load data. Please check your connection and try again.",
 
   // Settings - Push Notifications
   'settings.push_not_supported': 'Not supported in this browser',

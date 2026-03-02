@@ -427,7 +427,7 @@ export const HelperManagementContent: React.FC<Props> = ({
       }
     } catch (err) {
       logger.error('Failed to load helper data:', err);
-      setError(t['error.load_data'] || "Couldn't load data. Try closing and reopening the app, or log out and back in.");
+      setError(t['error.load_data'] || "Couldn't load data. Please check your connection and try again.");
     }
   };
 
@@ -491,7 +491,7 @@ export const HelperManagementContent: React.FC<Props> = ({
       loadData();
     } catch (err) {
       logger.error('Failed to save contract:', err);
-      setError(t['error.save_contract'] || "Couldn't save employment details. Try closing and reopening the app, or log out and back in.");
+      setError(t['error.save_contract'] || "Couldn't save employment details. Please check your connection and try again.");
     } finally {
       setIsLoading(false);
     }
@@ -526,7 +526,7 @@ export const HelperManagementContent: React.FC<Props> = ({
       loadData();
     } catch (err) {
       logger.error('Failed to delete slip:', err);
-      setError(t['error.delete_slip'] || "Couldn't delete salary slip. Try closing and reopening the app, or log out and back in.");
+      setError(t['error.delete_slip'] || "Couldn't delete salary slip. Please check your connection and try again.");
     } finally {
       setIsLoading(false);
     }
@@ -583,7 +583,7 @@ export const HelperManagementContent: React.FC<Props> = ({
       loadData();
     } catch (err: any) {
       logger.error('Failed to sign slip:', err);
-      setError(err.message || t['error.sign_slip'] || "Couldn't sign. Try closing and reopening the app, or log out and back in.");
+      setError(err.message || t['error.sign_slip'] || "Couldn't sign. Please check your connection and try again.");
     } finally {
       setIsLoading(false);
     }
@@ -855,7 +855,7 @@ export const HelperManagementContent: React.FC<Props> = ({
         return; // User cancelled
       }
       logger.error('Failed to export PDF:', err);
-      setError(t['error.export_pdf'] || "Couldn't export PDF. Try closing and reopening the app, or log out and back in.");
+      setError(t['error.export_pdf'] || "Couldn't export PDF. Please check your connection and try again.");
     }
   };
 

@@ -3,12 +3,9 @@ import { User, UserRole, ToDoItem, Meal, Expense, MealType, MealAudience, Shoppi
 import type { Place, PlaceCategory } from '@src/types/place';
 import type { Practice, PracticeCategory } from '@src/types/practice';
 import type { HelperPayslipConfirmation } from '@src/types/helperManagement';
+import { getHKDateString } from '../utils/dateUtils';
 
-// Get a date as YYYY-MM-DD string in LOCAL timezone (not UTC)
-// Using toISOString() would convert to UTC which causes date to be wrong after midnight in timezones ahead of UTC
-const getLocalDateString = (date: Date = new Date()): string => {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-};
+const getLocalDateString = getHKDateString;
 
 // ============================================================================
 // DEMO MODE CONTEXT

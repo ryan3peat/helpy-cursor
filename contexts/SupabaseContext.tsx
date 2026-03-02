@@ -623,7 +623,19 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
         const currentToken = await getToken({ template: templateName });
         
         if (!currentToken) {
-          logger.warn('[SupabaseContext] ⚠️ No token available on visibility change');
+          if (navigator.onLine) {
+            logger.error('[SupabaseContext] ❌ No token on visibility change while online - session likely expired');
+            tokenRefreshFailuresRef.current += 1;
+            if (tokenRefreshFailuresRef.current >= MAX_TOKEN_REFRESH_FAILURES) {
+              sessionExpiredFiredRef.current = true;
+              tokenRefreshFailuresRef.current = 0;
+              window.dispatchEvent(new CustomEvent('helpy:session-expired', {
+                detail: { reason: 'no_token_on_resume', attempts: MAX_TOKEN_REFRESH_FAILURES }
+              }));
+            }
+          } else {
+            logger.warn('[SupabaseContext] 📡 No token on visibility change - device offline');
+          }
           return;
         }
         

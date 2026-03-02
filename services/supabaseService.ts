@@ -2,6 +2,7 @@ import { supabase } from './supabase';
 import { getAuthenticatedSupabaseClient, refreshSupabaseToken } from '../contexts/SupabaseContext';
 import { User, ShoppingItem, Task, Meal, Expense, Section, ToDoItem } from '../types';
 import { logger } from '../utils/logger';
+import { getHKDateString } from '../utils/dateUtils';
 
 /**
  * Get the best available Supabase client.
@@ -1626,7 +1627,7 @@ function convertSupabaseData(data: any[], collection?: string): DataItem[] {
           try {
             const parsed = new Date(converted.date);
             if (!isNaN(parsed.getTime())) {
-              converted.date = parsed.toISOString().split('T')[0];
+              converted.date = getHKDateString(parsed);
             }
           } catch {
             // If parsing fails, keep original date (will be caught by filter validation)

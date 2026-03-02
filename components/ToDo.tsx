@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { getHKDateString } from '../utils/dateUtils';
 import { createPortal } from 'react-dom';
 import {
   Plus,
@@ -277,11 +278,7 @@ const isOverdue = (dueDate?: string): boolean => {
   return due < today;
 };
 
-// Get today's date as YYYY-MM-DD string in LOCAL timezone (not UTC)
-// Using toISOString() would convert to UTC which causes date to be wrong after midnight in timezones ahead of UTC
-const getLocalDateString = (date: Date = new Date()): string => {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-};
+const getLocalDateString = getHKDateString;
 
 // ─────────────────────────────────────────────────────────────────
 // Date Grouping for Task List
@@ -1015,7 +1012,7 @@ const ToDo: React.FC<ToDoProps> = ({
     } catch (err) {
       logger.error('Failed to add item:', err);
       setOptimisticItems(prev => prev.filter(i => i.id !== optimisticId));
-      setError(t['error.add_item'] || "Couldn't save. Try closing and reopening the app, or log out and back in.");
+      setError(t['error.add_item'] || "Couldn't save. Please check your connection and try again.");
     }
   };
   
@@ -1055,7 +1052,7 @@ const ToDo: React.FC<ToDoProps> = ({
     } catch (err) {
       logger.error('Failed to add item:', err);
       setOptimisticItems(prev => prev.filter(i => i.id !== optimisticId));
-      setError(t['error.add_item'] || "Couldn't save. Try closing and reopening the app, or log out and back in.");
+      setError(t['error.add_item'] || "Couldn't save. Please check your connection and try again.");
     }
   };
   
@@ -1110,7 +1107,7 @@ const ToDo: React.FC<ToDoProps> = ({
           delete next[id];
           return next;
         });
-        setError(t['error.update_item'] || "Couldn't update. Try closing and reopening the app, or log out and back in.");
+        setError(t['error.update_item'] || "Couldn't update. Please check your connection and try again.");
       }
     } else {
       // Uncompleting: instant, no animation
@@ -1125,7 +1122,7 @@ const ToDo: React.FC<ToDoProps> = ({
           delete next[id];
           return next;
         });
-        setError(t['error.update_item'] || "Couldn't update. Try closing and reopening the app, or log out and back in.");
+        setError(t['error.update_item'] || "Couldn't update. Please check your connection and try again.");
       }
     }
   };
@@ -1151,7 +1148,7 @@ const ToDo: React.FC<ToDoProps> = ({
         next.delete(id);
         return next;
       });
-      setError(t['error.delete_item'] || "Couldn't delete. Try closing and reopening the app, or log out and back in.");
+      setError(t['error.delete_item'] || "Couldn't delete. Please check your connection and try again.");
     }
   };
   
@@ -1183,7 +1180,7 @@ const ToDo: React.FC<ToDoProps> = ({
           return next;
         });
       });
-      setError(t['error.delete_items'] || "Couldn't delete. Try closing and reopening the app, or log out and back in.");
+      setError(t['error.delete_items'] || "Couldn't delete. Please check your connection and try again.");
     }
   };
   
@@ -1311,7 +1308,7 @@ const ToDo: React.FC<ToDoProps> = ({
           return rest;
         });
         logger.error('Failed to update item:', err);
-        setError(t['error.update_item'] || "Couldn't update. Try closing and reopening the app, or log out and back in.");
+        setError(t['error.update_item'] || "Couldn't update. Please check your connection and try again.");
       } finally {
         setIsSaving(false);
       }
@@ -1350,7 +1347,7 @@ const ToDo: React.FC<ToDoProps> = ({
       } catch (err) {
         logger.error('Failed to add item:', err);
         setOptimisticItems(prev => prev.filter(i => i.id !== optimisticId));
-        setError(t['error.add_item'] || "Couldn't save. Try closing and reopening the app, or log out and back in.");
+        setError(t['error.add_item'] || "Couldn't save. Please check your connection and try again.");
       } finally {
         setIsSaving(false);
       }

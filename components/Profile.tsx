@@ -159,10 +159,11 @@ const Profile: React.FC<ProfileProps> = ({
   // Plan confirmation modal state (for promo/referral codes)
   const [isPlanConfirmOpen, setIsPlanConfirmOpen] = useState(false);
   const [pendingPlan, setPendingPlan] = useState<{ plan: 'core' | 'pro' | 'test'; period: 'monthly' | 'yearly' } | null>(null);
-  const [referralCodeInput, setReferralCodeInput] = useState('');
-  const [referralCodeError, setReferralCodeError] = useState<string | null>(null);
-  const [referralCodeValid, setReferralCodeValid] = useState(false);
-  const [isValidatingReferral, setIsValidatingReferral] = useState(false);
+  const [codeInput, setCodeInput] = useState('');
+  const [codeError, setCodeError] = useState<string | null>(null);
+  const [codeValid, setCodeValid] = useState(false);
+  const [codeType, setCodeType] = useState<'referral' | 'promo' | null>(null);
+  const [isValidatingCode, setIsValidatingCode] = useState(false);
   
   const [subscriptionInfo, setSubscriptionInfo] = useState<{
     plan: string;
@@ -796,15 +797,16 @@ const Profile: React.FC<ProfileProps> = ({
     setNewRole(UserRole.SPOUSE);
   };
 
-  // Referral Code Validation
-  const validateReferralCode = async (code: string) => {
+  // Validate code: check Supabase referral_codes first, otherwise treat as Stripe promo code
+  const validateCode = async (code: string) => {
     if (!code.trim()) {
-      setReferralCodeValid(false);
-      setReferralCodeError(null);
+      setCodeValid(false);
+      setCodeError(null);
+      setCodeType(null);
       return;
     }
 
-    setIsValidatingReferral(true);
+    setIsValidatingCode(true);
     try {
       const { data, error } = await supabase
         .from('referral_codes')
@@ -813,43 +815,52 @@ const Profile: React.FC<ProfileProps> = ({
         .eq('is_active', true)
         .single();
 
-      if (error || !data) {
-        setReferralCodeError(t['subscription.invalid_referral_code'] || 'Invalid or expired referral code');
-        setReferralCodeValid(false);
+      if (!error && data) {
+        setCodeError(null);
+        setCodeValid(true);
+        setCodeType('referral');
       } else {
-        setReferralCodeError(null);
-        setReferralCodeValid(true);
+        // Not a referral code — treat as a Stripe promo code (validated at checkout)
+        setCodeError(null);
+        setCodeValid(true);
+        setCodeType('promo');
       }
     } catch (err) {
-      setReferralCodeError(t['subscription.invalid_referral_code'] || 'Invalid or expired referral code');
-      setReferralCodeValid(false);
+      setCodeError(null);
+      setCodeValid(true);
+      setCodeType('promo');
     } finally {
-      setIsValidatingReferral(false);
+      setIsValidatingCode(false);
     }
   };
 
   // Open plan confirmation modal (for new subscriptions with referral codes)
   const handleOpenPlanConfirm = (plan: 'core' | 'pro' | 'test', period: 'monthly' | 'yearly') => {
     setPendingPlan({ plan, period });
-    setReferralCodeInput('');
-    setReferralCodeError(null);
-    setReferralCodeValid(false);
+    setCodeInput('');
+    setCodeError(null);
+    setCodeValid(false);
+    setCodeType(null);
     setIsPlanConfirmOpen(true);
   };
 
   // Confirm plan selection from modal
   const handleConfirmPlan = async () => {
     if (!pendingPlan) return;
+    const trimmedCode = codeInput.trim();
+    const isReferral = codeValid && codeType === 'referral' && trimmedCode;
+    const isPromo = codeValid && codeType === 'promo' && trimmedCode;
     await handleSelectPlan(
       pendingPlan.plan,
       pendingPlan.period,
-      referralCodeValid ? referralCodeInput : undefined, // referralCode
-      undefined // skipConfirmation
+      isReferral ? trimmedCode : undefined,
+      undefined,
+      isPromo ? trimmedCode : undefined
     );
   };
 
   // Stripe Checkout Handler - handles both new subscriptions and plan changes
-  const handleSelectPlan = async (plan: 'core' | 'pro' | 'test', period: 'monthly' | 'yearly', referralCode?: string, skipConfirmation?: boolean) => {
+  const handleSelectPlan = async (plan: 'core' | 'pro' | 'test', period: 'monthly' | 'yearly', referralCode?: string, skipConfirmation?: boolean, promoCode?: string) => {
     // Calculate price for Meta Pixel tracking
     const planPrices = { core: { monthly: 88, yearly: 845 }, pro: { monthly: 118, yearly: 1133 }, test: { monthly: 1, yearly: 1 } };
     const trackingValue = planPrices[plan]?.[period] || 0;
@@ -909,7 +920,7 @@ const Profile: React.FC<ProfileProps> = ({
           plan,
           period,
           currentUser.email || '',
-          undefined,
+          promoCode,
           referralCode,
           currentUser.id
         );
@@ -3277,45 +3288,51 @@ const Profile: React.FC<ProfileProps> = ({
                     {(t['subscription.upgrade_to'] || 'You are about to upgrade to the {plan} plan.').replace('{plan}', pendingPlan.plan === 'core' ? 'Core' : pendingPlan.plan === 'pro' ? 'Pro' : 'Test')}
                   </p>
 
-                  {/* Referral Code Section */}
+                  {/* Promo / Referral Code Section */}
                   <div className="space-y-2">
                     <label className="text-caption font-bold text-muted-foreground ml-1">
-                      {t['subscription.referral_code'] || 'Referral Code (for free trial)'}
+                      {t['subscription.code_label'] || 'Promo or Referral Code (optional)'}
                     </label>
                     <div className="relative">
                       <input
                         type="text"
                         autoComplete="one-time-code"
-                        value={referralCodeInput}
+                        value={codeInput}
                         onChange={(e) => {
                           const value = e.target.value.toUpperCase();
-                          setReferralCodeInput(value);
-                          setReferralCodeError(null);
-                          setReferralCodeValid(false);
+                          setCodeInput(value);
+                          setCodeError(null);
+                          setCodeValid(false);
+                          setCodeType(null);
                         }}
-                        onBlur={() => validateReferralCode(referralCodeInput)}
-                        placeholder={t['subscription.referral_code_placeholder'] || 'e.g., PROMOCODE'}
+                        onBlur={() => validateCode(codeInput)}
+                        placeholder={t['subscription.code_placeholder'] || 'e.g., SUMMER20'}
                         className={`w-full bg-muted border rounded-xl px-4 py-3 text-foreground font-medium focus:border-primary outline-none transition-colors text-body uppercase ${
-                          referralCodeError ? 'border-destructive' : referralCodeValid ? 'border-green-500' : 'border-border'
+                          codeError ? 'border-destructive' : codeValid ? 'border-green-500' : 'border-border'
                         }`}
                       />
-                      {isValidatingReferral && (
+                      {isValidatingCode && (
                         <div className="absolute right-3 top-1/2 -translate-y-1/2">
                           <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
                         </div>
                       )}
-                      {referralCodeValid && !isValidatingReferral && (
+                      {codeValid && !isValidatingCode && (
                         <div className="absolute right-3 top-1/2 -translate-y-1/2">
                           <Check size={20} className="text-green-500" />
                         </div>
                       )}
                     </div>
-                    {referralCodeError && (
-                      <p className="text-caption text-destructive">{referralCodeError}</p>
+                    {codeError && (
+                      <p className="text-caption text-destructive">{codeError}</p>
                     )}
-                    {referralCodeValid && (
+                    {codeValid && codeType === 'referral' && (
                       <p className="text-caption text-green-600">
-                        {t['subscription.referral_valid'] || '✓ 30-day free trial will be applied!'}
+                        {t['subscription.referral_valid'] || '30-day free trial will be applied!'}
+                      </p>
+                    )}
+                    {codeValid && codeType === 'promo' && (
+                      <p className="text-caption text-green-600">
+                        {t['subscription.promo_valid'] || 'Promo code will be applied at checkout.'}
                       </p>
                     )}
                   </div>
@@ -3330,9 +3347,10 @@ const Profile: React.FC<ProfileProps> = ({
                       if (loadingPlan !== null) return;
                       setIsPlanConfirmOpen(false);
                       setPendingPlan(null);
-                      setReferralCodeInput('');
-                      setReferralCodeError(null);
-                      setReferralCodeValid(false);
+                      setCodeInput('');
+                      setCodeError(null);
+                      setCodeValid(false);
+                      setCodeType(null);
                     }}
                     disabled={loadingPlan !== null}
                     className="flex-1 py-3.5 rounded-xl bg-secondary text-foreground text-body font-medium disabled:opacity-50 disabled:cursor-not-allowed"
@@ -3341,7 +3359,7 @@ const Profile: React.FC<ProfileProps> = ({
                   </button>
                   <button
                     onClick={handleConfirmPlan}
-                    disabled={loadingPlan !== null || isValidatingReferral}
+                    disabled={loadingPlan !== null || isValidatingCode}
                     className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground text-body font-semibold  disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {loadingPlan !== null ? (t['common.processing'] || 'Processing...') : (t['common.continue'] || 'Continue')}

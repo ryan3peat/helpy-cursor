@@ -1203,6 +1203,9 @@ Give it a try:`,
   'subscription.promo_code': 'Promo code (optional)',
   'subscription.promo_code_placeholder': 'Enter promo code',
   'subscription.promo_code_hint': 'We will apply this code on the Stripe checkout page.',
+  'subscription.code_label': 'Promo or Referral Code (optional)',
+  'subscription.code_placeholder': 'e.g., SUMMER20',
+  'subscription.promo_valid': 'Promo code will be applied at checkout.',
   'subscription.upgrade_to': 'You are about to upgrade to the {plan} plan.',
 
   // Profile - Additional (Translation Audit)

@@ -53,6 +53,10 @@ export default async function handler(req: any, res: any) {
       return res.status(400).json({ error: 'Invalid parameters' });
     }
 
+    if (referralCode && promoCode) {
+      return res.status(400).json({ error: 'Cannot use both a referral code and a promo code. Please use one or the other.' });
+    }
+
     // Verify requester is Admin or SuperAdmin
     if (requesterId) {
       const { data: requester } = await supabase
@@ -203,7 +207,7 @@ export default async function handler(req: any, res: any) {
       line_items: [{ price: PRICE_IDS[priceKey], quantity: 1 }],
       success_url: `${APP_URL}/?session_id={CHECKOUT_SESSION_ID}&success=true`,
       cancel_url: `${APP_URL}/?canceled=true`,
-      allow_promotion_codes: !referralCode, // Disable promo codes if using referral code
+      allow_promotion_codes: !referralCode && !promotionCodeId,
       metadata: {
         household_id: householdId,
         plan: priceKey.split('_')[0], // 'core' or 'pro'

@@ -201,13 +201,19 @@ export default async function handler(req: any, res: any) {
     }
 
     // Create Checkout Session
+    // Stripe does not allow both allow_promotion_codes and discounts on the same session.
+    // When a discount is pre-applied (via referral trial or promo code), omit allow_promotion_codes entirely.
+    const hasPreAppliedDiscount = !!promotionCodeId || trialDays > 0;
+
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       mode: 'subscription',
       line_items: [{ price: PRICE_IDS[priceKey], quantity: 1 }],
       success_url: `${APP_URL}/?session_id={CHECKOUT_SESSION_ID}&success=true`,
       cancel_url: `${APP_URL}/?canceled=true`,
-      allow_promotion_codes: !referralCode && !promotionCodeId,
+      ...(hasPreAppliedDiscount
+        ? { discounts: promotionCodeId ? [{ promotion_code: promotionCodeId }] : [] }
+        : { allow_promotion_codes: true }),
       metadata: {
         household_id: householdId,
         plan: priceKey.split('_')[0], // 'core' or 'pro'
@@ -225,7 +231,6 @@ export default async function handler(req: any, res: any) {
           agency_id: agencyId || '',
         },
       },
-      discounts: promotionCodeId ? [{ promotion_code: promotionCodeId }] : undefined,
     });
 
     return res.status(200).json({ url: session.url });

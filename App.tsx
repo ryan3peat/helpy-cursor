@@ -990,30 +990,45 @@ const AppContent: React.FC = () => {
     onSyncRequest: syncAllData,
   });
 
-  // Handle app visibility changes - refetch data when app comes back to foreground
-  // This ensures users see fresh data even if subscriptions disconnected while backgrounded
+  // RE-GATE ON RESUME: When the app comes back from background after >5 minutes,
+  // re-run the full gate (loading bar → verify session → fetch fresh data).
+  // This catches the PWA scenario where the OS clears storage or the Clerk session
+  // expires while the app was backgrounded for hours/days.
+  const backgroundedAtRef = useRef<number | null>(null);
+  const REGATE_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
+
   useEffect(() => {
     if (!currentUser?.householdId) return;
 
     const handleVisibilityChange = () => {
-      // When app becomes visible, check if we need to refresh data
-      if (document.visibilityState === 'visible') {
-        logger.log('[App] 📱 App became visible, checking connection status...');
-        
-        // Don't attempt sync when offline - SupabaseContext will handle recovery via 'online' event
-        if (typeof navigator !== 'undefined' && !navigator.onLine) {
-          logger.warn('[App] 📡 Device offline on resume - skipping data sync (will auto-recover when online)');
-          return;
-        }
-        
-        // If disconnected or connecting, immediately sync data
+      if (document.visibilityState === 'hidden') {
+        backgroundedAtRef.current = Date.now();
+        return;
+      }
+
+      // App became visible
+      const backgroundedAt = backgroundedAtRef.current;
+      backgroundedAtRef.current = null;
+      const timeInBackground = backgroundedAt ? Date.now() - backgroundedAt : 0;
+
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        logger.warn('[App] 📡 Device offline on resume - skipping re-gate');
+        return;
+      }
+
+      if (timeInBackground > REGATE_THRESHOLD_MS) {
+        const mins = Math.round(timeInBackground / 60000);
+        logger.log(`[App] 🔄 App was backgrounded for ${mins} minutes - re-running gate`);
+        setSessionVerified(false);
+        setDataLoaded(false);
+        sessionVerificationRef.current = false;
+        dataLoadAttemptedRef.current = false;
+        // The gate useEffects will re-run automatically since sessionVerified/dataLoaded are now false
+      } else {
+        logger.log('[App] 📱 App resumed (short background) - doing quick sync');
         if (realtimeStatus === 'disconnected' || realtimeStatus === 'connecting') {
-          logger.log(`[App] ⚠️ Connection status: ${realtimeStatus} - triggering immediate sync`);
           syncNow();
         } else {
-          // Even if connected, do a quick sync to ensure we have latest data
-          // This handles cases where subscriptions missed updates while backgrounded
-          logger.log('[App] ✅ Connection appears active, doing background refresh to catch any missed updates');
           syncAllData();
         }
       }
@@ -1892,7 +1907,7 @@ const AppContent: React.FC = () => {
       logger.log('✅ Successfully updated series and future instances');
     } catch (error) {
       logger.error('❌ Failed to update recurring series:', error);
-      // The optimistic update will be corrected by real-time sync
+      throw error;
     }
   };
 
@@ -1978,8 +1993,8 @@ const AppContent: React.FC = () => {
       }, 2000);
     } catch (error) {
       logger.error('Failed to delete todo item:', error);
-      // On error, clear from pending - real-time sync will restore items
       allSeriesItemIds.forEach(itemId => pendingTodoDeletions.current.delete(itemId));
+      throw error;
     }
   };
 
@@ -2305,7 +2320,8 @@ const AppContent: React.FC = () => {
       await createPlace(hid, info);
     } catch (error) {
       logger.error('Failed to add place:', error);
-      setPlaces(prev => prev.filter(item => item.id !== tempId));  // Rollback
+      setPlaces(prev => prev.filter(item => item.id !== tempId));
+      throw error;
     }
   };
 
@@ -2331,7 +2347,8 @@ const AppContent: React.FC = () => {
       await updatePlace(hid, id, data);
     } catch (error) {
       logger.error('Failed to update place:', error);
-      setPlaces(previousItems);  // Rollback
+      setPlaces(previousItems);
+      throw error;
     }
   };
 
@@ -2355,7 +2372,8 @@ const AppContent: React.FC = () => {
       await deletePlace(hid, id);
     } catch (error) {
       logger.error('Failed to delete place:', error);
-      setPlaces(previousItems);  // Rollback
+      setPlaces(previousItems);
+      throw error;
     }
   };
 
@@ -2379,11 +2397,11 @@ const AppContent: React.FC = () => {
     setPractices(prev => [tempItem, ...prev]);  // Optimistic
     try {
       const saved = await createPractice(hid, item);
-      // Replace the temp item with the saved record
       setPractices(prev => prev.map(i => i.id === tempId ? saved : i));
     } catch (error) {
       logger.error('Failed to add practice:', error);
-      setPractices(prev => prev.filter(i => i.id !== tempId));  // Rollback
+      setPractices(prev => prev.filter(i => i.id !== tempId));
+      throw error;
     }
   };
 
@@ -2412,7 +2430,8 @@ const AppContent: React.FC = () => {
       await updatePractice(hid, id, data);
     } catch (error) {
       logger.error('Failed to update practice:', error);
-      setPractices(previousItems);  // Rollback
+      setPractices(previousItems);
+      throw error;
     }
   };
 
@@ -2436,7 +2455,8 @@ const AppContent: React.FC = () => {
       await deletePractice(hid, id);
     } catch (error) {
       logger.error('Failed to delete practice:', error);
-      setPractices(previousItems);  // Rollback
+      setPractices(previousItems);
+      throw error;
     }
   };
 

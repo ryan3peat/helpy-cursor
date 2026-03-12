@@ -1052,16 +1052,18 @@ const Family: React.FC<FamilyProps> = ({
     <div className="min-h-screen bg-background pb-40">
       <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
         {/* ─────────────────────────────────────────────────────────────── */}
-        {/* STICKY HEADER - Push Up (No Shrink) */}
-        {/* Fixed size header, collapsible content fades out */}
+        {/* STICKY HEADER - Fixed (No Push Up) */}
         {/* ─────────────────────────────────────────────────────────────── */}
         <header 
-          className="sticky top-0 z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6" 
-          style={{ marginTop: 'env(safe-area-inset-top)' }}
+          className="sticky top-0 z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 transition-shadow duration-200" 
+          style={{ 
+            paddingTop: 'env(safe-area-inset-top)',
+            boxShadow: isScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none',
+          }}
         >
           <div 
             className="pb-3 flex items-end"
-            style={{ height: '120px', boxShadow: '0 10px 0 0 hsl(var(--background))' }}
+            style={{ height: '120px' }}
           >
             <div className="w-full">
               <span className="text-primary font-bold block" style={{ fontSize: '20px' }}>{t['info.title'] || 'Family Book'}</span>
@@ -1186,8 +1188,8 @@ const Family: React.FC<FamilyProps> = ({
         {/* ─────────────────────────────────────────────────────────────── */}
         <div 
           className="sticky z-10 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 py-3 transition-shadow duration-200"
-          style={{ 
-            top: '118px',
+          style={{
+            top: 'calc(env(safe-area-inset-top) + 118px)',
             boxShadow: isScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none'
           }}
         >

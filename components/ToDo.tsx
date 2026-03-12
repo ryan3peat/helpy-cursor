@@ -535,7 +535,7 @@ const ToDo: React.FC<ToDoProps> = ({
   // State
   // ─────────────────────────────────────────────────────────────────
   
-  const [activeSection, setActiveSection] = useState<ToDoType>(initialSection || 'task');
+  const [activeSection, setActiveSection] = useState<ToDoType>(initialSection || 'shopping');
   
   // Notify parent of section changes (for onboarding)
   useEffect(() => {
@@ -1408,17 +1408,18 @@ const ToDo: React.FC<ToDoProps> = ({
     <div className="min-h-screen bg-background pb-40">
       <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
         {/* ─────────────────────────────────────────────────────────────── */}
-        {/* STICKY HEADER - Push Up (No Shrink) */}
+        {/* STICKY HEADER - Fixed (No Push Up) */}
         {/* ─────────────────────────────────────────────────────────────── */}
         <header 
-          className="sticky top-0 z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6" 
+          className="sticky top-0 z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 transition-shadow duration-200" 
           style={{ 
-            marginTop: 'env(safe-area-inset-top)',
+            paddingTop: 'env(safe-area-inset-top)',
+            boxShadow: isScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none',
           }}
         >
           <div 
             className="pb-3 flex items-end"
-            style={{ height: '120px', boxShadow: '0 10px 0 0 hsl(var(--background))' }}
+            style={{ height: '120px' }}
           >
             <div className="w-full">
             <span className="text-primary font-bold block" style={{ fontSize: '20px' }}>{t['todo.title'] || 'To Do'}</span>
@@ -1554,24 +1555,6 @@ const ToDo: React.FC<ToDoProps> = ({
         {/* Section Toggle Cards */}
         <div className="mt-4 mb-2 pb-2 -mx-4 px-4 sm:-mx-6 sm:px-6">
           <div className="flex gap-3">
-            {/* Tasks Card */}
-            <button
-              onClick={() => setActiveSection('task')}
-              className={`flex-1 px-3 py-2.5 rounded-xl text-left transition-all ${
-                activeSection === 'task'
-                  ? 'bg-primary text-primary-foreground shadow-md'
-                  : 'bg-card text-foreground shadow-sm'
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <ClipboardList size={16} />
-                <span className="text-title">{t['todo.tasks'] || 'Tasks'}</span>
-              </div>
-              <div className={`text-caption mt-1 ml-6 ${activeSection === 'task' ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
-                {taskStats.total} {t['dashboard.pending'] || 'pending'}
-              </div>
-            </button>
-
             {/* Shopping Card */}
             <button
               onClick={() => setActiveSection('shopping')}
@@ -1589,6 +1572,24 @@ const ToDo: React.FC<ToDoProps> = ({
                 {shoppingStats.total} {t['dashboard.items_to_buy'] || 'items to buy'}
               </div>
             </button>
+
+            {/* Tasks Card */}
+            <button
+              onClick={() => setActiveSection('task')}
+              className={`flex-1 px-3 py-2.5 rounded-xl text-left transition-all ${
+                activeSection === 'task'
+                  ? 'bg-primary text-primary-foreground shadow-md'
+                  : 'bg-card text-foreground shadow-sm'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <ClipboardList size={16} />
+                <span className="text-title">{t['todo.tasks'] || 'Tasks'}</span>
+              </div>
+              <div className={`text-caption mt-1 ml-6 ${activeSection === 'task' ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
+                {taskStats.total} {t['dashboard.pending'] || 'pending'}
+              </div>
+            </button>
           </div>
         </div>
 
@@ -1597,7 +1598,7 @@ const ToDo: React.FC<ToDoProps> = ({
         <div 
           className="sticky z-10 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 py-3 transition-shadow duration-200"
           style={{ 
-            top: '118px',
+            top: 'calc(env(safe-area-inset-top) + 118px)',
             boxShadow: isScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none'
           }}
         >

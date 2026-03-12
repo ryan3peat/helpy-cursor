@@ -1228,15 +1228,18 @@ const Expenses: React.FC<ExpensesProps> = ({
     <div className="min-h-screen bg-background pb-40">
       <div className="max-w-2xl mx-auto px-4 sm:px-6 page-content">
         {/* ─────────────────────────────────────────────────────────────── */}
-        {/* STICKY HEADER - Push Up (No Shrink) */}
+        {/* STICKY HEADER - Fixed (No Push Up) */}
         {/* ─────────────────────────────────────────────────────────────── */}
         <header 
-          className="sticky top-0 z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6" 
-          style={{ marginTop: 'env(safe-area-inset-top)' }}
+          className="sticky top-0 z-20 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 transition-shadow duration-200" 
+          style={{ 
+            paddingTop: 'env(safe-area-inset-top)',
+            boxShadow: isScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none',
+          }}
         >
           <div 
             className="pb-3 flex items-end"
-            style={{ height: '120px', boxShadow: '0 10px 0 0 hsl(var(--background))' }}
+            style={{ height: '120px' }}
           >
             <div className="flex items-center justify-between w-full">
             <h1 className="text-display text-foreground">
@@ -1281,7 +1284,7 @@ const Expenses: React.FC<ExpensesProps> = ({
         <div
           className="sticky z-10 bg-background -mx-4 px-4 sm:-mx-6 sm:px-6 py-3 transition-shadow duration-200"
           style={{
-            top: '118px',
+            top: 'calc(env(safe-area-inset-top) + 118px)',
             boxShadow: isScrolled ? '0 8px 16px -8px rgba(0,0,0,0.15)' : 'none',
           }}
         >

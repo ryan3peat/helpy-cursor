@@ -2282,14 +2282,25 @@ const ToDo: React.FC<ToDoProps> = ({
                   <label className="block text-caption text-muted-foreground tracking-wide mb-2">
                     {t['common.reference_link'] || 'Reference Link'}
                   </label>
-                  <input
-                    type="url"
-                    autoComplete="off"
-                    value={sheetForm.referenceLink || ''}
-                    onChange={e => setSheetForm(prev => ({ ...prev, referenceLink: e.target.value }))}
-                    placeholder={t['common.reference_link_placeholder'] || 'https://...'}
-                    className="w-full px-4 py-3 bg-muted rounded-xl text-body font-medium text-foreground placeholder-light outline-none border border-transparent focus:border-primary transition-colors"
-                  />
+                  <div className="relative">
+                    <input
+                      type="url"
+                      autoComplete="off"
+                      value={sheetForm.referenceLink || ''}
+                      onChange={e => setSheetForm(prev => ({ ...prev, referenceLink: e.target.value }))}
+                      placeholder={t['common.reference_link_placeholder'] || 'https://...'}
+                      className="w-full px-4 py-3 pr-10 bg-muted rounded-xl text-body font-medium text-foreground placeholder-light outline-none border border-transparent focus:border-primary transition-colors"
+                    />
+                    {sheetForm.referenceLink && (
+                      <button
+                        type="button"
+                        onClick={() => setSheetForm(prev => ({ ...prev, referenceLink: '' }))}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                      >
+                        <X size={18} />
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
 

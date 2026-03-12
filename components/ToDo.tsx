@@ -22,6 +22,7 @@ import {
   ClipboardList,
   Calendar,
   Loader2,
+  Link2,
 } from 'lucide-react';
 import Avatar from './ui/Avatar';
 import ErrorBanner from './ui/ErrorBanner';
@@ -34,6 +35,7 @@ import { detectInputLanguage } from '../services/languageDetectionService';
 import { haptics } from '../utils/haptics';
 import { useDemoMode } from '../contexts/DemoModeContext';
 import { logger } from '../utils/logger';
+import { Capacitor } from '@capacitor/core';
 
 // ─────────────────────────────────────────────────────────────────
 // Types & Constants
@@ -1232,6 +1234,7 @@ const ToDo: React.FC<ToDoProps> = ({
       quantity: item.quantity,
       unit: item.unit,
       brand: item.brand,
+      referenceLink: item.referenceLink,
       dueDate: item.dueDate,
       dueTime: item.dueTime,
       recurrence: item.recurrence,
@@ -1270,6 +1273,7 @@ const ToDo: React.FC<ToDoProps> = ({
         quantity: sheetForm.quantity || '1',
         unit: sheetForm.unit,
         brand: sheetForm.brand,
+        referenceLink: sheetForm.referenceLink || undefined,
         dueDate: sheetForm.dueDate,
         dueTime: sheetForm.dueTime,
         recurrence,
@@ -1332,6 +1336,7 @@ const ToDo: React.FC<ToDoProps> = ({
         quantity: sheetForm.quantity || '1',
         unit: sheetForm.unit,
         brand: sheetForm.brand,
+        referenceLink: sheetForm.referenceLink || undefined,
         dueDate: sheetForm.dueDate,
         dueTime: sheetForm.dueTime,
         recurrence: sheetForm.recurrence,
@@ -1354,6 +1359,19 @@ const ToDo: React.FC<ToDoProps> = ({
     }
   };
   
+  const openReferenceLink = async (url: string) => {
+    if (Capacitor.isNativePlatform()) {
+      try {
+        const { Browser } = await import('@capacitor/browser');
+        await Browser.open({ url });
+      } catch {
+        window.open(url, '_blank', 'noopener,noreferrer');
+      }
+    } else {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
+  };
+
   const getUserName = (userId?: string): string => {
     if (!userId) return '';
     if (userId === currentUser.id) return t['common.you'] || 'You';
@@ -1941,24 +1959,38 @@ const ToDo: React.FC<ToDoProps> = ({
                     )}
                   </div>
                     
-                  {/* Right side: Assignee name + Category icon */}
-                  <div className="flex flex-col items-end gap-1 shrink-0">
+                  {/* Right side: Assignee name + Category/Link icons */}
+                  <div
+                    className="flex flex-col items-end gap-1 shrink-0 pl-3 self-stretch justify-center min-w-[60px]"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (item.referenceLink) {
+                        openReferenceLink(item.referenceLink);
+                      } else {
+                        !isCompleting && !isSwiping && openEditSheet(item);
+                      }
+                    }}
+                  >
                     {item.assigneeId && (
                       <span className="text-caption text-muted-foreground">
                         {getUserName(item.assigneeId)}
-                        </span>
-                      )}
-                    {/* Category icon */}
-                    {item.category === ShoppingCategory.SUPERMARKET ? (
-                      <Store size={16} className="text-[#4CAF50]" />
-                    ) : item.category === ShoppingCategory.WET_MARKET ? (
-                      <LampCeiling size={16} className="text-[#F06292]" />
-                    ) : (
-                      <Stone size={16} className="text-muted-foreground" />
+                      </span>
                     )}
+                    <div className="flex items-center gap-1.5">
+                      {item.referenceLink && (
+                        <Link2 size={16} className="text-primary" />
+                      )}
+                      {item.category === ShoppingCategory.SUPERMARKET ? (
+                        <Store size={16} className="text-[#4CAF50]" />
+                      ) : item.category === ShoppingCategory.WET_MARKET ? (
+                        <LampCeiling size={16} className="text-[#F06292]" />
+                      ) : (
+                        <Stone size={16} className="text-muted-foreground" />
+                      )}
                     </div>
-                      </div>
                   </div>
+                </div>
+              </div>
             );
           };
           
@@ -2243,7 +2275,24 @@ const ToDo: React.FC<ToDoProps> = ({
                   />
                 </div>
               )}
-              
+
+              {/* Reference Link - Shopping only */}
+              {activeSection === 'shopping' && (
+                <div>
+                  <label className="block text-caption text-muted-foreground tracking-wide mb-2">
+                    {t['common.reference_link'] || 'Reference Link'}
+                  </label>
+                  <input
+                    type="url"
+                    autoComplete="off"
+                    value={sheetForm.referenceLink || ''}
+                    onChange={e => setSheetForm(prev => ({ ...prev, referenceLink: e.target.value }))}
+                    placeholder={t['common.reference_link_placeholder'] || 'https://...'}
+                    className="w-full px-4 py-3 bg-muted rounded-xl text-body font-medium text-foreground placeholder-light outline-none border border-transparent focus:border-primary transition-colors"
+                  />
+                </div>
+              )}
+
               {/* Shopping-specific fields */}
               {activeSection === 'shopping' && (
                 <div className="flex gap-3">

@@ -451,19 +451,15 @@ export const createAuthenticatedClient = async (clerkToken: string | null, token
       const token = await getFreshTokenWithRetry(isRetry);
       
       if (!token) {
+        // Couldn't get any token - this is a serious auth issue
+        // On first attempt, try continuing without token (will likely fail but gives better error)
+        // On retry attempts, this means refresh didn't help
         if (attempt > 0) {
-          // Retry also returned no token — session is dead
-          logger.error(`[Supabase] ❌ No token after ${attempt + 1} attempts - session is dead`);
-          if (typeof window !== 'undefined') {
-            window.dispatchEvent(new CustomEvent('helpy:session-expired', {
-              detail: { reason: 'no_token_after_retries', attempts: attempt + 1 }
-            }));
-          }
-          // Return a synthetic 401 so callers get a clean error
-          return new Response(JSON.stringify({ message: 'Session expired' }), { status: 401 });
+          logger.error(`[Supabase] ❌ Still no token after ${attempt + 1} attempts`);
+          // Continue to make the request anyway - Supabase will return a clear auth error
+        } else {
+          logger.warn('[Supabase] ⚠️ No token available, request will likely fail');
         }
-        logger.warn('[Supabase] ⚠️ No token on first attempt, will retry with force refresh');
-        continue; // Skip to retry with forceRefresh
       }
       
       // Build headers with token
@@ -508,13 +504,8 @@ export const createAuthenticatedClient = async (clerkToken: string | null, token
               continue; // This will trigger the retry with forced token refresh
             }
             
-            // Out of retries - session is dead, tell the app
-            logger.error(`[Supabase] ❌ Auth error persisted after ${AUTH_RETRY_CONFIG.maxAttempts} attempts - triggering session expired`);
-            if (typeof window !== 'undefined') {
-              window.dispatchEvent(new CustomEvent('helpy:session-expired', {
-                detail: { reason: 'auth_error_after_retries', attempts: AUTH_RETRY_CONFIG.maxAttempts }
-              }));
-            }
+            // Out of retries - return the error response
+            logger.error(`[Supabase] ❌ Auth error persisted after ${AUTH_RETRY_CONFIG.maxAttempts} attempts`);
             return response;
           }
         }

@@ -105,6 +105,7 @@ export interface ToDoItem {
   quantity?: string;
   unit?: string;
   brand?: string; // Brand name (optional, not translated)
+  referenceLink?: string; // URL to product page or reference image
   // Task-specific
   dueDate?: string; // YYYY-MM-DD
   dueTime?: string; // HH:mm

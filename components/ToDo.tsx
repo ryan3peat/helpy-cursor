@@ -1273,7 +1273,7 @@ const ToDo: React.FC<ToDoProps> = ({
         quantity: sheetForm.quantity || '1',
         unit: sheetForm.unit,
         brand: sheetForm.brand,
-        referenceLink: sheetForm.referenceLink || undefined,
+        referenceLink: normalizeUrl(sheetForm.referenceLink || '') || undefined,
         dueDate: sheetForm.dueDate,
         dueTime: sheetForm.dueTime,
         recurrence,
@@ -1336,7 +1336,7 @@ const ToDo: React.FC<ToDoProps> = ({
         quantity: sheetForm.quantity || '1',
         unit: sheetForm.unit,
         brand: sheetForm.brand,
-        referenceLink: sheetForm.referenceLink || undefined,
+        referenceLink: normalizeUrl(sheetForm.referenceLink || '') || undefined,
         dueDate: sheetForm.dueDate,
         dueTime: sheetForm.dueTime,
         recurrence: sheetForm.recurrence,
@@ -1359,16 +1359,35 @@ const ToDo: React.FC<ToDoProps> = ({
     }
   };
   
+  const normalizeUrl = (url: string): string => {
+    const trimmed = url.trim();
+    if (!trimmed) return '';
+    if (/^https?:\/\//i.test(trimmed)) return trimmed;
+    return `https://${trimmed}`;
+  };
+
   const openReferenceLink = async (url: string) => {
+    const normalized = normalizeUrl(url);
+    try {
+      new URL(normalized);
+    } catch {
+      return;
+    }
     if (Capacitor.isNativePlatform()) {
       try {
         const { Browser } = await import('@capacitor/browser');
-        await Browser.open({ url });
+        await Browser.open({ url: normalized });
       } catch {
-        window.open(url, '_blank', 'noopener,noreferrer');
+        window.open(normalized, '_blank', 'noopener,noreferrer');
       }
     } else {
-      window.open(url, '_blank', 'noopener,noreferrer');
+      const a = document.createElement('a');
+      a.href = normalized;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
     }
   };
 
@@ -2765,8 +2784,19 @@ const ToDo: React.FC<ToDoProps> = ({
                           )}
                         </div>
                         
-                        {/* Category icon */}
-                        <div className="shrink-0">
+                        {/* Category + Link icons */}
+                        <div
+                          className="shrink-0 flex items-center gap-2 pl-2 self-stretch justify-center min-w-[48px]"
+                          onClick={(e) => {
+                            if (item.referenceLink) {
+                              e.stopPropagation();
+                              openReferenceLink(item.referenceLink);
+                            }
+                          }}
+                        >
+                          {item.referenceLink && (
+                            <Link2 size={20} className="text-primary" />
+                          )}
                           {item.category === ShoppingCategory.SUPERMARKET ? (
                             <Store size={20} className="text-[#4CAF50]" />
                           ) : item.category === ShoppingCategory.WET_MARKET ? (
